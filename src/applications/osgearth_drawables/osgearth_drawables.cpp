@@ -47,7 +47,7 @@ void addVerts(LineDrawable* line, double x, double y)
     line->pushVertex(osg::Vec3(x + 5, 0, y + 10));
     line->pushVertex(osg::Vec3(x, 0, y + 10));
     line->pushVertex(osg::Vec3(x, 0, y + 5));
-    line->dirty();
+    line->finish();
 }
 
 void addLotsOfVerts(LineDrawable* line)
@@ -59,7 +59,20 @@ void addLotsOfVerts(LineDrawable* line)
             line->pushVertex(osg::Vec3(x, 0, y));
         }
     }
-    line->dirty();
+    line->finish();
+}
+
+LineDrawable* makeStar(double x, double y, double r)
+{
+    LineDrawable* star = new LineDrawable(GL_LINES);
+    for(float i=0.0f; i<osg::PI*2.0; i += osg::PI/16.0)
+    {
+        float c = cos(i), s = sin(i);
+        star->pushVertex(osg::Vec3(x, 0, y));
+        star->pushVertex(osg::Vec3(x+(r*c-r*s), 0, y+(r*c+r*s)));
+    }
+    star->finish();
+    return star;
 }
 
 osg::Node* makeGeometryForImport(double x, double y)
@@ -110,17 +123,19 @@ osg::Node* createLineDrawables()
     group->addCullCallback(new InstallViewportSizeUniform());
 
     float x = 10;
+    float y = 10;
+
     LineDrawable* strip = new LineDrawable(GL_LINE_STRIP);
     strip->setLineWidth(8);
     strip->setColor(osg::Vec4(1,1,1,1));
-    addVerts(strip, x, 10);
+    addVerts(strip, x, y);
     group->addChild(strip);
 
     x += 20;
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
     loop->setLineWidth(8);
     loop->setColor(osg::Vec4(1,1,0,1));
-    addVerts(loop, x, 10);
+    addVerts(loop, x, y);
     group->addChild(loop);
 
     x += 20;
@@ -128,34 +143,53 @@ osg::Node* createLineDrawables()
     stippled->setLineWidth(4);
     stippled->setStipplePattern(0xff00);
     stippled->setColor(osg::Vec4(0,1,0,1));
-    addVerts(stippled, x, 10);
+    addVerts(stippled, x, y);
     group->addChild(stippled);
     
     x += 20;
     LineDrawable* segments = new LineDrawable(GL_LINES);
     segments->setLineWidth(3);
     segments->setColor(osg::Vec4(0,1,1,1));
-    addVerts(segments, x, 10);
+    addVerts(segments, x, y);
     group->addChild(segments);
 
     x += 20;
     LineDrawable* firstCount = new LineDrawable(GL_LINE_STRIP);
     firstCount->setLineWidth(5);
     firstCount->setColor(osg::Vec4(1,0,1,1));
-    addVerts(firstCount, x, 10);
+    addVerts(firstCount, x, y);
     firstCount->addUpdateCallback(new TestFirstCount());
     group->addChild(firstCount);
     
     x += 20;
-    osg::ref_ptr<osg::Node> node = makeGeometryForImport(x, 10);
+    osg::ref_ptr<osg::Node> node = makeGeometryForImport(x, y);
     LineGroup* lines = new LineGroup();
     lines->import(node.get());
     group->addChild(lines);
 
     x += 20;
     LineDrawable* points = new LineDrawable(GL_POINTS);
-    addVerts(points, x, 10);
+    addVerts(points, x, y);
     group->addChild(points);
+
+    x = 20;
+    y -= 30;
+    LineDrawable* star = makeStar(x, y, 10);
+    star->setColor(osg::Vec4(1,1,1,1));
+    star->setLineWidth(1.0f);
+    group->addChild(star);
+
+    x += 40;
+    LineDrawable* star2 = makeStar(x, y, 10);
+    star2->setColor(osg::Vec4(1,.5,0,1));
+    star2->setLineWidth(2.0f);
+    group->addChild(star2);
+
+    x += 40;
+    LineDrawable* star3 = makeStar(x, y, 10);
+    star3->setColor(osg::Vec4(1,1,0,1));
+    star3->setLineWidth(3.0f);
+    group->addChild(star3);
 
     return group;
 }
@@ -167,6 +201,11 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     osg::ref_ptr<osg::Node> node = createLineDrawables();
+
+#ifdef OSG_GL3_AVAILABLE
+    // Sets up the State for GL3 mode
+    viewer.setRealizeOperation(new GL3RealizeOperation());
+#endif
 
     if (arguments.read("--ortho"))
     {
@@ -201,11 +240,6 @@ main(int argc, char** argv)
             return -1;
         }
     }
-
-#ifdef OSG_GL3_AVAILABLE
-    // Sets up the State for GL3 mode
-    viewer.setRealizeOperation(new GL3RealizeOperation());
-#endif
 
     // Sets up global default uniform values needed by osgEarth
     GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());

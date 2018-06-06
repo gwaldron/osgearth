@@ -1296,10 +1296,22 @@ GeoExtent::normalizeX(double x) const
 {
     if (isValid() && is_valid(x) && _srs->isGeographic())
     {
-        while (x < -180.0)
-            x += 360.0;
-        while ( x > 180.0 )
+        if (fabs(x) <= 180.0)
+        {
+            return x;
+        }
+
+        if (x < 0.0 || x >= 360.0)
+        {
+            x = fmod(x, 360.0);
+            if (x < 0.0)
+                x += 360.0;
+        }
+        
+        if (x > 180.0)
+        {
             x -= 360.0;
+        }
     }
     return x;
 }

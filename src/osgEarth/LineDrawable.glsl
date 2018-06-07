@@ -84,9 +84,9 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
 
 #ifdef OE_LINES_ANTIALIAS
-    float thickness = oe_GL_LineWidth + 1.25;
+    float thickness = floor(oe_GL_LineWidth + 2.0);
 #else
-    float thickness = oe_GL_LineWidth + 0.5;
+    float thickness = max(0.5, floor(oe_GL_LineWidth));
 #endif
 
     float len = thickness;
@@ -149,8 +149,8 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     }
 
     // calculate the extrusion vector in pixels
-    // note: seems like it should be len/2, BUT we are in [-1..1] space
-    vec2 extrudePixel = vec2(-dir.y, dir.x) * (len - 0.5);
+    // note: seems like it should be len/2, BUT remember we are in [-w..w] space
+    vec2 extrudePixel = vec2(-dir.y, dir.x) * len;
 
     // and convert to unit space:
     vec2 extrudeUnit = extrudePixel / oe_ViewportSize;

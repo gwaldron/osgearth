@@ -82,6 +82,7 @@ main(int argc, char** argv)
         {
             view->getCamera()->setViewport(i*size, 0, size, size);
             view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
+            view->getCamera()->setName(Stringify()<<"View "<<i);
         }
         MapNodeHelper().configureView(view);
         viewer.addView(view);

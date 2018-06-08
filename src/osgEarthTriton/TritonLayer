@@ -20,8 +20,7 @@
 #define OSGEARTH_TRITON_LAYER 1
 
 #include "Common"
-#include "TritonOptions"
-#include "TritonNode"
+
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
@@ -163,7 +162,7 @@ namespace osgEarth { namespace Triton
 
     private:
 
-        LayerListener<TritonLayer, const osgEarth::ImageLayer> _layerListener;
+        osgEarth::LayerListener<TritonLayer, const osgEarth::ImageLayer> _layerListener;
     };
 
 } } // namespace osgEarth::Triton

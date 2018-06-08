@@ -48,6 +48,10 @@ using namespace osgEarth::ShaderComp;
 
 #define USE_STACK_MEMORY 1
 
+#define USE_SHARED_PROGRAM_REPO 1
+
+#define USE_PROGRAM_CACHE 1
+
 #define MAX_PROGRAM_CACHE_SIZE 128
 
 #define PREALLOCATE_APPLY_VARS 1
@@ -1419,9 +1423,12 @@ VirtualProgram::apply( osg::State& state ) const
                         }
                     }
 
+#ifdef USE_SHARED_PROGRAM_REPO
                     // global sharing.
                     Registry::programSharedRepo()->share( program );
+#endif
 
+#ifdef USE_PROGRAM_CACHE
                     // finally, put own new program in the cache.
                     ProgramEntry& pe = _programCache[local.programKey];
                     pe._program = program.get();
@@ -1429,6 +1436,7 @@ VirtualProgram::apply( osg::State& state ) const
 
                     // purge expired programs.
                     const_cast<VirtualProgram*>(this)->removeExpiredProgramsFromCache(state, frameNumber);
+#endif
                 }
             }
         }
@@ -1449,13 +1457,8 @@ VirtualProgram::apply( osg::State& state ) const
         }
 #endif // USE_STACK_MEMORY
 
-        osg::Program::PerContextProgram* pcp;
+        osg::Program::PerContextProgram* pcp = program->getPCP( state );
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,4)
-        pcp = program->getPCP( state );
-#else
-        pcp = program->getPCP( contextID );
-#endif
         bool useProgram = state.getLastAppliedProgramObject() != pcp;
 
 #ifdef DEBUG_APPLY_COUNTS

@@ -93,6 +93,9 @@ Horizon* Horizon::get(osg::NodeVisitor& nv)
 void
 Horizon::setEllipsoid(const osg::EllipsoidModel& e)
 {
+    _em.setRadiusEquator(e.getRadiusEquator());
+    _em.setRadiusPolar(e.getRadiusPolar());
+
     _scaleInv.set(
         e.getRadiusEquator(),
         e.getRadiusEquator(),
@@ -330,6 +333,22 @@ Horizon::getPlane(osg::Plane& out_plane) const
     // compute a new clip plane:
     out_plane.set(_eyeUnit, -dist);
     return true;
+}
+
+double
+Horizon::getDistanceToVisibleHorizon() const
+{
+    double eyeLen = _eye.length();
+
+    osg::Vec3d geodetic;
+    double lat, lon, hasl;
+    _em.convertXYZToLatLongHeight(_eye.x(), _eye.y(), _eye.z(), lat, lon, hasl);
+
+    // limit it:
+    hasl = osg::maximum(hasl, 100.0);
+
+    double radius = eyeLen - hasl;
+    return sqrt(2.0*radius*hasl + hasl*hasl);
 }
 
 //........................................................................

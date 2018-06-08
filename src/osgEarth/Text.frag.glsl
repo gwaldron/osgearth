@@ -21,9 +21,9 @@
 #pragma vp_entryPoint text_frag
 #pragma vp_location   fragment_coloring
 
-#pragma import_defines( BACKDROP_COLOR, SHADOW, OUTLINE)
-#pragma import_defines( SIGNED_DISTANCE_FIELD, TEXTURE_DIMENSION, GLYPH_DIMENSION)
-#pragma import_defines( OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED)
+#pragma import_defines(BACKDROP_COLOR, SHADOW, OUTLINE)
+#pragma import_defines(SIGNED_DISTANCE_FIELD, TEXTURE_DIMENSION, GLYPH_DIMENSION)
+#pragma import_defines(OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED)
 
 $OSG_PRECISION_FLOAT
 

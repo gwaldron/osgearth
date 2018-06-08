@@ -190,7 +190,7 @@ namespace osgEarth
         virtual void addedToMap(const Map*);
 
         //! Node created by this model layer
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         /** Serialize this layer */
         virtual Config getConfig() const;

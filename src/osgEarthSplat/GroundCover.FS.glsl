@@ -3,7 +3,8 @@
 #pragma vp_entryPoint oe_GroundCover_fragment
 #pragma vp_location   fragment_coloring
 
-#pragma import_defines(OE_GROUNDCOVER_HAS_MULTISAMPLES, OE_GROUNDCOVER_SHOW_TESSELLATION)
+#pragma import_defines(OE_GROUNDCOVER_HAS_MULTISAMPLES)
+#pragma import_defines(OE_GROUNDCOVER_SHOW_TESSELLATION)
 
 
 uniform sampler2DArray oe_GroundCover_billboardTex;

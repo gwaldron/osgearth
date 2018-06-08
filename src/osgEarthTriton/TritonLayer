@@ -20,8 +20,7 @@
 #define OSGEARTH_TRITON_LAYER 1
 
 #include "Common"
-#include "TritonOptions"
-#include "TritonNode"
+
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
@@ -40,6 +39,7 @@ namespace osgEarth { namespace Triton
             _useHeightMap.init( true );
             _heightMapSize.init( 1024 );
             _renderBinNumber.init( 12 );
+            _maxAltitude.init(50000);
             fromConfig( _conf );
         }
 
@@ -75,6 +75,10 @@ namespace osgEarth { namespace Triton
         optional<std::string>& maskLayer() { return _maskLayerName; }
         const optional<std::string>& maskLayer() const { return _maskLayerName; }
 
+        /** Render bin number to assign to the ocean (in DepthSortedBin) */
+        optional<float>& maxAltitude() { return _maxAltitude; }
+        const optional<float>& maxAltitude() const { return _maxAltitude; }
+
     public:
         osgEarth::Config getConfig() const {
             osgEarth::Config conf = osgEarth::VisibleLayerOptions::getConfig();
@@ -86,6 +90,7 @@ namespace osgEarth { namespace Triton
             conf.addIfSet("height_map_size", _heightMapSize);
             conf.addIfSet("render_bin_number", _renderBinNumber);
             conf.addIfSet("mask_layer", _maskLayerName);
+            conf.addIfSet("max_altitude", _maxAltitude);
             return conf;
         }
 
@@ -104,6 +109,7 @@ namespace osgEarth { namespace Triton
             conf.getIfSet("height_map_size", _heightMapSize);
             conf.getIfSet("render_bin_number", _renderBinNumber);
             conf.getIfSet("mask_layer", _maskLayerName);
+            conf.getIfSet("max_altitude", _maxAltitude);
         }
 
     private:
@@ -114,6 +120,7 @@ namespace osgEarth { namespace Triton
         osgEarth::optional<int>         _heightMapSize;
         osgEarth::optional<int>         _renderBinNumber;
         osgEarth::optional<std::string> _maskLayerName;
+        osgEarth::optional<float>       _maxAltitude;
     };
 
 
@@ -138,7 +145,7 @@ namespace osgEarth { namespace Triton
 
     public: // Layer
 
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
     protected: // Layer
 
@@ -150,11 +157,12 @@ namespace osgEarth { namespace Triton
 
     private:
 
-        osg::ref_ptr<TritonNode> _tritonNode;
+        osg::ref_ptr<osg::Group> _root;
+        osg::ref_ptr<osg::Node> _tritonNode;
 
     private:
 
-        LayerListener<TritonLayer, const osgEarth::ImageLayer> _layerListener;
+        osgEarth::LayerListener<TritonLayer, const osgEarth::ImageLayer> _layerListener;
     };
 
 } } // namespace osgEarth::Triton

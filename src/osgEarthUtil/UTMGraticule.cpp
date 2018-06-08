@@ -225,6 +225,17 @@ UTMGraticule::init()
 
     // force it to render after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
+
+    _root = new osg::Group();
+
+    // install the range callback for clip plane activation
+    _root->addCullCallback( new RangeUniformCullCallback() );
+
+    if (getEnabled() == true)
+    {
+        rebuild();
+    }
+
 }
 
 void
@@ -241,18 +252,8 @@ UTMGraticule::removedFromMap(const Map* map)
 }
 
 osg::Node*
-UTMGraticule::getOrCreateNode()
+UTMGraticule::getNode() const
 {
-    if (_root.valid() == false && getEnabled() == true)
-    {
-        _root = new osg::Group();
-
-        // install the range callback for clip plane activation
-        _root->addCullCallback( new RangeUniformCullCallback() );
-
-        rebuild();
-    }
-
     return _root.get();
 }
 

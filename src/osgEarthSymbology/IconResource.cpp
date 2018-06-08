@@ -53,8 +53,8 @@ namespace
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         (*verts)[0] = osg::Vec3(-width/2.0f, -height/2.0, 0.0f);
         (*verts)[1] = osg::Vec3( width/2.0f, -height/2.0, 0.0f);
-        (*verts)[2] = osg::Vec3( width/2.0f,  height/2.0, 0.0f);
-        (*verts)[3] = osg::Vec3(-width/2.0f,  height/2.0, 0.0f);
+        (*verts)[2] = osg::Vec3(-width/2.0f,  height/2.0, 0.0f);
+        (*verts)[3] = osg::Vec3( width/2.0f,  height/2.0, 0.0f);
         geometry->setVertexArray( verts );
 
         bool flip = image->getOrigin()==osg::Image::TOP_LEFT;
@@ -64,15 +64,15 @@ namespace
         {
             (*texcoords)[0].set(0.0f,      flip ? height-1.0f : 0.0f);
             (*texcoords)[1].set(width-1.0f,flip ? height-1.0f : 0.0f);
-            (*texcoords)[2].set(width-1.0f,flip ? 0.0         : height-1.0f);
-            (*texcoords)[3].set(0.0f,      flip ? 0.0         : height-1.0f);
+            (*texcoords)[2].set(0.0f,      flip ? 0.0         : height-1.0f);
+            (*texcoords)[3].set(width-1.0f,flip ? 0.0         : height-1.0f);
         }
         else
         {
             (*texcoords)[0].set(0.0f, flip ? 1.0f : 0.0f);
             (*texcoords)[1].set(1.0f, flip ? 1.0f : 0.0f);
-            (*texcoords)[2].set(1.0f, flip ? 0.0  : 1.0f);
-            (*texcoords)[3].set(0.0f, flip ? 0.0  : 1.0f);
+            (*texcoords)[2].set(0.0f, flip ? 0.0  : 1.0f);
+            (*texcoords)[3].set(1.0f, flip ? 0.0  : 1.0f);
         }
         geometry->setTexCoordArray(0, texcoords);
 
@@ -80,7 +80,7 @@ namespace
         (*colors)[0].set(1,1,1,1);
         geometry->setColorArray( colors );
 
-        geometry->addPrimitiveSet( new osg::DrawArrays(GL_QUADS, 0, 4));
+        geometry->addPrimitiveSet( new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, 4));
 
         osg::StateSet* stateSet = geometry->getOrCreateStateSet();
 

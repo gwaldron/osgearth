@@ -280,11 +280,9 @@ PlaceNode::init()
 
     getPositionAttitudeTransform()->addChild( _geode );
 
-    // for clamping and occlusion culling    
-    //OE_WARN << LC << "PlaceNode::applyStyle: " << _style.getConfig().toJSON(true) << std::endl;
-    applyStyle( _style );
+    setDefaultLighting( false );
 
-    setLightingIfNotSet( false );
+    applyStyle( _style );
     
     // generate shaders:
     Registry::shaderGenerator().run(

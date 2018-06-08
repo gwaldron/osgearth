@@ -47,6 +47,7 @@
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Registry>
 
 #include <osgEarthDrivers/kml/KML>
 
@@ -154,8 +155,22 @@ namespace
     {
         osg::ref_ptr<osg::Uniform> _u;
         ApplyValueUniform(osg::Uniform* u) :_u(u) { }
-        void onValueChanged(Control* c, double value) {
+        void onValueChanged(Control* c, double value)
+        {
             _u->set( float(value) );
+            osgEarth::Registry::instance()->dataStore().store(
+                osgEarth::Registry::instance(), _u->getName(), _u.get());
+        }
+    };
+
+    struct ToggleDefine : public ControlEventHandler
+    {
+        osg::ref_ptr<osg::StateSet> _ss;
+        std::string _name;
+        ToggleDefine(osg::StateSet* ss, const std::string& name) : _ss(ss), _name(name) { }
+        void onValueChanged(Control* c, bool value) {
+            if (value) _ss->setDefine(_name);
+            else _ss->removeDefine(_name);
         }
     };
 }
@@ -518,7 +533,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
                 if ( c )
                 {
                     c->setVertAlign( Control::ALIGN_TOP );
-                    canvas->addControl( c );
+                    mainContainer->addControl( c );
                 }
             }
             mapNode->addChild( kml );
@@ -552,7 +567,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
 
     // Add the credits display
-    canvas->addControl(AttributionControlFactory().create(mapNode));
+    mainContainer->addControl(AttributionControlFactory().create(mapNode));
 
     // Configure for an ortho camera:
     if ( args.read("--ortho") )
@@ -576,7 +591,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         vbox->setHorizAlign( Control::ALIGN_RIGHT );
         vbox->setVertAlign( Control::ALIGN_BOTTOM );
         view->addEventHandler( new ActivityMonitorTool(vbox) );
-        canvas->addControl( vbox );
+        mainContainer->addControl( vbox );
     }
 
     // Install an auto clip plane clamper
@@ -648,7 +663,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
                 uniformBox = new VBox();
                 uniformBox->setBackColor(0,0,0,0.5);
                 uniformBox->setAbsorbEvents( true );
-                canvas->addControl( uniformBox );
+                mainContainer->addControl( uniformBox );
             }
             osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT, name);
             uniform->set( minval );
@@ -668,7 +683,18 @@ MapNodeHelper::parse(MapNode*             mapNode,
         std::string name;
         if (args.read("--define", name))
         {
-            mapNode->getOrCreateStateSet()->setDefine(name);
+            if ( uniformBox == 0L )
+            {
+                uniformBox = new VBox();
+                uniformBox->setBackColor(0,0,0,0.5);
+                uniformBox->setAbsorbEvents( true );
+                mainContainer->addControl( uniformBox );
+            }
+            
+            HBox* box = new HBox();
+            box->addControl(new CheckBoxControl(false, new ToggleDefine(mapNode->getOrCreateStateSet(), name)));
+            box->addControl(new LabelControl(name));
+            uniformBox->addControl(box);
         }
     }
 
@@ -858,9 +884,9 @@ namespace
 ui::Control* SkyControlFactory::create(SkyNode* sky)
 {
     ui::Grid* grid = new ui::Grid();
+    grid->setBackColor(0,0,0,.1);
     grid->setChildVertAlign( ui::Control::ALIGN_CENTER );
     grid->setChildSpacing( 10 );
-    grid->setHorizFill( true );
 
     if (sky)
     {

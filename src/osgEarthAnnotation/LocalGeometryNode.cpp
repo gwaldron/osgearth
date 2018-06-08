@@ -109,9 +109,9 @@ LocalGeometryNode::initNode()
 
         getPositionAttitudeTransform()->addChild( _node.get() );
 
-        applyRenderSymbology( getStyle() );
+        setDefaultLighting( getStyle().has<ExtrusionSymbol>() );
 
-        setLightingIfNotSet( getStyle().has<ExtrusionSymbol>() );
+        applyRenderSymbology( getStyle() );
     }
 }
 

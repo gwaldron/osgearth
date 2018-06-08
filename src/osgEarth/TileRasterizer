@@ -74,6 +74,8 @@ namespace osgEarth
 
     public: // osg::Node
 
+        void accept(osg::NodeVisitor&);
+
         void traverse(osg::NodeVisitor&);
 
     private:

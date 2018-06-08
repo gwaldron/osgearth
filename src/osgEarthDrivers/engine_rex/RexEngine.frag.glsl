@@ -6,9 +6,13 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_RENDER_IMAGERY,OE_TERRAIN_MORPH_IMAGERY,OE_TERRAIN_BLEND_IMAGERY)
+#pragma import_defines(OE_TERRAIN_RENDER_IMAGERY)
+#pragma import_defines(OE_TERRAIN_MORPH_IMAGERY)
+#pragma import_defines(OE_TERRAIN_BLEND_IMAGERY)
 #pragma import_defines(OE_TERRAIN_CAST_SHADOWS)
-#pragma import_defines(OE_IS_PICK_CAMERA,OE_IS_SHADOW_CAMERA,OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_IS_PICK_CAMERA)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
 
 uniform sampler2D oe_layer_tex;
 uniform int       oe_layer_uid;

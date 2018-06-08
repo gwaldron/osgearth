@@ -37,10 +37,6 @@
 
 using namespace osgEarth;
 
-// vertex-only method - just pull the actual vertex. test for a while
-// and accept if it works consistently.
-#define VERTEX_ONLY_METHOD 1
-
 //------------------------------------------------------------------------
 
 
@@ -142,10 +138,7 @@ DepthOffsetAdapter::init()
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        _minBiasUniform  = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_minBias");
-        _maxBiasUniform  = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_maxBias");
-        _minRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_minRange");
-        _maxRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_maxRange");
+        _paramsUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_DepthOffset_params");
         updateUniforms();
     }
 }
@@ -174,10 +167,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
 
         // uninstall uniforms and shaders.
         osg::StateSet* s = _graph->getStateSet();
-        s->removeUniform( _minBiasUniform.get() );
-        s->removeUniform( _maxBiasUniform.get() );
-        s->removeUniform( _minRangeUniform.get() );
-        s->removeUniform( _maxRangeUniform.get() );
+        s->removeUniform( _paramsUniform.get() );
         
         shaders.unload( VirtualProgram::get(s), shaders.DepthOffsetVertex );
 
@@ -194,10 +184,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         // so the stateset doesn't get merged by a state set optimizer
         s->setDataVariance(s->DYNAMIC);
 
-        s->addUniform( _minBiasUniform.get() );
-        s->addUniform( _maxBiasUniform.get() );
-        s->addUniform( _minRangeUniform.get() );
-        s->addUniform( _maxRangeUniform.get() );
+        s->addUniform( _paramsUniform.get() );
         
         shaders.load(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);    
 
@@ -220,10 +207,11 @@ DepthOffsetAdapter::updateUniforms()
 {
     if ( !_supported ) return;
 
-    _minBiasUniform->set( (float)_options.minBias()->as(Units::METERS) );
-    _maxBiasUniform->set( (float)_options.maxBias()->as(Units::METERS) );
-    _minRangeUniform->set( (float)_options.minRange()->as(Units::METERS) );
-    _maxRangeUniform->set( (float)_options.maxRange()->as(Units::METERS) );
+    _paramsUniform->set(osg::Vec4f(
+        (float)_options.minBias()->as(Units::METERS),
+        (float)_options.maxBias()->as(Units::METERS),
+        (float)_options.minRange()->as(Units::METERS),
+        (float)_options.maxRange()->as(Units::METERS)));
 }
 
 void 

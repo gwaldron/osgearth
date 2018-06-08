@@ -137,7 +137,7 @@ namespace osgEarth { namespace Util
 
         virtual void removedFromMap(const Map* map);
         
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         virtual void init();
 

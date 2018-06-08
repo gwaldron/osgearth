@@ -129,9 +129,9 @@ namespace osgEarth { namespace Annotation
         virtual void setDepthAdjustment( bool value );
 
         /**
-         * Sets a lighting override but only if lighting is not already set.
+         * Sets a lighting default, which the user can override
          */
-        void setLightingIfNotSet( bool lighting );
+        void setDefaultLighting( bool lighting );
 
         // hidden default ctor
         AnnotationNode();

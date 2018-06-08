@@ -351,8 +351,9 @@ RectangleNode::rebuild()
             getPositionAttitudeTransform()->addChild( node.get() );
         }
 
+        setDefaultLighting( false );
+
         applyRenderSymbology( _style );
-        setLightingIfNotSet( false );
     }
 }
 

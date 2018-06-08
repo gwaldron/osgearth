@@ -217,9 +217,10 @@ LabelNode::setStyle( const Style& style )
     _geode->addDrawable(text);
     _geode->setCullingActive(false);
 
-    applyStyle( _style );
+    // label lighting is off by default
+    setDefaultLighting( false );
 
-    setLightingIfNotSet( false );
+    applyStyle( _style );
 
     Registry::shaderGenerator().run(
         this,

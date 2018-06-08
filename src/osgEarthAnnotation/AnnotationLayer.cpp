@@ -44,17 +44,14 @@ void
 AnnotationLayer::init()
 {
     VisibleLayer::init();
+
+    _root = new osg::Group();
+    deserialize();
 }
 
 osg::Node*
-AnnotationLayer::getOrCreateNode()
+AnnotationLayer::getNode() const
 {
-    if (_root.valid() == false)
-    {
-        _root = new osg::Group();
-        deserialize();
-    }
-
     return _root.get();
 }
 

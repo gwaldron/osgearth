@@ -180,6 +180,20 @@ TileRasterizer::push(osg::Node* node, unsigned size, const GeoExtent& extent)
 }
 
 void
+TileRasterizer::accept(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.CULL_VISITOR && getBufferAttachmentMap().empty())
+    {
+        return;
+    }
+    else
+    {
+        osg::Camera::accept(nv);
+    }
+}
+
+
+void
 TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR)
@@ -245,7 +259,10 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
     //if (!getBufferAttachmentMap().empty())
     else if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osg::Camera::traverse(nv);
+        if (!getBufferAttachmentMap().empty())
+        {
+            osg::Camera::traverse(nv);
+        }
     }
 }
 

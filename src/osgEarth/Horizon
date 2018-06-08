@@ -110,10 +110,20 @@ namespace osgEarth
          * normal pointing at the eye. 
          */
         bool getPlane(osg::Plane& out_plane) const;
+
+        //! Caclulate distance from eye to visible horizon
+        double getDistanceToVisibleHorizon() const;
+
+        /**
+         * Gets the radius of the ellipsoid under the eye
+         */
+        double getRadius() const;
         
     protected:
 
         virtual ~Horizon() { }
+
+        osg::EllipsoidModel _em;
 
         bool       _valid;
         osg::Vec3d _eye;

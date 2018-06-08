@@ -603,6 +603,7 @@ GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
 GeoExtent::GeoExtent():
+_srs(0L),
 _west(0.0),
 _width(-1.0),
 _south(0.0),
@@ -623,14 +624,22 @@ _height(-1.0)
 
 GeoExtent::GeoExtent(const SpatialReference* srs,
                      double west, double south, double east, double north ) :
-_srs( srs )
+_srs( srs ),
+_west(0.0),
+_width(-1.0),
+_south(0.0),
+_height(-1.0)
 {
     set(west, south, east, north);
 }
 
 
 GeoExtent::GeoExtent(const SpatialReference* srs, const Bounds& bounds) :
-_srs( srs )
+_srs(srs),
+_west(0.0),
+_width(-1.0),
+_south(0.0),
+_height(-1.0)
 {
     set(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax());
 }
@@ -1287,10 +1296,22 @@ GeoExtent::normalizeX(double x) const
 {
     if (isValid() && is_valid(x) && _srs->isGeographic())
     {
-        while (x < -180.0)
-            x += 360.0;
-        while ( x > 180.0 )
+        if (fabs(x) <= 180.0)
+        {
+            return x;
+        }
+
+        if (x < 0.0 || x >= 360.0)
+        {
+            x = fmod(x, 360.0);
+            if (x < 0.0)
+                x += 360.0;
+        }
+        
+        if (x > 180.0)
+        {
             x -= 360.0;
+        }
     }
     return x;
 }

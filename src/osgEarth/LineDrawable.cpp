@@ -25,6 +25,7 @@
 #include <osgEarth/StateSetCache>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/GLUtils>
+#include <osgEarth/CullingUtils>
 
 #include <osg/Depth>
 #include <osg/CullFace>
@@ -70,22 +71,7 @@ namespace osgEarth { namespace Serializers { namespace LineGroup
 
 LineGroup::LineGroup()
 {
-#ifdef USE_GPU
-    if (Registry::capabilities().supportsGLSL())
-    {
-        LineDrawable::installShader(getOrCreateStateSet());
-    }
-#endif
-}
-
-LineGroup::LineGroup(bool installShader)
-{
-#ifdef USE_GPU
-    if (installShader && Registry::capabilities().supportsGLSL())
-    {
-        LineDrawable::installShader(getOrCreateStateSet());
-    }
-#endif
+    //nop
 }
 
 LineGroup::LineGroup(const LineGroup& rhs, const osg::CopyOp& copy) :
@@ -327,7 +313,6 @@ LineGroup::getLineDrawable(unsigned i)
 #undef  LC
 #define LC "[LineDrawable] "
 
-//#define USE_GPU 1
 
 namespace osgEarth { namespace Serializers { namespace LineDrawable
 {
@@ -347,7 +332,6 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
     }
 } } }
 
-
 // static attribute binding locations. Changable by the user.
 int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
@@ -364,10 +348,12 @@ _first(0u),
 _count(0u),
 _current(NULL),
 _previous(NULL),
-_next(NULL)
+_next(NULL),
+_colors(NULL)
 {
 #ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
+    setupShaders();
 #endif
 }
 
@@ -383,10 +369,15 @@ _first(0u),
 _count(0u),
 _current(NULL),
 _previous(NULL),
-_next(NULL)
+_next(NULL),
+_colors(NULL)
 {
 #ifdef USE_GPU
-    _gpu = Registry::capabilities().supportsGLSL();
+    _gpu = 
+        Registry::capabilities().supportsGLSL() &&
+        (_mode == GL_LINES || _mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP);
+
+    setupShaders();
 #endif
 }
 
@@ -399,7 +390,11 @@ _factor(rhs._factor),
 _pattern(rhs._pattern),
 _width(rhs._width),
 _first(rhs._first),
-_count(rhs._count)
+_count(rhs._count),
+_current(NULL),
+_previous(NULL),
+_next(NULL),
+_colors(NULL)
 {
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
 
@@ -408,6 +403,8 @@ _count(rhs._count)
         _previous = static_cast<osg::Vec3Array*>(getVertexAttribArray(PreviousVertexAttrLocation));
         _next = static_cast<osg::Vec3Array*>(getVertexAttribArray(NextVertexAttrLocation));
     }
+
+    setupShaders();
 }
 
 LineDrawable::~LineDrawable()
@@ -421,14 +418,6 @@ LineDrawable::initialize()
     // Already initialized?
     if (_current)
         return;
-
-    if (_mode != GL_LINE_STRIP &&
-        _mode != GL_LINE_LOOP &&
-        _mode != GL_LINES)
-    {
-        OE_WARN << LC << "Illegal mode (" << _mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
-        _mode = GL_LINE_STRIP;
-    }
 
     // See if the arrays already exist:
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
@@ -470,7 +459,9 @@ void
 LineDrawable::setMode(GLenum mode)
 {
     if (_mode != mode)
+    {
         _mode = mode;
+    }
 }
 
 void
@@ -584,8 +575,15 @@ LineDrawable::updateFirstCount()
     if (_gpu)
     {
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_LINES_USE_LIMITS");
-        osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
+        ss->setDataVariance(ss->DYNAMIC);
+
+        osg::Uniform* u = ss->getUniform("oe_LineDrawable_limits");
+        if (!u)
+        {
+            u = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "oe_LineDrawable_limits");
+            ss->addUniform(u, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        }
+
         if (_mode == GL_LINE_STRIP)
         {
             u->set(osg::Vec2(4u*_first + 2u, 4u*(_first+_count-1u)+1u));
@@ -717,6 +715,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
             _colors->push_back(_color);
             _colors->push_back(_color);
         }
+
+        _previous->dirty();
+        _next->dirty();
     }
 
     else
@@ -724,6 +725,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
         _current->push_back(vert);
         _colors->push_back(_color);
     }
+
+    _current->dirty();
+    _colors->dirty();
 }
 
 void
@@ -743,7 +747,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
             if (_mode == GL_LINE_STRIP)
             {
                 unsigned ri = vi*4u;
-                unsigned rnum = 4u; //actualVertsPerVirtualVert(vi); // number of real verts to set
+                unsigned rnum = 4u; // number of real verts to set
 
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
@@ -776,8 +780,8 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 
             else if (_mode == GL_LINE_LOOP)
             {
-                unsigned ri = vi*4u; //vi == 0u ? 0u : (vi * 4u) - 2u; // starting real index
-                unsigned rnum = 4u; //actualVertsPerVirtualVert(vi); // number of real verts to set
+                unsigned ri = vi*4u; // starting real index
+                unsigned rnum = 4u; // number of real verts to set
 
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
@@ -1112,26 +1116,63 @@ LineDrawable::dirty()
     }
 }
 
-void
-LineDrawable::installShader()
-{
-    initialize();
+osg::ref_ptr<osg::StateSet> LineDrawable::_gpuStateSet;
 
-    if (_gpu)
+void
+LineDrawable::setupShaders()
+{
+    // Create the singleton state set for the line shader. This stateset will be
+    // shared by all LineDrawable instances so OSG will sort them together.
+    if (_gpu && !_gpuStateSet.valid())
     {
-        installShader(getOrCreateStateSet());
+        static Threading::Mutex s_mutex;
+        s_mutex.lock();
+        if (!_gpuStateSet.valid())
+        {
+            _gpuStateSet = new osg::StateSet();
+
+            osg::StateSet* ss = _gpuStateSet.get();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+            Shaders shaders;
+            shaders.load(vp, shaders.LineDrawable);
+            vp->addBindAttribLocation("oe_LineDrawable_prev", LineDrawable::PreviousVertexAttrLocation);
+            vp->addBindAttribLocation("oe_LineDrawable_next", LineDrawable::NextVertexAttrLocation);
+            ss->getOrCreateUniform("oe_LineDrawable_limits", osg::Uniform::FLOAT_VEC2)->set(osg::Vec2f(-1,-1));
+            //_gpuStateSet->getOrCreateUniform("oe_GL_LineWidth", osg::Uniform::FLOAT)->set(1.0f);
+            //_gpuStateSet->getOrCreateUniform("oe_GL_LineStippleFactor", osg::Uniform::INT)->set(1);
+            //_gpuStateSet->getOrCreateUniform("oe_GL_LineStipplePattern", osg::Uniform::INT)->set((int)~0);
+            ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
+        }
+        s_mutex.unlock();
     }
 }
 
 void
-LineDrawable::installShader(osg::StateSet* stateSet)
+LineDrawable::accept(osg::NodeVisitor& nv)
 {
-    // install the shader components for GPU lines.
-    VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-    Shaders shaders;
-    shaders.load(vp, shaders.LineDrawable);
-    vp->addBindAttribLocation("oe_GPULines_prev", LineDrawable::PreviousVertexAttrLocation);
-    vp->addBindAttribLocation("oe_GPULines_next", LineDrawable::NextVertexAttrLocation);
-    stateSet->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
-    stateSet->setDefine("OE_GPU_LINES");
+    if (nv.validNodeMask(*this))
+    { 
+        // Only push the shader if necessary.
+        // The reason for this approach is go we can inject the singleton 
+        // LineDrawable shader yet still allow the user to customize 
+        // the node's StateSet.
+        bool shade =
+            _gpu &&
+            nv.getVisitorType() == nv.CULL_VISITOR &&
+            _gpuStateSet.valid();
+
+        osgUtil::CullVisitor* cv = shade? Culling::asCullVisitor(nv) : 0L;
+
+        nv.pushOntoNodePath(this);
+
+        if (cv)
+            cv->pushStateSet(_gpuStateSet.get());
+
+        nv.apply(*this); 
+
+        if (cv)
+            cv->popStateSet();
+
+        nv.popFromNodePath();
+    }
 }

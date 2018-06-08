@@ -193,6 +193,8 @@ GeodeticGraticule::init()
 
     // Initialize the formatter
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
+    
+    _root = new MyGroup(this, _mapNode);
 }
 
 void
@@ -219,14 +221,8 @@ GeodeticGraticule::removedFromMap(const Map* map)
 }
 
 osg::Node*
-GeodeticGraticule::getOrCreateNode()
+GeodeticGraticule::getNode() const
 {
-    if (_root.valid() == false && getEnabled() == true)
-    {
-        _root = new MyGroup(this, _mapNode);
-        rebuild();
-    }
-
     return _root.get();
 }
 

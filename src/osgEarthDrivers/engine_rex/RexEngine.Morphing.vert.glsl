@@ -6,8 +6,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION, OE_IS_DEPTH_CAMERA)
-
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
+#pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
 
 // stage
 vec3 vp_Normal; // up vector

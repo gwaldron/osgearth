@@ -352,6 +352,19 @@ MGRSGraticule::init()
 
     // force it to render after the terrain.
     ss->setRenderBinDetails(1, "RenderBin");
+
+    _root = new LocalRoot();
+
+    GLUtils::setLighting(_root->getOrCreateStateSet(), osg::StateAttribute::OFF);
+
+    // install the range callback for clip plane activation
+    _root->addCullCallback( new RangeUniformCullCallback() );
+
+    if (getEnabled() == true)
+    {
+        rebuild();
+    }
+
 }
 
 void
@@ -368,20 +381,8 @@ MGRSGraticule::removedFromMap(const Map* map)
 }
 
 osg::Node*
-MGRSGraticule::getOrCreateNode()
+MGRSGraticule::getNode() const
 {
-    if (_root.valid() == false && getEnabled() == true)
-    {
-        _root = new LocalRoot();
-
-        GLUtils::setLighting(_root->getOrCreateStateSet(), osg::StateAttribute::OFF);
-
-        // install the range callback for clip plane activation
-        _root->addCullCallback( new RangeUniformCullCallback() );
-
-        rebuild();
-    }
-
     return _root.get();
 }
 

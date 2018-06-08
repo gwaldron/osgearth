@@ -31,10 +31,6 @@ namespace osgEarth
      * Drawable that renders lines using the GPU. It will fall back on rendering
      * OpenGL lines when shader-based rendering is unavailable.
      *
-     * Note: Put LineDrawables under a LineGroup to share the shader program.
-     * If you don't use a LineGroup, you must call installShader() on your
-     * LineDrawable.
-     *
      * Note: If you use this class you must have the oe_ViewportSize
      * uniform set. MapNode sets it automatically so any LineDrawable under
      * a MapNode is fine. Otherwise, use the osgEarth::InstallViewportSizeUniform
@@ -48,7 +44,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT LineDrawable : public osg::Geometry
     {
     public:
-        META_Node(osgEarth, LineDrawable);
 
         //! Create new LineDrawable in GL_LINE_STRIP mode
         LineDrawable();
@@ -75,10 +70,6 @@ namespace osgEarth
         //! Sets the overall color of the line
         void setColor(const osg::Vec4& color);
         const osg::Vec4& getColor() const { return _color; }
-
-        //! GL mode (for serializer only; do not use)
-        void setMode(GLenum mode);
-        GLenum getMode() const { return _mode; }
         
         //! Append a vertex to the line
         void pushVertex(const osg::Vec3& vert);
@@ -131,17 +122,11 @@ namespace osgEarth
         //! Rebuild the primitive sets for this drawable. You MUST call this
         //! after adding new data to the drawable!
         void dirty();
-
-        //! Install shaders to render the line drawable when GPU rendering is
-        //! available. You only need to call this if you are not using a LineGroup.
-        void installShader();
+        void finish() { dirty(); }
 
         //! Sets a line width on a custom stateset that will apply to
         //! all LineDrawables used with that state set.
         static void setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags=osg::StateAttribute::ON);
-
-        //! Install the line shaders on an arbitraty state set.
-        static void installShader(osg::StateSet*);
 
     public:
 
@@ -150,6 +135,24 @@ namespace osgEarth
 
         //! Binding location for "next" vertex attribute (default = 10)
         static int NextVertexAttrLocation;
+
+    public: // osg::Node
+
+        //! Replace methods from META_Node so we can override accept
+        virtual osg::Object* cloneType() const { return new LineDrawable(); }
+        virtual osg::Object* clone(const osg::CopyOp& copyop) const { return new LineDrawable(*this,copyop); }
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const LineDrawable*>(obj)!=NULL; }
+        virtual const char* className() const { return "LineDrawable"; }
+        virtual const char* libraryName() const { return "osgEarth"; }
+
+        //! Override Node::accept to include the singleton GPU statset
+        virtual void accept(osg::NodeVisitor& nv);
+
+    public:
+            
+        //! GL mode (for serializer only; do not use)
+        void setMode(GLenum mode);
+        GLenum getMode() const { return _mode; }
 
     protected:
 
@@ -171,20 +174,21 @@ namespace osgEarth
         osg::Vec4Array* _colors;
 
         void initialize();
+        void setupShaders();
 
         friend class LineGroup;
 
         unsigned actualVertsPerVirtualVert(unsigned) const;
         unsigned numVirtualVerts(const osg::Array*) const;
         void updateFirstCount();
+
+        static osg::ref_ptr<osg::StateSet> _gpuStateSet;
     };
 
 
     /**
-     * Group for collecting multiple LineDrawables. If you put one or more
-     * LineDrawables under a LineGroup, you do not need to call installShader()
-     * on each LineDrawable because the LineGroup installs the shader for the
-     * entire set.
+     * Group for importing LineDrawables from osg::Geometry or for
+     * optimizing multiple LineDrawables for performance.
      *
      * Note: LineGroup inherits from Geode (for now) to maintain support for
      * the OSG 3.4 MergeGeometryVisitor (which only works on Geodes). Once we
@@ -195,12 +199,8 @@ namespace osgEarth
     public:
         META_Node(osgEarth, LineGroup);
 
-        //! Construct a new line group and install line shaders
+        //! Construct a new line group
         LineGroup();
-
-        //! Construct a new line group, controlling whether to install the shaders.
-        //! You can pass false here if you intend to put shaders at a higher level.
-        LineGroup(bool installShader);
 
         //! Copy constructor
         LineGroup(const LineGroup& rhs, const osg::CopyOp& copy);

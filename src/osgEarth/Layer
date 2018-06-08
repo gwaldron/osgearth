@@ -217,12 +217,12 @@ namespace osgEarth
         virtual bool getEnabled() const;
 
         /**
-         * Gets a optional scene graph provided by the layer (default is NULL).
+         * Gets a optional scene graph provided by the layer.
          * When this layer is added to a Map, the MapNode will call this method and
          * add the return value to its scene graph; and remove it when the Layer
          * is removed from the Map.
          */
-        virtual osg::Node* getOrCreateNode() { return 0L; }
+        virtual osg::Node* getNode() const { return 0L; }
 
         /**
          * Extent of this layer's data.

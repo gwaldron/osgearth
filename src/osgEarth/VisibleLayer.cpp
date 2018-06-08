@@ -109,7 +109,7 @@ VisibleLayer::setVisible(bool value)
     options().visible() = value;
 
     // if this layer has a scene graph node, toggle its node mask
-    osg::Node* node = getOrCreateNode();
+    osg::Node* node = getNode();
     if (node)
         node->setNodeMask(value? ~0 : 0);
 
@@ -126,9 +126,9 @@ namespace
 {
     const char* opacityFS =
         "#version " GLSL_VERSION_STR "\n"
-        "uniform float oe_visibleLayer_opacity; \n"
-        "void oe_visibleLayer_setOpacity(inout vec4 color) { \n"
-        "    color.a *= oe_visibleLayer_opacity; \n"
+        "uniform float oe_VisibleLayer_opacity; \n"
+        "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"
+        "    color.a *= oe_VisibleLayer_opacity; \n"
         "} \n";
 }
 
@@ -144,10 +144,10 @@ VisibleLayer::setOpacity(float value)
         if (!_opacityU.valid())
         {
             osg::StateSet* stateSet = getOrCreateStateSet();
-            _opacityU = new osg::Uniform("oe_visibleLayer_opacity", value);
+            _opacityU = new osg::Uniform("oe_VisibleLayer_opacity", value);
             stateSet->addUniform(_opacityU.get());
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-            vp->setFunction("oe_visibleLayer_setOpacity", opacityFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+            vp->setFunction("oe_VisibleLayer_setOpacity", opacityFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
             // NOTE: do not alter the render bin here - it will screw up terrain rendering order!
         }
     }

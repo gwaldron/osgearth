@@ -195,7 +195,7 @@ ModelLayer::init()
 const Status&
 ModelLayer::open()
 {
-    if ( !_modelSource.valid() && options().driver().isSet() )
+    if ( VisibleLayer::open().isOK() && !_modelSource.valid() && options().driver().isSet() )
     {
         std::string driverName = options().driver()->getDriver();
 
@@ -322,7 +322,7 @@ ModelLayer::addedToMap(const Map* map)
 }
 
 osg::Node*
-ModelLayer::getOrCreateNode()
+ModelLayer::getNode() const
 {
     return _root.get();
 }

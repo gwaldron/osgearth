@@ -52,7 +52,10 @@ namespace osgEarth { namespace Triton
         bool configure(unsigned texSize, osg::State& state);
 
         //! Fetch the heightmap texture and matrix generated for a camera.
-        bool getTextureAndMatrix(const osg::Camera*, osg::State&, GLint& out_texName, osg::Matrix& out_matrix);
+        bool getTextureAndMatrix(osg::RenderInfo&, GLint& out_texName, osg::Matrix& out_matrix);
+
+        //! Mark all height maps (for all cameras) for regeneration
+        void dirty();
 
     public: // osg::Node
 
@@ -60,7 +63,7 @@ namespace osgEarth { namespace Triton
 
     protected:
 
-        virtual ~TritonHeightMap() { }
+        virtual ~TritonHeightMap();
 
     private:
 
@@ -69,25 +72,37 @@ namespace osgEarth { namespace Triton
             osg::ref_ptr<osg::Camera> _rtt;
             osg::ref_ptr<osg::Texture2D> _tex;
             osg::Matrix _texMatrix;
+            osg::Matrix _mvpw;
+            unsigned _frameNum;
         };
 
-        osgEarth::PerObjectFastMap<const osg::Camera*, CameraLocal> _local;
+        typedef osgEarth::PerObjectFastMap<const osg::Camera*, CameraLocal> Locals;
 
-        osg::observer_ptr<osg::Node> _terrain;
+        struct SetDirty : public Locals::Functor
+        {
+            void operator()(CameraLocal&);
+        };
 
+        //! Sets up an RTT camera for the first time
         void setup(CameraLocal& local, const std::string& name);
 
+        //! Updates an RTT camera for the new view/projection matrices of the camera
         void update(CameraLocal& local, const osg::Camera*, osgEarth::Horizon*);
 
+        //! Whether FBO configuration has happened yet
         bool isConfigurationComplete() const;
         
         //! Figures out the best FBO format on this GPU
         static bool getBestFBOConfig(osg::State& state, GLint& internalFormat, GLenum& sourceFormat);
-
+        
+        
+        Locals _local;
+        osg::observer_ptr<osg::Node> _terrain;
         unsigned _texSize;
         GLint _internalFormat;
         GLenum _sourceFormat;
         osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
+        osg::ref_ptr<osg::Referenced> _terrainCallback;
     };
 
 } } // namespace osgEarth::Triton

@@ -35,6 +35,8 @@ namespace osgEarth { namespace Triton
 
     /**
      * Node that roots the Triton adapter.
+     *
+     * @deprecated USE TritonLayer instead.
      */
     class OSGEARTHTRITON_EXPORT TritonNode : public osgEarth::Util::OceanNode
     {

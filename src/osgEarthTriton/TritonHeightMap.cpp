@@ -150,7 +150,8 @@ TritonHeightMap::SetDirty::operator()(CameraLocal& local)
 void
 TritonHeightMap::dirty()
 {
-    _local.forEach(SetDirty());
+    SetDirty setDirty;
+    _local.forEach(setDirty);
 }
 
 bool
@@ -178,13 +179,7 @@ TritonHeightMap::configure(unsigned texSize, osg::State& state)
     return result;
 }
 
-bool
-TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, GLenum& out_sourceFormat)
-{
-#ifdef GL_LUMINANCE_FLOAT16_ATI
-#   define GL_LUMINANCE_FLOAT16_ATI 0x881E
-#endif
-
+namespace {
     struct Format {
         Format(GLint i, GLenum s, const std::string& n) :
             internalFormat(i), sourceFormat(s), name(n) { }
@@ -192,6 +187,14 @@ TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, 
         GLenum sourceFormat;
         std::string name;
     };
+}
+
+bool
+TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, GLenum& out_sourceFormat)
+{
+#ifdef GL_LUMINANCE_FLOAT16_ATI
+#   define GL_LUMINANCE_FLOAT16_ATI 0x881E
+#endif
 
     std::vector<Format> formats;
 

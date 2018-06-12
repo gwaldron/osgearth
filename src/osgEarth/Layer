@@ -312,6 +312,7 @@ namespace osgEarth
 
         /** Attribution to be displayed by the application */
         virtual std::string getAttribution() const;
+		virtual void setAttribution(const std::string& attribution);
 
     public: // Experimental
 

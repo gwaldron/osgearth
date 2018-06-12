@@ -17,10 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "TritonNode"
+#include "TritonHeightMap"
 #include "TritonContext"
 #include "TritonDrawable"
 #include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[TritonNode] "
 
@@ -115,9 +117,18 @@ TritonNode::create()
     drawable->setMaskLayer(_maskLayer.get());
     this->addChild(_drawable);
 
-    drawable->_heightCameraParent = this;
-
-    //this->setNumChildrenRequiringUpdateTraversal(1);
+    // If the user requested a height map, install it now.
+    // Configuration of the height map generator will take place later when
+    // we have a valid graphics context.
+    if (_options.useHeightMap() == true)
+    {
+        TritonHeightMap* heightMapGen = new TritonHeightMap();
+        heightMapGen->setTerrain(mapNode->getTerrainEngine());
+        if (_maskLayer.valid())
+            heightMapGen->setMaskLayer(_maskLayer.get());
+        this->addChild(heightMapGen);
+        drawable->setHeightMapGenerator(heightMapGen);
+    }
 
     // Place in the depth-sorted bin and set a rendering order.
     // We want Triton to render after the terrain.

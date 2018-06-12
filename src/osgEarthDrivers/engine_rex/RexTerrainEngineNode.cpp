@@ -152,7 +152,8 @@ _tileCount            ( 0 ),
 _tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
-_stateUpdateRequired  ( false )
+_stateUpdateRequired  ( false ),
+_rasterizer(0L)
 {
     // Necessary for pager object data
     this->setName("osgEarth.RexTerrainEngineNode");
@@ -726,7 +727,9 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         _loader->accept(nv);
         _unloader->accept(nv);
         _releaser->accept(nv);
-        _rasterizer->accept(nv);
+
+        if (_rasterizer)
+            _rasterizer->accept(nv);
     }
 
     else

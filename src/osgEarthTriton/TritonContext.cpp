@@ -124,6 +124,9 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
                 _environment->SetConfigOption( "polar-earth-radius-meters",      poRadius.c_str() );
             }
 
+            //_environment->SetConfigOption("avoid-opengl-stalls", "yes");
+            //_environment->SetConfigOption("fft-texture-update-frame-delayed", "yes");
+
             float openGLVersion = osg::getGLVersionNumber();
             enum ::Triton::Renderer tritonOpenGlVersion = ::Triton::OPENGL_2_0;
 #ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE

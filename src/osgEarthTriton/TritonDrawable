@@ -37,6 +37,7 @@ const unsigned int TRITON_OCEAN_MASK = 0x4; // 0100
 namespace osgEarth { namespace Triton
 {
     class TritonContext;
+    class TritonHeightMap;
 
     /**
      * Custom drawable for rendering the Triton ocean effects
@@ -44,33 +45,24 @@ namespace osgEarth { namespace Triton
     class OSGEARTHTRITON_EXPORT TritonDrawable : public osg::Drawable
     {
     public:
-        TritonDrawable(osgEarth::MapNode* mapNode=NULL, TritonContext* TRITON =0L);
-        META_Object(Triton, TritonDrawable);
+        TritonDrawable(osgEarth::MapNode* mapNode, TritonContext* TRITON);
 
+        //! Layer to use as an ocean rendering mask
         void setMaskLayer(const osgEarth::ImageLayer* maskLayer);
+
+        //! Height map generator to use to mask out the ocean where the
+        //! terrain has positive elevation
+        void setHeightMapGenerator(TritonHeightMap* heightMap);
 
     public: // osg::Drawable
 
-        // custom draw (called with an active GC)
         void drawImplementation(osg::RenderInfo& ri) const;
 
-        void setupHeightMap(osg::State& state);
+        osg::BoundingBox computeBoundingBox() const;
 
-        void updateHeightMap(osg::RenderInfo& renderInfo) const;
+        void setPlanarReflectionMap(osg::Texture2D* map);
 
-        void dirtyAllContexts();
-
-#if OSG_VERSION_GREATER_THAN(3,3,1)
-        osg::BoundingBox computeBoundingBox() const
-#else
-        osg::BoundingBox computeBound() const
-#endif
-            { return osg::BoundingBox(); }
-
-        void SetPlanarReflectionMap(osg::Texture2D* map) {_planarReflectionMap = map;};
-        void SetPlanarReflectionProjection(osg::RefMatrix * proj) {_planarReflectionProjection = proj;};
-
-        osg::Group* _heightCameraParent;
+        void setPlanarReflectionProjection(osg::RefMatrix* proj);
 
     protected:
         virtual ~TritonDrawable();
@@ -79,21 +71,20 @@ namespace osgEarth { namespace Triton
         osg::observer_ptr<osgEarth::MapNode> _mapNode;
         osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
         osg::ref_ptr<osg::TextureCubeMap> _cubeMap;
-        osg::BoundingBox                  _bbox;
-        osg::ref_ptr<osg::Texture2D> _heightMap;
-        osg::ref_ptr<osg::Camera> _heightCamera;
-        osg::observer_ptr<osgEarth::TerrainCallback> _terrainChangedCallback;
         
-        osg::ref_ptr< osg::Texture2D >       _planarReflectionMap;
-        osg::ref_ptr< osg::RefMatrix >       _planarReflectionProjection;
+        osg::ref_ptr<osg::Texture2D> _planarReflectionMap;
+        osg::ref_ptr<osg::RefMatrix> _planarReflectionProjection;
 
-        mutable osg::buffered_object<int>         _contextDirty;
-        mutable osg::Matrix                       _viewMatrix;
-        mutable osg::Matrix                       _projMatrix;
+        mutable osg::ref_ptr<TritonHeightMap> _heightMapGenerator;
 
         mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
 
-        TritonDrawable(const TritonDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
+        struct CameraLocal
+        {
+            CameraLocal() : _tritonCam(0L) { }
+            ::Triton::Camera* _tritonCam;
+        };
+        mutable PerObjectFastMap<const osg::Camera*, CameraLocal> _local;
     };
 
 } } // namespace osgEarth::Triton

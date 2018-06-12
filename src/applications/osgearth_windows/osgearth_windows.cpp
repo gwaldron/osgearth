@@ -54,6 +54,12 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
+    int numViews = 1;
+    arguments.read("--views", numViews);
+
+    bool sharedGC;
+    sharedGC = arguments.read("--shared");
+
     // create a viewer:
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel(viewer.SingleThreaded);
@@ -62,14 +68,33 @@ main(int argc, char** argv)
     if (!node)
         return usage(argv[0]);
 
-    for(int i=0; i<3; ++i)
+    int size = 500;
+
+    for(int i=0; i<numViews; ++i)
     {
         osgViewer::View* view = new osgViewer::View();
-        view->setUpViewInWindow(10+425*i, 10, 400, 400);
+        int width = sharedGC? size*numViews : size;
+        view->setUpViewInWindow(10+(i*size+30), 10, width, size);
         view->setCameraManipulator(new EarthManipulator(arguments));
         view->setSceneData(node);
         view->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
+        if (sharedGC)
+        {
+            view->getCamera()->setViewport(i*size, 0, size, size);
+            view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
+            view->getCamera()->setName(Stringify()<<"View "<<i);
+        }
+        MapNodeHelper().configureView(view);
         viewer.addView(view);
+    }
+
+    if (sharedGC)
+    {
+        for(int i=1; i<numViews; ++i)
+        {
+            osgViewer::View* view = viewer.getView(i);
+            view->getCamera()->setGraphicsContext(viewer.getView(0)->getCamera()->getGraphicsContext());
+        }
     }
 
     return viewer.run();

@@ -116,7 +116,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "stroke-rounding-ratio") ) {
         style.getOrCreate<LineSymbol>()->stroke()->roundingRatio() = as<float>(c.value(), 0.4f);
     }
-    else if ( match(c.key(), "stroke-tessellation") ) {
+    else if ( match(c.key(), "stroke-tessellation-segments") ) {
         style.getOrCreate<LineSymbol>()->tessellation() = as<unsigned>( c.value(), 0 );
     }
     else if ( match(c.key(), "stroke-tessellation-size") ) {

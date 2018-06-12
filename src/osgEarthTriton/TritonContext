@@ -20,6 +20,7 @@
 #define OSGEARTH_TRITON_CONTEXT_H
 
 #include <Triton.h>
+#include <Camera.h> // Triton
 #include "Common"
 #include "TritonOptions"
 #include "TritonAPIWrapper"

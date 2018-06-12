@@ -637,7 +637,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                         // TODO: consider hanging on to this texture and not applying it to
                         // the live tile until the RTT is complete. (Prevents unsightly flashing)
                         GeoNode* rttNode = dynamic_cast<GeoNode*>(model->getTexture()->getUserData());
-                        if (rttNode)
+
+                        if (rttNode && _context->getTileRasterizer())
                         {
                             _context->getTileRasterizer()->push(rttNode->_node.get(), model->getTexture(), rttNode->_extent);
                         }

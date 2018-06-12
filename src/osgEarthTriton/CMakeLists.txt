@@ -21,6 +21,7 @@ SET(LIB_PUBLIC_HEADERS
     TritonAPIWrapper
     TritonCallback
     TritonLayer
+    TritonHeightMap
 )
 
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
@@ -31,6 +32,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TritonDrawable.cpp
     TritonAPIWrapper.cpp
     TritonLayer.cpp
+    TritonHeightMap.cpp
 )
 
 INCLUDE_DIRECTORIES( 

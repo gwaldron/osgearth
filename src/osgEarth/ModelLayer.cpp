@@ -53,29 +53,8 @@ VisibleLayerOptions()
 {
     setDefaults();
     fromConfig( _conf );
-    if (!driverOptions.empty())
-        _driver = driverOptions;
+    _driver = driverOptions;
     name() = in_name;
-}
-
-ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
-VisibleLayerOptions(rhs)
-{
-    _driver = optional<ModelSourceOptions>(rhs._driver);
-    _lighting = optional<bool>(rhs._lighting);
-    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
-    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
-}
-
-ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
-{
-    VisibleLayerOptions::operator =(rhs);
-    _driver = optional<ModelSourceOptions>(rhs._driver);
-    _lighting = optional<bool>(rhs._lighting);
-    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
-    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
-
-    return *this;
 }
 
 void
@@ -98,6 +77,9 @@ ModelLayerOptions::getConfig() const
     // Merge the MaskSource options
     if ( mask().isSet() )
         conf.set( "mask", mask()->getConfig() );
+
+    if ( driver().isSet() )
+        conf.merge(driver()->getConfig());
 
     return conf;
 }
@@ -173,15 +155,6 @@ _optionsConcrete(ModelLayerOptions())
 ModelLayer::~ModelLayer()
 {
     //nop
-}
-
-Config
-ModelLayer::getConfig() const
-{
-    Config layerConf = Layer::getConfig();
-    layerConf.key() = "model";
-    layerConf.set("driver", options().driver()->getDriver());
-    return layerConf;
 }
 
 void

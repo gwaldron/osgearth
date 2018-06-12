@@ -6,8 +6,6 @@
 
 #include <osgEarthAnnotation/PlaceNode>
 
-#include "kdbush.hpp"
-
 namespace osgEarth {
     namespace Util
     {

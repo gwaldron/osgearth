@@ -67,7 +67,11 @@ ObjectIndex::ObjectIndex() :
 _idGen( STARTING_OBJECT_ID )
 {
     _attribName     = "oe_index_objectid_attr";
+#if defined(OSG_GLES3_AVAILABLE)
+    _attribLocation = osg::Drawable::TEXTURE_COORDS_5; // Why is SECONDARY_COLORS occupied. Could it actually be a QT issue?
+#else
     _attribLocation = osg::Drawable::SECONDARY_COLORS;
+#endif
     _oidUniformName = "oe_index_objectid_uniform";
 
     // set up the shader package.

@@ -1138,9 +1138,17 @@ LineDrawable::setupShaders()
             vp->addBindAttribLocation("oe_LineDrawable_prev", LineDrawable::PreviousVertexAttrLocation);
             vp->addBindAttribLocation("oe_LineDrawable_next", LineDrawable::NextVertexAttrLocation);
             ss->getOrCreateUniform("oe_LineDrawable_limits", osg::Uniform::FLOAT_VEC2)->set(osg::Vec2f(-1,-1));
-            //_gpuStateSet->getOrCreateUniform("oe_GL_LineWidth", osg::Uniform::FLOAT)->set(1.0f);
+            //_gpuStateSet->getOrCreateUniform("oe_GL_LineWidth", osg::Uniform::FLOAT)->set(30.0f);
             //_gpuStateSet->getOrCreateUniform("oe_GL_LineStippleFactor", osg::Uniform::INT)->set(1);
             //_gpuStateSet->getOrCreateUniform("oe_GL_LineStipplePattern", osg::Uniform::INT)->set((int)~0);
+            
+#if defined(OSG_GLES3_AVAILABLE)
+            if(_gpuStateSet->getUniform("oe_GL_LineStipplePattern") == NULL)
+            {
+                _gpuStateSet->getOrCreateUniform("oe_GL_LineStipplePattern", osg::Uniform::INT)->set((int)~0);
+            }
+#endif
+            
             ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
         }
         s_mutex.unlock();

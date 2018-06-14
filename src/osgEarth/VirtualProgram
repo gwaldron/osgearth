@@ -36,11 +36,11 @@
 #if defined(OSG_GLES2_AVAILABLE)
 #    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
-#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
+#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;\nprecision highp int;"
 #elif defined(OSG_GLES3_AVAILABLE)
 #    define GLSL_VERSION                 300
 #    define GLSL_VERSION_STR             "300 es"
-#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
+#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;\nprecision highp int;"
 #elif defined(OSG_GL3_AVAILABLE)
 #    define GLSL_VERSION                 330
 #    define GLSL_VERSION_STR             "330"

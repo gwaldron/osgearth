@@ -153,7 +153,7 @@ namespace
     {
     
         // types we consider declarations
-        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "bool", "int", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp", "struct", "attribute", "#extension", "#define"};
+        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "flat", "bool", "int", "uint", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp", "struct", "attribute", "#extension", "#define"};
         std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
         
         // break into lines:
@@ -232,7 +232,11 @@ namespace
         
 #if defined(OSG_GLES3_AVAILABLE)
         // just force gles 3 to use correct version number as shaders in earth files might include a version
+    #if __ANDROID__
         version = 310;
+    #else
+        version = 300;
+    #endif
         subversion = "es";
 #endif
     }
@@ -396,9 +400,8 @@ namespace
                 vertShaderBuf << "\n";
             }
 
-#if defined(OSG_GLES3_AVAILABLE)
+#if __ANDROID__
             vertShaderBuf << "#extension GL_EXT_shader_io_blocks : require\n";
-            //vertShaderBuf << "#extension GL_EXT_clip_cull_distance : require\n";
 #endif
 
             if(vertPrecisions.size() > 0) {
@@ -425,8 +428,9 @@ namespace
             }
 
 #if defined(OSG_GLES3_AVAILABLE)
+    #if __ANDROID__
             fragShaderBuf << "#extension GL_EXT_shader_io_blocks : require\n";
-            //fragShaderBuf << "#extension GL_EXT_clip_cull_distance : require\n";
+    #endif
 
             // ensure there's a default for floats in the frag shader
             std::string& defaultFragFloat = fragPrecisions["float;"];

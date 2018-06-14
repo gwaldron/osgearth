@@ -168,10 +168,6 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
 void
 GL3RealizeOperation::operator()(osg::Object* object)
 {
-<<<<<<< HEAD
-#if defined(OSG_GL3_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-=======
->>>>>>> 5284b16836bde2c9e3036ae913f73e11ef7b2c6b
     osg::GraphicsContext* gc = dynamic_cast<osg::GraphicsContext*>(object);
     if (gc)
     {
@@ -181,9 +177,6 @@ GL3RealizeOperation::operator()(osg::Object* object)
         state->setUseModelViewAndProjectionUniforms(true);
         state->setUseVertexAttributeAliasing(true);
 #endif
-<<<<<<< HEAD
-}
-=======
 
 #ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE
         state->setModeValidity(GL_LIGHTING, false);
@@ -194,4 +187,3 @@ GL3RealizeOperation::operator()(osg::Object* object)
 #endif
     }
 }
->>>>>>> 5284b16836bde2c9e3036ae913f73e11ef7b2c6b

@@ -60,19 +60,23 @@ GeodeticLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_
 {    
     SpatialReference* wgs84 = SpatialReference::create("wgs84");
 
-    GeoPoint ll, ul, lr, ur;
+    GeoPoint ll, ul, lr;
     ll.fromWorld(wgs84, LL_world);
     ul.fromWorld(wgs84, UL_world);
     lr.fromWorld(wgs84, LR_world);
 
     double resDegrees = _resolution * 180.0;
 
-    double minLon = osg::minimum(osg::minimum(ll.x(), ul.x()), lr.x());
-    double maxLon = osg::maximum(osg::maximum(ll.x(), ul.x()), lr.x());
+    double minLon = osg::minimum(ll.x(), ul.x());
+    double maxLon = lr.x();
+    // Handle the case where the the extent crosses the dateline.
+    if (maxLon < minLon)
+    {
+        maxLon += 360.0;
+    }
 
     double minLat = osg::minimum(osg::minimum(ll.y(), ul.y()), lr.y());
     double maxLat = osg::maximum(osg::maximum(ll.y(), ul.y()), lr.y());
-
 
     int minLonIndex = floor(((minLon + 180.0) / resDegrees));
     int maxLonIndex = ceil(((maxLon + 180.0) / resDegrees));

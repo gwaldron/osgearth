@@ -20,6 +20,7 @@
 #include "TritonContext"
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[TritonHeightMap] "
 
@@ -68,7 +69,6 @@ namespace
         "#ifdef OE_TRITON_MASK_SAMPLER\n"
         "in vec2 maskCoords;\n"
         "uniform sampler2D OE_TRITON_MASK_SAMPLER;\n"
-        "uniform float DD;\n"
         "#endif\n"
 
         "out vec4 out_height; \n"
@@ -89,6 +89,18 @@ namespace
 #endif
         "    out_height = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
         "} \n";
+
+    struct TerrainDirtyCallback : public osgEarth::TerrainCallback
+    {
+        osg::observer_ptr<TritonHeightMap> _hm;
+        TerrainDirtyCallback(TritonHeightMap* hm) : _hm(hm) { }
+        void onTileAdded(const osgEarth::TileKey&, osg::Node*, osgEarth::TerrainCallbackContext&)
+        {
+            osg::ref_ptr<TritonHeightMap> hm;
+            if (_hm.lock(hm))
+                hm->dirty();
+        }
+    };
 }
 
 TritonHeightMap::TritonHeightMap() :
@@ -99,10 +111,47 @@ _sourceFormat((GLenum)0)
     setCullingActive(false);
 }
 
+TritonHeightMap::~TritonHeightMap()
+{
+    osgEarth::TerrainEngineNode* t = dynamic_cast<osgEarth::TerrainEngineNode*>(_terrain.get());
+    if (t)
+    {
+        t->getTerrain()->removeTerrainCallback(static_cast<TerrainDirtyCallback*>(_terrainCallback.get()));
+        _terrainCallback = NULL;
+    }
+}
+
 void
 TritonHeightMap::setTerrain(osg::Node* node)
 {
     _terrain = node;
+
+    osgEarth::TerrainEngineNode* t = dynamic_cast<osgEarth::TerrainEngineNode*>(node);
+    if (t)
+    {
+        TerrainDirtyCallback* cb = new TerrainDirtyCallback(this);
+        t->getTerrain()->addTerrainCallback(cb);
+        _terrainCallback = cb;
+    }
+}
+
+void
+TritonHeightMap::setMaskLayer(const osgEarth::ImageLayer* layer)
+{
+    _maskLayer = layer;
+}
+
+void
+TritonHeightMap::SetDirty::operator()(CameraLocal& local)
+{
+    local._mvpw.makeIdentity();
+}
+
+void
+TritonHeightMap::dirty()
+{
+    SetDirty setDirty;
+    _local.forEach(setDirty);
 }
 
 bool
@@ -130,17 +179,7 @@ TritonHeightMap::configure(unsigned texSize, osg::State& state)
     return result;
 }
 
-bool
-TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, GLenum& out_sourceFormat)
-{
-    out_internalFormat = GL_RGBA8;
-    out_sourceFormat = GL_RGBA;
-    return true;
-
-#ifdef GL_LUMINANCE_FLOAT16_ATI
-#   define GL_LUMINANCE_FLOAT16_ATI 0x881E
-#endif
-
+namespace {
     struct Format {
         Format(GLint i, GLenum s, const std::string& n) :
             internalFormat(i), sourceFormat(s), name(n) { }
@@ -148,6 +187,14 @@ TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, 
         GLenum sourceFormat;
         std::string name;
     };
+}
+
+bool
+TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, GLenum& out_sourceFormat)
+{
+#ifdef GL_LUMINANCE_FLOAT16_ATI
+#   define GL_LUMINANCE_FLOAT16_ATI 0x881E
+#endif
 
     std::vector<Format> formats;
 
@@ -210,7 +257,7 @@ TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, 
         {
             out_internalFormat = format.internalFormat;
             out_sourceFormat   = format.sourceFormat;
-            OE_INFO << LC << "Height map format => " << format.name << std::endl;
+            OE_INFO << LC << "Height map format = " << format.name << std::endl;
             found = true;
         }
     }
@@ -229,26 +276,14 @@ TritonHeightMap::isConfigurationComplete() const
         _sourceFormat != (GLenum)0;
 }
 
-struct Pre : public osg::Camera::DrawCallback {
-    virtual void operator () (osg::RenderInfo& renderInfo) const {
-        osg::GLExtensions* gl = osg::GLExtensions::Get(renderInfo.getContextID(), true);
-        gl->glProgramParameteri(0,0,0);
-    }
-};
-
-struct Post : public osg::Camera::DrawCallback {
-    virtual void operator () (osg::RenderInfo& renderInfo) const {
-        osg::GLExtensions* gl = osg::GLExtensions::Get(renderInfo.getContextID(), true);
-        gl->glProgramParameteri(1,1,1);
-    }
-};
-
 void
 TritonHeightMap::setup(CameraLocal& local, const std::string& name)
 {
     // make sure the FBO params are configured:
     if (!isConfigurationComplete())
         return;
+
+    local._frameNum = 0u;
 
     local._tex = new osg::Texture2D();
     local._tex->setName(Stringify() << "Triton HM (" << name << ")");
@@ -257,6 +292,12 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     local._tex->setSourceFormat( _sourceFormat );
     local._tex->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
     local._tex->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+
+    // Triton prob doesn't need this but it's good practice
+    if (_sourceFormat == GL_RED)
+    {
+        local._tex->setSwizzle(osg::Vec4i(GL_RED, GL_RED, GL_RED, GL_ONE));
+    }
     
     local._rtt = new osg::Camera();
     local._rtt->setName(local._tex->getName());
@@ -272,9 +313,6 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     local._rtt->setAllowEventFocus(false);
     local._rtt->setDrawBuffer(GL_FRONT);
     local._rtt->setReadBuffer(GL_FRONT);
-
-    //local._rtt->setPreDrawCallback(new Pre());
-    //local._rtt->setPostDrawCallback(new Post());
     
     // TODO: create this once and just re-use it for all RTT cameras
     osg::StateSet* rttSS = local._rtt->getOrCreateStateSet();
@@ -310,31 +348,18 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     }
 }
 
+#define MAXABS4(A,B,C,D) \
+    osg::maximum(fabs(A), osg::maximum(fabs(B), osg::maximum(fabs(C),fabs(D))))
+
 void
 TritonHeightMap::update(CameraLocal& local, const osg::Camera* cam, osgEarth::Horizon* horizon)
 {
-    const osg::Matrix& viewMatrix = cam->getViewMatrix();
-    const osg::Matrix& projectionMatrix = cam->getProjectionMatrix();
+    osg::Vec3d eye = osg::Vec3d(0,0,0) * cam->getInverseViewMatrix();
 
     double hd = horizon->getDistanceToVisibleHorizon();
-    double radius = horizon->getRadius();
 
-    osg::Vec3d eye, center, up;
-    viewMatrix.getLookAt(eye, center, up);
-
-    osg::Vec3d rttEye(eye);
-    
-    // height above ellipsoid:
-    double hae = osg::clampAbove(rttEye.length() - radius, 0.0);
-
-    const double elevBuffer = 13500.0; // elevation +/- buffer around radius
-
-    // calculate near/far for rtt:
-    double N = osg::maximum( 1.0, hae - elevBuffer);
-    double F = osg::maximum(10.0, hae + elevBuffer);
-
-    local._rtt->setProjectionMatrix(osg::Matrix::ortho(-hd, hd, -hd, hd, N, F) );
-    local._rtt->setViewMatrixAsLookAt(rttEye, osg::Vec3d(0.0,0.0,0.0), osg::Vec3d(0.0,0.0,1.0));
+    local._rtt->setProjectionMatrix(osg::Matrix::ortho(-hd, hd, -hd, hd, 1.0, 10.0));
+    local._rtt->setViewMatrixAsLookAt(eye, osg::Vec3d(0.0,0.0,0.0), osg::Vec3d(0.0,0.0,1.0));
 
     static const osg::Matrixd scaleBias(
         0.5, 0.0, 0.0, 0.0,
@@ -342,6 +367,7 @@ TritonHeightMap::update(CameraLocal& local, const osg::Camera* cam, osgEarth::Ho
         0.0, 0.0, 0.5, 0.0,
         0.5, 0.5, 0.5, 1.0);
 
+    // Matrix that Triton will use to position the heightmap for sampling.
     local._texMatrix = local._rtt->getViewMatrix() * local._rtt->getProjectionMatrix() * scaleBias;
 }
 
@@ -364,48 +390,49 @@ TritonHeightMap::traverse(osg::NodeVisitor& nv)
                     setup(local, camera->getName());
                 }
 
-                // update the RTT based on the current camera:
-                osgEarth::Horizon* horizon = osgEarth::Horizon::get(nv);
-                //update(local, camera, horizon);
+                // only update when the MVPW changes.
+                if (local._mvpw != *cv->getMVPW())
+                {
+                    // update the RTT based on the current camera:
+                    osgEarth::Horizon* horizon = osgEarth::Horizon::get(nv);
+                    update(local, camera, horizon);
 
-                // finally, traverse the camera to build the height map.
-                local._rtt->accept(nv);
+                    // finally, traverse the camera to build the height map.
+                    local._rtt->accept(nv);
+                    
+                    local._frameNum = nv.getFrameStamp()->getFrameNumber();
+                    local._mvpw = *cv->getMVPW();
+                }
            }
            else
            {
-               OE_INFO << LC << "COnfiguration not yet complete..." << std::endl;
+               OE_DEBUG << LC << "Configuration not yet complete..." << std::endl;
            }
         }
     }
-    //else
-    //{
-    //    struct AcceptAll : public PerObjectFastMap<const osg::Camera*, CameraLocal>::Functor {
-    //        osg::NodeVisitor& _nv;
-    //        AcceptAll(osg::NodeVisitor& nv) : _nv(nv) { }
-    //        void operator()(CameraLocal& local) {
-    //            local._rtt->accept(_nv);
-    //        }
-    //    };
-
-    //    _local.forEach(AcceptAll(nv));
-    //}
 }
 
 bool
-TritonHeightMap::getTextureAndMatrix(const osg::Camera* cam, osg::State& state, GLint& out_texName, osg::Matrix& out_matrix)
+TritonHeightMap::getTextureAndMatrix(osg::RenderInfo& ri, GLint& out_texName, osg::Matrix& out_matrix)
 {
     if (!isConfigurationComplete())
         return false;
 
-    CameraLocal& local = _local.get(cam);
+    CameraLocal& local = _local.get(ri.getCurrentCamera());
     if (!local._tex.valid())
         return false;
 
-    osg::Texture::TextureObject* obj = local._tex->getTextureObject(state.getContextID());
+    // did the texture change?
+    OE_DEBUG << "FN=" << ri.getState()->getFrameStamp()->getFrameNumber() << "; localFN=" << local._frameNum << std::endl;
+
+    if (ri.getState()->getFrameStamp()->getFrameNumber() > local._frameNum)
+        return false;
+
+    osg::Texture::TextureObject* obj = local._tex->getTextureObject(ri.getContextID());
     if (!obj)
         return false;
 
-    out_texName = obj->_id;
+    out_texName = obj->id();
     out_matrix = local._texMatrix;
     return true;
 }

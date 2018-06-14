@@ -383,3 +383,9 @@ Layer::getAttribution() const
     }
     return "";
 }
+
+void
+Layer::setAttribution(const std::string& attribution)
+{
+    _options->attribution() = attribution;
+}

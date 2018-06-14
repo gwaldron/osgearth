@@ -122,8 +122,6 @@ namespace
             drawable->setMaskLayer(_maskLayer.get());
             this->addChild(_drawable);
 
-            drawable->_heightCameraParent = this;
-
             // Place in the depth-sorted bin and set a rendering order.
             // We want Triton to render after the terrain.
             _drawable->getOrCreateStateSet()->setRenderBinDetails(_options.renderBinNumber().get(), "DepthSortedBin");
@@ -135,6 +133,8 @@ namespace
             {
                 TritonHeightMap* heightMapGen = new TritonHeightMap();
                 heightMapGen->setTerrain(mapNode->getTerrainEngine());
+                if (_maskLayer.valid())
+                    heightMapGen->setMaskLayer(_maskLayer.get());
                 this->addChild(heightMapGen);
                 drawable->setHeightMapGenerator(heightMapGen);
             }

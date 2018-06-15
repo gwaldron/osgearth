@@ -876,7 +876,7 @@ namespace osgEarth
         void iterate( const ConstFunctor& f )
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
+            for( typename std::set<osg::observer_ptr<T> >::iterator i = _data.begin(); i != _data.end(); )
             {
                 if ( i->valid() )
                 {

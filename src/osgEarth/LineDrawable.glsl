@@ -242,5 +242,4 @@ void oe_LineDrawable_Stippler_FS(inout vec4 color)
     float L = abs(oe_LineDrawable_lateral);
     color.a *= L > 0.5 ? (1.0-(2*(L-.5)))*(1.0-(2*(L-.5))) : 1.0;
 #endif
-    color = vec4(1.0,0.0,0.0,1.0);
 }

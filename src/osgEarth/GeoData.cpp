@@ -2082,9 +2082,21 @@ _read(0L)
         _write = new ImageUtils::PixelWriter(this);
         _read = new ImageUtils::PixelReader(this);
 
-        for (unsigned y=0; y<t; ++y)
-            for (unsigned x=0; x<s; ++x)
-                set(x, y, defaultNormal, defaultCurvature);
+        // optimization for creating initial normal map image
+        unsigned char* ptr = (unsigned char*)_write->data(0, 0, 0 /*r*/, 0 /*m*/);
+
+        // don't use ved3f, use unsigned char and fill the array with the data 
+        // instead of using the slow osgEarth write mechanism
+        // if GL_RGBA or GL_UNSIGNED_BYTE changes, this code needs to change
+        pixelData pixData;
+        // 0 0 1 0 -> 0.5 0.5 1 0.5 -> 127 127 255 127
+        pixData.x = (0.5f*(defaultNormal.x() + 1.0f))*255;
+        pixData.y = (0.5f*(defaultNormal.y() + 1.0f))*255;
+        pixData.z = (0.5f*(defaultNormal.z() + 1.0f))*255;
+        pixData.w = (0.5f*(defaultCurvature + 1.0f))*255;
+
+        // TODO: We could just have a 257x257 image and just do mem copy?
+        std::fill_n((pixelData*)ptr, s*t, pixData);
     }
 }
 

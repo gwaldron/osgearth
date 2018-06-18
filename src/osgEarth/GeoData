@@ -681,6 +681,15 @@ namespace osgEarth
     class OSGEARTH_EXPORT NormalMap : public osg::Image
     {
     public:
+        // to help with initializing the normal map
+        struct pixelData
+        {
+           unsigned char x;
+           unsigned char y;
+           unsigned char z;
+           unsigned char w;
+        };
+
         NormalMap(unsigned s, unsigned t);
 
         void set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature =0.0f);

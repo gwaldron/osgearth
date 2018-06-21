@@ -149,12 +149,15 @@ namespace
     }
 
 
-    void parseShaderForMerging( const std::string& source, unsigned& version, std::string& subversion, HeaderMap& precisions, HeaderMap& headers, std::stringstream& body )
+    void parseShaderForMerging( const std::string& source, unsigned& version, std::string& subversion, HeaderMap& precisions, HeaderMap& structs, HeaderMap& headers, std::stringstream& body )
     {
     
         // types we consider declarations
-        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "flat", "bool", "int", "uint", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp", "struct", "attribute", "#extension", "#define"};
+        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "flat", "bool", "int", "uint", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp", "attribute", "#extension", "#define"};
         std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
+        
+        // store any structs in this as they need to be decalred first
+        std::string structkeyword = "struct";
         
         // break into lines:
         StringVector lines;
@@ -181,6 +184,9 @@ namespace
                 // discard forward declarations of functions, we know it's a declaration so just see if it has brackets (should be safe)
                 bool isfunc = isdec && (line.find("(") != std::string::npos && line.find(")") != std::string::npos);
                 if(isfunc) continue;
+                
+                // is it a struct decleration
+                bool isstruct = tokens[0] == structkeyword;
 
                 if (tokens[0] == "#version")
                 {
@@ -210,17 +216,21 @@ namespace
                     if(currentlevel == "mediump" && tokens[1] == "highp") currentlevel = tokens[1];
                 }
 
-                else if (isdec
-                    /*tokens[0] == "#extension"   ||
-                    tokens[0] == "#define"      ||
-                    tokens[0] == "precision"    ||
-                    tokens[0] == "struct"       ||
-                    tokens[0] == "varying"      ||
-                    tokens[0] == "uniform"      ||
-                    tokens[0] == "attribute"*/)
+                else if (isdec)
                 {
                     std::string& header = headers[line];
                     header = line;
+                }
+
+                else if(isstruct)
+                {
+                    // scan forward copying all lines till we hit the closing }; of the struct
+                    std::string& structstr = structs[tokens[1]];
+                    while ((*line_iter) != "};") {
+                        structstr += (*line_iter) + "\n";
+                        line_iter++;
+                    }
+                    structstr += "};\n";
                 }
 
                 else
@@ -363,12 +373,14 @@ namespace
             unsigned          vertVersion = 0;
             std::string       vertSubversion = "";
             HeaderMap         vertPrecisions;
+            HeaderMap         vertStructs;
             HeaderMap         vertHeaders;
             std::stringstream vertBody;
 
             unsigned          fragVersion = 0;
             std::string       fragSubversion = "";
             HeaderMap         fragPrecisions;
+            HeaderMap         fragStructs;
             HeaderMap         fragHeaders;
             std::stringstream fragBody;
 
@@ -380,11 +392,11 @@ namespace
                 {
                     if ( s->getType() == osg::Shader::VERTEX )
                     {
-                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertSubversion, vertPrecisions, vertHeaders, vertBody );
+                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertSubversion, vertPrecisions, vertStructs, vertHeaders, vertBody );
                     }
                     else if ( s->getType() == osg::Shader::FRAGMENT )
                     {
-                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragSubversion, fragPrecisions, fragHeaders, fragBody );
+                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragSubversion, fragPrecisions, fragStructs, fragHeaders, fragBody );
                     }
                 }
             }
@@ -410,8 +422,12 @@ namespace
                 }
             }
 
+            for( HeaderMap::const_iterator h = vertStructs.begin(); h != vertStructs.end(); ++h )
+                vertShaderBuf << h->second << "\n";
+
             for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
                 vertShaderBuf << h->second << "\n";
+            
             vertShaderBuf << vertBodyText << "\n";
             vertBodyText = vertShaderBuf.str();
 
@@ -441,9 +457,13 @@ namespace
                     fragShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
                 }
             }
+            
+            for( HeaderMap::const_iterator h = fragStructs.begin(); h != fragStructs.end(); ++h )
+                fragShaderBuf << h->second << "\n";
 
             for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
                 fragShaderBuf << h->second << "\n";
+            
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
 

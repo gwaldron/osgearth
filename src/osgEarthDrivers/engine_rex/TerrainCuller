@@ -57,6 +57,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
         LayerExtentVector* _layerExtents;
+        int _numberChildrenCreated;
 
     public:
         /** A new terrain culler */

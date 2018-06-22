@@ -45,6 +45,7 @@ using namespace osgEarth;
 
 #define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
 
+const int MAX_NUM_CHILDREN_CREATED_PER_FRAME = 4;
 // Whether to check the child nodes for culling before traversing them.
 // This could prevent premature Loader requests, but it increases cull time.
 //#define VISIBILITY_PRECHECK
@@ -422,6 +423,10 @@ TileNode::cull(TerrainCuller* culler)
         canCreateChildren = false;
         canLoadData       = false;
     }
+    // VRV_PATCH
+    if (culler->_numberChildrenCreated >= MAX_NUM_CHILDREN_CREATED_PER_FRAME) {
+       canCreateChildren = false;
+    }
 
     if (childrenInRange)
     {
@@ -436,6 +441,7 @@ TileNode::cull(TerrainCuller* culler)
             {
                 OE_START_TIMER(createChildren);
                 createChildren( context );
+                culler->_numberChildrenCreated += 4;
                 REPORT("TileNode::createChildren", createChildren);
                 _childrenReady = true;
 

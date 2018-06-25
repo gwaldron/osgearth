@@ -1148,7 +1148,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
                 addElevationLayer(dynamic_cast<ElevationLayer*>(layer));
         }
 
-        cacheLayerExtentInMapSRS(layer);
+        cacheLayerExtentInMapSRS(layer);        
     }
 }
 
@@ -1231,6 +1231,8 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             updateModels.setReloadData(true);
             _terrain->accept(updateModels);
         }
+
+        updateState();
     }
 }
 
@@ -1264,6 +1266,8 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
                 }
             }
         }
+
+        updateState();
     }
 
     if (_terrain)

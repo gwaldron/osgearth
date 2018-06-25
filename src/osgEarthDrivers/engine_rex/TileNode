@@ -151,6 +151,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::set<UID>                      _newLayers;
         bool                               _empty;
         bool                               _isRootTile;
+        bool                               _imageUpdatesActive;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;

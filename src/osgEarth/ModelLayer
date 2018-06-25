@@ -53,15 +53,6 @@ namespace osgEarth
             const std::string& name, 
             const ModelSourceOptions& driverOptions);
 
-        /** Copy ctor*/
-        ModelLayerOptions(const ModelLayerOptions& rhs);
-
-        /** dtor */
-        virtual ~ModelLayerOptions() { }
-
-        /** Assignment operator */
-        ModelLayerOptions& operator = (const ModelLayerOptions&);
-
         /**
          * Options for the underlying model source driver.
          */
@@ -191,9 +182,6 @@ namespace osgEarth
 
         //! Node created by this model layer
         virtual osg::Node* getNode() const;
-
-        /** Serialize this layer */
-        virtual Config getConfig() const;
 
         //! Generate a cache ID for this layer
         virtual std::string getCacheID() const;

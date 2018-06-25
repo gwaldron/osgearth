@@ -32,6 +32,7 @@
 #include <osgEarth/TraversalData>
 #include <osgEarth/Shadowing>
 #include <osgEarth/Utils>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/TraversalData>
 
 #include <osg/Uniform>
@@ -74,7 +75,8 @@ _lastTraversalFrame(0.0),
 _count(0),
 _stitchNormalMap(false),
 _empty(false),              // an "empty" node exists but has no geometry or children.,
-_isRootTile(false)
+_isRootTile(false),
+_imageUpdatesActive(false)
 {
     //nop
 }
@@ -550,6 +552,41 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Everything else: update, GL compile, intersection, compute bound, etc.
     else
     {
+        // Check for image updates.
+        if (nv.getVisitorType() == nv.UPDATE_VISITOR && _imageUpdatesActive)
+        {
+            unsigned numUpdated = 0u;
+
+            for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
+            {
+                RenderingPass& pass = _renderModel._passes[p];
+                Samplers& samplers = pass.samplers();
+                for (unsigned s = 0; s < samplers.size(); ++s)
+                {
+                    Sampler& sampler = samplers[s];
+                    if (sampler._texture.valid() && sampler._matrix.isIdentity())
+                    {
+                        for(unsigned i = 0; i < sampler._texture->getNumImages(); ++i)
+                        {
+                            osg::Image* image = sampler._texture->getImage(i);
+                            if (image && image->requiresUpdateCall())
+                            {
+                                image->update(&nv);
+                                numUpdated++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // if no updates were detected, don't check next time.
+            if (numUpdated == 0)
+            {
+                ADJUST_UPDATE_TRAV_COUNT(this, -1);
+                _imageUpdatesActive = false;
+            }
+        }
+
         // If there are child nodes, traverse them:
         int numChildren = getNumChildren();
         if ( numChildren > 0 )
@@ -641,6 +678,20 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                         if (rttNode && _context->getTileRasterizer())
                         {
                             _context->getTileRasterizer()->push(rttNode->_node.get(), model->getTexture(), rttNode->_extent);
+                        }
+                    }
+
+                    // check to see if this data requires an image update traversal.
+                    if (_imageUpdatesActive == false)
+                    {
+                        for(unsigned i=0; i<model->getTexture()->getNumImages(); ++i)
+                        {
+                            if (model->getTexture()->getImage(i)->requiresUpdateCall())
+                            {
+                                ADJUST_UPDATE_TRAV_COUNT(this, +1);
+                                _imageUpdatesActive = true;
+                                break;
+                            }
                         }
                     }
                 }

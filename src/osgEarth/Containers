@@ -80,7 +80,7 @@ namespace osgEarth
         iterator begin() { return _data.begin(); }
         iterator end() { return _data.end(); }
         bool empty() const { return _data.empty(); }
-        void clear() { _data.clear(); }        
+        void clear() { _data.clear(); }
         void erase(iterator i) { _data.erase(i); }
         void erase(const DATA& data) { iterator i = find(data); if (i != _data.end()) _data.erase(i); }
         int size() const { return _data.size(); }
@@ -108,7 +108,7 @@ namespace osgEarth
         typedef typename container_t::iterator       iterator;
         typedef typename container_t::const_iterator const_iterator;
 
-        container_t _container;        
+        container_t _container;
 
         inline DATA& operator[](const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
@@ -176,7 +176,7 @@ namespace osgEarth
     struct fast_map
     {
         typedef std::pair<KEY,DATA>  entry_t;
-        typedef std::vector<entry_t> container_t;
+        typedef std::list<entry_t> container_t;
 
         typedef typename container_t::iterator       iterator;
         typedef typename container_t::const_iterator const_iterator;
@@ -222,7 +222,7 @@ namespace osgEarth
         void clear() {
             _data.clear();
         }
-        
+
         iterator erase(iterator i) {
             return _data.erase( i );
         }
@@ -238,6 +238,7 @@ namespace osgEarth
             }
         }
 
+        // Note: std::list::size() can be O(n)
         int size() const { return _data.size(); }
 
         template<typename InputIterator>
@@ -548,7 +549,7 @@ namespace osgEarth
         void clear() { _impl.clear(); }
         void resize(size_type new_size, const value_type& fill_value = value_type()) { _impl.resize(new_size, fill_value); }
         void reserve(size_type new_capacity) { _impl.reserve(new_capacity); }
-        
+
         void swap(vector_type& other) { _impl.swap(other); }
         void swap(MixinVector& other) { _impl.swap(other._impl); }
 
@@ -646,7 +647,7 @@ namespace osgEarth
         std::map<unsigned,T> _data;
         Threading::Mutex     _mutex;
     };
-    
+
 
     /** Template for thread safe per-object data storage */
     template<typename KEY, typename DATA>
@@ -875,7 +876,7 @@ namespace osgEarth
         void iterate( const ConstFunctor& f )
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
+            for( typename std::set<osg::observer_ptr<T> >::iterator i = _data.begin(); i != _data.end(); )
             {
                 if ( i->valid() )
                 {
@@ -905,7 +906,7 @@ namespace osgEarth
         std::set<osg::observer_ptr<T> >      _data;
         osgEarth::Threading::ReadWriteMutex  _mutex;
     };
-    
+
 
     // borrowed from osg::buffered_object. Auto-resizing array.
     template<class T>

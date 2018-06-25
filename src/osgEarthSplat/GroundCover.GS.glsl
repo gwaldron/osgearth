@@ -309,7 +309,7 @@ oe_GroundCover_geom()
 
 #else // normal render camera - draw as a billboard:
 
-    vec3 tangentVector = normalize(cross(vec3(0,0,-1), up_view));
+    vec3 tangentVector = normalize(cross(center_view.xyz, up_view));
     vec3 halfWidthTangentVector = tangentVector * 0.5 * width;
     vec3 heightVector = up_view*height;
         

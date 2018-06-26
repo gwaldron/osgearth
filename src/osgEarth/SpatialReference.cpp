@@ -1124,6 +1124,8 @@ SpatialReference::transformXYPointArrays(double*  x,
         OE_WARN << LC << "INPUT: " << getWKT() << std::endl
             << "OUTPUT: " << out_srs->getWKT() << std::endl;
 
+        OE_WARN << LC << "ERROR:  " << CPLGetLastErrorMsg() << std::endl;
+
         return false;
     }
 

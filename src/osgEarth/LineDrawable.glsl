@@ -240,6 +240,6 @@ void oe_LineDrawable_Stippler_FS(inout vec4 color)
 #ifdef OE_LINES_ANTIALIAS
     // anti-aliasing
     float L = abs(oe_LineDrawable_lateral);
-    color.a *= L > 0.5 ? (1.0-(2*(L-.5)))*(1.0-(2*(L-.5))) : 1.0;
+    color.a *= L > 0.5 ? (1.0-(2.0*(L-0.5)))*(1.0-(2.0*(L-0.5))) : 1.0;
 #endif
 }

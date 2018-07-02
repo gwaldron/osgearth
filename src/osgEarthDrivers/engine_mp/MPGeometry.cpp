@@ -222,7 +222,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
 
     // activate the tile coordinate set - same for all layers
-    if ( renderColor )
+    if ( renderColor && _layers.size() > 0 )
     {
         state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
     }

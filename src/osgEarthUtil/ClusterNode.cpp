@@ -13,9 +13,10 @@ ClusterNode::ClusterNode(MapNode* mapNode, osg::Image* defaultImage) :
     _nextLabel(0),
     _enabled(true),
     _dirty(true),
-    _defaultImage(defaultImage)
+    _defaultImage(defaultImage),
+    _dirtyIndex(true)
 {
-    setNumChildrenRequiringUpdateTraversal(1);
+    //setNumChildrenRequiringUpdateTraversal(1);
     setCullingActive(false);
 
     _horizon = new Horizon();
@@ -25,6 +26,7 @@ void ClusterNode::addNode(osg::Node* node)
 {
     _nodes.push_back(node);
     _dirty = true;
+    _dirtyIndex = true;
 }
 
 void ClusterNode::removeNode(osg::Node* node)
@@ -35,6 +37,7 @@ void ClusterNode::removeNode(osg::Node* node)
         _nodes.erase(itr);
     }
     _dirty = true;
+    _dirtyIndex = true;
 }
 
 unsigned int ClusterNode::getRadius() const
@@ -82,10 +85,46 @@ void ClusterNode::setCanClusterCallback(ClusterNode::CanClusterCallback* callbac
     _dirty = true;
 }
 
+bool boundSort(const osg::ref_ptr< osg::Node> &i, const osg::ref_ptr< osg::Node> &j)
+{
+    osg::BoundingSphere bsI = i->getBound();
+    osg::BoundingSphere bsJ = j->getBound();
 
-void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
+    return bsI.center().x() < bsJ.center().x();
+}
+
+
+void ClusterNode::buildIndex()
+{
+    if (_dirtyIndex)
+    {
+        _clusterIndex.clear();
+
+        std::sort(_nodes.begin(), _nodes.end(), boundSort);
+
+        unsigned int maxNodes = 10000;
+
+        osg::Group* currentGroup = 0;
+
+        for (unsigned int i = 0; i < _nodes.size(); i++)
+        {
+            if (!currentGroup || currentGroup->getNumChildren() >= maxNodes)
+            {
+                currentGroup = new osg::Group;
+                _clusterIndex.push_back(currentGroup);
+            }
+            currentGroup->addChild(_nodes[i]);                      
+        }
+    }
+    _dirtyIndex = false;
+}
+
+
+void ClusterNode::getClusters(osgUtil::CullVisitor* cv, ClusterList& out)
 {
     _nextLabel = 0;
+
+    osg::Camera* camera = cv->getCurrentCamera();
 
     osg::Viewport* viewport = camera->getViewport();
     if (!viewport)
@@ -101,22 +140,39 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
 
     osg::NodeList validPlaces;
 
-    for (unsigned int i = 0; i < _nodes.size(); i++)
-    {
-        osg::Vec3d world = _nodes[i]->getBound().center();
+    buildIndex();
 
-        if (!_horizon->isVisible(world))
+    for (auto itr = _clusterIndex.begin(); itr != _clusterIndex.end(); ++itr)
+    {
+        osg::Group* index = static_cast<osg::Group*>(itr->get());
+        if (cv->isCulled(index->getBound()))
         {
             continue;
         }
 
-        osg::Vec3d screen = world * mvpw;
-
-        if (screen.x() >= 0 && screen.x() <= viewport->width() &&
-            screen.y() >= 0 && screen.y() <= viewport->height())
+        for (unsigned int i = 0; i < index->getNumChildren(); i++)
         {
-            validPlaces.push_back(_nodes[i]);
-            points.push_back(TPoint(screen.x(), screen.y()));
+            osg::Node* node = index->getChild(i);
+            osg::Vec3d world = node->getBound().center();
+
+            if (cv->isCulled(*node))
+            {
+                continue;
+            }
+
+            if (!_horizon->isVisible(world))
+            {
+                continue;
+            }
+
+            osg::Vec3d screen = world * mvpw;
+
+            if (screen.x() >= 0 && screen.x() <= viewport->width() &&
+                screen.y() >= 0 && screen.y() <= viewport->height())
+            {
+                validPlaces.push_back(node);
+                points.push_back(TPoint(screen.x(), screen.y()));
+            }
         }
     }
 
@@ -209,7 +265,7 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
                 _horizon->setEye(eye);
 
                 _clusters.clear();
-                getClusters(cv->getCurrentCamera(), _clusters);
+                getClusters(cv, _clusters);
 
                 // Style the clusters if need be
                 if (_styleCallback)

@@ -65,7 +65,8 @@ namespace osgEarth {
 
             PlaceNode* getOrCreateLabel();
 
-            void getClusters(osg::Camera* camera, ClusterList& out);
+            void getClusters(osgUtil::CullVisitor* cv, ClusterList& out);
+            void buildIndex();
 
             //PlaceNodeList _placeNodes;
             osg::NodeList _nodes;
@@ -86,6 +87,9 @@ namespace osgEarth {
             osg::Matrixd _lastViewMatrix;
 
             ClusterList _clusters;
+
+            osg::NodeList _clusterIndex;
+            bool _dirtyIndex;
 
             bool _dirty;
 

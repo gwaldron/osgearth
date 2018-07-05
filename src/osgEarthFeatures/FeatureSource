@@ -107,18 +107,21 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSource : public osg::Object, public Revisioned
     {
     public:      
-        /**
-         * Constructs a new feature source with the provided read/write options.
-         */
-        FeatureSource(
-            const ConfigOptions&  options =ConfigOptions(),
-            const osgDB::Options* readOptions =0L );
+        //! Constructs a new feature source
+        FeatureSource();
+        
+        //! Constructs a new feature source with preset options
+        FeatureSource(const ConfigOptions& options);
+        
+        //! Apply the read options
+        void setReadOptions(const osgDB::Options* readOptions);
 
-        /**
-         * Opens the feature source and returns an initial status.
-         */
+        //! Opens the feature source and returns an initial status.
+        const Status& open();
+
+        //! Opens the feature source and returns an initial status.
+        //! Same as calling setReadOptions followed by open()
         const Status& open(const osgDB::Options* readOptions);
-        const Status& open() { return open(0L); }
 
         /**
          * Status of the feature source
@@ -258,9 +261,6 @@ namespace osgEarth { namespace Features
          * Dirties the feature profile
          */
         void dirtyFeatureProfile() { _featureProfile = 0;}
-
-        
-        void setReadOptions(const osgDB::Options* readOptions) { _readOptions = readOptions; }
         
     protected:
         

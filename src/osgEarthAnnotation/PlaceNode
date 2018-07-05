@@ -131,8 +131,10 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<osg::Image>           _image;
         std::string                        _text;
         Style                              _style;
-        class osg::Geode*                  _geode;
-        osg::Geometry*                     _imageGeom;
+        osg::Group*                        _geode;
+        osg::Geometry*                     _imageDrawable;
+        osg::Drawable*                     _bboxDrawable;
+        osgText::Text*                     _textDrawable;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<ScreenSpaceLayoutData> _dataLayout;
 
@@ -153,6 +155,12 @@ namespace osgEarth { namespace Annotation
 
     private:
         PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
+
+    private:
+        static osg::ref_ptr<osg::StateSet> _geodeStateSet;
+        static osg::ref_ptr<osg::StateSet> _textStateSet;
+        static osg::ref_ptr<osg::StateSet> _imageStateSet;
+        void setupState();
 
     };
 

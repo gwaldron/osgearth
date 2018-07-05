@@ -102,7 +102,7 @@ namespace
     }
 }
 
-osg::Drawable*
+osgText::Text*
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
                                     const osg::BoundingBox& box)
@@ -195,6 +195,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     }
 
     t->setPosition( pos );
+
     t->setAlignment( align );
 
     t->setAutoRotateToScreen(false);
@@ -235,13 +236,18 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 #endif
 
     float resFactor = 2.0f;
+
+#if OSG_VERSION_LESS_THAN(3,6,0)
     int res = nextPowerOf2((int)(size*resFactor));
     t->setFontResolution(res, res);
+#endif
     
     if ( symbol && symbol->halo().isSet() )
     {
+#if OSG_VERSION_LESS_THAN(3,6,0)
         float offsetFactor = 1.0f / (resFactor*256.0f);
         t->setBackdropOffset((float)t->getFontWidth() * offsetFactor, (float)t->getFontHeight() * offsetFactor);
+#endif
 
         t->setBackdropColor( symbol->halo()->color() );
         if ( symbol->haloBackdropType().isSet() )
@@ -298,9 +304,10 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 
     // set up the decoration.
     osg::StateSet* dstate = new osg::StateSet;
+    dstate->setDataVariance(osg::Object::DYNAMIC);
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
     GLUtils::setLighting(dstate, osg::StateAttribute::OFF);
-    dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);
+    dstate->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
 
     // set up the geoset.
     osg::Geometry* geom = new osg::Geometry();

@@ -100,7 +100,7 @@ GeoPositionNode::init()
     _paxform = new osg::PositionAttitudeTransform();
     _geoxform->addChild( _paxform );
     
-    GLUtils::setLighting(getOrCreateStateSet(), 0);
+    //GLUtils::setLighting(getOrCreateStateSet(), 0);
 }
 
 void

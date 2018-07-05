@@ -147,6 +147,12 @@ namespace osgEarth { namespace Annotation
         LabelNode(const LabelNode& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL);
 
         void updateLayoutData();
+
+    private:
+        static osg::ref_ptr<osg::StateSet> _geodeStateSet;
+        static osg::ref_ptr<osg::StateSet> _textStateSet;
+        void setupState();
+
     };
 
 } } // namespace osgEarth::Annotation

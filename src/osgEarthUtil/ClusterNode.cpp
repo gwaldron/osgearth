@@ -142,7 +142,7 @@ void ClusterNode::getClusters(osgUtil::CullVisitor* cv, ClusterList& out)
 
     buildIndex();
 
-    for (auto itr = _clusterIndex.begin(); itr != _clusterIndex.end(); ++itr)
+    for (osg::NodeList::iterator itr = _clusterIndex.begin(); itr != _clusterIndex.end(); ++itr)
     {
         osg::Group* index = static_cast<osg::Group*>(itr->get());
         if (cv->isCulled(index->getBound()))

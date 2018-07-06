@@ -52,14 +52,16 @@ using namespace osgEarth::Util;
 int usage( const std::string& app )
 {
     OE_NOTICE "\n" << app << "\n"
-        << "    --rasterize           : draw features as rasterized image tiles \n"
-        << "    --overlay             : draw features as projection texture \n"
-        << "    --mem                 : load features from memory \n"
-        << "    --labels              : add feature labels \n"
+        << "  --rasterize           : draw features as rasterized image tiles \n"
+        << "  --drape               : draw features as projected texture \n"
+        << "  --clamp               : draw features using shader clamping \n"
+        << "  --mem                 : load features from memory \n"
+        << "  --labels              : add feature labels \n"
         << "\n"
-        << MapNodeHelper().usage();
+        << MapNodeHelper().usage()
+        << std::endl;
 
-    return -1;
+    return 0;
 }
 
 //
@@ -73,10 +75,10 @@ int main(int argc, char** argv)
         return usage( argv[0] );
 
     bool useRaster  = arguments.read("--rasterize");
-    bool useOverlay = arguments.read("--overlay");
     bool useMem     = arguments.read("--mem");
     bool useLabels  = arguments.read("--labels");
-
+    bool useDraping = arguments.read("--drape");
+    bool useClamping = arguments.read("--clamp");
 
     osgViewer::Viewer viewer(arguments);
 
@@ -90,11 +92,11 @@ int main(int argc, char** argv)
     map->addLayer( new ImageLayer(ImageLayerOptions("basemap", basemap)));
     
     // Next we add a feature layer. 
-    OGRFeatureOptions ogrData;
+    OGRFeatureOptions featureData;
     if ( !useMem )
     {
         // Configures the feature driver to load the vectors from a shapefile:
-        ogrData.url() = "../data/world.shp";
+        featureData.url() = "../data/world.shp";
     }
     else
     {
@@ -104,13 +106,13 @@ int main(int argc, char** argv)
         line->push_back( osg::Vec3d(-120, 20, 0) );
         line->push_back( osg::Vec3d(-120, 60, 0) );
         line->push_back( osg::Vec3d(-60, 60, 0) );
-        ogrData.geometry() = line;
+        featureData.geometry() = line;
     }
 
     // Make a feature source layer and add it to the Map:
     FeatureSourceLayerOptions ogrLayer;
     ogrLayer.name() = "vector-data";
-    ogrLayer.featureSource() = ogrData;
+    ogrLayer.featureSource() = featureData;
     map->addLayer(new FeatureSourceLayer(ogrLayer));
 
     // Define a style for the feature data. Since we are going to render the
@@ -121,31 +123,35 @@ int main(int argc, char** argv)
     ls->stroke()->color() = Color::Yellow;
     ls->stroke()->width() = 2.0f;
 
-    // That's it, the map is ready; now create a MapNode to render the Map:
-    osgEarth::Drivers::RexTerrainEngine::RexTerrainEngineOptions rex;
+    if (useDraping)
+    {
+        AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
+        alt->clamping() = alt->CLAMP_TO_TERRAIN;
+        alt->technique() = alt->TECHNIQUE_DRAPE;
+    }
 
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.enableLighting() = false;
-    mapNodeOptions.setTerrainOptions(rex);
-    MapNode* mapNode = new MapNode( map, mapNodeOptions );
+    else if (useClamping)
+    {
+        AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
+        alt->clamping() = alt->CLAMP_TO_TERRAIN;
+        alt->technique() = alt->TECHNIQUE_GPU;
 
-    osg::Group* root = new osg::Group();
-    root->addChild( mapNode );
-    viewer.setSceneData( root );
-    viewer.setCameraManipulator( new EarthManipulator() );
+        ls->tessellationSize()->set(100, Units::KILOMETERS);
 
-    // Process cmdline args
-    MapNodeHelper().parse(mapNode, arguments, &viewer, root, new LabelControl("Features Demo"));
-   
+        RenderSymbol* render = style.getOrCreate<RenderSymbol>();
+        render->depthOffset()->enabled() = true;
+    }
+    
     if (useRaster)
     {
         AGGLiteOptions rasterOptions;
-        rasterOptions.featureOptions() = ogrData;
+        rasterOptions.featureOptions() = featureData;
         rasterOptions.styles() = new StyleSheet();
         rasterOptions.styles()->addStyle( style );
         map->addLayer(new ImageLayer("My Features", rasterOptions) );
     }
-    else //if (useGeom || useOverlay)
+
+    else //if (useGeom)
     {
         FeatureModelLayerOptions fml;
         fml.name() = "My Features";
@@ -155,9 +161,9 @@ int main(int argc, char** argv)
         fml.enableLighting() = false;
 
         map->addLayer(new FeatureModelLayer(fml));
-    }
+    }   
 
-    if ( useLabels )
+    if ( useLabels && !useRaster )
     {
         // set up symbology for drawing labels. We're pulling the label
         // text from the name attribute, and its draw priority from the
@@ -176,18 +182,20 @@ int main(int argc, char** argv)
         FeatureModelLayerOptions fml;
         fml.name() = "Labels";
         fml.featureSourceLayer() = "vector-data";
-        //fml.featureSource() = featureOptions;
         fml.styles() = new StyleSheet();
         fml.styles()->addStyle( labelStyle );
 
         map->addLayer(new FeatureModelLayer(fml));
     }
 
-    
+    // That's it, the map is ready; now create a MapNode to render the Map:
+    MapNode* mapNode = new MapNode(map);
+
+    viewer.setSceneData( mapNode );
+    viewer.setCameraManipulator( new EarthManipulator() );
+
     // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+    MapNodeHelper().configureView(&viewer);
 
     return viewer.run();
 }

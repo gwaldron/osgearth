@@ -153,6 +153,7 @@ _tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),
+_renderModelUpdateRequired( false ),
 _rasterizer(0L)
 {
     // Necessary for pager object data

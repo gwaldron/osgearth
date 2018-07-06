@@ -587,7 +587,7 @@ Geometry::getOrientation() const
 {
     // adjust for a non-open ring:
     int n = size();
-    while( n > 0 && front() == back() )
+    if ( n > 0 && front() == back() )
         n--;
 
     if ( n < 3 )

@@ -42,6 +42,7 @@ _context(context)
     pushViewport(_cv->getViewport());
     pushProjectionMatrix(_cv->getProjectionMatrix());
     pushModelViewMatrix(_cv->getModelViewMatrix(), _cv->getCurrentCamera()->getReferenceFrame());
+    setLODScale(_cv->getLODScale());
     _camera = _cv->getCurrentCamera();
 }
 
@@ -56,8 +57,9 @@ TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const Rend
 float
 TerrainCuller::getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const
 {
-    if (withLODScale) return (pos-getViewPointLocal()).length()*getLODScale();
-    else return (pos-getViewPointLocal()).length();
+    return _cv->getDistanceToViewPoint(pos, withLODScale);
+    //if (withLODScale) return (pos-getViewPointLocal()).length()*getLODScale();
+    //else return (pos-getViewPointLocal()).length();
 }
 
 DrawTileCommand*

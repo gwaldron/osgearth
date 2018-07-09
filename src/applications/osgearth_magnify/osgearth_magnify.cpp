@@ -49,7 +49,7 @@ struct App
 
     float computeLODScaleFromMag(float mag)
     {
-        return 1.0f/exp2(mag);
+        return 1.0f/mag;
     }
 
     void apply()
@@ -83,7 +83,7 @@ ui::Container* createUI(App& app)
 
     ui::HBox* sliderBox = box->addControl(new ui::HBox());
     sliderBox->addControl(new ui::LabelControl("Magnification:"));
-    app._magSlider = sliderBox->addControl(new ui::HSliderControl(1.0f, 10.0f, 1.0f, new Apply(app)));
+    app._magSlider = sliderBox->addControl(new ui::HSliderControl(1.0f, 100.0f, 1.0f, new Apply(app)));
     app._magSlider->setWidth(300.0f);
     sliderBox->addControl(new ui::LabelControl(app._magSlider));
 

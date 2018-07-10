@@ -21,14 +21,8 @@
 */
 
 #include <osgEarthUtil/ClampCallback>
-#include <osgEarth/Notify>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/NodeUtils>
-#include <OpenThreads/ScopedLock>
 #include <osg/MatrixTransform>
 
-#include <osg/io_utils>
 
 using namespace osg;
 using namespace osgEarth;

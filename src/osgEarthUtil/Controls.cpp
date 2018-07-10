@@ -18,25 +18,12 @@
  */
 #include <osgEarthUtil/Controls>
 #include <osgEarth/NodeUtils>
-#include <osg/Geometry>
-#include <osg/NodeCallback>
 #include <osg/Depth>
-#include <osg/TextureRectangle>
-#include <osgGA/GUIEventHandler>
-#include <osgText/Text>
-#include <osgUtil/RenderBin>
-#include <osgUtil/Statistics>
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
 #include <osgEarthFeatures/PolygonizeLines>
-#include <osg/Version>
-#include <osgEarth/Common>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Shaders>
 

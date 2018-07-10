@@ -22,9 +22,6 @@
 
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarth/IntersectionPicker>
-#include <osgGA/GUIEventAdapter>
-#include <osgGA/EventVisitor>
-#include <osgViewer/View>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

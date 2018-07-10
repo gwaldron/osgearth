@@ -19,9 +19,7 @@
 #include <osgEarthUtil/GARSGraticule>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/TextSymbolizer>
-#include <osgEarthFeatures/Feature>
 #include <osgEarth/PagedNode>
-#include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
 
 using namespace osgEarth;

@@ -18,10 +18,7 @@
  */
 #include <osgEarthUtil/FractalElevationLayer>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Map>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/SimplexNoise>
-#include <cstdlib> // for getenv
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

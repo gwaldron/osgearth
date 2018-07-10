@@ -23,7 +23,6 @@
 
 
 #include <osgUtil/LineSegmentIntersector>
-#include <osgUtil/IntersectionVisitor>
 #include <osg/CullFace>
 
 #define LC "[PolyhedralLineOfSight] "

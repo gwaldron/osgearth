@@ -22,10 +22,6 @@
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/GLUtils>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgSim/LineOfSight>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

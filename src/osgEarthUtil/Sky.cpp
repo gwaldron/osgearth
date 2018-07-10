@@ -20,14 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Sky>
-#include <osgEarthUtil/Ephemeris>
-#include <osgEarth/Registry>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/ShaderUtils>
-#include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 #include <osgEarth/GLUtils>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -20,10 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Ocean>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

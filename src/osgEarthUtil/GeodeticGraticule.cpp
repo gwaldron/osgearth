@@ -22,11 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/Terrain>
 
-#include <osg/Depth>
-#include <osg/ClipNode>
-#include <osg/ClipPlane>
 
 #define LC "[GeodeticGraticule] "
 

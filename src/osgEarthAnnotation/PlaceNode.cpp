@@ -47,7 +47,7 @@ using namespace osgEarth::Symbology;
 namespace
 {
     const char* iconVS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
         "out vec2 oe_PlaceNode_texcoord; \n"
         "void oe_PlaceNode_icon_VS(inout vec4 vertex) { \n"
         "    oe_PlaceNode_texcoord = gl_MultiTexCoord0.st; \n"

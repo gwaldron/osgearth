@@ -21,6 +21,7 @@
 #include "RexTerrainEngineOptions"
 
 #include <osgEarth/Profile>
+#include <osg/CullStack>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -31,15 +32,19 @@ const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 0;
 const double   SelectionInfo::_fLodLowerBound   = 12.0;
 const double   SelectionInfo::_fMorphStartRatio = 0.66;
 
-double VisParameters::getVisibilityRange(osg::NodeVisitor& nv, osg::CullStack& cs) const
+// Reverse-engineers the LOD scale that is active in the cull visitor.
+// Why not just call getLODScale()? Because if someone (mak) overrides
+// CullVisitor::getDistanceToViewPoint(), they can alter the return value in
+// other ways. This function will detect that.
+float SelectionInfo::computeRangeScale(osg::NodeVisitor* nv) const
 {
+    osg::CullStack& cs = *dynamic_cast<osg::CullStack*>(nv);
     const osg::Vec3 viewLocal = cs.getViewPointLocal();
     osg::Vec3 viewVector = cs.getLookVectorLocal();
     viewVector.normalize();
-    osg::Vec3 point = viewLocal + viewVector*_visibilityRange;
-
-    // ignore the LOD scale here.
-    return nv.getDistanceToViewPoint(point, false);
+    osg::Vec3 point = viewLocal + viewVector*visParameters(0)._visibilityRange;
+    float distance = nv->getDistanceToViewPoint(point, true);
+    return distance / visParameters(0)._visibilityRange;
 }
 
 unsigned SelectionInfo::getLODForMorphing(bool isProjected)
@@ -93,7 +98,6 @@ void SelectionInfo::initialize(unsigned uiFirstLod, unsigned uiMaxLod, const Pro
         double range = c.getRadius() * mtrf * 2.0;
 
         _vecVisParams[lod]._visibilityRange = range;
-        _vecVisParams[lod]._visibilityRange2 = range*range;
     }
     
     fLodNear = 0;

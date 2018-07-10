@@ -21,7 +21,6 @@
 
 #include "Common"
 #include <osg/NodeVisitor>
-#include <osg/CullStack>
 #include <osgEarth/Profile>
 #include <vector>
 
@@ -31,11 +30,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     struct VisParameters
     {
         double _visibilityRange;
-        double _visibilityRange2;
         double _fMorphStart;
         double _fMorphEnd;
-
-        double getVisibilityRange(osg::NodeVisitor& nv, osg::CullStack& cs) const;
     };
 
     /**
@@ -61,6 +57,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Visibility interface for a specific LOD
         VisParameters visParameters(unsigned lod) const;
+
+        //! Scale factor for range calculations. This defaults to 1.0 but will change
+        //! if the LOD scale is set or if the nv.getDistanceToViewPoint modifies its
+        //! return value in any way.
+        float computeRangeScale(osg::NodeVisitor* nv) const;
 
     private:
         unsigned                        _numLods;

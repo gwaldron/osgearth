@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/CachePolicy>
-#include <osgEarth/Cache>
-#include <limits.h>
 
 using namespace osgEarth;
 

@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/ECEF>
-#include <osgEarth/Notify>
 
 using namespace osgEarth;
 

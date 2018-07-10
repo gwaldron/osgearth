@@ -19,11 +19,7 @@
  */
 
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/GeoData>
-#include <osgEarth/Geoid>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ImageUtils>
-#include <osg/Notify>
 
 using namespace osgEarth;
 

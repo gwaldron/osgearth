@@ -18,9 +18,7 @@
  */
 
 #include <osgEarth/StringUtils>
-#include <osgDB/FileNameUtils>
 #include <cctype>
-#include <cstring>
 
 using namespace osgEarth;
 

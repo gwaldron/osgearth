@@ -19,11 +19,7 @@
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
-#include <osg/MatrixTransform>
-#include <osg/FrameBufferObject>
-#include <osgDB/ReadFile>
 
 #define LC "[TileRasterizer] "
 

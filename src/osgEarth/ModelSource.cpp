@@ -18,9 +18,7 @@
  */
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
-#include <osg/Notify>
 #include <osgDB/ReadFile>
-#include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
 using namespace OpenThreads;

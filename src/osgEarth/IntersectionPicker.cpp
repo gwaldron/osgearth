@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/IntersectionPicker>
-#include <osgEarth/PrimitiveIntersector>
 #include <osgEarth/Registry>
 
 #define LC "[Picker] "

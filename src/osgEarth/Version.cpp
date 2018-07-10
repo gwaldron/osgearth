@@ -19,8 +19,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Version>
-#include <string>
-#include <stdio.h>
 
 #ifdef OSGEARTH_EMBED_GIT_SHA
 #    define GET_SHA osgEarthGitSHA1

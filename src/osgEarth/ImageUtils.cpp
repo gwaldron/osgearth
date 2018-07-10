@@ -18,19 +18,10 @@
  */
 
 #include <osgEarth/ImageUtils>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Random>
-#include <osgEarth/GeoCommon>
-#include <osg/Notify>
-#include <osg/Texture>
-#include <osg/ImageSequence>
-#include <osg/Timer>
-#include <osg/ValueObject>
 #include <osgDB/Registry>
-#include <string.h>
-#include <memory.h>
 
 #define LC "[ImageUtils] "
 

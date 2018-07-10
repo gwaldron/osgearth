@@ -22,10 +22,6 @@
 
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/GeoCommon>
-#include <osg/Notify>
-#include <osg/Texture>
-#include <limits.h>
-#include <string.h>
 
 using namespace osgEarth;
 

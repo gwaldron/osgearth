@@ -18,11 +18,8 @@
  */
 #include <osgEarth/GeometryClamper>
 
-#include <osgUtil/IntersectionVisitor>
 
-#include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/UserDataContainer>
 
 #define LC "[GeometryClamper] "
 

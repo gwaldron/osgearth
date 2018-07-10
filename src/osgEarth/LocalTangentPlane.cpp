@@ -18,10 +18,6 @@
  */
 
 #include <osgEarth/LocalTangentPlane>
-#include <osg/Math>
-#include <osg/Notify>
-#include <sstream>
-#include <algorithm>
 
 using namespace osgEarth;
 

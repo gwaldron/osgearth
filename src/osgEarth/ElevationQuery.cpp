@@ -17,10 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationQuery>
-#include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/Map>
-#include <osgEarth/ElevationPool>
-#include <osgUtil/IntersectionVisitor>
 #include <osgSim/LineOfSight>
 
 #define LC "[ElevationQuery] "

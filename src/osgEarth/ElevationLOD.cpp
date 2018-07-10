@@ -18,8 +18,6 @@
  */
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/GeoData>
-#include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
 

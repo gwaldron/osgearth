@@ -17,12 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/LandCoverLayer>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osgEarth/MetaTile>
 #include <osgEarth/SimplexNoise>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/Progress>
 
 using namespace osgEarth;

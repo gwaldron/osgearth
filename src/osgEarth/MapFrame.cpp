@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MapFrame>
-#include <osgEarth/Cache>
 #include <osgEarth/Map>
-#include <osgEarth/ElevationPool>
 
 using namespace osgEarth;
 

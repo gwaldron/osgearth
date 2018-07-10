@@ -25,11 +25,7 @@
  */
 
 #include <osgEarth/JsonUtils>
-#include <osg/Notify>
 
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <sstream>
 
 #if _MSC_VER >= 1400 // VC++ 8.0

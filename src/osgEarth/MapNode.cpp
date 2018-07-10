@@ -20,34 +20,16 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/MapNode>
-#include <osgEarth/Capabilities>
-#include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
-#include <osgEarth/MapNodeObserver>
-#include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/TraversalData>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/OverlayDecorator>
-#include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TerrainResources>
-#include <osgEarth/ShaderGenerator>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/MapModelChange>
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Lighting>
 #include <osgEarth/GLUtils>
-#include <osgEarth/URI>
 #include <osgEarth/HorizonClipPlane>
-#include <osg/ArgumentParser>
-#include <osg/PagedLOD>
 #include <osgUtil/Optimizer>
-#include <typeinfo>
 
 using namespace osgEarth;
 

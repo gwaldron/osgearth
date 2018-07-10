@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TaskService>
-#include <osg/Notify>
-#include <osg/Math>
 
 using namespace osgEarth;
 using namespace OpenThreads;

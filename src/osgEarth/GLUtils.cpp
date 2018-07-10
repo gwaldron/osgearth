@@ -22,9 +22,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
 
-#include <osg/LineWidth>
 #include <osg/LineStipple>
-#include <osg/Point>
 #include <osg/GraphicsContext>
 
 using namespace osgEarth;

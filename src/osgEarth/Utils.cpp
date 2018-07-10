@@ -17,11 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
-#include <osgEarth/ECEF>
-#include <osgEarth/CullingUtils>
-#include <osg/Version>
-#include <osg/CoordinateSystemNode>
-#include <osg/MatrixTransform>
 #include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;

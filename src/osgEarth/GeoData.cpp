@@ -19,25 +19,14 @@
 
 #include <osgEarth/GeoData>
 #include <osgEarth/GeoMath>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/Cube>
-#include <osgEarth/VerticalDatum>
 #include <osgEarth/Terrain>
 
-#include <osg/Notify>
-#include <osg/Timer>
-#include <osgShadow/ConvexPolyhedron>
 
 #include <gdal_priv.h>
 #include <gdalwarper.h>
-#include <ogr_spatialref.h>
-#include <memory.h>
 
-#include <sstream>
-#include <iomanip>
-#include <cmath>
 
 using namespace osgEarth;
 

@@ -21,13 +21,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/LocalTangentPlane>
-#include <osgEarth/ECEF>
-#include <osgEarth/ThreadingUtils>
-#include <osg/Notify>
-#include <ogr_api.h>
 #include <ogr_spatialref.h>
 #include <cpl_conv.h>
-#include <algorithm>
 
 #define LC "[SpatialReference] "
 

@@ -19,21 +19,10 @@
 #include <osgEarth/VirtualProgram>
 
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/StringUtils>
-#include <osgEarth/Containers>
-#include <osg/Shader>
-#include <osg/Program>
-#include <osg/State>
-#include <osg/Notify>
-#include <osg/Version>
 #include <osg/GL2Extensions>
-#include <osg/GLExtensions>
 #include <fstream>
-#include <sstream>
-#include <OpenThreads/Thread>
 
 #define LC "[VirtualProgram] "
 
@@ -1980,8 +1969,6 @@ void PolyShader::releaseGLObjects(osg::State* state) const
 // SERIALIZERS for VIRTUALPROGRAM
 
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
 #define PROGRAM_LIST_FUNC( PROP, TYPE, DATA ) \
     static bool check##PROP(const osgEarth::VirtualProgram& attr) \

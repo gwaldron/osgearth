@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MaskLayer>
-#include <osgEarth/Map>
-#include <osgEarth/Registry>
 
 #define LC "[MaskLayer] "
 

@@ -18,7 +18,6 @@
  */
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Metrics>
-#include <osg/Version>
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
 #include <osg/ContextData>
 #endif

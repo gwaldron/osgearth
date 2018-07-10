@@ -18,9 +18,6 @@
  */
 
 #include <osgEarth/Terrain>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
 
 #define LC "[Terrain] "

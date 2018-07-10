@@ -18,6 +18,8 @@
  */
 #include <osgEarth/CachePolicy>
 
+#include <limits.h> 
+
 using namespace osgEarth;
 
 //------------------------------------------------------------------------

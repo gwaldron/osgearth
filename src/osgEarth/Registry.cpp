@@ -28,6 +28,8 @@
 
 #include <gdal_priv.h>
 
+#include <ogr_api.h>
+
 using namespace osgEarth;
 using namespace OpenThreads;
 

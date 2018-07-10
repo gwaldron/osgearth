@@ -18,6 +18,8 @@
  */
 #include <osgEarthUtil/LatLongFormatter>
 
+#include <stdio.h>
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 

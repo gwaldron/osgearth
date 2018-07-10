@@ -23,6 +23,7 @@
 #include <sstream>
 #include <iostream>
 
+#include <stdlib.h>
 
 #define OSGEARTH_INIT_SINGLETON_PROXY(ProxyName, Func) static struct ProxyName{ ProxyName() { Func; } } s_##ProxyName;
 

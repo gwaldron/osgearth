@@ -20,6 +20,8 @@
 #include <osgEarth/StringUtils>
 #include <cctype>
 
+#include <cstring>
+
 using namespace osgEarth;
 
 StringTokenizer::StringTokenizer( const std::string& delims, const std::string& quotes ) :

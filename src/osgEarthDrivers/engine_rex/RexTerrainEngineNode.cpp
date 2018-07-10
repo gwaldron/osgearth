@@ -583,7 +583,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         TerrainCuller culler(cv, this->getEngineContext());
 
         // Prepare the culler with the set of renderable layers:
-        culler.setup(_mapFrame, _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
+        culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings(), _selectionInfo);
 
         // Assemble the terrain drawables:
         _terrain->accept(culler);

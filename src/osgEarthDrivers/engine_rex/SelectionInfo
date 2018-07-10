@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_SELECTION_INFO 1
 
 #include "Common"
+#include <osg/NodeVisitor>
 #include <osgEarth/Profile>
 #include <vector>
 
@@ -29,7 +30,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     struct VisParameters
     {
         double _visibilityRange;
-        double _visibilityRange2;
         double _fMorphStart;
         double _fMorphEnd;
     };
@@ -62,7 +62,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // LOD at which morphing should start
         static unsigned lodForMorphing(bool isProjected);
 
+        // Visibility interface for a specific LOD
         VisParameters visParameters(unsigned lod) const;
+
+        //! Scale factor for range calculations. This defaults to 1.0 but will change
+        //! if the LOD scale is set or if the nv.getDistanceToViewPoint modifies its
+        //! return value in any way.
+        float computeRangeScale(osg::NodeVisitor* nv) const;
+
     private:
         unsigned                        _numLods;
         std::pair<unsigned, unsigned>   _uiGridDimensions; 

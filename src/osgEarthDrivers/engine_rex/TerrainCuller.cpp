@@ -19,6 +19,7 @@
 #include "TerrainCuller"
 #include "TileNode"
 #include "SurfaceNode"
+#include "SelectionInfo"
 
 #define LC "[TerrainCuller] "
 
@@ -44,22 +45,25 @@ _numberChildrenCreated(0)
     pushViewport(_cv->getViewport());
     pushProjectionMatrix(_cv->getProjectionMatrix());
     pushModelViewMatrix(_cv->getModelViewMatrix(), _cv->getCurrentCamera()->getReferenceFrame());
+    setLODScale(_cv->getLODScale());
     _camera = _cv->getCurrentCamera();
+    _rangeScale = 1.0f;
 }
 
 void
-TerrainCuller::setup(const MapFrame& frame, LayerExtentVector& layerExtents, const RenderBindings& bindings)
+TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings, const SelectionInfo& si)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;
     _terrain.setup(frame, bindings, frameNum, _cv);
+    _rangeScale = si.computeRangeScale(this);
 }
 
 float
 TerrainCuller::getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const
 {
-    if (withLODScale) return (pos-getViewPointLocal()).length()*getLODScale();
-    else return (pos-getViewPointLocal()).length();
+   // pass through, in case developer has overridden the method in the prototype CV
+   return _cv->getDistanceToViewPoint(pos, withLODScale);
 }
 
 DrawTileCommand*

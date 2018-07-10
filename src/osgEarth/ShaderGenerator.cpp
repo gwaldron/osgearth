@@ -43,6 +43,8 @@
 #include <osgText/Text>
 #include <osgSim/LightPointNode>
 
+#include <osg/ValueObject>
+
 #define LC "[ShaderGenerator] "
 
 #define SHADERGEN_PL_EXTENSION "osgearth_shadergen"

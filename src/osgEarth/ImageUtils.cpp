@@ -23,6 +23,8 @@
 #include <osgEarth/Random>
 #include <osgDB/Registry>
 
+#include <osg/ValueObject>
+
 #define LC "[ImageUtils] "
 
 

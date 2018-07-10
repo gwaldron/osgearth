@@ -24,6 +24,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/BboxDrawable>
+#include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarth/Registry>
@@ -32,6 +33,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/Lighting>
+#include <osgEarth/Shaders>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -41,10 +43,15 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 
 //-------------------------------------------------------------------
+
+osg::ref_ptr<osg::StateSet> LabelNode::_geodeStateSet;
+osg::ref_ptr<osg::StateSet> LabelNode::_textStateSet;
+
 
 LabelNode::LabelNode(MapNode*            mapNode,
                      const GeoPoint&     position,
@@ -115,25 +122,51 @@ _followFixedCourse(false)
 }
 
 void
+LabelNode::setupState()
+{
+    if (!_geodeStateSet.valid())
+    {
+        static Threading::Mutex s_mutex;
+        s_mutex.lock();
+        if (!_geodeStateSet.valid())
+        {
+            _geodeStateSet = new osg::StateSet();
+
+            // draw in the screen-space bin
+            ScreenSpaceLayout::activate(_geodeStateSet.get());
+
+            // completely disable depth buffer
+            _geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
+
+            // Disable lighting for place nodes by default
+            _geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
+            
+
+            _textStateSet = new osg::StateSet();
+            TextSymbolizer::installShaders(_textStateSet.get());
+        }
+        s_mutex.unlock();
+    }
+}
+
+void
 LabelNode::init( const Style& style )
 {
-    osg::StateSet* ss = this->getOrCreateStateSet();
+    // Render this node in screen space
+    //ScreenSpaceLayout::activate(this->getOrCreateStateSet());
 
-    ScreenSpaceLayout::activate(ss);
-    
-    // Disable lighting for place nodes by default
-    ss->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
+    // Create and apply the common LabelNode stateset:
+    setupState();
 
     _geode = new osg::Geode();
+    _geode->setCullingActive(false);
+    _geode->setStateSet(_geodeStateSet.get());
 
     // ensure that (0,0,0) is the bounding sphere control/center point.
     // useful for things like horizon culling.
     _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
 
     getPositionAttitudeTransform()->addChild( _geode.get() );
-
-    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
-    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );    
 
     setStyle( style );
 }
@@ -162,7 +195,7 @@ LabelNode::setText( const std::string& text )
 
             d->setText(text, textEncoding);
 
-            d->dirtyDisplayList();
+            //d->dirtyDisplayList();
             _text = text;
             return;
         }
@@ -214,18 +247,10 @@ LabelNode::setStyle( const Style& style )
         _geode->addDrawable(bboxGeom);
     }
 
+    text->setStateSet(_textStateSet.get());
     _geode->addDrawable(text);
-    _geode->setCullingActive(false);
-
-    // label lighting is off by default
-    setDefaultLighting( false );
 
     applyStyle( _style );
-
-    Registry::shaderGenerator().run(
-        this,
-        "osgEarth.LabelNode",
-        Registry::stateSetCache() );
 
     updateLayoutData();
     dirty();

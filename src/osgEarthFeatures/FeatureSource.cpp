@@ -98,12 +98,16 @@ FeatureSourceOptions::getConfig() const
 
 //------------------------------------------------------------------------
 
-FeatureSource::FeatureSource(const ConfigOptions&  options,
-                             const osgDB::Options* readOptions) :
-_options( options )
+
+FeatureSource::FeatureSource()
 {    
-    _readOptions  = readOptions;
-    _uriContext  = URIContext( _readOptions.get() );
+    //nop
+}
+
+FeatureSource::FeatureSource(const ConfigOptions&  options) :
+_options( options )
+{
+    //nop
 }
 
 FeatureSource::~FeatureSource()
@@ -111,12 +115,23 @@ FeatureSource::~FeatureSource()
     //nop
 }
 
+void
+FeatureSource::setReadOptions(const osgDB::Options* readOptions)
+{
+    _readOptions = readOptions;
+    _uriContext = URIContext(_readOptions.get());
+}
+
 const Status&
 FeatureSource::open(const osgDB::Options* readOptions)
 {
-    if ( readOptions )
-        _readOptions = readOptions;
-    
+    setReadOptions(readOptions);
+    return open();
+}
+
+const Status&
+FeatureSource::open()
+{    
     // Create and initialize the filters.
     for(unsigned i=0; i<_options.filters().size(); ++i)
     {
@@ -128,11 +143,11 @@ FeatureSource::open(const osgDB::Options* readOptions)
                 _filters = new FeatureFilterChain();
 
             _filters->push_back( filter );
-            filter->initialize( readOptions );
+            filter->initialize(_readOptions.get());
         }
     }
 
-    _status = initialize(readOptions);
+    _status = initialize(_readOptions.get());
     return _status;
 }
 

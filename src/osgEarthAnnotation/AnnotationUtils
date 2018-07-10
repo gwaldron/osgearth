@@ -29,7 +29,7 @@
 #include <osg/CullStack>
 #include <osg/Drawable>
 #include <osg/Geometry>
-#include <osgText/TextBase>
+#include <osgText/Text>
 #include <osgUtil/CullVisitor>
 
 namespace osgEarth { namespace Annotation
@@ -62,7 +62,7 @@ namespace osgEarth { namespace Annotation
          * of RIGHT_TOP, that means the text origin is at the upper-right corner of
          * the box.
          */
-        static osg::Drawable* createTextDrawable(
+        static osgText::Text* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
             const osg::BoundingBox& alignmentBox);

@@ -20,6 +20,8 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_SELECTION_INFO 1
 
 #include "Common"
+#include <osg/NodeVisitor>
+#include <osg/CullStack>
 #include <osgEarth/Profile>
 #include <vector>
 
@@ -32,6 +34,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         double _visibilityRange2;
         double _fMorphStart;
         double _fMorphEnd;
+
+        double getVisibilityRange(osg::NodeVisitor& nv, osg::CullStack& cs) const;
     };
 
     /**
@@ -55,7 +59,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // LOD at which morphing should start
         static unsigned getLODForMorphing(bool isProjected);
 
+        // Visibility interface for a specific LOD
         VisParameters visParameters(unsigned lod) const;
+
     private:
         unsigned                        _numLods;
         std::pair<unsigned, unsigned>   _uiGridDimensions; 

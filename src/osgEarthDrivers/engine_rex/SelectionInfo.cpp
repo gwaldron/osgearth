@@ -31,6 +31,17 @@ const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 0;
 const double   SelectionInfo::_fLodLowerBound   = 12.0;
 const double   SelectionInfo::_fMorphStartRatio = 0.66;
 
+double VisParameters::getVisibilityRange(osg::NodeVisitor& nv, osg::CullStack& cs) const
+{
+    const osg::Vec3 viewLocal = cs.getViewPointLocal();
+    osg::Vec3 viewVector = cs.getLookVectorLocal();
+    viewVector.normalize();
+    osg::Vec3 point = viewLocal + viewVector*_visibilityRange;
+
+    // ignore the LOD scale here.
+    return nv.getDistanceToViewPoint(point, false);
+}
+
 unsigned SelectionInfo::getLODForMorphing(bool isProjected)
 {
     return (isProjected) ? 0 : _uiLODForMorphingRoundEarth;

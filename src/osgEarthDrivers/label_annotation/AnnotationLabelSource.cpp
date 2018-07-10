@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/StateSetCache>
 #include <osgDB/FileNameUtils>
 #include <osgUtil/Optimizer>
 
@@ -166,6 +167,7 @@ public:
         GeoPoint point(feature->getSRS(), center.x(), center.y(), center.z(), mode);        
 
         PlaceNode* node = new PlaceNode(0L, point, style, context.getDBOptions());
+        //LabelNode* node = new LabelNode(0L, point, style);
         
         if ( !priorityExpr.empty() )
         {

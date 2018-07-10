@@ -354,12 +354,19 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     }
     else
     {
-        float range = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
+        // simulate a focal point so we can call getDistanceToViewPoint() to get the
+        // actual visibility range to use. We do this so that you can still override
+        // getDistanceToViewPoint() and get a correct result.
+        float range = selectionInfo.visParameters(currLOD+1).getVisibilityRange(*culler, *culler);
+        float range2 = range * range;
+
+        //float range2 = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
+
         if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
         {
             return _surface->anyChildBoxIntersectsSphere(
                 culler->getViewPointLocal(), 
-                range,
+                range2,
                 culler->getLODScale());
         }
     }                 

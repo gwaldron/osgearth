@@ -23,6 +23,9 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/GeoCommon>
 
+// not needed for GL Core. Only for GL_R32F
+#include <osg/Texture>
+
 using namespace osgEarth;
 
 static bool

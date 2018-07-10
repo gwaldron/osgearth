@@ -25,6 +25,11 @@
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
+#include <osg/LineWidth>
+#include <osg/Point>
+#endif
+
 using namespace osgEarth;
 
 #define LC "[GLUtils] "

@@ -25,8 +25,14 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/MapNode>
+#include <osgUtil/CullVisitor>
 
 #define LC "[magnify] "
+
+// By default the magnifier uses OSG's LOD scale. Uncomment the following
+// line to test a different approach that overrides osgUtil::CullVisitor::getDistanceToViewPoint.
+// (This was a customer-specific request -gw)
+//#define USE_CUSTOM_CULL_VISITOR_APPROACH
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -41,28 +47,27 @@ int usage(const char* name)
     return 0;
 }
 
+// Application-wide data
 struct App
 {
     osgViewer::View* _mainView;
     osgViewer::View* _magView;
     ui::HSliderControl* _magSlider;
 
-    float computeLODScaleFromMag(float mag)
+    float computeRangeScale()
     {
-        return 1.0f/exp2(mag);
+        return 1.0f/_magSlider->getValue();
     }
 
     void apply()
     {
-        //const float base_vfov = 30.0f;
-
         double vfov, ar, n, f;
         _mainView->getCamera()->getProjectionMatrixAsPerspective(vfov, ar, n, f);
+        _magView->getCamera()->setProjectionMatrixAsPerspective(vfov * computeRangeScale(), ar, n, f);
 
-        float lodScale = computeLODScaleFromMag(_magSlider->getValue());
-
-        _magView->getCamera()->setProjectionMatrixAsPerspective(vfov * lodScale, ar, n, f);
-        _magView->getCamera()->setLODScale(lodScale);
+#ifndef USE_CUSTOM_CULL_VISITOR_APPROACH
+        _magView->getCamera()->setLODScale(computeRangeScale());
+#endif
     }
 };
 
@@ -83,47 +88,93 @@ ui::Container* createUI(App& app)
 
     ui::HBox* sliderBox = box->addControl(new ui::HBox());
     sliderBox->addControl(new ui::LabelControl("Magnification:"));
-    app._magSlider = sliderBox->addControl(new ui::HSliderControl(1.0f, 10.0f, 1.0f, new Apply(app)));
+    app._magSlider = sliderBox->addControl(new ui::HSliderControl(1.0f, 100.0f, 1.0f, new Apply(app)));
     app._magSlider->setWidth(300.0f);
     sliderBox->addControl(new ui::LabelControl(app._magSlider));
 
     return box;
 }
 
+#ifdef USE_CUSTOM_CULL_VISITOR_APPROACH
+//! Custom CullVisitor to test the getDistanceToViewPoint override approach.
+struct MyCullVisitor : public osgUtil::CullVisitor
+{
+    App& _app;
+
+    MyCullVisitor(App& app) : osgUtil::CullVisitor(), _app(app)
+    {
+    }
+
+    MyCullVisitor(const MyCullVisitor& rhs) :
+        osgUtil::CullVisitor(rhs),
+        _app(rhs._app)
+    {
+    }
+
+    virtual osgUtil::CullVisitor* clone() const
+    { 
+        return new MyCullVisitor(*this);
+    }
+
+    virtual float getDistanceToViewPoint(const osg::Vec3& vec, bool useLODScale) const
+    {
+        // note: only apply the magFactor on the magnification camera!
+        osg::View* view = const_cast<MyCullVisitor*>(this)->getCurrentCamera()->getView();
+        float magFactor = view == _app._magView ? _app.computeRangeScale() : 1.0f;
+        return osgUtil::CullVisitor::getDistanceToViewPoint(vec, useLODScale) * magFactor;
+    }
+};
+#endif
+
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--help") )
         return usage(argv[0]);
+    
+    App app;
+
+#ifdef USE_CUSTOM_CULL_VISITOR_APPROACH
+    osgUtil::CullVisitor::prototype() = new MyCullVisitor(app);
+#endif
 
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel(osgViewer::CompositeViewer::SingleThreaded);
 
-    osgViewer::View* mainView = new osgViewer::View();   
-    mainView->setUpViewInWindow(10, 10, 800, 800);
-    mainView->setCameraManipulator(new EarthManipulator(arguments));
-    viewer.addView(mainView);
+    // main view lets the user control the scene
+    app._mainView = new osgViewer::View();   
+    app._mainView->setUpViewInWindow(10, 10, 800, 800);
+    app._mainView->setCameraManipulator(new EarthManipulator(arguments));
+    viewer.addView(app._mainView);
 
-    osgViewer::View* magView = new osgViewer::View();
-    magView->setUpViewInWindow(830, 10, 800, 800);
-    viewer.addView(magView);
+    // mag view shows the magnified main view, no controls
+    app._magView = new osgViewer::View();
+    app._magView->setUpViewInWindow(830, 10, 800, 800);
+    viewer.addView(app._magView);
 
+    // load the earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (!node) return usage(argv[0]);
-
-    mainView->setSceneData(node);
-    magView->setSceneData(node);
-
-    App app;
-    app._mainView = mainView;
-    app._magView = magView;
+    
+    // Add a UI to the main view:
+    ui::ControlCanvas* canvas = new ui::ControlCanvas();
     ui::Container* ui = createUI(app);
-    ui::ControlCanvas* canvas = ui::ControlCanvas::getOrCreate(mainView);
     canvas->addControl(ui);
+
+    osg::Group* uiGroup = new osg::Group();
+    uiGroup->addChild(node);
+    uiGroup->addChild(canvas);
+    app._mainView->setSceneData(uiGroup);
+    
+    // Just the map on the magnified view:
+    app._magView->setSceneData(node);
+
+    viewer.realize();
 
     while(!viewer.done())
     {
-        magView->getCamera()->setViewMatrix(mainView->getCamera()->getViewMatrix());
+        // sync magnified view to main view
+        app._magView->getCamera()->setViewMatrix(app._mainView->getCamera()->getViewMatrix());
         viewer.frame();
     }
     return 0;

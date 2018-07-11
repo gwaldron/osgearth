@@ -51,11 +51,46 @@ usage(const char* name)
 
 struct App
 {
+    App() {
+        _playing = false;
+    }
+
     osg::ref_ptr<PlaceNode> sunPos;
     osg::ref_ptr<PlaceNode> moonPos;
     SkyNode* sky;
+
+    void play() { _playing = true; }
+    void stop() { _playing = false; }
+
+    void tick() {
+        if (_playing) {
+            TimeStamp t = sky->getDateTime().asTimeStamp() + 1;
+            sky->setDateTime(DateTime(t));
+        }
+    }
+    
+    bool _playing;
 };
 
+struct Play : public ui::ControlEventHandler {
+    Play(App& app) : _app(app) { }
+    void onClick(ui::Control*) { _app.play(); }
+    App& _app;
+};
+
+struct Stop : public ui::ControlEventHandler {
+    Stop(App& app) : _app(app) { }
+    void onClick(ui::Control*) { _app.stop(); }
+    App& _app;
+};
+
+ui::Container* createUI(App& app)
+{
+    ui::HBox* vcr = new ui::HBox();
+    vcr->addControl(new ui::ButtonControl("Play", new Play(app)));
+    vcr->addControl(new ui::ButtonControl("Stop", new Stop(app)));
+    return vcr;
+}
 
 int
 main(int argc, char** argv)
@@ -114,6 +149,9 @@ main(int argc, char** argv)
 
         viewer.setSceneData( root );
 
+        ui::ControlCanvas* container = ui::ControlCanvas::getOrCreate(&viewer);
+        container->addChild(createUI(app));
+
         while(!viewer.done())
         {
             viewer.frame();
@@ -136,6 +174,8 @@ main(int argc, char** argv)
                 app.moonPos->setPosition( moonPos );
                 app.moonPos->setText( "Moon\n" + llf.format(moonPos) );
             }
+
+            app.tick();
         }
     }
     else

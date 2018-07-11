@@ -246,8 +246,8 @@ namespace osgEarth
         /** Adds or replaces a value as a child, but only if it is set */
         template<typename T>
         void updateIfSet( const std::string& key, const optional<T>& opt ) {
-            remove(key);
             if ( opt.isSet() ) {
+                remove(key);
                 add( key, osgEarth::toString<T>( opt.value() ) );
             }
         }
@@ -259,8 +259,8 @@ namespace osgEarth
         /** Adds or replaces a referenced object as a child, but only if it is set */
         template<typename T>
         void updateObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
-            remove(key);
             if ( opt.valid() ) {
+                remove(key);
                 Config conf = opt->getConfig();
                 conf.key() = key;
                 add( conf );

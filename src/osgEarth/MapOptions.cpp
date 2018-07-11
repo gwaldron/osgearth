@@ -51,6 +51,7 @@ Config
 MapOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
+    conf.key() = "map";
 
     conf.updateIfSet   ( "name",         _name );
     conf.setObj( "profile",      _profileOptions );

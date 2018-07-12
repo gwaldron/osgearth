@@ -31,6 +31,7 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Text>
 
 #include <osgText/Text>
 #include <osg/Depth>
@@ -107,7 +108,8 @@ AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
                                     const osg::BoundingBox& box)
 {
-    osgText::Text* t = new osgText::Text();
+    osgText::Text* t = new osgEarth::Text();
+    //osgText::Text* t = new osgText::Text();
 
     osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
     if ( symbol && symbol->encoding().isSet() )
@@ -228,8 +230,10 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 #endif        
     }
 
+#if OSG_VERSION_LESS_THAN(3,6,0)
     // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
     t->setStateSet(0L);
+#endif
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
     t->setShaderTechnique(osgText::ALL_FEATURES);

@@ -1079,7 +1079,7 @@ MGRSGraticule::rebuild()
         // Root of the text tree
         osg::Group* textTop = new osg::Group();
         osg::StateSet* textSS = textTop->getOrCreateStateSet();
-        TextSymbolizer::installShaders(textSS);
+        //TextSymbolizer::installShaders(textSS);
         top->addChild(textTop);
 
         // build the GZD feature set

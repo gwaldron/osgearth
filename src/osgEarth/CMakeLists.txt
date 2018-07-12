@@ -194,6 +194,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileNode
     TileKeyDataStore
     Tessellator
+    Text
     TileKey
     TileHandler
     TileRasterizer
@@ -358,6 +359,7 @@ set(TARGET_SRC
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp
     Tessellator.cpp
+    Text.cpp
     TextureBufferSerializer.cpp
     TileKey.cpp
     TileHandler.cpp

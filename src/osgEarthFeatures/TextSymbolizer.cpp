@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarth/Registry>
 #include <osgEarth/Shaders>
+#include <osgEarth/Lighting>
 #include <osgText/Text>
 
 
@@ -142,5 +143,6 @@ TextSymbolizer::installShaders(osg::StateSet* ss)
 #if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
         ss->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
 #endif
+        ss->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
     }
 }

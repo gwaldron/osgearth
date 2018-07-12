@@ -55,7 +55,7 @@ TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const Rend
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;
-    _terrain.setup(frame, bindings, frameNum, _cv);
+    _terrain.setup(map, bindings, frameNum, _cv);
     _rangeScale = si.computeRangeScale(this);
 }
 

@@ -18,14 +18,11 @@
  */
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/FilterContext>
-#include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
+#include <osgEarth/GLUtils>
 #include <osgEarth/Registry>
 #include <osg/MatrixTransform>
-#include <osg/Point>
-#include <osg/LineWidth>
-#include <osg/LineStipple>
 #include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
@@ -338,6 +335,6 @@ FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset,
     if ( point )
     {
         float size = std::max( 0.1f, *point->size() );
-        stateset->setAttributeAndModes(new osg::Point(size), 1);
+        GLUtils::setPointSize(stateset, size, 1);
     }
 }

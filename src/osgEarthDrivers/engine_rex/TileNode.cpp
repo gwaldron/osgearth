@@ -357,17 +357,16 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         // simulate a focal point so we can call getDistanceToViewPoint() to get the
         // actual visibility range to use. We do this so that you can still override
         // getDistanceToViewPoint() and get a correct result.
-        float range = selectionInfo.visParameters(currLOD+1).getVisibilityRange(*culler, *culler);
-        float range2 = range * range;
-
-        //float range2 = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
 
         if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
         {
+            float range = selectionInfo.visParameters(currLOD+1)._visibilityRange;
+            float effectiveRange = range / culler->getRangeScale();
+            float range2 = effectiveRange * effectiveRange;
+
             return _surface->anyChildBoxIntersectsSphere(
                 culler->getViewPointLocal(), 
-                range2,
-                culler->getLODScale());
+                range2);
         }
     }                 
     return false;
@@ -998,8 +997,9 @@ TileNode::load(TerrainCuller* culler)
 
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
 
-    // dist priority uis in the range [0..1]
-    float distPriority = 1.0 - distance/si.visParameters(0)._visibilityRange;
+    // dist priority is in the range [0..1]
+    float maxRange = si.visParameters(0)._visibilityRange * culler->getRangeScale();
+    float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority
     // (because of the biggest range), and second by distance.

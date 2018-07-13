@@ -726,6 +726,13 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 {
     initialize();
 
+    // if we've already called dirty() that means we are editing a completed
+    // drawable and therefore need dynamic variance.
+    if (getNumPrimitiveSets() > 0u && getDataVariance() != DYNAMIC)
+    {
+        setDataVariance(DYNAMIC);
+    }
+
     unsigned size = _current->size();
     unsigned numVerts = getNumVerts();
     
@@ -743,7 +750,6 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
                     (*_current)[n] = vert;
-                _current->dirty();
 
                 // update next/previous verts:
                 if (numVerts == 1u)
@@ -763,10 +769,11 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                         (*_next)[rni+n] = vert;
                         (*_previous)[rpi+n] = vert;
                     }
-
-                    _next->dirty();
-                    _previous->dirty();
                 }
+                
+                _current->dirty();
+                _next->dirty();
+                _previous->dirty();
             }
 
             else if (_mode == GL_LINE_LOOP)
@@ -777,7 +784,6 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
                     (*_current)[n] = vert;
-                _current->dirty();
 
                 // update next/previous verts:
                 if (numVerts == 1u)
@@ -797,10 +803,11 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                         (*_next)[rni+n] = vert;
                         (*_previous)[rpi+n] = vert;
                     }
-
-                    _next->dirty();
-                    _previous->dirty();
                 }
+                
+                _current->dirty();
+                _next->dirty();
+                _previous->dirty();
             }
 
             else if (_mode == GL_LINES)

@@ -24,7 +24,6 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/BboxDrawable>
-#include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarth/Registry>
@@ -43,14 +42,12 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 
 //-------------------------------------------------------------------
 
 osg::ref_ptr<osg::StateSet> LabelNode::_geodeStateSet;
-osg::ref_ptr<osg::StateSet> LabelNode::_textStateSet;
 
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -138,12 +135,8 @@ LabelNode::setupState()
             // completely disable depth buffer
             _geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
 
-            // Disable lighting for place nodes by default
-            _geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
-            
-
-            _textStateSet = new osg::StateSet();
-            TextSymbolizer::installShaders(_textStateSet.get());
+            // Disable lighting for place label bbox
+            _geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
         }
         s_mutex.unlock();
     }
@@ -152,9 +145,6 @@ LabelNode::setupState()
 void
 LabelNode::init( const Style& style )
 {
-    // Render this node in screen space
-    //ScreenSpaceLayout::activate(this->getOrCreateStateSet());
-
     // Create and apply the common LabelNode stateset:
     setupState();
 
@@ -195,7 +185,6 @@ LabelNode::setText( const std::string& text )
 
             d->setText(text, textEncoding);
 
-            //d->dirtyDisplayList();
             _text = text;
             return;
         }
@@ -247,7 +236,6 @@ LabelNode::setStyle( const Style& style )
         _geode->addDrawable(bboxGeom);
     }
 
-    text->setStateSet(_textStateSet.get());
     _geode->addDrawable(text);
 
     applyStyle( _style );

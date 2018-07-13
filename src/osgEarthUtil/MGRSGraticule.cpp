@@ -29,6 +29,7 @@
 #include <osgEarth/Endian>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Text>
 
 #include <osg/Depth>
 //#include <osgDB/WriteFile>
@@ -866,7 +867,8 @@ namespace
             {
                 const Feature* feature = f->get();
                 std::string sqid = feature->getString("sqid");
-                osgText::Text* drawable = symbolizer.create(sqid);
+                osgText::Text* drawable = new osgEarth::Text(sqid);
+                symbolizer.apply(drawable);
 #ifdef USE_SCREEN_COORDS
                 drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
 #else
@@ -964,9 +966,13 @@ namespace
                 textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
         
             TextSymbolizer symbolizer( textSym.get() );
-            osgText::Text* drawable = symbolizer.create(getName());
+            osgText::Text* drawable = new osgEarth::Text(getName());
+            symbolizer.apply(drawable);
+
 #ifdef USE_SCREEN_COORDS
             drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
+            //drawable->setPosition(osg::Vec3(0,0,0));
+            //drawable->setCharacterSize(36);
 #else
             drawable->setCharacterSizeMode(osgText::Text::OBJECT_COORDS);
             drawable->setCharacterSize(130000);
@@ -1062,7 +1068,7 @@ MGRSGraticule::rebuild()
         // Root of the text tree
         osg::Group* textTop = new osg::Group();
         osg::StateSet* textSS = textTop->getOrCreateStateSet();
-        TextSymbolizer::installShaders(textSS);
+        //TextSymbolizer::insta(textSS);
         top->addChild(textTop);
 
         // build the GZD feature set

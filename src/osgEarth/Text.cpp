@@ -189,7 +189,7 @@ Text::createStateSet()
 
 #if defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
     osg::DisplaySettings::ShaderHint shaderHint = osg::DisplaySettings::instance()->getShaderHint();
-    if (_shaderTechnique==NO_TEXT_SHADER && shaderHint==osg::DisplaySettings::SHADER_NONE)
+    if (_shaderTechnique==osgText::NO_TEXT_SHADER && shaderHint==osg::DisplaySettings::SHADER_NONE)
     {
         stateset->setTextureMode(0, GL_TEXTURE_2D, osg::StateAttribute::ON);
         return stateset.release();

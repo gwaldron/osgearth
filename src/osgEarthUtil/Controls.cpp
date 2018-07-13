@@ -23,7 +23,6 @@
 #include <osg/Depth>
 #include <osg/TextureRectangle>
 #include <osgGA/GUIEventHandler>
-#include <osgText/Text>
 #include <osgUtil/RenderBin>
 #include <osgUtil/Statistics>
 #include <osgEarthSymbology/Style>
@@ -39,6 +38,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Shaders>
+#include <osgEarth/Text>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -109,27 +109,6 @@ namespace
             ss = new osg::StateSet();
             VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
             vp->setInheritShaders(false);
-        }
-        return ss.get();
-    }
-
-    osg::StateSet* textStateSet()
-    {
-        static osg::ref_ptr<osg::StateSet> ss;
-        if (!ss.valid())
-        {
-            ss = new osg::StateSet();
-#if OSG_MIN_VERSION_REQUIRED(3,5,0)
-            // Load the SDF-compatible text shader program
-            VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
-            vp->setInheritShaders(false);
-            osgEarth::Shaders shaders;
-            shaders.load(vp, shaders.TextVertex);
-            shaders.load(vp, shaders.TextFragment);
-#else
-            // Fall back on no program
-            ss->setAttributeAndModes(new osg::Program, 0);
-#endif
         }
         return ss.get();
     }
@@ -770,11 +749,10 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
 namespace
 {
     // override osg Text to get at some of the internal properties
-    struct LabelText : public osgText::Text
+    struct LabelText : public osgEarth::Text
     {
-        LabelText() : osgText::Text()
+        LabelText() : osgEarth::Text()
         { 
-            setStateSet(textStateSet());
             setDataVariance(osg::Object::DYNAMIC); 
         }
         const osg::BoundingBox& getTextBB() const { return _textBB; }
@@ -823,7 +801,7 @@ _backdropType( osgText::Text::OUTLINE ),
 _backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 { 
-    setStateSet(textStateSet());
+    //setStateSet(textStateSet());
     setFont( Registry::instance()->getDefaultFont() );    
     setForeColor( foreColor );
     setBackColor( osg::Vec4f(0,0,0,0) );
@@ -968,9 +946,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         t->setAlignment( osgText::Text::LEFT_TOP ); 
         t->setColor( foreColor().value() );
 
-        // set up the font. When you do this, OSG automatically tries to put the text object
-        // in the transparent render bin. We do not want that, so we will set it back to
-        // INHERIT.
+        // set up the font.
         if ( _font.valid() )
             t->setFont( _font.get() );
 

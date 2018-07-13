@@ -49,6 +49,7 @@ set(TARGET_GLSL
     LineDrawable.glsl
     PhongLighting.vert.glsl
     PhongLighting.frag.glsl
+    PointDrawable.glsl
     Text.vert.glsl
     Text.frag.glsl
     Text_legacy.glsl
@@ -159,6 +160,7 @@ SET(LIB_PUBLIC_HEADERS
     PhongLightingEffect
     Picker
     PluginLoader
+    PointDrawable
     PrimitiveIntersector
     Profile
     Profiler
@@ -330,6 +332,7 @@ set(TARGET_SRC
     PagedNode.cpp
     PatchLayer.cpp
     PhongLightingEffect.cpp
+    PointDrawable.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Profiler.cpp

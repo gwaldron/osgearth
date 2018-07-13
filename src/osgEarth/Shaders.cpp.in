@@ -12,15 +12,15 @@ namespace osgEarth
 
         // Depth Offset
         DepthOffsetVertex = "DepthOffset.vert.glsl";
-       _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";
+        _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";
 
 
-       // Draping
-       DrapingVertex = "Draping.vert.glsl";
-       _sources[DrapingVertex] = "@Draping.vert.glsl@";
+        // Draping
+        DrapingVertex = "Draping.vert.glsl";
+        _sources[DrapingVertex] = "@Draping.vert.glsl@";
 
-       DrapingFragment = "Draping.frag.glsl";
-       _sources[DrapingFragment] = "@Draping.frag.glsl@";
+        DrapingFragment = "Draping.frag.glsl";
+        _sources[DrapingFragment] = "@Draping.frag.glsl@";
 
 
         // GPU Clamping
@@ -40,7 +40,11 @@ namespace osgEarth
 
         // LineDrawable
         LineDrawable = "LineDrawable.glsl";
-        _sources[LineDrawable] = "@LineDrawable.glsl@";        
+        _sources[LineDrawable] = "@LineDrawable.glsl@";    
+
+        // PointDrawable
+        PointDrawable = "PointDrawable.glsl";
+        _sources[PointDrawable] = "@PointDrawable.glsl@";          
 
         // PhongLightingEffect
         PhongLightingVertex = "PhongLighting.vert.glsl";

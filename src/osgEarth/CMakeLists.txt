@@ -51,6 +51,7 @@ set(TARGET_GLSL
     PhongLighting.frag.glsl
     Text.vert.glsl
     Text.frag.glsl
+    Text_legacy.glsl
     )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")

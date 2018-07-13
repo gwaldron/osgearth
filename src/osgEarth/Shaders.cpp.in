@@ -55,5 +55,8 @@ namespace osgEarth
 
 		TextFragment = "Text.frag.glsl";
 		_sources[TextFragment] = "@Text.frag.glsl@";
+
+        TextLegacy = "Text_legacy.glsl";
+        _sources[TextLegacy] = "@Text_legacy.glsl@";
     }
 };

@@ -38,7 +38,7 @@ namespace osgEarth
         std::string InstancingVertex;
         std::string LineDrawable;
         std::string PhongLightingVertex, PhongLightingFragment;
-        std::string TextVertex, TextFragment;
+        std::string TextVertex, TextFragment, TextLegacy;
 	};	
 
 } // namespace osgEarth

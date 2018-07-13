@@ -165,9 +165,7 @@ TextSymbolizer::apply(osgText::Text* drawable,
 
     drawable->setAlignment( align );
 
-    // gw: move these to AnnotationUtils?
     drawable->setAutoRotateToScreen(false);
-    drawable->setCullingActive(false);
     drawable->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     
     float size = _symbol->size().isSet() ? (float)(_symbol->size()->eval()) : 16.0f;    
@@ -197,33 +195,18 @@ TextSymbolizer::apply(osgText::Text* drawable,
 #endif        
     }
 
-#if OSG_VERSION_LESS_THAN(3,5,8)
-    // OSG 3.4.x adds a program on the drawable itself,
-    // so we remove it since we're using a VP on the font instead
-    //drawable->setStateSet(0L);
-#endif
-
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,8)
     drawable->setShaderTechnique(osgText::ALL_FEATURES);
 #endif
 
-    float resFactor = 2.0f;
-
 #if OSG_VERSION_LESS_THAN(3,5,8)
+    float resFactor = 2.0f;
     int res = nextPowerOf2((int)(size*resFactor));
     drawable->setFontResolution(res, res);
 #endif
     
     if ( _symbol->halo().isSet() )
     {
-        // never worked right -gw
-//#if OSG_VERSION_LESS_THAN(3,5,8)
-        //float offsetFactor = 1.0f / (resFactor*256.0f);
-        //drawable->setBackdropOffset(
-        //    (float)drawable->getFontWidth() * offsetFactor,
-        //    (float)drawable->getFontHeight() * offsetFactor);
-//#endif
-
         drawable->setBackdropColor( _symbol->halo()->color() );
 
         if ( _symbol->haloBackdropType().isSet() )
@@ -256,6 +239,7 @@ TextSymbolizer::apply(osgText::Text* drawable,
     {
         drawable->getStateSet()->setRenderBinToInherit();
     }
+    
 }
 
 void

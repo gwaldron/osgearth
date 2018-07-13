@@ -185,7 +185,6 @@ LabelNode::setText( const std::string& text )
 
             d->setText(text, textEncoding);
 
-            //d->dirtyDisplayList();
             _text = text;
             return;
         }

@@ -39,11 +39,12 @@ namespace osgEarth
         virtual osg::Object* clone(const osg::CopyOp& copyop) const { return new osgEarth::Text(*this,copyop); }
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const osgEarth::Text*>(obj)!=NULL; }
         virtual const char* libraryName() const { return "osgEarth"; }
+        
+        virtual void setFont(osg::ref_ptr<osgText::Font>); // <= OSG 3.5.7
 
     protected:
         virtual ~Text();
         virtual osg::StateSet* createStateSet(); // >= OSG 3.5.8
-        virtual void setFont(osg::ref_ptr<osgText::Font>); // <= OSG 3.5.7
     };
 }
 

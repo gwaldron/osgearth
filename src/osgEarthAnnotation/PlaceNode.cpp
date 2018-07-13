@@ -305,10 +305,6 @@ PlaceNode::init()
         _imageDrawable = AnnotationUtils::createImageGeometry(_image.get(), offset, 0, heading, scale);
         if (_imageDrawable)
         {
-            //osg::Group* imageGroup = new osg::Group();
-            //imageGroup->setStateSet(_imageStateSet.get());
-            //imageGroup->addChild(_imageDrawable);
-            //_geode->addChild(imageGroup);
             _imageDrawable->getOrCreateStateSet()->merge(*_imageStateSet.get());
             _geode->addChild(_imageDrawable);
             imageBox = osgEarth::Utils::getBoundingBox(_imageDrawable);

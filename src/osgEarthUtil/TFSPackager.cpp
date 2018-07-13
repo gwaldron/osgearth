@@ -21,13 +21,10 @@
 */
 #include <osgEarthUtil/TFSPackager>
 
-#include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 
-#include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/FeatureCursor>
 
-#include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 
 #define LC "[TFSPackager] "

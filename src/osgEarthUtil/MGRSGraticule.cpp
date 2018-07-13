@@ -17,42 +17,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/MGRSGraticule>
-#include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/UTMLabelingEngine>
 
-#include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>
-#include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TessellateOperator>
 
 #include <osgEarthAnnotation/FeatureNode>
 
 #include <osgEarth/Registry>
-#include <osgEarth/CullingUtils>
-#include <osgEarth/Utils>
 #include <osgEarth/PagedNode>
-#include <osgEarth/ShaderUtils>
 #include <osgEarth/Endian>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/GLUtils>
-#include <osgEarth/Shaders>
 #include <osgEarth/Text>
 
-#include <osg/BlendFunc>
-#include <osg/PagedLOD>
 #include <osg/Depth>
-#include <osg/LogicOp>
-#include <osg/MatrixTransform>
-#include <osg/ClipNode>
-#include <osg/Version>
-#include <osgDB/FileNameUtils>
-#include <osgDB/ReaderWriter>
 //#include <osgDB/WriteFile>
 
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
-#include <fstream>
-#include <sstream>
 
 #define LC "[MGRSGraticule] "
 
@@ -1085,7 +1068,7 @@ MGRSGraticule::rebuild()
         // Root of the text tree
         osg::Group* textTop = new osg::Group();
         osg::StateSet* textSS = textTop->getOrCreateStateSet();
-        //TextSymbolizer::installShaders(textSS);
+        //TextSymbolizer::insta(textSS);
         top->addChild(textTop);
 
         // build the GZD feature set

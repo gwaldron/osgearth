@@ -19,13 +19,7 @@
 #include <osgEarthUtil/FlatteningLayer>
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Map>
-#include <osgEarth/Progress>
-#include <osgEarth/Utils>
 #include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/FilterContext>
-#include <osgEarthSymbology/Query>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

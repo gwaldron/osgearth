@@ -20,11 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "GraticuleLabelingEngine"
-#include <osgEarth/GeoData>
 #include <osgEarth/EllipsoidIntersector>
-#include <osgEarth/TerrainEngineNode>
-#include <osg/CoordinateSystemNode>
-#include <osgEarthUtil/ClipSpace>
 
 #define LC "[GraticuleLabelingEngine] "
 

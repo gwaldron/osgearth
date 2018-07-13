@@ -18,7 +18,6 @@
  */
 #include <osgEarth/MaskSource>
 #include <osgEarth/Registry>
-#include <osg/Notify>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;

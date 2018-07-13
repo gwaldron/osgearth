@@ -1,14 +1,10 @@
 #include <osgEarthUtil/SimplePager> 
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
-#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
-#include <osgDB/Options>
-#include <osg/UserDataContainer>
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
-#include <osg/Geode>
 
 using namespace osgEarth::Util;
 

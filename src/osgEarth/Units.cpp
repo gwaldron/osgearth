@@ -19,9 +19,6 @@
 
 #include <osgEarth/Units>
 #include <osgEarth/Registry>
-#include <osg/Math>
-#include <algorithm>
-#include <cctype>
 
 using namespace osgEarth;
 

@@ -20,9 +20,6 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderLoader>
-#include <osgEarth/SceneGraphCallback>
-#include <osgDB/Registry>
-#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 

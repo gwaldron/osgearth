@@ -17,10 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/MGRSFormatter>
-#include <iomanip>
-#include <sstream>
-#include <cstdio>
-#include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

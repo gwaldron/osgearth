@@ -17,11 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/TerrainTileModelFactory>
-#include <osgEarth/Registry>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
-#include <osgEarth/PatchLayer>
-#include <osgEarth/MapOptions>
 #include <osgEarth/Map>
 
 #include <osg/Texture2D>

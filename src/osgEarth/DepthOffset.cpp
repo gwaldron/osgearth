@@ -17,16 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/DepthOffset>
-#include <osgEarth/StringUtils>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 
-#include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Depth>
 

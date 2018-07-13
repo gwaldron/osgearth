@@ -19,14 +19,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Registry>
-#include <osgEarth/TileSource>
-#include <osgEarth/HeightFieldUtils>
-#include <osgEarth/URI>
-#include <osgEarth/ElevationPool>
 #include <osgEarth/Utils>
-#include <osgEarth/MapInfo>
-#include <osgEarth/TerrainLayer>
-#include <iterator>
 
 using namespace osgEarth;
 

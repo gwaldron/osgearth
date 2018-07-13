@@ -18,13 +18,8 @@
  */
 
 #include <osgEarth/XmlUtils>
-#include <osgEarth/StringUtils>
-#include <osg/Notify>
 
 #include "tinyxml.h"
-#include <algorithm>
-#include <sstream>
-#include <iomanip>
 
 
 using namespace osgEarth;

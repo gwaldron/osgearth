@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MapNodeOptions>
-#include <osg/Notify>
-#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 

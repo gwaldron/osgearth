@@ -22,21 +22,10 @@
 #include <osgEarthFeatures/TextSymbolizer>
 
 #include <osgEarth/Registry>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Text>
 
-#include <OpenThreads/Mutex>
-#include <OpenThreads/ScopedLock>
-#include <osg/PagedLOD>
-#include <osg/Depth>
-#include <osg/Program>
-#include <osg/ClipNode>
-#include <osg/ClipPlane>
-#include <osgDB/FileNameUtils>
 
 #define LC "[UTMGraticule] "
 

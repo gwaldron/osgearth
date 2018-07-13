@@ -22,9 +22,6 @@
 #include <osgEarth/PhongLightingEffect>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/StringUtils>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/Lighting>
 

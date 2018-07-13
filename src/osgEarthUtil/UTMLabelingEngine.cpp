@@ -20,9 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "UTMLabelingEngine"
-#include <osgEarth/GeoData>
-#include <osgEarth/TerrainEngineNode>
-#include <osg/CoordinateSystemNode>
 
 #define LC "[UTMLabelingEngine] "
 

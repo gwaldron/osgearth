@@ -20,16 +20,10 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/MemCache>
 #include <osgEarth/Progress>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReadFile>
-#include <osgDB/WriteFile>
 
 #define LC "[TileSource] "
 

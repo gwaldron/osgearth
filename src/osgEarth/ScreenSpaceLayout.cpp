@@ -20,19 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/ScreenSpaceLayout>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/Containers>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Extension>
 #include <osgEarthAnnotation/BboxDrawable>
-#include <osgUtil/RenderBin>
-#include <osgUtil/StateGraph>
 #include <osgText/Text>
-#include <osg/UserDataContainer>
-#include <osg/ValueObject>
-#include <set>
-#include <algorithm>
 
 #define LC "[ScreenSpaceLayout] "
 

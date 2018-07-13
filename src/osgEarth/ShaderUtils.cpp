@@ -18,16 +18,10 @@
  */
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/ShaderFactory>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/URI>
 #include <osgEarth/GLSLChunker>
-#include <osg/ComputeBoundsVisitor>
-#include <osg/LightSource>
-#include <osgDB/FileUtils>
-#include <list>
 
 using namespace osgEarth;
 

@@ -18,12 +18,10 @@
  */
 
 #include <osgEarth/VerticalDatum>
-#include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
-#include <osgDB/ReaderWriter>
 
 using namespace osgEarth;
 

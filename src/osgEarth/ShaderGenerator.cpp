@@ -22,37 +22,28 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/StringUtils>
 #include <osgEarth/URI>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
 
-#include <osg/Drawable>
-#include <osg/Geode>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osg/Texture1D>
-#include <osg/Texture2D>
 #include <osg/Texture3D>
 #include <osg/TextureRectangle>
-#include <osg/Texture2DMultisample>
 #include <osg/Texture2DArray>
-#include <osg/TextureBuffer>
 #include <osg/TextureCubeMap>
-#include <osg/TexEnv>
 #include <osg/TexGen>
 #include <osg/TexMat>
 #include <osg/ClipNode>
 #include <osg/PointSprite>
-#include <osg/ValueObject>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-#include <osgDB/ReadFile>
 #include <osgText/Text>
 #include <osgSim/LightPointNode>
+
+#include <osg/ValueObject>
 
 #define LC "[ShaderGenerator] "
 

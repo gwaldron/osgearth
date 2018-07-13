@@ -17,9 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MemCache>
-#include <osgEarth/StringUtils>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/Containers>
 
 using namespace osgEarth;
 

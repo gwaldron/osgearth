@@ -18,11 +18,6 @@
  */
 
 #include <osgEarth/ImageMosaic>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/HeightFieldUtils>
-#include <osg/Notify>
-#include <osg/Timer>
-#include <osg/io_utils>
 
 #define LC "[ImageMosaic] "
 

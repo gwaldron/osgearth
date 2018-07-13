@@ -18,13 +18,8 @@
  */
 
 #include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/LatLongFormatter>
 #include <osgEarth/MapNode>
-#include <osgEarth/Terrain>
 #include <osgEarth/TerrainEngineNode>
-#include <osgViewer/View>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

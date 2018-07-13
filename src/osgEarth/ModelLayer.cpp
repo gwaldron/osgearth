@@ -17,10 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ModelLayer>
-#include <osgEarth/Map>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/ShaderFactory>
 #include <osgEarth/GLUtils>
 #include <osg/Depth>
 

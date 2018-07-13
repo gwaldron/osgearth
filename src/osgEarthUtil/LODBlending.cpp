@@ -21,10 +21,7 @@
 */
 #include <osgEarthUtil/LODBlending>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 
 #define LC "[LODBlending] "

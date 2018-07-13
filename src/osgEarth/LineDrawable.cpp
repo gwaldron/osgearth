@@ -18,27 +18,18 @@
  */
 #include <osgEarth/LineDrawable>
 #include <osgEarth/Shaders>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/StateSetCache>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/GLUtils>
 #include <osgEarth/CullingUtils>
 
-#include <osg/Depth>
-#include <osg/CullFace>
 #include <osg/LineStipple>
 #include <osg/LineWidth>
-#include <osg/TemplatePrimitiveFunctor>
 #include <osgUtil/Optimizer>
 
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
-#include <stack>
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE

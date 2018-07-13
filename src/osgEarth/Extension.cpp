@@ -18,8 +18,6 @@
  */
 #include <osgEarth/Extension>
 #include <osgEarth/Registry>
-#include <osgDB/Registry>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 

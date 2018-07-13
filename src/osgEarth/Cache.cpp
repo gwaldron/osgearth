@@ -18,14 +18,8 @@
  */
 #include <osgEarth/Cache>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
 
-#include <osg/UserDataContainer>
-#include <osgDB/FileNameUtils>
-#include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
-#include <osgDB/Registry>
-#include <osgDB/ReaderWriter>
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;

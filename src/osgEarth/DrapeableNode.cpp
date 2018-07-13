@@ -19,11 +19,8 @@
 
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingCullSet>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/TerrainEngineNode>
 
 #define LC "[DrapeableNode] "
 
@@ -105,9 +102,6 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
 #undef  LC
 #define LC "[DrapeableNode Serializer] "
 
-#include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
 namespace osgEarth { namespace Serializers { namespace DrapeableNode
 {

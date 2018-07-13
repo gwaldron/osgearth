@@ -23,7 +23,6 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 
-#include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -19,20 +19,9 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/VirtualProgram>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/GeoData>
 #include <osgEarth/Utils>
-#include <osg/ClusterCullingCallback>
-#include <osg/PrimitiveSet>
-#include <osg/Geode>
 #include <osg/TemplatePrimitiveFunctor>
-#include <osgGA/GUIActionAdapter>
-#include <osgUtil/CullVisitor>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
 using namespace osgEarth;
 

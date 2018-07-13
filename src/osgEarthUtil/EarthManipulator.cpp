@@ -17,18 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarth/MapNode>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/GeoMath>
 #include <osgEarth/TerrainEngineNode>
-#include <osg/Quat>
-#include <osg/Notify>
-#include <osg/MatrixTransform>
-#include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
-#include <iomanip>
 
-#include <osg/io_utils>
 
 #define LC "[EarthManip] "
 

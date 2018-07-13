@@ -17,11 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationPool>
-#include <osgEarth/TileKey>
 #include <osgEarth/Map>
 #include <osgEarth/Metrics>
-#include <osgEarth/Registry>
-#include <osg/Shape>
 
 using namespace osgEarth;
 

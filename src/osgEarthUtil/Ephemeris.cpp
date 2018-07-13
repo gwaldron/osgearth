@@ -20,8 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Ephemeris>
-#include <osg/CoordinateSystemNode>
-#include <sstream>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

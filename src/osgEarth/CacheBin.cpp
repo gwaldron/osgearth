@@ -17,17 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/CacheBin>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Cache>
 
-#include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
-#include <osg/NodeVisitor>
-#include <osg/Texture>
-#include <osg/Image>
 #include <osg/TextureBuffer>
 
 using namespace osgEarth;

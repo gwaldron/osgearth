@@ -20,21 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/OverlayDecorator>
-#include <osgEarth/DrapingTechnique>
-#include <osgEarth/MapInfo>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
-#include <osg/ComputeBoundsVisitor>
 #include <osg/ShapeDrawable>
-#include <osgShadow/ConvexPolyhedron>
-#include <osgUtil/LineSegmentIntersector>
 
-#include <iomanip>
-#include <stack>
 
 #define LC "[OverlayDecorator] "
 

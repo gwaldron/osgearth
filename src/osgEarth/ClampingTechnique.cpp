@@ -23,19 +23,11 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/MapNode>
-#include <osgEarth/Utils>
 #include <osgEarth/Shaders>
-#include <osgEarth/Clamping>
 
 #include <osg/Depth>
 #include <osg/PolygonMode>
 #include <osg/Texture2D>
-#include <osg/Uniform>
-#include <osg/ValueObject>
-#include <osg/Timer>
-#include <osgDB/WriteFile>
 
 #define LC "[ClampingTechnique] "
 

@@ -24,10 +24,10 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
+#include <osgEarthTriton/TritonCallback>
 
 namespace osgEarth { namespace Triton
 {
-    class Callback;
 
     /**
      * Serializable options for initializing the TritonLayer.

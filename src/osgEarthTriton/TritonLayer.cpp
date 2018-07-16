@@ -187,17 +187,19 @@ namespace osgEarth { namespace Triton
 } }
 
 
-TritonLayer::TritonLayer() :
+TritonLayer::TritonLayer(Callback* userCallback) :
 osgEarth::VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
+_options(&_optionsConcrete),
+_callback(userCallback)
 {
     init();
 }
 
-TritonLayer::TritonLayer(const TritonLayerOptions& options) :
+TritonLayer::TritonLayer(const TritonLayerOptions& options, Callback* userCallback) :
 osgEarth::VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
-_optionsConcrete(options)
+_optionsConcrete(options),
+_callback(userCallback)
 {
     init();
 }
@@ -227,7 +229,7 @@ TritonLayer::init()
         lod->setMaxElevation(options().maxAltitude().get());
     }
 
-    _tritonNode = new TritonLayerNode(options(), 0L);
+    _tritonNode = new TritonLayerNode(options(), _callback.get());
     _root->addChild(_tritonNode.get());
 }
 
@@ -262,4 +264,3 @@ TritonLayer::removedFromMap(const osgEarth::Map* map)
         setMaskLayer(0L);
     }
 }
-

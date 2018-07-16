@@ -964,8 +964,9 @@ TileNode::load(TerrainCuller* culler)
 
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
 
-    // dist priority uis in the range [0..1]
-    float distPriority = 1.0 - distance/si.visParameters(0)._visibilityRange;
+    // dist priority is in the range [0..1]
+    float maxRange = si.visParameters(0)._visibilityRange * culler->getRangeScale();
+    float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority
     // (because of the biggest range), and second by distance.

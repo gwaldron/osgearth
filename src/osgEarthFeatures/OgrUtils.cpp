@@ -49,7 +49,7 @@ int IsFieldSet(OGRFeatureH handle, int i)
 void
 OgrUtils::populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )
 {
-    for( int v = numPoints-1; v >= 0; v-- ) // reverse winding.. we like ccw
+    for (unsigned int v = 0; v < numPoints; ++v)
     {
         double x=0, y=0, z=0;
         OGR_G_GetPoint( geomHandle, v, &x, &y, &z );

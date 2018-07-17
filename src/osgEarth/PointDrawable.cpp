@@ -22,6 +22,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/GLUtils>
 #include <osgEarth/CullingUtils>
+#include <osgUtil/GLObjectsVisitor>
 #include <osgDB/ObjectWrapper>
 #include <osg/PointSprite>
 
@@ -384,7 +385,18 @@ void
 PointDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
-    { 
+    {
+        // If GLObjectsVisitor is not accepted with good state set, then checkValidityOfModes() is not called
+        osgUtil::GLObjectsVisitor* glov = dynamic_cast<osgUtil::GLObjectsVisitor*>(&nv);
+        if (glov && ((glov->getMode() & osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES) != 0))
+        {
+            osg::ref_ptr<osg::StateSet> oldSs = getStateSet();
+            setStateSet(_sharedStateSet.get());
+            nv.apply(*this);
+            setStateSet(oldSs.get());
+            return;
+        }
+
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         nv.pushOntoNodePath(this);

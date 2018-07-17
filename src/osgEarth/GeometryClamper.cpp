@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/GeometryClamper>
-
-
 #include <osg/Geometry>
 
 #define LC "[GeometryClamper] "
@@ -29,11 +27,12 @@ using namespace osgEarth;
 
 //-----------------------------------------------------------------------
 
-GeometryClamper::GeometryClamper() :
+GeometryClamper::GeometryClamper(LocalData& localData) :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-_preserveZ      ( false ),
-_scale          ( 1.0f ),
-_offset         ( 0.0f )
+_localData(localData),
+_preserveZ( false ),
+_scale( 1.0f ),
+_offset( 0.0f )
 {
     this->setNodeMaskOverride( ~0 );
     _lsi = new osgUtil::LineSegmentIntersector(osg::Vec3d(0,0,0), osg::Vec3d(0,0,0));
@@ -77,26 +76,19 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
     bool geomDirty = false;
     osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
-    osg::FloatArray* zOffsets = 0L;
+
+    osg::ref_ptr<osg::FloatArray>& zOffsets = _localData[verts];
 
     // if preserve-Z is on, check for our elevations array. Create it if is doesn't
     // already exist.
     bool buildZOffsets = false;
     if ( _preserveZ )
     {
-        osg::UserDataContainer* udc = geom->getOrCreateUserDataContainer();
-        unsigned n = udc->getUserObjectIndex( ZOFFSETS_NAME );
-        if ( n < udc->getNumUserObjects() )
-        {
-            zOffsets = dynamic_cast<osg::FloatArray*>(udc->getUserObject(n));
-        }
-
-        else
+        if (!zOffsets.valid() || zOffsets->size() != verts->size())
         {
             zOffsets = new osg::FloatArray();
             zOffsets->setName( ZOFFSETS_NAME );
             zOffsets->reserve( verts->size() );
-            udc->addUserObject( zOffsets );
             buildZOffsets = true;
         }
     }
@@ -119,7 +111,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
                 if ( buildZOffsets )
                 {
-                    zOffsets->push_back( hae ); //(*verts)[k].z() );
+                    zOffsets->push_back( hae );
                 }
 
                 if ( _scale != 1.0 )

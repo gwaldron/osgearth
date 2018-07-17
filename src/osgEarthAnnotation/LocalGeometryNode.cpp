@@ -131,6 +131,8 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
         osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), getStyle(), FilterContext(session.get()) );
         if ( node.valid() )
         {
+            _clamperData.clear();
+
             node = AnnotationUtils::installOverlayParent( node.get(), getStyle() );
 
             getPositionAttitudeTransform()->addChild( node.get() );
@@ -138,7 +140,7 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
             applyRenderSymbology( getStyle() );
 
             applyAltitudeSymbology( getStyle() );
-        }
+        }        
     }
 }
 
@@ -205,8 +207,13 @@ LocalGeometryNode::applyAltitudeSymbology(const Style& style)
 
             else if ( alt->binding() == alt->BINDING_VERTEX )
             {
-                // per vertex clamping? disable the GeoTransform's clamping and take over.
+                // per vertex clamping? disable the GeoTransform's clamping, reset
+                // the altitude to zero, and take over.
                 getGeoTransform()->setAutoRecomputeHeights( false );
+                GeoPoint p = getGeoTransform()->getPosition();
+                p.z() = 0.0;
+                p.altitudeMode() = ALTMODE_ABSOLUTE;
+                getGeoTransform()->setPosition(p);
 
                 if ( !_clampCallback.valid() )
                 {
@@ -224,6 +231,10 @@ LocalGeometryNode::applyAltitudeSymbology(const Style& style)
                     _clampRelative = true;
                     getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
                 }
+
+                // Data variance to dynamic for per-vertex clamping
+                SetDataVarianceVisitor sdv(osg::Object::DYNAMIC);
+                this->accept(sdv);
             }
         }
         dirty();
@@ -272,12 +283,11 @@ LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
 {
     if (terrain && graph)
     {
-        GeometryClamper clamper;
+        GeometryClamper clamper(_clamperData);
 
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
         clamper.setPreserveZ( _clampRelative );
-        //clamper.setOffset( getPosition().alt() );
 
         this->accept( clamper );
 
@@ -292,7 +302,9 @@ LocalGeometryNode::traverse(osg::NodeVisitor& nv)
     {
         osg::ref_ptr<Terrain> terrain = getGeoTransform()->getTerrain();
         if (terrain.valid())
+        {
             clamp(terrain->getGraph(), terrain.get());
+        }
 
         ADJUST_UPDATE_TRAV_COUNT(this, -1);
         _clampDirty = false;

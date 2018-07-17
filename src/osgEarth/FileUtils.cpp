@@ -22,6 +22,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+#include <osgDB/ConvertUTF>
 #include <stack>
 
 #include <errno.h> 

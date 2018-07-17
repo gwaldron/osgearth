@@ -186,11 +186,13 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     }
     geom->setVertexArray(verts);
 
-    osg::Vec2Array* tcoords = new osg::Vec2Array(4);
-    (*tcoords)[0].set(0, 0);
-    (*tcoords)[1].set(1, 0);
-    (*tcoords)[2].set(1, 1);
-    (*tcoords)[3].set(0, 1);
+    bool flip = image->getOrigin() == osg::Image::TOP_LEFT;
+    
+    osg::Vec2Array* tcoords = new osg::Vec2Array(4);    
+    (*tcoords)[0].set(0.0, flip? 1.0: 0.0);
+    (*tcoords)[1].set(1.0, flip? 1.0: 0.0);
+    (*tcoords)[2].set(1.0, flip? 0.0: 1.0);
+    (*tcoords)[3].set(0.0, flip? 0.0: 1.0);
     geom->setTexCoordArray(textureUnit,tcoords);
 
     osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);

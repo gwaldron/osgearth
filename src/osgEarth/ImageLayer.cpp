@@ -17,22 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ColorFilter>
-#include <osgEarth/TileSource>
 #include <osgEarth/ImageMosaic>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Progress>
-#include <osgEarth/URI>
-#include <osgEarth/MemCache>
-#include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
-#include <osg/Version>
-#include <osgDB/WriteFile>
-#include <memory.h>
-#include <limits.h>
 
 using namespace osgEarth;
 using namespace OpenThreads;

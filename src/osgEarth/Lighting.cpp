@@ -20,11 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Lighting>
-#include <osg/Program>
 #include <osgUtil/CullVisitor>
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GLUtils>
 

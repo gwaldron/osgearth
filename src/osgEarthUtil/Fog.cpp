@@ -23,9 +23,6 @@
 #include <osg/Fog>
 #include <osgEarthUtil/Shaders>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/TerrainEngineNode>
 
 #define LC "[Fog] "
 

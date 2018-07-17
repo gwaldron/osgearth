@@ -18,27 +18,18 @@
  */
 #include <osgEarth/LineDrawable>
 #include <osgEarth/Shaders>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/StateSetCache>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/GLUtils>
 #include <osgEarth/CullingUtils>
 
-#include <osg/Depth>
-#include <osg/CullFace>
 #include <osg/LineStipple>
 #include <osg/LineWidth>
-#include <osg/TemplatePrimitiveFunctor>
 #include <osgUtil/Optimizer>
 
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
-#include <stack>
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE
@@ -735,6 +726,13 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 {
     initialize();
 
+    // if we've already called dirty() that means we are editing a completed
+    // drawable and therefore need dynamic variance.
+    if (getNumPrimitiveSets() > 0u && getDataVariance() != DYNAMIC)
+    {
+        setDataVariance(DYNAMIC);
+    }
+
     unsigned size = _current->size();
     unsigned numVerts = getNumVerts();
     
@@ -752,7 +750,6 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
                     (*_current)[n] = vert;
-                _current->dirty();
 
                 // update next/previous verts:
                 if (numVerts == 1u)
@@ -772,10 +769,11 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                         (*_next)[rni+n] = vert;
                         (*_previous)[rpi+n] = vert;
                     }
-
-                    _next->dirty();
-                    _previous->dirty();
                 }
+                
+                _current->dirty();
+                _next->dirty();
+                _previous->dirty();
             }
 
             else if (_mode == GL_LINE_LOOP)
@@ -786,7 +784,6 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
                     (*_current)[n] = vert;
-                _current->dirty();
 
                 // update next/previous verts:
                 if (numVerts == 1u)
@@ -806,10 +803,11 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                         (*_next)[rni+n] = vert;
                         (*_previous)[rpi+n] = vert;
                     }
-
-                    _next->dirty();
-                    _previous->dirty();
                 }
+                
+                _current->dirty();
+                _next->dirty();
+                _previous->dirty();
             }
 
             else if (_mode == GL_LINES)

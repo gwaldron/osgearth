@@ -18,16 +18,12 @@
  */
 #include <osgEarth/Notify>
 
-#include <osgEarth/Notify>
 #include <osg/ApplicationUsage>
 #include <osg/ref_ptr>
-#include <string>
-#include <stdlib.h>
-#include <stdio.h>
 #include <sstream>
 #include <iostream>
 
-#include <ctype.h>
+#include <stdlib.h>
 
 #define OSGEARTH_INIT_SINGLETON_PROXY(ProxyName, Func) static struct ProxyName{ ProxyName() { Func; } } s_##ProxyName;
 

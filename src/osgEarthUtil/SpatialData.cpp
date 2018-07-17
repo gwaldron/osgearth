@@ -20,11 +20,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <osg/PolygonOffset>
-#include <osg/Polytope>
-#include <osg/Geometry>
 #include <osg/Depth>
 #include <osgText/Text>
-#include <sstream>
 
 #define LC "[GeoGraph] "
 

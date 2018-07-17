@@ -21,39 +21,40 @@
 #define OSGEARTHFEATURES_TEXT_SYMBOLIZER_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/TextSymbol>
-
 #include <osgText/Text>
+#include <osg/BoundingBox>
 
 namespace osgEarth { namespace Features
 {
+    class Feature;
+    class FilterContext;
+
     using namespace osgEarth::Symbology;
 
     /**
-     * Utilities that use a TextSymbol to create OSG text objects.
+     * Applies the TextSymbol to a Text object.
      */
     class OSGEARTHFEATURES_EXPORT TextSymbolizer
     {
     public:
-        TextSymbolizer( const TextSymbol* symbol );
+        //! Construct a new symbolizer
+        TextSymbolizer(const TextSymbol* symbol);
 
-        virtual ~TextSymbolizer() { }
+        //! Translate the symbol's encoding to an OSG enum
+        osgText::String::Encoding getEncoding() const;
 
-        /**
-         * Creates a drawable for the specified string.
-         */
-        osgText::Text* create(
-            Feature*             feature =0L,
-            const FilterContext* context =0L,
-            const std::string&   text    ="" ) const;
+        //! Apply this symbol to a text object
+        void apply(osgText::Text* text) const;
 
-        osgText::Text* create( const std::string& text ) const {
-            return create(0L, 0L, text);
-        }
-
-        static void installShaders(osg::StateSet*);
+        //! Apply this symbol to a text object, using the optional
+        //! feature/context to evaluate expression fields. The optional
+        //! bounding box can be used for alignment support.
+        void apply(
+            osgText::Text* text,
+            Feature* feature,
+            const FilterContext* context,
+            const osg::BoundingBox* box) const;
 
     protected:
         osg::ref_ptr<const TextSymbol> _symbol;

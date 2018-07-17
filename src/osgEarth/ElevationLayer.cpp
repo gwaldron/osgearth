@@ -17,14 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationLayer>
-#include <osgEarth/VerticalDatum>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
-#include <osgEarth/MemCache>
 #include <osgEarth/Metrics>
-#include <osgEarth/ImageUtils>
-#include <osg/Version>
-#include <iterator>
 
 using namespace osgEarth;
 using namespace OpenThreads;

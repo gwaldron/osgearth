@@ -21,12 +21,7 @@
 */
 
 #include <osgEarth/CacheSeed>
-#include <osgEarth/CacheEstimator>
-#include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <OpenThreads/ScopedLock>
-#include <limits.h>
 
 #define LC "[CacheSeed] "
 

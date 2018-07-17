@@ -20,19 +20,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/DrapingTechnique>
-#include <osgEarth/DrapingCullSet>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
-#include <osgEarth/CullingUtils>
 #include <osgEarth/Lighting>
 
 #include <osg/BlendFunc>
-#include <osg/TexGen>
 #include <osg/Texture2D>
-#include <osg/Uniform>
 
 #define LC "[DrapingTechnique] "
 

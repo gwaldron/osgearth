@@ -21,13 +21,7 @@
 */
 #include <osgEarth/Clamping>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/Registry>
 #include <osgEarth/LineDrawable>
-#include <osg/Drawable>
-#include <osg/NodeVisitor>
-#include <osg/Geode>
-#include <osg/Geometry>
-#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 

@@ -162,6 +162,7 @@ FeatureNode::build()
         options.ignoreAltitudeSymbol() = true;
     }
 
+    _clamperData.clear();
 
     osg::Node* node = _compiled.get();
     if (_needsRebuild || !_compiled.valid() )
@@ -251,8 +252,12 @@ FeatureNode::build()
         {
             if ( ap.sceneClamping )
             {
-                getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-                clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
+                // Need dynamic data variance since scene clamping will change the verts
+                SetDataVarianceVisitor sdv(osg::Object::DYNAMIC);
+                this->accept(sdv);
+
+                getMapNode()->getTerrain()->addTerrainCallback(_clampCallback.get());
+                clamp(getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain());
             }
             else
             {
@@ -388,7 +393,7 @@ FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
         bool relative = alt && alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN && alt->technique() == alt->TECHNIQUE_SCENE;
         float offset = alt ? alt->verticalOffset()->eval() : 0.0f;
 
-        GeometryClamper clamper;
+        GeometryClamper clamper(_clamperData);
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
         clamper.setPreserveZ( relative );

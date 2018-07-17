@@ -49,6 +49,9 @@ namespace osgEarth
         //! Configure point rendering size (GL_POINT_SIZE)
         static void setPointSize(osg::StateSet* stateSet, float value, osg::StateAttribute::OverrideValue ov);
 
+        //! Configure point rounding/antialiasing (GL_POINT_SMOOTH)
+        static void setPointSmooth(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue ov);
+
         //! Removes the state associated with a GL capability, causing it to inherit from above.
         //! and if one of: GL_LIGHTING, GL_LINE_WIDTH, GL_LINE_STIPPLE, GL_LINE_SMOOTH, GL_POINT_SIZE
         static void remove(osg::StateSet* stateSet, GLenum cap);

@@ -24,7 +24,6 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/BboxDrawable>
-#include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
@@ -41,7 +40,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 namespace
@@ -63,7 +61,6 @@ namespace
 }
 
 osg::ref_ptr<osg::StateSet> PlaceNode::_geodeStateSet;
-osg::ref_ptr<osg::StateSet> PlaceNode::_textStateSet;
 osg::ref_ptr<osg::StateSet> PlaceNode::_imageStateSet;
 
 PlaceNode::PlaceNode() :
@@ -155,12 +152,6 @@ PlaceNode::setupState()
             // Disable lighting for place nodes by default
             _geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
             
-            // shared stateset for the text
-            {
-                _textStateSet = new osg::StateSet();
-                TextSymbolizer::installShaders(_textStateSet.get());
-            }
-
             // shared stateset for the icon
             {
                 _imageStateSet = new osg::StateSet();
@@ -314,10 +305,6 @@ PlaceNode::init()
         _imageDrawable = AnnotationUtils::createImageGeometry(_image.get(), offset, 0, heading, scale);
         if (_imageDrawable)
         {
-            //osg::Group* imageGroup = new osg::Group();
-            //imageGroup->setStateSet(_imageStateSet.get());
-            //imageGroup->addChild(_imageDrawable);
-            //_geode->addChild(imageGroup);
             _imageDrawable->getOrCreateStateSet()->merge(*_imageStateSet.get());
             _geode->addChild(_imageDrawable);
             imageBox = osgEarth::Utils::getBoundingBox(_imageDrawable);
@@ -345,7 +332,6 @@ PlaceNode::init()
 
     if ( _textDrawable )
     {
-        //_textDrawable->setStateSet(_textStateSet.get());
         _geode->addChild( _textDrawable );
     }
 

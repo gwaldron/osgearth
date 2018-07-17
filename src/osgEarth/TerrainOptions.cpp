@@ -18,8 +18,6 @@
  */
 
 #include <osgEarth/TerrainOptions>
-#include <osg/Notify>
-#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 

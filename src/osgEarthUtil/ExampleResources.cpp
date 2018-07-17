@@ -21,41 +21,27 @@
 */
 
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/DataScanner>
-#include <osgEarthUtil/Sky>
-#include <osgEarthUtil/Ocean>
 #include <osgEarthUtil/Shadowing>
 #include <osgEarthUtil/ActivityMonitorTool>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
-#include <osgEarthUtil/ContourMap>
 
-#include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 
 #include <osgEarthAnnotation/AnnotationData>
-#include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/FileUtils>
 #include <osgEarth/GLUtils>
 
-#include <osgEarth/XmlUtils>
-#include <osgEarth/StringUtils>
-#include <osgEarth/Registry>
 
 #include <osgEarthDrivers/kml/KML>
 
-#include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
-#include <osgGA/AnimationPathManipulator>
-#include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 
 #define KML_PUSHPIN_URL "../data/placemark32.png"

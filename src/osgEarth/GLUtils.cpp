@@ -22,10 +22,13 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
 
-#include <osg/LineWidth>
 #include <osg/LineStipple>
-#include <osg/Point>
 #include <osg/GraphicsContext>
+
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
+#include <osg/LineWidth>
+#include <osg/Point>
+#endif
 
 using namespace osgEarth;
 
@@ -94,6 +97,16 @@ GLUtils::setPointSize(osg::StateSet* stateSet, float value, osg::StateAttribute:
 #endif
 
     stateSet->addUniform(new osg::Uniform("oe_GL_PointSize", value), ov);
+}
+
+void
+GLUtils::setPointSmooth(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue ov)
+{
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
+    stateSet->setMode(GL_POINT_SMOOTH, ov);
+#endif
+
+    stateSet->setDefine("OE_POINT_SMOOTH", ov);
 }
 
 void

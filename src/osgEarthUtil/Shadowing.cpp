@@ -22,13 +22,10 @@
 #include <osgEarthUtil/Shadowing>
 #include <osgEarthUtil/Shaders>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Shadowing>
-#include <osg/Texture2D>
 #include <osg/CullFace>
-#include <osg/ValueObject>
 #include <osgShadow/ConvexPolyhedron>
 
 #define LC "[ShadowCaster] "

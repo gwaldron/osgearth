@@ -17,16 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/AtlasBuilder>
-#include <osgEarthSymbology/Skins>
-#include <osgEarth/ImageUtils>
-#include <osgDB/Options>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
-#include <vector>
-#include <string>
-#include <stdlib.h> // for ::getenv
 
 #define LC "[AtlasBuilder] "
 

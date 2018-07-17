@@ -17,17 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TerrainLayer>
-#include <osgEarth/TileSource>
 #include <osgEarth/Registry>
-#include <osgEarth/StringUtils>
 #include <osgEarth/TimeControl>
 #include <osgEarth/URI>
-#include <osgEarth/MemCache>
-#include <osgEarth/CacheBin>
-#include <osgDB/WriteFile>
-#include <osg/Version>
-#include <OpenThreads/ScopedLock>
-#include <memory.h>
 
 using namespace osgEarth;
 using namespace OpenThreads;

@@ -22,10 +22,6 @@
 
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Registry>
-#include <osgEarth/VirtualProgram>
-#include <osg/NodeVisitor>
-#include <osg/Uniform>
-#include <osg/Geode>
 #include <osg/Geometry>
 
 using namespace osgEarth;

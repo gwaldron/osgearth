@@ -22,7 +22,6 @@
 #include <osgEarthUtil/TerrainProfile>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/GeoMath>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -22,11 +22,8 @@
 #include <osgEarthUtil/SimpleOceanLayer>
 #include <osgEarthUtil/Shaders>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Lighting>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/Map>
 #include <osg/CullFace>
-#include <osg/Material>
 
 
 using namespace osgEarth;

@@ -30,7 +30,6 @@
 
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
-#include <ogr_api.h>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;

@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/Progress>
-#include <osgEarth/Notify>
 
 using namespace osgEarth;
 

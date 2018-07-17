@@ -24,6 +24,7 @@
 
 #include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarth/MapNode>
+#include <osgEarth/GeometryClamper>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
 
@@ -134,7 +135,7 @@ namespace osgEarth { namespace Annotation
         typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
         bool _clampRelative;
-        //mutable osg::Polytope _boundingPT;
+        GeometryClamper::LocalData _clamperData;
 
         void initNode();
         void initGeometry(const osgDB::Options*);

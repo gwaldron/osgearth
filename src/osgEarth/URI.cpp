@@ -18,17 +18,11 @@
  */
 #include <osgEarth/URI>
 #include <osgEarth/Cache>
-#include <osgEarth/CacheBin>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
-#include <osgEarth/Progress>
 #include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
-#include <osgDB/ReaderWriter>
 #include <osgDB/Archive>
-#include <fstream>
-#include <sstream>
 
 #define LC "[URI] "
 

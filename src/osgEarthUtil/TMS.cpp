@@ -18,21 +18,13 @@
  */
 
 #include <osgEarthUtil/TMS>
-#include <osgEarth/Common>
-#include <osgEarth/GeoData>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/TileKey>
-#include <osgEarth/TileSource>
 #include <osgEarth/Registry>
-#include <osgEarth/StringUtils>
-#include <osgEarth/Profile>
 
-#include <osg/Notify>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 
-#include <limits.h>
-#include <iomanip>
 
 using namespace osgEarth;
 using namespace osgEarth::Util::TMS;

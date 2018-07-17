@@ -18,7 +18,6 @@
  */
 #include <osgEarth/LandCover>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/Registry>
 
 #define LC "[LandCover] "
 

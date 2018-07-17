@@ -37,7 +37,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT GeometryClamper : public osg::NodeVisitor
     {
     public:
-        GeometryClamper();
+        typedef std::map<osg::Array*, osg::ref_ptr<osg::FloatArray> > LocalData;
+
+    public:
+        GeometryClamper(LocalData& local);
 
         virtual ~GeometryClamper() { }
 
@@ -63,6 +66,7 @@ namespace osgEarth
 
     protected:
 
+        LocalData&                           _localData;
         osg::ref_ptr<osg::Node>              _terrainPatch;
         osg::ref_ptr<const SpatialReference> _terrainSRS;
         bool                                 _preserveZ;

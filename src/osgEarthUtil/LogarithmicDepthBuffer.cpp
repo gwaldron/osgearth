@@ -21,15 +21,8 @@
 */
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarthUtil/Shaders>
-#include <osgEarth/CullingUtils>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderUtils>
-#include <osgUtil/CullVisitor>
-#include <osg/Uniform>
-#include <osg/buffered_value>
-#include <cmath>
 
 #define LC "[LogarithmicDepthBuffer] "
 

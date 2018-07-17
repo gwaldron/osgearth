@@ -19,8 +19,6 @@
 
 #include <osgEarth/Profiler>
 
-#include <map>
-#include <osg/Timer>
 
 using namespace osgEarth;
 

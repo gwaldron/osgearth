@@ -19,10 +19,9 @@
 #include <osgEarthUtil/GARSGraticule>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/TextSymbolizer>
-#include <osgEarthFeatures/Feature>
 #include <osgEarth/PagedNode>
-#include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Text>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -210,7 +209,8 @@ namespace
 
         TextSymbolizer symbolizer(textSym.get());                
 
-        osgText::Text* text = symbolizer.create(label);
+        osgText::Text* text = new osgEarth::Text();
+        symbolizer.apply(text);
         text->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
         text->getOrCreateStateSet()->setRenderBinToInherit();
 

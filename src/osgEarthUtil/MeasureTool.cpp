@@ -18,11 +18,8 @@
  */
 
 #include <osgEarthUtil/MeasureTool>
-#include <osgEarth/GeoMath>
 #include <osgEarth/GLUtils>
 
-#include <osgEarthFeatures/Feature>
-#include <osgEarthAnnotation/FeatureNode>
 
 #define LC "[MeasureTool] "
 

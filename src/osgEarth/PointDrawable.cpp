@@ -347,6 +347,7 @@ PointDrawable::dirty()
 }
 
 osg::ref_ptr<osg::StateSet> PointDrawable::_sharedStateSet;
+osg::ref_ptr<osg::Drawable> PointDrawable::_sharedStateSetDrawable;
 
 void
 PointDrawable::setupState()
@@ -375,6 +376,9 @@ PointDrawable::setupState()
             {
                 //todo
             }
+
+            _sharedStateSetDrawable = new osg::Drawable();
+            _sharedStateSetDrawable->setStateSet(_sharedStateSet.get());
         }
         s_mutex.unlock();
     }
@@ -385,6 +389,9 @@ PointDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
     { 
+        // Support for GLObjectsVisitor, e.g.
+        _sharedStateSetDrawable->accept(nv);
+
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         nv.pushOntoNodePath(this);

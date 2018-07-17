@@ -114,7 +114,11 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setMaxAnisotropy( 4.0f );
     tex->setUnRefImageDataAfterApply( true );
-    ImageUtils::activateMipMaps(tex);
+    
+    //VRV Patch
+    // removed this call since the nvtt mipmapper does not handle GL_LUMINANCE 
+    //ImageUtils::activateMipMaps(tex);
+    //END VRV Patch
 
     return tex;
 }

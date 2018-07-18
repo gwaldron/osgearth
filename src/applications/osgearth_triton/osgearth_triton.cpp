@@ -22,7 +22,10 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
-#include <osgEarthTriton/TritonNode>
+#include <osgEarthTriton/TritonAPIWrapper>
+#include <osgEarthTriton/TritonCallback>
+#include <osgEarthTriton/TritonOptions>
+#include <osgEarthTriton/TritonLayer>
 
 #define LC "[osgearth_triton] "
 
@@ -37,6 +40,7 @@ struct Settings
     optional<double> chop;
     optional<double> seaState;
     optional<float> alpha;
+    osg::observer_ptr<TritonLayer> tritonLayer;
     
     void apply(Environment& env, Ocean& ocean)
     {
@@ -52,10 +56,12 @@ struct Settings
             seaState.clear();
         }
 
-        //if (alpha.isSet())
-        //{
-        //    triton->setAlpha( alpha.get() );
-        //}
+        osg::ref_ptr<TritonLayer> layer;
+        if (alpha.isSet() && tritonLayer.lock(layer))
+        {
+            layer->setOpacity(alpha.value());
+            alpha.clear();
+        }
     }
 };
 
@@ -82,23 +88,13 @@ struct App
 {
     App()
     {
-        triton = NULL;
-        mapNode = NULL;        
+        tritonLayer = NULL;
+        map = NULL;
     }
 
-    MapNode*    mapNode;
-    TritonNode* triton;
-    Settings    settings;
-
-    osg::Group* getAttachPoint()
-    {
-        return mapNode;
-        //SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(mapNode);
-        //if (sky)
-        //    return sky;
-        //else
-        //    return mapNode;
-    }
+    Map*         map;
+    TritonLayer* tritonLayer;
+    Settings     settings;
 
     void addTriton()
     {
@@ -129,16 +125,16 @@ struct App
         }
 
 
-        triton = new TritonNode(tritonOptions, new TritonCallback(settings));
-        triton->setMapNode(mapNode);
-
-        getAttachPoint()->addChild(triton);
+        tritonLayer = new TritonLayer(tritonOptions, new TritonCallback(settings));
+        map->addLayer(tritonLayer);
+        settings.tritonLayer = tritonLayer;
     }
 
     void removeTriton()
     {
-        getAttachPoint()->removeChild(triton);
-        triton = 0L;
+        if (tritonLayer)
+            map->removeLayer(tritonLayer);
+        tritonLayer = 0L;
     }
 };
 
@@ -156,7 +152,7 @@ template<typename T> struct Set : public ui::ControlEventHandler
 struct Toggle : public ui::ControlEventHandler
 {
     void onValueChanged(ui::Control*, bool value) {
-        if (s_app.triton)
+        if (s_app.tritonLayer)
             s_app.removeTriton();
         else
             s_app.addTriton();
@@ -225,7 +221,7 @@ main(int argc, char** argv)
 
         viewer.setSceneData( node );
 
-        s_app.mapNode = MapNode::get( node );
+        s_app.map = MapNode::get( node )->getMap();
         //s_app.addTriton();
 
         return viewer.run();

@@ -16,7 +16,7 @@ build_script:
   - mkdir build
   - cd build
   #- cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=Release -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=c:\projects\osgearth\install -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake
-  - cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=Release -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=c:\projects\osgearth\install -DCMAKE_TOOLCHAIN_FILE=c:/temp/vcpkg-export-20180717-153916/scripts/buildsystems/vcpkg.cmake
+  - cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=Release -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=c:\projects\osgearth\install -DCMAKE_TOOLCHAIN_FILE=c:/temp/osgearth-vcpkg-deps/scripts/buildsystems/vcpkg.cmake
   - cmake --build . --target INSTALL --config Release
   - cd ..\install
   - 7z a c:\projects\osgearth\osgearth.zip .

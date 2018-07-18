@@ -515,8 +515,12 @@ LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
         if (_mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP)
         {
             if (vi == 0)
+            {
                 for (unsigned i=0; i<2; ++i)
                     (*_colors)[i] = color;
+                for (unsigned i=_colors->size()-2; i<_colors->size(); ++i)
+                    (*_colors)[i] = color;
+            }
             else
                 for (unsigned i=vi*4-2; i<vi*4+2; ++i)
                     (*_colors)[i] = color;

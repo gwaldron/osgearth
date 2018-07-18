@@ -172,7 +172,7 @@ osgEarth Sample - Annotations
         <label text="Auto-Scaled Model" lat="42.5" long="-100"/>
 
         <imageoverlay>
-            <url>https://wow.olympus.eu/webfile/img/1632/x=1024/oly_testwow_stage.jpg</url>
+            <url>../data/fractal.png</url>
             <alpha>1.0</alpha>
             <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
         </imageoverlay>

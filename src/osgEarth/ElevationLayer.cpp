@@ -596,7 +596,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 createImplementation(key, hf, normalMap, progress);
             }
 
-
+            // Check for cancelation before writing to a cache
             if (progress && progress->isCanceled())
             {
                 return GeoHeightField::INVALID;
@@ -645,6 +645,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
         {
             result = GeoHeightField( hf.get(), normalMap.get(), key.getExtent() );
         }
+    }
+
+    // Check for cancelation before writing to a cache:
+    if ( progress && progress->isCanceled() )
+    {
+        return GeoHeightField::INVALID;
     }
 
     // write to mem cache if needed:

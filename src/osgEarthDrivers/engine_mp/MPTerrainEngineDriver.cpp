@@ -200,6 +200,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                     
                     Registry::instance()->endActivity(uri);
 
+                    if (progress && progress->isCanceled())
+                    {
+                        OE_DEBUG << LC << "Tile " << key.str() << " : canceled!" << std::endl;
+                        return ReadResult(0L);
+                    }
+
                     // Deal with failed loads.
                     if ( !node.valid() )
                     {

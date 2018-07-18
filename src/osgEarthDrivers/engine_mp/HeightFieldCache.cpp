@@ -106,6 +106,16 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
             true, // convertToHAE
             progress );
 
+        // Check for cancelation before writing to a cache
+        if (progress && progress->isCanceled())
+        {
+            if (out_hf.valid())
+            {
+                OE_DEBUG << LC << "Cancelation with a valid HF; this would cache bad data." << std::endl;
+            }
+            return false;
+        }
+
         // If the map failed to provide any suitable data sources at all, replace the
         // heightfield with data from its parent (if available). 
         if ( !populated )

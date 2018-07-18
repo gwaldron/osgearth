@@ -86,7 +86,7 @@ GLUtils::setLineSmooth(osg::StateSet* stateSet, osg::StateAttribute::OverrideVal
     stateSet->setMode(GL_LINE_SMOOTH, ov);
 #endif
 
-    stateSet->setDefine("OE_LINES_ANTIALIAS", ov);
+    stateSet->setDefine("OE_LINE_SMOOTH", ov);
 }
 
 void
@@ -160,7 +160,7 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
         break;
 
     case GL_LINE_SMOOTH:
-        stateSet->removeDefine("OE_LINES_ANTIALIAS");
+        stateSet->removeDefine("OE_LINE_SMOOTH");
         break;
 
     case GL_POINT_SIZE:

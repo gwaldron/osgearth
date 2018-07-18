@@ -148,7 +148,7 @@ osg::Node* createDrawables()
 
     x += 20;
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
-    loop->setLineWidth(8);
+    loop->setLineWidth(1);
     loop->setColor(osg::Vec4(1,1,0,1));
     addVerts(loop, x, y);
     group->addChild(loop);
@@ -188,7 +188,20 @@ osg::Node* createDrawables()
     group->addChild(points);
 
     x = 20;
-    y -= 30;
+    y -= 20;
+    for(unsigned i=0; i<10; ++i)
+    {
+        LineDrawable* across = new LineDrawable(GL_LINES);
+        across->pushVertex(osg::Vec3(x, 0, y));
+        across->pushVertex(osg::Vec3(x+100, 0, y));
+        across->setLineWidth((float)(i+1));
+        across->finish();
+        group->addChild(across);
+        y -= (i+2);
+    }
+
+    x = 20;
+    y -= 20;
     LineDrawable* star = makeStar(x, y, 10);
     star->setColor(osg::Vec4(1,1,1,1));
     star->setLineWidth(1.0f);
@@ -238,7 +251,7 @@ main(int argc, char** argv)
     if (arguments.read("--ortho"))
     {
         viewer.realize();
-        double r = node->getBound().radius() * 1.1;
+        double r = node->getBound().radius() * 1.2;
         double ar = viewer.getCamera()->getViewport()->width() / viewer.getCamera()->getViewport()->height();
         viewer.getCamera()->setProjectionMatrixAsOrtho(-r, +r, -r/ar, +r/ar, -r*2.0, +r*2.0);
     }

@@ -84,7 +84,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
 
 #ifdef OE_LINE_SMOOTH
-    float thickness = floor(oe_GL_LineWidth + 1.5);
+    float thickness = floor(oe_GL_LineWidth + 1.0); //1.5);
 #else
     float thickness = max(0.5, floor(oe_GL_LineWidth));
 #endif

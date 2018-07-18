@@ -29,11 +29,6 @@
 
 #define LC "[magnify] "
 
-// By default the magnifier uses OSG's LOD scale. Uncomment the following
-// line to test a different approach that overrides osgUtil::CullVisitor::getDistanceToViewPoint.
-// (This was a customer-specific request -gw)
-//#define USE_CUSTOM_CULL_VISITOR_APPROACH
-
 using namespace osgEarth;
 using namespace osgEarth::Util;
 namespace ui = osgEarth::Util::Controls;
@@ -53,6 +48,12 @@ struct App
     osgViewer::View* _mainView;
     osgViewer::View* _magView;
     ui::HSliderControl* _magSlider;
+    bool _useLODScale;
+
+    App()
+    {
+        _useLODScale = true;
+    }
 
     float computeRangeScale()
     {
@@ -61,13 +62,31 @@ struct App
 
     void apply()
     {
-        double vfov, ar, n, f;
-        _mainView->getCamera()->getProjectionMatrixAsPerspective(vfov, ar, n, f);
-        _magView->getCamera()->setProjectionMatrixAsPerspective(vfov * computeRangeScale(), ar, n, f);
+        bool isPerspective = _mainView->getCamera()->getProjectionMatrix()(3,3) == 0.0;
+        if (isPerspective)
+        {
+            double vfov, ar, n, f;
+            _mainView->getCamera()->getProjectionMatrixAsPerspective(vfov, ar, n, f);
+            _magView->getCamera()->setProjectionMatrixAsPerspective(vfov * computeRangeScale(), ar, n, f);
+        }
+        else
+        {
+            double L, R, B, T, N, F;
+            double M, H;
+            _mainView->getCamera()->getProjectionMatrixAsOrtho(L, R, B, T, N, F);
+            M = B+(T-B)/2;
+            H = (T-B)*computeRangeScale()/2;
+            B = M-H, T = M+H;
+            M = L+(R-L)/2;
+            H = (R-L)*computeRangeScale()/2;
+            L = M-H, R = M+H;
+            _magView->getCamera()->setProjectionMatrixAsOrtho(L, R, B, T, N, F);
+        }
 
-#ifndef USE_CUSTOM_CULL_VISITOR_APPROACH
-        _magView->getCamera()->setLODScale(computeRangeScale());
-#endif
+        if (_useLODScale)
+        {
+            _magView->getCamera()->setLODScale(computeRangeScale());
+        }
     }
 };
 
@@ -95,7 +114,6 @@ ui::Container* createUI(App& app)
     return box;
 }
 
-#ifdef USE_CUSTOM_CULL_VISITOR_APPROACH
 //! Custom CullVisitor to test the getDistanceToViewPoint override approach.
 struct MyCullVisitor : public osgUtil::CullVisitor
 {
@@ -116,15 +134,37 @@ struct MyCullVisitor : public osgUtil::CullVisitor
         return new MyCullVisitor(*this);
     }
 
-    virtual float getDistanceToViewPoint(const osg::Vec3& vec, bool useLODScale) const
+    void apply(osg::Group& node)
     {
-        // note: only apply the magFactor on the magnification camera!
-        osg::View* view = const_cast<MyCullVisitor*>(this)->getCurrentCamera()->getView();
-        float magFactor = view == _app._magView ? _app.computeRangeScale() : 1.0f;
-        return osgUtil::CullVisitor::getDistanceToViewPoint(vec, useLODScale) * magFactor;
+        MapNode* mapNode = dynamic_cast<MapNode*>(&node);
+        if (mapNode && getCurrentCamera()->getView() == _app._magView)
+        {
+            // get the eyepoint in world space:
+            osg::Matrix viewToWorld;
+            viewToWorld.invert(*getModelViewMatrix());
+            osg::Vec3d eye = osg::Vec3d(0,0,0) * viewToWorld;
+
+            // store it:
+            _eyePointStack.push_back(eye);
+
+            // convert to geo and adjust the altitude in order to simulate a zoom-in:
+            GeoPoint p;
+            p.fromWorld(mapNode->getMapSRS(), eye);
+
+            osg::Vec3d zoomedEye;
+            p.alt() = p.alt() * _app.computeRangeScale();
+            p.toWorld(zoomedEye);
+
+            // store the reference view point in view space:
+            _referenceViewPoints.push_back(zoomedEye*(*getModelViewMatrix()));
+
+            // ..and the view point in world space.
+            _viewPointStack.push_back(zoomedEye);
+        }
+        osgUtil::CullVisitor::apply(node);
     }
 };
-#endif
+
 
 int main(int argc, char** argv)
 {
@@ -134,9 +174,13 @@ int main(int argc, char** argv)
     
     App app;
 
-#ifdef USE_CUSTOM_CULL_VISITOR_APPROACH
-    osgUtil::CullVisitor::prototype() = new MyCullVisitor(app);
-#endif
+    // optionally use a custom cull visitor instead of LOD scale:
+    if (arguments.read("--cull-visitor"))
+    {
+        app._useLODScale = false;
+        osgUtil::CullVisitor::prototype() = new MyCullVisitor(app);
+        OE_NOTICE << LC << "Using a custom cull visitor" << std::endl;
+    }
 
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel(osgViewer::CompositeViewer::SingleThreaded);

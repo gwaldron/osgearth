@@ -771,6 +771,11 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         }
     }
 
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
+    }
+
     return GeoImage(result.get(), key.getExtent());
 }
 
@@ -949,6 +954,11 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         isCoverage() == false)
     {
         ImageUtils::featherAlphaRegions( result.getImage() );
+    }
+
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
     }
 
     return result;

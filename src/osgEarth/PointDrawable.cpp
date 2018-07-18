@@ -23,6 +23,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/CullingUtils>
 #include <osgDB/ObjectWrapper>
+#include <osg/PointSprite>
 
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
@@ -346,6 +347,7 @@ PointDrawable::dirty()
 }
 
 osg::ref_ptr<osg::StateSet> PointDrawable::_sharedStateSet;
+osg::ref_ptr<osg::Drawable> PointDrawable::_sharedStateSetDrawable;
 
 void
 PointDrawable::setupState()
@@ -360,10 +362,7 @@ PointDrawable::setupState()
         {
             _sharedStateSet = new osg::StateSet();
 
-#ifndef GL_POINT_SPRITE
-  #define GL_POINT_SPRITE 0x8861
-#endif
-            _sharedStateSet->setMode(GL_POINT_SPRITE, 1);
+            _sharedStateSet->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
 
             if (_gpu)
             {
@@ -377,6 +376,9 @@ PointDrawable::setupState()
             {
                 //todo
             }
+
+            _sharedStateSetDrawable = new osg::Drawable();
+            _sharedStateSetDrawable->setStateSet(_sharedStateSet.get());
         }
         s_mutex.unlock();
     }
@@ -387,6 +389,9 @@ PointDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
     { 
+        // Support for GLObjectsVisitor, e.g.
+        _sharedStateSetDrawable->accept(nv);
+
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         nv.pushOntoNodePath(this);

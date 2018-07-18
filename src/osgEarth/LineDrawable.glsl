@@ -37,7 +37,7 @@ void oe_LineDrawable_VS_VIEW(inout vec4 vertexView)
 #pragma vp_name GPU Lines Screen Projected Clip
 #pragma vp_entryPoint oe_LineDrawable_VS_CLIP
 #pragma vp_location vertex_clip
-#pragma import_defines(OE_LINES_ANTIALIAS)
+#pragma import_defines(OE_LINE_SMOOTH)
 
 // Set by the InstallViewportUniform callback
 uniform vec2 oe_ViewportSize;
@@ -56,7 +56,7 @@ flat out vec2 oe_LineDrawable_rv;
 // Change in main vertex (calculated in oe_LineDrawable_VS_VIEW)
 vec4 oe_LineDrawable_viewDelta;
 
-#ifdef OE_LINES_ANTIALIAS
+#ifdef OE_LINE_SMOOTH
 out float oe_LineDrawable_lateral;
 #else
 float oe_LineDrawable_lateral;
@@ -83,8 +83,8 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_ViewportSize;
     vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
 
-#ifdef OE_LINES_ANTIALIAS
-    float thickness = floor(oe_GL_LineWidth + 2.0);
+#ifdef OE_LINE_SMOOTH
+    float thickness = floor(oe_GL_LineWidth + 1.0); //1.5);
 #else
     float thickness = max(0.5, floor(oe_GL_LineWidth));
 #endif
@@ -196,7 +196,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 #pragma vp_name GPU Lines Screen Projected FS
 #pragma vp_entryPoint oe_LineDrawable_Stippler_FS
 #pragma vp_location fragment_coloring
-#pragma import_defines(OE_LINES_ANTIALIAS)
+#pragma import_defines(OE_LINE_SMOOTH)
 
 uniform int oe_GL_LineStippleFactor;
 uniform int oe_GL_LineStipplePattern;
@@ -204,7 +204,7 @@ uniform int oe_GL_LineStipplePattern;
 flat in vec2 oe_LineDrawable_rv;
 flat in int oe_LineDrawable_draw;
 
-#ifdef OE_LINES_ANTIALIAS
+#ifdef OE_LINE_SMOOTH
 in float oe_LineDrawable_lateral;
 #endif
 
@@ -237,9 +237,9 @@ void oe_LineDrawable_Stippler_FS(inout vec4 color)
         //color.g = oe_LineDrawable_rv.y;
     }
 
-#ifdef OE_LINES_ANTIALIAS
+#ifdef OE_LINE_SMOOTH
     // anti-aliasing
     float L = abs(oe_LineDrawable_lateral);
-    color.a *= L > 0.5 ? (1.0-(2*(L-.5)))*(1.0-(2*(L-.5))) : 1.0;
+    color.a = smoothstep(0, 1, 1.0-(L*L));
 #endif
 }

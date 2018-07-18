@@ -24,9 +24,11 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
+#include <osgEarthTriton/TritonCallback>
 
 namespace osgEarth { namespace Triton
 {
+
     /**
      * Serializable options for initializing the TritonLayer.
      */
@@ -132,9 +134,9 @@ namespace osgEarth { namespace Triton
     public:
         META_Layer(osgEarth, TritonLayer, TritonLayerOptions);
 
-        TritonLayer();
+        explicit TritonLayer(Callback* userCallback =0L);
 
-        TritonLayer(const TritonLayerOptions& options);
+        TritonLayer(const TritonLayerOptions& options, Callback* userCallback =0L);
 
         /** Masking layer for the ocean */
         void setMaskLayer(const osgEarth::ImageLayer* maskLayer);
@@ -159,6 +161,7 @@ namespace osgEarth { namespace Triton
 
         osg::ref_ptr<osg::Group> _root;
         osg::ref_ptr<osg::Node> _tritonNode;
+        osg::ref_ptr<Callback> _callback;
 
     private:
 

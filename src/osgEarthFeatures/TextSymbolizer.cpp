@@ -195,10 +195,6 @@ TextSymbolizer::apply(osgText::Text* drawable,
 #endif        
     }
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,8)
-    drawable->setShaderTechnique(osgText::ALL_FEATURES);
-#endif
-
 #if OSG_VERSION_LESS_THAN(3,5,8)
     float resFactor = 2.0f;
     int res = nextPowerOf2((int)(size*resFactor));

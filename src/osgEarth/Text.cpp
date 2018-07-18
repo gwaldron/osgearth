@@ -48,12 +48,24 @@ REGISTER_OBJECT_WRAPPER( osgEarth_Text,
 Text::Text() : 
 osgText::Text()
 {
-    //nop
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,8)
+    if (osg::DisplaySettings::instance()->getTextShaderTechnique().empty())
+    {
+        setShaderTechnique(osgText::ALL_FEATURES);
+    }
+#endif
 }
 
 Text::Text(const std::string& str) :
 osgText::Text()
 {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,8)
+    if (osg::DisplaySettings::instance()->getTextShaderTechnique().empty())
+    {
+        setShaderTechnique(osgText::ALL_FEATURES);
+    }
+#endif
+
     setText(str);
 }
 

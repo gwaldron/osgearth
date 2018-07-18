@@ -36,9 +36,8 @@
 using namespace osgEarth::Triton;
 
 
-TritonDrawable::TritonDrawable(osgEarth::MapNode* mapNode, TritonContext* TRITON) :
-_TRITON(TRITON),
-_mapNode(mapNode)
+TritonDrawable::TritonDrawable(TritonContext* TRITON) :
+_TRITON(TRITON)
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );

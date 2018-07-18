@@ -9,11 +9,11 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 // uniforms
 uniform vec4 oe_terrain_color;
 
+// stage globals
+vec3 vp_Normal;
+
 // outputs
 out vec4 vp_Color;
-out vec3 vp_Normal;
-
-out vec4 oe_layer_texc;
 out vec4 oe_layer_tilec;
 out vec3 oe_UpVectorView;
 

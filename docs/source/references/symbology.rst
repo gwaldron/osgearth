@@ -380,11 +380,11 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existence and appearance of
 | text-halo                      | Outline color of the text; Omit this property altogether for no    |
 |                                | outline. (HTML Color)                                              |
 +--------------------------------+--------------------------------------------------------------------+
-| text-halo-offset               | Outline thickness (float, pixels)                                  |
+| text-halo-offset               | Outline thickness (float, % of glyph width, default 0.0625)        |
 +--------------------------------+--------------------------------------------------------------------+
-| text-offset-x                  | The x offset of the text in pixels                                 |
+| text-offset-x                  | The x offset of the text in % of glyph width, default 0.0625       |
 +--------------------------------+--------------------------------------------------------------------+
-| text-offset-y                  | The y offset of the text in pixels                                 |
+| text-offset-y                  | The y offset of the text in % of glyph width, default 0.0625       |
 +--------------------------------+--------------------------------------------------------------------+
 | text-align                     | Alignment of the text string relative to its anchor point:         |
 |                                |   * ``left-top``                                                   |

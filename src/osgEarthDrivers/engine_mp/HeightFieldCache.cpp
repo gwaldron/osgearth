@@ -106,6 +106,11 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
             true, // convertToHAE
             progress );
 
+        if (progress && progress->isCanceled())
+        {
+            return false;
+        }
+
         // If the map failed to provide any suitable data sources at all, replace the
         // heightfield with data from its parent (if available). 
         if ( !populated )

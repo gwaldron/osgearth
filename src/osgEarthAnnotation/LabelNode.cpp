@@ -149,7 +149,7 @@ LabelNode::init( const Style& style )
     setupState();
 
     _geode = new osg::Geode();
-    _geode->setCullingActive(false);
+    //_geode->setCullingActive(false);
     _geode->setStateSet(_geodeStateSet.get());
 
     // ensure that (0,0,0) is the bounding sphere control/center point.

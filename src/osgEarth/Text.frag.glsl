@@ -18,7 +18,7 @@
     #endif
 #endif
 
-#pragma vp_entryPoint text_frag
+#pragma vp_entryPoint oe_Text_FS
 #pragma vp_location   fragment_coloring
 
 #pragma import_defines(BACKDROP_COLOR, SHADOW, OUTLINE)
@@ -50,8 +50,8 @@ $OSG_PRECISION_FLOAT
 
 uniform sampler2D glyphTexture;
 
-$OSG_VARYING_IN vec2 texCoord;
-$OSG_VARYING_IN vec4 vertexColor;
+$OSG_VARYING_IN vec2 oe_Text_texCoord;
+vec4 vertexColor;
 
 #ifndef TEXTURE_DIMENSION
 const float TEXTURE_DIMENSION = 1024.0;
@@ -236,21 +236,22 @@ vec4 textColor(vec2 src_texCoord)
 #endif
 
 
-void text_frag(inout vec4 color)
+void oe_Text_FS(inout vec4 color)
 {
-    if (texCoord.x<0.0 && texCoord.y<0.0)
+    vertexColor = color;
+
+    if (oe_Text_texCoord.x<0.0 && oe_Text_texCoord.y<0.0)
     {
-        color = vertexColor;
         return;
     }
 
 #ifdef SHADOW
     float scale = -1.0*GLYPH_DIMENSION/TEXTURE_DIMENSION;
     vec2 delta_tc = SHADOW*scale;
-    vec4 shadow_color = textColor(texCoord+delta_tc);
+    vec4 shadow_color = textColor(oe_Text_texCoord+delta_tc);
     shadow_color.rgb = BACKDROP_COLOR.rgb;
 
-    vec4 glyph_color = textColor(texCoord);
+    vec4 glyph_color = textColor(oe_Text_texCoord);
 
     // lower the alpha_power value the greater the saturation, no need to be so aggressive with SDF than GREYSCALE
     #if SIGNED_DISTANCE_FIELD
@@ -264,7 +265,7 @@ void text_frag(inout vec4 color)
     glyph_color.a = pow(glyph_color.a, alpha_power);
     vec4 clr = mix(shadow_color, glyph_color, glyph_color.a);
 #else
-    vec4 clr = textColor(texCoord);
+    vec4 clr = textColor(oe_Text_texCoord);
 #endif
 
     if (clr.a==0.0) discard;

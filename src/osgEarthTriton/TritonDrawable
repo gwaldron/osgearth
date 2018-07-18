@@ -27,7 +27,6 @@
 #include <osg/Texture2D>
 #include <osg/buffered_value>
 
-#include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
 #include <osgEarth/NativeProgramAdapter>
 #include <osgEarth/ImageLayer>
@@ -45,7 +44,7 @@ namespace osgEarth { namespace Triton
     class OSGEARTHTRITON_EXPORT TritonDrawable : public osg::Drawable
     {
     public:
-        TritonDrawable(osgEarth::MapNode* mapNode, TritonContext* TRITON);
+        TritonDrawable(TritonContext* TRITON);
 
         //! Layer to use as an ocean rendering mask
         void setMaskLayer(const osgEarth::ImageLayer* maskLayer);
@@ -68,7 +67,6 @@ namespace osgEarth { namespace Triton
         virtual ~TritonDrawable();
 
         osg::observer_ptr<TritonContext>  _TRITON;
-        osg::observer_ptr<osgEarth::MapNode> _mapNode;
         osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
         osg::ref_ptr<osg::TextureCubeMap> _cubeMap;
         

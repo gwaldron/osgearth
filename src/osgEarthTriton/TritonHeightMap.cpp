@@ -313,6 +313,7 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     local._rtt->setAllowEventFocus(false);
     local._rtt->setDrawBuffer(GL_FRONT);
     local._rtt->setReadBuffer(GL_FRONT);
+    local._rtt->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
     
     // TODO: create this once and just re-use it for all RTT cameras
     osg::StateSet* rttSS = local._rtt->getOrCreateStateSet();
@@ -322,6 +323,7 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     rttVP->setFunction( "oe_triton_setupHeightMap", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
     rttVP->setFunction( "oe_triton_drawHeightMap",  fragmentShader, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
     rttVP->setIsAbstract(true);
+    rttVP->setInheritShaders(false);
 
     osg::StateAttribute::OverrideValue off = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE;
     rttSS->setDefine("OE_IS_DEPTH_CAMERA");
@@ -358,7 +360,7 @@ TritonHeightMap::update(CameraLocal& local, const osg::Camera* cam, osgEarth::Ho
 
     double hd = horizon->getDistanceToVisibleHorizon();
 
-    local._rtt->setProjectionMatrix(osg::Matrix::ortho(-hd, hd, -hd, hd, 1.0, 10.0));
+    local._rtt->setProjectionMatrix(osg::Matrix::ortho(-hd, hd, -hd, hd, 1.0, eye.length()));
     local._rtt->setViewMatrixAsLookAt(eye, osg::Vec3d(0.0,0.0,0.0), osg::Vec3d(0.0,0.0,1.0));
 
     static const osg::Matrixd scaleBias(

@@ -1182,6 +1182,10 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     }
 #endif
 
+    if (progress && progress->isCanceled())
+    {
+        return false;
+    }
 
     // Return whether or not we actually read any real data
     return realData;

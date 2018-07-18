@@ -672,6 +672,12 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         ImageUtils::fixInternalFormat( result.getImage() );
     }
 
+    // Check for cancelation before writing to a cache:
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
+    }
+
     // memory cache first:
     if ( result.valid() && _memCache.valid() )
     {

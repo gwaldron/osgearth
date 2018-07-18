@@ -20,6 +20,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/Progress>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
@@ -559,6 +560,12 @@ namespace
                                 }
                             }
 
+                            // Check for cancelation before a cache write
+                            if (progress && progress->isCanceled())
+                            {
+                                return 0L;
+                            }
+
                             // write the result to the cache if possible:
                             if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() && bin )
                             {
@@ -569,8 +576,13 @@ namespace
                     }
                 }
 
+                // Check for cancelation before a potential cache write
+                if (progress && progress->isCanceled())
+                {
+                    return 0L;
+                }
 
-                if ( result.getObject() && !gotResultFromCallback )
+                if (result.getObject() && !gotResultFromCallback)
                 {
                     result.getObject()->setName( uri.base() );
 

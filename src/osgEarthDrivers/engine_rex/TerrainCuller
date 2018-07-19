@@ -55,14 +55,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
         LayerExtentVector* _layerExtents;
-        float _rangeScale;
 
     public:
         /** A new terrain culler */
         TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
 
         /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings, const SelectionInfo& si);
+        void setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }
@@ -72,9 +71,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** The CullVIsitor that parents this culler. */
         osgUtil::CullVisitor& getParent() { return *_cv; }
-        
-        /** Range scale for the current camera */
-        float getRangeScale() const { return _rangeScale; }
 
     public: // osg::NodeVisitor
         void apply(osg::Node& node);

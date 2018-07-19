@@ -612,10 +612,29 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         TerrainCuller culler(cv, this->getEngineContext());
 
         // Prepare the culler with the set of renderable layers:
-        culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings(), _selectionInfo);
+        culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
+
+#ifdef PROFILE
+        static std::vector<double> times;
+        static double times_total = 0.0;
+        osg::Timer_t s1 = osg::Timer::instance()->tick();
+#endif
 
         // Assemble the terrain drawables:
         _terrain->accept(culler);
+
+#ifdef PROFILE
+        osg::Timer_t s2 = osg::Timer::instance()->tick();
+        double delta = osg::Timer::instance()->delta_m(s1, s2);
+        times_total += delta;
+        times.push_back(delta);
+        if (times.size() == 60)
+        {
+            Registry::instance()->startActivity("CULL(ms)", Stringify()<<(times_total/times.size()));
+            times.clear();
+            times_total = 0;
+        }
+#endif
 
         // If we're using geometry pooling, optimize the drawable for shared state
         // by sorting the draw commands

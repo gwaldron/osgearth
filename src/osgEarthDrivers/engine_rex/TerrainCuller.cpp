@@ -45,16 +45,14 @@ _context(context)
     pushModelViewMatrix(_cv->getModelViewMatrix(), _cv->getCurrentCamera()->getReferenceFrame());
     setLODScale(_cv->getLODScale());
     _camera = _cv->getCurrentCamera();
-    _rangeScale = 1.0f;
 }
 
 void
-TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings, const SelectionInfo& si)
+TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;
     _terrain.setup(map, bindings, frameNum, _cv);
-    _rangeScale = si.computeRangeScale(this);
 }
 
 float
@@ -114,7 +112,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile->_geom = surface->getDrawable()->_geom.get();
             tile->_morphConstants = tileNode->getMorphConstants();
             tile->_key = &tileNode->getKey();
-            //tile->_order = (int)orderInTile;
             tile->_order = drawable->_order; // layer order in map tile.
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();

@@ -90,6 +90,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return false;
         }
 
+        bool anyChildBoxWithinRange(float range, osg::NodeVisitor& nv) const {
+            for(int c=0; c<4; ++c) {
+                for(int j=0; j<8; ++j) {
+                    if (nv.getDistanceToViewPoint(_childrenCorners[c][j], true) < range)
+                        return true;
+                }
+            }
+            return false;
+        }
+
         void setDebugText(const std::string& strText);
 
         osg::BoundingSphere computeBound() const;

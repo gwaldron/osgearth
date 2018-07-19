@@ -128,9 +128,6 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     // osgText::Text turns on depth writing by default, even if you turned it off.
     drawable->setEnableDepthWrites( false );
-
-    // gw: evaluate. for decluttering?
-    drawable->setCullingActive(false);
     
     return drawable;
 }

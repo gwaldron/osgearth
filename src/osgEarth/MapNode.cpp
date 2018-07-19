@@ -87,28 +87,6 @@ namespace
     };
 
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;
-
-    // Cull callback that installs (and updates) a Horizon object in the NodeVisitor.
-    struct InstallHorizonCallback : public osg::NodeCallback
-    {
-        osg::EllipsoidModel _ellipsoid;
-        PerObjectFastMap<osg::Camera*, osg::ref_ptr<Horizon> > _horizons;
-
-        InstallHorizonCallback(const osg::EllipsoidModel& ellipsoid) :
-            _ellipsoid(ellipsoid) { }
-
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
-            osg::ref_ptr<Horizon> horizon = _horizons.get(cv->getCurrentCamera());
-            if (!horizon.valid())
-                horizon = new Horizon(_ellipsoid);
-
-            horizon->setEye(nv->getViewPoint());
-            horizon->put(*nv);
-            traverse(node, nv);
-        }
-    };
 }
 
 //---------------------------------------------------------------------------

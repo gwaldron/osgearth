@@ -36,7 +36,8 @@ _minAlpha(rhs._minAlpha),
 _renderBin(rhs._renderBin),
 _transparent(rhs._transparent),
 _decal(rhs._decal),
-_maxCreaseAngle(rhs._maxCreaseAngle)
+_maxCreaseAngle(rhs._maxCreaseAngle),
+_maxAltitude(rhs._maxAltitude)
 {
 }
 
@@ -50,7 +51,8 @@ _clipPlane      ( 0 ),
 _minAlpha       ( 0.0f ),
 _transparent    ( false ),
 _decal          ( false ),
-_maxCreaseAngle ( 0.0 )
+_maxCreaseAngle ( 0.0 ),
+_maxAltitude    ( Distance(FLT_MAX, Units::METERS) )
 {
     mergeConfig(conf);
 }
@@ -71,6 +73,7 @@ RenderSymbol::getConfig() const
     conf.addIfSet   ( "transparent",      _transparent );
     conf.addIfSet   ( "decal",            _decal);
     conf.addIfSet   ("max_crease_angle",  _maxCreaseAngle);
+    conf.addIfSet   ("max_altitude",      _maxAltitude);
     return conf;
 }
 
@@ -88,6 +91,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "transparent",      _transparent );
     conf.getIfSet   ( "decal",            _decal);
     conf.getIfSet   ("max_crease_angle",  _maxCreaseAngle);
+    conf.getIfSet   ("max_altitude",      _maxAltitude);
 }
 
 void
@@ -153,5 +157,10 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         float value; Units units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->maxCreaseAngle() = Angle(value, units);
+    }
+    else if (match(c.key(), "render-max-altitude")) {
+        float value; Units units;
+        if (Units::parse(c.value(), value, units, Units::METERS))
+            style.getOrCreate<RenderSymbol>()->maxAltitude() = Distance(value, units);
     }
 }

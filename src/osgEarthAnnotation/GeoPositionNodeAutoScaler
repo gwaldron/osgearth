@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
      * Important: ONLY install this on a GeoPositionNode, or else you will
      * get a crash -- it does NO type checking.
      *
-     * geoPosNode->setCullCallback( new GeoPositionNodeAutoScaler() );
+     * geoPosNode->addCullCallback( new GeoPositionNodeAutoScaler() );
      */
     class OSGEARTHANNO_EXPORT GeoPositionNodeAutoScaler : public osg::NodeCallback
     {

@@ -54,6 +54,9 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& layer() { return _layer; }
         const optional<std::string>& layer() const { return _layer; }
 
+        optional<Query>& query() { return _query; }
+        const optional<Query>& query() const { return _query; }
+
         // does not serialize
         osg::ref_ptr<Symbology::Geometry>& geometry() { return _geometry; }
         const osg::ref_ptr<Symbology::Geometry>& geometry() const { return _geometry; }
@@ -77,6 +80,7 @@ namespace osgEarth { namespace Drivers
             conf.set( "geometry", _geometryConf );    
             conf.set( "geometry_url", _geometryUrl );
             conf.set( "layer", _layer );
+            conf.setObj( "query", _query );
             conf.updateNonSerializable( "OGRFeatureOptions::geometry", _geometry.get() );
             return conf;
         }
@@ -97,6 +101,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "geometry", _geometryConf );
             conf.getIfSet( "geometry_url", _geometryUrl );
             conf.getIfSet( "layer", _layer);
+            conf.getObjIfSet( "query", _query );
             _geometry = conf.getNonSerializable<Symbology::Geometry>( "OGRFeatureOptions::geometry" );
         }
 
@@ -109,6 +114,7 @@ namespace osgEarth { namespace Drivers
         optional<Config>                  _geometryProfileConf;
         optional<std::string>             _geometryUrl;
         optional<std::string>             _layer;
+        optional<Query>                   _query;
         osg::ref_ptr<Symbology::Geometry> _geometry;
     };
 

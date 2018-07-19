@@ -18,14 +18,21 @@ How do I place a 3D model on the map?
 .....................................
 
     The ``osgEarth::GeoTransform`` class inherits from ``osg::Transform``
-    and will convert map coordinates into OSG world coordinates for you::
+    and will convert map coordinates into OSG world coordinates for you.
+    Place an object at a geospatial position like this::
 
         GeoTransform* xform = new GeoTransform();
-        ...
-        xform->setTerrain( mapNode->getTerrain() );
-        ...
+        GeoPoint point(srs, -121.0, 34.0, 1000.0);
+        xform->setPosition(point);
+
+    If you want your object to automatically clamp to the terrain surface,
+    assign a terrain and leave off the altitude::
+
+        GeoTransform* xform = new GeoTransform();
+        xform->setTerrain(mapNode->getTerrain());
         GeoPoint point(srs, -121.0, 34.0);
         xform->setPosition(point);
+
 
 
 I added a node, but it has no texture/lighting/etc. in osgEarth. Why?
@@ -56,12 +63,12 @@ How do make the terrain transparent?
             <options>
                 <terrain color="#ffffff00" ...
 
-    In code, this option is found in the ``MPTerrainEngineOptions`` class::
+    In code, this option is found in the ``RexTerrainEngineOptions`` class::
     
-        #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
-        using namespace osgEarth::Drivers::MPTerrainEngine;
+        #include <osgEarthDrivers/engine_mp/RexTerrainEngineOptions>
+        using namespace osgEarth::Drivers::RexTerrainEngine;
         ...
-        MPTerrainEngineOptions options;
+        RexTerrainEngineOptions options;
         options.color() = osg::Vec4(1,1,1,0);
 
 
@@ -73,12 +80,13 @@ How do I set the resolution of terrain tiles?
     into triangles.
     
     You can expressly set the terrain's tile size by using the Map options.
-    osgEarth will then resample all elevation data to the size you specify::
+    osgEarth will then resample all elevation data to the size you specify.
+    You will get best results from a tile size that is a power of 2 plus 1::
 
         <map>
             <options>
                 <terrain>
-                    <tile_size>65</tile_size> 
+                    <tile_size>9</tile_size> 
                     ...
 
 

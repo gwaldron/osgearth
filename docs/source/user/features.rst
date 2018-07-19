@@ -56,7 +56,7 @@ in most of osgEarth's earth files that demonstrate the use of feature data.
 Here is a *model layer* that renders an ESRI Shapefile as a series of yellow lines,
 rendered as OSG line geometry::
 
-    <model name="my layer" driver="feature_geom">
+    <feature_model name="boundaries">
         <features name="states" driver="ogr">
             <url>states.shp</url>
         </features>
@@ -68,7 +68,26 @@ rendered as OSG line geometry::
                 }
             </style>
         </styles>
-    </model>
+    </feature_model>
+
+You can also reference your feature data as a separate layer. This is useful if you 
+have multiple feature layers that use the same dataset::
+
+    <feature_source name="data_layer" driver="ogr">
+        <url>states.shp</url>
+    </feature_source>
+
+    <feature_model name="boundaries" feature_source="data_layer">
+        <styles>
+            <style type="text/css">
+                states {
+                    stroke:       #ffff00;
+                    stroke-width: 2.0;
+                }
+            </style>
+        </styles>
+    </feature_model>
+
 
 Components of a Feature Layer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,7 +96,8 @@ As you can see from the examples above, there are a few necessary components
 to any feature layer
 
   * The ``<features>`` block describes the actual feature source; i.e., where osgEarth
-    should go to find the input data.
+    should go to find the input data. Alteratively, a ``<feature_source>`` references
+    another layer that specifies the feature data.
     
   * The ``<styles>`` block describes how osgEarth should render the features, i.e., 
     their appearance in the scene. We call this the *stylesheet* or the *symbology*.
@@ -135,7 +155,7 @@ Stylesheets
 Each feature layer requires a *stylesheet*. The stylesheet appears as a ``<styles>``
 block in the earth file. Here's an example::
 
-    <model name="test" driver="feature_geom">
+    <feature_model name="test">
         <features driver="ogr">
             <geometry>POLYGON( (0 0, 1 0, 1 1, 0 1) )</geometry>
             <profile>global-geodetic</profile>
@@ -152,7 +172,7 @@ block in the earth file. Here's an example::
                 }
             </style>
         </styles>
-    </model>
+    </feature_model>
     
 The *stylesheet* contains one *style* called ``default``. Since there is only one
 style, osgEarth will apply it to all the input features. (To apply different styles 
@@ -303,7 +323,7 @@ Rendering Large Datasets
 
 The simplest way to load feature data into osgEarth is like this::
 
-   <model name="shapes">
+   <feature_model name="shapes">
       <features name="data" driver="ogr">
          <url>data.shp</url>
       </features>
@@ -312,7 +332,7 @@ The simplest way to load feature data into osgEarth is like this::
              fill: #ffff00;
          }
       </styles>
-   </model>
+   </feature_model>
 
 We just loaded every feature in the shapefile and colored them all yellow.
 
@@ -328,7 +348,7 @@ Feature display layouts
 The feature display layout activates paging and tiles of feature data.
 Let's modify the previous example::
 
-   <model name="shapes">
+   <feature_model name="shapes">
       <features name="data" driver="ogr">
          <url>data.shp</url>
       </features>
@@ -343,7 +363,7 @@ Let's modify the previous example::
              fill: #ffff00;
          }
       </styles>
-   </model>
+   </feature_model>
    
 The mere presence of the ``<layout>`` element activates paging. This means that
 instead of being loaded and compiled at load time, the feature data will load
@@ -373,7 +393,7 @@ You can enable feature cropping on a layout by setting the ``crop_features`` att
 
 For example::
 
-  <model name="roads" driver="feature_geom">
+  <feature_model name="roads">
         <features name="roads" driver="ogr" build_spatial_index="true">
               <url>roads.shp</url>
         </features>
@@ -389,7 +409,7 @@ For example::
                   }
             </style>
         </styles>        
-  </model>
+  </feature_model>
 
 
 
@@ -413,15 +433,8 @@ Layout Settings
 ~~~~~~~~~~~~~~~
 
     :tile_size:         The size (in one dimension) of each tile of features in the layout
-                        at the maximum range. Maximum range must be set for this to take effect.                                                      
-    :tile_size_factor:  The ratio of visibility range to feature tile radius. Default is 15.
-                        Increase this to produce more, smaller tiles at a given visibility
-                        range; decrease this to produce fewer, larger tiles.
-                        For example, for factor=15, at a visibility range of (say) 120,000m
-                        the system will attempt to create tiles that are approximately
-                        8,000m in radius. (120,000 / 15 = 8,000).
-    :max_range:         The desired max range for pre-tiled feature sources like TFS.  The tileSizeFactor will be automatically computed
-                        based on the first level of the feature profile so that it shows up at that range.
+                        at the maximum range. Maximum range must be set for this to take effect.
+    :max_range:         The desired max range for pre-tiled feature sources like TFS.
     :min_range:         Minimum visibility range for all tiles in the layout.
     :crop_features:     Whether to crop geometry to fit within the cell extents when chopping
                         a feature level up into grid cells. By default, this is false, meaning 

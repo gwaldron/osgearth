@@ -32,7 +32,7 @@ Get the Dependencies
 **Required dependencies**
 
     * OpenSceneGraph_ 3.4 or later
-    * GDAL_ 1.9.2 or later - Geospatial Data Abstraction Layer
+    * GDAL_ 2.0 or later - Geospatial Data Abstraction Layer
     * CURL_ - HTTP transfer library (comes with OpenSceneGraph_ 3rd party library distros)
 
 **Recommended pre-built dependencies**
@@ -52,7 +52,7 @@ Get the Dependencies
 	  .lib file from the .def and .dll files included in the Windows binaries:
 	  http://eli.thegreenplace.net/2009/09/23/compiling-sqlite-on-windows
 
-    * QT_ - Cross-platform UI framework. Used to built the osgEarthQt support library, which is
+    * QT_ 5.4 or later - Cross-platform UI framework. Used to built the osgEarthQt support library, which is
       useful (though not required) for building Qt applications that us osgEarth.  Point the
       ``QT_QMAKE_EXECUTABLE`` CMake variable to the ``qmake.exe`` you want to use and CMake will
       populate all the other QT variables.
@@ -99,6 +99,5 @@ Here are a few tips.
 .. _AlphaPixel:     http://downloads.alphapixel.org/
 .. _Mike Weiblen:   http://mew.cx/osg/
 .. _the forum:      http://forum.osgearth.org
-.. _LevelDB:        https://github.com/pelicanmapping/leveldb
 .. _SQLite:         http://www.sqlite.org/
 .. _vcpkg:          https://github.com/Microsoft/vcpkg

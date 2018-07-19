@@ -117,12 +117,14 @@ _debug    ( false )
 {
     if ( live )
     {
-        _progress = new MyProgressCallback();
-        _progress->_frameOfLastCull = 0;
-        _progress->_tiles = live;
-        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
-        options->setUserData( _progress.get() );
-        setDatabaseOptions( options );
+// Disable cancellation from MP to temporarily prevent elevation dropout
+        
+//        _progress = new MyProgressCallback();
+//        _progress->_frameOfLastCull = 0;
+//        _progress->_tiles = live;
+//        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
+//        options->setUserData( _progress.get() );
+//        setDatabaseOptions( options );
     }
 }
 

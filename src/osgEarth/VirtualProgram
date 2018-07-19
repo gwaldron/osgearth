@@ -178,12 +178,12 @@ namespace osgEarth
         /** Generates the shaders. */
         void prepare();
 
-    public:
         /** Called from the draw context to resize shader buffers as necessary (OSG) */
-        void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
 
-        /** Called by OSG to release GPu memory associated with the object */
-        void releaseGLObjects(osg::State* state) const;
+        virtual void releaseGLObjects(osg::State* state) const;
+
+        static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);
 
     protected:
         virtual ~PolyShader() { }
@@ -202,7 +202,17 @@ namespace osgEarth
         osg::ref_ptr<osg::Shader>    _geomShader;
         osg::ref_ptr<osg::Shader>    _tessevalShader;
 
+        // shader source before running thru the preprocessor. Keep this around so that
+        // someone can call VirtualProgram::getShaders and have access to code that has
+        // not been set up for ShaderFactory.
+        //std::string                  _originalSource;
+
         bool                         _dirty;
+
+        static Threading::Mutex _cacheMutex;
+        typedef std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > PolyShaderCache;
+        static PolyShaderCache _polyShaderCache;
+
     };
 
     typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;

@@ -19,15 +19,30 @@
 #include <osgEarth/VirtualProgram>
 
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/StringUtils>
+#include <osgEarth/Containers>
+#include <osg/Shader>
+#include <osg/Program>
+#include <osg/State>
+#include <osg/Notify>
+#include <osg/Version>
 #include <osg/GL2Extensions>
+#include <osg/GLExtensions>
 #include <fstream>
+#include <sstream>
+#include <OpenThreads/Thread>
+
 
 #define LC "[VirtualProgram] "
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
+
+Threading::Mutex PolyShader::_cacheMutex;
+PolyShader::PolyShaderCache PolyShader::_polyShaderCache;
 
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
@@ -36,10 +51,6 @@ using namespace osgEarth::ShaderComp;
 //#define DEBUG_ACCUMULATION
 
 #define USE_STACK_MEMORY 1
-
-#define USE_SHARED_PROGRAM_REPO 1
-
-#define USE_PROGRAM_CACHE 1
 
 #define MAX_PROGRAM_CACHE_SIZE 128
 
@@ -903,8 +914,6 @@ VirtualProgram::compileGLObjects(osg::State& state) const
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
-    osg::StateAttribute::resizeGLObjectBuffers(maxSize);
-
     _programCacheMutex.lock();
 
     for (ProgramMap::iterator i = _programCache.begin(); i != _programCache.end(); ++i)
@@ -927,21 +936,20 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
-    osg::StateAttribute::releaseGLObjects(state);
-
     _programCacheMutex.lock();
 
     for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
     {
-        i->second._program->releaseGLObjects(state);
+        //if ( i->second->referenceCount() == 1 )
+            i->second._program->releaseGLObjects(state);
     }
 
     for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
     {
-        if (i->data()._shader.valid())
-        {
-            i->data()._shader->releaseGLObjects(state);
-        }
+       if (i->data()._shader.valid())
+       {
+          i->data()._shader->releaseGLObjects(state);
+       }
     }
 
     _programCache.clear();
@@ -1089,17 +1097,9 @@ VirtualProgram::setFunction(const std::string&           functionName,
         function._accept = accept;
         ofm.insert( OrderedFunction(ordering, function) );
 
-        // Remove any quotes in the shader source (illegal)
-        std::string source(shaderSource);
-        osgEarth::replaceIn(source, "\"", " ");
-
-        // assemble the poly shader.
-        PolyShader* shader = new PolyShader();
-        shader->setName( functionName );
-        shader->setLocation( location );
-        shader->setShaderSource( source );
-        shader->prepare();
-
+        // assemble the poly shader. but check a map first for existing shaders.
+        PolyShader* shader = PolyShader::lookUpShader(functionName, shaderSource, location);
+      
         ShaderEntry& entry = _shaderMap[MAKE_SHADER_ID(functionName)];
         entry._shader        = shader;
         entry._overrideValue = osg::StateAttribute::ON;
@@ -1412,12 +1412,9 @@ VirtualProgram::apply( osg::State& state ) const
                         }
                     }
 
-#ifdef USE_SHARED_PROGRAM_REPO
                     // global sharing.
                     Registry::programSharedRepo()->share( program );
-#endif
 
-#ifdef USE_PROGRAM_CACHE
                     // finally, put own new program in the cache.
                     ProgramEntry& pe = _programCache[local.programKey];
                     pe._program = program.get();
@@ -1425,7 +1422,6 @@ VirtualProgram::apply( osg::State& state ) const
 
                     // purge expired programs.
                     const_cast<VirtualProgram*>(this)->removeExpiredProgramsFromCache(state, frameNumber);
-#endif
                 }
             }
         }
@@ -1446,8 +1442,13 @@ VirtualProgram::apply( osg::State& state ) const
         }
 #endif // USE_STACK_MEMORY
 
-        osg::Program::PerContextProgram* pcp = program->getPCP( state );
+        osg::Program::PerContextProgram* pcp;
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,4)
+        pcp = program->getPCP( state );
+#else
+        pcp = program->getPCP( contextID );
+#endif
         bool useProgram = state.getLastAppliedProgramObject() != pcp;
 
 #ifdef DEBUG_APPLY_COUNTS
@@ -1949,26 +1950,61 @@ void PolyShader::resizeGLObjectBuffers(unsigned maxSize)
 
 void PolyShader::releaseGLObjects(osg::State* state) const
 {
-    if (_nominalShader.valid())
-    {
-        _nominalShader->releaseGLObjects(state);
-    }
+   if (_nominalShader.valid())
+   {
+      _nominalShader->releaseGLObjects(state);
+   }
 
-    if (_geomShader.valid())
-    {
-        _geomShader->releaseGLObjects(state);
-    }
+   if (_geomShader.valid())
+   {
+      _geomShader->releaseGLObjects(state);
+   }
 
-    if (_tessevalShader.valid())
-    {
-        _tessevalShader->releaseGLObjects(state);
-    }
+   if (_tessevalShader.valid())
+   {
+      _tessevalShader->releaseGLObjects(state);
+   }
+}
+
+PolyShader* PolyShader::lookUpShader(const std::string& functionName, const std::string& shaderSource, ShaderComp::FunctionLocation location)
+{
+
+   std::pair<std::string, std::string> hashKey = std::pair<std::string, std::string>(functionName, shaderSource);
+
+   _cacheMutex.lock();
+   
+   PolyShaderCache::iterator iter = _polyShaderCache.find(hashKey);
+ 
+   PolyShader* shader = NULL;
+   if (iter != _polyShaderCache.end()) {
+      shader = iter->second.get();
+   }
+
+   if (!shader)
+   {
+
+      // Remove any quotes in the shader source (illegal)
+      std::string source(shaderSource);
+      osgEarth::replaceIn(source, "\"", " ");
+
+      shader = new PolyShader();
+      shader->setName(functionName);
+      shader->setLocation(location);
+      shader->setShaderSource(source);
+      shader->prepare();
+      _polyShaderCache[hashKey] = shader;
+   }
+
+   _cacheMutex.unlock();
+   return shader;
 }
 
 //.......................................................................
 // SERIALIZERS for VIRTUALPROGRAM
 
 #include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
 
 #define PROGRAM_LIST_FUNC( PROP, TYPE, DATA ) \
     static bool check##PROP(const osgEarth::VirtualProgram& attr) \
@@ -2109,7 +2145,7 @@ static bool writeFunctions( osgDB::OutputStream& os, const osgEarth::VirtualProg
     return true;
 }
 
-namespace osgEarth { namespace Serializers { namespace VirtualProgram
+namespace
 {
     REGISTER_OBJECT_WRAPPER(
         VirtualProgram,
@@ -2125,4 +2161,4 @@ namespace osgEarth { namespace Serializers { namespace VirtualProgram
 
         ADD_BOOL_SERIALIZER( IsAbstract, false );
     }
-} } }
+}

@@ -577,7 +577,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         vbox->setHorizAlign( Control::ALIGN_RIGHT );
         vbox->setVertAlign( Control::ALIGN_BOTTOM );
         view->addEventHandler( new ActivityMonitorTool(vbox) );
-        mainContainer->addControl( vbox );
+        canvas->addControl( vbox );
     }
 
     // Install an auto clip plane clamper

@@ -626,6 +626,20 @@ namespace osgEarth { namespace Util
         TetherCallback* getTetherCallback() { return _tetherCallback.get(); }
 
         /**
+         * Post-camera-update callback; use to access the camera position after
+         * the call to updateCamera (for frame synchronization)
+         */
+        class UpdateCameraCallback : public osg::Referenced
+        {
+        public:
+            virtual void onUpdateCamera(const osg::Camera*) { }
+        protected:
+            virtual ~UpdateCameraCallback() { }
+        };
+        void setUpdateCameraCallback(UpdateCameraCallback* cb) { _updateCameraCallback = cb; }
+        UpdateCameraCallback* getUpdateCameraCallback() { return _updateCameraCallback.get(); }
+
+        /**
          * Move the focal point of the camera using deltas (normalized screen coords).
          */
         virtual void pan( double dx, double dy );
@@ -1027,6 +1041,8 @@ namespace osgEarth { namespace Util
         osg::Node::NodeMask  _findNodeTraversalMask;
 
         osg::ref_ptr<TetherCallback> _tetherCallback;
+
+        osg::ref_ptr<UpdateCameraCallback> _updateCameraCallback;
 
         bool _userWillCallUpdateCamera;
 

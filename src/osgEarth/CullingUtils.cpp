@@ -1075,6 +1075,41 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
     traverse(node, nv);
 }
 
+//..........................................................................
+
+void
+AltitudeCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    bool visible = true;
+
+    if (_maxAltitude.isSet())
+    {
+        Horizon* horizon = Horizon::get(*nv);
+        if (horizon)
+        {
+            visible = nv->getDistanceToViewPoint(osg::Vec3(0, 0, 0), true) <
+                _maxAltitude.get() + horizon->getRadius();
+        }
+        else if (_srs.valid())
+        {
+            if (_srs->isGeographic())
+            {
+                visible = nv->getDistanceToViewPoint(osg::Vec3(0, 0, 0), true) <
+                    _maxAltitude.get() + _srs->getEllipsoid()->getRadiusEquator();
+            }
+            else
+            {
+                visible = nv->getViewPoint().z() <= _maxAltitude.get();
+            }
+        }
+    }
+
+    if (visible)
+    {
+        traverse(node, nv);
+    }
+}
+
 //......................................................................
 
 namespace

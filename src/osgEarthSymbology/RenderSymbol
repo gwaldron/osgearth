@@ -85,6 +85,10 @@ namespace osgEarth { namespace Symbology
         optional<Angle>& maxCreaseAngle() { return _maxCreaseAngle; }
         const optional<Angle>& maxCreaseAngle() const { return _maxCreaseAngle; }
 
+        /** maximum visibility altitude */
+        optional<Distance>& maxAltitude() { return _maxAltitude; }
+        const optional<Distance>& maxAltitude() const { return _maxAltitude; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -102,6 +106,7 @@ namespace osgEarth { namespace Symbology
         optional<bool>               _transparent;
         optional<bool>               _decal;
         optional<Angle>              _maxCreaseAngle;
+        optional<Distance>           _maxAltitude;
         
         /** dtor */
         virtual ~RenderSymbol() { }

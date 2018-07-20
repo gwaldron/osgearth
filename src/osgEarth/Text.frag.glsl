@@ -235,10 +235,10 @@ vec4 textColor(vec2 src_texCoord)
 
 #endif
 
-
 void oe_Text_FS(inout vec4 color)
 {
-    vertexColor = color;
+    float originalAlpha = color.a;
+    vertexColor = vec4(color.rgb, 1.0);
 
     if (oe_Text_texCoord.x<0.0 && oe_Text_texCoord.y<0.0)
     {
@@ -271,4 +271,5 @@ void oe_Text_FS(inout vec4 color)
     if (clr.a==0.0) discard;
 
     color = clr;
+    color.a *= originalAlpha;
 }

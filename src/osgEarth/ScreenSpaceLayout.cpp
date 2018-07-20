@@ -118,9 +118,10 @@ namespace
     // TODO: a way to clear out this list when drawables go away
     struct DrawableInfo
     {
-        DrawableInfo() : _lastAlpha(1.0f), _lastScale(1.0f), _frame(0u) { }
+        DrawableInfo() : _lastAlpha(1.0f), _lastScale(1.0f), _frame(0u), _visible(true) { }
         float _lastAlpha, _lastScale;
         unsigned _frame;
+        bool _visible;
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
@@ -353,8 +354,6 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
             i != leaves.end() && local._passed.size() < limit;
             ++i )
-        //LCGIterator<osgUtil::RenderBin::RenderLeafList> i(leaves);
-        //while (i.hasMore() && local._passed.size() < limit)
         {
             bool visible = true;
 
@@ -432,14 +431,19 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osg::Vec3f winPos    = clip_ndc * windowMatrix;
             osg::Vec3f refWinPos = clip_ndc * refWindowMatrix;
 
+            // Expand the box if this object is currently not visible, so that it takes a little
+            // more room for it to before visible once again.
+            DrawableInfo& info = local._memory[drawable];
+            float buffer = info._visible ? 1.0f : 3.0f;
+
             // The "declutter" box is the box we use to reserve screen space.
             // This must be unquantized regardless of whether snapToPixel is set.
             box.set(
-                floor(refWinPos.x() + box.xMin()),
-                floor(refWinPos.y() + box.yMin()),
+                floor(refWinPos.x() + box.xMin())-buffer,
+                floor(refWinPos.y() + box.yMin())-buffer,
                 refWinPos.z(),
-                ceil(refWinPos.x() + box.xMax()),
-                ceil(refWinPos.y() + box.yMax()),
+                ceil(refWinPos.x() + box.xMax())+buffer,
+                ceil(refWinPos.y() + box.yMax())+buffer,
                 refWinPos.z() );
 
             // if snapping is enabled, only snap when the camera stops moving.
@@ -573,6 +577,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     leaves.push_back( leaf );
 
                     info._frame++;
+                    info._visible = true;
                 }
                 else
                 {
@@ -633,6 +638,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 }
 
                 info._frame++;
+                info._visible = false;
             }
         }
     }

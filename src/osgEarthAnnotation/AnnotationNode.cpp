@@ -29,6 +29,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/GLUtils>
+#include <osgEarth/CullingUtils>
 
 #include <osg/PolygonOffset>
 #include <osg/Depth>
@@ -55,7 +56,10 @@ _priority   ( 0.0f )
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     // always draw after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
-    
+
+    _altCallback = new AltitudeCullCallback();
+    this->addCullCallback(_altCallback);
+
     _horizonCuller = new HorizonCullCallback();
     this->addCullCallback( _horizonCuller.get() );
 
@@ -71,6 +75,10 @@ _priority   ( 0.0f )
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     // always draw after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
+
+    _altCallback = new AltitudeCullCallback();
+    this->addCullCallback(_altCallback);
+
     _horizonCuller = new HorizonCullCallback();
     this->addCullCallback( _horizonCuller.get() );
 
@@ -134,6 +142,8 @@ AnnotationNode::setMapNode( MapNode* mapNode )
                 _horizonCuller->setHorizon( new Horizon(mapNode->getMapSRS()) );
             else
                 _horizonCuller->setEnabled( false );
+
+            static_cast<AltitudeCullCallback*>(_altCallback)->srs() = mapNode->getMapSRS();
         }
 
 		applyStyle( this->getStyle() );
@@ -265,6 +275,17 @@ AnnotationNode::applyRenderSymbology(const Style& style)
 
             getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Depth(osg::Depth::LEQUAL, 0, 1, false));
+        }
+
+        if (render->maxAltitude().isSet())
+        {
+            AltitudeCullCallback* cc = static_cast<AltitudeCullCallback*>(_altCallback);
+            cc->maxAltitude() = render->maxAltitude()->as(Units::METERS);
+        }
+        else
+        {
+            AltitudeCullCallback* cc = static_cast<AltitudeCullCallback*>(_altCallback);
+            cc->maxAltitude().unset();
         }
     }
 }

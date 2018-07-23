@@ -6,7 +6,6 @@ set( DOCS_ROOT
     source/faq.rst
     source/howtos.rst
     source/index.rst
-    source/install.rst
     source/ios.rst
     source/releasenotes.rst
     source/startup.rst
@@ -100,7 +99,7 @@ source_group( References\\Drivers\\Terrain FILES ${DOCS_REFERENCES_DRIVERS_TERRA
 source_group( References\\Drivers\\Tile    FILES ${DOCS_REFERENCES_DRIVERS_TILE} )
 source_group( User                         FILES ${DOCS_USER} )
 
-add_custom_target( 
+add_custom_target(
     Documentation
     SOURCES
         ${DOCS_ROOT}

@@ -19,30 +19,16 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderFactory>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/TaskService>
-#include <osgEarth/IOTypes>
-#include <osgEarth/ColorFilter>
-#include <osgEarth/StateSetCache>
-#include <osgEarth/HTTPClient>
-#include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
 
-#include <osgEarth/Units>
-#include <osg/Notify>
-#include <osg/Version>
-#include <osgDB/Registry>
-#include <osgDB/Options>
 #include <osgText/Font>
 
 #include <gdal_priv.h>
+
 #include <ogr_api.h>
-#include <cpl_error.h>
-#include <stdlib.h>
-#include <locale>
 
 using namespace osgEarth;
 using namespace OpenThreads;

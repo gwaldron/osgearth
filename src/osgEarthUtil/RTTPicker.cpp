@@ -17,15 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/RTTPicker>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderLoader>
-#include <osgEarth/ObjectIndex>
-#include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
 
-#include <osgDB/WriteFile>
 #include <osg/BlendFunc>
 
 using namespace osgEarth;

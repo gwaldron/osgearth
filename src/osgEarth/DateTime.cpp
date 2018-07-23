@@ -21,9 +21,8 @@
 */
 #include <osgEarth/DateTime>
 #include <osgEarth/StringUtils>
-#include <math.h>
-#include <iomanip>
-#include <stdio.h>
+
+#include <stdio.h> 
 
 using namespace osgEarth;
 

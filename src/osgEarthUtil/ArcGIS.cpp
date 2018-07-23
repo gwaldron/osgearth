@@ -19,7 +19,6 @@
 
 #include <osgEarthUtil/ArcGIS>
 
-#include <osgEarth/IOTypes>
 #include <osgEarth/URI>
 
 using namespace osgEarth;

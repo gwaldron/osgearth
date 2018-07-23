@@ -29,6 +29,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/PointDrawable>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/GLUtils>
@@ -75,6 +76,20 @@ LineDrawable* makeStar(double x, double y, double r)
     return star;
 }
 
+PointDrawable* makeGridOfPoints(double x, double y)
+{
+    PointDrawable* grid = new PointDrawable();
+    for(float i=x; i<x+20; i+=5)
+    {
+        for(float j=y; j<y+20; j+=5)
+        {
+            grid->pushVertex(osg::Vec3(i, 0, j));
+        }
+    }
+    grid->finish();
+    return grid;
+}
+
 osg::Node* makeGeometryForImport(double x, double y)
 {
     osg::Geometry* geom = new osg::Geometry();
@@ -114,7 +129,7 @@ struct TestFirstCount : public osg::NodeCallback
     }
 };
 
-osg::Node* createLineDrawables()
+osg::Node* createDrawables()
 {
     // You need a viewport uniform for the lines to work.
     // MapNode installs one automatically, but we're not using MapNode
@@ -133,7 +148,7 @@ osg::Node* createLineDrawables()
 
     x += 20;
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
-    loop->setLineWidth(8);
+    loop->setLineWidth(1);
     loop->setColor(osg::Vec4(1,1,0,1));
     addVerts(loop, x, y);
     group->addChild(loop);
@@ -173,7 +188,20 @@ osg::Node* createLineDrawables()
     group->addChild(points);
 
     x = 20;
-    y -= 30;
+    y -= 20;
+    for(unsigned i=0; i<10; ++i)
+    {
+        LineDrawable* across = new LineDrawable(GL_LINES);
+        across->pushVertex(osg::Vec3(x, 0, y));
+        across->pushVertex(osg::Vec3(x+100, 0, y));
+        across->setLineWidth((float)(i+1));
+        across->finish();
+        group->addChild(across);
+        y -= (i+2);
+    }
+
+    x = 20;
+    y -= 20;
     LineDrawable* star = makeStar(x, y, 10);
     star->setColor(osg::Vec4(1,1,1,1));
     star->setLineWidth(1.0f);
@@ -191,6 +219,19 @@ osg::Node* createLineDrawables()
     star3->setLineWidth(3.0f);
     group->addChild(star3);
 
+    y -= 40;
+    x = 20;
+    PointDrawable* grid = makeGridOfPoints(x, y);
+    grid->setPointSize(3.0f);
+    grid->setColor(osg::Vec4(0,1,1,1));
+    group->addChild(grid);
+
+    x += 50;
+    PointDrawable* grid2 = makeGridOfPoints(x, y);
+    grid2->setPointSize(20.0f);
+    GLUtils::setPointSmooth(grid2->getOrCreateStateSet(), 1);
+    group->addChild(grid2);
+
     return group;
 }
 
@@ -200,7 +241,7 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
-    osg::ref_ptr<osg::Node> node = createLineDrawables();
+    osg::ref_ptr<osg::Node> node = createDrawables();
 
 #ifdef OSG_GL3_AVAILABLE
     // Sets up the State for GL3 mode
@@ -210,7 +251,7 @@ main(int argc, char** argv)
     if (arguments.read("--ortho"))
     {
         viewer.realize();
-        double r = node->getBound().radius() * 1.1;
+        double r = node->getBound().radius() * 1.2;
         double ar = viewer.getCamera()->getViewport()->width() / viewer.getCamera()->getViewport()->height();
         viewer.getCamera()->setProjectionMatrixAsOrtho(-r, +r, -r/ar, +r/ar, -r*2.0, +r*2.0);
     }
@@ -218,6 +259,7 @@ main(int argc, char** argv)
     if (arguments.read("--antialias") || arguments.read("--smooth"))
     {
         GLUtils::setLineSmooth(node->getOrCreateStateSet(), 1);
+        GLUtils::setPointSmooth(node->getOrCreateStateSet(), 1);
         node->getOrCreateStateSet()->setMode(GL_BLEND, 1);
     }
 

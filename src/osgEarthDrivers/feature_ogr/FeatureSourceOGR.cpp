@@ -345,13 +345,21 @@ public:
 
             if ( dsHandle && layerHandle )
             {
+                Query newQuery(query);
+                if (_options.query().isSet())
+                {
+                    newQuery = _options.query()->combineWith(query);
+                }
+
+                OE_INFO << newQuery.getConfig().toJSON(true) << std::endl;
+
                 // cursor is responsible for the OGR handles.
                 return new FeatureCursorOGR( 
                     dsHandle,
                     layerHandle, 
                     this,
                     getFeatureProfile(),
-                    query,
+                    newQuery,
                     getFilters() );
             }
             else

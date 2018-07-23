@@ -20,7 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/TMSBackFiller>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageMosaic>
 

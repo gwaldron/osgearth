@@ -18,16 +18,9 @@
  */
 #include <osgEarth/ShaderFactory>
 
-#include <osgEarth/ShaderUtils>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
-#include <osg/Shader>
-#include <osg/Program>
-#include <osg/State>
-#include <osg/Notify>
-#include <sstream>
 
 #define LC "[ShaderFactory] "
 

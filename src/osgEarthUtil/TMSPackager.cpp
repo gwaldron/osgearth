@@ -18,15 +18,10 @@
  */
 #include <osgEarthUtil/TMSPackager>
 #include <osgEarthUtil/TMS>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
-#include <osgEarth/TaskService>
 #include <osgEarth/FileUtils>
-#include <osgEarth/CacheEstimator>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
 #include <osgDB/FileUtils>
-#include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 
 

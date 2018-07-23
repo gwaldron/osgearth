@@ -19,15 +19,13 @@
 
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
-#include <osgEarth/DateTime>
 #include <osgEarth/ThreadingUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/Registry>
 #include <osgDB/ConvertUTF>
-#include <osg/Notify>
 #include <stack>
-#include <errno.h>
+
+#include <errno.h> 
 
 #ifdef WIN32
 #  include <windows.h>
@@ -36,7 +34,6 @@
 #  include <stdlib.h>
 #endif
 
-#include <sys/types.h>
 
 #ifdef WIN32
 #  include <sys/utime.h>
@@ -44,11 +41,7 @@
 #  include <utime.h>
 #endif
 
-#include <sys/stat.h>
-#include <time.h>
 
-#include <list>
-#include <sstream>
 
 // currently this impl is for _all_ platforms, except as defined.
 // the mac version will change soon to reflect the path scheme under osx, but

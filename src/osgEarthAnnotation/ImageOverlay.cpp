@@ -855,7 +855,10 @@ ImageOverlay::clamp(osg::Node* graph, const Terrain* terrain)
 {
     if ( terrain && graph )
     {
-        GeometryClamper clamper;
+        // don't bother storing clamperData in the object since we are not
+        // doing any terrain-relative operations -gw
+        GeometryClamper::LocalData clamperData;
+        GeometryClamper clamper(clamperData);
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
 

@@ -17,18 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/Capabilities>
-#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/TerrainResources>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
-#include <osgEarth/TerrainTileModelFactory>
-#include <osgEarth/TraversalData>
-#include <osgDB/ReadFile>
-#include <osg/CullFace>
-#include <osg/PolygonOffset>
-#include <osgViewer/View>
 
 #define LC "[TerrainEngineNode] "
 

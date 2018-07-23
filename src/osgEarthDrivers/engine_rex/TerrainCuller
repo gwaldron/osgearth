@@ -21,6 +21,7 @@
 
 #include "EngineContext"
 #include "TerrainRenderData"
+#include "SelectionInfo"
 
 #include <osg/NodeVisitor>
 #include <osgUtil/CullVisitor>

@@ -18,22 +18,14 @@
  */
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ShaderGenerator>
-#include <osgEarth/ShaderUtils>
-#include <osgEarth/StateSetCache>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
 #include <osgEarth/ObjectIndex>
 
 #include <osg/ComputeBoundsVisitor>
-#include <osg/MatrixTransform>
-#include <osg/UserDataContainer>
-#include <osg/LOD>
 #include <osg/TextureBuffer>
-#include <osgUtil/MeshOptimizers>
 
 #define LC "[DrawInstanced] "
 

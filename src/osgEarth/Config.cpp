@@ -23,12 +23,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/FileUtils>
-#include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
-#include <osgDB/Registry>
-#include <sstream>
-#include <fstream>
-#include <iomanip>
 
 using namespace osgEarth;
 

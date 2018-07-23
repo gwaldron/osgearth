@@ -18,9 +18,7 @@
  */
 #include <osgEarth/Horizon>
 #include <osgUtil/CullVisitor>
-#include <osg/Transform>
 #include <osgEarth/Registry>
-#include <osg/ValueObject>
 #include <osg/Geometry>
 #include <osg/Geode>
 

@@ -20,8 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Ephemeris>
-#include <osg/CoordinateSystemNode>
-#include <sstream>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -158,8 +156,6 @@ namespace
 
             const double JD_REFTIME = 2451544;
             double d = dt.getJulianDay() - JD_REFTIME;
-            //double d = dayNumber(year, month, date, hoursUTC);
-
             double N = d2r(125.1228 - 0.0529538083 * d);  nrad(N);
             double i = d2r(5.1454);                       
             double w = d2r(318.0634 + 0.1643573223 * d);  nrad(w);
@@ -252,7 +248,8 @@ namespace
             double Decl = atan2(ze, sqrt(xe*xe + ye*ye));
           
             // finally, adjust for the time of day (rotation of the earth).
-            double UT = d2r(d - floor(d)); nrad(UT);
+            double UT = 2.0*osg::PI * (d - floor(d));
+            //double UT = d - floor(d); // 0..1
             double GMST0 = Ls + d2r(180.0); nrad(GMST0);
 
             // Note. The paper creates a "correction" called called "topographic RA/DECL"
@@ -278,7 +275,7 @@ namespace
                 moon.latitude.as(Units::RADIANS),
                 moon.longitude.as(Units::RADIANS),
                 moon.altitude.as(Units::METERS),
-                moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());            
+                moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());
 
             return moon;
         }

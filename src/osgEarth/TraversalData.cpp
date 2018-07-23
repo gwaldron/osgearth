@@ -18,7 +18,6 @@
  */
 #include <osgEarth/TraversalData>
 #include <osgEarth/Registry>
-#include <osg/ValueObject>
 
 using namespace osgEarth;
 

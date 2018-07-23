@@ -17,14 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationLayer>
-#include <osgEarth/VerticalDatum>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
-#include <osgEarth/MemCache>
 #include <osgEarth/Metrics>
-#include <osgEarth/ImageUtils>
-#include <osg/Version>
-#include <iterator>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -281,7 +276,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
 
         // Make it from the source:
         result = source->createHeightField( key, getOrCreatePreCacheOp(), progress );
-   
+
         // If the result is good, we how have a heightfield but it's vertical values
         // are still relative to the tile source's vertical datum. Convert them.
         if (result.valid())
@@ -314,6 +309,11 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // note: this method takes care of the vertical datum shift internally.
         osg::ref_ptr<NormalMap> dummyNormalMap;
         assembleHeightField( key, result, dummyNormalMap, progress );
+    }
+
+    if (progress && progress->isCanceled())
+    {
+        return 0L;
     }
 
     return result.release();
@@ -455,6 +455,14 @@ ElevationLayer::assembleHeightField(const TileKey& key,
         //if (progress && progress->message().empty())
         //    progress->message() = "assemble yielded no intersecting tiles";
     }
+
+
+    // If the progress was cancelled clear out any of the output data.
+    if (progress && progress->isCanceled())
+    {
+        out_hf = 0;
+        out_normalMap = 0;
+    }
 }
 
 GeoHeightField
@@ -588,6 +596,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 createImplementation(key, hf, normalMap, progress);
             }
 
+            // Check for cancelation before writing to a cache
+            if (progress && progress->isCanceled())
+            {
+                return GeoHeightField::INVALID;
+            }
+
             // validate it to make sure it's legal.
             if ( hf.valid() && !validateHeightField(hf.get()) )
             {
@@ -631,6 +645,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
         {
             result = GeoHeightField( hf.get(), normalMap.get(), key.getExtent() );
         }
+    }
+
+    // Check for cancelation before writing to a cache:
+    if ( progress && progress->isCanceled() )
+    {
+        return GeoHeightField::INVALID;
     }
 
     // write to mem cache if needed:
@@ -1167,6 +1187,11 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         std::cout << std::endl;
     }
 #endif
+
+    if (progress && progress->isCanceled())
+    {
+        return false;
+    }
 
     // Return whether or not we actually read any real data
     return realData;

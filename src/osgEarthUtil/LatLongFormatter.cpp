@@ -17,10 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/LatLongFormatter>
-#include <iomanip>
-#include <sstream>
-#include <cstdio>
-#include <algorithm>
+
+#include <stdio.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

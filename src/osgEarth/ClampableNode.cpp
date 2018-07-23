@@ -19,8 +19,6 @@
 
 #include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
-#include <osgEarth/DepthOffset>
-#include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 
@@ -148,9 +146,6 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
 #undef  LC
 #define LC "[ClampableNode Serializer] "
 
-#include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
 namespace osgEarth { namespace Serializers { namespace ClampableNode
 {

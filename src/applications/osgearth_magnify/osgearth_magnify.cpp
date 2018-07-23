@@ -25,6 +25,7 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/MapNode>
+#include <osgUtil/CullVisitor>
 
 #define LC "[magnify] "
 
@@ -41,28 +42,51 @@ int usage(const char* name)
     return 0;
 }
 
+// Application-wide data
 struct App
 {
     osgViewer::View* _mainView;
     osgViewer::View* _magView;
     ui::HSliderControl* _magSlider;
+    bool _useLODScale;
 
-    float computeLODScaleFromMag(float mag)
+    App()
     {
-        return 1.0f/mag;
+        _useLODScale = true;
+    }
+
+    float computeRangeScale()
+    {
+        return 1.0f/_magSlider->getValue();
     }
 
     void apply()
     {
-        //const float base_vfov = 30.0f;
+        bool isPerspective = _mainView->getCamera()->getProjectionMatrix()(3,3) == 0.0;
+        if (isPerspective)
+        {
+            double vfov, ar, n, f;
+            _mainView->getCamera()->getProjectionMatrixAsPerspective(vfov, ar, n, f);
+            _magView->getCamera()->setProjectionMatrixAsPerspective(vfov * computeRangeScale(), ar, n, f);
+        }
+        else
+        {
+            double L, R, B, T, N, F;
+            double M, H;
+            _mainView->getCamera()->getProjectionMatrixAsOrtho(L, R, B, T, N, F);
+            M = B+(T-B)/2;
+            H = (T-B)*computeRangeScale()/2;
+            B = M-H, T = M+H;
+            M = L+(R-L)/2;
+            H = (R-L)*computeRangeScale()/2;
+            L = M-H, R = M+H;
+            _magView->getCamera()->setProjectionMatrixAsOrtho(L, R, B, T, N, F);
+        }
 
-        double vfov, ar, n, f;
-        _mainView->getCamera()->getProjectionMatrixAsPerspective(vfov, ar, n, f);
-
-        float lodScale = computeLODScaleFromMag(_magSlider->getValue());
-
-        _magView->getCamera()->setProjectionMatrixAsPerspective(vfov * lodScale, ar, n, f);
-        _magView->getCamera()->setLODScale(lodScale);
+        if (_useLODScale)
+        {
+            _magView->getCamera()->setLODScale(computeRangeScale());
+        }
     }
 };
 
@@ -90,40 +114,111 @@ ui::Container* createUI(App& app)
     return box;
 }
 
+//! Custom CullVisitor to test the getDistanceToViewPoint override approach.
+struct MyCullVisitor : public osgUtil::CullVisitor
+{
+    App& _app;
+
+    MyCullVisitor(App& app) : osgUtil::CullVisitor(), _app(app)
+    {
+    }
+
+    MyCullVisitor(const MyCullVisitor& rhs) :
+        osgUtil::CullVisitor(rhs),
+        _app(rhs._app)
+    {
+    }
+
+    virtual osgUtil::CullVisitor* clone() const
+    { 
+        return new MyCullVisitor(*this);
+    }
+
+    void apply(osg::Group& node)
+    {
+        MapNode* mapNode = dynamic_cast<MapNode*>(&node);
+        if (mapNode && getCurrentCamera()->getView() == _app._magView)
+        {
+            // get the eyepoint in world space:
+            osg::Matrix viewToWorld;
+            viewToWorld.invert(*getModelViewMatrix());
+            osg::Vec3d eye = osg::Vec3d(0,0,0) * viewToWorld;
+
+            // store it:
+            _eyePointStack.push_back(eye);
+
+            // convert to geo and adjust the altitude in order to simulate a zoom-in:
+            GeoPoint p;
+            p.fromWorld(mapNode->getMapSRS(), eye);
+
+            osg::Vec3d zoomedEye;
+            p.alt() = p.alt() * _app.computeRangeScale();
+            p.toWorld(zoomedEye);
+
+            // store the reference view point in view space:
+            _referenceViewPoints.push_back(zoomedEye*(*getModelViewMatrix()));
+
+            // ..and the view point in world space.
+            _viewPointStack.push_back(zoomedEye);
+        }
+        osgUtil::CullVisitor::apply(node);
+    }
+};
+
+
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--help") )
         return usage(argv[0]);
+    
+    App app;
+
+    // optionally use a custom cull visitor instead of LOD scale:
+    if (arguments.read("--cull-visitor"))
+    {
+        app._useLODScale = false;
+        osgUtil::CullVisitor::prototype() = new MyCullVisitor(app);
+        OE_NOTICE << LC << "Using a custom cull visitor" << std::endl;
+    }
 
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel(osgViewer::CompositeViewer::SingleThreaded);
 
-    osgViewer::View* mainView = new osgViewer::View();   
-    mainView->setUpViewInWindow(10, 10, 800, 800);
-    mainView->setCameraManipulator(new EarthManipulator(arguments));
-    viewer.addView(mainView);
+    // main view lets the user control the scene
+    app._mainView = new osgViewer::View();   
+    app._mainView->setUpViewInWindow(10, 10, 800, 800);
+    app._mainView->setCameraManipulator(new EarthManipulator(arguments));
+    viewer.addView(app._mainView);
 
-    osgViewer::View* magView = new osgViewer::View();
-    magView->setUpViewInWindow(830, 10, 800, 800);
-    viewer.addView(magView);
+    // mag view shows the magnified main view, no controls
+    app._magView = new osgViewer::View();
+    app._magView->setUpViewInWindow(830, 10, 800, 800);
+    viewer.addView(app._magView);
 
+    // load the earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (!node) return usage(argv[0]);
-
-    mainView->setSceneData(node);
-    magView->setSceneData(node);
-
-    App app;
-    app._mainView = mainView;
-    app._magView = magView;
+    
+    // Add a UI to the main view:
+    ui::ControlCanvas* canvas = new ui::ControlCanvas();
     ui::Container* ui = createUI(app);
-    ui::ControlCanvas* canvas = ui::ControlCanvas::getOrCreate(mainView);
     canvas->addControl(ui);
+
+    osg::Group* uiGroup = new osg::Group();
+    uiGroup->addChild(node);
+    uiGroup->addChild(canvas);
+    app._mainView->setSceneData(uiGroup);
+    
+    // Just the map on the magnified view:
+    app._magView->setSceneData(node);
+
+    viewer.realize();
 
     while(!viewer.done())
     {
-        magView->getCamera()->setViewMatrix(mainView->getCamera()->getViewMatrix());
+        // sync magnified view to main view
+        app._magView->getCamera()->setViewMatrix(app._mainView->getCamera()->getViewMatrix());
         viewer.frame();
     }
     return 0;

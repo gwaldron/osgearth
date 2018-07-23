@@ -22,10 +22,13 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
 
-#include <osg/LineWidth>
 #include <osg/LineStipple>
-#include <osg/Point>
 #include <osg/GraphicsContext>
+
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
+#include <osg/LineWidth>
+#include <osg/Point>
+#endif
 
 using namespace osgEarth;
 
@@ -91,7 +94,7 @@ GLUtils::setLineSmooth(osg::StateSet* stateSet, osg::StateAttribute::OverrideVal
     stateSet->setMode(GL_LINE_SMOOTH, ov);
 #endif
 
-    stateSet->setDefine("OE_LINES_ANTIALIAS", ov);
+    stateSet->setDefine("OE_LINE_SMOOTH", ov);
 }
 
 void
@@ -102,6 +105,16 @@ GLUtils::setPointSize(osg::StateSet* stateSet, float value, osg::StateAttribute:
 #endif
 
     stateSet->addUniform(new osg::Uniform("oe_GL_PointSize", value), ov);
+}
+
+void
+GLUtils::setPointSmooth(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue ov)
+{
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
+    stateSet->setMode(GL_POINT_SMOOTH, ov);
+#endif
+
+    stateSet->setDefine("OE_POINT_SMOOTH", ov);
 }
 
 void
@@ -155,7 +168,7 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
         break;
 
     case GL_LINE_SMOOTH:
-        stateSet->removeDefine("OE_LINES_ANTIALIAS");
+        stateSet->removeDefine("OE_LINE_SMOOTH");
         break;
 
     case GL_POINT_SIZE:

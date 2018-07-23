@@ -646,7 +646,7 @@ Action* ModelLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 {
   if (!_doubleClick.valid() && _layer.valid() && _map.valid())
   {
-    osg::ref_ptr<osg::Node> temp = _layer->getOrCreateNode();
+    osg::ref_ptr<osg::Node> temp = _layer->getNode();
     if (temp.valid())
     {
       osg::NodePathList nodePaths = temp->getParentalNodePaths();

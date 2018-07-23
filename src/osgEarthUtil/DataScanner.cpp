@@ -22,7 +22,6 @@
 #include <osgEarthUtil/DataScanner>
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgDB/FileUtils>
-#include <osgDB/FileNameUtils>
 
 #define LC "[DataScanner] "
 

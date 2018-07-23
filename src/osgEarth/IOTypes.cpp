@@ -18,9 +18,7 @@
  */
 #include <osgEarth/IOTypes>
 #include <osgEarth/URI>
-#include <osgEarth/XmlUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReaderWriter>
 #include <osgDB/Registry>
 
 using namespace osgEarth;

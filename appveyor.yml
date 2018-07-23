@@ -1,27 +1,27 @@
 version: 1.0.{build}
 shallow_clone: true
-os: Visual Studio 2015
+os: Visual Studio 2017
 
 install:
-  - echo Install
+  #- cd C:\tools\vcpkg
+  #- vcpkg install osg:x64-windows sqlite3:x64-windows protobuf:x64-windows poco:x64-windows
+  #- vcpkg integrate install
   - mkdir c:\temp
   - cd c:\temp
-  - ps: Start-FileDownload 'https://ci.appveyor.com/api/projects/bjornblissing/osg-3rdparty-cmake/artifacts/v140-x64.zip?job=Environment%3A+Name%3Dv140-x64%2C+APPVEYOR_BUILD_WORKER_IMAGE%3DVisual+Studio+2015%2C+Generator%3DVisual+Studio+14+2015+Win64'
-  - ps: Start-FileDownload 'https://s3.amazonaws.com/pelican-public/OpenSceneGraph-dev.zip'
-  - ps: Start-FileDownload 'http://download.gisinternals.com/sdk/downloads/release-1900-x64-gdal-2-2-3-mapserver-7-0-7-libs.zip'    
-  - 7z x v140-x64.zip
-  - 7z x OpenSceneGraph-dev.zip
-  - 7z x release-1900-x64-gdal-2-2-3-mapserver-7-0-7-libs.zip -ogdal
+  - ps: Start-FileDownload 'https://s3.amazonaws.com/pelican-public/osgearth-vcpkg-deps.7z'
+  - 7z x osgearth-vcpkg-deps.7Z
   - cd C:\projects\osgearth
 
 build_script:
-  - set PATH=%PATH%;c:\temp\OpenSceneGraph-dev;c:\temp\gdal;c:\temp\v140-x64.zip
   - mkdir build
   - cd build
-  - cmake .. -G "Visual Studio 14 2015 Win64" -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=c:\projects\osgearth\install
+  #- cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=Release -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=c:\projects\osgearth\install -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+  - cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=Release -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=c:\projects\osgearth\install -DCMAKE_TOOLCHAIN_FILE=c:/temp/osgearth-vcpkg-deps/scripts/buildsystems/vcpkg.cmake
   - cmake --build . --target INSTALL --config Release
   - cd ..\install
   - 7z a c:\projects\osgearth\osgearth.zip .
+
+cache: c:\tools\vcpkg\installed\
 
 artifacts:
   - path: osgearth.zip

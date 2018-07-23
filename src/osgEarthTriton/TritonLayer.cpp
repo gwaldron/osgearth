@@ -38,8 +38,9 @@ namespace
     class TritonLayerNode : public osg::Group
     {
     public:
-        TritonLayerNode(const TritonLayerOptions& options, Callback* callback) :
+        TritonLayerNode(const TritonLayerOptions& options, Callback* callback, osgEarth::Triton::TritonLayer* layer) :
             _options(options),
+            _tritonLayer(layer),
             _callback(callback),
             _needsMapNode(true)
         {
@@ -113,7 +114,7 @@ namespace
             if (_callback.valid())
                 _TRITON->setCallback(_callback.get());
 
-            TritonDrawable* drawable = new TritonDrawable(mapNode.get(), _TRITON.get());
+            TritonDrawable* drawable = new TritonDrawable(_TRITON.get());
             _drawable = drawable;
             _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
             //_alphaUniform->set(getAlpha());
@@ -155,6 +156,12 @@ namespace
                     }
                 }
 
+                // Make sure the opacity is correct
+                if (_tritonLayer.valid())
+                {
+                    _alphaUniform->set(_tritonLayer->getOpacity());
+                }
+
                 // Tick Triton each frame:
                 if (_TRITON->ready())
                 {
@@ -172,6 +179,7 @@ namespace
         osg::observer_ptr<osgEarth::ResourceReleaser> _releaser;
         osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
         osg::observer_ptr<osgEarth::MapNode> _mapNode;
+        osg::observer_ptr<osgEarth::Triton::TritonLayer> _tritonLayer;
         osg::ref_ptr<Callback> _callback;
         bool _needsMapNode;
     };
@@ -187,17 +195,19 @@ namespace osgEarth { namespace Triton
 } }
 
 
-TritonLayer::TritonLayer() :
+TritonLayer::TritonLayer(Callback* userCallback) :
 osgEarth::VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
+_options(&_optionsConcrete),
+_callback(userCallback)
 {
     init();
 }
 
-TritonLayer::TritonLayer(const TritonLayerOptions& options) :
+TritonLayer::TritonLayer(const TritonLayerOptions& options, Callback* userCallback) :
 osgEarth::VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
-_optionsConcrete(options)
+_optionsConcrete(options),
+_callback(userCallback)
 {
     init();
 }
@@ -227,7 +237,7 @@ TritonLayer::init()
         lod->setMaxElevation(options().maxAltitude().get());
     }
 
-    _tritonNode = new TritonLayerNode(options(), 0L);
+    _tritonNode = new TritonLayerNode(options(), _callback.get(), this);
     _root->addChild(_tritonNode.get());
 }
 
@@ -262,4 +272,3 @@ TritonLayer::removedFromMap(const osgEarth::Map* map)
         setMaskLayer(0L);
     }
 }
-

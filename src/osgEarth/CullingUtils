@@ -301,6 +301,22 @@ namespace osgEarth
         InstallViewportSizeUniform(const InstallViewportSizeUniform& rhs, const osg::CopyOp& copy) :
             osg::NodeCallback(rhs, copy) { }
     };
+
+    /**
+     * Cull callback that limits visibility to an altitude range (HAE)
+     */
+    class OSGEARTH_EXPORT AltitudeCullCallback : public osg::NodeCallback
+    {
+    public:
+        optional<float>& maxAltitude() { return _maxAltitude; }
+        osg::ref_ptr<const SpatialReference>& srs() { return _srs; }
+        
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+    private:
+        optional<float> _maxAltitude;
+        osg::ref_ptr<const SpatialReference> _srs;
+    };
 }
 
 #endif // OSGEARTH_CULLING_UTILS_H

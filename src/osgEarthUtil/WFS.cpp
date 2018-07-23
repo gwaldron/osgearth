@@ -21,7 +21,6 @@
 #include <osgEarth/XmlUtils>
 
 #include <osgDB/FileNameUtils>
-#include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

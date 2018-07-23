@@ -23,7 +23,6 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgUtil/CullVisitor>
-#include <cassert>
 
 using namespace osgEarth;
 

@@ -154,6 +154,7 @@ namespace osgEarth { namespace Annotation
         osg::observer_ptr<MapNode> _mapNode;
         static Style s_emptyStyle;
         bool _mapNodeRequired;
+        osg::NodeCallback* _altCallback;
 
     public:
 

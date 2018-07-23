@@ -19,13 +19,8 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Version>
 #include <osg/FragmentProgram>
-#include <osg/GraphicsContext>
-#include <osg/GL>
-#include <osg/GLExtensions>
 #include <osg/GL2Extensions>
-#include <osg/Texture>
 #include <osgViewer/Version>
-#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 

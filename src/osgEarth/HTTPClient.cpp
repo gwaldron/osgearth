@@ -17,22 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/HTTPClient>
-#include <osgEarth/Registry>
-#include <osgEarth/Version>
 #include <osgEarth/Progress>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Metrics>
 #include <osgDB/ReadFile>
-#include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
-#include <osg/Notify>
-#include <osg/Timer>
-#include <string.h>
-#include <sstream>
-#include <fstream>
-#include <iterator>
-#include <iostream>
-#include <algorithm>
 #include <curl/curl.h>
 
 // Whether to use WinInet instead of cURL - CMAKE option

@@ -158,7 +158,6 @@ namespace osgEarth { namespace Annotation
 
     private:
         static osg::ref_ptr<osg::StateSet> _geodeStateSet;
-        static osg::ref_ptr<osg::StateSet> _textStateSet;
         static osg::ref_ptr<osg::StateSet> _imageStateSet;
         void setupState();
 

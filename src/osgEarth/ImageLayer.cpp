@@ -17,22 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ColorFilter>
-#include <osgEarth/TileSource>
 #include <osgEarth/ImageMosaic>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Progress>
-#include <osgEarth/URI>
-#include <osgEarth/MemCache>
-#include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
-#include <osg/Version>
-#include <osgDB/WriteFile>
-#include <memory.h>
-#include <limits.h>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -683,6 +672,12 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         ImageUtils::fixInternalFormat( result.getImage() );
     }
 
+    // Check for cancelation before writing to a cache:
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
+    }
+
     // memory cache first:
     if ( result.valid() && _memCache.valid() )
     {
@@ -780,6 +775,11 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         {
             source->getBlacklist()->add( key );
         }
+    }
+
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
     }
 
     return GeoImage(result.get(), key.getExtent());
@@ -960,6 +960,11 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         isCoverage() == false)
     {
         ImageUtils::featherAlphaRegions( result.getImage() );
+    }
+
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
     }
 
     return result;

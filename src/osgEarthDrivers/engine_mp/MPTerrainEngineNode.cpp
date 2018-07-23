@@ -685,6 +685,11 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
     // create the node:
     osg::ref_ptr<osg::Node> node = getKeyNodeFactory()->createNode(key, accumulate, setupChildren, progress);
 
+    if (progress && progress->isCanceled())
+    {
+        return 0;
+    }
+
     // release the reference and return it.
     return node.release();
 }

@@ -18,7 +18,6 @@
  */
 #include <osgEarth/StateSetCache>
 #include <osg/NodeVisitor>
-#include <osg/Geode>
 #include <osg/BufferIndexBinding>
 
 #define LC "[StateSetCache] "

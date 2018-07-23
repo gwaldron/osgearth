@@ -23,18 +23,9 @@
 
 using namespace osgEarth::Util;
 
-#include <algorithm>
-#include <osg/Geode>
-#include <osg/Geometry>
 #include <osg/Point>
 #include <osg/TriangleIndexFunctor>
-#include <osg/ComputeBoundsVisitor>
-#include <osgEarthSymbology/Geometry>
-#include <osgEarth/SpatialReference>
 #include <osgDB/WriteFile>
-#include <map>
-#include <vector>
-#include <set>
 
 #define LC "[TopologyGraph] "
 

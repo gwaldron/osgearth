@@ -20,13 +20,6 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Registry>
 #include <osgEarth/TileKey>
-#include <osgEarth/Cube>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/StringUtils>
-#include <osgEarth/Bounds>
-#include <osgDB/FileNameUtils>
-#include <algorithm>
-#include <sstream>
 
 using namespace osgEarth;
 

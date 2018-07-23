@@ -109,13 +109,15 @@ TritonNode::create()
     if ( _callback.valid() )
         _TRITON->setCallback( _callback.get() );
 
-    TritonDrawable* drawable = new TritonDrawable(mapNode.get(), _TRITON.get());
+    TritonDrawable* drawable = new TritonDrawable(_TRITON.get());
     _drawable = drawable;
     _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
     _alphaUniform->set(getAlpha());
     _drawable->setNodeMask( TRITON_OCEAN_MASK );
     drawable->setMaskLayer(_maskLayer.get());
     this->addChild(_drawable);
+
+    OE_INFO << LC << "TritonNode created" << std::endl;
 
     // If the user requested a height map, install it now.
     // Configuration of the height map generator will take place later when
@@ -128,6 +130,7 @@ TritonNode::create()
             heightMapGen->setMaskLayer(_maskLayer.get());
         this->addChild(heightMapGen);
         drawable->setHeightMapGenerator(heightMapGen);
+        OE_INFO << LC << "Heightmap Generator installed" << std::endl;
     }
 
     // Place in the depth-sorted bin and set a rendering order.

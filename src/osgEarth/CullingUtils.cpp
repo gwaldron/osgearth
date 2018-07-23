@@ -19,20 +19,9 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/VirtualProgram>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/GeoData>
 #include <osgEarth/Utils>
-#include <osg/ClusterCullingCallback>
-#include <osg/PrimitiveSet>
-#include <osg/Geode>
 #include <osg/TemplatePrimitiveFunctor>
-#include <osgGA/GUIActionAdapter>
-#include <osgUtil/CullVisitor>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
 using namespace osgEarth;
 
@@ -1084,6 +1073,41 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
         _clipPlane->setClipPlane( horizonPlane );
     }
     traverse(node, nv);
+}
+
+//..........................................................................
+
+void
+AltitudeCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    bool visible = true;
+
+    if (_maxAltitude.isSet())
+    {
+        Horizon* horizon = Horizon::get(*nv);
+        if (horizon)
+        {
+            visible = nv->getDistanceToViewPoint(osg::Vec3(0, 0, 0), true) <
+                _maxAltitude.get() + horizon->getRadius();
+        }
+        else if (_srs.valid())
+        {
+            if (_srs->isGeographic())
+            {
+                visible = nv->getDistanceToViewPoint(osg::Vec3(0, 0, 0), true) <
+                    _maxAltitude.get() + _srs->getEllipsoid()->getRadiusEquator();
+            }
+            else
+            {
+                visible = nv->getViewPoint().z() <= _maxAltitude.get();
+            }
+        }
+    }
+
+    if (visible)
+    {
+        traverse(node, nv);
+    }
 }
 
 //......................................................................

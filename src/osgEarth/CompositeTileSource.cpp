@@ -17,12 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/CompositeTileSource>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
-#include <osgEarth/HeightFieldUtils>
-#include <osgDB/FileNameUtils>
 
 #define LC "[CompositeTileSource] "
 

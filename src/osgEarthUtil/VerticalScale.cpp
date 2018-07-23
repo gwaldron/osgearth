@@ -21,8 +21,6 @@
 */
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
 
 #define LC "[VerticalScale] "

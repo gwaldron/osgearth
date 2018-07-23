@@ -18,7 +18,6 @@
  */
 #include <osgEarth/GLSLChunker>
 #include <osgEarth/StringUtils>
-#include <sstream>
 
 using namespace osgEarth;
 

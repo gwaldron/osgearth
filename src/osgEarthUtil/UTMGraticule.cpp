@@ -22,20 +22,10 @@
 #include <osgEarthFeatures/TextSymbolizer>
 
 #include <osgEarth/Registry>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Text>
 
-#include <OpenThreads/Mutex>
-#include <OpenThreads/ScopedLock>
-#include <osg/PagedLOD>
-#include <osg/Depth>
-#include <osg/Program>
-#include <osg/ClipNode>
-#include <osg/ClipPlane>
-#include <osgDB/FileNameUtils>
 
 #define LC "[UTMGraticule] "
 
@@ -170,9 +160,12 @@ UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const St
 
         TextSymbolizer ts(textSym.get());
         
-        osg::Geode* textGeode = new osg::Geode();        
-        osg::Drawable* d = ts.create(name);
-        d->getOrCreateStateSet()->setRenderBinToInherit();
+        osg::Geode* textGeode = new osg::Geode(); 
+        osgText::Text* d = new osgEarth::Text();
+        d->setText(name);
+        ts.apply(d);
+        //osg::Drawable* d = ts.create(name);
+        //d->getOrCreateStateSet()->setRenderBinToInherit();
         textGeode->addDrawable(d);
         Registry::shaderGenerator().run(textGeode, Registry::stateSetCache());
 

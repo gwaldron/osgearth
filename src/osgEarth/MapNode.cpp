@@ -20,34 +20,16 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/MapNode>
-#include <osgEarth/Capabilities>
-#include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
-#include <osgEarth/MapNodeObserver>
-#include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/TraversalData>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/OverlayDecorator>
-#include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TerrainResources>
-#include <osgEarth/ShaderGenerator>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/MapModelChange>
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Lighting>
 #include <osgEarth/GLUtils>
-#include <osgEarth/URI>
 #include <osgEarth/HorizonClipPlane>
-#include <osg/ArgumentParser>
-#include <osg/PagedLOD>
 #include <osgUtil/Optimizer>
-#include <typeinfo>
 
 using namespace osgEarth;
 
@@ -105,28 +87,6 @@ namespace
     };
 
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;
-
-    // Cull callback that installs (and updates) a Horizon object in the NodeVisitor.
-    struct InstallHorizonCallback : public osg::NodeCallback
-    {
-        osg::EllipsoidModel _ellipsoid;
-        PerObjectFastMap<osg::Camera*, osg::ref_ptr<Horizon> > _horizons;
-
-        InstallHorizonCallback(const osg::EllipsoidModel& ellipsoid) :
-            _ellipsoid(ellipsoid) { }
-
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
-            osg::ref_ptr<Horizon> horizon = _horizons.get(cv->getCurrentCamera());
-            if (!horizon.valid())
-                horizon = new Horizon(_ellipsoid);
-
-            horizon->setEye(nv->getViewPoint());
-            horizon->put(*nv);
-            traverse(node, nv);
-        }
-    };
 }
 
 //---------------------------------------------------------------------------

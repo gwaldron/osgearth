@@ -19,6 +19,7 @@
 #include "TerrainCuller"
 #include "TileNode"
 #include "SurfaceNode"
+#include "SelectionInfo"
 
 #define LC "[TerrainCuller] "
 
@@ -57,9 +58,8 @@ TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const Rend
 float
 TerrainCuller::getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const
 {
+    // pass through, in case developer has overridden the method in the prototype CV
     return _cv->getDistanceToViewPoint(pos, withLODScale);
-    //if (withLODScale) return (pos-getViewPointLocal()).length()*getLODScale();
-    //else return (pos-getViewPointLocal()).length();
 }
 
 DrawTileCommand*
@@ -112,7 +112,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile->_geom = surface->getDrawable()->_geom.get();
             tile->_morphConstants = tileNode->getMorphConstants();
             tile->_key = &tileNode->getKey();
-            //tile->_order = (int)orderInTile;
             tile->_order = drawable->_order; // layer order in map tile.
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();

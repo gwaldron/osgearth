@@ -515,4 +515,9 @@ TileModelFactory::createTileModel(const TileKey&           key,
     }
 
     out_model = model.release();
+
+    if (progress && progress->isCanceled())
+    {
+        out_model = 0;
+    }
 }

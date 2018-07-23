@@ -75,22 +75,34 @@ SET(OSGEARTH_USE_GLES FALSE)
 
 # check for iOS build
 OPTION(OSGEARTH_BUILD_PLATFORM_IPHONE "Enable IPhoneSDK Device support" OFF)
-OPTION(OSGEARTH_BUILD_PLATFORM_IPHONE_SIMULATOR "Enable IPhoneSDK Simulator support" OFF)
 
-IF(OSGEARTH_BUILD_PLATFORM_IPHONE OR OSGEARTH_BUILD_PLATFORM_IPHONE_SIMULATOR)
+IF(OSGEARTH_BUILD_PLATFORM_IPHONE)
+
     SET(OSGEARTH_USE_GLES TRUE)
-    #you need to manually set the default sdk version here
-    SET (IPHONE_SDKVER "10.2" CACHE STRING "iOS SDK-Version")
-    SET (IPHONE_VERSION_MIN "8.0" CACHE STRING "IOS minimum os version, use 7.0 or greater to get 64bit support")
-    SET (IPHONE_PLATFORMSROOT "/Applications/Xcode.app/Contents/Developer/Platforms")
 
-    IF(OSGEARTH_BUILD_PLATFORM_IPHONE)
-        SET(CMAKE_OSX_SYSROOT "${IPHONE_PLATFORMSROOT}/iPhoneOS.platform/Developer/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk" CACHE STRING "System root for iOS" FORCE)
-        SET(CMAKE_OSX_ARCHITECTURES "armv7;armv7s;arm64" CACHE STRING "Build architectures for iOS" FORCE)
-    ELSE()
-        SET(CMAKE_OSX_SYSROOT "${IPHONE_PLATFORMSROOT}/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator${IPHONE_SDKVER}.sdk" CACHE STRING "System root for iOS" FORCE)
-        SET(CMAKE_OSX_ARCHITECTURES "i386" CACHE STRING "Build architectures for iOS Simulator" FORCE)
-    ENDIF()
+    # set sdk and min versions
+    SET (IPHONE_SDKVER "10.2" CACHE STRING "IOS SDK-Version")
+    SET (IPHONE_VERSION_MIN "7.0" CACHE STRING "IOS minimum os version, use 7.0 or greater to get 64bit support")
+
+    # get full path to sdk from requested versions
+    SET (IPHONE_DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer")
+    SET (IPHONE_SDKROOT "${IPHONE_DEVROOT}/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk")
+
+    # optionally enable bitcode for the build
+    SET (IPHONE_ENABLE_BITCODE "NO" CACHE STRING "IOS Enable Bitcode")
+
+    # seamless toggle between device and simulator
+    SET(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos;-iphonesimulator")
+
+    # set deployment target to min version
+    SET(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${IPHONE_VERSION_MIN}" CACHE STRING "Deployment target for iOS" FORCE)
+
+    # Set standard architectures
+    SET(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)")
+
+    # set the sdk path as our sysroot
+    SET(CMAKE_OSX_SYSROOT "${IPHONE_SDKROOT}" CACHE STRING "System root for iOS" FORCE)
+
 ENDIF ()
 
 

@@ -189,6 +189,7 @@ GL3RealizeOperation::operator()(osg::Object* object)
         state->setModeValidity(GL_RESCALE_NORMAL, false);
         state->setModeValidity(GL_LINE_STIPPLE, false);
         state->setModeValidity(GL_LINE_SMOOTH, false);
+        state->setModeValidity(GL_POINT_SMOOTH, false);
 #endif
     }
 }

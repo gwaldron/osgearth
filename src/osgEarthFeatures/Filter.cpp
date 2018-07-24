@@ -18,9 +18,9 @@
  */
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/FilterContext>
-#include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
+#include <osgEarth/GLUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
 #include <osg/MatrixTransform>

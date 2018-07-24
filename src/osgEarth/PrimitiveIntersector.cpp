@@ -441,7 +441,7 @@ void PrimitiveIntersector::leave()
 
 void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable)
 {
-    if (reachedLimit() && !drawable) return;
+    if (reachedLimit() || !drawable) return;
 
     osg::BoundingBox bb = Utils::getBoundingBox(drawable);
 

@@ -223,8 +223,11 @@ namespace
 
                 else if (isdec)
                 {
-                    std::string& header = headers[line];
-                    header = line;
+                    if(headers.find(line) == headers.end())
+                    {
+                        std::string& header = headers[line];
+                        header = line;
+                    }
                 }
 
                 else if (isext)
@@ -267,10 +270,17 @@ namespace
                             // discard forward declarations of functions, we know it's a declaration so just see if it has brackets (should be safe)
                             bool deflineisfunc = deflineisdec && (defline.find("(") != std::string::npos && defline.find(")") != std::string::npos && defline[defline.size()-1] != ';' );
                             
-                            if(deflineisfunc) OSG_ALWAYS << "deflineisfunc: " << defline << std::endl;
+                            if(deflineisfunc) deflineisdec = false;
                             
                             if(deflinetokens[0] == extensionkeyword) containsext = true;
                             if(deflineisfunc) containsfunc = true;
+                            if(deflineisdec)
+                            {
+                                // if the var decleration is inside  a def block endsure it's not added to headers
+                                std::string& header = headers[defline];
+                                header = "";
+                            }
+                            
                             if(std::find(startdefs.begin(), startdefs.end(), deflinetokens[0]) != startdefs.end()) defindent++;
                             if(deflinetokens[0] == "#endif")
                             {

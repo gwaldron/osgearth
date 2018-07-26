@@ -180,7 +180,7 @@ namespace
         {
             _rewriteAbsolutePaths = false;
             _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
-            _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+            _newReferrerFolder  = osgDB::getFilePath( _newReferrerAbsPath );
         }
 
         /** Whether to make absolute paths into relative paths if possible */

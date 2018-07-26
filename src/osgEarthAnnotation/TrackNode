@@ -69,7 +69,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Schema that maps field names to field definitions.
      */
-    typedef fast_map<std::string, TrackNodeField> TrackNodeFieldSchema;
+    typedef std::map<std::string, TrackNodeField> TrackNodeFieldSchema;
 
     /** 
      * TrackNode is a movable, single-point entity represented by an icon,
@@ -93,7 +93,6 @@ namespace osgEarth { namespace Annotation
          * @param fieldSchema Schema for track label fields
          */
         TrackNode(
-            MapNode*                    mapNode,
             const GeoPoint&             position,
             osg::Image*                 image,
             const TrackNodeFieldSchema& fieldSchema );
@@ -106,7 +105,6 @@ namespace osgEarth { namespace Annotation
          * @param fieldSchema Schema for track label fields
          */
         TrackNode(
-            MapNode*                    mapNode,
             const GeoPoint&             position,
             const Style&                style,
             const TrackNodeFieldSchema& fieldSchema );
@@ -145,11 +143,14 @@ namespace osgEarth { namespace Annotation
 
         Style             _style;
         class osg::Geode* _geode;
+        TrackNodeFieldSchema _fieldSchema;
 
         typedef fast_map<std::string, osg::Drawable*> NamedDrawables;
         NamedDrawables _namedDrawables;
 
-        void init( const TrackNodeFieldSchema& schema );
+        //void init( const TrackNodeFieldSchema& schema );
+
+        void compile();
 
     protected: // AnnotationNode override
         
@@ -162,6 +163,10 @@ namespace osgEarth { namespace Annotation
 
         void updateLayoutData();
 
+        void construct();       
+        
+        static osg::ref_ptr<osg::StateSet> _geodeStateSet;
+        static osg::ref_ptr<osg::StateSet> _imageStateSet;
     };
 
 } } // namespace osgEarth::Annotation

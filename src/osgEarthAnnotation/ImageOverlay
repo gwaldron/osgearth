@@ -58,7 +58,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Construcs an image overlay annotation from a serialized representation
          */
-        ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions);
+        ImageOverlay(const Config& conf, const osgDB::Options* dbOptions);
 
         virtual ~ImageOverlay() { }
 
@@ -153,8 +153,8 @@ namespace osgEarth { namespace Annotation
     private:
         void fireCallback(ImageOverlay::ControlPoint point, const osg::Vec2d& location);
 
-        void postCTOR();
-        void init();
+        void construct();
+        void compile();
         void clampLatitudes();
 
         void updateFilters();

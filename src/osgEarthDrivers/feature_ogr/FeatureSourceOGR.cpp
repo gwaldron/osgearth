@@ -351,7 +351,7 @@ public:
                     newQuery = _options.query()->combineWith(query);
                 }
 
-                OE_INFO << newQuery.getConfig().toJSON(true) << std::endl;
+                OE_DEBUG << newQuery.getConfig().toJSON(true) << std::endl;
 
                 // cursor is responsible for the OGR handles.
                 return new FeatureCursorOGR( 

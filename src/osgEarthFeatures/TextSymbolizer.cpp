@@ -56,14 +56,19 @@ namespace
         default: return osgText::String::ENCODING_UNDEFINED;
         }
     }
+
+    osgText::String::Encoding getEncodingFromSymbol(const TextSymbol* symbol)
+    {
+        return symbol && symbol->encoding().isSet() ?
+            convertEncoding(symbol->encoding().get()) :
+            osgText::String::ENCODING_UNDEFINED;
+    }
 }
 
 osgText::String::Encoding
 TextSymbolizer::getEncoding() const
 {
-    return _symbol.valid() && _symbol->encoding().isSet() ?
-        convertEncoding(_symbol->encoding().get()) :
-        osgText::String::ENCODING_UNDEFINED;
+    return getEncodingFromSymbol(_symbol.get());
 }
 
 void
@@ -72,14 +77,14 @@ TextSymbolizer::apply(osgText::Text* drawable,
                       const FilterContext* context,
                       const osg::BoundingBox* box_in) const
 {
-    if (!_symbol.valid())
-        return;
+    static TextSymbol s_defaultSymbol;
+    const TextSymbol* symbol = _symbol.valid() ? _symbol.get() : &s_defaultSymbol;
 
-    osgText::String::Encoding encoding = convertEncoding(_symbol->encoding().get());
-    if (_symbol->content().isSet())
+    osgText::String::Encoding encoding = convertEncoding(symbol->encoding().get());
+    if (symbol->content().isSet())
     {
-        StringExpression temp(_symbol->content().get());
-        std::string content = feature ? feature->eval(temp, context) : _symbol->content()->eval();
+        StringExpression temp(symbol->content().get());
+        std::string content = feature ? feature->eval(temp, context) : symbol->content()->eval();
         drawable->setText(content, encoding);
     }
 
@@ -87,17 +92,17 @@ TextSymbolizer::apply(osgText::Text* drawable,
     // GW: move this to osgEarth::Text?
     drawable->setEnableDepthWrites( false );
 
-    if ( _symbol->layout().isSet() )
+    if ( symbol->layout().isSet() )
     {
-        if(_symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
+        if(symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
         {
             drawable->setLayout(osgText::TextBase::RIGHT_TO_LEFT);
         }
-        else if(_symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
         {
             drawable->setLayout(osgText::TextBase::LEFT_TO_RIGHT);
         }
-        else if(_symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
         {
             drawable->setLayout(osgText::TextBase::VERTICAL);
         }
@@ -111,7 +116,7 @@ TextSymbolizer::apply(osgText::Text* drawable,
 
     osgText::Text::AlignmentType align = osgText::Text::CENTER_CENTER;
     // they're the same enum, but we need to apply the BBOX offsets.
-    align = (osgText::Text::AlignmentType)_symbol->alignment().value();
+    align = (osgText::Text::AlignmentType)symbol->alignment().value();
 
     switch( align )
     {
@@ -168,16 +173,16 @@ TextSymbolizer::apply(osgText::Text* drawable,
     drawable->setAutoRotateToScreen(false);
     drawable->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     
-    float size = _symbol->size().isSet() ? (float)(_symbol->size()->eval()) : 16.0f;    
+    float size = symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;    
 
     drawable->setCharacterSize( size * Registry::instance()->getDevicePixelRatio() );
 
-    drawable->setColor( _symbol->fill().isSet() ? _symbol->fill()->color() : Color::White );
+    drawable->setColor( symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
 
     osg::ref_ptr<osgText::Font> font;
-    if ( _symbol->font().isSet() )
+    if ( symbol->font().isSet() )
     {
-        font = osgText::readRefFontFile( *_symbol->font() );
+        font = osgText::readRefFontFile( *symbol->font() );
     }
 
     if ( !font )
@@ -201,13 +206,13 @@ TextSymbolizer::apply(osgText::Text* drawable,
     drawable->setFontResolution(res, res);
 #endif
     
-    if ( _symbol->halo().isSet() )
+    if ( symbol->halo().isSet() )
     {
-        drawable->setBackdropColor( _symbol->halo()->color() );
+        drawable->setBackdropColor( symbol->halo()->color() );
 
-        if ( _symbol->haloBackdropType().isSet() )
+        if ( symbol->haloBackdropType().isSet() )
         {
-            drawable->setBackdropType( *_symbol->haloBackdropType() );
+            drawable->setBackdropType( *symbol->haloBackdropType() );
         }
         else
         {
@@ -216,15 +221,15 @@ TextSymbolizer::apply(osgText::Text* drawable,
 
 #if OSG_VERSION_LESS_THAN(3,5,8)
         // deprecated since OSG 3.5.8
-        if ( _symbol->haloImplementation().isSet() )
+        if ( symbol->haloImplementation().isSet() )
         {
-            drawable->setBackdropImplementation( *_symbol->haloImplementation() );
+            drawable->setBackdropImplementation( *symbol->haloImplementation() );
         }
 #endif
 
-        if ( _symbol->haloOffset().isSet() )
+        if ( symbol->haloOffset().isSet() )
         {
-            drawable->setBackdropOffset( *_symbol->haloOffset(), *_symbol->haloOffset() );
+            drawable->setBackdropOffset( *symbol->haloOffset(), *symbol->haloOffset() );
         }
     }
 

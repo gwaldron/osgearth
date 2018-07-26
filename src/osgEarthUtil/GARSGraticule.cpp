@@ -191,7 +191,7 @@ namespace
         _extent.getCentroid(lon, lat);
         std::string label = getGARSLabel(lon, lat, _level);
     
-        FeatureNode* featureNode = new FeatureNode(0L, features, style);
+        FeatureNode* featureNode = new FeatureNode(features, style);
         // Add the node to the attachpoint.
         _attachPoint->addChild(featureNode);
        

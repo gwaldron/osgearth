@@ -55,6 +55,12 @@ AnnotationLayer::getNode() const
     return _root.get();
 }
 
+osg::Group*
+AnnotationLayer::getGroup() const
+{
+    return _root.get();
+}
+
 void
 AnnotationLayer::deserialize()
 {

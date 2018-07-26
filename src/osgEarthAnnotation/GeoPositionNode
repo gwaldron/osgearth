@@ -47,18 +47,6 @@ namespace osgEarth { namespace Annotation
         GeoPositionNode();
 
         /**
-         * Constructs a positional with initial with a MapNode
-         */
-        GeoPositionNode(MapNode* mapNode);
-
-        /**
-         * Constructs an positional node that resides at an absolute position on the map
-         * @param mapNode  MapNode used to referenced the ortho node
-         * @param position Starting position
-         */
-        GeoPositionNode(MapNode* mapNode, const GeoPoint& position);
-
-        /**
          * The anchor position of this node.
          * If the annotation also has a style that contains an AltitudeSymbol,
          * any clamping properties in the symbol will take precedence over
@@ -123,6 +111,8 @@ namespace osgEarth { namespace Annotation
 
         virtual void setConfig(const Config&);
 
+        //virtual void init(const osgDB::Options*);
+
     private:
         GeoTransform*                   _geoxform;
         osg::PositionAttitudeTransform* _paxform;
@@ -133,13 +123,13 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr< HorizonCullCallback >      _horizonCuller;
         osg::ref_ptr< OcclusionCullingCallback > _occlusionCuller;
 
-        void init();
+        void construct();
 
     protected:
-        GeoPositionNode(MapNode* mapNode, const Config& conf);
+        GeoPositionNode(const Config& conf, const osgDB::Options*);
 
         // required by META_Node, but this object is not cloneable
-        GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL);
+        GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
     };
 
 } } // namespace osgEarth::Annotation

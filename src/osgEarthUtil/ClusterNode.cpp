@@ -316,7 +316,8 @@ PlaceNode* ClusterNode::getOrCreateLabel()
         // set up a style to use for placemarks:
         Style placeStyle;
         placeStyle.getOrCreate<TextSymbol>()->declutter() = false;
-        node = new PlaceNode(_mapNode.get(), GeoPoint(SpatialReference::create("wgs84"), 0, 0, 0), _defaultImage.get(), "", placeStyle);
+        node = new PlaceNode("", placeStyle, _defaultImage.get());
+        node->setMapNode(_mapNode.get());
         node->setDynamic(true);
         _labelPool.push_back(node);
     }

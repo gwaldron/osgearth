@@ -47,51 +47,27 @@ using namespace osgEarth::Annotation;
 #define DEFAULT_HORIZON_CULLING true
 
 GeoPositionNode::GeoPositionNode() :
-AnnotationNode(),
-_geoxform(0L),
-_paxform(0L),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
+AnnotationNode()
 {
-    init();
+    construct();
 }
 
-GeoPositionNode::GeoPositionNode(MapNode* mapNode) :
-AnnotationNode(),
-_geoxform(0L),
-_paxform(0L),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
+GeoPositionNode::GeoPositionNode(const Config& conf, const osgDB::Options* options) :
+AnnotationNode( conf, options )
 {
-    init();
-    GeoPositionNode::setMapNode( mapNode );
-}
-
-GeoPositionNode::GeoPositionNode(MapNode* mapNode, const GeoPoint& position ) :
-AnnotationNode(),
-_geoxform(0L),
-_paxform(0L),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
-{
-    init();
-    GeoPositionNode::setMapNode( mapNode );
-    _geoxform->setPosition( position );
-}
-
-GeoPositionNode::GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& copy) :
-AnnotationNode(rhs, copy),
-_geoxform(0L),
-_paxform(0L),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
-{
-    //nop - UNUSED
+    construct();
+    setConfig(conf);
 }
 
 void
-GeoPositionNode::init()
+GeoPositionNode::construct()
 {
+    _geoxform = 0L;
+    _paxform = 0L;
+
+    _occlusionCullingRequested = DEFAULT_OCCLUSION_CULLING;
+    _horizonCullingRequested = DEFAULT_HORIZON_CULLING;
+
     this->removeChildren(0, this->getNumChildren());
 
     _geoxform = new GeoTransform();
@@ -99,15 +75,12 @@ GeoPositionNode::init()
 
     _paxform = new osg::PositionAttitudeTransform();
     _geoxform->addChild( _paxform );
-    
-    //GLUtils::setLighting(getOrCreateStateSet(), 0);
 }
 
 void
 GeoPositionNode::setMapNode( MapNode* mapNode )
 {
-    MapNode* oldMapNode = getMapNode();
-    if ( oldMapNode != mapNode )
+    if (mapNode != getMapNode())
     {
         AnnotationNode::setMapNode( mapNode );
 
@@ -174,28 +147,7 @@ GeoPositionNode::applyStyle(const Style& style)
 void
 GeoPositionNode::setPosition(const GeoPoint& pos)
 {
-    GeoPoint pos2 = pos;
-
-    // The altitude symbol, if there is one, overrides the incoming GeoPoint:
-    const AltitudeSymbol* alt = getStyle().get<AltitudeSymbol>();
-    if (alt)
-    {
-        if (alt->clamping() == alt->CLAMP_TO_TERRAIN)
-        {
-            pos2.z() = 0;
-            pos2.altitudeMode() = ALTMODE_RELATIVE;
-        }
-        else if (alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN)
-        {
-            pos2.altitudeMode() = ALTMODE_RELATIVE;
-        }
-        else if (alt->clamping() == alt->CLAMP_NONE)
-        {
-            pos2.altitudeMode() = ALTMODE_ABSOLUTE;
-        }
-    }
-    _geoxform->setPosition( pos2 );
-    dirty();
+    _geoxform->setPosition(pos);
 }
 
 bool
@@ -244,21 +196,11 @@ void GeoPositionNode::setOcclusionCullingMaxAltitude( double occlusionCullingMax
     }
 }
 
-
-GeoPositionNode::GeoPositionNode(MapNode* mapNode, const Config& conf) :
-AnnotationNode            ( conf ),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
-{
-    init();
-    GeoPositionNode::setMapNode( mapNode );
-    setConfig(conf);
-}
-
 void
 GeoPositionNode::setConfig(const Config& conf)
 {
     //AnnotationNode::setConfig(conf);
+
     if (conf.hasValue("name"))
     {
         setName(conf.value("name"));

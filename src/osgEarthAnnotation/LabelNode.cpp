@@ -49,78 +49,45 @@ using namespace osgEarth::Symbology;
 
 osg::ref_ptr<osg::StateSet> LabelNode::_geodeStateSet;
 
-
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const GeoPoint&     position,
-                     const std::string&  text,
-                     const Style&        style ) :
-
-GeoPositionNode( mapNode ),
-_text             ( text ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+LabelNode::LabelNode() :
+GeoPositionNode()
 {
-    init( style );
-    setPosition( position );
+    construct();
 }
 
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const GeoPoint&     position,
-                     const std::string&  text,
-                     const TextSymbol*   symbol ) :
-
-GeoPositionNode( mapNode ),
-_text             ( text ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+LabelNode::LabelNode(const std::string& text,
+                     const Style& style) :
+GeoPositionNode()
 {
-    Style style;
-    style.add( const_cast<TextSymbol*>(symbol) );
-    init( style );
-    setPosition( position );
+    construct();
+
+    _text = text;
+    _style = style;
+
+    compile();
 }
 
-LabelNode::LabelNode(const std::string&  text,
-                     const Style&        style ) :
-GeoPositionNode(),
-_text             ( text ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+LabelNode::LabelNode(const GeoPoint& position,
+                     const std::string& text,
+                     const Style& style) :
+GeoPositionNode()
 {
-    init( style );
-}
+    construct();
 
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const GeoPoint&     position,
-                     const Style&        style ) :
-GeoPositionNode   ( mapNode ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
-{
-    init( style );
-    setPosition( position );
-}
+    _text = text;
+    _style = style;
+    setPosition(position);
 
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const Style&        style ) :
-GeoPositionNode   ( mapNode, GeoPoint::INVALID ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
-{
-    init( style );
-}
-
-LabelNode::LabelNode(const LabelNode& rhs, const osg::CopyOp& op) :
-GeoPositionNode(rhs, op),
-_labelRotationRad(0.),
-_followFixedCourse(false)
-{
-    //nop - unused
+    compile();
 }
 
 void
-LabelNode::setupState()
+LabelNode::construct()
 {
+    _labelRotationRad = 0.0f;
+    _followFixedCourse = false;
+
+    // Create and apply the shared LabelNode stateset:
     if (!_geodeStateSet.valid())
     {
         static Threading::Mutex s_mutex;
@@ -140,16 +107,8 @@ LabelNode::setupState()
         }
         s_mutex.unlock();
     }
-}
-
-void
-LabelNode::init( const Style& style )
-{
-    // Create and apply the common LabelNode stateset:
-    setupState();
 
     _geode = new osg::Geode();
-    //_geode->setCullingActive(false);
     _geode->setStateSet(_geodeStateSet.get());
 
     // ensure that (0,0,0) is the bounding sphere control/center point.
@@ -157,8 +116,6 @@ LabelNode::init( const Style& style )
     _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
 
     getPositionAttitudeTransform()->addChild( _geode.get() );
-
-    setStyle( style );
 }
 
 void
@@ -192,17 +149,9 @@ LabelNode::setText( const std::string& text )
 }
 
 void
-LabelNode::setStyle( const Style& style )
+LabelNode::compile()
 {
-    if ( !_dynamic && getNumParents() > 0 )
-    {
-        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
-        return;
-    }
-
     _geode->removeDrawables( 0, _geode->getNumDrawables() );
-
-    _style = style;
 
     const TextSymbol* symbol = _style.get<TextSymbol>();
 
@@ -233,15 +182,39 @@ LabelNode::setStyle( const Style& style )
     if ( bboxsymbol && text )
     {
         osg::Drawable* bboxGeom = new BboxDrawable( Utils::getBoundingBox(text), *bboxsymbol );
-        _geode->addDrawable(bboxGeom);
+        if (bboxGeom)
+        {
+            _geode->addDrawable(bboxGeom);
+        }
     }
 
-    _geode->addDrawable(text);
+    if (text)
+    {
+        if (_dynamic)
+        {
+            text->setDataVariance(osg::Object::DYNAMIC);
+        }
+        _geode->addDrawable(text);
+    }
 
     applyStyle( _style );
 
     updateLayoutData();
     dirty();
+}
+
+void
+LabelNode::setStyle( const Style& style )
+{
+    if ( !_dynamic && getNumParents() > 0 )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+
+    _style = style;
+
+    compile();
 }
 
 void
@@ -331,21 +304,16 @@ LabelNode::setDynamic( bool dynamic )
 OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::Annotation::LabelNode );
 
 
-LabelNode::LabelNode(MapNode*              mapNode,
-                     const Config&         conf,
+LabelNode::LabelNode(const Config&         conf,
                      const osgDB::Options* dbOptions ) :
-GeoPositionNode( mapNode, conf ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+GeoPositionNode( conf, dbOptions )
 {
-    optional<Style> style;
+    construct();
 
-    conf.getObjIfSet( "style", style );
-    conf.getIfSet   ( "text",  _text );
+    conf.getObjIfSet("style", _style);
+    conf.getIfSet("text", _text);
 
-    init( *style );
-
-    setPosition(getPosition());
+    compile();
 }
 
 Config

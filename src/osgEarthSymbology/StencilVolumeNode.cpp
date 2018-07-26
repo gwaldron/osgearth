@@ -40,6 +40,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+#define LC "[StencilVolumeNode] "
+
 /***************************************************************************/
 
 #define OFF_PROTECTED osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED

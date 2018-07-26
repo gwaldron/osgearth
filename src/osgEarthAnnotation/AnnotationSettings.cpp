@@ -27,7 +27,4 @@ using namespace osgEarth::Annotation;
 //---------------------------------------------------------------------------
 
 // static defaults
-bool AnnotationSettings::_continuousClamping = true;
-bool AnnotationSettings::_autoDepthOffset = true;
 double AnnotationSettings::_occlusionCullingMaxAltitude = 200000.0;
-double AnnotationSettings::_occlusionCullingHeightAdjustment = 5.0;

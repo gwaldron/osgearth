@@ -36,13 +36,13 @@ osgEarth Sample - Annotations
                 altitude-clamping:  relative;
                 altitude-technique: scene;
                 altitude-binding:   vertex;
-                render-depth-offset-auto: true;
+                render-depth-offset: true;
             </style>
         </circle>
         <label text="WHITE = clamped to ground" lat="22.074" long="-159.5"/>
         
         <circle name="Circle clamped with an altitude offset">
-            <position lat="22.074" long="-159.606"/>
+            <position lat="22.074" long="-159.606" hat="1000"/>
             <radius value="1.2" units="km"/>
             <style type="text/css">
                 stroke:             #ffff00;
@@ -50,13 +50,12 @@ osgEarth Sample - Annotations
                 altitude-clamping:  relative;
                 altitude-technique: scene;
                 altitude-binding:   vertex;
-                altitude-offset:    1000;
             </style>
         </circle>
         <label text="YELLOW = clamped relative to ground" lat="22.17" long="-159.606"/>
              
         <circle name="Circle clamped above the ground by its centroid">
-            <position lat="22.074" long="-159.606"/>
+            <position lat="22.074" long="-159.606" hat="2000"/>
             <radius value="1.2" units="km"/>
             <style type="text/css">
                 stroke:             #00ffff;
@@ -64,7 +63,6 @@ osgEarth Sample - Annotations
                 altitude-clamping:  relative;
                 altitude-technique: scene;
                 altitude-binding:   centroid;
-                altitude-offset:    2000;
             </style>
         </circle>
         <label text="CYAN = clamped relative to ground by centroid" lat="22.074" long="-159.7"/>
@@ -81,7 +79,7 @@ osgEarth Sample - Annotations
                 stroke-tessellation-size: 500m;
                 altitude-clamping:   terrain;
                 altitude-technique:  scene;
-                render-depth-offset-auto: true;
+                render-depth-offset: true;
             </style>
         </feature>
         
@@ -96,7 +94,6 @@ osgEarth Sample - Annotations
                 stroke-tessellation-size: 500m;
                 altitude-clamping:   relative;
                 altitude-technique:  scene;
-                altitude-offset:     1000;
             </style>
         </feature>
         
@@ -112,7 +109,7 @@ osgEarth Sample - Annotations
                 render-lighting: false;
                 altitude-clamping: terrain;
                 altitude-technique: scene;
-                render-depth-offset-auto: true;
+                render-depth-offset: true;
             </style>
         </local_geometry>
         

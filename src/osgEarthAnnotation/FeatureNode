@@ -103,36 +103,39 @@ namespace osgEarth { namespace Annotation
          * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
          * call this function to rebuild the node.
          */
-        void init();
-        void dirty() { init(); }
+        void dirty();
 
-    public: // older constructors that take a MapNode
+        //! @deprecated - backwards compatiblity
+        void init() { dirty(); }
 
-        /**
-         * Constructs a new FeatureNode from a single Feature and a MapNode.
-         * You can use this variant if you the FeatureNode will not be a
-         * descendant of the MapNode.
-         * NOTE: candidate for deprecation
-         */
-        FeatureNode(
-            MapNode* mapNode,
-            Feature* feature,
-            const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
-            StyleSheet* styleSheet = 0);
 
-        /**
-         * Constructs a new FeatureNode from a FeatureList and a MapNode.
-         * You can use this variant if you the FeatureNode will not be a
-         * descendant of the MapNode.
-         * NOTE: candidate for deprecation
-         */
-        FeatureNode(
-            MapNode* mapNode,
-            const FeatureList& features,
-            const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
-            StyleSheet* styleSheet = 0);
+    //public: // older constructors that take a MapNode
+
+    //    /**
+    //     * Constructs a new FeatureNode from a single Feature and a MapNode.
+    //     * You can use this variant if you the FeatureNode will not be a
+    //     * descendant of the MapNode.
+    //     * NOTE: candidate for deprecation
+    //     */
+    //    FeatureNode(
+    //        MapNode* mapNode,
+    //        Feature* feature,
+    //        const Style& style = Style(),
+    //        const GeometryCompilerOptions& options = GeometryCompilerOptions(),
+    //        StyleSheet* styleSheet = 0);
+
+    //    /**
+    //     * Constructs a new FeatureNode from a FeatureList and a MapNode.
+    //     * You can use this variant if you the FeatureNode will not be a
+    //     * descendant of the MapNode.
+    //     * NOTE: candidate for deprecation
+    //     */
+    //    FeatureNode(
+    //        MapNode* mapNode,
+    //        const FeatureList& features,
+    //        const Style& style = Style(),
+    //        const GeometryCompilerOptions& options = GeometryCompilerOptions(),
+    //        StyleSheet* styleSheet = 0);
 
     public: // AnnotationNode
 
@@ -158,7 +161,7 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        FeatureNode(MapNode* mapNode, const Config& conf, const osgDB::Options* options);
+        FeatureNode(const Config& conf, const osgDB::Options* options);
         virtual Config getConfig() const;
 
     protected:
@@ -190,6 +193,8 @@ namespace osgEarth { namespace Annotation
         void clamp(osg::Node* graph, const Terrain* terrain);
 
         void build();
+
+        //void construct();
 
     public:
 

@@ -62,8 +62,8 @@ namespace
 
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
 
-ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-AnnotationNode(conf),
+ImageOverlay::ImageOverlay(const Config& conf, const osgDB::Options* readOptions) :
+AnnotationNode(conf, readOptions),
 _lowerLeft    (10, 10),
 _lowerRight   (20, 10),
 _upperRight   (20, 20),
@@ -76,10 +76,12 @@ _texture      (0),
 _geometryResolution(default_geometryResolution),
 _draped(true)
 {
+    construct();
+
     conf.getIfSet( "url",   _imageURI );
     if ( _imageURI.isSet() )
     {
-        setImage( _imageURI->getImage(dbOptions) );
+        setImage( _imageURI->getImage(readOptions) );
     }
 
     conf.getIfSet( "alpha", _alpha );
@@ -127,8 +129,8 @@ _draped(true)
             _geometryResolution.set(value, units);
     }
 
-    postCTOR();
-    ImageOverlay::setMapNode( mapNode );
+    compile();
+    //ImageOverlay::setMapNode( mapNode );
 }
 
 Config
@@ -202,12 +204,15 @@ _texture      (0),
 _geometryResolution(default_geometryResolution),
 _draped(true)
 {        
-    postCTOR();
+    construct();
+
     ImageOverlay::setMapNode(mapNode);
+
+    compile();
 }
 
 void
-ImageOverlay::postCTOR()
+ImageOverlay::construct()
 {
     _updateScheduled = false;
 
@@ -220,13 +225,11 @@ ImageOverlay::postCTOR()
 
     d->addChild( _root );
 
-    init();
-
     ADJUST_EVENT_TRAV_COUNT(this, 1);
 }
 
 void
-ImageOverlay::init()
+ImageOverlay::compile()
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);
 
@@ -320,7 +323,7 @@ ImageOverlay::setMapNode( MapNode* mapNode )
     if ( getMapNode() != mapNode )
     {
         AnnotationNode::setMapNode( mapNode );
-        init();
+        compile();
     }
 }
 
@@ -807,7 +810,7 @@ ImageOverlay::traverse(osg::NodeVisitor &nv)
     {
         if (_dirty)
         {
-            init();
+            compile();
         }
 
         if (_updateScheduled)

@@ -34,33 +34,46 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 
-EllipseNode::EllipseNode(MapNode*          mapNode,
-                         const GeoPoint&   position,
-                         const Linear&     radiusMajor,
-                         const Linear&     radiusMinor,
-                         const Angular&    rotationAngle,
-                         const Style&      style,
-                         const Angle&      arcStart,
-                         const Angle&      arcEnd,
-                         const bool        pie) :
-LocalGeometryNode( mapNode ),
-_radiusMajor  ( radiusMajor ),
-_radiusMinor  ( radiusMinor ),
-_rotationAngle( rotationAngle ),
-_arcStart     ( arcStart ),
-_arcEnd       ( arcEnd ),
-_pie          ( pie ),
-_numSegments  ( 0 )
+EllipseNode::EllipseNode() :
+LocalGeometryNode()
 {
-    initEllipseNode();
-    setStyle( style );
-    setPosition( position );
+    construct();
 }
 
 void
-EllipseNode::initEllipseNode()
+EllipseNode::construct()
 {
-    rebuildGeometry();
+    _radiusMajor.set(1.0, Units::KILOMETERS);
+    _radiusMinor.set(0.5, Units::KILOMETERS);
+    _rotationAngle = 0.0;
+    _arcStart.set(0.0, Units::RADIANS);
+    _arcEnd.set(2.0*osg::PI, Units::RADIANS);
+    _pie = false;
+    _numSegments = 0;
+}
+
+void
+EllipseNode::set(const GeoPoint& position,
+                 const Distance& radiusMajor,
+                 const Distance& radiusMinor,
+                 const Angle&    rotationAngle,
+                 const Style&    style,
+                 const Angle&    arcStart,
+                 const Angle&    arcEnd,
+                 const bool      pie)
+{
+    _radiusMajor = radiusMajor;
+    _radiusMinor = radiusMinor;
+    _rotationAngle = rotationAngle;
+    _arcStart = arcStart;
+    _arcEnd = arcEnd;
+    _pie = pie;
+
+    _style = style;
+
+    setPosition(position);
+
+    buildGeometry();
 }
 
 unsigned int
@@ -70,12 +83,12 @@ EllipseNode::getNumSegments() const
 }
 
 void
-EllipseNode::setNumSegments(unsigned int numSegments )
+EllipseNode::setNumSegments(unsigned numSegments)
 {
     if (_numSegments != numSegments )
     {
         _numSegments = numSegments;
-        rebuildGeometry();
+        buildGeometry();
     }
 }
 
@@ -112,7 +125,7 @@ EllipseNode::setRadii( const Linear& radiusMajor, const Linear& radiusMinor )
     {
         _radiusMajor = radiusMajor;
         _radiusMinor = radiusMinor;
-        rebuildGeometry();
+        buildGeometry();
     }
 }
 
@@ -128,50 +141,50 @@ EllipseNode::setRotationAngle(const Angular& rotationAngle)
     if (_rotationAngle != rotationAngle)
     {
         _rotationAngle = rotationAngle;
-        rebuildGeometry();
+        buildGeometry();
     }
 }
 const Angle&
 EllipseNode::getArcStart(void) const
 {
-    return (_arcStart);
+    return _arcStart;
 }
 
 void
 EllipseNode::setArcStart(const Angle& arcStart)
 {
     _arcStart = arcStart;
-    rebuildGeometry();
+    buildGeometry();
 }
 
 const Angle&
 EllipseNode::getArcEnd(void) const
 {
-    return (_arcEnd);
+    return _arcEnd;
 }
 
 void
 EllipseNode::setArcEnd(const Angle& arcEnd)
 {
     _arcEnd = arcEnd;
-    rebuildGeometry();
+    buildGeometry();
 }
 
 const bool&
 EllipseNode::getPie(void) const
 {
-	return (_pie);
+	return _pie;
 }
 
 void
 EllipseNode::setPie(const bool& pie)
 {
 	_pie = pie;
-	rebuildGeometry();
+	buildGeometry();
 }
 
 void
-EllipseNode::rebuildGeometry()
+EllipseNode::buildGeometry()
 {
     // construct a local-origin ellipse.
     GeometryFactory factory;
@@ -186,6 +199,7 @@ EllipseNode::rebuildGeometry()
     {
         geom = factory.createEllipticalArc(osg::Vec3d(0,0,0), _radiusMajor, _radiusMinor, _rotationAngle, _arcStart, _arcEnd, _numSegments, 0L, _pie);
     }
+
     if ( geom.valid() )
     {
         setGeometry( geom.get() );
@@ -199,18 +213,18 @@ EllipseNode::rebuildGeometry()
 OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::Annotation::EllipseNode );
 
 
-EllipseNode::EllipseNode(MapNode*              mapNode,
-                         const Config&         conf,
+EllipseNode::EllipseNode(const Config&         conf,
                          const osgDB::Options* dbOptions) :
-LocalGeometryNode(mapNode, conf, dbOptions),
-_numSegments ( 0 )
+LocalGeometryNode(conf, dbOptions)
 {
+    construct();
+
     conf.getObjIfSet( "radius_major", _radiusMajor );
     conf.getObjIfSet( "radius_minor", _radiusMinor );
     conf.getObjIfSet( "rotation", _rotationAngle );
     conf.getIfSet   ( "num_segments", _numSegments );
 
-    initEllipseNode();
+    buildGeometry();
 }
 
 Config

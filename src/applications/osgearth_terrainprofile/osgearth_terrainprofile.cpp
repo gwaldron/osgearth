@@ -323,7 +323,8 @@ public:
           render->lighting() = false;
 
           feature->style() = style;
-          _featureNode = new FeatureNode( _mapNode, feature );
+          _featureNode = new FeatureNode( feature );
+          _featureNode->setMapNode(_mapNode);
           _root->addChild( _featureNode.get() );
 
       }

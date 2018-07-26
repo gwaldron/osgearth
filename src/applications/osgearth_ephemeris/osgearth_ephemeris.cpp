@@ -126,15 +126,13 @@ main(int argc, char** argv)
 
         MapNode* mapNode = MapNode::get(node);
 
-        app.sunPos = new PlaceNode(mapNode, GeoPoint(), mark.get(), "Sun");
+        app.sunPos = new PlaceNode("Sun", Style(), mark.get());
         app.sunPos->setDynamic(true);
         mapNode->addChild( app.sunPos.get() );
 
-        app.moonPos = new PlaceNode(mapNode, GeoPoint(), mark.get(), "Moon");
+        app.moonPos = new PlaceNode("Moon", Style(), mark.get());
         app.moonPos->setDynamic(true);
-
-        mapNode->addChild( app.moonPos.get() );        
-
+        mapNode->addChild( app.moonPos.get() ); 
 
         app.sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);        
         const Ephemeris* ephemeris = 0L;

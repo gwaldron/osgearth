@@ -131,7 +131,7 @@ MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
             style.getOrCreate<RenderSymbol>()->lighting() = false;
 
             Feature* feature = new Feature(collection.get(), layer->getProfile()->getSRS(), style);
-            FeatureNode* node = new FeatureNode( mapNode, feature );
+            FeatureNode* node = new FeatureNode( feature );
             _annos->addChild( node );
         }
 
@@ -150,7 +150,8 @@ MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
             osg::Vec2d center = collection->getBounds().center2d();
             GeoPoint position(layer->getProfile()->getSRS(), center.x(), center.y(), 0.0, ALTMODE_ABSOLUTE);
 
-            LabelNode* label = new LabelNode(mapNode, position, text, style);
+            LabelNode* label = new LabelNode(text, style);
+            label->setPosition(position);
             _annos->addChild( label );
         }
 

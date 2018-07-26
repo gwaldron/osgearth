@@ -35,11 +35,8 @@ namespace osgEarth { namespace Annotation
      */
     class OSGEARTHANNO_EXPORT BboxDrawable : public osg::Geometry
     {
-
     public:
-
-        BboxDrawable( const osg::BoundingBox& box, const BBoxSymbol &bboxSymbol );
-
+        BboxDrawable( const osg::BoundingBox& box, const BBoxSymbol& boxSymbol );
     };
 
 } } // namespace osgEarth::Annotation

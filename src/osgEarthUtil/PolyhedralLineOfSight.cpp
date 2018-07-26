@@ -47,7 +47,7 @@ namespace
 //------------------------------------------------------------------------
 
 PolyhedralLineOfSightNode::PolyhedralLineOfSightNode( MapNode* mapNode ) :
-GeoPositionNode( mapNode ),
+GeoPositionNode(),
 _startAzim   ( Angle(-45.0, Units::DEGREES) ),
 _endAzim     ( Angle( 45.0, Units::DEGREES) ),
 _startElev   ( Angle(  0.0, Units::DEGREES) ),
@@ -56,6 +56,8 @@ _spacing     ( Angle(  5.0, Units::DEGREES) ),
 _distance    ( Distance(50000.0, Units::METERS) )
 {
     OE_WARN << LC << "This class is under development; use at your own risk" << std::endl;
+
+    setMapNode(mapNode);
 
     _xform = new osg::MatrixTransform();
     this->addChild( _xform.get() );

@@ -1002,9 +1002,14 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
 
     osg::ref_ptr<osg::Group> group;
 
-    // Try to read it from a cache:
-    std::string cacheKey = makeCacheKey(level, extent, key);
-    group = readTileFromCache(cacheKey, readOptions);
+    std::string cacheKey;
+
+    // read it from the cache if node caching is enabled
+    if (_options.nodeCaching() == true)
+    {
+        cacheKey = makeCacheKey(level, extent, key);
+        group = readTileFromCache(cacheKey, readOptions);
+    }
     
     // Not there? Build it
     if (!group.valid())

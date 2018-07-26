@@ -22,10 +22,12 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/ExtrudeGeometryFilterNode>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osgEarthFeatures/Session>
+#include <osgEarth/OEAssert>
 #include <osgEarth/Utils>
 #include <osgEarth/AutoScale>
 #include <osgEarth/CullingUtils>
@@ -64,6 +66,7 @@ _maxGranularity_deg    ( 10.0 ),
 _mergeGeometry         ( true ),
 _clustering            ( false ),
 _instancing            ( false ),
+_filterUsage           (FILTER_USAGE_NORMAL),
 _ignoreAlt             ( false ),
 _useVertexBufferObjects( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
@@ -84,6 +87,7 @@ _maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
 _mergeGeometry         ( s_defaults.mergeGeometry().value() ),
 _clustering            ( s_defaults.clustering().value() ),
 _instancing            ( s_defaults.instancing().value() ),
+_filterUsage           ( s_defaults.filterUsage().value()),
 _ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
 _useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
@@ -118,6 +122,9 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
     conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+
+    conf.getIfSet("filter_usage", "filter_usage_normal", _filterUsage, FILTER_USAGE_NORMAL);
+    conf.getIfSet("filter_usage", "filter_usage_zero_work_callback_based", _filterUsage, FILTER_USAGE_ZERO_WORK_CALLBACK_BASED);
 }
 
 Config
@@ -142,6 +149,10 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
     conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+
+    conf.addIfSet("filter_usage", "filter_usage_normal", _filterUsage, FILTER_USAGE_NORMAL);
+    conf.addIfSet("filter_usage", "filter_usage_zero_work_callback_based", _filterUsage, FILTER_USAGE_ZERO_WORK_CALLBACK_BASED);
+
     return conf;
 }
 
@@ -222,6 +233,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     osg::Timer_t p_start = osg::Timer::instance()->tick();
     unsigned p_features = workingSet.size();
 #endif
+
+    osg::ref_ptr<osg::Group> extrusionGroup;
 
     // for debugging/validation.
     std::vector<std::string> history;
@@ -369,6 +382,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         sub.setUseDrawInstanced( *_options.instancing() );
 
+        sub.setFilterUsage(*_options.filterUsage());
+
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
 
@@ -423,6 +438,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         // activate draw-instancing
         sub.setUseDrawInstanced( *_options.instancing() );
 
+        sub.setFilterUsage(*_options.filterUsage());
+
         // activate feature naming
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
@@ -465,6 +482,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( _options.mergeGeometry().isSet() )
             extrude.setMergeGeometry( *_options.mergeGeometry() );
 
+        extrude.setFilterUsage(*_options.filterUsage());
+
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
         {
@@ -472,6 +491,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             resultGroup->addChild( node );
         }
         
+        extrusionGroup = dynamic_cast<osg::Group*>(node);
+        ASSERT_PREDICATE(extrusionGroup.get());
     }
 
     // simple geometry
@@ -629,6 +650,35 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         osgEarth::GeometryValidator validator;
         resultGroup->accept(validator);
         OE_NOTICE << LC << "-- End Debugging --\n";
+    }
+
+    if(extrusion)
+    {
+       if (*_options.filterUsage() == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
+       {
+          ASSERT_PREDICATE(extrusionGroup.get());
+          // remove the extrusion result from the result group
+          resultGroup->removeChild(extrusionGroup);
+
+          osg::Matrixd xform = osg::Matrixd::identity();
+          osg::MatrixTransform* matixTransform = dynamic_cast<osg::MatrixTransform*>(extrusionGroup.get());
+          if (matixTransform)
+          {
+             xform = matixTransform->getMatrix();
+             matixTransform->setMatrix(osg::Matrixd::identity());
+          }
+
+          // make a new attach point so that the filter node is found along with it
+          osg::Group* attachPoint = new osg::Group();
+
+          // add the attach point to the result group, so that the attach point itself can be found
+          resultGroup->addChild(attachPoint);
+
+          // make a filter node with the extrusion group as the data
+          ExtrudeGeometryFilterNode* extrudeGeometryFilterNode = new ExtrudeGeometryFilterNode(attachPoint, extrusionGroup, xform);
+
+          attachPoint->setUserData(extrudeGeometryFilterNode);
+       }
     }
 
     return resultGroup.release();

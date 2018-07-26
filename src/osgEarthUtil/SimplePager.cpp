@@ -1,6 +1,8 @@
 #include <osgEarthUtil/SimplePager> 
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
+#include <osgEarth/SceneGraphCallback>
+#include <osgEarth/CullingUtils>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Options>
@@ -102,9 +104,16 @@ namespace
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            return pager->loadKey(
+            osg::ref_ptr<osg::Node> node = pager->loadKey(
                 TileKey(lod, x, y, pager->getProfile()),
-                tracker);
+                tracker.get());
+
+            if (node.valid() && pager->getSceneGraphCallbacks())
+            {
+                pager->getSceneGraphCallbacks()->firePreMergeNode(node.get());
+            }
+
+            return node.release();
         }
     };
 
@@ -209,12 +218,29 @@ osg::Node* SimplePager::createNode(const TileKey& key, ProgressCallback* progres
     osg::BoundingSphere bounds = getBounds( key );
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setName(key.str());
     mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
+    
+    osg::ref_ptr<osg::Group> oqn;
+    if (OcclusionQueryNodeFactory::_occlusionFactory) {
+       oqn = OcclusionQueryNodeFactory::_occlusionFactory->createQueryNode();
+    }
+
+
     osg::Geode* geode = new osg::Geode;
     osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), bounds.radius()) );
     sd->setColor( osg::Vec4(1,0,0,1 ) );
     geode->addDrawable( sd );
+    if (oqn.get())
+    {
+       oqn->setName("SimplePager::OQN");
+       oqn.get()->addChild(geode);
+       mt->addChild(oqn);
+    }
+    else {
     mt->addChild(geode);
+    }
+
     return mt;
 }
 
@@ -237,6 +263,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         if ( node.valid() )
         {
             tileBounds = node->getBound();
+          
         }
         else
         {
@@ -255,11 +282,15 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
     tileRadius = std::max(tileBounds.radius(), tileRadius);
 
-    osg::PagedLOD* plod = new osg::PagedLOD;
-    plod->setName(key.str());
+    //osg::PagedLOD* plod = new osg::PagedLOD;
+    osg::PagedLOD* plod = 
+        getSceneGraphCallbacks() ? new PagedLODWithSceneGraphCallbacks(getSceneGraphCallbacks()) :
+        new osg::PagedLOD();
+
     plod->setCenter( tileBounds.center() ); 
     plod->setRadius( tileRadius );
 
+    
     plod->addChild( node.get() );
 
     if ( hasChildren )

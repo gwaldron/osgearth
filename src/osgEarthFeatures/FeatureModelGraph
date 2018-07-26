@@ -131,6 +131,9 @@ namespace osgEarth { namespace Features
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+        //! Accessor to the factory so the options can be changed after the factory has been created.
+        FeatureNodeFactory* factory() { return _factory; }
+
     protected:
 
         virtual ~FeatureModelGraph();

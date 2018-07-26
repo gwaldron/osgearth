@@ -23,6 +23,14 @@
 
 using namespace osgEarth;
 
+//...................................................................
+
+SceneGraphCallbacks::SceneGraphCallbacks(osg::Object* sender) :
+_sender(sender)
+{
+    //nop
+}
+
 void
 SceneGraphCallbacks::add(SceneGraphCallback* cb)
 {
@@ -54,24 +62,31 @@ void
 SceneGraphCallbacks::firePreMergeNode(osg::Node* node)
 {
     Threading::ScopedMutexLock lock(_mutex);
+    osg::ref_ptr<osg::Object> sender;
+    _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
-        i->get()->onPreMergeNode(node);
+        i->get()->onPreMergeNode(node, sender.get());
 }
 
 void
 SceneGraphCallbacks::firePostMergeNode(osg::Node* node)
 {
+    osg::ref_ptr<osg::Object> sender;
+    _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
-        i->get()->onPostMergeNode(node);
+        i->get()->onPostMergeNode(node, sender.get());
 }
 
 void
 SceneGraphCallbacks::fireRemoveNode(osg::Node* node)
 {
+    osg::ref_ptr<osg::Object> sender;
+    _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
-        i->get()->onPostMergeNode(node);
+        i->get()->onRemoveNode(node, sender.get());
 }
 
+//...................................................................
 
 PagedLODWithSceneGraphCallbacks::PagedLODWithSceneGraphCallbacks(SceneGraphCallbacks* host) :
 _host(host)

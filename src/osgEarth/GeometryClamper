@@ -40,7 +40,7 @@ namespace osgEarth
         class GeometryData {
             osg::ref_ptr<osg::Vec3Array> _verts;
             osg::ref_ptr<osg::FloatArray> _altitudes;
-            friend GeometryClamper;
+            friend class GeometryClamper;
         };
 
         typedef std::map<osg::Array*, GeometryData> LocalData;      

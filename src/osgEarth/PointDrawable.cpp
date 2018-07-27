@@ -362,7 +362,13 @@ PointDrawable::setupState()
         {
             _sharedStateSet = new osg::StateSet();
 
+#if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
+            // glEnable/Disable(GL_POINT_SPRITE) is not supported for Core Profile
+            // GL_POINT_SPRITE is always enabled for Core Profile
+            _sharedStateSet->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::OFF);
+#else
             _sharedStateSet->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
+#endif
 
             if (_gpu)
             {

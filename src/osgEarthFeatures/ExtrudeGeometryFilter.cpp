@@ -1268,8 +1268,10 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         osg::StateSet* groupStateSet = group->getOrCreateStateSet();
         groupStateSet->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         if ( _outlineSymbol->stroke()->width().isSet() )
             groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
+#endif
     }
 
     return group;

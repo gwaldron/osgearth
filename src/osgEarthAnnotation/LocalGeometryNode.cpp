@@ -111,6 +111,10 @@ LocalGeometryNode::compileGeometry()
 
             // re-assess support for per vertex clamping
             togglePerVertexClamping();
+
+            // apply current style
+            setDefaultLighting( getStyle().has<ExtrusionSymbol>() );
+            applyRenderSymbology( getStyle() );
         }
     }
 }

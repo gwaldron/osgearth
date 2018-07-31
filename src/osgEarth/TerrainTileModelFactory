@@ -145,7 +145,7 @@ namespace osgEarth
         osg::Texture* createNormalTexture(
             osg::Image* image) const;
 
-        const TerrainOptions& _options;
+        const TerrainOptions _options;
         
 
         /** Key into the height field cache */

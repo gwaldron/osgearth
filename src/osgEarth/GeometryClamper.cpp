@@ -27,10 +27,11 @@ using namespace osgEarth;
 
 //-----------------------------------------------------------------------
 
-GeometryClamper::GeometryClamper(LocalData& localData) :
+GeometryClamper::GeometryClamper(GeometryClamper::LocalData& localData) :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
 _localData(localData),
-_preserveZ( false ),
+_incorporatePerVertexAlt(false),
+_revert(false),
 _scale( 1.0f ),
 _offset( 0.0f )
 {
@@ -52,11 +53,24 @@ GeometryClamper::apply(osg::Transform& xform)
 void
 GeometryClamper::apply(osg::Drawable& drawable)
 {
-    if ( !_terrainSRS.valid() )
-        return;
-
     osg::Geometry* geom = drawable.asGeometry();
     if ( !geom )
+        return;
+
+    osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+
+    if (_revert)
+    {
+        GeometryData& data = _localData[verts];
+        if (data._verts.valid() && verts->size() == data._verts->size())
+        {
+            std::copy(data._verts->begin(), data._verts->end(), verts->begin());
+            verts->dirty();
+        }
+        return;
+    }
+    
+    if ( !_terrainSRS.valid() )
         return;
 
     const osg::Matrixd& local2world = _matrixStack.back();
@@ -75,22 +89,17 @@ GeometryClamper::apply(osg::Drawable& drawable)
     unsigned count = 0;
 
     bool geomDirty = false;
-    osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
 
-    osg::ref_ptr<osg::FloatArray>& zOffsets = _localData[verts];
+    GeometryData& data = _localData[verts];
+    
+    bool storeAltitudes = false;
 
-    // if preserve-Z is on, check for our elevations array. Create it if is doesn't
-    // already exist.
-    bool buildZOffsets = false;
-    if ( _preserveZ )
+    if (!data._verts.valid() || data._verts->size() != verts->size())
     {
-        if (!zOffsets.valid() || zOffsets->size() != verts->size())
-        {
-            zOffsets = new osg::FloatArray();
-            zOffsets->setName( ZOFFSETS_NAME );
-            zOffsets->reserve( verts->size() );
-            buildZOffsets = true;
-        }
+        data._verts = osg::clone(verts, osg::CopyOp::DEEP_COPY_ALL);
+        data._altitudes = new osg::FloatArray();
+        data._altitudes->reserve(verts->size());
+        storeAltitudes = true;
     }
 
     for( unsigned k=0; k<verts->size(); ++k )
@@ -103,27 +112,26 @@ GeometryClamper::apply(osg::Drawable& drawable)
             // normal to the ellipsoid:
             n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
 
-            // if we need to build to z-offsets array, calculate the z offset now:
-            if ( buildZOffsets || _scale != 1.0 )
+            // if we need to store the original altitudes:
+            if (storeAltitudes)
             {
-                double lat,lon,hae;
-                em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, hae);
-
-                if ( buildZOffsets )
-                {
-                    zOffsets->push_back( hae );
-                }
-
-                if ( _scale != 1.0 )
-                {
-                    msl = vw - n_vector*hae;
-                }
+                osg::Vec3d geo;
+                _terrainSRS->transformFromWorld(vw, geo);
+                data._altitudes->push_back(geo.z()-_offset);
+                //OE_INFO << "Z=" << geo.z() << ", Z-offset=" << geo.z()-_offset << std::endl;
+                //double lat,lon,hae;
+                //em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, hae);
+                //data._altitudes->push_back( hae - _offset );
+                //OE_INFO << "Z=" << hae-_offset << std::endl;
             }
         }
 
-        else if ( buildZOffsets ) // flat map
+        else
         {
-            zOffsets->push_back( float(vw.z()) );
+            if (storeAltitudes)
+            {
+                data._altitudes->push_back( float(vw.z()) - _offset);
+            }
         }
 
         _lsi->reset();
@@ -136,18 +144,20 @@ GeometryClamper::apply(osg::Drawable& drawable)
         if ( _lsi->containsIntersections() )
         {
             osg::Vec3d fw = _lsi->getFirstIntersection().getWorldIntersectPoint();
-            if ( _scale != 1.0 )
-            {
-                osg::Vec3d delta = fw - msl;
-                fw += delta*_scale;
-            }
+            //if ( _scale != 1.0 )
+            //{
+            //    osg::Vec3d delta = fw - msl;
+            //    fw += delta*_scale;
+            //}
+
             if ( _offset != 0.0 )
             {
                 fw += n_vector*_offset;
             }
-            if ( _preserveZ && (zOffsets != 0L) )
+
+            if (_incorporatePerVertexAlt)
             {
-                fw += n_vector * (*zOffsets)[k];
+                fw += n_vector * (*data._altitudes)[k];
             }
 
             (*verts)[k] = (fw * world2local);

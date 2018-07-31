@@ -166,8 +166,9 @@ public:
 
         GeoPoint point(feature->getSRS(), center.x(), center.y(), center.z(), mode);        
 
-        PlaceNode* node = new PlaceNode(0L, point, style, context.getDBOptions());
-        //LabelNode* node = new LabelNode(0L, point, style);
+        PlaceNode* node = new PlaceNode();
+        node->setStyle(style, context.getDBOptions());
+        node->setPosition(point);
         
         if ( !priorityExpr.empty() )
         {

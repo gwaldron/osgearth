@@ -104,7 +104,7 @@ namespace osgEarth
               _outAnimTime          ( 0.00f ),
               _sortByPriority       ( false ),
               _sortByDistance       ( true ),
-              _snapToPixel          ( true ),
+              _snapToPixel          ( false ),
               _maxObjects           ( INT_MAX ),
               _renderBinNumber      ( 13 )
         {
@@ -129,11 +129,11 @@ namespace osgEarth
         optional<float>& outAnimationTime() { return _outAnimTime; }
         const optional<float>& outAnimationTime() const { return _outAnimTime; }
 
-        /** If set, activate the AnnotationData priority-based sorting */
+        /** If set, activate the ScreenSpaceLayoutData priority-based sorting */
         optional<bool>& sortByPriority() { return _sortByPriority; }
         const optional<bool>& sortByPriority() const { return _sortByPriority; }
 
-        /** If set, activate the AnnotationData distance-based sorting */
+        /** If set, activate the ScreenSpaceLayoutData distance-based sorting */
         optional<bool>& sortByDistance() { return _sortByDistance; }
         const optional<bool>& sortByDistance() const { return _sortByDistance; }
 

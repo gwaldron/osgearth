@@ -110,23 +110,23 @@ main(int argc, char** argv)
         pm.getOrCreate<TextSymbol>()->halo() = Color("#5f5f5f");
 
         // bunch of pins:
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), "Tokyo"         , pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pm));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 139.75, 35.68), "Tokyo"         , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pm));
 
         // test with an LOD:
         osg::LOD* lod = new osg::LOD();
-        lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pm), 0.0, 2e6);
+        lod->addChild( new PlaceNode(GeoPoint(geoSRS, 14.68, 50.0), "Prague", pm), 0.0, 2e6);
         labelGroup->addChild( lod );
 
         // absolute altitude:
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago", pm));
+        labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago", pm));
     }
 
     //--------------------------------------------------------------------
@@ -158,13 +158,15 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         
-        FeatureNode* fnode = new FeatureNode(mapNode, feature, geomStyle);
+        FeatureNode* fnode = new FeatureNode(feature, geomStyle);
 
         fnode->addCullCallback(new C());
 
         annoGroup->addChild( fnode );
 
-        labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-30, 50), "Rhumb line polygon", labelStyle) );
+        LabelNode* label = new LabelNode("Rhumb line polygon", labelStyle);
+        label->setPosition(GeoPoint(geoSRS, -30, 50));
+        labelGroup->addChild(label);
     }
 
     //--------------------------------------------------------------------
@@ -187,10 +189,12 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
-        FeatureNode* gnode = new FeatureNode(mapNode, feature, geomStyle);
+        FeatureNode* gnode = new FeatureNode(feature, geomStyle);
         annoGroup->addChild( gnode );
 
-        labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS, -175, -35), "Antimeridian polygon", labelStyle) );
+        LabelNode* label = new LabelNode("Antimeridian polygon", labelStyle);
+        label->setPosition(GeoPoint(geoSRS, -175, -35));
+        labelGroup->addChild(label);
     }
 
     //--------------------------------------------------------------------
@@ -211,19 +215,23 @@ main(int argc, char** argv)
         Style pathStyle;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
+        pathStyle.getOrCreate<LineSymbol>()->stroke()->smooth() = true;
         pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
-        pathStyle.getOrCreate<PointSymbol>()->size() = 5;
+        pathStyle.getOrCreate<PointSymbol>()->size() = 8;
         pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
+        pathStyle.getOrCreate<PointSymbol>()->smooth() = true;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         pathStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
 
-        pathNode = new FeatureNode(mapNode, pathFeature, pathStyle);
+        pathNode = new FeatureNode(pathFeature, pathStyle);
         annoGroup->addChild( pathNode );
 
-        labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-170, 61.2), "Great circle path", labelStyle) );
+        LabelNode* label = new LabelNode("Great circle path", labelStyle);
+        label->setPosition(GeoPoint(geoSRS,-170, 61.2));
+        labelGroup->addChild(label);
     }
 
     //--------------------------------------------------------------------
@@ -235,11 +243,15 @@ main(int argc, char** argv)
         circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
-        CircleNode* circle = new CircleNode(
-            mapNode,
+        CircleNode* circle = new CircleNode();
+        circle->set(
             GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
             Distance(300, Units::KILOMETERS),
-            circleStyle, Angle(-45.0, Units::DEGREES), Angle(45.0, Units::DEGREES), true);
+            circleStyle, 
+            Angle(-45.0, Units::DEGREES),
+            Angle(45.0, Units::DEGREES),
+            true);
+
         annoGroup->addChild( circle );
 
         editGroup->addChild( new CircleNodeEditor(circle) );
@@ -251,11 +263,15 @@ main(int argc, char** argv)
 		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
-		CircleNode* circle = new CircleNode(
-			mapNode,
+		CircleNode* circle = new CircleNode();
+        circle->set(
 			GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
 			Distance(300, Units::KILOMETERS),
-			circleStyle, Angle(45.0, Units::DEGREES), Angle(360.0 - 45.0, Units::DEGREES), true);
+			circleStyle,
+            Angle(45.0, Units::DEGREES),
+            Angle(360.0 - 45.0, Units::DEGREES),
+            true);
+
 		annoGroup->addChild( circle );
 
         editGroup->addChild( new CircleNodeEditor(circle) );
@@ -268,8 +284,8 @@ main(int argc, char** argv)
         Style ellipseStyle;
         ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
         ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
-        EllipseNode* ellipse = new EllipseNode(
-            mapNode, 
+        EllipseNode* ellipse = new EllipseNode();
+        ellipse->set(
             GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
             Distance(250, Units::MILES),
             Distance(100, Units::MILES),
@@ -286,8 +302,8 @@ main(int argc, char** argv)
 		Style ellipseStyle;
 		ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Blue, 0.75);
 		ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
-		EllipseNode* ellipse = new EllipseNode(
-			mapNode, 
+		EllipseNode* ellipse = new EllipseNode();
+        ellipse->set(
 			GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
 			Distance(250, Units::MILES),
 			Distance(100, Units::MILES),
@@ -310,7 +326,6 @@ main(int argc, char** argv)
         rectStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         rectStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
         RectangleNode* rect = new RectangleNode(
-            mapNode, 
             GeoPoint(geoSRS, -117.172, 32.721),
             Distance(300, Units::KILOMETERS ),
             Distance(600, Units::KILOMETERS ),
@@ -339,7 +354,7 @@ main(int argc, char** argv)
         utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
 
         Feature*     utahFeature = new Feature(utah, geoSRS);
-        FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature, utahStyle);
+        FeatureNode* featureNode = new FeatureNode(utahFeature, utahStyle);
 
         annoGroup->addChild( featureNode );
     }

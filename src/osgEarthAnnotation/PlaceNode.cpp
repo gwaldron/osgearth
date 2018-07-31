@@ -64,77 +64,51 @@ osg::ref_ptr<osg::StateSet> PlaceNode::_geodeStateSet;
 osg::ref_ptr<osg::StateSet> PlaceNode::_imageStateSet;
 
 PlaceNode::PlaceNode() :
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false ),
-_imageDrawable(0L),
-_bboxDrawable(0L),
-_textDrawable(0L)
+GeoPositionNode()
 {
-    //nop
+    construct();
 }
 
-PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const GeoPoint&    position,
-                     osg::Image*        image,
+PlaceNode::PlaceNode(const std::string& text,
+                     const Style& style,
+                     osg::Image* image) :
+GeoPositionNode()
+{
+    construct();
+
+    _text = text;
+    _image = image;
+    _style = style;
+
+    compile();
+}
+
+PlaceNode::PlaceNode(const GeoPoint& position,
                      const std::string& text,
-                     const Style&       style ) :
-
-GeoPositionNode( mapNode ),
-_image   ( image ),
-_text    ( text ),
-_style   ( style ),
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false ),
-_imageDrawable(0L),
-_bboxDrawable(0L),
-_textDrawable(0L)
+                     const Style& style,
+                     osg::Image* image) :
+GeoPositionNode()
 {
-    init();
-    setPosition(position);
-}
+    construct();
 
-PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const GeoPoint&    position,
-                     const std::string& text,
-                     const Style&       style ) :
-
-GeoPositionNode( mapNode ),
-_text    ( text ),
-_style   ( style ),
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false ),
-_imageDrawable(0L),
-_bboxDrawable(0L),
-_textDrawable(0L)
-{
-    init();
+    _text = text;
+    _image = image;
+    _style = style;
     setPosition(position);
-}
 
-PlaceNode::PlaceNode(MapNode*              mapNode,
-                     const GeoPoint&       position,
-                     const Style&          style,
-                     const osgDB::Options* dbOptions ) :
-GeoPositionNode ( mapNode ),
-_style    ( style ),
-_dbOptions        ( dbOptions ),
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false ),
-_imageDrawable(0L),
-_bboxDrawable(0L),
-_textDrawable(0L)
-{
-    init();
-    setPosition(position);
+    compile();
 }
 
 void
-PlaceNode::setupState()
+PlaceNode::construct()
 {
+    _geode = 0L;
+    _labelRotationRad = 0.0f;
+    _followFixedCourse = false;
+    _imageDrawable = 0L;
+    _bboxDrawable = 0L;
+    _textDrawable = 0L;
+
     if (!_geodeStateSet.valid())
     {
         static Threading::Mutex s_mutex;
@@ -166,11 +140,10 @@ PlaceNode::setupState()
 }
 
 void
-PlaceNode::init()
+PlaceNode::compile()
 {
-    setupState();
-
-    osgEarth::clearChildren( getPositionAttitudeTransform() );
+    osg::Group* pat = getPositionAttitudeTransform();
+    pat->removeChildren(0, pat->getNumChildren());
 
     _geode = new osg::Group();
     _geode->setCullingActive(false);
@@ -232,7 +205,7 @@ PlaceNode::init()
 
         if ( !imageURI.empty() )
         {
-            _image = imageURI.getImage( _dbOptions.get() );
+            _image = imageURI.getImage( _readOptions.get() );
         }
     }
 
@@ -305,6 +278,7 @@ PlaceNode::init()
         _imageDrawable = AnnotationUtils::createImageGeometry(_image.get(), offset, 0, heading, scale);
         if (_imageDrawable)
         {
+            // todo: optimize this better:
             _imageDrawable->getOrCreateStateSet()->merge(*_imageStateSet.get());
             _geode->addChild(_imageDrawable);
             imageBox = osgEarth::Utils::getBoundingBox(_imageDrawable);
@@ -445,15 +419,22 @@ PlaceNode::setText( const std::string& text )
     }
 }
 
-
 void
 PlaceNode::setStyle(const Style& style)
 {
     // changing the style requires a complete rebuild.
     _style = style;
-    init();
+    compile();
 }
 
+void
+PlaceNode::setStyle(const Style& style, const osgDB::Options* readOptions)
+{
+    // changing the style requires a complete rebuild.
+    _style = style;
+    _readOptions = readOptions;
+    compile();
+}
 
 void
 PlaceNode::setIconImage(osg::Image* image)
@@ -471,11 +452,10 @@ PlaceNode::setIconImage(osg::Image* image)
         }
         else
         {
-            init();
+            compile();
         }
     }
 }
-
 
 void
 PlaceNode::setDynamic( bool value )
@@ -498,15 +478,13 @@ PlaceNode::setDynamic( bool value )
 
 OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 
-
-PlaceNode::PlaceNode(MapNode*              mapNode,
-                     const Config&         conf,
-                     const osgDB::Options* dbOptions) :
-GeoPositionNode ( mapNode, conf ),
-_dbOptions( dbOptions ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+PlaceNode::PlaceNode(const Config&         conf,
+                     const osgDB::Options* readOptions) :
+GeoPositionNode(conf, readOptions),
+_readOptions( readOptions )
 {
+    construct();
+
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "text",   _text );
 
@@ -519,8 +497,7 @@ _followFixedCourse( false )
             _image->setFileName( imageURI->base() );
     }
 
-    init();
-    setPosition(getPosition());
+    compile();
 }
 
 void
@@ -540,7 +517,7 @@ PlaceNode::setConfig(const Config& conf)
             _image->setFileName( imageURI->base() );
     }
 
-    init();
+    //init();
 }
 
 Config

@@ -73,12 +73,6 @@ osg::Geometry()
 
     setColorArray( c );
 
-    // add the static "isText=true" uniform; this is a hint for the annotation shaders
-    // if they get installed.
-    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, AnnotationUtils::UNIFORM_IS_TEXT());
-    s_isTextUniform->set( false );
-    getOrCreateStateSet()->addUniform( s_isTextUniform.get() );
-
     // Disable culling since this bounding box will eventually be drawn in screen space.
     setCullingActive(false);
 }

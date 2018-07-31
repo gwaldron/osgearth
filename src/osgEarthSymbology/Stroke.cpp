@@ -64,6 +64,7 @@ Stroke::init()
     _minPixels.init     ( 0.0f );
     _stipplePattern.init( 0xFFFF );
     _stippleFactor.init ( 1u );
+    _smooth.init        ( false );
 }
 
 Config 
@@ -82,6 +83,7 @@ Stroke::getConfig() const {
     if ( _widthUnits.isSet() )
         conf.add( "width_units", _widthUnits->getAbbr() );
     conf.addIfSet("min_pixels", _minPixels );
+    conf.addIfSet("smooth", _smooth);
     return conf;
 }
 
@@ -102,4 +104,5 @@ Stroke::mergeConfig( const Config& conf ) {
     if ( conf.hasValue("width_units" ) )
         Units::parse( conf.value("width_units"), _widthUnits.mutable_value() );
     conf.getIfSet("min_pixels", _minPixels );
+    conf.getIfSet("smooth", _smooth);
 }

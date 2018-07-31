@@ -897,6 +897,11 @@ EarthManipulator::getViewpoint() const
     if ( isTethering() && _setVP1.isSet() )
     {
         vp = _setVP1.get();
+
+        if (vp.getNode().valid())
+            vp.focalPoint()->fromWorld(_srs.get(), computeWorld(vp.getNode().get()));
+        else
+            vp.focalPoint().unset();
     }
 
     // Transitioning? Capture the last calculated intermediate position.
@@ -2307,6 +2312,11 @@ EarthManipulator::updateCamera(osg::Camera& camera)
         updateTether();
     }
     osgGA::CameraManipulator::updateCamera(camera);
+
+    if (_updateCameraCallback.valid())
+    {
+        _updateCameraCallback->onUpdateCamera(&camera);
+    }
 }
 
 void

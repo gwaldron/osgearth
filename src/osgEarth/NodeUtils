@@ -388,9 +388,12 @@ namespace osgEarth
      */
 #define ADJUST_UPDATE_TRAV_COUNT( NODE, DELTA ) \
     { \
-        int oldCount = NODE ->getNumChildrenRequiringUpdateTraversal(); \
-        if ( oldCount + DELTA >= 0 ) { \
-            NODE ->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + DELTA ) ); \
+        unsigned oldCount = NODE ->getNumChildrenRequiringUpdateTraversal(); \
+        unsigned newCount = (unsigned)(((int)oldCount)+(DELTA)); \
+        if ( ((DELTA) < 0 && newCount < oldCount) || ((DELTA) >= 0 && newCount >= oldCount) ) { \
+            NODE ->setNumChildrenRequiringUpdateTraversal( newCount ); \
+        } else { \
+            OE_INFO << "**INTERNAL: ADJUST_UPDATE_TRAV_COUNT wrapped around" << std::endl; \
         } \
     }
 
@@ -400,9 +403,13 @@ namespace osgEarth
      */
 #define ADJUST_EVENT_TRAV_COUNT( NODE, DELTA ) \
     { \
-        int oldCount = NODE ->getNumChildrenRequiringEventTraversal(); \
-        if ( oldCount + DELTA >= 0 ) \
-            NODE ->setNumChildrenRequiringEventTraversal( (unsigned int)(oldCount + DELTA ) ); \
+        unsigned oldCount = NODE ->getNumChildrenRequiringEventTraversal(); \
+        unsigned newCount = (unsigned)(((int)oldCount)+(DELTA)); \
+        if ( ((DELTA) < 0 && newCount < oldCount) || ((DELTA) >= 0 && newCount >= oldCount) ) { \
+            NODE ->setNumChildrenRequiringEventTraversal( newCount ); \
+        } else { \
+            OE_INFO << "**INTERNAL: ADJUST_EVENT_TRAV_COUNT wrapped around" << std::endl; \
+        } \
     }
 }
 

@@ -31,10 +31,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/AnnotationEvents>
-#include <osgEarthUtil/HTM>
 #include <osgEarthAnnotation/TrackNode>
-#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthSymbology/Color>
 
 #include <osgViewer/Viewer>
@@ -140,9 +137,11 @@ struct TrackSimUpdate : public osg::Operation
 void
 createFieldSchema( TrackNodeFieldSchema& schema )
 {
+    const float R = 2.0f;
+
     // draw the track name above the icon:
     TextSymbol* nameSymbol = new TextSymbol();
-    nameSymbol->pixelOffset()->set( 0, 2+ICON_SIZE/2 );
+    nameSymbol->pixelOffset()->set( 0, R+ICON_SIZE/2 );
     nameSymbol->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
     nameSymbol->halo()->color() = Color::Black;
     nameSymbol->size() = nameSymbol->size()->eval() + 2.0f;
@@ -150,7 +149,7 @@ createFieldSchema( TrackNodeFieldSchema& schema )
 
     // draw the track coordinates below the icon:
     TextSymbol* posSymbol = new TextSymbol();
-    posSymbol->pixelOffset()->set( 0, -2-ICON_SIZE/2 );
+    posSymbol->pixelOffset()->set( 0, -R-ICON_SIZE/2 );
     posSymbol->alignment() = TextSymbol::ALIGN_CENTER_TOP;
     posSymbol->fill()->color() = Color::Yellow;
     posSymbol->size() = posSymbol->size()->eval() - 2.0f;
@@ -158,7 +157,7 @@ createFieldSchema( TrackNodeFieldSchema& schema )
 
     // draw some other field to the left:
     TextSymbol* numberSymbol = new TextSymbol();
-    numberSymbol->pixelOffset()->set( -2-ICON_SIZE/2, 0 );
+    numberSymbol->pixelOffset()->set( -R-ICON_SIZE/2, 0 );
     numberSymbol->alignment() = TextSymbol::ALIGN_RIGHT_CENTER;
     schema[FIELD_NUMBER] = TrackNodeField(numberSymbol, false);
 }
@@ -166,7 +165,7 @@ createFieldSchema( TrackNodeFieldSchema& schema )
 
 /** Builds a bunch of tracks. */
 void
-createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSchema& schema, TrackSims& sims )
+createTrackNodes(const SpatialReference* mapSRS, osg::Group* parent, const TrackNodeFieldSchema& schema, TrackSims& sims )
 {
     // load an icon to use:
     osg::ref_ptr<osg::Image> srcImage = osgDB::readRefImageFile( ICON_URL );
@@ -175,7 +174,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
     // make some tracks, choosing a random simulation for each.
     Random prng;
-    const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
+    const SpatialReference* geoSRS = mapSRS->getGeographicSRS();
 
     for( unsigned i=0; i<g_numTracks; ++i )
     {
@@ -184,7 +183,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
         GeoPoint pos(geoSRS, lon0, lat0);
 
-        TrackNode* track = new TrackNode(mapNode, pos, image.get(), schema);
+        TrackNode* track = new TrackNode(pos, image.get(), schema);
 
         track->setFieldValue( FIELD_NAME,     Stringify() << "Track:" << i );
         track->setFieldValue( FIELD_POSITION, Stringify() << s_format(pos) );
@@ -311,9 +310,7 @@ main(int argc, char** argv)
     // count on the cmd line?
     arguments.read("--count", g_numTracks);
     
-    osg::Group* root = new osg::Group();
-    root->addChild( earth );
-    viewer.setSceneData( root );
+    viewer.setSceneData( earth );
 
     // build a track field schema.
     TrackNodeFieldSchema schema;
@@ -322,8 +319,8 @@ main(int argc, char** argv)
     // create some track nodes.
     TrackSims trackSims;
     osg::Group* tracks = new osg::Group();
-    createTrackNodes( mapNode, tracks, schema, trackSims );
-    root->addChild( tracks );
+    createTrackNodes( mapNode->getMapSRS(), tracks, schema, trackSims );
+    mapNode->addChild( tracks );
 
     // Set up the automatic decluttering. setEnabled() activates decluttering for
     // all drawables under that state set. We are also activating priority-based

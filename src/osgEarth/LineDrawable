@@ -67,6 +67,10 @@ namespace osgEarth
         void setStippleFactor(GLint factor);
         GLint getStippleFactor() const { return _factor; }
 
+        //! Line smoothing (antialiasing)
+        void setLineSmooth(bool value);
+        bool getLineSmooth() const { return _smooth; }
+
         //! Sets the overall color of the line
         void setColor(const osg::Vec4& color);
         const osg::Vec4& getColor() const { return _color; }
@@ -166,6 +170,7 @@ namespace osgEarth
         GLint _factor;
         GLushort _pattern;
         float _width;
+        bool _smooth;
         unsigned _first;
         unsigned _count;
         osg::Vec3Array* _current;

@@ -49,10 +49,11 @@ namespace osgEarth { namespace Annotation
 
         META_AnnotationNode( osgEarthAnnotation, RectangleNode );
 
+        RectangleNode();
+
         /**
          * Constructs a new rectangle annotation.
          *
-         * @param mapNode     Map on which the rectangle will appear
          * @param position    Location of the annotation, in map coordinates
          * @param width       Rectangle width
          * @param height      Rectangle height
@@ -60,13 +61,10 @@ namespace osgEarth { namespace Annotation
          * @param draped      Whether to "drape" the annotation down on to the terrain         
          */
         RectangleNode(
-            MapNode*          mapNode,
             const GeoPoint&   position,
             const Linear&     width,
             const Linear&     height,
             const Style&      style );
-
-        virtual ~RectangleNode() { }
 
         /**
          * Gets the width of this rectangle
@@ -124,14 +122,18 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        RectangleNode(MapNode* mapNode, const Config& conf, const osgDB::Options* options);
+        RectangleNode(const Config& conf, const osgDB::Options* options);
         virtual Config getConfig() const;
 
+    protected:        
+
+        virtual ~RectangleNode() { }
+
     private:
-        RectangleNode() { }
         RectangleNode(const RectangleNode& rhs, const osg::CopyOp& op) { }
 
-        void rebuild();
+        void construct();
+        void compile();
 
         Style  _style;
         Linear _width;

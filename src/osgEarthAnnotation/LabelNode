@@ -42,61 +42,21 @@ namespace osgEarth { namespace Annotation
     public:
         META_AnnotationNode( osgEarthAnnotation, LabelNode );
 
-        /**
-         * Constructs a label node that is positioned relative to a map.
-         */
-        LabelNode(
-            MapNode*                mapNode,
-            const GeoPoint&         position,
-            const std::string&      text,
-            const Style&            style =Style() );
+        //! Construct a new empty label node.
+        LabelNode();
 
-        /**
-         * Constructs a label node that is positioned relative to a map.
-         */
-        LabelNode(
-            MapNode*                mapNode,
-            const GeoPoint&         position,
-            const std::string&      text,
-            const TextSymbol*       symbol );
+        //! Construct new node with text content and default styling.
+        LabelNode(const std::string& text,
+                  const Style&       style =Style());
 
-        /** 
-         * Construct a label node purely from the style. The text string
-         * must be in the text symbol
-         */
-        LabelNode(
-            MapNode*                mapNode,
-            const GeoPoint&         position,
-            const Style&            style );
+        LabelNode(const GeoPoint&    position,
+                  const std::string& text  ="",
+                  const Style&       style =Style());
 
-        /**
-         * Construct a label node with just a style
-         */
+        //! Deserialize a label node
         LabelNode(
-            MapNode*                mapNode,
-            const Style&            style );
-
-        /**
-         * Constructs a label node that is positioned some other way,
-         * typically by being in a subgraph under another transform
-         * somewhere.
-         */
-        LabelNode(
-            const std::string& text   ="",
-            const Style&       style =Style() );
-
-        /**
-         * Deserializes a label
-         */
-        LabelNode(
-            MapNode*              mapNode,
-            const Config&         conf,
+            const Config& conf,
             const osgDB::Options* dbOptions );
-
-        /**
-         * Destructor
-         */
-        virtual ~LabelNode() { }
 
         /**
          * Sets the text content.
@@ -130,7 +90,8 @@ namespace osgEarth { namespace Annotation
         virtual bool supportsRenderBinDetails() const { return false; }
 
     protected:
-        void init(const Style& style);
+
+        virtual ~LabelNode() { }
 
         std::string              _text;
         Style                    _style;
@@ -144,13 +105,15 @@ namespace osgEarth { namespace Annotation
         GeoPoint                 _geoPointProj;
 
         /** Copy constructor */
-        LabelNode(const LabelNode& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL);
+        LabelNode(const LabelNode& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL) { }
 
         void updateLayoutData();
 
     private:
         static osg::ref_ptr<osg::StateSet> _geodeStateSet;
-        void setupState();
+        void construct();
+        void compile();
+        //void setupState();
 
     };
 

@@ -105,7 +105,8 @@ MeasureToolHandler::rebuild()
     ls->stroke()->widthUnits() = Units::PIXELS;
     ls->tessellation() = 150;
 
-    _featureNode = new FeatureNode( getMapNode(), _feature.get() );
+    _featureNode = new FeatureNode( _feature.get() );
+    _featureNode->setMapNode(getMapNode());
 
     GLUtils::setLighting(_featureNode->getOrCreateStateSet(), osg::StateAttribute::OFF);
     //_featureNode->setClusterCulling(false);

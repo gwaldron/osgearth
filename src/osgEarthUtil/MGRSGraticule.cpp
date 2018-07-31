@@ -714,7 +714,7 @@ namespace
         {
             GeometryCompilerOptions gco;
             gco.shaderPolicy() = SHADERPOLICY_INHERIT;
-            return new FeatureNode(0L, _sqidFeatures, _style, gco);
+            return new FeatureNode(_sqidFeatures, _style, gco);
         }
     };
 

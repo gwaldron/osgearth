@@ -143,7 +143,9 @@ _altMode( ALTMODE_ABSOLUTE )
     }
     else
     {
-        if ( conf.hasValue("alt") || conf.hasValue("z") )
+        if (conf.hasValue("hat"))
+            _altMode = ALTMODE_RELATIVE;
+        else if ( conf.hasValue("alt") || conf.hasValue("z") )
             _altMode = ALTMODE_ABSOLUTE;
         else
             _altMode = ALTMODE_RELATIVE;

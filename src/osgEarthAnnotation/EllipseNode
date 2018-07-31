@@ -41,21 +41,19 @@ namespace osgEarth { namespace Annotation
     public:
         META_AnnotationNode( osgEarthAnnotation, EllipseNode );
 
-        /**
-         * Constructs a new ellipse annotation.
-         *
-         * @param mapNode     Map on which the annotation will appear
-         * @param position    Location of the annotation, in map coordinates
-         * @param radiusMajor Length of 1/2 the major axis of the ellipse
-         * @param radiusMinor Length of 1/2 the minor axis of the ellipse
-         * @param rotation    Rotation angle of the ellipse
-         * @param style       Style defining how the annotation will look
-         * @param arcStart    Optional start of arc (default to 0.0 degrees)
-         * @param arcStop     Optional end of arc (default to 360.0 degrees)
-         * @param pie         Optionally make pie shape instead of arc
-         */
-        EllipseNode( 
-            MapNode*                mapNode,
+        //! Constuct a new default ellipsoid.
+        EllipseNode();
+
+        //! Set all the parameters together
+        //! @param position    Location of the annotation, in map coordinates
+        //! @param radiusMajor Length of 1/2 the major axis of the ellipse
+        //! @param radiusMinor Length of 1/2 the minor axis of the ellipse
+        //! @param rotation    Rotation angle of the ellipse
+        //! @param style       Style defining how the annotation will look
+        //! @param arcStart    Optional start of arc (default to 0.0 degrees)
+        //! @param arcStop     Optional end of arc (default to 360.0 degrees)
+        //! @param pie         Optionally make pie shape instead of arc
+        void set(
             const GeoPoint&         position,
             const Distance&         radiusMajor,
             const Distance&         radiusMinor,
@@ -64,8 +62,6 @@ namespace osgEarth { namespace Annotation
             const Angle&            arcStart = Angle(0.0, Units::DEGREES),
             const Angle&            arcEnd = Angle(360.0, Units::DEGREES),
             const bool              pie = false);
-
-        virtual ~EllipseNode() { }
 
         /**
          * Gets the major radius
@@ -144,17 +140,20 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        EllipseNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions);
+        EllipseNode(const Config& conf, const osgDB::Options* dbOptions);
+
         virtual Config getConfig() const;
 
+    protected:
+
+        virtual ~EllipseNode() { }
 
     private:
-        EllipseNode() { }
         EllipseNode(const EllipseNode& rhs, const osg::CopyOp& op) { }
 
-        void rebuildGeometry();
+        void construct();
 
-        void initEllipseNode();
+        void buildGeometry();
         
         Angle _rotationAngle;
         Distance _radiusMajor;

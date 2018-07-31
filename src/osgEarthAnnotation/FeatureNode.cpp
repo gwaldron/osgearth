@@ -87,6 +87,7 @@ _index          ( 0 )
     setStyle( style );
 }
 
+#if 0
 FeatureNode::FeatureNode(MapNode* mapNode,
                          Feature* feature,
                          const Style& in_style,
@@ -128,6 +129,7 @@ _index          ( 0 )
     FeatureNode::setMapNode( mapNode );
     setStyle( style );
 }
+#endif
 
 void
 FeatureNode::build()
@@ -343,7 +345,7 @@ void FeatureNode::setFeature(Feature* feature)
     build();
 }
 
-void FeatureNode::init()
+void FeatureNode::dirty()
 {
     _needsRebuild = true;
     build();
@@ -396,7 +398,7 @@ FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
         GeometryClamper clamper(_clamperData);
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
-        clamper.setPreserveZ( relative );
+        clamper.setIncorporatePerVertexAltitude( relative );
         clamper.setOffset( offset );
 
         this->accept( clamper );
@@ -427,10 +429,9 @@ FeatureNode::traverse(osg::NodeVisitor& nv)
 OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 
 
-FeatureNode::FeatureNode(MapNode*              mapNode,
-                         const Config&         conf,
-                         const osgDB::Options* dbOptions ) :
-AnnotationNode(conf),
+FeatureNode::FeatureNode(const Config&         conf,
+                         const osgDB::Options* readOptions ) :
+AnnotationNode(conf, readOptions),
 _clampDirty(false),
 _index(0)
 {
@@ -452,7 +453,7 @@ _index(0)
 
     conf.getObjIfSet( "style", _style );
 
-    FeatureNode::setMapNode( mapNode );
+    //FeatureNode::setMapNode( mapNode );
 
     if ( srs.valid() && geom.valid() )
     {
@@ -462,6 +463,7 @@ _index(0)
         conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
 
         _features.push_back( feature );
+
         build();
     }
 }

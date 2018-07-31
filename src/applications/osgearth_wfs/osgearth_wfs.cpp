@@ -113,7 +113,7 @@ main(int argc, char** argv)
         style.getOrCreateSymbol<TextSymbol>()->content() = StringExpression("[NAME]");
 
         // Create the FeatureNode with the features and the style.
-        osg::ref_ptr< FeatureNode > featureNode = new FeatureNode(mapNode, features, style);
+        osg::ref_ptr< FeatureNode > featureNode = new FeatureNode(features, style);
         mapNode->addChild(featureNode.get());                
 
         viewer.setSceneData( node );

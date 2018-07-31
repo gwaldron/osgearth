@@ -37,27 +37,45 @@ namespace osgEarth
     class OSGEARTH_EXPORT GeometryClamper : public osg::NodeVisitor
     {
     public:
-        typedef std::map<osg::Array*, osg::ref_ptr<osg::FloatArray> > LocalData;
+        class GeometryData {
+            osg::ref_ptr<osg::Vec3Array> _verts;
+            osg::ref_ptr<osg::FloatArray> _altitudes;
+            friend class GeometryClamper;
+        };
+
+        typedef std::map<osg::Array*, GeometryData> LocalData;      
 
     public:
-        GeometryClamper(LocalData& local);
+        //! Construct a geometry clamper, passing in a data structure managed
+        //! by the caller.
+        GeometryClamper(LocalData& data);
 
         virtual ~GeometryClamper() { }
 
+        //! Terrain graph the clamper should use to sample in-memory terrain
         void setTerrainPatch(osg::Node* node) { _terrainPatch = node; }
         osg::Node* getTerrainPatch() const { return _terrainPatch.get(); }
 
+        //! SRS of the terrain model in memory
         void setTerrainSRS(const SpatialReference* srs) { _terrainSRS = srs; }
         const SpatialReference* getTerrainSRS() const   { return _terrainSRS.get(); }
 
-        void setPreserveZ(bool value) { _preserveZ = value; }
-        bool getPreserveZ() const     { return _preserveZ; }
+        //! Whether to incorporate (add) the original vertex's altitude to the result
+        //! of the clamping operation. Default=true. If false, the vert's height information 
+        //! is ignored.
+        void setIncorporatePerVertexAltitude(bool value) { _incorporatePerVertexAlt = value; }
+        bool getIncorporatePerVertexAltitude() const     { return _incorporatePerVertexAlt; }
 
+        //! @deprecated
         void setScale(float scale) { _scale = scale; }
         float getScale() const     { return _scale; }
 
+        //! @deprecated
         void setOffset(float offset) { _offset = offset; }
         float getOffset() const      { return _offset; }
+
+        //! Whether to revert a previous clamping operation (default=false)
+        void setRevert(bool value) { _revert = value; }
 
     public: // osg::NodeVisitor
 
@@ -69,7 +87,8 @@ namespace osgEarth
         LocalData&                           _localData;
         osg::ref_ptr<osg::Node>              _terrainPatch;
         osg::ref_ptr<const SpatialReference> _terrainSRS;
-        bool                                 _preserveZ;
+        bool                                 _incorporatePerVertexAlt;
+        bool                                 _revert;
         float                                _scale;
         float                                _offset;
         osg::fast_back_stack<osg::Matrixd>   _matrixStack;

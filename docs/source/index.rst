@@ -22,7 +22,6 @@ Table of Contents
    user/index
    developer/index
    data
-   howto
    references/index
    faq
    releasenotes

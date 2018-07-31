@@ -1429,12 +1429,13 @@ CheckBoxControl::fireValueChanged( ControlEventHandler* oneHandler )
 }
 
 void
-CheckBoxControl::setValue( bool value )
+CheckBoxControl::setValue( bool value, bool notify )
 {
     if ( value != _value )
     {
         _value = value;
-        fireValueChanged();
+        if (notify)
+            fireValueChanged();
         dirty();
     }
 }

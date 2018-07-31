@@ -107,23 +107,6 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     ::Triton::Environment* environment = _TRITON->getEnvironment();
 
-    osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ];
-    if ( adapters.empty() )
-    {
-        const char* prefix = "oe_";
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::GOD_RAYS), prefix));
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::SPRAY_PARTICLES), prefix));
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WAKE_SPRAY_PARTICLES), prefix));
-#if 0
-        // In older Triton (3.91), this line causes problems in Core profile and prevents the ocean from drawing.  In newer Triton (4.01),
-        // this line causes a crash because there is no context passed in to GetShaderObject(), resulting in multiple NULL references.
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_DECALS), prefix));
-#endif
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE_PATCH), prefix));
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE), prefix));
-    }
-    adapters.apply( state );
-
     // Find or create the Triton camera for this OSG camera:
     CameraLocal& local = _local.get(renderInfo.getCurrentCamera());
     if (local._tritonCam == 0L)
@@ -132,6 +115,24 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         local._tritonCam->SetName(renderInfo.getCurrentCamera()->getName().c_str());
     }
     ::Triton::Camera* tritonCam = local._tritonCam;
+
+    osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ];
+    if ( adapters.empty() )
+    {
+        OE_INFO << LC << "Initializing Triton program adapters" << std::endl;
+        const char* prefix = NULL; //"oe_"; // because, don't forget osg_*
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE, 0L, tritonCam), prefix, "WATER_SURFACE"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE_PATCH, 0L, tritonCam), prefix, "WATER_SURFACE_PATCH"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::GOD_RAYS, 0L, tritonCam), prefix, "GOD_RAYS"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::SPRAY_PARTICLES, 0L, tritonCam), prefix, "SPRAY_PARTICLES"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WAKE_SPRAY_PARTICLES, 0L, tritonCam), prefix, "WAKE_SPRAY_PARTICLES"));
+#if 0
+        // In older Triton (3.91), this line causes problems in Core profile and prevents the ocean from drawing.  In newer Triton (4.01),
+        // this line causes a crash because there is no context passed in to GetShaderObject(), resulting in multiple NULL references.
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_DECALS, 0L, tritonCam), prefix, "WATER_DECALS"));
+#endif
+    }
+    adapters.apply( state );
 
 
     // Pass the final view and projection matrices into Triton.

@@ -57,15 +57,15 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.
         if ( adapters.empty() )
         {
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader()) );
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader()) );
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader()) );
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader()) );
-            //adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader()) );
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader(), NULL, "SkyShader"));
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader(), NULL, "BillboardShader"));
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader(), NULL, "StarShader"));
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader(), NULL, "PrecipitationShader"));
+            //adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader(), NULL, "AtmosphericLimbShader"));
 
             SL_VECTOR(unsigned) handles = _SL->getAtmosphere()->GetActivePlanarCloudShaders();
             for(int i=0; i<handles.size(); ++i)          
-                adapters.push_back( new osgEarth::NativeProgramAdapter(state, handles[i]) );
+                adapters.push_back( new osgEarth::NativeProgramAdapter(state, handles[i], NULL, "PlanarCloudShader"));
         }
         adapters.apply( state );
 

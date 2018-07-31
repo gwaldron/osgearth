@@ -4,7 +4,6 @@ set( DOCS_ROOT
     source/about.rst
     source/data.rst
     source/faq.rst
-    source/howtos.rst
     source/index.rst
     source/ios.rst
     source/releasenotes.rst

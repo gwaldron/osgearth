@@ -13,13 +13,11 @@ This will take awhile the first time you run it as this pulls down lots of depen
 Once all the dependencies are built, you'll need to actually build osgearth.
 
 **Get the source code**
-
 ::
   git clone https://github.com/gwaldron/osgearth.git
 
 
 **Create a directory for an out of source build**
-
 ::
   cd osgearth
   mkdir build
@@ -44,7 +42,7 @@ You can build and install osgEarth on the command line using cmake or you can op
 
 **Setting up your runtime environment**
 
-You'll need to make sure that the vcpkg dependencies and osgEarth are in your path.  So do something like this:
+You'll need to make sure that the vcpkg dependencies and osgEarth are in your path.  So do something like this
 ::
   set PATH=%PATH%;c:\vcpkg\installed\x64-windows\bin
   set PATH=%PATH%;c:\vcpkg\installed\x64-windows\tools\osg

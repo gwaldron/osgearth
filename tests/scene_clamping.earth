@@ -25,7 +25,7 @@ osgEarth Sample - Annotations
         </viewpoint>
     </viewpoints>
 
-    <annotations>
+    <annotations name="LocalGeometryNode">
     
         <circle name="Circle clamped directly to the ground">
             <position lat="22.074" long="-159.606"/>
@@ -39,7 +39,12 @@ osgEarth Sample - Annotations
                 render-depth-offset: true;
             </style>
         </circle>
-        <label text="WHITE = clamped to ground" lat="22.074" long="-159.5"/>
+        <label text="WHITE = clamped to ground" lat="22.074" long="-159.5">
+            <style>
+                text-size: 24;
+                text-halo: #000;
+            </style>
+        </label>
         
         <circle name="Circle clamped with an altitude offset">
             <position lat="22.074" long="-159.606" hat="1000"/>
@@ -66,8 +71,25 @@ osgEarth Sample - Annotations
             </style>
         </circle>
         <label text="CYAN = clamped relative to ground by centroid" lat="22.074" long="-159.7"/>
-        
-        
+                
+        <local_geometry name="Local Geometry tessellated and clamped">
+            <geometry>
+                LINESTRING(0 0, 25000 0, 25000 25000, 0 25000, 0 0);
+            </geometry>
+            <position lat="22.078" long="-159.602"/>
+            <style type="text/css">
+                stroke:          #ff00ff;
+                stroke-width:    3px;
+                stroke-tessellation-size: 500m;
+                render-lighting: false;
+                altitude-clamping: terrain;
+                altitude-technique: scene;
+                render-depth-offset: true;
+            </style>
+        </local_geometry>
+    </annotations>
+    
+    <annotations name="FeatureNode">    
         <feature name="Feature clamped to ground">
             <srs>wgs84</srs>
             <geometry>
@@ -86,7 +108,7 @@ osgEarth Sample - Annotations
         <feature name="Feature clamped relative to ground">
             <srs>wgs84</srs>
             <geometry>
-                LINESTRING(-159.606 22.074, -159.606 22.5)
+                LINESTRING(-159.606 22.074 1000, -159.606 22.5 1000)
             </geometry>
             <style type="text/css">
                 stroke:              #ffff00;
@@ -96,24 +118,9 @@ osgEarth Sample - Annotations
                 altitude-technique:  scene;
             </style>
         </feature>
-        
-        <local_geometry name="Local Geometry tessellated and clamped">
-            <geometry>
-                LINESTRING(0 0, 25000 0, 25000 25000, 0 25000, 0 0);
-            </geometry>
-            <position lat="22.078" long="-159.602"/>
-            <style type="text/css">
-                stroke:          #ff00ff;
-                stroke-width:    3px;
-                stroke-tessellation-size: 500m;
-                render-lighting: false;
-                altitude-clamping: terrain;
-                altitude-technique: scene;
-                render-depth-offset: true;
-            </style>
-        </local_geometry>
-        
-        
+    </annotations>
+    
+    <annotations name="PlaceNode">              
         <place name="Placemark" text="Placemark">
             <position lat="22.074" long="-159.606"/>
             <icon>../data/placemark32.png</icon>
@@ -122,6 +129,5 @@ osgEarth Sample - Annotations
                 text-halo:      #777;
             </style>
         </place>
-
     </annotations>
 </map>

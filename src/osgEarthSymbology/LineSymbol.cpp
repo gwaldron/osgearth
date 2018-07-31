@@ -145,4 +145,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if (match(c.key(), "stroke-image")) {
         style.getOrCreate<LineSymbol>()->imageURI() = StringExpression(stripQuotes(c.value()), c.referrer());
     }
+    else if (match(c.key(), "stroke-smooth")) {
+        style.getOrCreate<LineSymbol>()->stroke()->smooth() = as<bool>(c.value(), false);
+    }
 }

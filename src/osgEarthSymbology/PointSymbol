@@ -46,6 +46,10 @@ namespace osgEarth { namespace Symbology
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
 
+        /** Smoothing (antialiasing/rounding) */
+        optional<bool>& smooth() { return _smooth; }
+        const optional<bool>& smooth() const { return _smooth; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -54,6 +58,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<Fill>  _fill;
         optional<float> _size;
+        optional<bool>  _smooth;
     };
 
 } } // namespace osgEarth::Symbology

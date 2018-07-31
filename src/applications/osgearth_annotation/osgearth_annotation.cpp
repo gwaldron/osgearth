@@ -215,9 +215,11 @@ main(int argc, char** argv)
         Style pathStyle;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
+        pathStyle.getOrCreate<LineSymbol>()->stroke()->smooth() = true;
         pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
-        pathStyle.getOrCreate<PointSymbol>()->size() = 5;
+        pathStyle.getOrCreate<PointSymbol>()->size() = 8;
         pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
+        pathStyle.getOrCreate<PointSymbol>()->smooth() = true;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         pathStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;

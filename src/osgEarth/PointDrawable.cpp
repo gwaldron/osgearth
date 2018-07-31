@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2016 Pelican Mapping
@@ -22,17 +23,256 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/GLUtils>
 #include <osgEarth/CullingUtils>
-#include <osgDB/ObjectWrapper>
+#include <osgEarth/LineFunctor>
 #include <osg/PointSprite>
+#include <osg/Point>
+#include <osgDB/ObjectWrapper>
+#include <osgUtil/Optimizer>
 
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE
 #endif
 
+// Comment this out to test the non-GLSL path
 #define USE_GPU 1
 
 using namespace osgEarth;
+
+#define LC "[PointGroup] "
+
+namespace osgEarth { namespace Serializers { namespace PointGroup
+{
+    REGISTER_OBJECT_WRAPPER(
+        PointGroup,
+        new osgEarth::PointGroup,
+        osgEarth::PointGroup,
+        "osg::Object osg::Node osg::Group osg::Geode osgEarth::PointGroup")
+    {
+        // no properties
+    }
+} } }
+
+PointGroup::PointGroup()
+{
+    //nop
+}
+
+PointGroup::PointGroup(const PointGroup& rhs, const osg::CopyOp& copy) :
+osg::Geode(rhs, copy)
+{
+    //nop
+}
+
+PointGroup::~PointGroup()
+{
+    //nop
+}
+
+namespace
+{
+    struct ImportPointsOperator
+    {
+        osg::Vec3Array* _verts;
+        osg::Vec4Array* _colors;
+        PointGroup* _group;
+        PointDrawable* _drawable;
+
+        virtual void setGeometry(osg::Geometry* geom)
+        {
+            _verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+            _colors = dynamic_cast<osg::Vec4Array*>(geom->getColorArray());
+        }
+
+        void point(unsigned i1)
+        {
+            if (_verts)
+            {
+                _drawable->pushVertex((*_verts)[i1]);
+                if (_colors && _colors->size() == _verts->size())
+                {
+                    _drawable->setColor(_drawable->getNumVerts()-1, (*_colors)[_colors->size()-1]);
+                }
+            }
+        }
+    };
+
+    typedef PointIndexFunctor<ImportPointsOperator> ImportPointsFunctorBase;
+
+    struct ImportPointsFunctor : public ImportPointsFunctorBase
+    {
+        osg::Point* _size;
+
+        ImportPointsFunctor(osg::Geometry* input, PointGroup* group, osg::Point* size)
+        {
+            setGeometry(input);
+            _group = group;
+            _drawable = 0L;
+            _size = size;
+        }
+
+        void emit()
+        {
+            if (_colors && _colors->getBinding() == osg::Array::BIND_OVERALL && _colors->size() > 0)
+            {
+                _drawable->setColor((*_colors)[0]);
+            }
+
+            _drawable->dirty();
+
+            if (_size)
+            {
+                _drawable->setPointSize(_size->getSize());
+            }
+
+            _group->addChild(_drawable);
+        }
+
+        virtual void drawArrays(GLenum mode,GLint first,GLsizei count)
+        {
+            if (mode == GL_POINTS)
+            {
+                _drawable = new PointDrawable();
+                ImportPointsFunctorBase::drawArrays(mode, first, count);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLubyte* indices)
+        {
+            if (mode == GL_POINTS)
+            {
+                _drawable = new PointDrawable();
+                ImportPointsFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLushort* indices)
+        {
+            if (mode == GL_POINTS)
+            {
+                _drawable = new PointDrawable();
+                ImportPointsFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLuint* indices)
+        {
+            if (mode == GL_POINTS)
+            {
+                _drawable = new PointDrawable();
+                ImportPointsFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+    };
+
+    
+
+    struct ImportPointsVisitor : public osg::NodeVisitor
+    {
+        PointGroup* _group;
+        bool _removePrimSets;
+        typedef std::pair<osg::Node*, osg::Point*> Size;
+        std::stack<Size> _size;
+
+        ImportPointsVisitor(PointGroup* group, bool removePrimSets) : _group(group), _removePrimSets(removePrimSets)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Node& node)
+        {
+            pushState(node);
+            traverse(node);
+            popState(node);
+        }
+
+        void apply(osg::Drawable& drawable)
+        {
+            pushState(drawable);
+            osg::Geometry* geom = drawable.asGeometry();
+            if (geom)
+            {
+                ImportPointsFunctor import(
+                    geom,
+                    _group,
+                    _size.empty() ? 0L : _size.top().second);
+
+                drawable.accept(import);
+
+                if (_removePrimSets)
+                {
+                    for (int i = 0; i < (int)geom->getNumPrimitiveSets(); ++i)
+                    {
+                        GLenum mode = geom->getPrimitiveSet(i)->getMode();
+                        if (mode == GL_POINTS)
+                        {
+                            geom->removePrimitiveSet(i--);
+                        }
+                    }
+                }
+            }
+            popState(drawable);
+        }
+
+        void pushState(osg::Node& node)
+        {
+            osg::StateSet* ss = node.getStateSet();
+            if (ss)
+            {
+                osg::Point* size = dynamic_cast<osg::Point*>(ss->getAttribute(osg::StateAttribute::POINT));
+                if (size)
+                {
+                    _size.push(std::make_pair(&node, size));
+                }
+            }
+        }
+
+        void popState(osg::Node& node)
+        {
+            if (!_size.empty() && _size.top().first == &node)
+                _size.pop();
+        }
+    };
+}
+
+void
+PointGroup::import(osg::Node* node, bool removePrimitiveSets)
+{
+    if (node)
+    {
+        ImportPointsVisitor visitor(this, removePrimitiveSets);
+        node->accept(visitor);
+    }
+}
+
+void
+PointGroup::optimize()
+{
+    // Optimize state sharing so the MergeGeometryVisitor can work better.
+    // Without this step, the #defines used for width and stippling will
+    // hold up the merge.
+    osg::ref_ptr<StateSetCache> cache = new StateSetCache();
+    cache->optimize(this);
+
+    // Merge all non-dynamic drawables to reduce the total number of 
+    // OpenGL calls.
+    osgUtil::Optimizer::MergeGeometryVisitor mg;
+    mg.setTargetMaximumNumberOfVertices(65536);
+    accept(mg);
+}
+
+PointDrawable*
+PointGroup::getPointDrawable(unsigned i)
+{
+    return i < getNumChildren() ? dynamic_cast<PointDrawable*>(getChild(i)) : 0L;
+}
+
+//...................................................................
 
 //...................................................................
 
@@ -60,6 +300,7 @@ osg::Geometry(),
 _gpu(false),
 _color(1, 1, 1, 1),
 _width(1.0f),
+_smooth(false),
 _first(0u),
 _count(0u),
 _current(NULL),
@@ -76,6 +317,7 @@ osg::Geometry(rhs, copy),
 _gpu(rhs._gpu),
 _color(rhs._color),
 _width(rhs._width),
+_smooth(rhs._smooth),
 _first(rhs._first),
 _count(rhs._count),
 _current(NULL),
@@ -122,6 +364,16 @@ PointDrawable::setPointSize(float value)
     {
         _width = value;
         GLUtils::setPointSize(getOrCreateStateSet(), value, 1);
+    }
+}
+
+void
+PointDrawable::setPointSmooth(bool value)
+{
+    if (_smooth != value)
+    {
+        _smooth = value;
+        GLUtils::setPointSmooth(getOrCreateStateSet(), value? 1 : 0);
     }
 }
 
@@ -369,7 +621,6 @@ PointDrawable::setupState()
                 VirtualProgram* vp = VirtualProgram::getOrCreate(_sharedStateSet.get());
                 Shaders shaders;
                 shaders.load(vp, shaders.PointDrawable);
-                _sharedStateSet->getOrCreateUniform("oe_PointDrawable_limits", osg::Uniform::FLOAT_VEC2)->set(osg::Vec2f(-1,-1));
                 _sharedStateSet->setMode(GL_VERTEX_PROGRAM_POINT_SIZE, 1);
             }
             else

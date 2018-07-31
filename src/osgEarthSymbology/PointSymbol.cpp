@@ -27,14 +27,16 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL(point, PointSymbol);
 PointSymbol::PointSymbol(const PointSymbol& rhs,const osg::CopyOp& copyop):
 Symbol(rhs, copyop),
 _fill(rhs._fill),
-_size(rhs._size)
+_size(rhs._size),
+_smooth(rhs._smooth)
 {
 }
 
 PointSymbol::PointSymbol( const Config& conf ) :
 Symbol( conf ),
 _fill ( Fill() ), 
-_size ( 1.0 )
+_size ( 1.0 ),
+_smooth( false )
 {
     mergeConfig(conf);
 }
@@ -46,6 +48,7 @@ PointSymbol::getConfig() const
     conf.key() = "point";
     conf.addObjIfSet( "fill", _fill );
     conf.addIfSet( "size", _size );
+    conf.addIfSet( "smooth", _smooth );
     return conf;
 }
 
@@ -54,6 +57,7 @@ PointSymbol::mergeConfig( const Config& conf )
 {
     conf.getObjIfSet( "fill", _fill );
     conf.getIfSet( "size", _size );
+    conf.getIfSet( "smooth", _smooth );
 }
 
 
@@ -71,6 +75,9 @@ PointSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "point-script") ) {
         style.getOrCreate<PointSymbol>()->script() = StringExpression(c.value());
+    }
+    else if (match(c.key(), "point-smooth")) {
+        style.getOrCreate<PointSymbol>()->smooth() = as<bool>(c.value(), false);
     }
 }
 

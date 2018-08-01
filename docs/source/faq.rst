@@ -34,8 +34,7 @@ How do I place a 3D model on the map?
         xform->setPosition(point);
 
 
-
-I added a node, but it has no texture/lighting/etc. in osgEarth. Why?
+I loaded a model, but it has no texture/lighting/etc. in osgEarth. Why?
 .....................................................................
 
     Everything under an osgEarth scene graph is rendered with shaders.
@@ -43,13 +42,41 @@ I added a node, but it has no texture/lighting/etc. in osgEarth. Why?
     need to create shader components in order for them to render properly.
 
     osgEarth has a built-in shader generator for this purpose. Run the
-    shader generator on your node like so:
+    shader generator on your node like so::
 
         osgEarth::Registry::shaderGenerator().run( myNode );
 
     After that, your node will contain shader snippets that allows osgEarth
     to render it properly and for it to work with other osgEarth features
     like sky lighting.
+
+
+My Annotations (FeatureNode, etc.) are not rendering. Why?
+..........................................................
+
+    Best practice is to place an Annotation node (FeatureNodes, PlaceNodes, etc.)
+    as a descendant of the MapNode in your scene graph. You can also add them
+    to an AnnotationLayer and add that layer to the Map.
+
+    Annotations need access to the MapNode in order to render properly. If you 
+    cannot place them under the MapNode, you will have to manually install a few
+    things to make them work::
+
+        #include <osgEarth/CullingUtils>
+        #include <osgEarth/GLUtils>
+        ...
+
+        // Manully assign the MapNode to your annotation
+        annotationNode->setMapNode(mapNode);
+
+        // In some group above the annotation, install this callback
+        group->addCullCallback(new InstallViewportSizeUniform());
+
+        // In some group above the annotation, set the GL defaults
+        GLUtils::setGlobalDefaults(group->getOrCreateStateSet());
+
+    Again: MapNode does all this automatically so this is only necessary if you do
+    not place your annotations as descendants of the MapNode.
 
 
 How do make the terrain transparent?

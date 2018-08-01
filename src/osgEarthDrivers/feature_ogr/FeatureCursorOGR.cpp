@@ -242,6 +242,15 @@ FeatureCursorOGR::readChunk()
             OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
             if ( handle )
             {
+                /*
+                // Crop the geometry by the spatial filter.  Could be useful for tiling.
+                if (_spatialFilter)
+                {
+                    OGRGeometryH geomRef = OGR_F_GetGeometryRef(handle);
+                    OGRGeometryH intersection = OGR_G_Intersection(geomRef, _spatialFilter);
+                    OGR_F_SetGeometry(handle, intersection);
+                }
+                */
                 osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get() );
 
                 if (feature.valid())

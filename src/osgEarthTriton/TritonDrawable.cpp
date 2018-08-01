@@ -82,6 +82,21 @@ TritonDrawable::computeBoundingBox() const
     return osg::BoundingBox();
 }
 
+namespace {
+
+// Wrapper around Ocean->GetShaderObject() to account for API changes from Triton 3.x to 4.x
+GLint
+getOceanShader(::Triton::Ocean* ocean, ::Triton::Shaders shaderProgram, void* context, const ::Triton::Camera* camera)
+{
+#if (TRITON_MAJOR_VERSION >= 4)
+  return (GLint)ocean->GetShaderObject( shaderProgram, context, camera );
+#else
+  return (GLint)ocean->GetShaderObject( shaderProgram );
+#endif
+}
+
+}
+
 void
 TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
@@ -121,15 +136,15 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     {
         OE_INFO << LC << "Initializing Triton program adapters" << std::endl;
         const char* prefix = NULL; //"oe_"; // because, don't forget osg_*
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE, 0L, tritonCam), prefix, "WATER_SURFACE"));
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE_PATCH, 0L, tritonCam), prefix, "WATER_SURFACE_PATCH"));
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::GOD_RAYS, 0L, tritonCam), prefix, "GOD_RAYS"));
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::SPRAY_PARTICLES, 0L, tritonCam), prefix, "SPRAY_PARTICLES"));
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WAKE_SPRAY_PARTICLES, 0L, tritonCam), prefix, "WAKE_SPRAY_PARTICLES"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WATER_SURFACE, 0L, tritonCam), prefix, "WATER_SURFACE"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WATER_SURFACE_PATCH, 0L, tritonCam), prefix, "WATER_SURFACE_PATCH"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::GOD_RAYS, 0L, tritonCam), prefix, "GOD_RAYS"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::SPRAY_PARTICLES, 0L, tritonCam), prefix, "SPRAY_PARTICLES"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WAKE_SPRAY_PARTICLES, 0L, tritonCam), prefix, "WAKE_SPRAY_PARTICLES"));
 #if 0
         // In older Triton (3.91), this line causes problems in Core profile and prevents the ocean from drawing.  In newer Triton (4.01),
         // this line causes a crash because there is no context passed in to GetShaderObject(), resulting in multiple NULL references.
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_DECALS, 0L, tritonCam), prefix, "WATER_DECALS"));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WATER_DECALS, 0L, tritonCam), prefix, "WATER_DECALS"));
 #endif
     }
     adapters.apply( state );

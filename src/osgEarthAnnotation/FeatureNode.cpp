@@ -87,50 +87,6 @@ _index          ( 0 )
     setStyle( style );
 }
 
-#if 0
-FeatureNode::FeatureNode(MapNode* mapNode,
-                         Feature* feature,
-                         const Style& in_style,
-                         const GeometryCompilerOptions& options,
-                         StyleSheet* styleSheet) :
-AnnotationNode(),
-_options           ( options ),
-_needsRebuild      ( true ),
-_styleSheet        ( styleSheet ),
-_clampDirty        (false),
-_index             ( 0 )
-{
-    _features.push_back( feature );
-
-    FeatureNode::setMapNode( mapNode );
-
-    Style style = in_style;
-    if (style.empty() && feature->style().isSet())
-    {
-        style = *feature->style();
-    }
-
-    setStyle( style );
-}
-
-FeatureNode::FeatureNode(MapNode* mapNode,
-                         const FeatureList& features,
-                         const Style& style,
-                         const GeometryCompilerOptions& options,
-                         StyleSheet* styleSheet):
-AnnotationNode(),
-_options        ( options ),
-_needsRebuild   ( true ),
-_styleSheet     ( styleSheet ),
-_clampDirty     ( false ),
-_index          ( 0 )
-{
-    _features.insert( _features.end(), features.begin(), features.end() );
-    FeatureNode::setMapNode( mapNode );
-    setStyle( style );
-}
-#endif
-
 void
 FeatureNode::build()
 {

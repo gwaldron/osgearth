@@ -46,6 +46,7 @@ namespace osgEarth {
 
             void addNode(osg::Node* node);
             void removeNode(osg::Node* node);
+            void clear();
 
             unsigned int getRadius() const;
             void setRadius(unsigned int radius);

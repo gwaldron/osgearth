@@ -40,6 +40,13 @@ void ClusterNode::removeNode(osg::Node* node)
     _dirtyIndex = true;
 }
 
+void ClusterNode::clear()
+{
+    _nodes.clear();
+    _dirty = true;
+    _dirtyIndex = true;
+}
+
 unsigned int ClusterNode::getRadius() const
 {
     return _radius;

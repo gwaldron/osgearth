@@ -175,4 +175,10 @@ namespace osgEarth { namespace Util
 
 } } // namespace osgEarth::Util
 
+
+#define OE_UI_HANDLER(X) \
+    struct X : public osgEarth::Util::Controls::ControlEventHandler { \
+        App& _app; X(App& app):_app(app) { } \
+        void onValueChanged(osgEarth::Util::Controls::Control*) { _app. X (); } }
+
 #endif // OSGEARTH_UTIL_EXAMPLE_RESOURCES_H

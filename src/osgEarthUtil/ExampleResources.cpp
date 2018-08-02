@@ -553,7 +553,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
 
     // Add the credits display
-    mainContainer->addControl(AttributionControlFactory().create(mapNode));
+    canvas->addControl(AttributionControlFactory().create(mapNode));
 
     // Configure for an ortho camera:
     if ( args.read("--ortho") )

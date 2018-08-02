@@ -166,34 +166,19 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     if ( !view2 || !_graph.valid() )
         return false;
 
-    osgUtil::LineSegmentIntersector::Intersections intersections;
-
-    osg::NodePath nodePath;
-    nodePath.push_back( _graph.get() );
-
-#if 0
-    // Old code, uses the computeIntersections method directly but sufferes from floating point precision problems.
-    if ( view2->computeIntersections( x, y, nodePath, intersections, traversalMask ) )
-    {
-        // find the first hit under the mouse:
-        osgUtil::LineSegmentIntersector::Intersection first = *(intersections.begin());
-        out_coords = first.getWorldIntersectPoint();
-        return true;
-    }
-    return false;    
-
-#else
-    // New code, uses the code from osg::View::computeIntersections but uses our osgUtil::LineSegmentIntersector instead to get around floating point precision issues.
     float local_x, local_y = 0.0;
     const osg::Camera* camera = view2->getCameraContainingPosition(x, y, local_x, local_y);
-    if (!camera) camera = view2->getCamera();
+    if (!camera)
+        camera = view2->getCamera();
 
+    // Build a matrix that transforms from the terrain/world space
+    // to either clip or window space, depending on whether we have
+    // a viewport. Is it even possible to not have a viewport? -gw
     osg::Matrixd matrix;
-    if (nodePath.size()>1)
-    {
-        osg::NodePath prunedNodePath(nodePath.begin(),nodePath.end()-1);
-        matrix = osg::computeLocalToWorld(prunedNodePath);
-    }
+
+    // compensate for any transforms applied between terrain and camera:
+    osg::Matrix terrainRefFrame = osg::computeLocalToWorld(_graph->getParentalNodePaths()[0]);
+    matrix.postMult(terrainRefFrame);
 
     matrix.postMult(camera->getViewMatrix());
     matrix.postMult(camera->getProjectionMatrix());
@@ -203,8 +188,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     if (camera->getViewport())
     {
         matrix.postMult(camera->getViewport()->computeWindowMatrix());
-        zNear = 0.0;
-        zFar = 1.0;
+        zNear = 0.0, zFar = 1.0;
     }
 
     osg::Matrixd inverse;
@@ -213,29 +197,25 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::Vec3d startVertex = osg::Vec3d(local_x,local_y,zNear) * inverse;
     osg::Vec3d endVertex = osg::Vec3d(local_x,local_y,zFar) * inverse;
 
-    // Use a double precision line segment intersector
-    //osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
-    osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+    osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = 
+        new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
 
-    // Limit it to one intersection, we only care about the first
+    // Limit it to one intersection; we only care about the nearest.
     picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
 
     osgUtil::IntersectionVisitor iv(picker.get());
-    nodePath.back()->accept(iv);
+    _graph->accept(iv);
 
+    bool good = false;
     if (picker->containsIntersections())
     {        
-        intersections = picker->getIntersections();
-        // find the first hit under the mouse:
-        osgUtil::LineSegmentIntersector::Intersection first = *(intersections.begin());
-        out_coords = first.getWorldIntersectPoint();        
-        return true;       
+        out_coords = picker->getIntersections().begin()->getWorldIntersectPoint();
+        good = true;       
     }
-    return false;        
-#endif
+    return good;
 }
 
-
+#if 0 // removing, pretty sure doesn't work properly -gw
 bool
 Terrain::getWorldCoordsUnderMouse(osg::View* view,
                                   float x, float y,
@@ -266,6 +246,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view,
     }
     return false;
 }
+#endif
 
 
 void

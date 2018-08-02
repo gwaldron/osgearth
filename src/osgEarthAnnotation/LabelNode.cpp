@@ -127,9 +127,9 @@ LabelNode::setText( const std::string& text )
         return;
     }
 
-    for (unsigned int i=0; i < _geode->getNumDrawables(); i++)
+    for (unsigned int i=0; i < _geode->getNumChildren(); i++)
     {
-        osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(i));
+        osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getChild(i));
         if ( d )
         {
             const TextSymbol* symbol = _style.get<TextSymbol>();
@@ -151,7 +151,7 @@ LabelNode::setText( const std::string& text )
 void
 LabelNode::compile()
 {
-    _geode->removeDrawables( 0, _geode->getNumDrawables() );
+    _geode->removeChildren(0, _geode->getNumChildren());
 
     const TextSymbol* symbol = _style.get<TextSymbol>();
 
@@ -240,9 +240,9 @@ LabelNode::updateLayoutData()
     }
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for (unsigned i = 0; i < _geode->getNumDrawables(); ++i)
+    for (unsigned i = 0; i < _geode->getNumChildren(); ++i)
     {
-        _geode->getDrawable(i)->setUserData(_dataLayout.get());
+        _geode->getChild(i)->setUserData(_dataLayout.get());
     }
     
     _dataLayout->setPriority(getPriority());
@@ -292,11 +292,17 @@ LabelNode::setDynamic( bool dynamic )
 {
     GeoPositionNode::setDynamic( dynamic );
 
-    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
-    if ( d )
+    if (_geode.valid())
     {
-        d->setDataVariance( dynamic ? osg::Object::DYNAMIC : osg::Object::STATIC );
-    }    
+        for(unsigned i=0; i<_geode->getNumChildren(); ++i)
+        {
+            osg::Node* node = _geode->getChild(i);
+            if (node)
+            {
+                node->setDataVariance(dynamic ? osg::Object::DYNAMIC : osg::Object::STATIC);
+            }
+        }
+    }
 }
 
 //-------------------------------------------------------------------

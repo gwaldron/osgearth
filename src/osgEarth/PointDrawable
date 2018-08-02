@@ -194,8 +194,7 @@ namespace osgEarth
     template<typename T>
     void PointDrawable::pushVertexAttrib(T* vaa, const typename T::ElementDataType& value)
     {
-        for (unsigned i = 0; i<vaa->size(); ++i)
-            vaa->push_back(value);
+        vaa->push_back(value);
     }
 
     template<typename T>

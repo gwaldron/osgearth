@@ -33,7 +33,6 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:             #ffffff;
                 stroke-width:       2px;
-                altitude-technique: scene;
                 altitude-binding:   vertex;
                 render-depth-offset: true;
             </style>
@@ -51,7 +50,6 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:             #ffff00;
                 stroke-width:       2px;
-                altitude-technique: scene;
                 altitude-binding:   vertex;
             </style>
         </circle>
@@ -63,7 +61,6 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:             #00ffff;
                 stroke-width:       2px;
-                altitude-technique: scene;
                 altitude-binding:   centroid;
             </style>
         </circle>
@@ -78,7 +75,7 @@ osgEarth Sample - Annotations
                 stroke:          #ff00ff;
                 stroke-width:    3px;
                 stroke-tessellation-size: 500m;
-                altitude-technique: scene;
+                altitude-binding:    vertex;
                 render-depth-offset: true;
             </style>
         </local_geometry>

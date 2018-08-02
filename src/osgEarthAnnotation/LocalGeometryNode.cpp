@@ -94,8 +94,12 @@ LocalGeometryNode::compileGeometry()
         AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
 
         GeometryCompilerOptions options;
-        if (alt && alt->technique() == alt->TECHNIQUE_SCENE)
+        if (alt == NULL ||
+            alt->technique().isSet() == false ||
+            alt->technique().isSetTo(alt->TECHNIQUE_SCENE))
+        {        
             options.ignoreAltitudeSymbol() = true;
+        }
 
         GeometryCompiler gc(options);
 
@@ -167,7 +171,7 @@ LocalGeometryNode::togglePerVertexClamping()
     bool needPVC =
         alt &&
         alt->binding() == alt->BINDING_VERTEX &&
-        alt->technique() == alt->TECHNIQUE_SCENE &&
+        (alt->technique().isSet() == false || alt->technique() == alt->TECHNIQUE_SCENE) &&
         getPosition().altitudeMode() == ALTMODE_RELATIVE;
 
     if (needPVC && !_perVertexClampingEnabled)

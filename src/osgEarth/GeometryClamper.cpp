@@ -107,7 +107,6 @@ GeometryClamper::apply(osg::Drawable& drawable)
         osg::Vec3d vw = (*verts)[k];
         vw = vw * local2world;
 
-#if 1
         if ( isGeocentric )
         {
             // normal to the ellipsoid:
@@ -116,11 +115,10 @@ GeometryClamper::apply(osg::Drawable& drawable)
             // if we need to store the original altitudes:
             if (storeAltitudes)
             {
+                // should really be the alt along the n_vector but leave for now
+                // since most scene-clamped geometry will be in relative to a
+                // local tangent plane anyway -gw
                 data._altitudes->push_back( (*verts)[k].z() );
-
-                //osg::Vec3d geo;
-                //_terrainSRS->transformFromWorld(vw, geo);
-                //data._altitudes->push_back(geo.z()-_offset);
             }
         }
 
@@ -131,9 +129,6 @@ GeometryClamper::apply(osg::Drawable& drawable)
                 data._altitudes->push_back( float(vw.z()) - _offset);
             }
         }
-#else
-
-#endif
 
         _lsi->reset();
         _lsi->setStart( vw + n_vector*r*_scale );

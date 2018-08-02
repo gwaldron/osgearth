@@ -44,9 +44,9 @@ namespace osgEarth
     {
     public:
         /** Create a program adapter under the current state that wraps the provided glProgram handle. */
-        NativeProgramAdapter(const osg::State* state, GLint handle, const char* prefix = 0L)
+        NativeProgramAdapter(const osg::State* state, GLint handle, const char* prefix, const std::string& name)
         {
-            OE_DEBUG << LC << "Create adapter for glProgram " << handle << "\n";
+            OE_DEBUG << LC << "Create adapter for glProgram " << name << std::endl;
 
             _handle = handle;
             _ext    = osg::GL2Extensions::Get( state->getContextID(), true );
@@ -73,14 +73,14 @@ namespace osgEarth
                         {
                             _uniformLocations[osg::Uniform::getNameID(reinterpret_cast<const char*>(name))] = loc;
                         
-                            OE_DEBUG << LC << "    Uniform = \"" << name << "\", location = " << loc << "\n";
+                            OE_DEBUG << LC << "    Uniform = \"" << name << "\", location = " << loc << std::endl;
                         }
                     }
                 }
             }
             else
             {
-                OE_DEBUG << LC << "    No uniforms found.\n";
+                OE_DEBUG << LC << "    No uniforms found." << std::endl;
             }
         }
 

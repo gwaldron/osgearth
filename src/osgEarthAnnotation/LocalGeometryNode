@@ -105,7 +105,6 @@ namespace osgEarth { namespace Annotation
         
         typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
-        bool _useGeometryZ;
         GeometryClamper::LocalData _clamperData;
 
         void compileGeometry();

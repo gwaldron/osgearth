@@ -354,7 +354,7 @@ FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
         GeometryClamper clamper(_clamperData);
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
-        clamper.setIncorporatePerVertexAltitude( relative );
+        clamper.setUseVertexZ( relative );
         clamper.setOffset( offset );
 
         this->accept( clamper );

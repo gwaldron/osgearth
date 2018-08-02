@@ -56,7 +56,6 @@ void
 LocalGeometryNode::construct()
 {
     _geom = 0L;
-    _useGeometryZ = false;
     _clampInUpdateTraversal = false;
     _perVertexClampingEnabled = false;
 }
@@ -182,9 +181,6 @@ LocalGeometryNode::togglePerVertexClamping()
             if (_clampCallback->referenceCount() == 1)
                 terrain->addTerrainCallback(_clampCallback.get());
 
-            // whether to include individual vertex Z values:
-            _useGeometryZ = alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN;
-
             // all drawables must be dynamic since we are altering the verts
             SetDataVarianceVisitor sdv(osg::Object::DYNAMIC);
             this->accept(sdv);
@@ -230,7 +226,7 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
     {
         osg::Polytope tope;
         key.getExtent().createPolytope(tope);
-        needsClamp = tope.contains(getBound()); //this->getParent(0)->getBound());
+        needsClamp = tope.contains(getBound());
     }
     else
     {
@@ -270,10 +266,6 @@ LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
         // The data to clamp to
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
-
-        // Whether to incorporate each vert's Z value or to ignore it
-        // (disabled for now -gw)
-        //clamper.setIncorporatePerVertexAltitude( _useGeometryZ );
 
         // Since the GeometryClamper will use the matrix stack to
         // resolve vertex locations, and that matrix stack will incorporate

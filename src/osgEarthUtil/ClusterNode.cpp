@@ -16,7 +16,6 @@ ClusterNode::ClusterNode(MapNode* mapNode, osg::Image* defaultImage) :
     _defaultImage(defaultImage),
     _dirtyIndex(true)
 {
-    //setNumChildrenRequiringUpdateTraversal(1);
     setCullingActive(false);
 
     _horizon = new Horizon();
@@ -67,6 +66,23 @@ void ClusterNode::setEnabled(bool enabled)
 {
     _enabled = enabled;
     _dirty = true;
+}
+
+MapNode* ClusterNode::getMapNode() const
+{
+    return _mapNode.get();
+}
+
+void ClusterNode::setMapNode(MapNode* mapNode)
+{
+    if (_mapNode != mapNode)
+    {
+        _mapNode = mapNode;
+        _dirty = true;
+        _dirtyIndex = true;
+        _labelPool.clear();
+        _nextLabel = 0;
+    }
 }
 
 ClusterNode::StyleClusterCallback* ClusterNode::getStyleCallback()
@@ -191,7 +207,6 @@ void ClusterNode::getClusters(osgUtil::CullVisitor* cv, ClusterList& out)
     for (unsigned int i = 0; i < validPlaces.size(); i++)
     {
         TPoint &screen = points[i];
-        //PlaceNode* place = validPlaces[i].get();
         osg::Node* node = validPlaces[i].get();
 
         // If this thing is already part of a cluster then just continue.
@@ -206,7 +221,6 @@ void ClusterNode::getClusters(osgUtil::CullVisitor* cv, ClusterList& out)
         TIds indices;
 
         index.range(screen.first - _radius, screen.second - _radius, screen.first + _radius, screen.second + _radius, indices);
-        //index.within(screen.first, screen.second, _radius, [&indices](const auto id) { indices.push_back(id); });
 
         // Create a new cluster.
         Cluster cluster;
@@ -263,46 +277,48 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
         }
         else
         {
-            const osg::Matrixd &currentViewMatrix = cv->getCurrentCamera()->getViewMatrix();
-            if (_lastViewMatrix != currentViewMatrix || _dirty)
+            if (_mapNode.valid())
             {
-                osg::Vec3d eye, center, up;
-                cv->getCurrentCamera()->getViewMatrixAsLookAt(eye, center, up);
-
-                _horizon->setEye(eye);
-
-                _clusters.clear();
-                getClusters(cv, _clusters);
-
-                // Style the clusters if need be
-                if (_styleCallback)
+                const osg::Matrixd &currentViewMatrix = cv->getCurrentCamera()->getViewMatrix();
+                if (_lastViewMatrix != currentViewMatrix || _dirty)
                 {
-                    for (ClusterList::iterator itr = _clusters.begin(); itr != _clusters.end(); ++itr)
+                    osg::Vec3d eye, center, up;
+                    cv->getCurrentCamera()->getViewMatrixAsLookAt(eye, center, up);
+
+                    _horizon->setEye(eye);
+
+                    _clusters.clear();
+                    getClusters(cv, _clusters);
+
+                    // Style the clusters if need be
+                    if (_styleCallback)
                     {
-                        Cluster& cluster = *itr;
-                        (*_styleCallback)(cluster);
+                        for (ClusterList::iterator itr = _clusters.begin(); itr != _clusters.end(); ++itr)
+                        {
+                            Cluster& cluster = *itr;
+                            (*_styleCallback)(cluster);
+                        }
                     }
                 }
-            }
 
-            for (ClusterList::iterator itr = _clusters.begin(); itr != _clusters.end(); ++itr)
-            {
-                Cluster& cluster = *itr;
-                
-                // If we have more than 1 place, traverse the representative marker
-                if (cluster.nodes.size() > 1)
+                for (ClusterList::iterator itr = _clusters.begin(); itr != _clusters.end(); ++itr)
                 {
-                    itr->marker->accept(nv);
-                }
-                else
-                {
-                    // Otherwise just traverse the first node
-                    cluster.nodes[0]->accept(nv);
-                }
-            }
+                    Cluster& cluster = *itr;
 
-            _dirty = false;
-            _lastViewMatrix = currentViewMatrix;
+                    // If we have more than 1 place, traverse the representative marker
+                    if (cluster.nodes.size() > 1)
+                    {
+                        itr->marker->accept(nv);
+                    }
+                    else
+                    {
+                        // Otherwise just traverse the first node
+                        cluster.nodes[0]->accept(nv);
+                    }
+                }
+                _dirty = false;
+                _lastViewMatrix = currentViewMatrix;
+            }
         }
     }
     else

@@ -125,6 +125,7 @@ namespace
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
         mutable Threading::ReadWriteMutex _mutex;
+        bool                              _debug;
     };
 
     void writeMeta( const std::string& fullPath, const Config& meta )
@@ -313,6 +314,8 @@ namespace
         {
             _zlibOptions->setPluginStringData("Compressor", _compressorName);
         }
+
+        _debug = ::getenv("OSGEARTH_CACHE_DEBUG") != 0L;
     }
 
     const osgDB::Options*
@@ -370,6 +373,10 @@ namespace
 
             ReadResult rr( r.getImage(), meta );
             rr.setLastModifiedTime(timeStamp);
+
+            if (_debug)
+                OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+
             return rr;            
         }
     }
@@ -407,6 +414,10 @@ namespace
 
             ReadResult rr( r.getObject(), meta );
             rr.setLastModifiedTime(timeStamp);
+
+            if (_debug)
+                OE_NOTICE << LC << "Read object \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+
             return rr;            
         }
     }
@@ -418,9 +429,16 @@ namespace
         if ( r.succeeded() )
         {
             if ( r.get<StringObject>() )
+            {
+                if (_debug)
+                    OE_NOTICE << LC << "Read string \"" << key << "\" from cache bin [" << getID() << "]" << std::endl;
+
                 return r;
+            }
             else
+            {
                 return ReadResult();
+            }
         }
         else
         {
@@ -479,7 +497,8 @@ namespace
 
         if ( objWriteOK )
         {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+            if (_debug)
+                OE_NOTICE << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
         }
         else
         {
@@ -548,14 +567,16 @@ namespace
                     purgeDirectory( full );
 
                     ok = ::unlink( full.c_str() );
-                    OE_DEBUG << LC << "Unlink: " << full << std::endl;
+                    if (_debug)
+                        OE_NOTICE << LC << "Unlink: " << full << std::endl;
                 }
                 else if ( type == osgDB::REGULAR_FILE )
                 {
                     if ( full != _metaPath )
                     {
                         ok = ::unlink( full.c_str() );
-                        OE_DEBUG << LC << "Unlink: " << full << std::endl;
+                        if (_debug)
+                            OE_NOTICE << LC << "Unlink: " << full << std::endl;
                     }
                 }
 

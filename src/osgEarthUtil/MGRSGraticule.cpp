@@ -133,8 +133,8 @@ namespace
             // We will need a local XY SRS for geometry simplification:
             const SpatialReference* xysrs = SpatialReference::get("spherical-mercator");
 
-            u_long count = OE_ENCODE_LONG(sqids.size());
-            out.write(reinterpret_cast<const char*>(&count), sizeof(u_long));
+            u_int count = OE_ENCODE_LONG(sqids.size());
+            out.write(reinterpret_cast<const char*>(&count), sizeof(u_int));
 
             for (FeatureList::iterator i = sqids.begin(); i != sqids.end(); ++i)
             {
@@ -195,13 +195,13 @@ namespace
         if (fin.eof() || fin.is_open() == false)
             return false;
 
-        u_long count;
-        fin.read(reinterpret_cast<char*>(&count), sizeof(u_long));
+        u_int count;
+        fin.read(reinterpret_cast<char*>(&count), sizeof(u_int));
         count = OE_DECODE_LONG(count);
 
         const SpatialReference* wgs84 = SpatialReference::get("wgs84");
 
-        for (u_long i = 0; i < count; ++i)
+        for (u_int i = 0; i < count; ++i)
         {
             char gzd[4]; gzd[3] = 0;
             fin.read(gzd, 3);

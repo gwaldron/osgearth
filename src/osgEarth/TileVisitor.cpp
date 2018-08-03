@@ -19,6 +19,7 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/FileUtils>
+#include <osg/os_utils>
 
 using namespace osgEarth;
 
@@ -424,7 +425,7 @@ public:
 
       virtual void operator()(ProgressCallback* progress )
       {         
-          system(_command.c_str());     
+          osg_system(_command.c_str());     
 
           // Cleanup the temp files and increment the progress on the visitor.
           cleanupTempFiles();

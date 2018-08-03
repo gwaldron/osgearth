@@ -24,7 +24,7 @@
 #include <osg/os_utils>
 #define OS_SYSTEM osg_system
 #else
-#define OE_SYSTEM system
+#define OS_SYSTEM system
 #endif
 
 using namespace osgEarth;

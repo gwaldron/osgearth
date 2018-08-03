@@ -220,7 +220,7 @@ namespace
             if (numPoints > 16384)
             {
                 OE_WARN << LC << "sqid bin file is corrupt.. abort!" << std::endl;
-                exit(-1);
+                return false;
             }
 
             osgEarth::Symbology::Ring* line = new osgEarth::Symbology::Ring();

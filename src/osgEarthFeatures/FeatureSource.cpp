@@ -124,11 +124,11 @@ FeatureSource::open(const osgDB::Options* readOptions)
         if ( filter )
         {
             _filters.push_back( filter );
-            filter->initialize( readOptions );
+            filter->initialize( _readOptions );
         }
     }
 
-    _status = initialize(readOptions);
+    _status = initialize(_readOptions);
     return _status;
 }
 

@@ -109,6 +109,10 @@ namespace osgEarth
         void dirty();
         void finish() { dirty(); }
 
+    public:
+
+        virtual void drawImplementation(osg::RenderInfo& ri) const;
+
     public: // osg::Node
 
         //! Replace methods from META_Node so we can override accept
@@ -141,7 +145,6 @@ namespace osgEarth
         void updateFirstCount();
 
         static osg::ref_ptr<osg::StateSet> _sharedStateSet;
-        static osg::ref_ptr<osg::Drawable> _sharedStateSetDrawable;
     };
 
 

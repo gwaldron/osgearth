@@ -453,6 +453,61 @@ GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
     return false;
 }
 
+GeoPoint
+GeoPoint::interpolate(const GeoPoint& rhs, double t) const
+{
+    GeoPoint result;
+
+    GeoPoint to = rhs.transform(getSRS());
+
+    if (getSRS()->isProjected())
+    {
+        osg::Vec3d w1, w2;
+        toWorld(w1);
+        rhs.toWorld(w2);
+
+        osg::Vec3d r(
+            w1.x() + (w2.x()-w1.x())*t,
+            w1.y() + (w2.y()-w1.y())*t,
+            w1.z() + (w2.z()-w1.z())*t);
+        
+        result.fromWorld(getSRS(), r);
+    }
+
+    else // geographic
+    {
+        double deltaZ = to.z()-z();
+
+        osg::Vec3d unitToEllip(
+            getSRS()->getEllipsoid()->getRadiusEquator(),
+            getSRS()->getEllipsoid()->getRadiusEquator(),
+            getSRS()->getEllipsoid()->getRadiusPolar());
+
+        osg::Vec3d ellipToUnit = osg::componentDivide(
+            osg::Vec3d(1,1,1), unitToEllip);
+
+        osg::Vec3d w1;
+        toWorld(w1);
+        w1 = osg::componentMultiply(w1, ellipToUnit);
+
+        osg::Vec3d w2;
+        to.toWorld(w2);
+        w2 = osg::componentMultiply(w2, ellipToUnit);
+
+        osg::Vec3d axis = w1 ^ w2;
+        double angle = acos(w1 * w2);
+        osg::Quat q(angle*t, axis);
+
+        osg::Vec3d n = q*w1;
+
+        n = osg::componentMultiply(n, unitToEllip);
+        result.fromWorld(getSRS(), n);
+        result.z() = z() + t*deltaZ;
+    }
+
+    return result;
+}
+
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const
 {
@@ -470,13 +525,42 @@ GeoPoint::distanceTo(const GeoPoint& rhs) const
     }
     else
     {
-        GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
-        GeoPoint p2 = rhs.transform( getSRS()->getGeodeticSRS() );
+        // https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal-surface_formulae
 
-        return GeoMath::distance(
-            osg::DegreesToRadians(p1.y()), osg::DegreesToRadians(p1.x()),
-            osg::DegreesToRadians(p2.y()), osg::DegreesToRadians(p2.x()),
-            getSRS()->getGeographicSRS()->getEllipsoid()->getRadiusEquator() );
+        GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
+        GeoPoint p2 = rhs.transform( p1.getSRS() );
+
+        double Re = getSRS()->getEllipsoid()->getRadiusEquator();
+        double Rp = getSRS()->getEllipsoid()->getRadiusPolar();
+        double F  = (Re-Rp)/Re; // flattening
+
+        double
+            lat1 = osg::DegreesToRadians(p1.y()),
+            lon1 = osg::DegreesToRadians(p1.x()),
+            lat2 = osg::DegreesToRadians(p2.y()),
+            lon2 = osg::DegreesToRadians(p2.x());
+
+        double B1 = atan( (1.0-F)*tan(lat1) );
+        double B2 = atan( (1.0-F)*tan(lat2) );
+
+        double P = (B1+B2)/2.0;
+        double Q = (B2-B1)/2.0;
+
+        double G = acos(sin(B1)*sin(B2) + cos(B1)*cos(B2)*cos(fabs(lon2-lon1)));
+
+        double 
+            sinG = sin(G), 
+            sinP = sin(P), sinQ = sin(Q), 
+            cosP = cos(P), cosQ = cos(Q), 
+            sinG2 = sin(G/2.0), cosG2 = cos(G/2.0);
+
+        double X = (G-sinG)*((sinP*sinP*cosQ*cosQ)/(cosG2*cosG2));
+        double Y = (G+sinG)*((cosP*cosP*sinQ*sinQ)/(sinG2*sinG2));
+
+        double dist = Re*(G-(F/2.0)*(X+Y));
+
+        // NaN could mean start/end points are the same
+        return osg::isNaN(dist)? 0.0 : dist;
     }
 }
 

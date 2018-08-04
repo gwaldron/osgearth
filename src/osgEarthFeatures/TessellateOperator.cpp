@@ -45,6 +45,9 @@ TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, u
 
     out.push_back( p0 );
 
+    GeoPoint beg(SpatialReference::get("wgs84"), p0);
+    GeoPoint end(SpatialReference::get("wgs84"), p1);
+
     for( unsigned i=1; i<parts; ++i )
     {
         double t = step*double(i);
@@ -52,13 +55,8 @@ TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, u
 
         if ( interp == GEOINTERP_GREAT_CIRCLE )
         {
-            double lat, lon;
-            GeoMath::interpolate(
-                osg::DegreesToRadians(p0.y()), osg::DegreesToRadians(p0.x()),
-                osg::DegreesToRadians(p1.y()), osg::DegreesToRadians(p1.x()),
-                t,
-                lat, lon );
-            p.set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), p0.z() + t*zdelta );
+            GeoPoint r = beg.interpolate(end, t);
+            p = r.vec3d();
         }
         else // GEOINTERP_RHUMB_LINE
         {

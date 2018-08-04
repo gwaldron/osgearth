@@ -240,6 +240,12 @@ namespace osgEarth
          */
         double distanceTo(const GeoPoint& rhs) const;
 
+        /**
+         * Interpolates a point between this point and another point
+         * using the parameter t [0..1].
+         */
+        GeoPoint interpolate(const GeoPoint& rhs, double t) const;
+
 
         bool operator == (const GeoPoint& rhs) const;
         bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }

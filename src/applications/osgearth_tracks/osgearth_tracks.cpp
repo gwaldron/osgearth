@@ -50,7 +50,7 @@ using namespace osgEarth::Symbology;
  * Demonstrates use of the TrackNode to display entity track symbols.
  */
 
-// field names for the track labels
+// field names for the track labelsL
 #define FIELD_NAME     "name"
 #define FIELD_POSITION "position"
 #define FIELD_NUMBER   "number"
@@ -82,23 +82,14 @@ usage( const std::string& message )
 struct TrackSim : public osg::Referenced
 {
     TrackNode* _track;
-    Angular _startLat, _startLon, _endLat, _endLon;
+    GeoPoint _start, _end;
 
     void update( double t )
     {
         osg::Vec3d pos;
-        GeoMath::interpolate(
-            _startLat.as(Units::RADIANS), _startLon.as(Units::RADIANS),
-            _endLat.as(Units::RADIANS), _endLon.as(Units::RADIANS),
-            t,
-            pos.y(), pos.x() );
 
-        GeoPoint geo(
-            _track->getMapNode()->getMapSRS(),
-            osg::RadiansToDegrees(pos.x()),
-            osg::RadiansToDegrees(pos.y()),
-            10000.0,
-            ALTMODE_ABSOLUTE);
+        GeoPoint geo = _start.interpolate(_end, t);
+        geo.alt() = 10000.0;
 
         // update the position label.
         _track->setPosition(geo);
@@ -198,9 +189,9 @@ createTrackNodes(const SpatialReference* mapSRS, osg::Group* parent, const Track
         double lon1 = -180.0 + prng.next() * 360.0;
         double lat1 = -80.0 + prng.next() * 160.0;
         TrackSim* sim = new TrackSim();
-        sim->_track = track;        
-        sim->_startLat = lat0; sim->_startLon = lon0;
-        sim->_endLat = lat1; sim->_endLon = lon1;
+        sim->_track = track;  
+        sim->_start.set(mapSRS, lon0, lat0, 0.0, ALTMODE_ABSOLUTE);
+        sim->_end.set(mapSRS, lon1, lat1, 0.0, ALTMODE_ABSOLUTE);
         sims.push_back( sim );
     }
 }

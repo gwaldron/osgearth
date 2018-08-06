@@ -183,6 +183,8 @@ namespace osgEarth
 
         virtual void releaseGLObjects(osg::State* state) const;
 
+        static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);
+
     protected:
         virtual ~PolyShader() { }
 
@@ -206,6 +208,10 @@ namespace osgEarth
         //std::string                  _originalSource;
 
         bool                         _dirty;
+
+        static Threading::Mutex _cacheMutex;
+        static std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > _shaderCache;
+
     };
 
     typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;

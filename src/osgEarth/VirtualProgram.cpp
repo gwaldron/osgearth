@@ -40,6 +40,9 @@
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
 
+Threading::Mutex PolyShader::_cacheMutex;
+std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > PolyShader::_shaderCache;
+
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 //#define USE_ATTRIB_ALIASES
@@ -1098,17 +1101,9 @@ VirtualProgram::setFunction(const std::string&           functionName,
         function._accept = accept;
         ofm.insert( OrderedFunction(ordering, function) );
 
-        // Remove any quotes in the shader source (illegal)
-        std::string source(shaderSource);
-        osgEarth::replaceIn(source, "\"", " ");
-
-        // assemble the poly shader.
-        PolyShader* shader = new PolyShader();
-        shader->setName( functionName );
-        shader->setLocation( location );
-        shader->setShaderSource( source );
-        shader->prepare();
-
+        // assemble the poly shader. but check a map first for existing shaders.
+        PolyShader* shader = PolyShader::lookUpShader(functionName, shaderSource, location);
+      
         ShaderEntry& entry = _shaderMap[MAKE_SHADER_ID(functionName)];
         entry._shader        = shader;
         entry._overrideValue = osg::StateAttribute::ON;
@@ -1974,6 +1969,40 @@ void PolyShader::releaseGLObjects(osg::State* state) const
       _tessevalShader->releaseGLObjects(state);
    }
 }
+
+PolyShader * PolyShader::lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location)
+{
+
+   std::pair<std::string, std::string> hashKey = std::pair<std::string, std::string>(functionName, shaderSource);
+
+   _cacheMutex.lock();
+   
+   std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> >::iterator iter = _shaderCache.find(hashKey);
+ 
+   PolyShader * shader = NULL;
+   if (iter != _shaderCache.end()) {
+      shader = iter->second;
+   }
+
+   if (!shader)
+   {
+
+      // Remove any quotes in the shader source (illegal)
+      std::string source(shaderSource);
+      osgEarth::replaceIn(source, "\"", " ");
+
+      shader = new PolyShader();
+      shader->setName(functionName);
+      shader->setLocation(location);
+      shader->setShaderSource(source);
+      shader->prepare();
+      _shaderCache[hashKey] = shader;
+   }
+
+   _cacheMutex.unlock();
+   return shader;
+}
+
 //.......................................................................
 // SERIALIZERS for VIRTUALPROGRAM
 

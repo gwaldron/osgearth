@@ -30,6 +30,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
 #include <osg/Version>
+#include <osg/ConcurrencyViewerMacros>
 #include <osgDB/WriteFile>
 #include <memory.h>
 #include <limits.h>
@@ -621,7 +622,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
-    // validate the existance of a valid layer profile (unless we're in cache-only mode, in which
+    // validate the existence of a valid layer profile (unless we're in cache-only mode, in which
     // case there is no layer profile)
     if ( !policy.isCacheOnly() && !getProfile() )
     {
@@ -629,12 +630,15 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
+    osg::CVMarkerSeries series("SubloadTask");
     osg::ref_ptr< osg::Image > cachedImage;
 
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     if ( cacheBin && policy.isCacheReadable() )
     {
+       osg::CVSpan UpdateTick(series, 5, "loadImage");
+
         ReadResult r = cacheBin->readImage(cacheKey, 0L);
         if ( r.succeeded() )
         {
@@ -682,6 +686,8 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     {
         ImageUtils::fixInternalFormat( result.getImage() );
     }
+
+    osg::CVSpan UpdateTick(series, 5, "saveImage");
 
     // memory cache first:
     if ( result.valid() && _memCache.valid() )

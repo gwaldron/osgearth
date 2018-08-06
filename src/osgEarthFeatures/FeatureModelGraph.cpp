@@ -36,6 +36,7 @@
 #include <osgEarth/Utils>
 
 #include <osg/CullFace>
+#include <osg/ConcurrencyViewerMacros>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osg/PolygonOffset>
@@ -797,7 +798,11 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                                          osg::Group*     parent,
                                          const osgDB::Options* readOptions)
 {
-    unsigned subtileLOD = parentLOD + 1;
+
+   osg::CVMarkerSeries series("PagingThread");
+   osg::CVSpan UpdateTick(series, 5, "buildSubTilePagedLODs");
+   
+   unsigned subtileLOD = parentLOD + 1;
     unsigned subtileX = parentTileX * 2;
     unsigned subtileY = parentTileY * 2;
 
@@ -998,6 +1003,10 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
                              const TileKey* key,
                              const osgDB::Options* readOptions)
 {
+
+   osg::CVMarkerSeries series("PagingThread");
+   osg::CVSpan UpdateTick(series, 4, "FeatureModelGraph::buildTile");
+
     OE_TEST << LC << "buildTile " << (key? key->str(): "no key") << std::endl;
 
     osg::ref_ptr<osg::Group> group;

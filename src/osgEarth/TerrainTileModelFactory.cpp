@@ -24,6 +24,7 @@
 #include <osgEarth/MapOptions>
 #include <osgEarth/MapFrame>
 
+#include <osg/ConcurrencyViewerMacros>
 #include <osg/Texture2D>
 
 #define LC "[TerrainTileModelFactory] "
@@ -49,7 +50,10 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
                                          const TerrainEngineRequirements* requirements,
                                          ProgressCallback*                progress)
 {
-    // Make a new model:
+   osg::CVMarkerSeries series("PagingThread");
+   osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::createTileModel");
+
+   // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,
         frame.getRevision() );
@@ -87,6 +91,9 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                                         ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_image_layers);
+
+    osg::CVMarkerSeries series("SubloadParentTask");
+    osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::addColorLayers");
 
     int order = 0;
 
@@ -316,6 +323,9 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
     if (!filter.empty() && !filter.elevation().isSetTo(true))
         return;
+
+    osg::CVMarkerSeries series("SubloadParentTask");
+    osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::addElevation");
 
     const MapInfo& mapInfo = frame.getMapInfo();
 

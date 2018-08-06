@@ -28,6 +28,7 @@
 #include <osgEarthUtil/WFS>
 #include <osgEarthFeatures/OgrUtils>
 #include <osg/Notify>
+#include <osg/ConcurrencyViewerMacros>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <list>
@@ -329,6 +330,9 @@ public:
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
+       osg::CVMarkerSeries series("SubloadTask");
+       osg::CVSpan UpdateTick(series, 5, "createFeatureCursor");
+
         FeatureCursor* result = 0L;
 
         std::string url = createURL( query );        

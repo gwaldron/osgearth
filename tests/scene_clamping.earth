@@ -25,7 +25,7 @@ osgEarth Sample - Annotations
         </viewpoint>
     </viewpoints>
 
-    <annotations name="LocalGeometryNode">
+    <annotations name="Annotations: LocalGeometryNode">
     
         <circle name="Circle clamped directly to the ground">
             <position lat="22.074" long="-159.606"/>
@@ -33,8 +33,6 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:             #ffffff;
                 stroke-width:       2px;
-                altitude-clamping:  relative;
-                altitude-technique: scene;
                 altitude-binding:   vertex;
                 render-depth-offset: true;
             </style>
@@ -52,8 +50,6 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:             #ffff00;
                 stroke-width:       2px;
-                altitude-clamping:  relative;
-                altitude-technique: scene;
                 altitude-binding:   vertex;
             </style>
         </circle>
@@ -65,8 +61,6 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:             #00ffff;
                 stroke-width:       2px;
-                altitude-clamping:  relative;
-                altitude-technique: scene;
                 altitude-binding:   centroid;
             </style>
         </circle>
@@ -81,15 +75,13 @@ osgEarth Sample - Annotations
                 stroke:          #ff00ff;
                 stroke-width:    3px;
                 stroke-tessellation-size: 500m;
-                render-lighting: false;
-                altitude-clamping: terrain;
-                altitude-technique: scene;
+                altitude-binding:    vertex;
                 render-depth-offset: true;
             </style>
         </local_geometry>
     </annotations>
     
-    <annotations name="FeatureNode">    
+    <annotations name="Annotations: FeatureNode">    
         <feature name="Feature clamped to ground">
             <srs>wgs84</srs>
             <geometry>
@@ -118,6 +110,21 @@ osgEarth Sample - Annotations
                 altitude-technique:  scene;
             </style>
         </feature>
+    </annotations>
+
+    <annotations name="Annotations: Extrusion">    
+        <circle name="Circle clamped and extruded">
+            <position lat="21.974" long="-159.606"/>
+            <radius value="1.2" units="km"/>
+            <style type="text/css">
+                fill:               #8f4f107f;
+                stroke:             #ffff00;
+                stroke-width:       1px;
+                altitude-technique: scene;
+                altitude-binding:   vertex;
+                extrusion-height:   500;
+            </style>
+        </circle>
     </annotations>
     
     <annotations name="PlaceNode">              

@@ -37,6 +37,10 @@ namespace osgEarth { namespace Annotation
      * Simple node that renders geometry into a scene graph node. The geometry
      * is in a local tangent plane that may be positioned somewhere on the 
      * Map's surface.
+     *
+     * As a GeoPositionNode, the LGN's main location is controlled by the 
+     * setPosition method. Terrain following is controlled by using a GeoPoint
+     * with an altitude value relative to the terrain.
      */
     class OSGEARTHANNO_EXPORT LocalGeometryNode : public GeoPositionNode
     {
@@ -105,7 +109,6 @@ namespace osgEarth { namespace Annotation
         
         typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
-        bool _useGeometryZ;
         GeometryClamper::LocalData _clamperData;
 
         void compileGeometry();

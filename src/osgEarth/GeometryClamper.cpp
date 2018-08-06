@@ -30,7 +30,7 @@ using namespace osgEarth;
 GeometryClamper::GeometryClamper(GeometryClamper::LocalData& localData) :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
 _localData(localData),
-_incorporatePerVertexAlt(false),
+_useVertexZ(true),
 _revert(false),
 _scale( 1.0f ),
 _offset( 0.0f )
@@ -57,7 +57,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
     if ( !geom )
         return;
 
-    osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
 
     if (_revert)
     {
@@ -115,14 +115,10 @@ GeometryClamper::apply(osg::Drawable& drawable)
             // if we need to store the original altitudes:
             if (storeAltitudes)
             {
-                osg::Vec3d geo;
-                _terrainSRS->transformFromWorld(vw, geo);
-                data._altitudes->push_back(geo.z()-_offset);
-                //OE_INFO << "Z=" << geo.z() << ", Z-offset=" << geo.z()-_offset << std::endl;
-                //double lat,lon,hae;
-                //em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, hae);
-                //data._altitudes->push_back( hae - _offset );
-                //OE_INFO << "Z=" << hae-_offset << std::endl;
+                // should really be the alt along the n_vector but leave for now
+                // since most scene-clamped geometry will be in relative to a
+                // local tangent plane anyway -gw
+                data._altitudes->push_back( (*verts)[k].z() );
             }
         }
 
@@ -155,7 +151,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
                 fw += n_vector*_offset;
             }
 
-            if (_incorporatePerVertexAlt)
+            if (_useVertexZ)
             {
                 fw += n_vector * (*data._altitudes)[k];
             }

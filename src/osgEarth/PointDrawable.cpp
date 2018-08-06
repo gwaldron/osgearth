@@ -599,13 +599,12 @@ PointDrawable::dirty()
 }
 
 osg::ref_ptr<osg::StateSet> PointDrawable::_sharedStateSet;
-osg::ref_ptr<osg::Drawable> PointDrawable::_sharedStateSetDrawable;
 
 void
 PointDrawable::setupState()
 {
-    // Create the singleton state set for the line shader. This stateset will be
-    // shared by all LineDrawable instances so OSG will sort them together.
+    // Create the singleton state set for the shader. This stateset will be
+    // shared by all PointDrawable instances so OSG will sort them together.
     if (!_sharedStateSet.valid())
     {
         static Threading::Mutex s_mutex;
@@ -621,18 +620,44 @@ PointDrawable::setupState()
                 VirtualProgram* vp = VirtualProgram::getOrCreate(_sharedStateSet.get());
                 Shaders shaders;
                 shaders.load(vp, shaders.PointDrawable);
-                _sharedStateSet->setMode(GL_VERTEX_PROGRAM_POINT_SIZE, 1);
+                _sharedStateSet->setMode(GL_PROGRAM_POINT_SIZE, 1);
             }
             else
             {
                 //todo
             }
-
-            _sharedStateSetDrawable = new osg::Drawable();
-            _sharedStateSetDrawable->setStateSet(_sharedStateSet.get());
         }
         s_mutex.unlock();
     }
+}
+
+void
+PointDrawable::drawImplementation(osg::RenderInfo& ri) const
+{
+    // The mode validity for PointSprite might never get set since
+    // the OSG GLObjectVisitor cannot traverse the shared stateset;
+    // so this block of code will set it upon first draw.
+    static bool s_sharedStateActivated = false;
+    static Threading::Mutex s_mutex;
+
+    if (!s_sharedStateActivated)
+    {
+        s_mutex.lock();
+        if (!s_sharedStateActivated)
+        {                
+            osg::PointSprite* sprite = dynamic_cast<osg::PointSprite*>(
+                _sharedStateSet->getTextureAttribute(0, osg::StateAttribute::POINTSPRITE));
+
+            if (sprite)
+                sprite->checkValidityOfAssociatedModes(*ri.getState());
+
+            s_sharedStateActivated = true;
+        }
+
+        s_mutex.unlock();
+    }
+
+    osg::Geometry::drawImplementation(ri);
 }
 
 void
@@ -640,13 +665,11 @@ PointDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
     { 
-        // Support for GLObjectsVisitor, e.g.
-        _sharedStateSetDrawable->accept(nv);
-
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         nv.pushOntoNodePath(this);
 
+        // inject our shared stateset into the cull visitor.
         if (cv)
             cv->pushStateSet(_sharedStateSet.get());
 

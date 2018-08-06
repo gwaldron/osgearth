@@ -63,8 +63,8 @@ namespace osgEarth
         //! Whether to incorporate (add) the original vertex's altitude to the result
         //! of the clamping operation. Default=true. If false, the vert's height information 
         //! is ignored.
-        void setIncorporatePerVertexAltitude(bool value) { _incorporatePerVertexAlt = value; }
-        bool getIncorporatePerVertexAltitude() const     { return _incorporatePerVertexAlt; }
+        void setUseVertexZ(bool value) { _useVertexZ = value; }
+        bool getUseVertexZ() const     { return _useVertexZ; }
 
         //! @deprecated
         void setScale(float scale) { _scale = scale; }
@@ -87,7 +87,7 @@ namespace osgEarth
         LocalData&                           _localData;
         osg::ref_ptr<osg::Node>              _terrainPatch;
         osg::ref_ptr<const SpatialReference> _terrainSRS;
-        bool                                 _incorporatePerVertexAlt;
+        bool                                 _useVertexZ;
         bool                                 _revert;
         float                                _scale;
         float                                _offset;

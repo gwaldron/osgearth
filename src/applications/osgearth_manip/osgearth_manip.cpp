@@ -594,7 +594,6 @@ namespace
 
             _geo->getPositionAttitudeTransform()->addChild(_label);
 
-            //root->addChild(_geo.get());
             mapnode->addChild(_geo.get());
         }
 
@@ -604,13 +603,10 @@ namespace
             {
                 double t0 = osg::Timer::instance()->time_s();
                 double t = fmod( t0, 6000.0 ) / 6000.0;
-                double lat, lon;
-                GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
-                GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
-                double bearing = GeoMath::bearing(D2R*_lat0, D2R*_lon0, lat, lon);
+                GeoPoint p = _start.interpolate(_end, t);
+                double bearing = GeoMath::bearing(_start.y(), _start.x(), p.y(), p.x());
 
                 float a = sin(t0*0.2);
-                //bearing += a * 0.5 * osg::PI;
                 float pitch = 0.0;
 
                 _geo->setPosition(p);
@@ -639,7 +635,7 @@ namespace
         char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
-        double                             _lat0, _lon0, _lat1, _lon1;
+        GeoPoint                           _start, _end;
         LabelNode*                         _label;
         osg::Node*                         _model;
         float                              _heading;
@@ -776,20 +772,18 @@ int main(int argc, char** argv)
     osg::Group* sims = new osg::Group();
     root->addChild( sims );
 
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+
     // Simulator for tethering:
     Simulator* sim1 = new Simulator(sims, manip, mapNode, model.get(), "Thing 1", '8');
-    sim1->_lat0 = 55.0;
-    sim1->_lon0 = 45.0;
-    sim1->_lat1 = -55.0;
-    sim1->_lon1 = -45.0;
+    sim1->_start = GeoPoint(wgs84, 45.0, 55.0, 10000);
+    sim1->_end = GeoPoint(wgs84, -45, -55.0, 10000);
     viewer.addEventHandler(sim1);
 
     Simulator* sim2 = new Simulator(sims, manip, mapNode, model.get(), "Thing 2", '9');
     sim2->_name = "Thing 2";
-    sim2->_lat0 = 54.0;
-    sim2->_lon0 = 45.0;
-    sim2->_lat1 = -54.0;
-    sim2->_lon1 = -44.0;
+    sim2->_start = GeoPoint(wgs84, 45.0, 54.0, 10000);
+    sim2->_end = GeoPoint(wgs84, -44.0, -54.0, 10000);
     viewer.addEventHandler(sim2);
 
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    

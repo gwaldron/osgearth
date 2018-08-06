@@ -43,9 +43,9 @@ void
 GLUtils::setGlobalDefaults(osg::StateSet* stateSet)
 {
     // anything that uses a uniform.
-    setLineWidth(stateSet, 1.0f, 1);
-    setLineStipple(stateSet, 1, 0xffff, 1);
-    setPointSize(stateSet, 1, 1);
+    setLineWidth(stateSet, 1.0f, osg::StateAttribute::ON);
+    setLineStipple(stateSet, 1, 0xffff, osg::StateAttribute::ON);
+    setPointSize(stateSet, 1, osg::StateAttribute::ON);
 }
 
 void
@@ -177,6 +177,11 @@ GL3RealizeOperation::operator()(osg::Object* object)
     if (gc)
     {
         osg::State* state = gc->getState();
+
+        // force NVIDIA-style vertex attribute aliasing, since osgEarth
+        // makes use of some specific attribute registers. Later we can
+        // perhaps create a reservation system for this.
+        state->resetVertexAttributeAlias(false);
 
 #ifdef OSG_GL3_AVAILABLE
         state->setUseModelViewAndProjectionUniforms(true);

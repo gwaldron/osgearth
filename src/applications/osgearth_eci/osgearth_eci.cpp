@@ -25,6 +25,8 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/PointDrawable>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/Lighting>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Sky>
@@ -47,34 +49,49 @@ usage(const char* name, const char* msg)
     return 0;
 }
 
+// Reference time for the J2000 ECI coordinate frame 
+static DateTime J2000Epoch(2000, 1, 1, 12.00);
 
-class ECIToECEFTransform : public osg::MatrixTransform
+// Transform that takes us from a J2000 ECI reference frame 
+// to an ECEF reference frame (i.e. MapNode)
+class J2000ToECEFTransform : public osg::MatrixTransform
 {
 public:
     void setDateTime(const DateTime& dt)
     {
-        // (rad/sec) Earth's rotation rate: International Astronomical Union (IAU) GRS 67
-        const double earthRotationRate = 7292115.1467e-11;
-        osg::Matrix matrix;
+        // Earth's rotation rate: International Astronomical Union (IAU) GRS 67
+        const double IAU_EARTH_ANGULAR_VELOCITY = 7292115.1467e-11; // (rad/sec)
 
-        const double eciToEcefRadians = -earthRotationRate * (double)dt.asTimeStamp();
+        double secondsElapsed = (double)(dt.asTimeStamp() - J2000Epoch.asTimeStamp());
+        const double rotation = IAU_EARTH_ANGULAR_VELOCITY * secondsElapsed;
         
-        matrix.makeRotate(eciToEcefRadians, 0, 0, 1);
+        osg::Matrix matrix;
+        matrix.makeRotate(rotation, 0, 0, 1);
         this->setMatrix(matrix);
     }
 };
 
-
-class ECIReferenceFrame : public osg::MatrixTransform
+// If the "global" coordinate system is ECI, you can put this transform
+// under the MapNode (in ECEF space) to "revert" to that global ECI frame.
+// Useful if you want to put ECI-space data under the MapNode.
+class ECIReferenceFrame : public osg::Group
 {
 public:
-    ECIReferenceFrame()
+    void traverse(osg::NodeVisitor& nv)
     {
-        addCullCallback(new InstallViewportSizeUniform());
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if (cv)
+        {
+            const osg::Camera* cam = cv->getRenderStage()->getCamera();
+            cv->pushModelViewMatrix(new osg::RefMatrix(cam->getViewMatrix()), osg::Transform::ABSOLUTE_RF);
+            osg::Group::traverse(nv);
+            cv->popModelViewMatrix();
+        }
+        else osg::Group::traverse(nv);
     }
 };
 
-
+// Loads up some ECI data for display
 class ECIDrawable : public PointDrawable
 {
 public:
@@ -134,29 +151,58 @@ public:
     }
 };
 
+osg::Node* createECIAxes()
+{
+    const float R = 10e6;
+    LineDrawable* d = new LineDrawable(GL_LINES);
+    d->allocate(6);
+
+    d->setVertex(0, osg::Vec3(0,0,0));
+    d->setColor(0, osg::Vec4(1,0,0,1));
+    d->setVertex(1, osg::Vec3(R,0,0));
+    d->setColor(1, osg::Vec4(1,0,0,1));
+
+    d->setVertex(2, osg::Vec3(0,0,0));
+    d->setColor(2, osg::Vec4(0,1,0,1));
+    d->setVertex(3, osg::Vec3(0,R,0));
+    d->setColor(3, osg::Vec4(0,1,0,1));
+
+    d->setVertex(4, osg::Vec3(0,0,0));
+    d->setColor(4, osg::Vec4(0,0,1,1));
+    d->setVertex(5, osg::Vec3(0,0,R));
+    d->setColor(5, osg::Vec4(0,0,1,1));
+
+    d->setLineWidth(10);
+    Lighting::set(d->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+    return d;
+}
 
 struct App
 {
     DateTime _start;
     HSliderControl* _time;
-    ECIToECEFTransform* _ecefGroup;
-    osg::Group* _eciGroup;
+    LabelControl* _timeLabel;
+    J2000ToECEFTransform* _ecef;
+    osg::Group* _eci;
     ECIDrawable* _eciDrawable;
 
     App() 
     {
         _eciDrawable = 0L;
+        _start = J2000Epoch;
     }
 
     void setTime()
     {
         DateTime newTime(_start.year(), _start.month(), _start.day(), _start.hours() + _time->getValue());
 
-        if (_ecefGroup)
-            _ecefGroup->setDateTime(newTime);
+        if (_ecef)
+            _ecef->setDateTime(newTime);
 
         if (_eciDrawable)
             _eciDrawable->setDateTime(newTime);
+
+        _timeLabel->setText(newTime.asRFC1123());
     }
 };
 
@@ -187,7 +233,7 @@ main(int argc, char** argv)
         // UI control to modify the time of day.
         app._time = container->addControl(new HSliderControl(0.0, 23.99999, 0.0, new setTime(app)));
         app._time->setWidth(400);
-        container->addControl(new LabelControl(app._time));
+        app._timeLabel = container->addControl(new LabelControl());
 
         // New scene graph root
         osg::Group* root = new osg::Group();
@@ -195,22 +241,23 @@ main(int argc, char** argv)
         // A special transform takes us from the ECI into an ECEF frame
         // based on the current date and time.
         // The earth (MapNode) lives here since it is ECEF.
-        app._ecefGroup = new ECIToECEFTransform();
-        app._ecefGroup->addChild(earth);
-        root->addChild(app._ecefGroup);
+        app._ecef = new J2000ToECEFTransform();
+        app._ecef->addChild(earth);
         
         // This group holds data in the ECI frame.
-        app._eciGroup = new ECIReferenceFrame();
-        root->addChild(app._eciGroup);
+        app._eci = new ECIReferenceFrame();
+        app._eci->addChild(createECIAxes());
+        MapNode::get(earth)->addChild(app._eci);
 
         // Load some ECI frame data
         if (!eciFile.empty())
         {
             app._eciDrawable = new ECIDrawable();
             app._start = app._eciDrawable->load(eciFile);
-            app._eciGroup->addChild(app._eciDrawable);
+            app._eci->addChild(app._eciDrawable);
         }
 
+        root->addChild(app._ecef);
         viewer.setSceneData(root);
         viewer.run();
     }

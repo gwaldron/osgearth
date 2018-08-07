@@ -183,7 +183,11 @@ namespace osgEarth
 
         virtual void releaseGLObjects(osg::State* state) const;
 
+		/** VRV_PATCH for faster shader creation */
+        typedef std::pair<std::string, std::pair<std::string, ShaderComp::FunctionLocation> > ShaderDesc;
+
         static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);
+
 
     protected:
         virtual ~PolyShader() { }
@@ -210,7 +214,7 @@ namespace osgEarth
         bool                         _dirty;
 
         static Threading::Mutex _cacheMutex;
-        static std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > _shaderCache;
+        static std::map<ShaderDesc, osg::ref_ptr<PolyShader> > _shaderCache;
 
     };
 

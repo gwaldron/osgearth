@@ -41,7 +41,7 @@ using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
 
 Threading::Mutex PolyShader::_cacheMutex;
-std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > PolyShader::_shaderCache;
+std::map<PolyShader::ShaderDesc, osg::ref_ptr<PolyShader> > PolyShader::_shaderCache;
 
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
@@ -1970,14 +1970,21 @@ void PolyShader::releaseGLObjects(osg::State* state) const
    }
 }
 
-PolyShader * PolyShader::lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location)
+// helper function to hide stl ugliness
+PolyShader::ShaderDesc makeShaderDesc(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation loc)
+{
+  return PolyShader::ShaderDesc(functionName, std::pair<std::string, ShaderComp::FunctionLocation>(shaderSource, loc));
+}
+
+PolyShader * PolyShader::lookUpShader(const std::string & functionName, const std::string & shaderSource, 
+   ShaderComp::FunctionLocation location)
 {
 
-   std::pair<std::string, std::string> hashKey = std::pair<std::string, std::string>(functionName, shaderSource);
+   ShaderDesc hashKey = makeShaderDesc(functionName, shaderSource, location);
 
    _cacheMutex.lock();
    
-   std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> >::iterator iter = _shaderCache.find(hashKey);
+   std::map<ShaderDesc, osg::ref_ptr<PolyShader> >::iterator iter = _shaderCache.find(hashKey);
  
    PolyShader * shader = NULL;
    if (iter != _shaderCache.end()) {

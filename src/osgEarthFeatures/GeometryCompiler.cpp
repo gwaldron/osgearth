@@ -489,10 +489,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             if ( trackHistory ) history.push_back( "extrude" );
             resultGroup->addChild( node );
+
+            extrusionGroup = dynamic_cast<osg::Group*>(node);
+            ASSERT_PREDICATE(extrusionGroup.get());
         }
-        
-        extrusionGroup = dynamic_cast<osg::Group*>(node);
-        ASSERT_PREDICATE(extrusionGroup.get());
     }
 
     // simple geometry
@@ -654,9 +654,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if(extrusion)
     {
-       if (*_options.filterUsage() == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
+       if (*_options.filterUsage() == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED && extrusionGroup.get())
        {
-          ASSERT_PREDICATE(extrusionGroup.get());
           // remove the extrusion result from the result group
           resultGroup->removeChild(extrusionGroup);
 

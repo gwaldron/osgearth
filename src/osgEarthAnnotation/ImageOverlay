@@ -36,6 +36,9 @@ namespace osgEarth { namespace Annotation
 {
     using namespace osgEarth;
 
+    /**
+     * ImageOverlay drapes a rectangular texture on the terrain.
+     */
     class OSGEARTHANNO_EXPORT ImageOverlay : public AnnotationNode
     {
     public:
@@ -130,9 +133,6 @@ namespace osgEarth { namespace Annotation
         /** Serialize the contents of this node */
         Config getConfig() const;
 
-    public: // AnnotationNode
-        
-        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
 
     public: // MapNodeObserver
 
@@ -161,7 +161,6 @@ namespace osgEarth { namespace Annotation
 
         osg::Node* createNode(osgEarth::Features::Feature* feature, bool split);
 
-
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
         osg::Vec2d _upperRight;
@@ -186,12 +185,12 @@ namespace osgEarth { namespace Annotation
 
         bool _updateScheduled;
 
-        osg::ref_ptr< TerrainCallbackAdapter<ImageOverlay> > _clampCallback;
-        
-        void clamp(osg::Node* patch, const Terrain* terrain);
 
         ImageOverlay() { }
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }
+
+    private:
+        static osg::ref_ptr<osg::StateSet> _overlayStateSet;
     };
 
 } } // namespace osgEarth::Annotation

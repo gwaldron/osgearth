@@ -49,7 +49,7 @@ namespace
         "} \n";
 
     const char* iconFS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_TrackNode_texcoord; \n"
         "uniform sampler2D oe_TrackNode_tex; \n"
         "void oe_TrackNode_icon_FS(inout vec4 color) { \n"

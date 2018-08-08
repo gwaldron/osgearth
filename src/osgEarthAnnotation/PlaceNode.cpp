@@ -52,7 +52,7 @@ namespace
         "} \n";
 
     const char* iconFS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_PlaceNode_texcoord; \n"
         "uniform sampler2D oe_PlaceNode_tex; \n"
         "void oe_PlaceNode_icon_FS(inout vec4 color) { \n"

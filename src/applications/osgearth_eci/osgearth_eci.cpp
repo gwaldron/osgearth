@@ -127,7 +127,7 @@ public:
         setPointSmooth(true);
         setPointSize(4.0f);
 
-        std::ifstream in(file);
+        std::ifstream in(file.c_str());
         while (!in.eof())
         {
             std::string val;

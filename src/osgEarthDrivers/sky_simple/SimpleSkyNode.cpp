@@ -193,22 +193,15 @@ namespace
 
 //---------------------------------------------------------------------------
 
-SimpleSkyNode::SimpleSkyNode(const SpatialReference* srs) :
-SkyNode()
-{
-    initialize(srs);
-}
-
-SimpleSkyNode::SimpleSkyNode(const SpatialReference* srs,
-                             const SimpleSkyOptions& options) :
+SimpleSkyNode::SimpleSkyNode(const SimpleSkyOptions& options) :
 SkyNode ( options ),
 _options( options )
 {
-    initialize(srs);
+    construct();
 }
 
 void
-SimpleSkyNode::initialize(const SpatialReference* srs)
+SimpleSkyNode::construct()
 {
     // protect us from the ShaderGenerator.
     ShaderGenerator::setIgnoreHint(this, true);
@@ -235,9 +228,9 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     }
 
     // only supports geocentric for now.
-    if ( srs && !srs->isGeographic() )
+    if (getReferencePoint().isValid())
     {
-        OE_WARN << LC << "Sorry, SimpleSky only supports geocentric maps." << std::endl;
+        OE_WARN << LC << "Found an ephemeris reference point, but SimpleSky does not support projected maps" << std::endl;
         return;
     }
 
@@ -245,12 +238,15 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     _cullContainer = new osg::Group();
     
     // set up the astronomical parameters:
-    _ellipsoidModel = srs ? srs->getEllipsoid() : new osg::EllipsoidModel();
+    osg::ref_ptr<const SpatialReference> wgs84 = SpatialReference::get("wgs84");
+    _ellipsoidModel = wgs84->getEllipsoid();
     _innerRadius = osg::minimum(
         _ellipsoidModel->getRadiusPolar(),
         _ellipsoidModel->getRadiusEquator() );
     _outerRadius = _innerRadius * 1.025f;
-    _sunDistance = 149600000000.0; //_innerRadius * 12000.0f;
+
+    CelestialBody sun = getEphemeris()->getSunPosition(DateTime());
+    _sunDistance = sun.altitude.as(Units::METERS); //149600000000.0; //_innerRadius * 12000.0f;
     
     if ( Registry::capabilities().supportsGLSL() )
     {

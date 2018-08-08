@@ -19,7 +19,6 @@
 
 #include "GLSkyOptions"
 #include <osgEarthUtil/Sky>
-#include <osgEarth/MapNode>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/MatrixTransform>
 
@@ -40,12 +39,7 @@ namespace osgEarth { namespace GLSky
     class GLSkyNode : public SkyNode
     {
     public:
-        GLSkyNode(
-            const Profile* profile);
-
-        GLSkyNode(
-            const Profile*      profile,
-            const GLSkyOptions& options);
+        GLSkyNode(const GLSkyOptions& options);
 
     public: // SkyNode
 
@@ -61,10 +55,9 @@ namespace osgEarth { namespace GLSky
         virtual ~GLSkyNode();
 
     private:
-        void initialize(const Profile* profile);
+        void construct();
 
         osg::ref_ptr<osg::Light>          _light;
-        osg::ref_ptr<const Profile>       _profile;
         osg::ref_ptr<PhongLightingEffect> _lighting;
         GLSkyOptions                      _options;
     };

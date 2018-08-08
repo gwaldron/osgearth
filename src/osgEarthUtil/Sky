@@ -27,7 +27,7 @@
 #include <osgEarth/DateTime>
 #include <osgEarth/GeoData>
 #include <osgEarth/Config>
-#include <osgEarth/Profile>
+#include <osgEarth/SpatialReference>
 #include <osg/Group>
 #include <osg/Uniform>
 #include <osg/View>
@@ -52,6 +52,15 @@ namespace osgEarth { namespace Util
     class SkyOptions : public DriverConfigOptions
     {
     public:
+        enum CoordinateSystem 
+        {
+            COORDSYS_ECEF,
+            COORDSYS_ECI
+        };
+
+        //! Coordinate system for whole-earth maps (default = ECEF)
+        optional<int>& coordinateSystem() { return _coordsys; }
+        const optional<int>& coordinateSystem() const { return _coordsys; }
 
         /** Time of day - Hours [0..24] component of DateTime */
         optional<float>& hours() { return _hours; }
@@ -63,11 +72,13 @@ namespace osgEarth { namespace Util
 
     public:
         SkyOptions( const ConfigOptions& options =ConfigOptions() ) : DriverConfigOptions(options) {
+            _coordsys.init(COORDSYS_ECEF);
             fromConfig(_conf);
         }
         virtual ~SkyOptions() { }
         virtual Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
+            conf.addIfSet("coordsys", _coordsys);
             conf.addIfSet("hours", _hours);
             conf.addIfSet("ambient", _ambient);
             return conf;
@@ -81,10 +92,12 @@ namespace osgEarth { namespace Util
 
     private:
         void fromConfig( const Config& conf ) {
+            conf.getIfSet("coordsys", _coordsys);
             conf.getIfSet("hours", _hours);
             conf.getIfSet("ambient", _ambient);
         }
 
+        optional<int> _coordsys;
         optional<float> _hours;
         optional<float> _ambient;
     };
@@ -97,30 +110,37 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SkyNode : public osg::Group
     {
     public:
-        /**
-         * Creates a new SkyNode with the default built-in sky driver
-         * and default options.
-         */
-        static SkyNode* create(
-            osgEarth::MapNode* mapNode );
+        //! Creates a SkyNode with the default implementation.
+        static SkyNode* create();
 
-        /**
-         * Creates a new SkyNode with custom options.
-         */
-        static SkyNode* create(
-            const SkyOptions&  options,
-            osgEarth::MapNode* mapNode );
+        //! Creates a SkyNode with custom options.
+        static SkyNode* create(const SkyOptions&);
 
-        /**
-         * Creates a new SkyNode with a named driver.
-         */
-        static SkyNode* create(
-            const std::string& driver,
-            osgEarth::MapNode* mapNode );
+        //! Creates a SkyNode from a raw driver name.
+        static SkyNode* create(const std::string& driver);
+
+    public: // DEPRECATED API
+
+        //! @deprecated Use create()
+        static SkyNode* create(osgEarth::MapNode* mapNode) {
+            return create();
+        }
+
+        //! @deprecated Use create(SkyOptions&)
+        static SkyNode* create(const SkyOptions& options, osgEarth::MapNode* mapNode) {
+            return create(options);
+        }
+
+        //! @deprecated Use create(const std::string&)
+        static SkyNode* create(const std::string& driver, osgEarth::MapNode* mapNode) {
+            return create(driver);
+        }
 
     protected:
         // CTOR (abstract base class)
         SkyNode();
+
+        // CTOR (abstract base class)
         SkyNode(const SkyOptions& options);
 
         // protected DTOR (heap-only)
@@ -128,18 +148,19 @@ namespace osgEarth { namespace Util
 
     public:
         /**
+         * The ephemeris reference point for projected maps. Not applicable
+         * for geocentric maps. Setting this also informs the skynode that is
+         * should operate in projected-map mode if possible.
+         */
+        void setReferencePoint(const GeoPoint& point);
+        const GeoPoint& getReferencePoint() const { return *_refpoint; }
+
+        /**
          * Gets/Sets the Ephemeris used to position the sun and the moon
          * based on date/time.
          */
         void setEphemeris(Ephemeris* ephemeris);
         const Ephemeris* getEphemeris() const;
-
-        /**
-         * The ephemeris reference point for projected maps. Not applicable
-         * for geocentric maps.
-         */
-        void setReferencePoint(const GeoPoint& point);
-        const GeoPoint& getReferencePoint() const { return *_refpoint; }
 
         /**
          * Whether the sky lights its subgraph.
@@ -173,7 +194,6 @@ namespace osgEarth { namespace Util
 
         /** Access the osg::Light representing the sun */
         virtual osg::Light* getSunLight() const = 0;
-        //virtual const osg::Light* getSunLight() const = 0;
 
         /** @deprecated. use getSunLight()->setAmbient instead */
         void setMinimumAmbient(const osg::Vec4f& ambient) { if (getSunLight()) getSunLight()->setAmbient(ambient); }
@@ -221,7 +241,6 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SkyDriver : public osgDB::ReaderWriter
     {
     protected:
-        MapNode* getMapNode(const osgDB::Options* opt) const;
         const SkyOptions& getSkyOptions(const osgDB::Options* opt) const;
     };
 
@@ -234,7 +253,7 @@ namespace osgEarth { namespace Util
     class /*header-only*/ SkyNodeFactory
     {
     public:
-        virtual SkyNode* createSkyNode(const Profile* profile) =0;
+        virtual SkyNode* createSkyNode() =0;
     };
 
 } } // namespace osgEarth::Util

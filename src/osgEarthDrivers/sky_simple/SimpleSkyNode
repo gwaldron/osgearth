@@ -39,12 +39,7 @@ namespace osgEarth { namespace SimpleSky
     class SimpleSkyNode : public SkyNode
     {
     public:
-        SimpleSkyNode(
-            const SpatialReference* srs);
-
-        SimpleSkyNode(
-            const SpatialReference* srs,
-            const SimpleSkyOptions& options);
+        SimpleSkyNode(const SimpleSkyOptions& options);
 
     public: // SkyNode
 
@@ -103,10 +98,10 @@ namespace osgEarth { namespace SimpleSky
 
 		const SimpleSkyOptions _options;
 
-        void initialize(const SpatialReference* srs);
+        void construct();
 
         void makeSceneLighting();
-        void makeAtmosphere( const osg::EllipsoidModel* );
+        void makeAtmosphere(const osg::EllipsoidModel*);
         void makeSun();
         void makeMoon();
 

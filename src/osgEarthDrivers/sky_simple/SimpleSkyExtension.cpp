@@ -57,7 +57,13 @@ namespace osgEarth { namespace SimpleSky
 
         bool connect(MapNode* mapNode)
         {
-            _skynode = createSkyNode(mapNode->getMap()->getProfile());
+            _skynode = createSkyNode();
+            if (mapNode->getMapSRS()->isProjected())
+            {
+                GeoPoint refPoint;
+                mapNode->getMap()->getProfile()->getExtent().getCentroid(refPoint);
+                _skynode->setReferencePoint(refPoint);
+            }                
             osgEarth::insertParent(_skynode.get(), mapNode);
             return true;
         }
@@ -107,8 +113,8 @@ namespace osgEarth { namespace SimpleSky
 
     public: // SkyNodeFactory
 
-        SkyNode* createSkyNode(const Profile* profile) {
-            return new SimpleSkyNode(profile->getSRS(), *this);
+        SkyNode* createSkyNode() {
+            return new SimpleSkyNode(*this);
         }
 
 

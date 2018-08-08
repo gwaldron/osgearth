@@ -47,9 +47,6 @@ namespace osgEarth { namespace SilverLining
         /** Sets the light source that will represent the sun */
         void setLight(osg::Light* light);
 
-        /** Sets the spatial reference system of the map */
-        void setSRS(const SpatialReference* srs);
-
         /** Sets the minimum ambient lighting value */
         void setMinimumAmbient(const osg::Vec4f& value);
 

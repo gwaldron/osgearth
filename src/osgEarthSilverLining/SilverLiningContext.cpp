@@ -86,6 +86,8 @@ _minAmbient           ( 0,0,0,0 )
         options.licenseCode()->c_str() );
 
     _atmosphereWrapper = new Atmosphere((uintptr_t)_atmosphere);
+
+    _srs = osgEarth::SpatialReference::get("wgs84");
 }
 
 SilverLiningContext::~SilverLiningContext()
@@ -107,12 +109,6 @@ void
 SilverLiningContext::setLight(osg::Light* light)
 {
     _light = light;
-}
-
-void
-SilverLiningContext::setSRS(const osgEarth::SpatialReference* srs)
-{
-    _srs = srs;
 }
 
 void
@@ -263,37 +259,34 @@ SilverLiningContext::updateLight()
 void
 SilverLiningContext::updateLocation()
 {
-    if ( !ready() || !_srs.valid() )
+    if ( !ready() )
         return;
 
-    if ( _srs->isGeographic() )
+    // Get new local orientation
+    osg::Vec3d up = _cameraPos;
+    up.normalize();
+    osg::Vec3d north = osg::Vec3d(0, 1, 0);
+    osg::Vec3d east = north ^ up;
+
+    // Check for edge case of north or south pole
+    if (east.length2() == 0)
     {
-        // Get new local orientation
-        osg::Vec3d up = _cameraPos;
-        up.normalize();
-        osg::Vec3d north = osg::Vec3d(0, 1, 0);
-        osg::Vec3d east = north ^ up;
-
-        // Check for edge case of north or south pole
-        if (east.length2() == 0)
-        {
-            east = osg::Vec3d(1, 0, 0);
-        }
-
-        east.normalize();
-
-        _atmosphere->SetUpVector(up.x(), up.y(), up.z());
-        _atmosphere->SetRightVector(east.x(), east.y(), east.z());
-
-        // Get new lat / lon / altitude
-        osg::Vec3d latLonAlt;
-        _srs->transformFromWorld(_cameraPos, latLonAlt);
-
-        ::SilverLining::Location loc;
-        loc.SetAltitude ( latLonAlt.z() );
-        loc.SetLongitude( latLonAlt.x() ); //osg::DegreesToRadians(latLonAlt.x()) );
-        loc.SetLatitude ( latLonAlt.y() ); //osg::DegreesToRadians(latLonAlt.y()) );
-
-        _atmosphere->GetConditions()->SetLocation( loc );
+        east = osg::Vec3d(1, 0, 0);
     }
+
+    east.normalize();
+
+    _atmosphere->SetUpVector(up.x(), up.y(), up.z());
+    _atmosphere->SetRightVector(east.x(), east.y(), east.z());
+
+    // Get new lat / lon / altitude
+    osg::Vec3d latLonAlt;
+    _srs->transformFromWorld(_cameraPos, latLonAlt);
+
+    ::SilverLining::Location loc;
+    loc.SetAltitude ( latLonAlt.z() );
+    loc.SetLongitude( latLonAlt.x() ); //osg::DegreesToRadians(latLonAlt.x()) );
+    loc.SetLatitude ( latLonAlt.y() ); //osg::DegreesToRadians(latLonAlt.y()) );
+
+    _atmosphere->GetConditions()->SetLocation( loc );
 }

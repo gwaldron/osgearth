@@ -20,6 +20,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+/**
+ * Experiment with using a J2000/ECI reference frame as the root of the scene,
+ * with the MapNode under an ECI-to-ECEF transform.
+ */
 #include <osgEarth/MapNode>
 #include <osgEarth/DateTime>
 #include <osgEarth/NodeUtils>
@@ -30,6 +34,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Sky>
+#include <osgEarthSymbology/Color>
 #include <osgViewer/Viewer>
 #include <iostream>
 
@@ -37,6 +42,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Symbology;
 namespace ui = osgEarth::Util::Controls;
 
 int
@@ -77,6 +83,11 @@ public:
 class ECIReferenceFrame : public osg::Group
 {
 public:
+    ECIReferenceFrame()
+    {
+        Lighting::set(getOrCreateStateSet(), osg::StateAttribute::OFF);
+    }
+
     void traverse(osg::NodeVisitor& nv)
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
@@ -143,6 +154,15 @@ public:
         }
 
         finish();
+
+        for(unsigned i=0; i<size(); ++i)
+        {
+            osg::Vec4f HSLA;
+            HSLA.set((float)i/(float)(size()-1), 1.0f, 1.0f, 1.0f);
+            Color color;
+            color.fromHSL(HSLA);
+            setColor(i, color);
+        }
     
         if (!times->empty())
             return DateTime(times->front());
@@ -173,36 +193,40 @@ osg::Node* createECIAxes()
     d->setColor(5, osg::Vec4(0,0,1,1));
 
     d->setLineWidth(10);
-    Lighting::set(d->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
     return d;
 }
 
+// Application-wide data and control structure
 struct App
 {
-    DateTime _start;
-    HSliderControl* _time;
-    LabelControl* _timeLabel;
-    J2000ToECEFTransform* _ecef;
-    osg::Group* _eci;
-    ECIDrawable* _eciDrawable;
+    DateTime start;
+    HSliderControl* time;
+    LabelControl* timeLabel;
+    SkyNode* sky;
+    J2000ToECEFTransform* ecef;
+    osg::Group* eci;
+    ECIDrawable* eciDrawable;
 
     App() 
     {
-        _eciDrawable = 0L;
-        _start = J2000Epoch;
+        eciDrawable = 0L;
+        start = J2000Epoch;
     }
 
     void setTime()
     {
-        DateTime newTime(_start.year(), _start.month(), _start.day(), _start.hours() + _time->getValue());
+        DateTime newTime(start.year(), start.month(), start.day(), start.hours() + time->getValue());
 
-        if (_ecef)
-            _ecef->setDateTime(newTime);
+        if (sky)
+            sky->setDateTime(newTime);
 
-        if (_eciDrawable)
-            _eciDrawable->setDateTime(newTime);
+        if (ecef)
+            ecef->setDateTime(newTime);
 
-        _timeLabel->setText(newTime.asRFC1123());
+        if (eciDrawable)
+            eciDrawable->setDateTime(newTime);
+
+        timeLabel->setText(newTime.asRFC1123());
     }
 };
 
@@ -231,33 +255,43 @@ main(int argc, char** argv)
         App app;
 
         // UI control to modify the time of day.
-        app._time = container->addControl(new HSliderControl(0.0, 23.99999, 0.0, new setTime(app)));
-        app._time->setWidth(400);
-        app._timeLabel = container->addControl(new LabelControl());
+        ui::HBox* h = container->addControl(new ui::HBox());
+        h->setMargin(10);
+        h->addControl(new ui::LabelControl("Time:"));
+        app.time = h->addControl(new HSliderControl(0.0, 23.99999, 0.0, new setTime(app)));
+        app.time->setWidth(400);
+        app.timeLabel = h->addControl(new LabelControl());
 
         // New scene graph root
         osg::Group* root = new osg::Group();
+
+        // First create a Sky which we will place in the (default) ECI frame.
+        SkyOptions skyOptions;
+        skyOptions.coordinateSystem() = SkyOptions::COORDSYS_ECI;
+        app.sky = SkyNode::create(MapNode::get(earth));
+        app.sky->attach(&viewer);
+        root->addChild(app.sky);
         
         // A special transform takes us from the ECI into an ECEF frame
         // based on the current date and time.
         // The earth (MapNode) lives here since it is ECEF.
-        app._ecef = new J2000ToECEFTransform();
-        app._ecef->addChild(earth);
+        app.ecef = new J2000ToECEFTransform();
+        app.sky->addChild(app.ecef);
+        app.ecef->addChild(earth);
         
         // This group holds data in the ECI frame.
-        app._eci = new ECIReferenceFrame();
-        app._eci->addChild(createECIAxes());
-        MapNode::get(earth)->addChild(app._eci);
+        app.eci = new ECIReferenceFrame();
+        app.eci->addChild(createECIAxes());
+        MapNode::get(earth)->addChild(app.eci);
 
         // Load some ECI frame data
         if (!eciFile.empty())
         {
-            app._eciDrawable = new ECIDrawable();
-            app._start = app._eciDrawable->load(eciFile);
-            app._eci->addChild(app._eciDrawable);
+            app.eciDrawable = new ECIDrawable();
+            app.start = app.eciDrawable->load(eciFile);
+            app.eci->addChild(app.eciDrawable);
         }
 
-        root->addChild(app._ecef);
         viewer.setSceneData(root);
         viewer.run();
     }

@@ -61,6 +61,8 @@ namespace
         {
             static const osg::EllipsoidModel WGS84;
 
+            // Reference to J2000. 
+            // https://en.wikipedia.org/wiki/Julian_day
             const double JD_REFTIME = 2451544;
             double d = dt.getJulianDay() - JD_REFTIME;
             //double d = dayNumber(dt.year(), dt.month(), dt.day(), dt.hours());
@@ -131,11 +133,25 @@ namespace
             }
 #endif
 
-            WGS84.convertLatLongHeightToXYZ(
-                sun.latitude.as(Units::RADIANS),
-                sun.longitude.as(Units::RADIANS),
-                sun.altitude.as(Units::METERS),
-                sun.geocentric.x(), sun.geocentric.y(), sun.geocentric.z());
+            // geocentric:
+            {
+                WGS84.convertLatLongHeightToXYZ(
+                    sun.latitude.as(Units::RADIANS),
+                    sun.longitude.as(Units::RADIANS),
+                    sun.altitude.as(Units::METERS),
+                    sun.geocentric.x(), sun.geocentric.y(), sun.geocentric.z());
+            }
+
+            // ECI:
+            {
+                double RA = sun.rightAscension.as(Units::RADIANS);
+                double DECL = sun.declination.as(Units::RADIANS);
+                double R = sun.altitude.as(Units::METERS);
+                sun.eci.set(
+                    R*cos(DECL)*cos(RA),
+                    R*cos(DECL)*sin(RA),
+                    R*sin(DECL));
+            }
 
             //OE_DEBUG << "RA = " << RA << ", DECL = " << DECL << ", LAT = " << r2d(out_lat) << ", LON = " << r2d(out_lon) << std::endl;
 
@@ -271,11 +287,26 @@ namespace
             moon.longitude.set(earthLon, Units::RADIANS);
             moon.altitude.set(r, Units::METERS);
 
-            WGS84.convertLatLongHeightToXYZ(
-                moon.latitude.as(Units::RADIANS),
-                moon.longitude.as(Units::RADIANS),
-                moon.altitude.as(Units::METERS),
-                moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());
+            // geocentric:
+            {
+                WGS84.convertLatLongHeightToXYZ(
+                    moon.latitude.as(Units::RADIANS),
+                    moon.longitude.as(Units::RADIANS),
+                    moon.altitude.as(Units::METERS),
+                    moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());
+            }
+
+            // ECI:
+            {
+                double RA = moon.rightAscension.as(Units::RADIANS);
+                double DECL = moon.declination.as(Units::RADIANS);
+                double R = moon.altitude.as(Units::METERS);
+                moon.eci.set(
+                    R*cos(DECL)*cos(RA),
+                    R*cos(DECL)*sin(RA),
+                    R*sin(DECL));
+            }
+
 
             return moon;
         }

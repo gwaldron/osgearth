@@ -28,7 +28,7 @@
 
 namespace osgEarth
 {
-    /** Basic timestamp (seconds from the epoch) */
+    /** Basic timestamp (seconds from the 1970 epoch) */
     typedef ::time_t TimeStamp;
 
     /** Time span (in seconds) */
@@ -72,13 +72,14 @@ namespace osgEarth
         /** Julian day (fractional) corresponding to this DateTime */
         double getJulianDay() const;
 
+        /** Seconds since Jan 1, 1970 00:00 UTC */
+        TimeStamp asTimeStamp() const { return _time_t; }
+
     public:
         int    year()  const;
         int    month() const;
         int    day()   const;
         double hours() const;
-
-        TimeStamp   asTimeStamp() const { return _time_t; }
 
     protected:
         ::tm     _tm;

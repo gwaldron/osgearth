@@ -57,7 +57,7 @@ namespace osgEarth { namespace Annotation
         const GeoPoint& getPosition() const { return _geoxform->getPosition(); }
 
         /** Local XYZ offset */
-        virtual void setLocalOffset(const osg::Vec3f& pos) { _paxform->setPosition(pos); dirty(); }
+        virtual void setLocalOffset(const osg::Vec3d& pos) { _paxform->setPosition(pos); dirty(); }
         const osg::Vec3d& getLocalOffset() const           { return _paxform->getPosition(); }
 
         /** Local rotation */

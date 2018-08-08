@@ -32,6 +32,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Lighting>
 #include <osgEarth/Shaders>
+#include <osgEarth/LineDrawable>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -308,6 +309,14 @@ PlaceNode::compile()
     {
         _geode->addChild( _textDrawable );
     }
+
+#if 0
+    LineDrawable* line = new LineDrawable(GL_LINES);
+    line->pushVertex(osg::Vec3(0,0,0));
+    line->pushVertex(osg::Vec3(0,0,-100000));
+    line->finish();
+    getPositionAttitudeTransform()->addChild(line);
+#endif
 
     setDefaultLighting( false );
 

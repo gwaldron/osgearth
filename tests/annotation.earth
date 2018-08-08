@@ -58,6 +58,15 @@ osgEarth Sample - Annotations
             </style>
         </place>
 
+        <place text="Extruded Place">
+            <position lat="35" long="-105" alt="5000"/>
+            <icon>../data/placemark32.png</icon>
+            <style type="text/css">
+                text-declutter: true;
+                text-halo:      #777;
+            </style>
+        </place>
+
         <circle name="draped circle">
             <position lat="34.051" long="-117.974"/>
             <radius value="50" units="km"/>

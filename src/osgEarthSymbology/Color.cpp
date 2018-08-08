@@ -203,3 +203,18 @@ Color::as( Format format ) const
             (((unsigned)(r()*255.0)));
     }
 }
+
+osg::Vec4f
+Color::asHSL() const
+{
+    osg::Vec4f out = *this;
+    rgb2hsv(out);
+    return out;
+}
+
+void
+Color::fromHSL(const osg::Vec4f& hsla)
+{
+    *this = hsla;
+    hsv2rgb(*this);
+}

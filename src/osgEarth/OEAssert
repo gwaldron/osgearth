@@ -10,7 +10,7 @@
 
 // If this is is 1, the asserts are enabled. Else they are compiled out
 // The developer can turn them on for development (locally)
-#define OE_ASSERT_ENABLED 1
+#define OE_ASSERT_ENABLED 0
 
 #if OE_ASSERT_ENABLED
 #ifdef NDEBUG

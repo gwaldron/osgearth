@@ -1204,12 +1204,12 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     osg::Group* group = createDelocalizeGroup();
     group->setName("ExtrudeGeometryFilter::Delocalizer");
 
-    osg::ref_ptr<osg::Group> oqn;
+    osg::Group* oqn  = 0;
     if (osgEarth::OcclusionQueryNodeFactory::_occlusionFactory) {
        oqn = osgEarth::OcclusionQueryNodeFactory::_occlusionFactory->createQueryNode();
        group->addChild(oqn);
     }
-    if (!oqn.get()) {
+    if (!oqn) {
        oqn = group;
     }
     

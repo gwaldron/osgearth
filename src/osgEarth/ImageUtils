@@ -346,6 +346,8 @@ namespace osgEarth
          */
         static void activateMipMaps(osg::Texture* texture);
 
+        static void activateMipMaps(osg::Image* texture);
+
         /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */

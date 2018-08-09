@@ -1313,6 +1313,45 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 
 
 void
+ImageUtils::activateMipMaps(osg::Image* image)
+{
+   if (image == 0L){
+      return;
+   }
+
+   osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
+   if (!ip)
+   {
+      return;
+   }
+
+   if (image->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
+      image->getInternalTextureFormat() == GL_LUMINANCE16F_ARB)
+   {
+      OE_INFO << LC << "WARNING! mipmapper can't currently handle luminance textures. Mipmapping: " << image->getName() << std::endl;
+      return;
+   }
+
+   if (image->getNumMipmapLevels() <= 1)
+   {
+
+      ip->generateMipMap(*image, true, ip->USE_CPU);
+      //VRV_PATCH
+      //Withouth the format explicitly setup it just picked srgb8 which don't need
+      //gamma correction, but we gamma correction everything in vrv.
+      if (image->getInternalTextureFormat() == GL_RGB)
+      {
+         image->setInternalTextureFormat(GL_RGB8);
+      }
+      else if (image->getInternalTextureFormat() == GL_RGBA)
+      {
+         image->setInternalTextureFormat(GL_RGBA8);
+      }
+   }
+
+}
+
+void
 ImageUtils::activateMipMaps(osg::Texture* tex)
 {
    #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS

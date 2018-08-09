@@ -57,15 +57,14 @@ namespace
     struct Sun
     {
         // http://www.stjarnhimlen.se/comp/tutorial.html#5
+        // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
         CelestialBody getPosition(const DateTime& dt) const
         {
             static const osg::EllipsoidModel WGS84;
 
-            // Reference to J2000. 
-            // https://en.wikipedia.org/wiki/Julian_day
-            const double JD_REFTIME = 2451544;
+            // Reference to 1999Dec31.0TDT
+            const double JD_REFTIME = DateTime(1999,12,31,0.0).getJulianDay();
             double d = dt.getJulianDay() - JD_REFTIME;
-            //double d = dayNumber(dt.year(), dt.month(), dt.day(), dt.hours());
 
             double w = 282.9404 + 4.70935E-5 * d;
             const double a = 1.0;
@@ -169,8 +168,9 @@ namespace
         CelestialBody getPosition(const DateTime& dt) const
         {
             static const osg::EllipsoidModel WGS84;
-
-            const double JD_REFTIME = 2451544;
+            
+            // Reference to 1999Dec31.0TDT
+            const double JD_REFTIME = DateTime(1999,12,31,0.0).getJulianDay();
             double d = dt.getJulianDay() - JD_REFTIME;
             double N = d2r(125.1228 - 0.0529538083 * d);  nrad(N);
             double i = d2r(5.1454);                       

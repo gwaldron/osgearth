@@ -434,8 +434,8 @@ PointDrawable::updateFirstCount()
         osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(getPrimitiveSet(0));
         if (da)
         {
-            unsigned first = _first >= 0u ? _first : 0u;
-            unsigned count = _count > 0u? _count : _current->size()-first;
+            unsigned first = _first < _current->size() ? _first : 0u;
+            unsigned count = _count <= _current->size()-first ? _count : _current->size()-first;
             da->setFirst(first);
             da->setCount(count);
             da->dirty();

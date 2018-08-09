@@ -246,22 +246,23 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
 
+    App app;
+
     ui::VBox* container = new ui::VBox();
+    container->setChildSpacing(3);
+    container->addControl(new ui::LabelControl("ECI COORDINATE SYSTEM EXAMPLE", Color::Yellow));
+
+    // UI control to modify the time of day.
+    ui::HBox* h = container->addControl(new ui::HBox());
+    h->addControl(new ui::LabelControl("Time:"));
+    app.time = h->addControl(new HSliderControl(0.0, 23.99999, 0.0, new setTime(app)));
+    app.time->setWidth(400);
+    app.timeLabel = container->addControl(new LabelControl());
 
     // Load an earth file  
     osg::Node* earth = MapNodeHelper().load(arguments, &viewer, container);
-    if ( earth )
+    if (earth)
     {
-        App app;
-
-        // UI control to modify the time of day.
-        ui::HBox* h = container->addControl(new ui::HBox());
-        h->setMargin(10);
-        h->addControl(new ui::LabelControl("Time:"));
-        app.time = h->addControl(new HSliderControl(0.0, 23.99999, 0.0, new setTime(app)));
-        app.time->setWidth(400);
-        app.timeLabel = h->addControl(new LabelControl());
-
         // New scene graph root
         osg::Group* root = new osg::Group();
 
@@ -292,6 +293,7 @@ main(int argc, char** argv)
             app.eci->addChild(app.eciDrawable);
         }
 
+        app.setTime();
         viewer.setSceneData(root);
         viewer.run();
     }

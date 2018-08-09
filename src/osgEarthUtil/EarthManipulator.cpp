@@ -717,6 +717,7 @@ EarthManipulator::reinitialize()
     _setVP1.unset();
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
     _setVPArcHeight = 0.0;
+    _pushed = false;
 }
 
 
@@ -1760,6 +1761,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         switch( ea.getEventType() )
         {
             case osgGA::GUIEventAdapter::PUSH:
+                _pushed = true;
                 resetMouse( aa );
                 addMouseEvent( ea );
                 _mouse_down_event = &ea;
@@ -1768,6 +1770,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 break;
 
             case osgGA::GUIEventAdapter::RELEASE:
+                _pushed = false;
                 if ( _continuous )
                 {
                     // bail out of continuous mode if necessary:
@@ -1810,6 +1813,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             case osgGA::GUIEventAdapter::DOUBLECLICK:
                 // bail out of continuous mode if necessary:
                 _continuous = false;
+                _pushed = false;
                 addMouseEvent( ea );
                 if (_mouse_down_event)
                 {
@@ -1827,19 +1831,22 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
             case osgGA::GUIEventAdapter::DRAG:
                 {
-                    action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
-                    addMouseEvent( ea );
-                    bool wasContinuous = _continuous;
-                    _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
-                    if ( handleMouseAction( action, aa.asView() ) )
-                        aa.requestRedraw();
+                    if (_pushed)
+                    {
+                        action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+                        addMouseEvent( ea );
+                        bool wasContinuous = _continuous;
+                        _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
+                        if ( handleMouseAction( action, aa.asView() ) )
+                            aa.requestRedraw();
 
-                    if ( _continuous && !wasContinuous )
-                        _last_continuous_action_time = time_s_now; //_time_s_now;
+                        if ( _continuous && !wasContinuous )
+                            _last_continuous_action_time = time_s_now; //_time_s_now;
 
-                    aa.requestContinuousUpdate(_continuous);
-                    _thrown = false;
-                    handled = true;
+                        aa.requestContinuousUpdate(_continuous);
+                        _thrown = false;
+                        handled = true;
+                    }
                 }
                 break;
 

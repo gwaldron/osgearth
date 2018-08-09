@@ -932,6 +932,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
 
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
+        bool _pushed;
 
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<MapNode>   _mapNode;

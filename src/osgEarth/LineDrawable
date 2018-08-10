@@ -111,6 +111,10 @@ namespace osgEarth
         template<typename T>
         void pushVertexAttrib(T* vaa, const typename T::ElementDataType& value);
 
+        //! Gets the value of the vertex attribute from an array at index i
+        template<typename T>
+        const typename T::ElementDataType& getVertexAttrib(const T* vaa, unsigned i) const;
+
         //! Pre-allocate space for vertices
         void reserve(unsigned size);
 
@@ -185,6 +189,7 @@ namespace osgEarth
 
         unsigned actualVertsPerVirtualVert(unsigned) const;
         unsigned numVirtualVerts(const osg::Array*) const;
+        unsigned getRealIndex(unsigned) const;
         void updateFirstCount();
 
         static osg::ref_ptr<osg::StateSet> _gpuStateSet;
@@ -246,6 +251,12 @@ namespace osgEarth
         unsigned num = actualVertsPerVirtualVert(nvv);
         for (unsigned i = 0; i<num; ++i)
             vaa->push_back(value);
+    }
+
+    template<typename T>
+    const typename T::ElementDataType& LineDrawable::getVertexAttrib(const T* vaa, unsigned i) const
+    {
+        return (*vaa)[getRealIndex(i)];
     }
 
     template<typename T>

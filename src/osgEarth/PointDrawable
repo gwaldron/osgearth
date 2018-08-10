@@ -92,6 +92,10 @@ namespace osgEarth
         template<typename T>
         void pushVertexAttrib(T* vaa, const typename T::ElementDataType& value);
 
+        //! Gets the value of the vertex attribute from an array at index i
+        template<typename T>
+        const typename T::ElementDataType& getVertexAttrib(const T* vaa, unsigned i) const;
+
         //! Pre-allocate space for vertices
         void reserve(unsigned size);
 
@@ -198,6 +202,12 @@ namespace osgEarth
     void PointDrawable::pushVertexAttrib(T* vaa, const typename T::ElementDataType& value)
     {
         vaa->push_back(value);
+    }
+
+    template<typename T>
+    const typename T::ElementDataType& PointDrawable::getVertexAttrib(const T* vaa, unsigned i) const
+    {
+        return (*vaa)[i];
     }
 
     template<typename T>

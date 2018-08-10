@@ -23,8 +23,6 @@
 /**
  * Experiment with using a J2000/ECI reference frame as the root of the scene,
  * with the MapNode under an ECI-to-ECEF transform.
- *
- * https://celestrak.com/columns/v02n01/
  */
 #include <osgEarth/MapNode>
 #include <osgEarth/DateTime>
@@ -39,7 +37,6 @@
 #include <osgEarthSymbology/Color>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgViewer/Viewer>
-#include <osg/AutoTransform>
 #include <iostream>
 
 #define LC "[eci] "
@@ -55,10 +52,11 @@ usage(const char* name, const char* msg)
 {
     OE_NOTICE 
         << "\nUsage: " << name << " [file.earth]\n"
-        << "     --tle <filename>    : Load a Celestrak TLE file\n"
+        << "     --tle <filename>    : Load a NORAD TLE file\n"
         << "     --maxpoints <num>   : Limit the track size to <num> points\n"
         << "     --ecef              : View the track in ECEF space instead of ECI\n"
         << "     --tessellate        : Add interpolated points to the track data\n"
+        << "\nDownload NORAD TLE files from https://www.celestrak.com/NORAD/archives\n\n"
         << msg << std::endl;
 
     return 0;
@@ -101,6 +99,17 @@ struct ECILocation
     Distance alt;           // altitude
     osg::Vec3d eci;         // ECI coordinate
     osg::Vec3d ecef;        // ECEF coordinate
+
+    void computeECIAndECEF()
+    {
+        eci =
+            osg::Quat(raan.as(Units::RADIANS), osg::Vec3d(0, 0, 1)) *
+            osg::Quat(incl.as(Units::RADIANS), osg::Vec3d(1, 0, 0)) *
+            osg::Vec3d(alt.as(Units::METERS), 0, 0);
+
+        osg::Matrix eci2ecef = J2000ToECEFTransform::createMatrix(timestamp);
+        ecef = eci * eci2ecef;
+    }
 };
 
 struct ECITrack : public std::vector<ECILocation>
@@ -123,19 +132,7 @@ struct ECITrack : public std::vector<ECILocation>
                 loc.raan.set(p0.raan.as(Units::RADIANS) + (p1.raan.as(Units::RADIANS)-p0.raan.as(Units::RADIANS))*t, Units::RADIANS);
                 loc.incl.set(p0.incl.as(Units::RADIANS) + (p1.incl.as(Units::RADIANS)-p0.incl.as(Units::RADIANS))*t, Units::RADIANS);
                 loc.alt = p0.alt;
-
-                double
-                    R = loc.alt.as(Units::METERS),
-                    raan = loc.raan.as(Units::RADIANS),
-                    incl = loc.incl.as(Units::RADIANS);
-
-                loc.eci =
-                    osg::Quat(raan, osg::Vec3d(0, 0, 1)) *
-                    osg::Quat(incl, osg::Vec3d(1, 0, 0)) *
-                    osg::Vec3d(R, 0, 0);
-
-                osg::Matrix eci2ecef = J2000ToECEFTransform::createMatrix(loc.timestamp);
-                loc.ecef = loc.eci * eci2ecef;
+                loc.computeECIAndECEF();
             }
         }
         swap(newTrack);
@@ -172,19 +169,7 @@ public:
             loc.raan.set(osgEarth::as<double>(line2.substr(17,8),0), Units::DEGREES);
             loc.alt.set(6371 + 715, Units::KILOMETERS);
 
-            // convert to ECI
-            double
-                R = loc.alt.as(Units::METERS),
-                raan = loc.raan.as(Units::RADIANS),
-                incl = loc.incl.as(Units::RADIANS);
-
-            loc.eci =
-                osg::Quat(raan, osg::Vec3d(0,0,1)) *
-                osg::Quat(incl, osg::Vec3d(1,0,0)) *
-                osg::Vec3d(R,0,0);
-
-            osg::Matrix eci2ecef = J2000ToECEFTransform::createMatrix(loc.timestamp);
-            loc.ecef = loc.eci * eci2ecef;
+            loc.computeECIAndECEF();
         }
         OE_INFO << "Read " << track.size() << " track points" << std::endl;
         return true;
@@ -381,6 +366,7 @@ main(int argc, char** argv)
         skyOptions.coordinateSystem() = SkyOptions::COORDSYS_ECI;
         app.sky = SkyNode::create(MapNode::get(earth));
         app.sky->attach(&viewer);
+        app.sky->getSunLight()->setAmbient(osg::Vec4(0.5,0.5,0.5,1.0));
         root->addChild(app.sky);
         
         // A special transform takes us from the ECI into an ECEF frame

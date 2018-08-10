@@ -379,7 +379,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     osg::Texture2D* projTexture = new DrapingTexture(); 
 
     projTexture->setTextureSize( *_textureSize, *_textureSize );
-    projTexture->setInternalFormat( GL_RGBA );
+    projTexture->setInternalFormat( GL_RGBA8 );  //use GL_RGBA8 for compatibility with osg's glTexStorage extension
     projTexture->setSourceFormat( GL_RGBA );
     projTexture->setSourceType( GL_UNSIGNED_BYTE );
     projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );

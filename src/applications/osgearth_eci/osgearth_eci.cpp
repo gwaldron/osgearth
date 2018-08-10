@@ -57,20 +57,90 @@ usage(const char* name, const char* msg)
         << "\nUsage: " << name << " [file.earth]\n"
         << "     --tle <filename>    : Load a Celestrak TLE file\n"
         << "     --maxpoints <num>   : Limit the track size to <num> points\n"
+        << "     --ecef              : View the track in ECEF space instead of ECI\n"
+        << "     --tessellate        : Add interpolated points to the track data\n"
         << msg << std::endl;
 
     return 0;
 }
 
+// Reference time for the J2000 ECI coordinate frame 
+static DateTime J2000Epoch(2000, 1, 1, 12.00);
+
+// Transform that takes us from a J2000 ECI reference frame 
+// to an ECEF reference frame (i.e. MapNode)
+class J2000ToECEFTransform : public osg::MatrixTransform
+{
+public:
+    void setDateTime(const DateTime& dt)
+    {
+        osg::Matrix matrix = createMatrix(dt);
+        setMatrix(matrix);
+    }
+
+    static osg::Matrix createMatrix(const DateTime& dt)
+    {
+        // Earth's rotation rate: International Astronomical Union (IAU) GRS 67
+        const double IAU_EARTH_ANGULAR_VELOCITY = 7292115.1467e-11; // (rad/sec)
+
+        double secondsElapsed = (double)(dt.asTimeStamp() - J2000Epoch.asTimeStamp());
+        const double rotation = IAU_EARTH_ANGULAR_VELOCITY * secondsElapsed;
+        
+        osg::Matrix matrix;
+        matrix.makeRotate(rotation, 0, 0, 1);
+        return matrix;
+    }
+};
+
 // Code to read TLE track data files from https://celestrak.com/NORAD
 struct ECILocation
 {
-    DateTime timestamp;
-    Angle ra, incl;
-    Distance alt;
-    osg::Vec3d eci;
+    DateTime timestamp;     // point time
+    Angle incl;             // inclination
+    Angle raan;             // right ascencion of ascending node
+    Distance alt;           // altitude
+    osg::Vec3d eci;         // ECI coordinate
+    osg::Vec3d ecef;        // ECEF coordinate
 };
-typedef std::vector<ECILocation> ECITrack;
+
+struct ECITrack : public std::vector<ECILocation>
+{
+    // interpolate points for a smoother track
+    void tessellate()
+    {
+        ECITrack newTrack;
+        for(unsigned k=0; k<size()-1; ++k)
+        {
+            for(float t=0; t<1.0f; t+=0.1)
+            {
+                const ECILocation& p0 = at(k);
+                const ECILocation& p1 = at(k+1);
+
+                newTrack.push_back(ECILocation());
+                ECILocation& loc = newTrack.back();
+                
+                loc.timestamp = DateTime(p0.timestamp.asTimeStamp() + (p1.timestamp.asTimeStamp()-p0.timestamp.asTimeStamp())*t);
+                loc.raan.set(p0.raan.as(Units::RADIANS) + (p1.raan.as(Units::RADIANS)-p0.raan.as(Units::RADIANS))*t, Units::RADIANS);
+                loc.incl.set(p0.incl.as(Units::RADIANS) + (p1.incl.as(Units::RADIANS)-p0.incl.as(Units::RADIANS))*t, Units::RADIANS);
+                loc.alt = p0.alt;
+
+                double
+                    R = loc.alt.as(Units::METERS),
+                    raan = loc.raan.as(Units::RADIANS),
+                    incl = loc.incl.as(Units::RADIANS);
+
+                loc.eci =
+                    osg::Quat(raan, osg::Vec3d(0, 0, 1)) *
+                    osg::Quat(incl, osg::Vec3d(1, 0, 0)) *
+                    osg::Vec3d(R, 0, 0);
+
+                osg::Matrix eci2ecef = J2000ToECEFTransform::createMatrix(loc.timestamp);
+                loc.ecef = loc.eci * eci2ecef;
+            }
+        }
+        swap(newTrack);
+    }
+};
 
 class TLEReader
 {
@@ -99,44 +169,25 @@ public:
 
             // read ra/decl
             loc.incl.set(osgEarth::as<double>(line2.substr(8,8),0), Units::DEGREES);
-            loc.ra.set(osgEarth::as<double>(line2.substr(17,8),0), Units::DEGREES);
+            loc.raan.set(osgEarth::as<double>(line2.substr(17,8),0), Units::DEGREES);
             loc.alt.set(6371 + 715, Units::KILOMETERS);
 
             // convert to ECI
             double
                 R = loc.alt.as(Units::METERS),
-                ra = loc.ra.as(Units::RADIANS),
+                raan = loc.raan.as(Units::RADIANS),
                 incl = loc.incl.as(Units::RADIANS);
 
             loc.eci =
-                osg::Quat(ra,   osg::Vec3d(0,0,1)) *
+                osg::Quat(raan, osg::Vec3d(0,0,1)) *
                 osg::Quat(incl, osg::Vec3d(1,0,0)) *
                 osg::Vec3d(R,0,0);
+
+            osg::Matrix eci2ecef = J2000ToECEFTransform::createMatrix(loc.timestamp);
+            loc.ecef = loc.eci * eci2ecef;
         }
         OE_INFO << "Read " << track.size() << " track points" << std::endl;
         return true;
-    }
-};
-
-// Reference time for the J2000 ECI coordinate frame 
-static DateTime J2000Epoch(2000, 1, 1, 12.00);
-
-// Transform that takes us from a J2000 ECI reference frame 
-// to an ECEF reference frame (i.e. MapNode)
-class J2000ToECEFTransform : public osg::MatrixTransform
-{
-public:
-    void setDateTime(const DateTime& dt)
-    {
-        // Earth's rotation rate: International Astronomical Union (IAU) GRS 67
-        const double IAU_EARTH_ANGULAR_VELOCITY = 7292115.1467e-11; // (rad/sec)
-
-        double secondsElapsed = (double)(dt.asTimeStamp() - J2000Epoch.asTimeStamp());
-        const double rotation = IAU_EARTH_ANGULAR_VELOCITY * secondsElapsed;
-        
-        osg::Matrix matrix;
-        matrix.makeRotate(rotation, 0, 0, 1);
-        this->setMatrix(matrix);
     }
 };
 
@@ -166,34 +217,29 @@ public:
 };
 
 // Loads up an ECITrack for display as a series of points.
-class ECIDrawable : public PointDrawable
+class ECITrackDrawable : public LineDrawable //public PointDrawable
 {
 public:
-    ECIDrawable()
+    ECITrackDrawable() : LineDrawable(GL_LINE_STRIP)
     {
-        setPointSmooth(true);
-        setPointSize(4.0f);
+        Lighting::set(getOrCreateStateSet(), 0);
+        //setPointSmooth(true);
+        //setPointSize(4.0f);
     }
 
     void setDateTime(const DateTime& dt)
     {
         osg::FloatArray* times = dynamic_cast<osg::FloatArray*>(getVertexAttribArray(6));
         unsigned i;
-        for (i = 0; i < times->size(); ++i)
+        for (i = 0; i < getNumVerts(); ++i)
         {
-            if (dt.asTimeStamp() < (*times)[i])
+            if (dt.asTimeStamp() < getVertexAttrib(times, i))
                 break;
         }
         setCount(i);
     }
-
-    const osg::Vec3& getCurrentPoint() const
-    {
-        unsigned index = getFirst() + getCount() - 1u;
-        return getVertex(index);
-    }
     
-    void load(const ECITrack& track)
+    void load(const ECITrack& track, bool drawECEF)
     {
         osg::FloatArray* times = new osg::FloatArray();
         times->setBinding(osg::Array::BIND_PER_VERTEX);
@@ -205,7 +251,7 @@ public:
         for(unsigned i=0; i<track.size(); ++i)
         {
             const ECILocation& loc = track[i];
-            pushVertex(loc.eci);
+            pushVertex(drawECEF? loc.ecef : loc.eci);
             pushVertexAttrib(times, (float)loc.timestamp.asTimeStamp());
             
             // simple color ramp
@@ -251,12 +297,12 @@ struct App
     SkyNode* sky;
     J2000ToECEFTransform* ecef;
     osg::Group* eci;
-    ECIDrawable* eciDrawable;    
+    ECITrackDrawable* trackDrawable;    
     ECITrack track;
 
     App() 
     {
-        eciDrawable = 0L;
+        trackDrawable = 0L;
         start = J2000Epoch;
         end = start + 24.0;
     }
@@ -271,8 +317,8 @@ struct App
         if (ecef)
             ecef->setDateTime(newTime);
 
-        if (eciDrawable)
-            eciDrawable->setDateTime(newTime);
+        if (trackDrawable)
+            trackDrawable->setDateTime(newTime);
 
         timeLabel->setText(newTime.asRFC1123());
     }
@@ -286,7 +332,7 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--help") )
-        return usage(argv[0], "Help");
+        return usage(argv[0], "");
 
     App app;
 
@@ -299,9 +345,9 @@ main(int argc, char** argv)
         {
             int maxPoints;
             if (arguments.read("--maxpoints", maxPoints) && app.track.size() > maxPoints)
-            {
                 app.track.resize(maxPoints);
-            }
+            if (arguments.read("--tessellate"))
+                app.track.tessellate();
             app.start = app.track.front().timestamp;
             app.end   = app.track.back().timestamp;
         }
@@ -352,9 +398,19 @@ main(int argc, char** argv)
         // Track data
         if (!app.track.empty())
         {
-            app.eciDrawable = new ECIDrawable();
-            app.eciDrawable->load(app.track);
-            app.eci->addChild(app.eciDrawable);
+            app.trackDrawable = new ECITrackDrawable();
+
+            bool drawECEF = arguments.read("--ecef");
+            if (drawECEF)
+            {
+                app.trackDrawable->load(app.track, true);
+                MapNode::get(earth)->addChild(app.trackDrawable);
+            }
+            else
+            {
+                app.trackDrawable->load(app.track, false);
+                app.eci->addChild(app.trackDrawable);
+            }
         }
 
         viewer.realize();

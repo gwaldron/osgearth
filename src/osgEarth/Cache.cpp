@@ -136,6 +136,30 @@ Cache::removeBin( CacheBin* bin )
     _bins.remove( bin );
 }
 
+namespace
+{
+    int hash8(const std::string& str)
+    {
+        int hash = 0;
+        for(unsigned i=0; i<str.length(); ++i)
+            hash += (int)str[i];
+        return hash;
+    }
+}
+
+std::string
+Cache::makeCacheKey(const std::string& key, const std::string& prefix)
+{
+    std::string buf = osgEarth::toLegalFileName(key);
+    unsigned char hash = (unsigned char)hash8(buf) & 0x7F;
+    std::stringstream out;
+    if (!prefix.empty())
+        out << prefix << "/";
+    out << static_cast<unsigned>(hash) << '/' << std::dec << buf;
+    std::string result(out.str());
+    return result;
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC

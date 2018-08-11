@@ -163,7 +163,7 @@ namespace osgEarth
          * If key-hashing is enabled, this method returns the hashed key
          * corresponding to a raw input key.
          */
-        virtual std::string getHashedKey(const std::string& key) const =0;
+        //virtual std::string getHashedKey(const std::string& key) const =0;
 
 
     protected:

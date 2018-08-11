@@ -227,11 +227,7 @@ URI::append( const std::string& suffix ) const
 void
 URI::ctorCacheKey()
 {
-    std::string temp = Stringify() << std::hex << std::setw(8) << std::setfill('0') << osgEarth::hashString(_fullURI);
-    _cacheKey
-        .append(temp.substr(0, 3)).append("/")
-        .append(temp.substr(3, 3)).append("/")
-        .append(temp.substr(6));
+    _cacheKey = Cache::makeCacheKey(_fullURI, "uri");
 }
 
 bool

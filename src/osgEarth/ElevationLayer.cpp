@@ -20,6 +20,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
+#include <osgEarth/URI>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -498,7 +499,10 @@ ElevationLayer::createHeightField(const TileKey&    key,
     bool fromMemCache = false;
 
     // cache key combines the key with the full signature (incl vdatum)
-    std::string cacheKey = Stringify() << key.str() << "_" << key.getProfile()->getFullSignature();
+    // the cache key combines the Key and the horizontal profile.
+    std::string cacheKey = Cache::makeCacheKey(
+        Stringify() << key.str() << "-" << key.getProfile()->getHorizSignature(),
+        "elevation");
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
 
     if ( _memCache.valid() )

@@ -213,6 +213,9 @@ namespace osgEarth
          */
         virtual bool clear() { return false; }
 
+        //! Make a legal cache key with an optional prefix
+        static std::string makeCacheKey(const std::string& input, const std::string& prefix="");
+
     protected:
         bool                   _ok;
         CacheOptions           _options;

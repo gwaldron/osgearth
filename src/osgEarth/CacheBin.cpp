@@ -80,7 +80,7 @@ namespace
         void apply(osg::Node& node)
         {
             apply(node.getStateSet());
-            applyUserData(node);
+            //applyUserData(node);
             traverse(node);
         }
 
@@ -97,7 +97,7 @@ namespace
         {
             if (!drawable) return;
             apply(drawable->getStateSet());
-            applyUserData(*drawable);
+            //applyUserData(*drawable);
             
             osg::Geometry* geom = drawable->asGeometry();
             if (geom)
@@ -123,13 +123,14 @@ namespace
         {
             if (!ss) return;
 
+            /*
             osg::StateSet::AttributeList& a0 = ss->getAttributeList();
             for (osg::StateSet::AttributeList::iterator i = a0.begin(); i != a0.end(); ++i)
             {
                 osg::StateAttribute* sa = i->second.first.get();
                 applyUserData(*sa);
             }
-
+            */
             // Disable the texture image-unref feature so we can share the resource 
             // across cached tiles.
             osg::StateSet::TextureAttributeList& a = ss->getTextureAttributeList();
@@ -164,7 +165,7 @@ namespace
                             osg::Texture* texClone = osg::clone(tex, osg::CopyOp::SHALLOW_COPY);
                             if ( texClone )
                             {
-                                for (unsigned k = 0; k < texClone->getNumImages(); ++k)
+                                /*for (unsigned k = 0; k < texClone->getNumImages(); ++k)
                                 {
                                     osg::Image* image = texClone->getImage(k);
                                     if ( image )
@@ -174,7 +175,7 @@ namespace
                                 }
 
                                 applyUserData(*texClone);
-
+                                */
                                 j->second.first = texClone;
                             }
                             else
@@ -185,22 +186,23 @@ namespace
                         }
                         else
                         {
-                            applyUserData(*sa);
+                            //applyUserData(*sa);
                         }
                     }
                 }
             }
 
-            applyUserData(*ss);
+            //applyUserData(*ss);
         }
 
         void applyUserData(osg::Object& object)
-        {
+        {/*
             if (object.getUserData())
             {
                 _userDataClears++;
             }
             object.setUserDataContainer(0L);
+        */
         }
     };
 

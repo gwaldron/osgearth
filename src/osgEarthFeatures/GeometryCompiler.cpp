@@ -669,12 +669,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
           // make a new attach point so that the filter node is found along with it
           osg::Group* attachPoint = new osg::Group();
-
+          attachPoint->setName("extrude_geometry_attach_point");
           // add the attach point to the result group, so that the attach point itself can be found
           resultGroup->addChild(attachPoint);
 
           // make a filter node with the extrusion group as the data
-          ExtrudeGeometryFilterNode* extrudeGeometryFilterNode = new ExtrudeGeometryFilterNode(attachPoint, extrusionGroup, xform);
+          ExtrudeGeometryFilterNode* extrudeGeometryFilterNode = new ExtrudeGeometryFilterNode( extrusionGroup, xform);
 
           attachPoint->setUserData(extrudeGeometryFilterNode);
        }

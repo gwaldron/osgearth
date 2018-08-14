@@ -3,31 +3,33 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarth/URI>
 
-#include <osg/Referenced>
+#include <osg/Object>
 #include <osg/Matrixd>
 
 namespace osgEarth {
    namespace Features
    {
-      class OSGEARTHFEATURES_EXPORT SubstituteModelFilterNode : public osg::Referenced
+      class OSGEARTHFEATURES_EXPORT SubstituteModelFilterNode : public osg::Object
       {
       public:
+       
          struct ModelSymbol
          {
             URI instanceURI;
             osg::Matrixd xform;
          };
 
-         SubstituteModelFilterNode()
-            : _instanced(false)
-            , _clustered(false)
+         SubstituteModelFilterNode();
+       
+         SubstituteModelFilterNode(const SubstituteModelFilterNode& rhs, const osg::CopyOp& copyop);
+
+         virtual ~SubstituteModelFilterNode()
          {
 
          }
-         ~SubstituteModelFilterNode()
-         {
+         
+         META_Object(osgEarth::Features, SubstituteModelFilterNode);
 
-         }
 
          typedef std::list<ModelSymbol> ModelSymbolList;
 

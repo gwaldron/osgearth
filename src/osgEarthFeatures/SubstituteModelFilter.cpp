@@ -140,8 +140,8 @@ FilterContext&               context)
    {
       if (attachPoint->getUserData() == 0)
       {
-         attachPoint->setUserData(new SubstituteModelFilterNode());
-         substituteModelFilterNode = static_cast<SubstituteModelFilterNode*> (attachPoint->getUserData());
+         substituteModelFilterNode = new SubstituteModelFilterNode();
+         attachPoint->setUserData(substituteModelFilterNode);
 
          bool instancing = getUseDrawInstanced() == true && getClustering() == false;
          bool clustering = getClustering() == true && getUseDrawInstanced() == false;
@@ -582,3 +582,5 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
    return group;
 }
+
+

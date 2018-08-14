@@ -71,6 +71,10 @@ namespace osgEarth { namespace Splat
         optional<bool>& castShadows() { return _castShadows; }
         const optional<bool>& castShadows() const { return _castShadows; }
 
+        //! Whether this layer should node cache.
+        optional<bool>& nodeCaching() { return _nodeCaching; }
+        const optional<bool>& nodeCaching() const { return _nodeCaching; }
+
     public:
         virtual Config getConfig() const;
     protected:
@@ -86,6 +90,7 @@ namespace osgEarth { namespace Splat
         ZoneOptionsVector _zones;
         optional<unsigned> _lod;
         optional<bool> _castShadows;
+        optional<bool> _nodeCaching;
     };
 
 

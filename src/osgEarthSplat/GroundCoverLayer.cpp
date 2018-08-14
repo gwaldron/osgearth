@@ -54,7 +54,8 @@ GroundCoverLayerOptions::getConfig() const
     conf.set("mask_layer", _maskLayerName);
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
-
+    conf.set("node_caching", _nodeCaching);
+    
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
         Config zone = _zones[i].getConfig();
@@ -73,6 +74,7 @@ GroundCoverLayerOptions::fromConfig(const Config& conf)
     conf.getIfSet("mask_layer", _maskLayerName);
     conf.getIfSet("lod", _lod);
     conf.getIfSet("cast_shadows", _castShadows);
+    conf.getIfSet("node_caching", _nodeCaching);
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {

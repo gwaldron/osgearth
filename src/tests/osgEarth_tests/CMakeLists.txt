@@ -3,6 +3,7 @@ SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LI
 
 SET(TARGET_SRC
     main.cpp
+    CacheTests.cpp
     EndianTests.cpp
     GeoExtentTests.cpp
     FeatureTests.cpp

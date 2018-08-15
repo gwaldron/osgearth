@@ -689,6 +689,8 @@ namespace osgEarth
            unsigned char z;
            unsigned char w;
         };
+        
+        NormalMap(const osg::Image & rhs);
 
         NormalMap(unsigned s, unsigned t);
 

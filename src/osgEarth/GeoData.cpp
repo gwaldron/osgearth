@@ -2100,6 +2100,14 @@ _read(0L)
     }
 }
 
+NormalMap::NormalMap(const osg::Image & rhs) : osg::Image(rhs)
+{
+
+   _write = new ImageUtils::PixelWriter(this);
+   _read = new ImageUtils::PixelReader(this);
+
+}
+
 NormalMap::~NormalMap()
 {
     if (_read) delete _read;

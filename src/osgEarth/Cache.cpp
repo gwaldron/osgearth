@@ -152,7 +152,7 @@ std::string
 Cache::makeCacheKey(const std::string& key, const std::string& prefix)
 {
     char hex[SHA1_HEX_SIZE];
-    sha1(key.c_str()).print_hex(hex);
+    sha1(key.c_str()).finalize().print_hex(hex);
     std::string val(hex);
     std::stringstream out;
     if (!prefix.empty())

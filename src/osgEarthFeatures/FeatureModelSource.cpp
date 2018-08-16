@@ -315,6 +315,8 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
         group = new osg::Group();
     }
 
+    group->setName(style.getName());
+
     // apply necessary render styles.
     const RenderSymbol* render = style.get<RenderSymbol>();
     if ( render )

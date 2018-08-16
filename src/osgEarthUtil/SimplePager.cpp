@@ -286,7 +286,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     osg::PagedLOD* plod = 
         getSceneGraphCallbacks() ? new PagedLODWithSceneGraphCallbacks(getSceneGraphCallbacks()) :
         new osg::PagedLOD();
-
+    plod->setName("pagedLOD");
     plod->setCenter( tileBounds.center() ); 
     plod->setRadius( tileRadius );
 
@@ -342,6 +342,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         // no children, so max out the visibility range.
         plod->setRange( 0, 0, FLT_MAX );
     }
+    
 
     return plod;
 }
@@ -353,7 +354,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 osg::Node* SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
 {       
     osg::ref_ptr< osg::Group >  group = new osg::Group;
-
+    group->setName(key.str() + "-group");
     for (unsigned int i = 0; i < 4; i++)
     {
         TileKey childKey = key.createChildKey( i );

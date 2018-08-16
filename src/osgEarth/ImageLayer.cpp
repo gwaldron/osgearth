@@ -35,6 +35,7 @@
 #include <memory.h>
 #include <limits.h>
 
+
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -637,12 +638,13 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     // map profile, we can try this first.
     if ( cacheBin && policy.isCacheReadable() )
     {
-       osg::CVSpan UpdateTick(series, 5, "loadImage");
-
+       osg::CVSpan UpdateTick(series, 5, "readImage");
         ReadResult r = cacheBin->readImage(cacheKey, 0L);
         if ( r.succeeded() )
         {
-            cachedImage = r.releaseImage();
+           series.write_message("successfully loaded %s:%s",getName(), cacheKey.c_str());
+           cachedImage = r.releaseImage();
+            cachedImage->setName(cacheKey);
             ImageUtils::fixInternalFormat( cachedImage.get() );            
             bool expired = policy.isExpired(r.lastModifiedTime());
             if (!expired)
@@ -657,7 +659,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         }
     }
     
-    // The data was not in the cache. If we are cache-only, fail sliently
+    // The data was not in the cache. If we are cache-only, fail silently
     if ( policy.isCacheOnly() )
     {
         // If it's cache only and we have an expired but cached image, just return it.
@@ -687,7 +689,6 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         ImageUtils::fixInternalFormat( result.getImage() );
     }
 
-    osg::CVSpan UpdateTick(series, 5, "saveImage");
 
     // memory cache first:
     if ( result.valid() && _memCache.valid() )
@@ -702,15 +703,18 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         cacheBin        && 
         policy.isCacheWriteable())
     {
-        if ( key.getExtent() != result.getExtent() )
+       series.write_message(cacheKey.c_str());
+       if (key.getExtent() != result.getExtent())
         {
             OE_INFO << LC << "WARNING! mismatched extents." << std::endl;
         }
        if (result.getImage()->getInternalTextureFormat() != GL_LUMINANCE32F_ARB &&
           result.getImage()->getInternalTextureFormat() != GL_LUMINANCE16F_ARB)
        {
+          osg::CVSpan UpdateTick(series, 2, "mipMapImagePreSave");
           ImageUtils::activateMipMaps(result.getImage());
        }
+       osg::CVSpan UpdateTick(series, 4, "saveImage");
        cacheBin->write(cacheKey, result.getImage(), 0L);
     }
 

@@ -197,7 +197,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
             //if (map.valid() == true)
             {
                 Registry::instance()->startActivity(uri);
-                osg::Node* node = graph->load(lod, x, y, uri, readOptions);
+                osg::Node* node = graph->load(lod, x, y, uri, readOptions);             
                 Registry::instance()->endActivity(uri);
                 return ReadResult(node);
             }
@@ -1005,7 +1005,6 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
 {
 
    osg::CVMarkerSeries series("PagingThread");
-   osg::CVSpan UpdateTick(series, 4, "FeatureModelGraph::buildTile");
 
     OE_TEST << LC << "buildTile " << (key? key->str(): "no key") << std::endl;
 
@@ -1016,32 +1015,45 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     // read it from the cache if node caching is enabled
     if (_options.nodeCaching() == true)
     {
-        cacheKey = makeCacheKey(level, extent, key);
-        group = readTileFromCache(cacheKey, readOptions);
+       std::string activityName = "FeatureModelGraph::ReadTileFromCache::";
+       FeatureSource* featureSource = _session->getFeatureSource();
+       if (featureSource)
+       {
+          activityName += featureSource->getName();
+       }
+
+       osg::CVSpan UpdateTick(series, 4, activityName.c_str());
+       cacheKey = makeCacheKey(level, extent, key);
+       group = readTileFromCache(cacheKey, readOptions);
     }
-    
+
     // Not there? Build it
     if (!group.valid())
     {
-        // set up for feature indexing if appropriate:
+       // set up for feature indexing if appropriate:
         FeatureSourceIndexNode* index = 0L;
 
-        FeatureSource* featureSource = _session->getFeatureSource();
+        std::string activityName = "BuildFeatureTile::";
 
+        FeatureSource* featureSource = _session->getFeatureSource();
         if (featureSource)
         {
-            const FeatureProfile* fp = featureSource->getFeatureProfile();
+           const FeatureProfile* fp = featureSource->getFeatureProfile();
 
             if ( _featureIndex.valid() )
             {
                 index = new FeatureSourceIndexNode( _featureIndex.get() );
                 group = index;
             }
+            activityName += featureSource->getName();
         }
 
+        osg::CVSpan UpdateTick(series, 4, activityName.c_str());
+        
         if ( !group.valid() )
         {
             group = new osg::Group();
+            group->setName(cacheKey + ":" + featureSource->getName());
         }
 
         // form the baseline query, which does a spatial query based on the working extent.
@@ -1156,6 +1168,9 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                          const osgDB::Options* readOptions)
 {
     OE_TEST << LC << "build " << workingExtent.toString() << std::endl;
+
+    osg::CVMarkerSeries series("SubloadParentTask");
+    osg::CVSpan UpdateTick(series, 5, workingExtent.toString().c_str());
 
     osg::ref_ptr<osg::Group> group = new osg::Group();
     group->setName(workingExtent.toString());

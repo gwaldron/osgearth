@@ -23,6 +23,7 @@
 #include <osgEarth/MemCache>
 #include <osgEarth/Metrics>
 #include <osgEarth/ImageUtils>
+#include <osg/ConcurrencyViewerMacros>
 #include <osg/Version>
 #include <iterator>
 
@@ -430,7 +431,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     {
         return GeoHeightField::INVALID;
     }
-
+  
     GeoHeightField result;
     osg::ref_ptr<osg::HeightField> hf;
     osg::ref_ptr<NormalMap> normalMap;
@@ -780,6 +781,8 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         return false;
 
     METRIC_SCOPED("ElevationLayer.populateHeightField");
+    osg::CVMarkerSeries objectCreation("SubloadTask");
+    osg::CVSpan creationSpan(objectCreation, 3, "ElevationLayer.populateHeightField");
 
     // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
     // the map profile has a vertical datum. This is the usual case when building the 3D

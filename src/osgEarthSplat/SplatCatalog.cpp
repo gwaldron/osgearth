@@ -21,7 +21,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/XmlUtils>
 #include <osg/Texture2DArray>
-
+#include <osg/ConcurrencyViewerMacros>
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
@@ -248,6 +248,10 @@ bool
 SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
                                     SplatTextureDef&      out)
 {
+
+   osg::CVMarkerSeries objectCreation("Main Thread");
+   osg::CVSpan span(objectCreation, 3, "createSplatTextureDef");
+
     // Reset all texture indices to default
     for(SplatClassMap::iterator i = _classes.begin(); i != _classes.end(); ++i)
     {

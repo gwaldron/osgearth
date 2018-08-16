@@ -317,7 +317,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         if (line->imageURI().isSet() && context.getSession() && context.getSession()->getResourceCache())
         {
             StringExpression temp( *line->imageURI() );
-            imageURI = input->eval( temp, context.getSession());
+            imageURI = URI(input->eval(temp, context.getSession()), temp.uriContext()).full();
         }
 
         // Try to find the existing geode, otherwise create one.

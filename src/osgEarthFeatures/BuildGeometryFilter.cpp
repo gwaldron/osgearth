@@ -1477,11 +1477,11 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     }
 
     //// indicate that geometry contains clamping attributes
-    //if (_style.has<AltitudeSymbol>() &&
-    //    _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
-    //{
-    //    Clamping::installHasAttrsUniform( result->getOrCreateStateSet() );
-    //}
+    if (_style.has<AltitudeSymbol>() &&
+        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        Clamping::installHasAttrsUniform( result->getOrCreateStateSet() );
+    }
 
     // Prepare buffer objects.
     AllocateAndMergeBufferObjectsVisitor allocAndMerge;

@@ -28,11 +28,9 @@
 #if __VERSION__>=130
     #define TEXTURE texture
     #define TEXTURELOD textureLod
-    out vec4 osg_FragColor;
 #else
     #define TEXTURE texture2D
     #define TEXTURELOD texture2DLod
-    #define osg_FragColor gl_FragColor
 #endif
 
 

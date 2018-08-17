@@ -431,11 +431,19 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                     // insert a new fake corner.
 					Corners::iterator new_corner;
 
-                    if ( isLastEdge )
+                    if (isLastEdge)
                     {
-						corners.push_back(Corner());
-						new_corner = c;
-						new_corner++;
+                        if (structure.isPolygon)
+                        {
+                            corners.push_back(Corner());
+                            new_corner = c;
+                            new_corner++;
+                        }
+                        else
+                        {
+                            // We only add a fake corner at the end for polygons
+                            break;
+                        }
                     }
                     else
                     {

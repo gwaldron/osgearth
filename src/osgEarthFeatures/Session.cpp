@@ -72,7 +72,12 @@ Session::getDBOptions() const
     if (_dbOptions.valid())
         return _dbOptions.get();
  
-    return _map->getReadOptions();    
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+    {
+       return map->getReadOptions();
+    }
+    return 0L;
 }
 
 void
@@ -90,7 +95,15 @@ Session::getResourceCache()
 MapFrame
 Session::createMapFrame() const
 {
-    return MapFrame( _map.get() );
+   osg::ref_ptr<const Map> map;
+   if (_map.lock(map))
+   {
+      return MapFrame(map.get());
+   }
+   else
+   {
+      return MapFrame();
+   }
 }
 
 void

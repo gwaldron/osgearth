@@ -189,28 +189,16 @@ osg::Image* ImageToHeightFieldConverter::convert16(const osg::HeightField* hf ) 
 
 osg::Image* ImageToHeightFieldConverter::convertToR32F(const osg::HeightField* hf) const
 {
-    if ( !hf ) {
-    return NULL;
-  }
+    if (!hf) {
+        return NULL;
+    }
 
-  osg::Image* image = new osg::Image();
-  image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT); //GL_LUMINANCE, GL_SHORT);
-  image->setInternalTextureFormat(GL_R32F);
+    osg::Image* image = new osg::Image();
+    image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT);
+    image->setInternalTextureFormat(GL_R32F);
+    memcpy(image->data(), &hf->getFloatArray()->front(), sizeof(float) * hf->getFloatArray()->size());
 
-  const osg::FloatArray* floats = hf->getFloatArray();
-
-  for( unsigned int i = 0; i < floats->size(); ++i  ) {
-      float h = floats->at( i );
-      *(float*)image->data(i) = h;
-      // Set NO_DATA_VALUE to a valid short value.
-      //if (h == NO_DATA_VALUE)
-      //{        
-      //    h = -SHRT_MAX;
-      //}
-      //*(short*)image->data(i) = (short)h;
-  }
-
-  return image;
+    return image;
 }
 
 osg::Image* ImageToHeightFieldConverter::convert32(const osg::HeightField* hf) const {

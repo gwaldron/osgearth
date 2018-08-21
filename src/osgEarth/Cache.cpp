@@ -26,6 +26,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/ReaderWriter>
+#include "sha1.hpp"
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
@@ -142,6 +143,33 @@ Cache::removeBin( CacheBin* bin )
     _bins.remove( bin );
 }
 
+namespace
+{
+   int hash8(const std::string& str)
+   {
+      int hash = 0;
+      for (unsigned i = 0; i<str.length(); ++i)
+         hash += (int)str[i];
+      return hash;
+   }
+}
+
+std::string
+Cache::makeCacheKey(const std::string& key, const std::string& prefix)
+{
+   char hex[SHA1_HEX_SIZE];
+   sha1(key.c_str()).finalize().print_hex(hex);
+   std::string val(hex);
+   std::stringstream out;
+   if (!prefix.empty())
+   {
+      out << prefix << "/";
+   }
+   // Use the first 2 characters as a directory name and the remainder as the filename
+   // This is the same scheme that git uses
+   out << val.substr(0, 2) << "/" << val.substr(2, 38);
+   return out.str();
+}
 //------------------------------------------------------------------------
 
 #undef  LC

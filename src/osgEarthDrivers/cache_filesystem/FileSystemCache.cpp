@@ -107,8 +107,6 @@ namespace
 
         bool writeMetadata( const Config& meta );
 
-        std::string getHashedKey(const std::string&) const;
-
     protected:
         bool purgeDirectory( const std::string& dir );
 
@@ -210,23 +208,6 @@ namespace
     }
 
     //------------------------------------------------------------------------
-
-    std::string
-    FileSystemCacheBin::getHashedKey(const std::string& key) const
-    {
-        if ( getHashKeys() )
-        {
-            unsigned hash = osgEarth::hashString(key);
-            unsigned b1 = (hash & 0xfff00000) >> 20;
-            unsigned b2 = (hash & 0x000fff00) >> 8;
-            unsigned b3 = (hash & 0x000000ff);
-            return Stringify() << std::hex << std::setfill('0') << std::setw(3) << b1 << "/" << b2 << "/" << std::setw(2) << b3;
-        }
-        else
-        {
-            return osgEarth::toLegalFileName(key);
-        }
-    }
 
     bool
     FileSystemCacheBin::binValidForReading(bool silent)
@@ -344,7 +325,7 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( getHashedKey(key), _metaPath );
+        URI fileURI(key, _metaPath);
         std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
@@ -381,7 +362,7 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( getHashedKey(key), _metaPath );
+        URI fileURI(key, _metaPath);
         std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
@@ -435,7 +416,7 @@ namespace
             return false;
 
         // convert the key into a legal filename:
-        URI fileURI( getHashedKey(key), _metaPath );
+        URI fileURI(key, _metaPath);
         
         osgDB::ReaderWriter::WriteResult r;
 
@@ -496,7 +477,7 @@ namespace
         if ( !binValidForReading() ) 
             return STATUS_NOT_FOUND;
 
-        URI fileURI( getHashedKey(key), _metaPath );
+        URI fileURI(key, _metaPath);
         std::string path( fileURI.full() + OSG_EXT );
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
@@ -508,7 +489,7 @@ namespace
     FileSystemCacheBin::remove(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI( getHashedKey(key), _metaPath );
+        URI fileURI(key, _metaPath);
         std::string path( fileURI.full() + OSG_EXT );
 
         ScopedWriteLock lock(_mutex);
@@ -519,7 +500,7 @@ namespace
     FileSystemCacheBin::touch(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI( getHashedKey(key), _metaPath );
+        URI fileURI(key, _metaPath);
         std::string path( fileURI.full() + OSG_EXT );
 
         ScopedWriteLock lock(_mutex);

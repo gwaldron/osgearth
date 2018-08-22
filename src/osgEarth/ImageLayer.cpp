@@ -592,7 +592,9 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         << key.getExtent().toString() << std::endl;
 
     // the cache key combines the Key and the horizontal profile.
-    std::string cacheKey = Stringify() << key.str() << "_" << key.getProfile()->getHorizSignature();
+    std::string cacheKey = Cache::makeCacheKey(
+       Stringify() << key.str() << "-" << key.getProfile()->getHorizSignature(),
+       "image");
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
     
     // Check the layer L2 cache first

@@ -901,12 +901,12 @@ namespace
     {
         if (key)
         {
-            return key->str();
+           return Cache::makeCacheKey(key->str(), "fmg");
         }
         else
         {
-            return Stringify() << osgEarth::hashString(
-                Stringify() << extent.toString() << level.styleName().get());
+           std::string b = Stringify() << extent.toString() << level.styleName().get();
+           return Cache::makeCacheKey(b, "fmg");
         }
     }
 }

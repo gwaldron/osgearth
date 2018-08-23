@@ -62,6 +62,7 @@ namespace osgEarth
          * Sets the map to which this frame is connected.
          */
         void setMap(const Map* map);
+        const Map* getMap() const { return _map.get(); }
 
         /**
          * Synchronizes this frame to the last-synced map. Returns true if changes occurred.

@@ -23,6 +23,7 @@
 #include <osgEarth/PatchLayer>
 #include <osgEarth/MapOptions>
 #include <osgEarth/MapFrame>
+#include <osgEarth/Map>
 
 #include <osg/ConcurrencyViewerMacros>
 #include <osg/Texture2D>
@@ -443,6 +444,46 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
+  
+
+    std::string hfCacheKey = "map/elevation/" + key.str();
+    std::string normalCacheKey = "map/normal/" + key.str();
+    osg::ref_ptr< osg::HeightField > cachedHF;
+    osg::ref_ptr< NormalMap > cachedNormalMap;
+    CacheBin* cacheBin = 0;
+    const Map * map = frame.getMap();
+    if (map && map->getCache())
+    {
+        cacheBin = map->getCache()->addBin(frame.getMapOptions().name().get());
+    }
+    
+
+    if (cacheBin)
+    {
+       {
+          ReadResult rr = cacheBin->readObject(hfCacheKey, 0);
+          if (rr.succeeded())
+          {
+             cachedHF = rr.get<osg::HeightField>();
+          }
+       }
+
+       {
+          ReadResult rr = cacheBin->readImage(normalCacheKey, 0);
+          if (rr.succeeded())
+          {
+             cachedNormalMap = new NormalMap(*rr.get<osg::Image>());
+          }
+       }
+    }
+
+    if (cachedHF.valid() && cachedNormalMap.valid())
+    {
+        out_hf = cachedHF.get();
+        out_normalMap = cachedNormalMap.get();
+        return true;
+    }
+
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
@@ -528,6 +569,17 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
             newValue._normalMap = out_normalMap.get();
 
             _heightFieldCache.insert( cachekey, newValue );
+        }
+
+        if (cacheBin)
+        {
+           {
+              cacheBin->write(hfCacheKey, out_hf.get(), 0L);
+           }
+           {
+              ImageUtils::activateMipMaps(out_normalMap);
+              cacheBin->write(normalCacheKey, out_normalMap.get(), 0L);
+           }
         }
     }
 

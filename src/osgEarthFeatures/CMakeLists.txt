@@ -70,7 +70,8 @@ SET(TARGET_SRC
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
-    ExtrudeGeometryFilter.cpp    
+    ExtrudeGeometryFilter.cpp
+    ExtrudeGeometryFilterNode.cpp    
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
@@ -100,6 +101,7 @@ SET(TARGET_SRC
     ScriptEngine.cpp
     ScriptFilter.cpp
     SubstituteModelFilter.cpp
+    SubstituteModelFilterNode.cpp
     TessellateOperator.cpp
     TextSymbolizer.cpp
     TransformFilter.cpp

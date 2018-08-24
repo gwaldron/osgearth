@@ -300,7 +300,7 @@ _firstLevel( 0 ),
 }
 
 void
-    TFSPackager::package( FeatureSource* features, const std::string& destination, const std::string& layername, const std::string& description )
+TFSPackager::package( FeatureSource* features, const std::string& destination, const std::string& layername, const std::string& description )
 {   
     if (!_destSRSString.empty())
     {
@@ -329,7 +329,7 @@ void
 
     osg::ref_ptr< FeatureTile > root = new FeatureTile( rootKey );
     //Loop through all the features and try to insert them into the quadtree
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor( _query );
+    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor( _query, 0L ); // TODO: progress.
     int added = 0;
     int failed = 0;
     int skipped = 0;

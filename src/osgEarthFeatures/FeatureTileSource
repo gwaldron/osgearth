@@ -26,8 +26,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Map>
 #include <osg/Node>
-#include <osgDB/ReaderWriter>
-#include <list>
+#include <osgDB/Options>
 
 namespace osgEarth { namespace Features
 {
@@ -163,7 +162,11 @@ namespace osgEarth { namespace Features
          * Gets all of the features to be rendered for the given query.
          * If a TileKey is specified on the query this will attempt to fallback on previous levels to get feature data.
          */
-        void getFeatures(const Query& query, const GeoExtent& imageExtent, FeatureList& features);
+        void getFeatures(
+            const Query& query,
+            const GeoExtent& imageExtent,
+            FeatureList& features,
+            ProgressCallback* progress);
 
     public:
 
@@ -191,7 +194,8 @@ namespace osgEarth { namespace Features
             const Query&     query,
             osg::Referenced* data,
             const GeoExtent& imageExtent,
-            osg::Image*      out_image );
+            osg::Image*      out_image,
+            ProgressCallback* progress);
     };
 
     } } // namespace osgEarth::Features

@@ -68,8 +68,12 @@ LoadTileData::invoke()
     if (!_map.lock(map))
         return;
 
-    // Only use a progress callback is cancelation is enabled.
-    osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
+    // Only use our custom progress callback is cancelation is enabled.
+    osg::ref_ptr<ProgressCallback> progress;
+    if (_enableCancel)
+        progress = new MyProgress(this);
+    else
+        progress = new ProgressCallback();
 
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
@@ -78,8 +82,8 @@ LoadTileData::invoke()
         _filter,
         progress.get());
 
-    // if the operation was canceled, set the request to idle and delete any existing data.
-    if (progress && (progress->isCanceled() || progress->needsRetry()))
+    // if the operation was canceled, set the request to idle and delete the tile model.
+    if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
         setState(Request::IDLE);

@@ -164,7 +164,7 @@ public:
             query.bounds() = extentInFeatureSRS.bounds();
             
 		    FeatureList featureList;
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
             while ( cursor.valid() && cursor->hasMore() )
             {
                 Feature* f = cursor->nextFeature();

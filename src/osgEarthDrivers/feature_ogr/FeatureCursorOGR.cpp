@@ -75,7 +75,9 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH              dsHandle,
                                    const FeatureSource*        source,
                                    const FeatureProfile*       profile,
                                    const Symbology::Query&     query,
-                                   const FeatureFilterChain*   filters) :
+                                   const FeatureFilterChain*   filters,
+                                   ProgressCallback*           progress) :
+FeatureCursor     ( progress ),
 _source           ( source ),
 _dsHandle         ( dsHandle ),
 _layerHandle      ( layerHandle ),

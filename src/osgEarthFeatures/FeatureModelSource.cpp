@@ -26,6 +26,7 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Progress>
 #include <osg/Notify>
 
 using namespace osgEarth;

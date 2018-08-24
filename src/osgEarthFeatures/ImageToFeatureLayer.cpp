@@ -49,14 +49,14 @@ namespace
             //nop
         }
 
-        FeatureCursor* createFeatureCursor(const Symbology::Query& query)
+        FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
         {
             TileKey key = *query.tileKey();
 
             osg::ref_ptr<ImageLayer> layer;
             if (_layer.lock(layer))
             {
-                GeoImage image = layer->createImage(key);
+                GeoImage image = layer->createImage(key, progress);
 
                 FeatureList features;
 

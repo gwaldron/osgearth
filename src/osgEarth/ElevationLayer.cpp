@@ -296,8 +296,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // we can't get it and it wasn't cancelled
         if (!result.valid())
         {
-            if ( progress == 0L ||
-                 ( !progress->isCanceled() && !progress->needsRetry() ) )
+            if ( progress == 0L || !progress->isCanceled() )
             {
                 source->getBlacklist()->add( key );
             }

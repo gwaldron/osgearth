@@ -52,7 +52,8 @@ public:
         const FeatureSource*      source,
         const FeatureProfile*     profile,
         const Symbology::Query&   query,
-        const FeatureFilterChain* filters );
+        const FeatureFilterChain* filters,
+        ProgressCallback*         progress);
 
 public: // FeatureCursor
 

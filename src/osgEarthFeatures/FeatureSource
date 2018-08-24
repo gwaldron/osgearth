@@ -146,8 +146,9 @@ namespace osgEarth { namespace Features
          *
          * Caller takes ownership of the returned object.
          */
-        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query) =0;
-        FeatureCursor* createFeatureCursor();
+        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress) =0;
+
+        FeatureCursor* createFeatureCursor(ProgressCallback* progress);
 
         /**
          * Whether this FeatureSource supports inserting and deleting features

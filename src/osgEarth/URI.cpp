@@ -387,9 +387,15 @@ namespace
 
     struct ReadString
     {
-        bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
-        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readString(key, 0L); }
+        bool callbackRequestsCaching( URIReadCallback* cb ) const {
+            return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0);
+        }
+        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { 
+            return cb->readString(uri, opt);
+        }
+        ReadResult fromCache( CacheBin* bin, const std::string& key) { 
+            return bin->readString(key, 0L);
+        }
         ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
             HTTPRequest req(uri.full());
@@ -400,7 +406,9 @@ namespace
             }
             return HTTPClient::readString(req, opt, p);
         }
-        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return readStringFile(uri, opt); }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
+            return readStringFile(uri, opt);
+        }
     };
 
     //--------------------------------------------------------------------
@@ -416,6 +424,11 @@ namespace
         //osg::Timer_t startTime = osg::Timer::instance()->tick();
 
         ReadResult result;
+
+        if (osgEarth::Registry::instance()->isBlacklisted(inputURI.full()))
+        {
+            return result;
+        }
 
         if ( !inputURI.empty() )
         {
@@ -586,6 +599,13 @@ namespace
                     {
                         memCache->insert( uri, result );
                     }
+                }
+
+                // If the request failed with an unrecoverable error,
+                // blacklist so we don't waste time on it again
+                if (result.failed())
+                {
+                    osgEarth::Registry::instance()->blacklist(inputURI.full());
                 }
             }
 

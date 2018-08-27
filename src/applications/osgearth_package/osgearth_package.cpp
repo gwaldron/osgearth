@@ -175,7 +175,7 @@ makeTMS( osg::ArgumentParser& args )
         if (s.isError())
             return usage(s.message());
 
-        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
         while (cursor.valid() && cursor->hasMore())
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();

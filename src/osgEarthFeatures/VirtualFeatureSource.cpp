@@ -35,11 +35,11 @@ namespace
      */
     struct VirtualFeatureCursor : public FeatureCursor
     {
-        VirtualFeatureCursor( const FeatureSourceMappingVector& sources, const Query& query ) :
-          _sources(sources), _query(query)
+        VirtualFeatureCursor( const FeatureSourceMappingVector& sources, const Query& query, ProgressCallback* progress) :
+          FeatureCursor(progress), _sources(sources), _query(query)
         {
-            _si = _sources.begin();
             advance();
+            _si = _sources.begin();
         }
 
         bool hasMore() const
@@ -72,7 +72,7 @@ namespace
                 // if we're at the beginning, create the first cursor:
                 if ( _si == _sources.begin() && !_si_cursor.valid() )
                 {
-                    _si_cursor = _si->_source->createFeatureCursor( _query );
+                    _si_cursor = _si->_source->createFeatureCursor( _query, _progress.get() );
                 }
 
                 while ( !_si_cursor.valid() || !_si_cursor->hasMore() )
@@ -83,7 +83,7 @@ namespace
                         return;
 
                     // make a cursor for the next source
-                    _si_cursor = _si->_source->createFeatureCursor( _query );
+                    _si_cursor = _si->_source->createFeatureCursor( _query, _progress.get() );
                 }
 
                 // here, we have a valid cursor with pending data:
@@ -102,6 +102,7 @@ namespace
         osg::ref_ptr<FeatureCursor>          _si_cursor; // cursor into current source
         osg::ref_ptr<Feature>                _nextFeature;
         osg::ref_ptr<Feature>                _lastFeatureReturned; // to manage references during iteration
+        bool                                 _needsInit;
     };
 }
 
@@ -137,9 +138,9 @@ VirtualFeatureSource::add( FeatureSource* source, FeaturePredicate* predicate )
 }
 
 FeatureCursor* 
-VirtualFeatureSource::createFeatureCursor( const Query& query )
+VirtualFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {
-    return new VirtualFeatureCursor( _sources, query );
+    return new VirtualFeatureCursor(_sources, query, progress);
 }
 
 Status 

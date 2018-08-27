@@ -773,8 +773,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // blacklist this tile for future requests.
     if (result == 0L)
     {
-        if ( progress == 0L ||
-             ( !progress->isCanceled() && !progress->needsRetry() ) )
+        if ( progress == 0L || !progress->isCanceled() )
         {
             source->getBlacklist()->add( key );
         }
@@ -861,7 +860,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                 // the tile source did not return a tile, so make a note of it.
                 failedKeys.push_back( *k );
 
-                if (progress && (progress->isCanceled() || progress->needsRetry()))
+                if (progress && progress->isCanceled())
                 {
                     retry = true;
                     break;

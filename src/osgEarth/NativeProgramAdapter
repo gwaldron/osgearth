@@ -128,6 +128,16 @@ namespace osgEarth
                             useProgram = false;
                     }
                 }
+
+                // Apply each of the osg_*Matrix uniforms, which may be used by the native program
+                if (adapter.apply(_modelViewMatrixUniform.get(), useProgram))
+                    useProgram = false;
+                if (adapter.apply(_projectionMatrixUniform.get(), useProgram))
+                    useProgram = false;
+                if (adapter.apply(_modelViewProjectionMatrixUniform.get(), useProgram))
+                    useProgram = false;
+                if (adapter.apply(_normalMatrixUniform.get(), useProgram))
+                    useProgram = false;
             }
         };
 

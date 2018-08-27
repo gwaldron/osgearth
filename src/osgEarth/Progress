@@ -26,7 +26,8 @@
 namespace osgEarth
 {
     /**
-    * ProgressCallback is a general purpose interface for functions that need to report progress.
+    * ProgressCallback is a general purpose interface for functions that need to report progress
+    * or handle cancelation of a task.
     */
     class OSGEARTH_EXPORT ProgressCallback : public osg::Referenced
     {
@@ -90,14 +91,13 @@ namespace osgEarth
         virtual void cancel() { _canceled = true; }
 
         /**
-         * Whether cancelation was requested
+         * Whether the associated task was canceled for some reason.
+         * Cancelation is NOT an error condition. It means that either
+         * the results of the task are no longer required, or that a
+         * recoverable problem occurred and the task is eligible to be
+         * tried again later (e.g., HTTP timeout)
          */
         virtual bool isCanceled() { return _canceled; }
-
-        /**
-         * Whether reportError was called
-         */
-        virtual bool failed() { return _failed; }
 
         /**
          * Status/error message
@@ -111,16 +111,6 @@ namespace osgEarth
         void reset() { _canceled = false; }
 
         /**
-        *Whether or not the task should be retried.
-        */
-        bool needsRetry() const { return _needsRetry; }
-
-        /**
-         * Sets whether or not the task should be retried
-         */
-        void setNeedsRetry( bool needsRetry ) { _needsRetry = needsRetry; }
-
-        /**
          * Access user stats
          */
         typedef fast_map<std::string,double> Stats;
@@ -131,9 +121,7 @@ namespace osgEarth
 
     protected:
         std::string       _message;
-        mutable  bool     _needsRetry;
         mutable  bool     _canceled;
-        mutable  bool     _failed;
         mutable  Stats    _stats;
         mutable  bool     _collectStats;
     };

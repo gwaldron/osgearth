@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/FeatureMaskLayer>
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -150,7 +151,7 @@ FeatureMaskLayer::getOrCreateMaskBoundary(float heightScale,
         Threading::ScopedMutexLock lock(_boundaryMutex);
         if (!_boundary.valid())
         {
-            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor();
+            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(progress);
             if (cursor.valid() && cursor->hasMore())
             {
                 Feature* f = cursor->nextFeature();

@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/FeatureListSource>
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/Filter>
+#include <osgEarth/Progress>
 
 using namespace osgEarth::Features;
 
@@ -36,7 +37,7 @@ _defaultExtent( defaultExtent )
 }
 
 FeatureCursor*
-FeatureListSource::createFeatureCursor( const Symbology::Query& query )
+FeatureListSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
 {
     if (getFeatureProfile() == 0L)
         setFeatureProfile(createFeatureProfile());

@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/Filter>
+#include <osgEarth/Progress>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -25,13 +26,19 @@ using namespace OpenThreads;
 
 //---------------------------------------------------------------------------
 
+FeatureCursor::FeatureCursor(ProgressCallback* progress) :
+_progress(progress)
+{
+    //nop
+}
+
 FeatureCursor::~FeatureCursor()
 {
     //nop
 }
 
 void
-FeatureCursor::fill( FeatureList& list )
+FeatureCursor::fill(FeatureList& list)
 {
     while( hasMore() )
     {
@@ -42,6 +49,7 @@ FeatureCursor::fill( FeatureList& list )
 //---------------------------------------------------------------------------
 
 FeatureListCursor::FeatureListCursor(const FeatureList& features) :
+FeatureCursor(0L),
 _features( features ),
 _clone   ( false )
 {
@@ -70,6 +78,7 @@ FeatureListCursor::nextFeature()
 //---------------------------------------------------------------------------
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom) :
+FeatureCursor(NULL),
 _geom( geom )
 {
     //nop
@@ -78,6 +87,7 @@ _geom( geom )
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
                                              const FeatureProfile* fp,
                                              const FeatureFilterChain* filters) :
+FeatureCursor(NULL),
 _geom          ( geom ),
 _featureProfile( fp ),
 _filterChain   ( filters )

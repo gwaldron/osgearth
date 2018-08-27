@@ -19,6 +19,7 @@
 #include "TritonContext"
 #include "TritonDrawable"
 #include "TritonHeightMap"
+#include <Version.h>
 #include <osg/MatrixTransform>
 #include <osg/FrameBufferObject>
 

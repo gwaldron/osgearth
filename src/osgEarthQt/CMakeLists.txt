@@ -158,7 +158,8 @@ IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_QT_BUILD)
     LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
     IF ( Qt5Widgets_FOUND )
-        qt5_use_modules( ${LIB_NAME} Gui Widgets OpenGL )
+	FIND_PACKAGE(Qt5OpenGL REQUIRED)
+	TARGET_LINK_LIBRARIES( ${LIB_NAME} Qt5::Gui Qt5::Widgets Qt5::OpenGL )
     ENDIF( Qt5Widgets_FOUND )
 
     # Add this project to the NodeKits solution folder

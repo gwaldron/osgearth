@@ -46,6 +46,8 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
 
+//#define SUPPORT_JPL_TILESERVICE
+
 //----------------------------------------------------------------------------
 
 namespace
@@ -208,6 +210,7 @@ public:
             result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         }    
 
+#ifdef SUPPORT_JPL_TILESERVICE
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
         URI tsUrl = _options.tileServiceUrl().value();
@@ -217,12 +220,12 @@ public:
         }
 
         OE_INFO << LC << "Testing for JPL/TileService at " << tsUrl.full() << std::endl;
-        _tileService = TileServiceReader::read(tsUrl.full(), dbOptions);
-        if (_tileService.valid())
+        osg::ref_ptr<TileService> tileService = TileServiceReader::read(tsUrl.full(), dbOptions);
+        if (tileService.valid())
         {
             OE_INFO << LC << "Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
-            _tileService->getMatchingPatterns(
+            tileService->getMatchingPatterns(
                 _options.layers().value(),
                 _formatToUse,
                 _options.style().value(),
@@ -233,7 +236,7 @@ public:
 
             if (patterns.size() > 0)
             {
-                result = _tileService->createProfile( patterns );
+                result = tileService->createProfile( patterns );
                 _prototype = _options.url()->full() + sep + patterns[0].getPrototype();
             }
         }
@@ -241,6 +244,7 @@ public:
         {
             OE_INFO << LC << "No JPL/TileService spec found; assuming standard WMS" << std::endl;
         }
+#endif
 
         // Use the override profile if one is passed in.
         if ( getProfile() == 0L )
@@ -538,7 +542,6 @@ private:
     const WMSOptions                 _options;
     std::string                      _formatToUse;
     std::string                      _srsToUse;
-    osg::ref_ptr<TileService>        _tileService;
     osg::ref_ptr<const Profile>      _profile;
     std::string                      _prototype;
     std::vector<std::string>         _timesVec;

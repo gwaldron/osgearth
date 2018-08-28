@@ -20,8 +20,11 @@
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/FileUtils>
 
-#if defined( __APPLE__ )
-    #include "TargetConditionals.h"
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,10)
+#include <osg/os_utils>
+#define OS_SYSTEM osg_system
+#else
+#define OS_SYSTEM system
 #endif
 
 using namespace osgEarth;
@@ -427,11 +430,8 @@ public:
       }
 
       virtual void operator()(ProgressCallback* progress )
-      {
-          #if !(TARGET_OS_IPHONE)
-              system(_command.c_str());
-          #endif
-        
+      {         
+          OS_SYSTEM(_command.c_str());     
 
           // Cleanup the temp files and increment the progress on the visitor.
           cleanupTempFiles();

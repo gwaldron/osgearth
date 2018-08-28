@@ -47,7 +47,7 @@ namespace osgEarth { namespace Util
         typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
 
 
-        MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
+        MeasureToolHandler( MapNode* mapNode );        
         virtual ~MeasureToolHandler();
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );        
@@ -90,7 +90,7 @@ namespace osgEarth { namespace Util
         bool _mouseDown;
         float _mouseDownX, _mouseDownY;
         int _mouseButton;
-        osg::ref_ptr< osg::Group > _group;
+        osg::ref_ptr< osg::Group > _root;
 
         osg::ref_ptr< osgEarth::Annotation::FeatureNode > _featureNode;
         osg::ref_ptr< osgEarth::Features::Feature >  _feature;

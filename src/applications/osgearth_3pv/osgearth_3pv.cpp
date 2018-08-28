@@ -238,7 +238,9 @@ main( int argc, char** argv )
     MapNode* mapNode = MapNode::get(node.get());
 
     osg::ref_ptr<osg::Image> icon = osgDB::readRefImageFile("../data/placemark32.png");
-    PlaceNode* place = new PlaceNode(mapNode, GeoPoint::INVALID, icon.get(), "");
+    PlaceNode* place = new PlaceNode();
+    place->setIconImage(icon.get());
+    place->setMapNode(mapNode);
     place->getOrCreateStateSet()->setRenderBinDetails(10, "DepthSortedBin");
     place->setDynamic(true);
     place->setNodeMask(0);

@@ -41,6 +41,8 @@ namespace osgEarth { namespace Annotation
     public:
         META_AnnotationNode( osgEarthAnnotation, CircleNode );
 
+        CircleNode();
+
         /**
          * Constructs a new circle annotation.
          *
@@ -52,8 +54,7 @@ namespace osgEarth { namespace Annotation
          * @param arcStop     Optional end of arc (default to 360.0 degrees)
          * @param pie         Optionally make pie shape instead of arc
          */
-        CircleNode(
-            MapNode*          mapNode,
+        void set(
             const GeoPoint&   position,
             const Distance&   radius,
             const Style&      style,
@@ -65,7 +66,6 @@ namespace osgEarth { namespace Annotation
          * Constructs a circle node from its serialized form
          */
         CircleNode(
-            MapNode*              mapNode,
             const Config&         conf,
             const osgDB::Options* dbOptions);
 
@@ -128,14 +128,12 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
-
     private:
-        CircleNode() { }
         CircleNode(const CircleNode& rhs, const osg::CopyOp& op) { }
 
-        void rebuildGeometry();
+        void construct();
 
-        void initCircleNode();
+        void buildGeometry();
 
         unsigned       _numSegments;
         Distance       _radius;

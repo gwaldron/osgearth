@@ -1429,12 +1429,13 @@ CheckBoxControl::fireValueChanged( ControlEventHandler* oneHandler )
 }
 
 void
-CheckBoxControl::setValue( bool value )
+CheckBoxControl::setValue( bool value, bool notify )
 {
     if ( value != _value )
     {
         _value = value;
-        fireValueChanged();
+        if (notify)
+            fireValueChanged();
         dirty();
     }
 }
@@ -2849,8 +2850,8 @@ ControlCanvas::handle(const osgGA::GUIEventAdapter& ea,
 
     for( unsigned i=getNumChildren()-1; i>0; --i )
     {
-        Control* control = static_cast<Control*>( getChild(i) );
-        if ( control->isDirty() )
+        Control* control = dynamic_cast<Control*>( getChild(i) );
+        if ( control && control->isDirty() )
         {
             aa.requestRedraw();
             break;
@@ -2864,8 +2865,9 @@ ControlCanvas::handle(const osgGA::GUIEventAdapter& ea,
     {
         for( unsigned i=1; i<getNumChildren(); ++i )
         {
-            Control* control = static_cast<Control*>( getChild(i) );
-            control->handle(ea, aa, _context);
+            Control* control = dynamic_cast<Control*>( getChild(i) );
+            if (control)
+                control->handle(ea, aa, _context);
         }
         return handled;
     }
@@ -2876,8 +2878,8 @@ ControlCanvas::handle(const osgGA::GUIEventAdapter& ea,
 
     for( unsigned i=getNumChildren()-1; i>0; --i )
     {
-        Control* control = static_cast<Control*>( getChild(i) );
-        if ( control->intersects( canvasX, canvasY ) )
+        Control* control = dynamic_cast<Control*>( getChild(i) );
+        if ( control && control->intersects( canvasX, canvasY ) )
         {
             handled = control->handle( ea, aa, _context );
             if ( handled )
@@ -2913,9 +2915,8 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
     int bin = 0;
     for( unsigned i=1; i<getNumChildren(); ++i )
     {
-        Control* control = static_cast<Control*>( getChild(i) );
-
-        if ( control->isDirty() || _contextDirty )
+        Control* control = dynamic_cast<Control*>( getChild(i) );
+        if ( control && (control->isDirty() || _contextDirty))
         {
             osg::Vec2f size;
             control->calcSize( _context, size );
@@ -2950,8 +2951,8 @@ ControlCanvas::traverse(osg::NodeVisitor& nv)
                 {
                     for( unsigned i=1; i<getNumChildren(); ++i )
                     {
-                        Control* control = static_cast<Control*>( getChild(i) );
-                        if ( control->isDirty() )
+                        Control* control = dynamic_cast<Control*>( getChild(i) );
+                        if ( control && control->isDirty() )
                         {
                             needsUpdate = true;
                             break;

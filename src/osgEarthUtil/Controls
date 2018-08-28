@@ -515,7 +515,7 @@ namespace osgEarth { namespace Util { namespace Controls
         /** dtor */
         virtual ~CheckBoxControl() { }
 
-        void setValue( bool value );
+        void setValue( bool value, bool notify=true );
         bool getValue() const { return _value; }
 
     public:

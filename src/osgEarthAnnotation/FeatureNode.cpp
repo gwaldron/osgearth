@@ -87,48 +87,6 @@ _index          ( 0 )
     setStyle( style );
 }
 
-FeatureNode::FeatureNode(MapNode* mapNode,
-                         Feature* feature,
-                         const Style& in_style,
-                         const GeometryCompilerOptions& options,
-                         StyleSheet* styleSheet) :
-AnnotationNode(),
-_options           ( options ),
-_needsRebuild      ( true ),
-_styleSheet        ( styleSheet ),
-_clampDirty        (false),
-_index             ( 0 )
-{
-    _features.push_back( feature );
-
-    FeatureNode::setMapNode( mapNode );
-
-    Style style = in_style;
-    if (style.empty() && feature->style().isSet())
-    {
-        style = *feature->style();
-    }
-
-    setStyle( style );
-}
-
-FeatureNode::FeatureNode(MapNode* mapNode,
-                         const FeatureList& features,
-                         const Style& style,
-                         const GeometryCompilerOptions& options,
-                         StyleSheet* styleSheet):
-AnnotationNode(),
-_options        ( options ),
-_needsRebuild   ( true ),
-_styleSheet     ( styleSheet ),
-_clampDirty     ( false ),
-_index          ( 0 )
-{
-    _features.insert( _features.end(), features.begin(), features.end() );
-    FeatureNode::setMapNode( mapNode );
-    setStyle( style );
-}
-
 void
 FeatureNode::build()
 {
@@ -343,7 +301,7 @@ void FeatureNode::setFeature(Feature* feature)
     build();
 }
 
-void FeatureNode::init()
+void FeatureNode::dirty()
 {
     _needsRebuild = true;
     build();
@@ -396,7 +354,7 @@ FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
         GeometryClamper clamper(_clamperData);
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
-        clamper.setPreserveZ( relative );
+        clamper.setUseVertexZ( relative );
         clamper.setOffset( offset );
 
         this->accept( clamper );
@@ -427,10 +385,9 @@ FeatureNode::traverse(osg::NodeVisitor& nv)
 OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 
 
-FeatureNode::FeatureNode(MapNode*              mapNode,
-                         const Config&         conf,
-                         const osgDB::Options* dbOptions ) :
-AnnotationNode(conf),
+FeatureNode::FeatureNode(const Config&         conf,
+                         const osgDB::Options* readOptions ) :
+AnnotationNode(conf, readOptions),
 _clampDirty(false),
 _index(0)
 {
@@ -452,7 +409,7 @@ _index(0)
 
     conf.getObjIfSet( "style", _style );
 
-    FeatureNode::setMapNode( mapNode );
+    //FeatureNode::setMapNode( mapNode );
 
     if ( srs.valid() && geom.valid() )
     {
@@ -462,6 +419,7 @@ _index(0)
         conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
 
         _features.push_back( feature );
+
         build();
     }
 }

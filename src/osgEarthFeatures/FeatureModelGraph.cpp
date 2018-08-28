@@ -997,7 +997,11 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
 
     // Try to read it from a cache:
     std::string cacheKey = makeCacheKey(level, extent, key);
-    group = readTileFromCache(cacheKey, readOptions);
+
+    if (_options.nodeCaching() == true)
+    {
+        group = readTileFromCache(cacheKey, readOptions);
+    }
     
     // Not there? Build it
     if (!group.valid())

@@ -335,6 +335,7 @@ _factor(1),
 _pattern(0xFFFF),
 _color(1, 1, 1, 1),
 _width(1.0f),
+_smooth(false),
 _first(0u),
 _count(0u),
 _current(NULL),
@@ -356,6 +357,7 @@ _factor(1),
 _pattern(0xFFFF),
 _color(1,1,1,1),
 _width(1.0f),
+_smooth(false),
 _first(0u),
 _count(0u),
 _current(NULL),
@@ -380,6 +382,7 @@ _color(rhs._color),
 _factor(rhs._factor),
 _pattern(rhs._pattern),
 _width(rhs._width),
+_smooth(rhs._smooth),
 _first(rhs._first),
 _count(rhs._count),
 _current(NULL),
@@ -488,6 +491,16 @@ LineDrawable::setStippleFactor(GLint factor)
     {
         _factor = factor;
         GLUtils::setLineStipple(getOrCreateStateSet(), _factor, _pattern, 1);
+    }
+}
+
+void
+LineDrawable::setLineSmooth(bool value)
+{
+    if (_smooth != value)
+    {
+        _smooth = value;
+        GLUtils::setLineSmooth(getOrCreateStateSet(), _smooth? 1 : 0);
     }
 }
 

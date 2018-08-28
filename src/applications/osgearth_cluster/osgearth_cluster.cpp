@@ -68,7 +68,9 @@ void makePlaces(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
         {
             double lat = extent.yMin() + extent.height() * (rand() * 1.0) / (RAND_MAX - 1);
             double lon = extent.xMin() + extent.width() * (rand() * 1.0) / (RAND_MAX - 1);
-            PlaceNode* place = new PlaceNode(mapNode, GeoPoint(geoSRS, lon, lat, 0.0), pin.get(), "Placemark", placeStyle);
+            PlaceNode* place = new PlaceNode("Placemark", placeStyle, pin.get());
+            place->setPosition(GeoPoint(geoSRS, lon, lat, 0.0));
+            place->setMapNode(mapNode);
             place->setDynamic(true);
             nodes.push_back(place);
         }

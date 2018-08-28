@@ -132,9 +132,12 @@ AnnotationRegistry::createOne(MapNode*              mapNode,
     FactoryMap::const_iterator f = _factories.find( conf.key() );
     if ( f != _factories.end() && f->second != 0L )
     {
-        AnnotationNode* anno = f->second->create(mapNode, conf, options);
+        AnnotationNode* anno = f->second->create(conf, options);
         if ( anno )
         {
+            if (mapNode)
+                anno->setMapNode(mapNode);
+
             Registry::objectIndex()->tagNode( anno, anno );
             return anno;
         }

@@ -37,32 +37,41 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 
-CircleNode::CircleNode(MapNode*           mapNode,
-                       const GeoPoint&    position,
-                       const Linear&      radius,
-                       const Style&       style,
-                       const Angle&       arcStart,
-                       const Angle&       arcEnd,
-                       const bool         pie):
-
-LocalGeometryNode(mapNode),
-_radius      ( radius ),
-_arcStart    ( arcStart ),
-_arcEnd      ( arcEnd ),
-_pie         ( pie ),
-_numSegments ( 0 )
+CircleNode::CircleNode() :
+LocalGeometryNode()
 {
-    initCircleNode();
-    setStyle( style );
-    setPosition( position );
+    construct();
 }
 
+void
+CircleNode::set(const GeoPoint&    position,
+                const Distance&    radius,
+                const Style&       style,
+                const Angle&       arcStart,
+                const Angle&       arcEnd,
+                const bool         pie)
+{
+    _radius = radius;
+    _arcStart = arcStart;
+    _arcEnd = arcEnd;
+    _pie = pie;
+    _style = style;
+
+    setPosition(position);
+
+    buildGeometry();
+}
 
 void
-CircleNode::initCircleNode()
+CircleNode::construct()
 {
     setName("Circle");
-    rebuildGeometry();
+
+    _radius.set(1.0, Units::KILOMETERS);
+    _arcStart.set(0.0, Units::RADIANS);
+    _arcEnd.set(2.0*osg::PI, Units::RADIANS);
+    _pie = false;
+    _numSegments = 0;
 }
 
 const Linear&
@@ -77,7 +86,7 @@ CircleNode::setRadius( const Linear& radius )
     if (_radius != radius )
     {
         _radius = radius;
-        rebuildGeometry();
+        buildGeometry();
     }
 }
 
@@ -93,7 +102,7 @@ CircleNode::setNumSegments(unsigned int numSegments )
     if (_numSegments != numSegments )
     {
         _numSegments = numSegments;
-        rebuildGeometry();
+        buildGeometry();
     }
 }
 
@@ -107,7 +116,7 @@ void
 CircleNode::setArcStart(const Angle& arcStart)
 {
 	_arcStart = arcStart;
-	rebuildGeometry();
+	buildGeometry();
 }
 
 const Angle&
@@ -120,7 +129,7 @@ void
 CircleNode::setArcEnd(const Angle& arcEnd)
 {
 	_arcEnd = arcEnd;
-	rebuildGeometry();
+	buildGeometry();
 }
 
 const bool&
@@ -133,15 +142,15 @@ void
 CircleNode::setPie(const bool& pie)
 {
     _pie = pie;
-    rebuildGeometry();
+    buildGeometry();
 }
 
 void
-CircleNode::rebuildGeometry()
+CircleNode::buildGeometry()
 {
     // construct a local-origin circle.
     GeometryFactory factory;
-    Geometry* geom = NULL;
+    osg::ref_ptr<Geometry> geom;
     if (std::abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
     {
         geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
@@ -151,9 +160,9 @@ CircleNode::rebuildGeometry()
         geom = factory.createArc(osg::Vec3d(0,0,0), _radius, _arcStart, _arcEnd, _numSegments, 0L, _pie);
     }
 
-    if ( geom )
+    if ( geom.valid() )
     {
-        setGeometry( geom );        
+        setGeometry(geom.get());
     }
 }
 
@@ -163,16 +172,16 @@ CircleNode::rebuildGeometry()
 OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 
 
-CircleNode::CircleNode(MapNode*              mapNode,
-                       const Config&         conf,
+CircleNode::CircleNode(const Config&         conf,
                        const osgDB::Options* dbOptions) :
-LocalGeometryNode( mapNode, conf, dbOptions ),
-_radius      ( 1.0, Units::KILOMETERS ),
-_numSegments ( 0 )
+LocalGeometryNode(conf, dbOptions)
 {
+    construct();
+
     conf.getObjIfSet( "radius",       _radius );
     conf.getIfSet   ( "num_segments", _numSegments );
-    initCircleNode();
+
+    buildGeometry();
 }
 
 Config

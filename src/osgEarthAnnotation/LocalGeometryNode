@@ -37,34 +37,21 @@ namespace osgEarth { namespace Annotation
      * Simple node that renders geometry into a scene graph node. The geometry
      * is in a local tangent plane that may be positioned somewhere on the 
      * Map's surface.
+     *
+     * As a GeoPositionNode, the LGN's main location is controlled by the 
+     * setPosition method. Terrain following is controlled by using a GeoPoint
+     * with an altitude value relative to the terrain.
      */
     class OSGEARTHANNO_EXPORT LocalGeometryNode : public GeoPositionNode
     {
     public:
-        /**
-         * Constructs a new localized node that renders a Geometry
-         */
+        //! Construct a new empty LocalGeometryNode
+        LocalGeometryNode();
+        
+        //! Construct a new empty LocalGeometryNode and assign it a geoemtry and style
         LocalGeometryNode( 
-            MapNode*     mapNode,
             Geometry*    geom, 
             const Style& style );
-
-        /**
-         * Construcst a new localized node that renders a pre-built
-         * node (in a local cartesian space)
-         */
-        LocalGeometryNode( 
-            MapNode*     mapNode,
-            osg::Node*   node, 
-            const Style& style  =Style() );
-
-        /**
-         * Construct an LGN connected to a mapnode.
-         */
-        LocalGeometryNode( MapNode* node );
-
-
-        virtual ~LocalGeometryNode() { }
 
         /**
          * Gets the Style used to create thenode.
@@ -86,19 +73,12 @@ namespace osgEarth { namespace Annotation
          */
         void setGeometry( Geometry* geom );
 
-        /**
-         * Gets the external node attached to this annotation (if applicable)
-         */
-        osg::Node* getNode() { return _node.get(); }
 
-        /**
-         * Sets an external node to attach to this annotation
-         */
-        void setNode( osg::Node* node );
+    public: // GeoPositionNode
 
-    public:
+        virtual void setPosition(const GeoPoint&);
 
-        virtual void setLocalOffset(const osg::Vec3f& pos);
+    public: // AnnotationNode
 
         virtual void setMapNode(MapNode*);
 
@@ -108,40 +88,32 @@ namespace osgEarth { namespace Annotation
          * Constructs an LGN from a serialized Config.
          */
         LocalGeometryNode(
-            MapNode*              mapNode,
             const Config&         conf,
-            const osgDB::Options* dbOptions );
+            const osgDB::Options* dbOptions);
 
         virtual Config getConfig() const;
 
     public: // osg::Node
 
-        //virtual osg::BoundingSphere computeBound() const;
-
         virtual void traverse(osg::NodeVisitor&);
 
-    protected: // GeoPositionNode
-
-        virtual void dirty();
-
     protected:
-        LocalGeometryNode();
+
+        virtual ~LocalGeometryNode() { }
 
         Style                        _style;
         osg::ref_ptr<osg::Node>      _node;
         osg::ref_ptr<Geometry>       _geom;
-        bool                         _clampDirty;
+        bool                         _clampInUpdateTraversal;
+        bool                         _perVertexClampingEnabled;
         
         typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
-        bool _clampRelative;
         GeometryClamper::LocalData _clamperData;
 
-        void initNode();
-        void initGeometry(const osgDB::Options*);
-        void init(const osgDB::Options*);
-
-        void applyAltitudeSymbology(const Style&);
+        void compileGeometry();
+        void togglePerVertexClamping();
+        void reclamp();
 
     public:
         void onTileAdded(
@@ -152,6 +124,12 @@ namespace osgEarth { namespace Annotation
         virtual void clamp(
             osg::Node*     graph,
             const Terrain* terrain);
+
+    private:
+
+        void construct();
+
+        GeoPoint _lastPosition;
     };
 
 } } // namespace osgEarth::Annotation

@@ -44,25 +44,31 @@ using namespace osgEarth::Symbology;
 
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
-                     const osgDB::Options* dbOptions ) :
-GeoPositionNode( mapNode ),
-_style       ( style ),
-_dbOptions   ( dbOptions )
+                     const osgDB::Options* readOptions ) :
+GeoPositionNode(),
+_style( style ),
+_readOptions( readOptions )
 {
-    init();
+    construct();
+    setMapNode(mapNode);
+    compileModel();
 }
 
+void
+ModelNode::construct()
+{
+    // nop
+}
 
 void
 ModelNode::setStyle(const Style& style)
 {
     _style = style;
-    init();
-    setPosition(getPosition());
+    compileModel();
 }
 
 void
-ModelNode::init()
+ModelNode::compileModel()
 {
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 
@@ -82,12 +88,12 @@ ModelNode::init()
 
                 if ( sym->uriAliasMap()->empty() )
                 {
-                    node = uri.getNode( _dbOptions.get() );
+                    node = uri.getNode( _readOptions.get() );
                 }
                 else
                 {
                     // install an alias map if there's one in the symbology.
-                    osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(_dbOptions.get());
+                    osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(_readOptions.get());
                     tempOptions->setReadFileCallback( new URIAliasMapReadCallback(*sym->uriAliasMap(), uri.full()) );
                     node = uri.getNode( tempOptions.get() );
                 }
@@ -177,18 +183,22 @@ ModelNode::init()
 OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
-ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-GeoPositionNode    ( mapNode, conf ),
-_dbOptions   ( dbOptions )
+ModelNode::ModelNode(const Config& conf, const osgDB::Options* readOptions) :
+GeoPositionNode(conf, readOptions),
+_readOptions(readOptions)
 {
+    construct();
+
     conf.getObjIfSet( "style", _style );
 
     std::string uri = conf.value("url");
     if ( !uri.empty() )
         _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
-    init();
-    setPosition(getPosition());
+    //init();
+    //setPosition(getPosition());
+
+    compileModel();
 }
 
 Config

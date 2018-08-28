@@ -186,6 +186,11 @@ GL3RealizeOperation::operator()(osg::Object* object)
     {
         osg::State* state = gc->getState();
 
+        // force NVIDIA-style vertex attribute aliasing, since osgEarth
+        // makes use of some specific attribute registers. Later we can
+        // perhaps create a reservation system for this.
+        state->resetVertexAttributeAlias(false);
+
 #ifdef OSG_GL3_AVAILABLE
         state->setUseModelViewAndProjectionUniforms(true);
         state->setUseVertexAttributeAliasing(true);

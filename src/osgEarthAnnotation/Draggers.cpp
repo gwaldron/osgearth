@@ -46,7 +46,7 @@ using namespace osgEarth::Annotation;
 /**********************************************************/
 
 Dragger::Dragger( MapNode* mapNode, int modKeyMask, const DragMode& defaultMode ):
-GeoPositionNode( mapNode ),
+GeoPositionNode(),
 _dragging(false),
 _hovered(false),
 _modKeyMask(modKeyMask),
@@ -56,12 +56,11 @@ _verticalMinimum(0.0)
 {    
     setNumChildrenRequiringEventTraversal( 1 );
 
-    //_clampCallback = new ClampDraggerCallback( this );
     _projector = new osgManipulator::LineProjector;
 
-    //setMapNode( mapNode );
-
     this->getOrCreateStateSet()->setRenderBinDetails(50, "DepthSortedBin");
+
+    setMapNode(mapNode);
 }
 
 Dragger::~Dragger()

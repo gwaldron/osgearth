@@ -34,43 +34,15 @@ namespace osgEarth { namespace Annotation
     {
     public:
         /**
-         * Whether to apply automatic re-clamping of CLAMP_TO_TERRAIN geometry
-         * whenever a terrain tile under the geometry changes due to paging
-         * DEFAULT: true
-         */
-        static void setContinuousClamping( bool value ) { _continuousClamping = value; }
-        static bool getContinuousClamping() { return _continuousClamping; }
-
-        /**
-         * Whether to apply a depth-adjustment program to any line geometry in an 
-         * AnnotationNode that is created with a CLAMP_TO_TERRAIN altitude symbol. 
-         * The depth adjustment will mitigate z-fighting for clamped lines in many cases.
-         * DEFAULT: true
-         */
-        static void setApplyDepthOffsetToClampedLines( bool value ) { _autoDepthOffset = value; }
-        static bool getApplyDepthOffsetToClampedLines() { return _autoDepthOffset; }
-
-        /**
          * Gets or sets the max camera altitude at which the occlusion culling callback is applied.
          * DEFAULT: 200000.0 meters
          */
         static void setOcclusionCullingMaxAltitude( double value ) { _occlusionCullingMaxAltitude = value; }
         static double getOcclusionCullingMaxAltitude() { return _occlusionCullingMaxAltitude; }
 
-        /**
-         * Gets or sets the adjustment factor, in meters, for the occlusion culling callback.
-         * This adjusts the target world point "up" by this factor to avoid being very aggressive with the culling
-         * if items are very close to the ground.
-         */
-        static void setOcclusionCullingHeightAdjustment( double value ) { _occlusionCullingHeightAdjustment = value; }
-        static double getOcclusionCullingHeightAdjustment() { return _occlusionCullingHeightAdjustment; }
-
 
     private:
         static double _occlusionCullingMaxAltitude;
-        static double _occlusionCullingHeightAdjustment;
-        static bool _continuousClamping;
-        static bool _autoDepthOffset;
     };
 
 } } // namespace osgEarth::Annotation

@@ -122,7 +122,9 @@ main(int argc, char** argv)
         {
             double lat = minLat + height * (rand() * 1.0)/(RAND_MAX-1);
             double lon = minLon + width * (rand() * 1.0)/(RAND_MAX-1);        
-            PlaceNode* place = new PlaceNode(mapNode, GeoPoint(geoSRS, lon, lat), pin.get(), "Placemark", placeStyle);
+            PlaceNode* place = new PlaceNode("Placemark", placeStyle, pin.get());
+            place->setMapNode(mapNode);
+            place->setPosition(GeoPoint(geoSRS, lon, lat));
             //Enable occlusion culling.  This will hide placemarks that are hidden behind terrain.
             //This makes use of the OcclusionCullingCallback in CullingUtils.
             place->setOcclusionCulling( true );

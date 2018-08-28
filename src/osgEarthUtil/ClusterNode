@@ -42,10 +42,14 @@ namespace osgEarth {
 
 
         public:
-            ClusterNode(MapNode* mapNode, osg::Image* defaultImage = 0);
+            ClusterNode(MapNode* mapNode = 0, osg::Image* defaultImage = 0);
+
+            MapNode* getMapNode() const;
+            void setMapNode(MapNode* mapNode);
 
             void addNode(osg::Node* node);
             void removeNode(osg::Node* node);
+            void clear();
 
             unsigned int getRadius() const;
             void setRadius(unsigned int radius);
@@ -68,7 +72,6 @@ namespace osgEarth {
             void getClusters(osgUtil::CullVisitor* cv, ClusterList& out);
             void buildIndex();
 
-            //PlaceNodeList _placeNodes;
             osg::NodeList _nodes;
 
             unsigned int _radius;

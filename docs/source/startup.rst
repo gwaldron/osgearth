@@ -5,7 +5,9 @@ osgEarth is a cross-platform library. It uses the CMake_ build system.
 You will need **version 2.8** or newer.
 (This is the same build system that OpenSceneGraph_ uses.)
 
-    NOTE: To build osgEarth for **iOS** see :doc:`ios`
+**Platform specific guides**
+    * :doc:`vcpkg`
+    * :doc:`ios`
 
 Get the Source Code
 -------------------

@@ -27,10 +27,10 @@
 using namespace osgEarth;
 
 GeoTransform::GeoTransform() :
-_findTerrain(false),
+_findTerrainInUpdateTraversal(false),
 _terrainCallbackInstalled(false),
 _autoRecomputeHeights(true),
-_dirtyClamp(false)
+_clampInUpdateTraversal(false)
 {
    //nop
 }
@@ -42,8 +42,8 @@ osg::MatrixTransform(rhs, op)
     _terrain = rhs._terrain.get();
     _autoRecomputeHeights = rhs._autoRecomputeHeights;
     _terrainCallbackInstalled = false;
-    _findTerrain = false;
-    _dirtyClamp = rhs._dirtyClamp;
+    _findTerrainInUpdateTraversal = false;
+    _clampInUpdateTraversal = false;
 }
 
 void
@@ -85,9 +85,9 @@ GeoTransform::setPosition(const GeoPoint& position)
 
     // If we don't have a pointer to a terrain, schedule an attempt
     // to find one on the next update traversal.
-    if (!terrain.valid() && !_findTerrain)
+    if (!terrain.valid() && !_findTerrainInUpdateTraversal)
     {
-        _findTerrain = true;
+        _findTerrainInUpdateTraversal = true;
         ADJUST_UPDATE_TRAV_COUNT(this, +1);
     }
 
@@ -142,7 +142,7 @@ GeoTransform::onTileAdded(const TileKey&          key,
                           osg::Node*              node,
                           TerrainCallbackContext& context)
 {
-    if (!_dirtyClamp)
+    if (!_clampInUpdateTraversal)
     {
        if (!_position.isValid() || _position.altitudeMode() != ALTMODE_RELATIVE || !_autoRecomputeHeights)
        {
@@ -156,11 +156,9 @@ GeoTransform::onTileAdded(const TileKey&          key,
            return;
        }
 
-       _dirtyClamp = true;
+       _clampInUpdateTraversal = true;
        ADJUST_UPDATE_TRAV_COUNT(this, +1);
     }
-
-    //setPosition(_position);
 }
 
 void
@@ -168,22 +166,23 @@ GeoTransform::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        if (_findTerrain)
+        if (_findTerrainInUpdateTraversal)
         {
             MapNode* mapNode = osgEarth::findInNodePath<MapNode>(nv);
             if (mapNode)
             {
-                _findTerrain = false;
+                _findTerrainInUpdateTraversal = false;
                 ADJUST_UPDATE_TRAV_COUNT(this, -1);
+
                 setTerrain(mapNode->getTerrain());
                 OE_DEBUG << LC << "Discovered terrain.\n";
             }
         }
 
-        if (_dirtyClamp)
+        if (_clampInUpdateTraversal)
         {
             setPosition(_position);
-            _dirtyClamp = false;
+            _clampInUpdateTraversal = false;
             ADJUST_UPDATE_TRAV_COUNT(this, -1);
         }
     }

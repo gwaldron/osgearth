@@ -25,8 +25,6 @@
 #pragma import_defines(SIGNED_DISTANCE_FIELD, TEXTURE_DIMENSION, GLYPH_DIMENSION)
 #pragma import_defines(OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED)
 
-$OSG_PRECISION_FLOAT
-
 #if __VERSION__>=130
     #define TEXTURE texture
     #define TEXTURELOD textureLod
@@ -50,7 +48,7 @@ $OSG_PRECISION_FLOAT
 
 uniform sampler2D glyphTexture;
 
-$OSG_VARYING_IN vec2 oe_Text_texCoord;
+in vec2 oe_Text_texCoord;
 vec4 vertexColor;
 
 #ifndef TEXTURE_DIMENSION

@@ -81,7 +81,8 @@ osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
         Style style;
         style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Yellow;
         feature->style() = style;
-        FeatureNode* featureNode = new FeatureNode(mapNode, feature);
+        FeatureNode* featureNode = new FeatureNode(feature);
+        featureNode->setMapNode(mapNode);
 
         featureNode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
         return featureNode;
@@ -206,7 +207,8 @@ main(int argc, char** argv)
         //Add a marker we can move around with the main view's eye point
         Style markerStyle;
         markerStyle.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
-        PlaceNode* eyeMarker = new PlaceNode(miniMapNode, GeoPoint(miniMapNode->getMapSRS(), 0, 0), "", markerStyle);
+        PlaceNode* eyeMarker = new PlaceNode("", markerStyle);
+        eyeMarker->setPosition(GeoPoint(miniMapNode->getMapSRS(), 0, 0));
         miniMapGroup->addChild( eyeMarker );        
         miniMapGroup->getOrCreateStateSet()->setRenderBinDetails(100, "RenderBin");
 

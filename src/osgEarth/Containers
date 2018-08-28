@@ -272,9 +272,9 @@ namespace osgEarth
      *
      * usage:
      *    LRUCache<K,T> cache;
-     *    cache.put( key, value );
-     *    LRUCache.Record rec = cache.get( key );
-     *    if ( rec.valid() )
+     *    cache.insert( key, value );
+     *    LRUCache<K,T>::Record rec;
+     *    if ( cache.get( key, rec ) )
      *        const T& value = rec.value();
      */
     template<typename K, typename T, typename COMPARE=std::less<K> >

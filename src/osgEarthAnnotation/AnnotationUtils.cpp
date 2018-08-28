@@ -46,35 +46,6 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
-const std::string&
-AnnotationUtils::PROGRAM_NAME()
-{
-  static std::string s = "osgEarthAnnotation::Program";
-  return s;
-}
-
-const std::string&
-AnnotationUtils::UNIFORM_HIGHLIGHT()
-{
-   static std::string s = "oeAnno_highlight";
-   return s;
-}
-
-
-const std::string&
-AnnotationUtils::UNIFORM_IS_TEXT()
-{
-  static std::string s = "oeAnno_isText";
-  return s;
-}
-
-const std::string&
-AnnotationUtils::UNIFORM_FADE()
-{
-  static std::string s ="oeAnno_fade";
-  return s;
-}
-
 osgText::String::Encoding
 AnnotationUtils::convertTextSymbolEncoding (const TextSymbol::Encoding encoding) {
     osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
@@ -120,11 +91,8 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     drawable->setText( text, text_encoding );
 
-    if (symbol)
-    {
-        TextSymbolizer symbolizer(symbol);
-        symbolizer.apply(drawable, 0L, 0L, &box);
-    }
+    TextSymbolizer symbolizer(symbol);
+    symbolizer.apply(drawable, 0L, 0L, &box);
 
     // osgText::Text turns on depth writing by default, even if you turned it off.
     drawable->setEnableDepthWrites( false );
@@ -200,22 +168,6 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->addPrimitiveSet( new osg::DrawElementsUShort( GL_TRIANGLES, 6, indices ) );
 
     return geom;
-}
-
-osg::Uniform*
-AnnotationUtils::createFadeUniform()
-{
-    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, UNIFORM_FADE());
-    u->set( 1.0f );
-    return u;
-}
-
-osg::Uniform*
-AnnotationUtils::createHighlightUniform()
-{
-    osg::Uniform* u = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_HIGHLIGHT());
-    u->set( false );
-    return u;
 }
 
 osg::Node*
@@ -505,74 +457,6 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 
     return proj;
 }
-
-osg::Drawable*
-AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
-{
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-
-    osg::Vec3Array* v = new osg::Vec3Array();
-    v->reserve(4);
-    v->push_back( osg::Vec3(box.xMin()-padding, box.yMin()-padding, 0) );
-    v->push_back( osg::Vec3(box.xMax()+padding, box.yMin()-padding, 0) );
-    v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
-    v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
-    geom->setVertexArray(v);
-    if ( v->getVertexBufferObject() )
-        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
-    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
-    b->reserve(6);
-    b->push_back(0); b->push_back(1); b->push_back(2);
-    b->push_back(2); b->push_back(3); b->push_back(0);
-    geom->addPrimitiveSet( b );
-
-    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
-    (*c)[0] = color;
-    geom->setColorArray( c );
-
-    // add the static "isText=true" uniform; this is a hint for the annotation shaders
-    // if they get installed.
-    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    s_isTextUniform->set( false );
-    geom->getOrCreateStateSet()->addUniform( s_isTextUniform.get() );
-
-    return geom;
-}
-
-osg::Drawable*
-AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
-{
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-
-    osg::Vec3Array* v = new osg::Vec3Array();
-    v->reserve(4);
-    v->push_back( osg::Vec3(box.xMin()-padding, box.yMin()-padding, 0) );
-    v->push_back( osg::Vec3(box.xMax()+padding, box.yMin()-padding, 0) );
-    v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
-    v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
-    geom->setVertexArray(v);
-    if ( v->getVertexBufferObject() )
-        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
-    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_LINE_LOOP);
-    b->reserve(4);
-    b->push_back(0); b->push_back(1); b->push_back(2); b->push_back(3);
-    geom->addPrimitiveSet( b );
-
-    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
-    (*c)[0] = color;
-    geom->setColorArray( c );
-
-    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    s_isNotTextUniform->set( false );
-    geom->getOrCreateStateSet()->addUniform( s_isNotTextUniform.get() );
-
-    return geom;
-}
-
 
 osg::Node*
 AnnotationUtils::installTwoPassAlpha(osg::Node* node)

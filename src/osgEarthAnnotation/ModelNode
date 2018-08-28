@@ -46,7 +46,7 @@ namespace osgEarth { namespace Annotation
         ModelNode(
             MapNode*              mapNode,
             const Style&          style,
-            const osgDB::Options* dbOptions   =0L );
+            const osgDB::Options* readOptoins =0L );
 
         /**
          * Sets a new style and rebuilds the node.
@@ -70,20 +70,23 @@ namespace osgEarth { namespace Annotation
          * (internal method).
          */
         ModelNode(
-            MapNode*              mapNode,
             const Config&         conf,
-            const osgDB::Options* dbOptions );
+            const osgDB::Options* readOptions );
 
         virtual Config getConfig() const;
 
     protected:
 
         Style _style;
-        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<const osgDB::Options> _readOptions;
 
-        void init();
+        void compileModel();
 
         virtual ~ModelNode() { }
+
+    private:
+
+        void construct();
     };
 
 } } // namespace osgEarth::Annotation

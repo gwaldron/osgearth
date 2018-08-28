@@ -25,6 +25,7 @@
 #include <osg/Notify>
 #include <osg/Timer>
 #include <osg/ShapeDrawable>
+#include <osg/Depth>
 #include <osg/PositionAttitudeTransform>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
@@ -578,7 +579,7 @@ namespace
                 _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1));
             }
 
-            _geo = new GeoPositionNode(mapnode);
+            _geo = new GeoPositionNode();
             _geo->getPositionAttitudeTransform()->addChild(_model);
 
             Style style;
@@ -593,7 +594,7 @@ namespace
 
             _geo->getPositionAttitudeTransform()->addChild(_label);
 
-            root->addChild(_geo.get());
+            mapnode->addChild(_geo.get());
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -602,13 +603,10 @@ namespace
             {
                 double t0 = osg::Timer::instance()->time_s();
                 double t = fmod( t0, 6000.0 ) / 6000.0;
-                double lat, lon;
-                GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
-                GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
-                double bearing = GeoMath::bearing(D2R*_lat0, D2R*_lon0, lat, lon);
+                GeoPoint p = _start.interpolate(_end, t);
+                double bearing = GeoMath::bearing(_start.y(), _start.x(), p.y(), p.x());
 
                 float a = sin(t0*0.2);
-                //bearing += a * 0.5 * osg::PI;
                 float pitch = 0.0;
 
                 _geo->setPosition(p);
@@ -637,13 +635,98 @@ namespace
         char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
-        double                             _lat0, _lon0, _lat1, _lon1;
+        GeoPoint                           _start, _end;
         LabelNode*                         _label;
         osg::Node*                         _model;
         float                              _heading;
         float                              _pitch;
 
         osg::ref_ptr<GeoPositionNode>      _geo;
+    };
+
+    /**
+     * Place an X at the sim entity position, in screen space.
+     * The point of this is to test the EarthManipulator::UpdateCameraCallback
+     * which provides a frame-synched camera matrix (post-update traversal)
+     */
+    struct CalculateWindowCoords : public osgGA::GUIEventHandler,
+                                   public EarthManipulator::UpdateCameraCallback
+    {
+        CalculateWindowCoords(char key, EarthManipulator* manip, Simulator* sim)
+            : _key(key), _manip(manip), _active(false), _sim(sim), _xform(0L)
+        {
+            _manip->setUpdateCameraCallback(this);
+        }
+
+        void onUpdateCamera(const osg::Camera* cam)
+        {
+            if (_active)
+            {
+                if (!_xform)
+                {
+                    osg::Geometry* geom = new osg::Geometry();
+                    osg::Vec3Array* verts = new osg::Vec3Array();
+                    verts->push_back(osg::Vec3(-10000, 0, 0));
+                    verts->push_back(osg::Vec3( 10000, 0, 0));
+                    verts->push_back(osg::Vec3( 0, -10000, 0));
+                    verts->push_back(osg::Vec3( 0,  10000, 0));
+                    verts->push_back(osg::Vec3( 0, 0, -10000));
+                    verts->push_back(osg::Vec3( 0, 0,  10000));
+                    geom->setVertexArray(verts);
+                    osg::Vec4Array* colors = new osg::Vec4Array();
+                    colors->push_back(osg::Vec4(1, 1, 0, 1));
+                    colors->setBinding(colors->BIND_OVERALL);
+                    geom->setColorArray(colors);
+                    geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, 6));
+                    geom->setCullingActive(false);
+                    geom->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, true), 1);
+
+                    _xform = new osg::MatrixTransform();
+                    _xform->addChild(geom);
+
+                    osg::View* view = const_cast<osg::View*>(cam->getView());
+                    ControlCanvas::getOrCreate(view)->addChild(_xform);
+                }
+
+                GeoPoint p = _sim->_geo->getPosition();
+
+                osg::Vec3d world;
+                p.toWorld(world);
+
+                osg::Matrix worldToWindow =
+                    cam->getViewMatrix() *
+                    cam->getProjectionMatrix() *
+                    cam->getViewport()->computeWindowMatrix();
+
+                osg::Vec3d win = world * worldToWindow;
+
+                _xform->setMatrix(osg::Matrix::translate(win));
+            }
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                _active = !_active;
+                aa.requestRedraw();
+                return true;
+            }
+            
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Show Window Coords"));
+        }
+
+        osg::MatrixTransform* _xform;
+        Simulator* _sim;
+        bool _active;
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
     };
 }
 
@@ -689,20 +772,18 @@ int main(int argc, char** argv)
     osg::Group* sims = new osg::Group();
     root->addChild( sims );
 
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+
     // Simulator for tethering:
     Simulator* sim1 = new Simulator(sims, manip, mapNode, model.get(), "Thing 1", '8');
-    sim1->_lat0 = 55.0;
-    sim1->_lon0 = 45.0;
-    sim1->_lat1 = -55.0;
-    sim1->_lon1 = -45.0;
+    sim1->_start = GeoPoint(wgs84, 45.0, 55.0, 10000);
+    sim1->_end = GeoPoint(wgs84, -45, -55.0, 10000);
     viewer.addEventHandler(sim1);
 
     Simulator* sim2 = new Simulator(sims, manip, mapNode, model.get(), "Thing 2", '9');
     sim2->_name = "Thing 2";
-    sim2->_lat0 = 54.0;
-    sim2->_lon0 = 45.0;
-    sim2->_lat1 = -54.0;
-    sim2->_lon1 = -44.0;
+    sim2->_start = GeoPoint(wgs84, 45.0, 54.0, 10000);
+    sim2->_end = GeoPoint(wgs84, -44.0, -54.0, 10000);
     viewer.addEventHandler(sim2);
 
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
@@ -744,7 +825,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new SetPositionOffset(manip));
     viewer.addEventHandler(new ToggleLDB('L'));
     viewer.addEventHandler(new ToggleSSL(sims, ')'));
-
+    viewer.addEventHandler(new CalculateWindowCoords('W', manip, sim1));
     viewer.addEventHandler(new FitViewToPoints('j', manip, mapNode->getMapSRS()));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);

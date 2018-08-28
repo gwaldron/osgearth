@@ -29,6 +29,8 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/CullingUtils>
+#include <osgEarth/GLUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
@@ -80,7 +82,8 @@ struct ToggleModeHandler : public ControlEventHandler
     _tool( tool )
     { }
 
-    virtual void onValueChanged(Control* control, bool value) {
+    virtual void onValueChanged(Control* control, bool value)
+    {
         if (_tool->getGeoInterpolation() == GEOINTERP_GREAT_CIRCLE)
         {
             _tool->setGeoInterpolation( GEOINTERP_RHUMB_LINE);
@@ -126,9 +129,9 @@ main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
-
+    
     //Create the MeasureToolHandler
-    MeasureToolHandler* measureTool = new MeasureToolHandler(root, mapNode);    
+    MeasureToolHandler* measureTool = new MeasureToolHandler(mapNode);
     measureTool->setIntersectionMask( 0x1 );
     viewer.addEventHandler( measureTool );
 

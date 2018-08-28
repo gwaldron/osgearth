@@ -174,7 +174,7 @@ void
 CircleNodeEditor::updateDraggers()
 {
     GeoPositionNodeEditor::updateDraggers();
-    if (_radiusDragger)
+    if (_radiusDragger && _node->getMapNode())
     {
         const osg::EllipsoidModel* em = _node->getMapNode()->getMapSRS()->getEllipsoid();
         
@@ -218,6 +218,9 @@ public:
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
+          if (!_node->getMapNode())
+              return;
+
           const osg::EllipsoidModel* em = _node->getMapNode()->getMapSRS()->getEllipsoid();
 
           //Figure out the distance between the center of the circle and this new location
@@ -282,7 +285,7 @@ void
 EllipseNodeEditor::updateDraggers()
 {
     GeoPositionNodeEditor::updateDraggers();
-    if (_majorDragger && _minorDragger)
+    if (_majorDragger && _minorDragger && _node->getMapNode())
     {
         const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
         

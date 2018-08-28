@@ -382,14 +382,14 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
                 float angle = atan2(proj.y(), proj.x());
 
-                if ( isText && (angle < - osg::PI / 2. || angle > osg::PI / 2.) )
+                if ( isText && (angle < -osg::PI_2 || angle > osg::PI_2) )
                 {
                     // avoid the label characters to be inverted:
                     // use a symetric translation and adapt the rotation to be in the desired angles
                     offset.set( -layoutData->_pixelOffset.x() - box.xMax() - box.xMin(),
                                 -layoutData->_pixelOffset.y() - box.yMax() - box.yMin(),
                                 0.f );
-                    angle -= osg::PI;
+                    angle += angle < -osg::PI_2? osg::PI : -osg::PI; // JD #1029
                 }
                 else
                 {

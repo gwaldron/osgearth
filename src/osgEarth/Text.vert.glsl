@@ -1,7 +1,6 @@
 #version $GLSL_VERSION_STR
-$OSG_PRECISION_FLOAT
 
-$OSG_VARYING_OUT vec2 oe_Text_texCoord;
+out vec2 oe_Text_texCoord;
 
 #pragma vp_entryPoint oe_Text_VS
 #pragma vp_location   vertex_view

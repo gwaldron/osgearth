@@ -10,6 +10,23 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
         <url>../data/world.tif</url>
         <cache_policy usage="no_cache"/>
     </image>
+
+<!-- GlobalIR Imgery from http://realearth.ssec.wisc.edu/ -->	
+    <image name="GlobalIR" driver="xyz">
+        <url>http://realearth.ssec.wisc.edu/tiles/globalir/{z}/{x}/{y}.png</url>                
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+		<shader>
+          <![CDATA[
+            #version 330
+            #pragma vp_entryPoint alphaOut
+            #pragma vp_location fragment_coloring
+            void alphaOut(inout vec4 color) {
+                color.a *= clamp(distance(color.rgb, vec3(0.0,0.0,0.0)), 0.0, 1.0);
+            }
+          ]]>
+        </shader>
+    </image>
     
     <image name="nexrad45min" driver="wms">
         <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi</url>

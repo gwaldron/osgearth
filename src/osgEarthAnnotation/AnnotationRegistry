@@ -92,8 +92,7 @@ namespace osgEarth { namespace Annotation
     // (used by OSGEARTH_REGISTER_ANNOTATION macro)
     class AnnotationFactory {
     public:
-        virtual AnnotationNode* create(
-            MapNode*              mapNode, 
+        virtual AnnotationNode* create( 
             const Config&         conf, 
             const osgDB::Options* dbOptions) const =0;
 
@@ -104,7 +103,7 @@ namespace osgEarth { namespace Annotation
     template<typename T>
     struct AnnotationRegistrationProxy : public AnnotationFactory {
         AnnotationRegistrationProxy(const std::string& key) { AnnotationRegistry::instance()->add(key, this); }
-        AnnotationNode* create(MapNode* mapNode, const Config& conf, const osgDB::Options* options) const { return new T(mapNode, conf, options); }
+        AnnotationNode* create(const Config& conf, const osgDB::Options* options) const { return new T(conf, options); }
     };
 
 } } // namespace osgEarth::Annotation

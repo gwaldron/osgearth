@@ -254,14 +254,41 @@ struct ZoomLayerHandler : public ControlEventHandler
         const GeoExtent& extent = _layer->getExtent();
         if (extent.isValid())
         {
-            ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
             std::vector<GeoPoint> points;
             points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
             points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+            
+            ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
             Viewpoint vp;
             if (fitter.createViewpoint(points, vp))
             {
                 s_manip->setViewpoint(vp, 2.0);
+            }
+        }
+        else if (_layer->getNode())
+        {
+            const osg::BoundingSphere& bs = _layer->getNode()->getBound();
+            if (bs.valid())
+            {
+                osg::Vec3d c = bs.center();
+                double r = bs.radius();
+                const SpatialReference* mapSRS = s_activeMap->getSRS();
+
+                std::vector<GeoPoint> points;
+                GeoPoint p;
+                p.fromWorld(mapSRS, osg::Vec3d(c.x()+r, c.y(), c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x()-r, c.y(), c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y()+r, c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y()-r, c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z()+r)); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z()-r)); points.push_back(p);
+
+                ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
+                Viewpoint vp;
+                if (fitter.createViewpoint(points, vp))
+                {
+                    s_manip->setViewpoint(vp, 2.0);
+                }
             }
         }
     }
@@ -356,7 +383,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // zoom button
-    if (layer->getExtent().isValid())
+    if (layer->getExtent().isValid() || layer->getNode())
     {
         LabelControl* zoomButton = new LabelControl("GO", 14);
         zoomButton->setBackColor( .4,.4,.4,1 );

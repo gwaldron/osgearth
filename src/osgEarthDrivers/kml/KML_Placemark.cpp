@@ -160,13 +160,16 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     // is there an icon?
                     if ( icon )
                     {
-                        iconNode = new PlaceNode( cx._mapNode, position, style, cx._dbOptions.get() );
+                        PlaceNode* placeNode = new PlaceNode( position );
+                        placeNode->setStyle(style, cx._dbOptions.get());
+                        iconNode = placeNode;
                     }
 
                     else if ( !model && text && !name.empty() )
                     {
                         // note: models do not get labels.
-                        iconNode = new LabelNode( cx._mapNode, position, style );
+                        iconNode = new LabelNode();
+                        iconNode->setStyle(style);
                     }
                 }
 
@@ -183,7 +186,8 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                         style.removeSymbol( text );
 
                     Feature* feature = new Feature(geom, cx._srs.get(), style);
-                    featureNode = new FeatureNode( cx._mapNode, feature );
+                    featureNode = new FeatureNode(feature );
+                    featureNode->setMapNode( cx._mapNode );
                 }
 
                 if ( iconNode )

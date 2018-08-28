@@ -291,10 +291,11 @@ GroundCoverLayer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack
         if (zoneStateSet == 0L)
         {
             OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
-            exit(-1);
         }
-        
-        stateSetStack.push_back(zoneStateSet);
+        else
+        {            
+            stateSetStack.push_back(zoneStateSet);
+        }
     }
     return true;
 }

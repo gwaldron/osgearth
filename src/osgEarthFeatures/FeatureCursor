@@ -23,13 +23,12 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarth/Progress>
 #include <osgEarth/Profile>
 
 namespace osgEarth { namespace Features
 {   
     using namespace osgEarth;
-
-    //class FeatureFilterChain;
 
     /**
      * A cursor that lets you iterate over a collection of features returned 
@@ -39,12 +38,18 @@ namespace osgEarth { namespace Features
     {
     public:
         virtual bool hasMore() const =0;
+
         virtual Feature* nextFeature() =0;
 
-    public:
+        void fill(FeatureList& output);
+
+    protected:
+
+        FeatureCursor(ProgressCallback* progress);
+
         virtual ~FeatureCursor();
 
-        void fill( FeatureList& output );
+        osg::ref_ptr<ProgressCallback> _progress;
     };
 
     /**
@@ -56,6 +61,7 @@ namespace osgEarth { namespace Features
     public:
         FeatureListCursor(const FeatureList& input);
 
+    public: // FeatureCursor
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
 
@@ -76,6 +82,8 @@ namespace osgEarth { namespace Features
     public:
         GeometryFeatureCursor( Symbology::Geometry* geom );
         GeometryFeatureCursor( Symbology::Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
+
+    public: // FeatureCursor
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
 

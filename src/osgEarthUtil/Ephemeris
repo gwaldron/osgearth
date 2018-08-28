@@ -43,6 +43,7 @@ namespace osgEarth { namespace Util
         Angle longitude;
         Distance altitude;
         osg::Vec3d geocentric;
+        osg::Vec3d eci;
     };
 
     /**

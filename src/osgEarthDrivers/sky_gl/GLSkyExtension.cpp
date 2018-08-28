@@ -66,7 +66,7 @@ namespace osgEarth { namespace GLSky
 
     public: // SkyNodeFactory
 
-        SkyNode* createSkyNode(const Profile* profile);
+        SkyNode* createSkyNode();
 
     protected:
         GLSkyExtension(const GLSkyExtension&, const osg::CopyOp&) { }
@@ -96,7 +96,16 @@ GLSkyOptions(options)
 bool
 GLSkyExtension::connect(MapNode* mapNode)
 {
-    _skyNode = createSkyNode(mapNode->getMap()->getProfile());
+    _skyNode = createSkyNode();
+
+    // Projected map? Set up a reference point at the center of the map
+    if (mapNode->getMapSRS()->isProjected())
+    {
+        GeoPoint refPoint;
+        mapNode->getMap()->getProfile()->getExtent().getCentroid(refPoint);
+        _skyNode->setReferencePoint(refPoint);
+    }
+
     osgEarth::insertParent(_skyNode.get(), mapNode);
     return true;
 }
@@ -138,7 +147,8 @@ GLSkyExtension::disconnect(ui::Control* control)
 }
 
 SkyNode*
-GLSkyExtension::createSkyNode(const Profile* profile)
+GLSkyExtension::createSkyNode()
 {
-    return new GLSkyNode(profile, *this);
+    GLSkyNode* sky = new GLSkyNode(*this);
+    return sky;
 }

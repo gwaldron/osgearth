@@ -32,6 +32,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Lighting>
 #include <osgEarth/Shaders>
+#include <osgEarth/LineDrawable>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -52,7 +53,7 @@ namespace
         "} \n";
 
     const char* iconFS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_PlaceNode_texcoord; \n"
         "uniform sampler2D oe_PlaceNode_tex; \n"
         "void oe_PlaceNode_icon_FS(inout vec4 color) { \n"
@@ -308,6 +309,14 @@ PlaceNode::compile()
     {
         _geode->addChild( _textDrawable );
     }
+
+#if 0
+    LineDrawable* line = new LineDrawable(GL_LINES);
+    line->pushVertex(osg::Vec3(0,0,0));
+    line->pushVertex(osg::Vec3(0,0,-100000));
+    line->finish();
+    getPositionAttitudeTransform()->addChild(line);
+#endif
 
     setDefaultLighting( false );
 

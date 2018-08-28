@@ -42,7 +42,6 @@ namespace osgEarth { namespace SilverLining
             SilverLiningNode*          node,
             osg::Camera*               camera,
             osg::Light*                light,
-            const osgEarth::SpatialReference*    mapSRS,
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 

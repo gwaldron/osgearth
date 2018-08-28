@@ -211,7 +211,6 @@ namespace osgEarth
         /** Sets a cache key. By default the cache key is the full URI, but you can override that. */
         void setCacheKey( const std::string& key ) { _cacheKey = key; }
 
-
     public: // read methods return a ReadResult object
 
         ReadResult readObject(

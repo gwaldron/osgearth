@@ -36,12 +36,26 @@
 
 using namespace osgEarth::SilverLining;
 
-SilverLiningNode::SilverLiningNode(const osgEarth::SpatialReference*    mapSRS,
+SilverLiningNode::SilverLiningNode(const SilverLiningOptions& options,
+                                   Callback*                  callback) :
+_options(options),
+_callback(callback)
+{
+    construct();
+}
+
+// DEPRECATED
+SilverLiningNode::SilverLiningNode(const osgEarth::SpatialReference* mapSRS,
                                    const SilverLiningOptions& options,
                                    Callback*                  callback) :
 _options(options),
-_mapSRS(mapSRS),
 _callback(callback)
+{
+    construct();
+}
+
+void
+SilverLiningNode::construct()
 {
     // Create a new Light for the Sun.
     _light = new LightGL3(0);
@@ -65,7 +79,6 @@ _callback(callback)
     // need update traversal.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
-
 
 SilverLiningNode::~SilverLiningNode()
 {
@@ -172,7 +185,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
             {
                 for (CameraSet::const_iterator i = _camerasToAdd.begin(); i != _camerasToAdd.end(); ++i)
                 {
-                    SilverLiningContextNode* newNode = new SilverLiningContextNode(this, i->get(), _light.get(), _mapSRS, _options, _callback.get());
+                    SilverLiningContextNode* newNode = new SilverLiningContextNode(this, i->get(), _light.get(), _options, _callback.get());
                     _contexts[i->get()] = newNode;
                     _contextList.push_back(newNode);
                 }

@@ -56,7 +56,7 @@ namespace osgEarth { namespace Features
         
         virtual Status initialize(const osgDB::Options* readOptions) { return Status::OK();  }
 
-        virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query );
+        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress);
 
         virtual bool isWritable() const { return true; }
         virtual bool deleteFeature(FeatureID fid);

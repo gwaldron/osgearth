@@ -66,6 +66,11 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         if (_SL->getCallback())
             _SL->getCallback()->onDrawSky(_SL->getAtmosphereWrapper());
 
+        osg::Matrix projMat = renderInfo.getState()->getProjectionMatrix();
+        _SL->getAtmosphere()->SetProjectionMatrix(projMat.ptr());
+        osg::Matrix viewMat = renderInfo.getCurrentCamera()->getViewMatrix();
+        _SL->getAtmosphere()->SetCameraMatrix(viewMat.ptr());
+
         // draw the sky.
         _SL->getAtmosphere()->DrawSky(
             true,

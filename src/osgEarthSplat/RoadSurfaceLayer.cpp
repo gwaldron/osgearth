@@ -326,7 +326,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
             if (cursor.valid())
             {
                 cursor->fill(features);
@@ -340,7 +340,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         query.bounds() = queryExtent.bounds();
 
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
         if (cursor.valid())
         {
             cursor->fill(features);

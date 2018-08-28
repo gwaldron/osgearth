@@ -163,7 +163,7 @@ CompositeTileSource::createImage(const TileKey&    key,
             }
 
             // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
-            if (progress && (progress->isCanceled() || progress->needsRetry()))
+            if (progress && progress->isCanceled())
             {
                 OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
                 return 0L;
@@ -210,7 +210,7 @@ CompositeTileSource::createImage(const TileKey&    key,
                     }
 
                     // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
-                    if (progress && (progress->isCanceled() || progress->needsRetry()))
+                    if (progress && progress->isCanceled())
                     {
                         OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
                         return 0L;

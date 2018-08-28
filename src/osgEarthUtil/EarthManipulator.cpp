@@ -70,7 +70,19 @@ namespace
         if ( node ) {
             osg::NodePathList nodePaths = node->getParentalNodePaths();
             if ( nodePaths.size() > 0 ) {
-                m = osg::computeLocalToWorld( nodePaths[0] );
+                osg::NodePath p;
+                unsigned start = 0;
+                for(unsigned i=0; i<nodePaths[0].size(); ++i) {
+                    if (dynamic_cast<MapNode*>(nodePaths[0][i]) != 0L) {
+                        start = i;
+                        break;
+                    }
+                }
+                for(unsigned i=start; i<nodePaths[0].size(); ++i)
+                    p.push_back(nodePaths[0][i]);
+                
+                m = osg::computeLocalToWorld(p);
+                //m = osg::computeLocalToWorld( nodePaths[0] );
             }
             else {
                 osg::Transform* t = dynamic_cast<osg::Transform*>(node);
@@ -118,6 +130,10 @@ namespace
                 {
                     if( cam->getReferenceFrame() != osg::Transform::RELATIVE_RF || cam->getParents().empty())
                         break;
+                }
+                else if (dynamic_cast<MapNode*>(*i))
+                {
+                    break;
                 }
             }
             for (; j<path.size(); ++j)
@@ -701,6 +717,7 @@ EarthManipulator::reinitialize()
     _setVP1.unset();
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
     _setVPArcHeight = 0.0;
+    _pushed = false;
 }
 
 
@@ -1223,7 +1240,7 @@ EarthManipulator::resetLookAt()
     if ( pitch > maxPitch )
         rotate( 0.0, -(pitch-maxPitch) );
 
-    osg::Vec3d eye = getMatrix().getTrans();
+    osg::Vec3d eye = getWorldMatrix().getTrans();
 
     // calculate the center point in front of the eye. The reference frame here
     // is the view plane of the camera.
@@ -1281,7 +1298,7 @@ void EarthManipulator::collisionDetect()
 
     // The camera has changed, so make sure we aren't under the ground.
 
-    osg::Vec3d eye = getMatrix().getTrans();
+    osg::Vec3d eye = getWorldMatrix().getTrans();
     osg::CoordinateFrame eyeCoordFrame;
     createLocalCoordFrame( eye, eyeCoordFrame );
     osg::Vec3d eyeUp = getUpVector(eyeCoordFrame);
@@ -1349,7 +1366,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
     {
         double R = _centerHeight;
 
-        getInverseMatrix().getLookAt(out_eye, out_target, out_up, 1.0);
+        getWorldInverseMatrix().getLookAt(out_eye, out_target, out_up, 1.0);
         osg::Vec3d look = out_target-out_eye;
 
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi =
@@ -1573,6 +1590,19 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
         if ( _node.valid() )
         {
+            // Update the mapnode reference frame. This is the transformation
+            // between the Camera and the MapNode. Since all computations are done
+            // in map-world space (e.g., ECEF) we need to then introduce this transform
+            // at the very end (in getInverseMatrix()) to apply the final view matrix.
+            {
+                osg::ref_ptr<MapNode> mapNode;
+                if (_mapNode.lock(mapNode))
+                {
+                    _mapNodeFrame = osg::computeLocalToWorld(mapNode->getParentalNodePaths()[0]); 
+                    _mapNodeFrameInverse.invert(_mapNodeFrame);
+                }
+            }
+
             if ( _pendingViewpoint.isSet() )
             {
                 setViewpoint( _pendingViewpoint.get(), _pendingViewpointDuration.as(Units::SECONDS) );
@@ -1731,6 +1761,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         switch( ea.getEventType() )
         {
             case osgGA::GUIEventAdapter::PUSH:
+                _pushed = true;
                 resetMouse( aa );
                 addMouseEvent( ea );
                 _mouse_down_event = &ea;
@@ -1739,6 +1770,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 break;
 
             case osgGA::GUIEventAdapter::RELEASE:
+                _pushed = false;
                 if ( _continuous )
                 {
                     // bail out of continuous mode if necessary:
@@ -1781,6 +1813,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             case osgGA::GUIEventAdapter::DOUBLECLICK:
                 // bail out of continuous mode if necessary:
                 _continuous = false;
+                _pushed = false;
                 addMouseEvent( ea );
                 if (_mouse_down_event)
                 {
@@ -1798,19 +1831,22 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
             case osgGA::GUIEventAdapter::DRAG:
                 {
-                    action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
-                    addMouseEvent( ea );
-                    bool wasContinuous = _continuous;
-                    _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
-                    if ( handleMouseAction( action, aa.asView() ) )
-                        aa.requestRedraw();
+                    if (_pushed)
+                    {
+                        action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+                        addMouseEvent( ea );
+                        bool wasContinuous = _continuous;
+                        _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
+                        if ( handleMouseAction( action, aa.asView() ) )
+                            aa.requestRedraw();
 
-                    if ( _continuous && !wasContinuous )
-                        _last_continuous_action_time = time_s_now; //_time_s_now;
+                        if ( _continuous && !wasContinuous )
+                            _last_continuous_action_time = time_s_now; //_time_s_now;
 
-                    aa.requestContinuousUpdate(_continuous);
-                    _thrown = false;
-                    handled = true;
+                        aa.requestContinuousUpdate(_continuous);
+                        _thrown = false;
+                        handled = true;
+                    }
                 }
                 break;
 
@@ -2285,6 +2321,12 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
 osg::Matrixd
 EarthManipulator::getMatrix() const
 {
+    return getWorldMatrix() * _mapNodeFrame;
+}
+
+osg::Matrixd
+EarthManipulator::getWorldMatrix() const
+{
     return osg::Matrixd::translate(_viewOffset.x(), _viewOffset.y(), _distance) *
            osg::Matrixd::rotate   (_rotation) *
            osg::Matrixd::rotate   (_tetherRotation) *
@@ -2295,6 +2337,12 @@ EarthManipulator::getMatrix() const
 
 osg::Matrixd
 EarthManipulator::getInverseMatrix() const
+{
+    return _mapNodeFrameInverse * getWorldInverseMatrix();
+}
+
+osg::Matrixd
+EarthManipulator::getWorldInverseMatrix() const
 {
     return osg::Matrixd::translate(-_center)*
            osg::Matrixd::rotate   (_centerRotation.inverse()) *
@@ -2931,7 +2979,7 @@ EarthManipulator::recalculateRoll()
 void
 EarthManipulator::getCompositeEulerAngles( double* out_azim, double* out_pitch ) const
 {
-    osg::Matrix m = getMatrix() * osg::Matrixd::inverse(_centerLocalToWorld);
+    osg::Matrix m = getWorldMatrix() * osg::Matrixd::inverse(_centerLocalToWorld);
     osg::Vec3d look = -getUpVector( m );
     osg::Vec3d up   =  getFrontVector( m );
 

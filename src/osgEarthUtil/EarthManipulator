@@ -812,6 +812,12 @@ namespace osgEarth { namespace Util
         // This sets the camera's roll based on your location on the globe.
         void recalculateRoll();
 
+        // Gets the matrix without a pre-MapNode transform (i.e., map world space)
+        osg::Matrixd getWorldMatrix() const;
+
+        // Gets the inverse matrix without a pre-MapNode transform (i.e., map world space)
+        osg::Matrixd getWorldInverseMatrix() const;
+
     protected:
 
         enum TaskType
@@ -926,6 +932,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
 
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
+        bool _pushed;
 
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<MapNode>   _mapNode;
@@ -1005,6 +1012,8 @@ namespace osgEarth { namespace Util
         osg::Quat               _tetherRotationVP1;         // target _tetherRotation if not tethered
 
         TetherMode              _lastTetherMode;
+
+        osg::Matrix             _mapNodeFrame, _mapNodeFrameInverse;
 
         // returns "t", the parametric coefficient of a timed transition. 1=finished.
         double setViewpointFrame(double time_s);

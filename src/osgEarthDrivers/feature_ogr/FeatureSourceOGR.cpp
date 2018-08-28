@@ -316,7 +316,7 @@ public:
     }
 
     //override
-    FeatureCursor* createFeatureCursor(const Symbology::Query& query)
+    FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
     {
         if ( _geometry.valid() )
         {
@@ -360,7 +360,8 @@ public:
                     this,
                     getFeatureProfile(),
                     newQuery,
-                    getFilters() );
+                    getFilters(),
+                    progress);
             }
             else
             {

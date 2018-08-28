@@ -87,7 +87,7 @@ public:
         {
             if ( _features->getFeatureProfile() )
             {
-                osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
+                osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(progress);
                 if ( cursor.valid() && cursor->hasMore() )
                 {
                     Feature* f = cursor->nextFeature();

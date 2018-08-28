@@ -63,7 +63,7 @@ namespace osgEarth { namespace Features
         void add( FeatureSource* source, FeaturePredicate* predicate );
 
     public: // FeatureSource
-        virtual FeatureCursor* createFeatureCursor( const Query& query );
+        virtual FeatureCursor* createFeatureCursor(const Query& query, ProgressCallback* progress);
         virtual const FeatureSchema& getSchema() const;
         virtual Feature* getFeature( FeatureID id ) { return 0L; }
 

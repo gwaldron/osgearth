@@ -64,7 +64,7 @@ public:
         //nop
     }
 
-    FeatureCursor* createFeatureCursor( const Symbology::Query& query )
+    FeatureCursor* createFeatureCursor( const Symbology::Query& query, ProgressCallback* progress )
     {
         if (!query.tileKey().isSet())
         {

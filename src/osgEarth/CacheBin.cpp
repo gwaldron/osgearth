@@ -248,8 +248,8 @@ namespace
                 {
                     // get the hashed key that the cache bin will use to actually write the image,
                     // and replace the image filename with it.
-                    std::string cacheKey = path;
-                    std::string hashKey = _bin->getHashedKey(cacheKey);
+                    std::string cacheKey = Cache::makeCacheKey(path, "xref");
+                    //std::string hashKey = _bin->getHashedKey(cacheKey);
 
                     // Append the pseudoloader suffix so our PL can locate the image in the cache.
                     image.setFileName(cacheKey + ".osgearth_cachebin");

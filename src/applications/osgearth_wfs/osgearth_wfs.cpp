@@ -103,7 +103,7 @@ main(int argc, char** argv)
         }
 
         // Get the features
-        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(query);
+        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(query, 0L);
         FeatureList features;
         cursor->fill(features);
         OE_NOTICE << "Got " << features.size() << " features" << std::endl;

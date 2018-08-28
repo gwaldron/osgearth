@@ -75,6 +75,12 @@ namespace osgEarth { namespace Symbology
         /** Lighten/darken the color by factor */
         Color brightness( float factor ) const;
 
+        //! gets the color as HSL (and alpha)
+        osg::Vec4f asHSL() const;
+
+        //! populates the RGB from HSL
+        void fromHSL(const osg::Vec4f& hsla);
+
         // built in colors
         // http://en.wikipedia.org/wiki/Web_colors#HTML_color_names
 

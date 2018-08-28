@@ -20,6 +20,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
+#include <osgEarth/URI>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -295,8 +296,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // we can't get it and it wasn't cancelled
         if (!result.valid())
         {
-            if ( progress == 0L ||
-                 ( !progress->isCanceled() && !progress->needsRetry() ) )
+            if ( progress == 0L || !progress->isCanceled() )
             {
                 source->getBlacklist()->add( key );
             }
@@ -498,7 +498,10 @@ ElevationLayer::createHeightField(const TileKey&    key,
     bool fromMemCache = false;
 
     // cache key combines the key with the full signature (incl vdatum)
-    std::string cacheKey = Stringify() << key.str() << "_" << key.getProfile()->getFullSignature();
+    // the cache key combines the Key and the horizontal profile.
+    std::string cacheKey = Cache::makeCacheKey(
+        Stringify() << key.str() << "-" << key.getProfile()->getHorizSignature(),
+        "elevation");
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
 
     if ( _memCache.valid() )
@@ -988,168 +991,198 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
     TileKey scratchKey; // Storage if a new key needs to be constructed
 
-    for (unsigned c = 0; c < numColumns; ++c)
+    bool requiresResample = true;
+
+    // If we only have a single contender layer, and the tile is the same size as the requested 
+    // heightfield then we just use it directly and avoid having to resample it
+    if (contenders.size() == 1)
     {
-        double x = xmin + (dx * (double)c);
+        ElevationLayer* layer = contenders[0].layer.get();
+        TileKey& contenderKey = contenders[0].key;
 
-        // periodically check for cancelation
-        if (progress && progress->isCanceled())
+        GeoHeightField layerHF = layer->createHeightField(contenderKey, 0);
+        if (layerHF.valid())
         {
-            return false;
-        }
-
-        for (unsigned r = 0; r < numRows; ++r)
-        {
-            double y = ymin + (dy * (double)r);
-
-            // Collect elevations from each layer as necessary.
-            int resolvedIndex = -1;
-
-            osg::Vec3 normal_sum(0,0,0);
-
-            for(int i=0; i<contenders.size() && resolvedIndex<0; ++i)
+            if (layerHF.getHeightField()->getNumColumns() == hf->getNumColumns() &&
+                layerHF.getHeightField()->getNumRows() == hf->getNumRows())
             {
-                ElevationLayer* layer = contenders[i].layer.get();                
-                TileKey& contenderKey = contenders[i].key;
-                int index = contenders[i].index;
+                requiresResample = false;
+                memcpy(hf->getFloatArray()->asVector().data(),
+                    layerHF.getHeightField()->getFloatArray()->asVector().data(),
+                    sizeof(float) * hf->getFloatArray()->size()
+                );
+                deltaLOD->resize(hf->getFloatArray()->size(), 0);
+                realData = true;
+            }
+        }
+    }
 
-                if ( heightFailed[i] )
-                    continue;
+    // If we need to mosaic multiple layers or resample it to a new output tilesize go through a resampling loop.
+    if (requiresResample)
+    {
+        for (unsigned c = 0; c < numColumns; ++c)
+        {
+            double x = xmin + (dx * (double)c);
 
-                TileKey* actualKey = &contenderKey;
+            // periodically check for cancelation
+            if (progress && progress->isCanceled())
+            {
+                return false;
+            }
 
-                GeoHeightField& layerHF = heightFields[i];
+            for (unsigned r = 0; r < numRows; ++r)
+            {
+                double y = ymin + (dy * (double)r);
 
-                if (!layerHF.valid())
+                // Collect elevations from each layer as necessary.
+                int resolvedIndex = -1;
+
+                osg::Vec3 normal_sum(0, 0, 0);
+
+                for (int i = 0; i < contenders.size() && resolvedIndex < 0; ++i)
                 {
-                    // We couldn't get the heightfield from the cache, so try to create it.
-                    // We also fallback on parent layers to make sure that we have data at the location even if it's fallback.
-                    while (!layerHF.valid() && actualKey->valid() && layer->isKeyInLegalRange(*actualKey))
+                    ElevationLayer* layer = contenders[i].layer.get();
+                    TileKey& contenderKey = contenders[i].key;
+                    int index = contenders[i].index;
+
+                    if (heightFailed[i])
+                        continue;
+
+                    TileKey* actualKey = &contenderKey;
+
+                    GeoHeightField& layerHF = heightFields[i];
+
+                    if (!layerHF.valid())
                     {
-                        layerHF = layer->createHeightField(*actualKey, progress);
-                        if (!layerHF.valid())
+                        // We couldn't get the heightfield from the cache, so try to create it.
+                        // We also fallback on parent layers to make sure that we have data at the location even if it's fallback.
+                        while (!layerHF.valid() && actualKey->valid() && layer->isKeyInLegalRange(*actualKey))
                         {
-                            if (actualKey != &scratchKey)
+                            layerHF = layer->createHeightField(*actualKey, progress);
+                            if (!layerHF.valid())
                             {
-                                scratchKey = *actualKey;
-                                actualKey = &scratchKey;
+                                if (actualKey != &scratchKey)
+                                {
+                                    scratchKey = *actualKey;
+                                    actualKey = &scratchKey;
+                                }
+                                *actualKey = actualKey->createParentKey();
                             }
-                            *actualKey = actualKey->createParentKey();
+                        }
+
+                        // Mark this layer as fallback if necessary.
+                        if (layerHF.valid())
+                        {
+                            heightFallback[i] = (*actualKey != contenderKey); // actualKey != contenders[i].second;
+                            numHeightFieldsInCache++;
+                        }
+                        else
+                        {
+                            heightFailed[i] = true;
+#ifdef ANALYZE
+                            layerAnalysis[layer].failed = true;
+                            layerAnalysis[layer].actualKeyValid = actualKey->valid();
+                            if (progress) layerAnalysis[layer].message = progress->message();
+#endif
+                            continue;
                         }
                     }
 
-                    // Mark this layer as fallback if necessary.
                     if (layerHF.valid())
                     {
-                        heightFallback[i] = (*actualKey != contenderKey); // actualKey != contenders[i].second;
-                        numHeightFieldsInCache++;
-                    }
-                    else
-                    {
-                        heightFailed[i] = true;
-#ifdef ANALYZE
-                        layerAnalysis[layer].failed = true;
-                        layerAnalysis[layer].actualKeyValid = actualKey->valid();
-                        if (progress) layerAnalysis[layer].message = progress->message();
-#endif
-                        continue;
-                    }
-                }
-
-                if (layerHF.valid())
-                {
-                    bool isFallback = heightFallback[i];
+                        bool isFallback = heightFallback[i];
 #ifdef ANALYZE
                         layerAnalysis[layer].fallback = isFallback;
 #endif
 
-                    // We only have real data if this is not a fallback heightfield.
-                    if (!isFallback)
-                    {
-                        realData = true;
-                    }
-                    
-                    float elevation;
-                    if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation))
-                    {
-                        if ( elevation != NO_DATA_VALUE )
+                        // We only have real data if this is not a fallback heightfield.
+                        if (!isFallback)
                         {
-                            // remember the index so we can only apply offset layers that
-                            // sit on TOP of this layer.
-                            resolvedIndex = index;
+                            realData = true;
+                        }
 
-                            hf->setHeight(c, r, elevation);
+                        float elevation;
+                        if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation))
+                        {
+                            if (elevation != NO_DATA_VALUE)
+                            {
+                                // remember the index so we can only apply offset layers that
+                                // sit on TOP of this layer.
+                                resolvedIndex = index;
+
+                                hf->setHeight(c, r, elevation);
 
 #ifdef ANALYZE
-                            layerAnalysis[layer].samples++;
+                                layerAnalysis[layer].samples++;
 #endif
 
-                            if (deltaLOD)
+                                if (deltaLOD)
+                                {
+                                    (*deltaLOD)[r*numColumns + c] = key.getLOD() - actualKey->getLOD();
+                                }
+                            }
+                            else
                             {
-                                (*deltaLOD)[r*numColumns + c] = key.getLOD() - actualKey->getLOD();
+                                ++nodataCount;
                             }
                         }
-                        else
+                    }
+
+
+                    // Clear the heightfield cache if we have too many heightfields in the cache.
+                    if (numHeightFieldsInCache >= maxHeightFields)
+                    {
+                        //OE_NOTICE << "Clearing cache" << std::endl;
+                        for (unsigned int k = 0; k < heightFields.size(); k++)
                         {
-                            ++nodataCount;
+                            heightFields[k] = GeoHeightField::INVALID;
+                            heightFallback[k] = false;
                         }
-                    }                    
-                }
-
-
-                // Clear the heightfield cache if we have too many heightfields in the cache.
-                if (numHeightFieldsInCache >= maxHeightFields)
-                {
-                    //OE_NOTICE << "Clearing cache" << std::endl;
-                    for (unsigned int k = 0; k < heightFields.size(); k++)
-                    {
-                        heightFields[k] = GeoHeightField::INVALID;
-                        heightFallback[k] = false;
+                        numHeightFieldsInCache = 0;
                     }
-                    numHeightFieldsInCache = 0;
                 }
-            }
 
-            for(int i=offsets.size()-1; i>=0; --i)
-            {
-                // Only apply an offset layer if it sits on top of the resolved layer
-                // (or if there was no resolved layer).
-                if (resolvedIndex >= 0 && offsets[i].index < resolvedIndex)
-                    continue;
-
-                TileKey &contenderKey = offsets[i].key;
-                
-                if ( offsetFailed[i] == true )
-                    continue;
-
-                GeoHeightField& layerHF = offsetFields[i];
-                if ( !layerHF.valid() )
+                for (int i = offsets.size() - 1; i >= 0; --i)
                 {
-                    ElevationLayer* offset = offsets[i].layer.get();
-
-                    layerHF = offset->createHeightField(contenderKey, progress);
-                    if ( !layerHF.valid() )
-                    {
-                        offsetFailed[i] = true;
+                    // Only apply an offset layer if it sits on top of the resolved layer
+                    // (or if there was no resolved layer).
+                    if (resolvedIndex >= 0 && offsets[i].index < resolvedIndex)
                         continue;
-                    }
-                }
 
-                // If we actually got a layer then we have real data
-                realData = true;
+                    TileKey &contenderKey = offsets[i].key;
 
-                float elevation = 0.0f;
-                if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
-                    elevation != NO_DATA_VALUE)
-                {                    
-                    hf->getHeight(c, r) += elevation;
+                    if (offsetFailed[i] == true)
+                        continue;
 
-                    // Update the resolution tracker to account for the offset. Sadly this
-                    // will wipe out the resolution of the actual data, and might result in 
-                    // normal faceting. See the comments on "createNormalMap" for more info
-                    if (deltaLOD)
+                    GeoHeightField& layerHF = offsetFields[i];
+                    if (!layerHF.valid())
                     {
-                        (*deltaLOD)[r*numColumns + c] = key.getLOD() - contenderKey.getLOD();
+                        ElevationLayer* offset = offsets[i].layer.get();
+
+                        layerHF = offset->createHeightField(contenderKey, progress);
+                        if (!layerHF.valid())
+                        {
+                            offsetFailed[i] = true;
+                            continue;
+                        }
+                    }
+
+                    // If we actually got a layer then we have real data
+                    realData = true;
+
+                    float elevation = 0.0f;
+                    if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
+                        elevation != NO_DATA_VALUE)
+                    {
+                        hf->getHeight(c, r) += elevation;
+
+                        // Update the resolution tracker to account for the offset. Sadly this
+                        // will wipe out the resolution of the actual data, and might result in 
+                        // normal faceting. See the comments on "createNormalMap" for more info
+                        if (deltaLOD)
+                        {
+                            (*deltaLOD)[r*numColumns + c] = key.getLOD() - contenderKey.getLOD();
+                        }
                     }
                 }
             }

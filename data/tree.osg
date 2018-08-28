@@ -41,10 +41,6 @@ Group {
             internalFormatMode USE_IMAGE_DATA_FORMAT
             resizeNonPowerOfTwo TRUE
           }
-          TexEnv {
-            UniqueID TexEnv_2
-            mode MODULATE
-          }
         }
       }
       num_drawables 1

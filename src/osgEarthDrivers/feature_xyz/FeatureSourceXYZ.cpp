@@ -273,21 +273,17 @@ public:
           return URI();
       }
 
-      FeatureCursor* createFeatureCursor(const Symbology::Query& query)
+      FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
       {
           FeatureCursor* result = 0L;
 
           URI uri =  createURL( query );
           if (uri.empty()) return 0;
 
-          // check the blacklist:
-          if ( Registry::instance()->isBlacklisted(uri.full()) )
-              return 0L;
-
           OE_DEBUG << LC << uri.full() << std::endl;
 
           // read the data:
-          ReadResult r = uri.readString( _readOptions.get() );
+          ReadResult r = uri.readString( _readOptions.get(), progress );
 
           const std::string& buffer = r.getString();
           const Config&      meta   = r.metadata();
@@ -341,9 +337,6 @@ public:
 
           //result = new FeatureListCursor(features);
           result = dataOK ? new FeatureListCursor( features ) : 0L;
-
-          if ( !result )
-              Registry::instance()->blacklist( uri.full() );
 
           return result;
       }

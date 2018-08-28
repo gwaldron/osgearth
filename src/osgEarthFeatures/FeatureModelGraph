@@ -143,7 +143,8 @@ namespace osgEarth { namespace Features
             const Query&          baseQuery, 
             const GeoExtent&      extent, 
             FeatureIndexBuilder*  index,
-            const osgDB::Options* readOptions);
+            const osgDB::Options* readOptions,
+            ProgressCallback*     progress);
 
 
     private:
@@ -154,7 +155,8 @@ namespace osgEarth { namespace Features
             const Style&          style, 
             const Query&          query, 
             FeatureIndexBuilder*  index,
-            const osgDB::Options* readOptions);
+            const osgDB::Options* readOptions,
+            ProgressCallback*     progress);
 
         osg::Group* createStyleGroup(
             const Style&          style, 
@@ -167,14 +169,16 @@ namespace osgEarth { namespace Features
             const Query&          baseQuery,
             FeatureIndexBuilder*  index,
             osg::Group*           parent,
-            const osgDB::Options* readOptions);
+            const osgDB::Options* readOptions,
+            ProgressCallback*     progress);
 
         void queryAndSortIntoStyleGroups(
             const Query&            query,
             const StringExpression& styleExpr,
             FeatureIndexBuilder*    index,
             osg::Group*             parent,
-            const osgDB::Options*   readOptions);
+            const osgDB::Options*   readOptions,
+            ProgressCallback*       progress);
 
         osg::Group* getOrCreateStyleGroupFromFactory(
             const Style& style);

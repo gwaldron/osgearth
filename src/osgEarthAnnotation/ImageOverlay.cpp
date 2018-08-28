@@ -23,15 +23,11 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarth/GeometryClamper>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/ShaderGenerator>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
@@ -56,11 +52,29 @@ namespace
     }    
 
     static Distance default_geometryResolution(5.0, Units::DEGREES);
+
+    const char* imageVS =
+        "#version " GLSL_VERSION_STR "\n"
+        "out vec2 oe_ImageOverlay_texcoord; \n"
+        "void oe_ImageOverlay_VS(inout vec4 vertex) { \n"
+        "    oe_ImageOverlay_texcoord = gl_MultiTexCoord0.st; \n"
+        "} \n";
+
+    const char* imageFS =
+        "#version " GLSL_VERSION_STR "\n"
+        "in vec2 oe_ImageOverlay_texcoord; \n"
+        "uniform sampler2D oe_ImageOverlay_tex; \n"
+        "void oe_ImageOverlay_FS(inout vec4 color) { \n"
+        "    color = texture(oe_ImageOverlay_tex, oe_ImageOverlay_texcoord); \n"
+        "} \n";
+
 }
 
 //---------------------------------------------------------------------------
 
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
+
+osg::ref_ptr<osg::StateSet> ImageOverlay::_overlayStateSet;
 
 ImageOverlay::ImageOverlay(const Config& conf, const osgDB::Options* readOptions) :
 AnnotationNode(conf, readOptions),
@@ -216,13 +230,29 @@ ImageOverlay::construct()
 {
     _updateScheduled = false;
 
-    _root = new osg::Group;
-
     // place the geometry under a drapeable node so it will project onto the terrain    
     DrapeableNode* d = new DrapeableNode();
     d->setDrapingEnabled(*_draped);
     addChild( d );
-
+    
+    if (_overlayStateSet.valid() == false)
+    {
+        static Threading::Mutex mutex;
+        mutex.lock();
+        if (_overlayStateSet.valid() == false)
+        {
+            _overlayStateSet = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(_overlayStateSet.get());
+            vp->setFunction("oe_ImageOverlay_VS", imageVS, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_ImageOverlay_FS", imageFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            _overlayStateSet->addUniform(new osg::Uniform("oe_ImageOverlay_tex", 0));
+            
+            _overlayStateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+        }
+        mutex.unlock();
+    }
+    _root = new osg::Group();
+    _root->setStateSet(_overlayStateSet.get());
     d->addChild( _root );
 
     ADJUST_EVENT_TRAV_COUNT(this, 1);
@@ -238,16 +268,10 @@ ImageOverlay::compile()
         _root->removeChildren(0, _root->getNumChildren());
     }
 
-    if ( !_clampCallback.valid() )
-    {
-        _clampCallback = new TerrainCallbackAdapter<ImageOverlay>(this);
-    }
-
     if ( getMapNode() )
     {                
         const SpatialReference* mapSRS = getMapNode()->getMapSRS();
 
-        // calculate a bounding polytope in world space (for mesh clamping):
         osg::ref_ptr<Feature> f = new Feature( new Polygon(), mapSRS->getGeodeticSRS() );
         Geometry* g = f->getGeometry();
         g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
@@ -256,8 +280,6 @@ ImageOverlay::compile()
         g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
 
         osgEarth::Bounds bounds = getBounds();
-
-        f->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _boundingPolytope );
 
         FeatureList features;
         if (!mapSRS->isGeographic())        
@@ -304,16 +326,6 @@ ImageOverlay::compile()
 
         // image overlay is unlit by default.
         setDefaultLighting(false);
-        
-        // Set the annotation up for auto-clamping. We always need to auto-clamp a draped image
-        // so that the mesh roughly conforms with the surface, otherwise the draping routine
-        // might clip it.
-        Style style;
-        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
-        applyStyle( style );
-
-        getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-        clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
     }
 }
 
@@ -387,14 +399,12 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
 
     osg::MatrixTransform* transform = new osg::MatrixTransform;
     
-    osg::Geode* geode = new osg::Geode;
-    // Disable depth test
-    geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    transform->addChild(geode);
+    //osg::Geode* geode = new osg::Geode;
+    //transform->addChild(geode);
 
     osg::Geometry* geometry = new osg::Geometry();     
     geometry->setUseVertexBufferObjects(true);
-    geode->addDrawable( geometry );
+    transform->addChild(geometry);
 
     // next, convert to world coords and create the geometry:
     osg::Vec3Array* verts = new osg::Vec3Array();
@@ -437,7 +447,7 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
         _texture->setWrap(_texture->WRAP_T, _texture->CLAMP_TO_EDGE);
         _texture->setResizeNonPowerOfTwoHint(false);
         updateFilters();
-        geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);    
+        transform->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);    
         flip = _image->getOrigin()==osg::Image::TOP_LEFT;
     }
 
@@ -484,12 +494,6 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
     {
         MeshSubdivider ms(osg::Matrixd::inverse(transform->getMatrix()), transform->getMatrix());
         ms.run(*geometry, _geometryResolution.as(Units::RADIANS), GEOINTERP_RHUMB_LINE);
-    } 
-
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        //OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
-        Registry::shaderGenerator().run( geode, "osgEarth.ImageOverlay" );
     }
 
     return transform;
@@ -852,32 +856,3 @@ ImageOverlay::removeCallback( ImageOverlayCallback* cb )
         _callbacks.erase( i );
     }    
 }
-
-void
-ImageOverlay::clamp(osg::Node* graph, const Terrain* terrain)
-{
-    if ( terrain && graph )
-    {
-        // don't bother storing clamperData in the object since we are not
-        // doing any terrain-relative operations -gw
-        GeometryClamper::LocalData clamperData;
-        GeometryClamper clamper(clamperData);
-        clamper.setTerrainPatch( graph );
-        clamper.setTerrainSRS( terrain->getSRS() );
-
-        this->accept( clamper );
-        this->dirtyBound();
-    }
-}
-
-void
-ImageOverlay::onTileAdded(const TileKey&          key, 
-                          osg::Node*              graph, 
-                          TerrainCallbackContext& context)
-{
-    if ( graph == 0L || !key.valid() || _boundingPolytope.contains(graph->getBound()) )
-    {
-        clamp( graph, context.getTerrain() );
-    }
-}
-

@@ -120,8 +120,8 @@ namespace osgEarth
     /** Makes an HTML color ("#rrggbb" or "#rrggbbaa") from an OSG color. */
     extern OSGEARTH_EXPORT std::string vec4fToHtmlColor( const osg::Vec4f& c );
 
-    /** Makes a valid filename, hopefully, out of a string (without touching slashes) */
-    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input );
+    /** Makes a valid filename out of a string */
+    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input, bool allowSubdir=false );
 
     /** Generates a hashed integer for a string (poor man's MD5) */
     extern OSGEARTH_EXPORT unsigned hashString( const std::string& input );

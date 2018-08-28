@@ -1,8 +1,9 @@
 env:
   global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "vLe6I4mS64oabuhMJ5NHyJLJHxudgErRoKpoXZP9/8A6rx/TmZ/gYCmtENmKublSIyOmjoVoZ8lvw10a1zCgnlQEjdijxwPvO1IN4XlesjhbxFRysmYAQZsFifZ91ta/0Ajw6NV6ofhmWCBRUc2yCEexnf+xvj80+v6tq2q3YFIL0shHjm7c3Z5nOuKPTsxLEAtHYurUM3ao4gcppc5lOeOT+r+ENE0MCQwSKOXiXh4BWCkP9cQvKel8ineBl3T6qRrT0OQQ/OBeSba/orVrf6Y3Ls+BYM48NjxG0TN2PIP68eJVQnvPNZ+j42MypkrFckcJDM/N/1pI6ZiY0PrzPMX3SisP5WDKimowWuyaI/pdOO2tBqPIIdZvuAoUyh5MYBBHLGeHf4jCD+YwY2JcOdStHgkp4NE2JqjXvP9V4TizFjrZ1jb+MXHwVKF4mleo6Eoq+qOdj8Y9iFhwmpuf9oGgoEIWR4uxgrGwiSRVVQ4o5uouP1MENvqaFB5JMTep/PSAWNLw18sgza3NiEhardI73bvl/xEvJssdeoGzpRl6YAo+sprZ93wsuzSh2beils8f1CjKQsuoDIASYre93qGEdUXRnhQvF8wmlYnQLJamYEMN37yduzZ2OHuA7+1kkMSTjPZAIoEsuyOG+25eHXnPQBECe6iqWFuKVgzdero="
+  - OSGEARTH_CACHE_PATH=/tmp
+  # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+  #   via the "travis encrypt" command using the project repo's public key
+  - secure: "vLe6I4mS64oabuhMJ5NHyJLJHxudgErRoKpoXZP9/8A6rx/TmZ/gYCmtENmKublSIyOmjoVoZ8lvw10a1zCgnlQEjdijxwPvO1IN4XlesjhbxFRysmYAQZsFifZ91ta/0Ajw6NV6ofhmWCBRUc2yCEexnf+xvj80+v6tq2q3YFIL0shHjm7c3Z5nOuKPTsxLEAtHYurUM3ao4gcppc5lOeOT+r+ENE0MCQwSKOXiXh4BWCkP9cQvKel8ineBl3T6qRrT0OQQ/OBeSba/orVrf6Y3Ls+BYM48NjxG0TN2PIP68eJVQnvPNZ+j42MypkrFckcJDM/N/1pI6ZiY0PrzPMX3SisP5WDKimowWuyaI/pdOO2tBqPIIdZvuAoUyh5MYBBHLGeHf4jCD+YwY2JcOdStHgkp4NE2JqjXvP9V4TizFjrZ1jb+MXHwVKF4mleo6Eoq+qOdj8Y9iFhwmpuf9oGgoEIWR4uxgrGwiSRVVQ4o5uouP1MENvqaFB5JMTep/PSAWNLw18sgza3NiEhardI73bvl/xEvJssdeoGzpRl6YAo+sprZ93wsuzSh2beils8f1CjKQsuoDIASYre93qGEdUXRnhQvF8wmlYnQLJamYEMN37yduzZ2OHuA7+1kkMSTjPZAIoEsuyOG+25eHXnPQBECe6iqWFuKVgzdero="
 os: linux
 dist: trusty
 sudo: required

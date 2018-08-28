@@ -434,8 +434,8 @@ PointDrawable::updateFirstCount()
         osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(getPrimitiveSet(0));
         if (da)
         {
-            unsigned first = _first >= 0u ? _first : 0u;
-            unsigned count = _count > 0u? _count : _current->size()-first;
+            unsigned first = _first < _current->size() ? _first : 0u;
+            unsigned count = _count <= _current->size()-first ? _count : _current->size()-first;
             da->setFirst(first);
             da->setCount(count);
             da->dirty();
@@ -599,6 +599,7 @@ PointDrawable::dirty()
 }
 
 osg::ref_ptr<osg::StateSet> PointDrawable::_sharedStateSet;
+bool PointDrawable::_sharedStateSetCompiled = false;
 
 void
 PointDrawable::setupState()
@@ -632,32 +633,39 @@ PointDrawable::setupState()
 }
 
 void
+PointDrawable::compileGLObjects(osg::RenderInfo& ri) const
+{
+    checkSharedStateSet(ri.getState());
+    osg::Geometry::compileGLObjects(ri);
+}
+
+void
 PointDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
-    // The mode validity for PointSprite might never get set since
-    // the OSG GLObjectVisitor cannot traverse the shared stateset;
-    // so this block of code will set it upon first draw.
-    static bool s_sharedStateActivated = false;
-    static Threading::Mutex s_mutex;
+    checkSharedStateSet(ri.getState());
+    osg::Geometry::drawImplementation(ri);
+}
 
-    if (!s_sharedStateActivated)
+void
+PointDrawable::checkSharedStateSet(osg::State* state) const
+{
+    if (_sharedStateSet.valid() && !_sharedStateSetCompiled)
     {
-        s_mutex.lock();
-        if (!s_sharedStateActivated)
-        {                
+        static Threading::Mutex s_mutex;
+        Threading::ScopedMutexLock lock(s_mutex);
+
+        if (!_sharedStateSetCompiled)
+        {
             osg::PointSprite* sprite = dynamic_cast<osg::PointSprite*>(
                 _sharedStateSet->getTextureAttribute(0, osg::StateAttribute::POINTSPRITE));
 
             if (sprite)
-                sprite->checkValidityOfAssociatedModes(*ri.getState());
+                sprite->checkValidityOfAssociatedModes(*state);
 
-            s_sharedStateActivated = true;
+            _sharedStateSet->compileGLObjects(*state);
+            _sharedStateSetCompiled = true;
         }
-
-        s_mutex.unlock();
     }
-
-    osg::Geometry::drawImplementation(ri);
 }
 
 void

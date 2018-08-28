@@ -51,9 +51,9 @@ void
 GLUtils::setGlobalDefaults(osg::StateSet* stateSet)
 {
     // anything that uses a uniform.
-    setLineWidth(stateSet, 1.0f, 1);
-    setLineStipple(stateSet, 1, 0xffff, 1);
-    setPointSize(stateSet, 1, 1);
+    setLineWidth(stateSet, 1.0f, osg::StateAttribute::ON);
+    setLineStipple(stateSet, 1, 0xffff, osg::StateAttribute::ON);
+    setPointSize(stateSet, 1, osg::StateAttribute::ON);
 }
 
 void

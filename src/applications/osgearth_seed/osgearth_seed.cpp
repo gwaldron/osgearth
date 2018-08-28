@@ -182,7 +182,7 @@ seed( osg::ArgumentParser& args )
 
         if (status.isOK())
         {
-            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
             while (cursor.valid() && cursor->hasMore())
             {
                 osg::ref_ptr< Feature > feature = cursor->nextFeature();

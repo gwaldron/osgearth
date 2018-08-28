@@ -868,10 +868,16 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 const osg::Vec3&
 LineDrawable::getVertex(unsigned index) const
 {
+    return (*_current)[getRealIndex(index)];
+}
+
+unsigned
+LineDrawable::getRealIndex(unsigned index) const
+{
     if (_gpu)
-        return (_mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP) ? (*_current)[index * 4u] : (*_current)[index * 2u];
+        return (_mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP) ? index*4u : index*2u;
     else
-        return (*_current)[index];
+        return index;
 }
 
 void

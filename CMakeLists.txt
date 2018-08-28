@@ -177,16 +177,16 @@ ENDIF(UNIX)
 
 OPTION(OSGEARTH_QT_BUILD "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
 OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
-set(OSGEARTH_QT_VERSION 5 CACHE STRING "Qt version to use")
+set(DESIRED_QT_VERSION 5 CACHE STRING "Qt version to use")
 
 IF(OSGEARTH_QT_BUILD)
   # To select a specific version of QT define DESIRED_QT_VERSION
   # via cmake -DDESIRED_QT_VERSION=5
   # QUIET option disables messages if the package cannot be found.
-  IF  (OSGEARTH_QT_VERSION)
-      IF  (OSGEARTH_QT_VERSION MATCHES "5")
+  IF  (DESIRED_QT_VERSION)
+      IF  (DESIRED_QT_VERSION MATCHES "5")
           FIND_PACKAGE(Qt5Widgets REQUIRED)
-      ELSEIF (OSGEARTH_QT_VERSION MATCHES "4")
+      ELSEIF (DESIRED_QT_VERSION MATCHES "4")
           FIND_PACKAGE(Qt4 REQUIRED)
       ENDIF()
   ELSE()

@@ -1444,11 +1444,8 @@ VirtualProgram::apply( osg::State& state ) const
 
         osg::Program::PerContextProgram* pcp;
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,4)
         pcp = program->getPCP( state );
-#else
-        pcp = program->getPCP( contextID );
-#endif
+
         bool useProgram = state.getLastAppliedProgramObject() != pcp;
 
 #ifdef DEBUG_APPLY_COUNTS

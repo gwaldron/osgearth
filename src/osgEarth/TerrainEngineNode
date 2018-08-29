@@ -276,6 +276,8 @@ namespace osgEarth
         bool _requireElevationBorder;
         bool _requireFullDataAtFirstLOD;
 
+        osg::ref_ptr<const Map> _map;
+
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.
         virtual void notifyExistingNodes(TerrainEngine::NodeCallback* cb) { }
@@ -340,7 +342,6 @@ namespace osgEarth
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
-        osg::ref_ptr<const Map>            _map;
         bool                               _redrawRequired;
         float                              _verticalScale;
         osg::ref_ptr<Terrain>              _terrainInterface;

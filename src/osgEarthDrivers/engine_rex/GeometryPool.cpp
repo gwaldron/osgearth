@@ -627,7 +627,6 @@ SharedGeometry::empty() const
         (_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
 }
 
-
 #ifdef SUPPORTS_VAO
 osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
 {
@@ -648,6 +647,7 @@ osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& r
     }
     if (texUnits)
         vas->assignTexCoordArrayDispatcher(texUnits);
+
     if (state.useVertexArrayObject(_useVertexArrayObject))
     {
         vas->generateVertexArrayObject();
@@ -752,10 +752,9 @@ void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) c
 
 #ifdef SUPPORTS_VAO
     osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+
     if (!state.useVertexArrayObject(_useVertexArrayObject) || vas->getRequiresSetArrays())
     {
-        // OSG_NOTICE<<"   sending vertex arrays vas->getRequiresSetArrays()="<<vas->getRequiresSetArrays()<<std::endl;
-
         vas->lazyDisablingOfVertexAttributes();
 
         // set up arrays

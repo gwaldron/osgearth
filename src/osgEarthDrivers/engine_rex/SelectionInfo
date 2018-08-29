@@ -45,7 +45,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SelectionInfo() : _numLods(0), _uiFirstLOD(0) { }
 
         bool initialized(void) const;
-        //void initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned uiTileSize, double fLodFar);
         void initialize(unsigned uiFirstLod, unsigned uiMaxLod, unsigned uiTileSize, const Profile* profile, double mtrf);
 
         unsigned numLods(void) const;
@@ -75,7 +74,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::pair<unsigned, unsigned>   _uiGridDimensions; 
         std::vector<VisParameters>      _vecVisParams;
         unsigned                        _uiFirstLOD;
-
         static const double             _fMorphStartRatio; 
 
         // This is the lod at which morphing should start (used by shader)

@@ -129,11 +129,16 @@ namespace
                     {
                         TileKey key = loader->getTileKeyForRequest(requestUID);
 
-                        MapFrame frame(engine->getMap());
-                        if ( frame.isCached(key) )
+                        const Map* map = engine->getMap();
+                        if (map)
+                        {
+                            LayerVector layers;
+                            map->getLayers(layers);
+                            if (map->isFast(key, layers))
                         {
                             result = LOCAL_FILE;
                         }
+                    }
                     }
 
                     //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";

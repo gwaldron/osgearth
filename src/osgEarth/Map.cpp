@@ -696,6 +696,47 @@ Map::getWorldSRS() const
 }
 
 bool
+Map::isFast(const TileKey& key, const LayerVector& layers) const
+{
+    if (getCache() == NULL)
+        return false;
+
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        Layer* layer = i->get();
+        if (!layer)
+            continue;
+
+        if (!layer->getEnabled())
+            continue;
+
+        TerrainLayer* terrainlayer = dynamic_cast<TerrainLayer*>(layer);
+        if (terrainlayer)
+        {
+            if (terrainlayer->getCacheSettings()->cachePolicy()->isCacheDisabled())
+                return false;
+
+            //If no data is available on this tile, we'll be fast
+            if (!terrainlayer->mayHaveData(key))
+                continue;
+
+            // No tile source? skip it
+            osg::ref_ptr< TileSource > source = terrainlayer->getTileSource();
+            if (!source.valid())
+                continue;
+
+            //If the tile is blacklisted, it should also be fast.
+            if (source->getBlacklist()->contains(key))
+                continue;
+
+            if (!terrainlayer->isCached(key))
+                return false;
+        }
+    }
+    return true;
+}
+
+bool
 Map::sync(MapFrame& frame) const
 {
     bool result = false;

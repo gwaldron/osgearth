@@ -82,7 +82,6 @@ _isRootTile(false)
     //nop
 }
 
-
 void
 TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 {
@@ -97,21 +96,22 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _key = key;
 
     setName(key.str());
+
+    osg::ref_ptr<const Map> map = _context->getMap();
+    if (!map.valid())
+        return;
+
+    unsigned tileSize = context->getOptions().tileSize().get();
     
     // Mask generator creates geometry from masking boundaries when they exist.
-    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(
-        key, 
-        context->getOptions().tileSize().get(),
-        context->getMap());
-
-    MapInfo mapInfo(context->getMap());
+    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<SharedGeometry> geom;
     context->getGeometryPool()->getPooledGeometry(
         key,
-        mapInfo,         
-        context->getOptions().tileSize().get(),
+        MapInfo(map.get()),
+        tileSize,
         masks.get(), 
         geom);
 
@@ -137,7 +137,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // Create the node to house the tile drawable:
     _surface = new SurfaceNode(
         key,
-        mapInfo,
+        MapInfo(map.get()),
         context->getRenderBindings(),
         surfaceDrawable );
     
@@ -333,7 +333,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
 
     EngineContext* context = culler->getEngineContext();
 
-    if ( *context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+    if ( context->getOptions().rangeMode().get() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
     {
         float pixelSize = -1.0;
         if (context->getEngine()->getComputeRangeCallback())
@@ -490,10 +490,6 @@ TileNode::cull(TerrainCuller* culler)
         _lastAcceptSurfaceFrame.exchange( culler->getFrameStamp()->getFrameNumber() );
     }
 
-       
-    // Run any patch callbacks.
-    //context->invokeTilePatchCallbacks(cv, getTileKey(), _payloadStateSet.get(), _patch.get() );
-
     // If this tile is marked dirty, try loading data.
     if ( _dirty && canLoadData )
     {
@@ -545,8 +541,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
         if (_empty == false)
         {
             TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
-            static std::string steathName = "osgEarth.Stealth";
-            if (VisitorData::isSet(culler->getParent(), steathName))
+
+            if (VisitorData::isSet(culler->getParent(), "osgEarth.Stealth"))
             {
                 accept_cull_stealth( culler );
             }
@@ -923,7 +919,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         }
     }
 
-    // Handle all the shared samples (elevation, normal, etc.)
+    // Handle all the shared samplers (elevation, normal, etc.)
     const Samplers& parentSharedSamplers = parent->_renderModel._sharedSamplers;
     Samplers& mySharedSamplers = _renderModel._sharedSamplers;
     for (unsigned s = 0; s<mySharedSamplers.size(); ++s)
@@ -975,18 +971,14 @@ TileNode::load(TerrainCuller* culler)
     if ( _context->getOptions().highResolutionFirst() == false )
         lodPriority = (float)(numLods - lod);
 
-    float distance = culler->getDistanceToViewPoint(getBound().center(), true);
-
     // dist priority is in the range [0..1]
+    float distance = culler->getDistanceToViewPoint(getBound().center(), true);
     float maxRange = si.visParameters(0)._visibilityRange * culler->getRangeScale();
     float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority
     // (because of the biggest range), and second by distance.
     float priority = lodPriority + distPriority;
-
-    // normalize the composite priority to [0..1].
-    //priority /= (float)(numLods+1); // GW: moved this to the PagerLoader.
 
     // Submit to the loader.
     _context->getLoader()->load( _loadRequest.get(), priority, *culler );

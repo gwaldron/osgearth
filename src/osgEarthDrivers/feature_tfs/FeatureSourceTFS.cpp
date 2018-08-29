@@ -239,6 +239,17 @@ public:
             unsigned int tileX = key.getTileX();
             unsigned int tileY = key.getTileY();
             unsigned int level = key.getLevelOfDetail();
+
+            // attempt to verify that the request is within the first and max level
+            // of the data source.
+            const FeatureProfile* fp = getFeatureProfile();
+            if (fp && fp->getTiled())
+            {
+               if (fp->getFirstLevel() > level || fp->getMaxLevel() < level)
+               {
+                  return "";
+               }
+            }
             
             // TFS follows the same protocol as TMS, with the origin in the lower left of the profile.
             // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.            

@@ -91,6 +91,9 @@ namespace
 #define OSGEARTH_DUMP_SHADERS  "OSGEARTH_DUMP_SHADERS"
 #define OSGEARTH_MERGE_SHADERS "OSGEARTH_MERGE_SHADERS"
 
+#define OSGEARTH_DISABLE_GLRELEASE "OSGEARTH_VP_DISABLE_GL_RELEASE"
+static bool s_disableVPRelease = false;
+
 namespace
 {
 #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
@@ -771,6 +774,11 @@ _isAbstract        ( false )
         s_mergeShaders = true;
     }
 
+    if ( ::getenv(OSGEARTH_DISABLE_GLRELEASE) != 0L)
+    {
+        s_disableVPRelease = true;
+    }
+
     // a template object to hold program data (so we don't have to dupliate all the 
     // osg::Program methods..)
     _template = new osg::Program();
@@ -936,12 +944,13 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
+    if (s_disableVPRelease)
+        return;
     _programCacheMutex.lock();
 
     for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
     {
-        //if ( i->second->referenceCount() == 1 )
-            i->second._program->releaseGLObjects(state);
+        i->second._program->releaseGLObjects(state);
     }
 
     for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)

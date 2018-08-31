@@ -66,8 +66,6 @@ ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
 void
 ResourceReleaser::releaseGLObjects(osg::State* state) const
 {
-    osg::Drawable::releaseGLObjects(state);
-
     if (!_toRelease.empty())
     {
         Threading::ScopedMutexLock lock(_mutex);

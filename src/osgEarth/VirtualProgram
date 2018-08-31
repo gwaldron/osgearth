@@ -227,7 +227,7 @@ namespace osgEarth
         {
             osg::ref_ptr<osg::Program> _program;
             unsigned                   _frameLastUsed;
-            std::set<const User>       _users;
+            std::set<User>             _users;
         };
 
         typedef std::map<ProgramKey, Entry> ProgramMap;

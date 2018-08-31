@@ -218,6 +218,56 @@ namespace osgEarth
     typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
 
 
+    class /*internal*/ ProgramRepo : public osg::Referenced
+    {
+    public:
+        typedef osgEarth::UID User;
+
+        struct Entry
+        {
+            osg::ref_ptr<osg::Program> _program;
+            unsigned                   _frameLastUsed;
+            std::set<const User>       _users;
+        };
+
+        typedef std::map<ProgramKey, Entry> ProgramMap;
+
+        //! Exclusive lock on the repo
+        void lock();
+
+        //! unlock the repo
+        void unlock();
+
+        //! Search for a program matching the key and return it, adding the user
+        //! to its users list and updating the frame number.
+        osg::ref_ptr<osg::Program> use(const ProgramKey& key, unsigned frameNumber, const User user);
+
+        //! Insert a new program into the repo
+        void add(const ProgramKey& key, osg::Program* program, unsigned frameNumber, const User user);
+
+        //! Release anything used by this user
+        void release(const User user, osg::State* state);
+
+        //! Release a program back to the repo
+        void release(osg::Program* program, const User user, osg::State* state);
+
+        //! Look for an existing program in the repo that is equivalent to
+        //! the one passed in; if found, replace the input with the output
+        //! and update the user list.
+        //! Returns TRUE if a match was found.
+        bool share(osg::ref_ptr<osg::Program>& in_out, const User user);
+
+        //! Prune expired data
+        void prune(unsigned frameNumber, osg::State* state);
+
+        void resizeGLObjectBuffers(unsigned maxSize);
+
+    private:
+        mutable ProgramMap _db;
+        mutable Threading::Mutex _m;
+    };
+
+
     /**
      * VirtualProgram enables GLSL shader composition within osgEarth. It automatically
      * assembles shader functions into a full shader program at run time. You can add
@@ -422,11 +472,12 @@ namespace osgEarth
             bool operator < (const ShaderEntry& rhs) const;
         };
 
-        struct ProgramEntry
-        {
-            osg::ref_ptr<osg::Program> _program;
-            unsigned                   _frameLastUsed;
-        };
+        //struct ProgramEntry
+        //{
+        //    osg::ref_ptr<osg::Program> _program;
+        //    unsigned                   _frameLastUsed;
+        //    bool                       _owned; // if true, this VP created this program.
+        //};
 
         typedef unsigned                              ShaderID;
         typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
@@ -435,7 +486,7 @@ namespace osgEarth
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias >            AttribAliasVector;
 
-        typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
+        //typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
         typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
         typedef std::vector< AttributePair > AttrStack;
 
@@ -509,8 +560,7 @@ namespace osgEarth
         // The program cache holds an osg::Program instance for each collection of shaders
         // that comprises this VP. There can be multiple programs in the cache if the VP is
         // shared in the scene graph.
-        mutable ProgramMap       _programCache;
-        mutable Threading::Mutex _programCacheMutex;
+        static ProgramRepo _programRepo;
 
         mutable optional<bool> _active;
         bool _inheritSet;
@@ -519,6 +569,8 @@ namespace osgEarth
         std::string _logPath;
 
         bool _isAbstract;
+
+        UID _id;
 
         AttribAliasMap _attribAliases;
 
@@ -558,16 +610,20 @@ namespace osgEarth
             AttribAliasMap&    accumAttribAliases,
             bool&              acceptCallbacksPresent);
         
-        bool readProgramCache(
-            const ProgramKey& key,
-            unsigned frameNumber,
-            osg::ref_ptr<osg::Program>& program);
+        //bool readProgramCache(
+        //    const ProgramKey& key,
+        //    unsigned frameNumber,
+        //    osg::ref_ptr<osg::Program>& program) const;
 
-        void removeExpiredProgramsFromCache(
-            osg::State& state,
-            unsigned frameNumber);
+        //void removeExpiredProgramsFromCache(
+        //    osg::State& state,
+        //    unsigned frameNumber);
 
         bool checkSharing();
+
+        void releaseProgram(osg::Program* program, osg::State* state);
+
+
     };
 
 } // namespace osgEarth

@@ -987,6 +987,8 @@ _template          ( osg::clone(rhs._template.get()) ),
 _acceptCallbacksVaryPerFrame( rhs._acceptCallbacksVaryPerFrame ),
 _isAbstract        ( rhs._isAbstract )
 {    
+    _id = osgEarth::Registry::instance()->createUID();
+
     // Attribute bindings.
     const osg::Program::AttribBindingList &abl = rhs.getAttribBindingList();
     for( osg::Program::AttribBindingList::const_iterator attribute = abl.begin(); attribute != abl.end(); ++attribute )
@@ -1009,7 +1011,7 @@ VirtualProgram::~VirtualProgram()
 {
     if (_vpdel.find(_id) != _vpdel.end())
     {
-        OE_WARN << LC << "VP " << this << " destructed more than once???" << std::endl;
+        OE_WARN << LC << "VP id="<<_id<<" ptr="<<this<< " destructed more than once???" << std::endl;
     }
     _vpdel.insert(_id);
     //OE_INFO << LC << "~VirtualProgram " << this << std::endl;

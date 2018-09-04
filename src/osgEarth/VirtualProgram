@@ -202,11 +202,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Shader>    _geomShader;
         osg::ref_ptr<osg::Shader>    _tessevalShader;
 
-        // shader source before running thru the preprocessor. Keep this around so that
-        // someone can call VirtualProgram::getShaders and have access to code that has
-        // not been set up for ShaderFactory.
-        //std::string                  _originalSource;
-
         bool                         _dirty;
 
         static Threading::Mutex _cacheMutex;
@@ -232,7 +227,8 @@ namespace osgEarth
 
         typedef std::map<ProgramKey, Entry> ProgramMap;
 
-        //! Exclusive lock on the repo
+        //! Exclusive lock on the repo - enclose any calls to this object
+        //! with a lock/unlock pair
         void lock();
 
         //! unlock the repo
@@ -472,13 +468,6 @@ namespace osgEarth
             bool operator < (const ShaderEntry& rhs) const;
         };
 
-        //struct ProgramEntry
-        //{
-        //    osg::ref_ptr<osg::Program> _program;
-        //    unsigned                   _frameLastUsed;
-        //    bool                       _owned; // if true, this VP created this program.
-        //};
-
         typedef unsigned                              ShaderID;
         typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
         typedef std::set<std::string>                 ExtensionsSet;
@@ -609,21 +598,8 @@ namespace osgEarth
             AttribBindingList& accumAttribBindings,
             AttribAliasMap&    accumAttribAliases,
             bool&              acceptCallbacksPresent);
-        
-        //bool readProgramCache(
-        //    const ProgramKey& key,
-        //    unsigned frameNumber,
-        //    osg::ref_ptr<osg::Program>& program) const;
-
-        //void removeExpiredProgramsFromCache(
-        //    osg::State& state,
-        //    unsigned frameNumber);
 
         bool checkSharing();
-
-        void releaseProgram(osg::Program* program, osg::State* state);
-
-
     };
 
 } // namespace osgEarth

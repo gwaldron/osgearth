@@ -189,6 +189,7 @@ ProgramRepo::release(const User user, osg::State* state)
                     e._program->removeShader(shader.get());
                     if (shader->referenceCount() == 1)
                     {
+                        //TODO: look into this; don't think it ever gets called -gw
                         shader->releaseGLObjects(state);
                         OE_TEST << LC << "...released shader GL " << shader.get() << std::endl;
                     }
@@ -1005,16 +1006,8 @@ _isAbstract        ( rhs._isAbstract )
 #endif
 }
 
-static std::set<UID> _vpdel;
-
 VirtualProgram::~VirtualProgram()
 {
-    if (_vpdel.find(_id) != _vpdel.end())
-    {
-        OE_WARN << LC << "VP id="<<_id<<" ptr="<<this<< " destructed more than once???" << std::endl;
-    }
-    _vpdel.insert(_id);
-    //OE_INFO << LC << "~VirtualProgram " << this << std::endl;
     _programRepo.lock();
     _programRepo.release(_id, 0L);
     _programRepo.unlock();
@@ -1689,68 +1682,6 @@ VirtualProgram::apply( osg::State& state ) const
 #endif
     }
 }
-
-void
-VirtualProgram::releaseProgram(osg::Program* program, osg::State* state)
-{
-#if 0
-    // remove all the shaders first, since they may be shared among various VPs
-    while(program->getNumShaders() > 0)
-    {
-        osg::Shader* shader = program->getShader(0);
-        if (shader->referenceCount() == 1)
-        {
-            shader->releaseGLObjects(state);
-        }
-        program->removeShader(shader);
-    }
-
-    program->releaseGLObjects(state);
-#endif
-}
-
-#if 0
-void
-VirtualProgram::removeExpiredProgramsFromCache(osg::State& state, unsigned frameNumber)
-{
-    if ( frameNumber > 0 && _programCache.size() > MAX_PROGRAM_CACHE_SIZE )
-    {
-        // ASSUME a mutex lock on the cache.
-        for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); )
-        {
-            const ProgramEntry& pe = k->second;
-            if ( pe._frameLastUsed > 2 )
-            {
-                // only release it if it's not in use anywhere else.
-                if (pe._owned && pe._program->referenceCount() == 1)
-                {
-                    releaseProgram(pe._program.get(), &state);
-                }
-
-                k = _programCache.erase(k);
-            }
-            else
-            {
-                ++k;
-            }
-        }
-    }
-}
-
-bool
-VirtualProgram::readProgramCache(const ProgramKey& vec, unsigned frameNumber, osg::ref_ptr<osg::Program>& program) const
-{
-    ProgramMap::iterator p = _programCache.find( vec );
-    if ( p != _programCache.end() )
-    {
-        // update as current..
-        p->second._frameLastUsed = frameNumber;
-        program = p->second._program.get();
-    }
-    return program.valid();
-}
-
-#endif
 
 bool
 VirtualProgram::checkSharing()

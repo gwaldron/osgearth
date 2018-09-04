@@ -925,10 +925,6 @@ VirtualProgram::cloneOrCreate(osg::StateSet* stateset)
 
 //------------------------------------------------------------------------
 
-//statics
-ProgramRepo VirtualProgram::_programRepo;
-
-
 VirtualProgram::VirtualProgram( unsigned mask ) : 
 _mask              ( mask ),
 _active            ( true ),
@@ -1008,9 +1004,12 @@ _isAbstract        ( rhs._isAbstract )
 
 VirtualProgram::~VirtualProgram()
 {
-    _programRepo.lock();
-    _programRepo.release(_id, 0L);
-    _programRepo.unlock();
+    if (Registry::instance())
+    {
+        Registry::programRepo().lock();
+        Registry::programRepo().release(_id, 0L);
+        Registry::programRepo().unlock();
+    }
 }
 
 int
@@ -1110,9 +1109,9 @@ VirtualProgram::compileGLObjects(osg::State& state) const
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
-    _programRepo.lock();
+    Registry::programRepo().lock();
 
-    _programRepo.resizeGLObjectBuffers(maxSize);
+    Registry::programRepo().resizeGLObjectBuffers(maxSize);
 
     // Resize shaders in the PolyShader
     for( ShaderMap::iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
@@ -1122,7 +1121,7 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
             i->data()._shader->resizeGLObjectBuffers(maxSize );
         }
     }
-    _programRepo.unlock();
+    Registry::programRepo().unlock();
 }
 
 void
@@ -1133,9 +1132,9 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 
     //OE_INFO << LC << "VirtualProgram::releaseGLObjects (" << (this) << ")" << std::endl;
 
-    _programRepo.lock();
-    _programRepo.release(_id, state);
-    _programRepo.unlock();
+    Registry::programRepo().lock();
+    Registry::programRepo().release(_id, state);
+    Registry::programRepo().unlock();
 }
 
 PolyShader*
@@ -1385,9 +1384,9 @@ VirtualProgram::setInheritShaders( bool value )
 
         // clear the program cache please
         {
-            _programRepo.lock();
-            _programRepo.release(_id, 0L);
-            _programRepo.unlock();
+            Registry::programRepo().lock();
+            Registry::programRepo().release(_id, 0L);
+            Registry::programRepo().unlock();
         }
 
         _inheritSet = true;
@@ -1528,9 +1527,9 @@ VirtualProgram::apply( osg::State& state ) const
         unsigned frameNumber = state.getFrameStamp() ? state.getFrameStamp()->getFrameNumber() : 0;
 
         // LOCK the program repo to look up the program.
-        _programRepo.lock();
+        Registry::programRepo().lock();
 
-        program = _programRepo.use(local.programKey, frameNumber, _id);
+        program = Registry::programRepo().use(local.programKey, frameNumber, _id);
 
         if (!program.valid())
         {
@@ -1582,18 +1581,18 @@ VirtualProgram::apply( osg::State& state ) const
             }
 
             // Is there already an equivalent program in the repo?
-            bool foundOneToShare = _programRepo.share(program, _id);
+            bool foundOneToShare = Registry::programRepo().share(program, _id);
 
             if (!foundOneToShare)
             {
                 // no, so add this one.
-                _programRepo.add(local.programKey, program.get(), frameNumber, _id);
+                Registry::programRepo().add(local.programKey, program.get(), frameNumber, _id);
             }
 
             // purge expired programs.
-            _programRepo.prune(frameNumber, &state);
+            Registry::programRepo().prune(frameNumber, &state);
         }
-        _programRepo.unlock();
+        Registry::programRepo().unlock();
     }
 
     // finally, apply the program attribute.

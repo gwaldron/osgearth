@@ -549,8 +549,6 @@ namespace osgEarth
         // The program cache holds an osg::Program instance for each collection of shaders
         // that comprises this VP. There can be multiple programs in the cache if the VP is
         // shared in the scene graph.
-        static ProgramRepo _programRepo;
-
         mutable optional<bool> _active;
         bool _inheritSet;
 

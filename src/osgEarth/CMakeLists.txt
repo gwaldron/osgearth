@@ -177,7 +177,6 @@ SET(LIB_PUBLIC_HEADERS
     ShaderLoader
     ShaderUtils
     Shadowing
-    SharedSARepo
     SimplexNoise
     SpatialReference
     StateSetCache

@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/SharedSARepo>
 #include <osgEarth/Containers>
 #include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
@@ -53,8 +52,6 @@ namespace osgEarth
     class StateSetCache;
     class ObjectIndex;
     class Units;
-
-    typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
 
     extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
@@ -187,8 +184,8 @@ namespace osgEarth
          * A shared cache for osg::Program objects created by the shader
          * composition subsystem (VirtualProgram).
          */
-        ProgramSharedRepo* getProgramSharedRepo();
-        static ProgramSharedRepo* programSharedRepo() { return instance()->getProgramSharedRepo(); }
+        ProgramRepo& getProgramRepo();
+        static ProgramRepo& programRepo() { return instance()->getProgramRepo(); }
 
         /**
          * Gets a reference to the global task service manager.
@@ -358,7 +355,7 @@ namespace osgEarth
         std::set<Activity,ActivityLess> _activities;
         mutable Threading::Mutex _activityMutex;
 
-        ProgramSharedRepo _programRepo;
+        ProgramRepo _programRepo;
 
         optional<bool> _unRefImageDataAfterApply;
 

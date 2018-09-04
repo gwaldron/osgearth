@@ -5,13 +5,14 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location fragment_coloring
 
 #pragma import_defines(OE_OCEAN_MASK)
-#pragma import_defines(OE_OCEAN_BATHYMETRY)
+#pragma import_defines(OE_OCEAN_USE_BATHYMETRY)
 
 float oe_terrain_getElevation();
 
 in float ocean_visibility; // [0..1] => [invisible..visible]
 
 uniform vec4 ocean_color;
+uniform float ocean_seaLevel;
 
 #ifdef OE_OCEAN_MASK
 in vec2 ocean_maskCoord;
@@ -30,13 +31,12 @@ void ocean_FS(inout vec4 color)
 {
     float alpha = 1.0;
 
-#ifdef OE_OCEAN_BATHYMETRY
+#ifdef OE_OCEAN_USE_BATHYMETRY
     const float lowF = -100.0;
     const float hiF = -10.0;
-    const float seaLevel = 0.0;
 
     float elevation = oe_terrain_getElevation();
-    float alpha = ocean_remap(elevation, seaLevel+lowF, seaLevel+hiF, 1.0, 0.0);
+    alpha = ocean_remap(elevation, ocean_seaLevel+lowF, ocean_seaLevel+hiF, 1.0, 0.0);
 #endif
 
 #ifdef OE_OCEAN_MASK

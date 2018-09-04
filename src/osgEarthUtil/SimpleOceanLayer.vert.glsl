@@ -7,7 +7,10 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_OCEAN_MASK_MATRIX)
 
 uniform float ocean_maxAltitude;
+uniform float ocean_seaLevel;
 uniform mat4 osg_ViewMatrixInverse;
+
+vec3 oe_UpVectorView;   // stage global
 
 out float ocean_visibility; // [0..1]
 
@@ -25,6 +28,9 @@ void ocean_VS(inout vec4 vertexView)
     float lowAlt = ocean_maxAltitude;
     float highAlt = lowAlt*1.5;
     ocean_visibility = clamp((highAlt-eyeAlt) / (highAlt-lowAlt), 0.0, 1.0);
+
+    // move the surface to the new sea level:
+    vertexView.xyz += oe_UpVectorView * ocean_seaLevel;
 
     // if masking, calculate the mask coordinates
 #ifdef OE_OCEAN_MASK_MATRIX

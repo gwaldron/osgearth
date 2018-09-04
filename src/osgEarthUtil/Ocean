@@ -27,6 +27,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Profile>
+#include <osgEarth/VisibleLayer>
 #include <osg/Group>
 #include <osg/View>
 #include <osgDB/ReaderWriter>
@@ -65,6 +66,43 @@ namespace osgEarth { namespace Util
         optional<float> _maxAltitude;
     };
 
+    /**
+     * Base class for Ocean layer options
+     */
+    class OceanLayerOptions : public osgEarth::VisibleLayerOptions
+    {
+    public:
+        //todo - optionals
+
+    public:
+        OceanLayerOptions(const ConfigOptions& op=ConfigOptions()) : VisibleLayerOptions(op) {
+        }
+
+        void mergeConfig(const Config& conf) {
+        }
+
+        Config getConfig() const {
+            Config conf = VisibleLayerOptions::getConfig();
+            return conf;
+        }
+    };
+
+    /**
+     * Base class for ocean layers. Abstract.
+     */
+    class OSGEARTHUTIL_EXPORT OceanLayer : public osgEarth::VisibleLayer
+    {
+    public:
+        META_Layer(osgEarthUtil, OceanLayer, OceanLayerOptions);
+
+    public: // Ocean
+        virtual void setSeaLevel(float offsetMeters) { }
+        virtual float getSeaLevel() const { return 0.0f; }
+
+    protected:
+        //! Construct from subclass (only way possible) with pointer to concrete options.
+        OceanLayer(OceanLayerOptions* =0L);
+    };
 
     /**
     * Interface for a Node that renders an ocean surface.

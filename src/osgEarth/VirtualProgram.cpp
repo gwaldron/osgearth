@@ -110,7 +110,7 @@ ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, const ProgramRepo:
             e._users.insert(user);
         OE_TEST << LC << "PR USE prog=" << e._program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
 
-        osgEarth::Registry::instance()->startActivity("ProgramRepo", Stringify()<<_db.size());
+        //osgEarth::Registry::instance()->startActivity("ProgramRepo", Stringify()<<_db.size());
 
         return e._program;
     }

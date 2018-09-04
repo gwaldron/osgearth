@@ -20,6 +20,8 @@
 
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Locators>
+#include <osgEarth/Map>
+#include <osgEarth/MapInfo>
 #include <osgEarthSymbology/Geometry>
 
 #include <osgUtil/DelaunayTriangulator>
@@ -151,9 +153,9 @@ namespace
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map) :
 _key( key ), _tileSize(tileSize)
 {
-    MapFrame frame(map);
     MaskLayerVector maskLayers;
-    frame.getLayers(maskLayers);
+    map->getLayers(maskLayers);
+
     for(MaskLayerVector::const_iterator it = maskLayers.begin();
         it != maskLayers.end(); 
         ++it)
@@ -161,7 +163,7 @@ _key( key ), _tileSize(tileSize)
         MaskLayer* layer = it->get();
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
-            setupMaskRecord(frame.getMapInfo(), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+            setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
         }
     }
 }
@@ -479,7 +481,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
         for (osg::Vec3Array::iterator it = it_start; it != constraintVerts->end(); ++it)
         {
             //If the z-value was set from a mask vertex there is no need to change it.  If
-            //it was set from a vertex from the patch polygon it may need to be overriden if
+            //it was set from a vertex from the patch polygon it may need to be overridden if
             //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
             //if (isZSet[count] < 2)
             if (!isZSet[count])
@@ -547,8 +549,10 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
                 }
             }
 
-            if (!isZSet[count])
-                OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
+            if (isZSet[count] == 0)
+            {
+                OE_INFO << LC << "Z-value not set for mask constraint vertex" << std::endl;
+            }
 
             count++;
         }

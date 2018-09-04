@@ -101,7 +101,7 @@ void
 TileNodeRegistry::addSafely(TileNode* tile)
 {
     _tiles.insert( tile->getKey(), tile );
-    //_tiles[ tile->getTileKey() ] = tile;
+
     if ( _revisioningEnabled )
         tile->setMapRevision( _maprev );
     
@@ -149,16 +149,6 @@ TileNodeRegistry::removeSafely(const TileKey& key)
 
         Metrics::counter("RexStats", "Tiles", _tiles.size());
     }
-
-    //for(TileKeyOneToMany::iterator i = _notifiers.begin(); i != _notifiers.end(); )
-    //{
-    //    i->second.erase( key );
-
-    //    if ( i->second.size() == 0 )
-    //        _notifiers.erase( i++ ); // http://stackoverflow.com/a/8234813/4218920
-    //    else
-    //        ++i;
-    //}
 }
 
 void
@@ -248,33 +238,11 @@ TileNodeRegistry::empty() const
     return _tiles.empty();
 }
 
-#if 0
-void
-TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
-{
-    Threading::ScopedWriteLock lock( _tilesMutex );
-    TileNode* tile = _tiles.find( tileToWaitFor );
-    if ( tile )
-    {
-        OE_DEBUG << LC << waiter->getTileKey().str() << " listened for " << tileToWaitFor.str()
-            << ", but it was already in the repo.\n";
-
-        waiter->notifyOfArrival( tile );
-    }
-    else
-    {
-        OE_DEBUG << LC << waiter->getTileKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
-        //_notifications[tileToWaitFor].push_back( waiter->getKey() );
-        _notifiers[tileToWaitFor].insert( waiter->getTileKey() );
-    }
-}
-#endif
-
 void
 TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
 {
-    //Threading::ScopedMutexLock lock( _tilesMutex );
     // ASSUME EXCLUSIVE LOCK
+
     TileNode* tile = _tiles.find( tileToWaitFor );
     if ( tile )
     {
@@ -294,7 +262,6 @@ TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* wait
 void
 TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
 {
-    //Threading::ScopedMutexLock lock( _tilesMutex );
     // ASSUME EXCLUSIVE LOCK
 
     TileKeyOneToMany::iterator i = _notifiers.find(tileToWaitFor);

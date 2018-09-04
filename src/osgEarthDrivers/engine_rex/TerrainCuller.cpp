@@ -27,7 +27,6 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
 TerrainCuller::TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context) :
-_frame(0L),
 _camera(0L),
 _currentTileNode(0L),
 _orphanedPassesDetected(0u),
@@ -51,11 +50,11 @@ _numberChildrenCreated(0)
 }
 
 void
-TerrainCuller::setup(const MapFrame& frame, LayerExtentVector& layerExtents, const RenderBindings& bindings, const SelectionInfo& si)
+TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings, const SelectionInfo& si)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;
-    _terrain.setup(frame, bindings, frameNum, _cv);
+    _terrain.setup(map, bindings, frameNum, _cv);
     _rangeScale = si.computeRangeScale(this);
 }
 
@@ -131,7 +130,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile->_geom = surface->getDrawable()->_geom.get();
             tile->_morphConstants = tileNode->getMorphConstants();
             tile->_key = &tileNode->getKey();
-            //tile->_order = (int)orderInTile;
             tile->_order = drawable->_order; // layer order in map tile.
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();

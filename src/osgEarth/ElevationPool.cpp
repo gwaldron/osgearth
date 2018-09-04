@@ -334,8 +334,9 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
     bool foundTile = false;
 
     GeoPoint p(_inputSRS, x, y, 0.0f, ALTMODE_ABSOLUTE);
-
-    if (p.transformInPlace(_frame.getProfile()->getSRS()))
+    //VRV_PATCH: start
+    //VRV_PATCH: end
+    if (_frame.getProfile() && _frame.getProfile()->getSRS() && p.transformInPlace(_frame.getProfile()->getSRS()))
     {
         // find the tile containing the point:
         for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
@@ -379,7 +380,8 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
     }
     else
     {
-        OE_WARN << LC << "sample: xform failed" << std::endl;
+        // map probably deleted and threads still paging
+        OE_INFO << LC << "sample: xform failed" << std::endl;
     }
 
     // push the result, even if it was not found and it's NO_DATA_VALUE

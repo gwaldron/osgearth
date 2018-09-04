@@ -87,7 +87,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     public: // internal TerrainEngineNode
 
-        void setMap(const Map* map, const TerrainOptions& options);
         const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
         UID getUID() const { return _uid; }
 
@@ -105,6 +104,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Loader* getLoader() const { return _loader.get(); }
 
     protected:
+        // override from TerrainEngineNode
+        virtual void setMap(const Map* map, const TerrainOptions& options);
+
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateState(); }
         
@@ -143,7 +145,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //! level of detail in rex if a tile key was requested at the given level of detail.
         unsigned int computeSampleSize(unsigned int levelOfDetail);
 
-
     private:
         RexTerrainEngineOptions _terrainOptions;
 
@@ -151,7 +152,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _batchUpdateInProgress;
         bool _refreshRequired;
         bool _stateUpdateRequired;
-        MapFrame _mapFrame;
 
         LayerExtentVector _cachedLayerExtents;          // extents of each layer, in the Map's SRS. UID = vector index (for speed)
 

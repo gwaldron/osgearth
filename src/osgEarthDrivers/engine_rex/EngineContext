@@ -30,7 +30,6 @@
 #include "TileDrawable"
 
 #include <osgEarth/TerrainTileModel>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TileRasterizer>
@@ -73,10 +72,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         GeometryPool* getGeometryPool() const { return _geometryPool; }
 
-        // Raw pointer to the Map. Only call this from the MAIN thread. DO NOT access this
-        // from a pager thread. Instead, create a MapFrame from it in the MAIN thread and
-        // use THAT from the pager thread.
-        const Map* getMap() const;
+        osg::ref_ptr<const Map> getMap() const;
 
         // only call this variant when it's safe to do so (update, cull).
         TerrainEngineNode* getEngine() const { return _terrainEngine.get(); }
@@ -112,8 +108,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         
         osg::observer_ptr<TerrainEngineNode>  _terrainEngine;
+        osg::observer_ptr<const Map>          _map;
         int                                   _mainThreadId;
-        const Map*                            _map;
         TileNodeRegistry*                     _liveTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;

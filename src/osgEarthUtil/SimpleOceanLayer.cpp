@@ -25,6 +25,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Lighting>
 #include <osg/CullFace>
+#include <osg/Texture2D>
 
 
 using namespace osgEarth;
@@ -101,6 +102,39 @@ SimpleOceanLayer::init()
     setColor(options().color().get());
     setMaxAltitude(options().maxAltitude().get());
     setSeaLevel(0.0f); // option?
+}
+
+void
+SimpleOceanLayer::setTerrainResources(TerrainResources* res)
+{
+    if (options().texture().isSet()) // texture
+    {
+        if (res->reserveTextureImageUnitForLayer(_texReservation, this) == false)
+        {
+            OE_WARN << LC << "Failed to reserve a TIU...will not apply texture" << std::endl;
+            return;
+        }
+
+        ReadResult r = options().texture()->readImage(getReadOptions());
+        if (r.failed())
+        {
+            OE_WARN << LC << "Failed to load ocean texture: " << r.errorDetail() << std::endl;
+            return;
+        }
+
+        osg::Texture2D* tex = new osg::Texture2D(r.getImage());
+        tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
+        tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+        tex->setWrap(tex->WRAP_S, tex->REPEAT);
+        tex->setWrap(tex->WRAP_T, tex->REPEAT);
+
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->setTextureAttributeAndModes(_texReservation.unit(), tex, 1); // todo: reserve a slot
+        ss->setDefine("OE_OCEAN_TEXTURE", "oe_ocean_tex");
+        ss->addUniform(new osg::Uniform("oe_ocean_tex", _texReservation.unit()));
+
+        ss->setDefine("OE_OCEAN_TEXTURE_LOD", Stringify() << options().textureLOD().get());
+    }
 }
 
 void

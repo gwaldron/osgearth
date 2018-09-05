@@ -4,6 +4,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint ocean_FS
 #pragma vp_location fragment_coloring
 
+#pragma import_defines(OE_OCEAN_TEXTURE)
 #pragma import_defines(OE_OCEAN_MASK)
 #pragma import_defines(OE_OCEAN_USE_BATHYMETRY)
 
@@ -13,6 +14,11 @@ in float ocean_visibility; // [0..1] => [invisible..visible]
 
 uniform vec4 ocean_color;
 uniform float ocean_seaLevel;
+
+#ifdef OE_OCEAN_TEXTURE
+in vec2 ocean_texCoord;
+uniform sampler2D OE_OCEAN_TEXTURE ;
+#endif
 
 #ifdef OE_OCEAN_MASK
 in vec2 ocean_maskCoord;
@@ -45,4 +51,8 @@ void ocean_FS(inout vec4 color)
 #endif
 
     color = vec4(ocean_color.rgb, alpha*ocean_visibility*ocean_color.a);
+
+#ifdef OE_OCEAN_TEXTURE
+    color *= texture(OE_OCEAN_TEXTURE, ocean_texCoord);
+#endif
 }

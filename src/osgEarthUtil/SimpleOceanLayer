@@ -22,6 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
+#include <osgEarth/URI>
 #include <osgEarthUtil/Ocean>
 #include <osgEarthSymbology/Color>
 
@@ -56,11 +57,20 @@ namespace osgEarth { namespace Util
         optional<bool>& useBathymetry() { return _useBathymetry; }
         const optional<bool>& useBathymetry() const { return _useBathymetry; }
 
+        /** URI of surface texture to apply */
+        optional<URI>& texture() { return _textureURI; }
+        const optional<URI>& texture() const { return _textureURI; }
+
+        /** LOD at which to apply surface texture 1:1 (default = 13) */
+        optional<unsigned>& textureLOD() { return _textureLOD; }
+        const optional<unsigned>& textureLOD() const { return _textureLOD; }
+
     public:
         SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : OceanLayerOptions(op) {
             _color.init(Color("#1D2C4FFF"));
             _maxAltitude.init(1500000.f);
             _useBathymetry.init(true);
+            _textureLOD.init(13u);
             mergeConfig(_conf);
         }
 
@@ -69,6 +79,8 @@ namespace osgEarth { namespace Util
             conf.getIfSet("max_altitude", _maxAltitude);
             conf.getIfSet("mask_layer", _maskLayer);
             conf.getIfSet("use_bathymetry", _useBathymetry);
+            conf.getIfSet("texture", _textureURI);
+            conf.getIfSet("texture_lod", _textureLOD);
         }
 
         Config getConfig() const {
@@ -77,6 +89,8 @@ namespace osgEarth { namespace Util
             conf.addIfSet("max_altitude", _maxAltitude);
             conf.addIfSet("mask_layer", _maskLayer);
             conf.addIfSet("use_bathymetry", _useBathymetry);
+            conf.addIfSet("texture", _textureURI);
+            conf.addIfSet("texture_lod", _textureLOD);
             return conf;
         }
 
@@ -85,6 +99,8 @@ namespace osgEarth { namespace Util
         optional<float> _maxAltitude;
         optional<std::string> _maskLayer;
         optional<bool> _useBathymetry;
+        optional<URI> _textureURI;
+        optional<unsigned> _textureLOD;
     };
 
 
@@ -128,6 +144,8 @@ namespace osgEarth { namespace Util
 
         /** callback that ensures proper culling */
         void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
+        
+        void setTerrainResources(TerrainResources* res);
 
     protected: // Layer
 
@@ -146,6 +164,8 @@ namespace osgEarth { namespace Util
         LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
 
         float _seaLevel;
+
+        TextureImageUnitReservation _texReservation;
     };
     
 

@@ -4,6 +4,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint ocean_VS
 #pragma vp_location vertex_view
 
+#pragma import_defines(OE_OCEAN_TEXTURE)
+#pragma import_defines(OE_OCEAN_TEXTURE_LOD)
 #pragma import_defines(OE_OCEAN_MASK_MATRIX)
 
 uniform float ocean_maxAltitude;
@@ -14,11 +16,17 @@ vec3 oe_UpVectorView;   // stage global
 
 out float ocean_visibility; // [0..1]
 
+#ifdef OE_OCEAN_TEXTURE
+out vec2 ocean_texCoord;
+vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD); // from SDK
+#endif
+
 #ifdef OE_OCEAN_MASK_MATRIX
 out vec2 ocean_maskCoord;
-vec4 oe_layer_tilec;
 uniform mat4 OE_OCEAN_MASK_MATRIX ;
 #endif
+
+vec4 oe_layer_tilec;
 
 void ocean_VS(inout vec4 vertexView)
 {
@@ -31,6 +39,10 @@ void ocean_VS(inout vec4 vertexView)
 
     // move the surface to the new sea level:
     vertexView.xyz += oe_UpVectorView * ocean_seaLevel;
+
+#ifdef OE_OCEAN_TEXTURE
+    ocean_texCoord = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, OE_OCEAN_TEXTURE_LOD);
+#endif
 
     // if masking, calculate the mask coordinates
 #ifdef OE_OCEAN_MASK_MATRIX

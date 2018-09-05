@@ -49,6 +49,8 @@ is randomized, but it is randomized exactly the same way each time.
                    model-placement:     random;
                    altitude-clamping:   terrain;
                    altitude-resolution: 0.001;
+			 render-transparent:  true;
+			 render-min-alpha:    0.15;                   
                 }
                 parks-1 : parks {
                    model-density:     1000;

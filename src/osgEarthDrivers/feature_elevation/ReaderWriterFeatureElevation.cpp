@@ -63,6 +63,9 @@ public:
       _offset(-0.1)
     {
         _offset = _options.offset().getOrUse(_offset);
+        
+        // default tile size:
+        setPixelsPerTile(257u);
     }
 
     virtual ~FeatureElevationTileSource() { }

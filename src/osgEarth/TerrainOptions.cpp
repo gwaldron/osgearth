@@ -39,6 +39,7 @@ _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
 _clusterCulling( true ),
 _enableBlending( true ),
+_compressNormalMaps( false ),
 _mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
 _magFilter( osg::Texture::LINEAR),
@@ -73,6 +74,7 @@ TerrainOptions::getConfig() const
     conf.set( "mipmapping", _enableMipmapping );
     conf.set( "cluster_culling", _clusterCulling );
     conf.set( "blending", _enableBlending );
+    conf.set( "compress_normal_maps", _compressNormalMaps);
     conf.set( "mercator_fast_path", _mercatorFastPath );
     conf.set( "min_normal_map_lod", _minNormalMapLOD );
     conf.set( "gpu_tessellation", _gpuTessellation );
@@ -119,6 +121,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "mipmapping", _enableMipmapping );
     conf.getIfSet( "cluster_culling", _clusterCulling );
     conf.getIfSet( "blending", _enableBlending );
+    conf.getIfSet( "compress_normal_maps", _compressNormalMaps);
     conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
     conf.getIfSet( "min_normal_map_lod", _minNormalMapLOD );
     conf.getIfSet( "gpu_tessellation", _gpuTessellation );

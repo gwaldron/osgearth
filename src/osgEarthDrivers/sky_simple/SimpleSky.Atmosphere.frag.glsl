@@ -24,7 +24,10 @@ float atmos_fastpow(in float x, in float y)
 } 
 
 void atmos_fragment_main(inout vec4 color) 
-{ 				
+{
+    if (gl_ProjectionMatrix[3][3] != 0.0)
+        discard;
+
     float fCos = dot(atmos_v3LightDir, atmos_v3Direction) / length(atmos_v3Direction); 
     float fRayleighPhase = 1.0;  // 0.75 * (1.0 + fCos*fCos); 
     float fMiePhase = 1.5 * ((1.0 - atmos_g2) / (2.0 + atmos_g2)) * (1.0 + fCos*fCos) / atmos_fastpow(1.0 + atmos_g2 - 2.0*atmos_g*fCos, 1.5); 

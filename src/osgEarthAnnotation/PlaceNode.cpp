@@ -186,7 +186,11 @@ PlaceNode::compile()
 
     osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
 
-    const IconSymbol* icon = instance->asIcon();
+    const IconSymbol* icon = 0;
+    if (instance.valid())
+    {
+        icon = instance->asIcon();
+    }
 
     if ( !_image.valid() )
     {

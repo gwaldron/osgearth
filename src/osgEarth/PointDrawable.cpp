@@ -274,8 +274,6 @@ PointGroup::getPointDrawable(unsigned i)
 
 //...................................................................
 
-//...................................................................
-
 #undef  LC
 #define LC "[PointDrawable] "
 
@@ -294,6 +292,13 @@ namespace osgEarth { namespace Serializers { namespace PointDrawable
         ADD_UINT_SERIALIZER( Count, 0u );
     }
 } } }
+
+//...................................................................
+
+namespace
+{
+    static bool s_isCoreProfile;
+}
 
 PointDrawable::PointDrawable() :
 osg::Geometry(),
@@ -627,6 +632,8 @@ PointDrawable::setupState()
             {
                 //todo
             }
+
+            s_isCoreProfile = Registry::capabilities().isCoreProfile();
         }
         s_mutex.unlock();
     }
@@ -643,6 +650,15 @@ void
 PointDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
     checkSharedStateSet(ri.getState());
+
+    // in the compatibility profile, we have to expressly enable point sprites;
+    // not sure why this doesn't happen in osg::PointSprite
+    if (!s_isCoreProfile)
+    {
+        glEnable(GL_POINT_SPRITE_ARB);
+        //ri.getState()->applyMode(GL_POINT_SPRITE_ARB, true); // doesn't work :(
+    }
+
     osg::Geometry::drawImplementation(ri);
 }
 
@@ -660,7 +676,9 @@ PointDrawable::checkSharedStateSet(osg::State* state) const
                 _sharedStateSet->getTextureAttribute(0, osg::StateAttribute::POINTSPRITE));
 
             if (sprite)
+            {
                 sprite->checkValidityOfAssociatedModes(*state);
+            }
 
             _sharedStateSet->compileGLObjects(*state);
             _sharedStateSetCompiled = true;

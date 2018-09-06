@@ -92,7 +92,8 @@ set(TARGET_GLSL
     Shadowing.vert.glsl
     Shadowing.frag.glsl
     SimpleOceanLayer.vert.glsl
-    SimpleOceanLayer.frag.glsl)
+    SimpleOceanLayer.frag.glsl
+    RTTPicker.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)

@@ -29,10 +29,8 @@ void oe_normalMapFragment(inout vec4 color)
 #ifdef OE_COMPRESSED_NORMAL_MAP
 	vec2 xymod = encodedNormal.rg*2.0 - 1.0;
     vec3 normal = vec3(xymod, sqrt(1 - xymod.x*xymod.x - xymod.y*xymod.y));
-	color.rgb = vec3(1.0, 0.0, 0.0);
 #else
     vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
-	color.rgb = vec3(0.0, 1.0, 0.0);
 #endif
 
     vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));

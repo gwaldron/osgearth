@@ -513,7 +513,7 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
         osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
         if (ip)
         {
-            ip->compress(*image, osg::Texture::USE_RGTC2_COMPRESSION, true, true, osgDB::ImageProcessor::CompressionMethod::USE_CPU, osgDB::ImageProcessor::CompressionQuality::FASTEST);
+            ip->compress(*image, osg::Texture::USE_RGTC2_COMPRESSION, true, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::FASTEST);
         }
         else
         {

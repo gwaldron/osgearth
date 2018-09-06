@@ -44,4 +44,7 @@ Shaders::Shaders()
 
     SimpleOceanLayer_Fragment = "SimpleOceanLayer.frag.glsl";
     _sources[SimpleOceanLayer_Fragment] = "@SimpleOceanLayer.frag.glsl@";
+    
+    RTTPicker = "RTTPicker.glsl";
+    _sources[RTTPicker] = "@RTTPicker.glsl@";
 }

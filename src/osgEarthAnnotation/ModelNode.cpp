@@ -136,7 +136,10 @@ ModelNode::compileModel()
                 if ( sym->scaleZ().isSet() )
                     scale.z() = sym->scaleZ()->eval();
 
-                getPositionAttitudeTransform()->setScale( scale );
+                if (scale != osg::Vec3d(1,1,1))
+                {
+                    getPositionAttitudeTransform()->setScale( scale );
+                }
 
                 // auto scaling?
                 if ( sym->autoScale() == true )

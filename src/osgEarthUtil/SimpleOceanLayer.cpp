@@ -23,7 +23,9 @@
 #include <osgEarthUtil/Shaders>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/Lighting>
 #include <osg/CullFace>
+#include <osg/Texture2D>
 
 
 using namespace osgEarth;
@@ -38,14 +40,14 @@ REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
 
 SimpleOceanLayer::SimpleOceanLayer() :
-VisibleLayer(&_optionsConcrete),
+OceanLayer(&_optionsConcrete),
 _options(&_optionsConcrete)
 {
     init();
 }
 
 SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
+OceanLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options)
 {
@@ -57,7 +59,7 @@ SimpleOceanLayer::init()
 {
     OE_INFO << LC << "Creating a Simple Ocean Layer\n";
 
-    VisibleLayer::init();
+    OceanLayer::init();
 
     this->setName("Simple Ocean");
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
@@ -85,19 +87,54 @@ SimpleOceanLayer::init()
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     // Material.
-#if 0
+#if 1
     osg::Material* m = new MaterialGL3();
-    m->setAmbient(m->FRONT, osg::Vec4(.5, .5, .5, 1));
+    m->setAmbient(m->FRONT, osg::Vec4(0, 0, 0, 1));
     m->setDiffuse(m->FRONT, osg::Vec4(1, 1, 1, 1));
     m->setSpecular(m->FRONT, osg::Vec4(1, 1, 1, 1)); //0.2, 0.2, 0.2, 1));
     m->setEmission(m->FRONT, osg::Vec4(0, 0, 0, 1));
     m->setShininess(m->FRONT, 100.0);
     ss->setAttributeAndModes(m, 1); //osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    m->setUpdateCallback(new MaterialCallback());
+    //m->setUpdateCallback(new MaterialCallback());
+    MaterialCallback().operator()(m, 0L);
 #endif
     
     setColor(options().color().get());
     setMaxAltitude(options().maxAltitude().get());
+    setSeaLevel(0.0f); // option?
+}
+
+void
+SimpleOceanLayer::setTerrainResources(TerrainResources* res)
+{
+    if (options().texture().isSet()) // texture
+    {
+        if (res->reserveTextureImageUnitForLayer(_texReservation, this) == false)
+        {
+            OE_WARN << LC << "Failed to reserve a TIU...will not apply texture" << std::endl;
+            return;
+        }
+
+        ReadResult r = options().texture()->readImage(getReadOptions());
+        if (r.failed())
+        {
+            OE_WARN << LC << "Failed to load ocean texture: " << r.errorDetail() << std::endl;
+            return;
+        }
+
+        osg::Texture2D* tex = new osg::Texture2D(r.getImage());
+        tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
+        tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+        tex->setWrap(tex->WRAP_S, tex->REPEAT);
+        tex->setWrap(tex->WRAP_T, tex->REPEAT);
+
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->setTextureAttributeAndModes(_texReservation.unit(), tex, 1); // todo: reserve a slot
+        ss->setDefine("OE_OCEAN_TEXTURE", "oe_ocean_tex");
+        ss->addUniform(new osg::Uniform("oe_ocean_tex", _texReservation.unit()));
+
+        ss->setDefine("OE_OCEAN_TEXTURE_LOD", Stringify() << options().textureLOD().get());
+    }
 }
 
 void
@@ -196,4 +233,18 @@ SimpleOceanLayer::getConfig() const
     Config conf = options().getConfig();
     conf.key() = "simple_ocean";
     return conf;
+}
+
+void
+SimpleOceanLayer::setSeaLevel(float value)
+{
+    _seaLevel = value;
+    getOrCreateStateSet()->getOrCreateUniform(
+        "ocean_seaLevel", osg::Uniform::FLOAT)->set(value);
+}
+
+float
+SimpleOceanLayer::getSeaLevel() const
+{
+    return _seaLevel;
 }

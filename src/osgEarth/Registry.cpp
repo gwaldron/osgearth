@@ -635,10 +635,10 @@ Registry::getStateSetCache() const
     return _stateSetCache.get();
 }
 
-ProgramSharedRepo*
-Registry::getProgramSharedRepo()
+ProgramRepo&
+Registry::getProgramRepo()
 {
-    return &_programRepo;
+    return _programRepo;
 }
 
 ObjectIndex*

@@ -27,7 +27,11 @@ void user_intercept(in vec3 worldPosition, in vec3 localPosition, in vec4 eyePos
 
 }
 
+#if __VERSION__ > 140
 out float oe_LogDepth_logz;
+#else
+varying float oe_LogDepth_logz;
+#endif
 uniform mat4 trit_projection;
 
 // Provides a point to override the final value of gl_Position.

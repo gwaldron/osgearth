@@ -186,20 +186,10 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
            return ReadResult::ERROR_IN_READING_FILE;
         }
 
-        //osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
-        // graph is valid at this point, otherwise the above lock would not succeed
-        //if ( graph.valid() )
-        {
-            // Take a reference on the map to avoid map destruction during thread operation
-            //osg::ref_ptr<const Map> map = graph->getSession()->getMap();
-            //if (map.valid() == true)
-            {
-                Registry::instance()->startActivity(uri);
-                osg::Node* node = graph->load(lod, x, y, uri, readOptions);
-                Registry::instance()->endActivity(uri);
-                return ReadResult(node);
-            }
-        }
+        Registry::instance()->startActivity(uri);
+        osg::Node* node = graph->load(lod, x, y, uri, readOptions);
+        Registry::instance()->endActivity(uri);
+        return ReadResult(node);
     }
 };
 

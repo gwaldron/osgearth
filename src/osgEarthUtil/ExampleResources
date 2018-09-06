@@ -159,8 +159,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT OceanControlFactory
     {
     public:
-        Control* create(
-            OceanNode* ocean ) const;
+        static Control* create(OceanLayer* ocean);
     };
 
 

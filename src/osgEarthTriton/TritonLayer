@@ -24,6 +24,7 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
+#include <osgEarthUtil/Ocean>
 #include <osgEarthTriton/TritonCallback>
 
 namespace osgEarth { namespace Triton
@@ -32,11 +33,11 @@ namespace osgEarth { namespace Triton
     /**
      * Serializable options for initializing the TritonLayer.
      */
-    class OSGEARTHTRITON_EXPORT TritonLayerOptions : public osgEarth::VisibleLayerOptions
+    class OSGEARTHTRITON_EXPORT TritonLayerOptions : public osgEarth::Util::OceanLayerOptions
     {
     public:
         TritonLayerOptions(const osgEarth::ConfigOptions& options = osgEarth::ConfigOptions()) :
-            osgEarth::VisibleLayerOptions( options )
+            osgEarth::Util::OceanLayerOptions( options )
         {
             _useHeightMap.init( true );
             _heightMapSize.init( 1024 );
@@ -83,7 +84,7 @@ namespace osgEarth { namespace Triton
 
     public:
         osgEarth::Config getConfig() const {
-            osgEarth::Config conf = osgEarth::VisibleLayerOptions::getConfig();
+            osgEarth::Config conf = osgEarth::Util::OceanLayerOptions::getConfig();
             conf.key() = "triton";
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
@@ -98,7 +99,7 @@ namespace osgEarth { namespace Triton
 
     protected:
         void mergeConfig( const osgEarth::Config& conf ) {
-            osgEarth::VisibleLayerOptions::mergeConfig( conf );
+            osgEarth::Util::OceanLayerOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
@@ -129,7 +130,7 @@ namespace osgEarth { namespace Triton
     /**
      * Node that roots the Triton adapter.
      */
-    class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::VisibleLayer
+    class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::Util::OceanLayer
     {
     public:
         META_Layer(osgEarth, TritonLayer, TritonLayerOptions);
@@ -149,6 +150,11 @@ namespace osgEarth { namespace Triton
 
         virtual osg::Node* getNode() const;
 
+    public: // Ocean
+        
+        void setSeaLevel(float seaLevel);
+        float getSeaLevel() const;
+
     protected: // Layer
 
         virtual void init();
@@ -162,6 +168,7 @@ namespace osgEarth { namespace Triton
         osg::ref_ptr<osg::Group> _root;
         osg::ref_ptr<osg::Node> _tritonNode;
         osg::ref_ptr<Callback> _callback;
+        float _seaLevel;
 
     private:
 

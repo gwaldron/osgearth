@@ -70,11 +70,18 @@ void user_diffuse_color( inout vec3 Cdiffuse, in vec3 CiNoLight, in vec3 Cwash, 
 
 }
 
+#if __VERSION__ > 140
 in float oe_LogDepth_logz;
+#else
+varying float oe_LogDepth_logz;
+#endif
+uniform float oe_ocean_alpha;
 
 // Output to MRT
 void writeFragmentData(in vec4 finalColor, in vec4 Cdiffuse, in vec3 lightColor, in vec3 nNorm )
 {
+    // Modify the final alpha with the value of the oe_ocean_alpha uniform.
+    finalColor.a = finalColor.a * oe_ocean_alpha;
     gl_FragDepth = oe_LogDepth_logz >= 0? oe_LogDepth_logz : gl_FragCoord.z;
     
 #ifdef OPENGL32

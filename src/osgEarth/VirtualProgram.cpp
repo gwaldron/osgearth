@@ -87,9 +87,189 @@ namespace
 
 //------------------------------------------------------------------------
 
+void
+ProgramRepo::lock()
+{
+    _m.lock();
+}
+
+void ProgramRepo::unlock()
+{
+    _m.unlock();
+}
+
+osg::ref_ptr<osg::Program>
+ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, const ProgramRepo::User user)
+{
+    ProgramMap::iterator i = _db.find( key );
+    if ( i != _db.end() )
+    {
+        Entry& e = i->second;
+        e._frameLastUsed = frameNumber;
+        if (user)
+            e._users.insert(user);
+        OE_TEST << LC << "PR USE prog=" << e._program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
+
+        //osgEarth::Registry::instance()->startActivity("ProgramRepo", Stringify()<<_db.size());
+
+        return e._program;
+    }
+    return 0L;
+}
+
+void
+ProgramRepo::add(const ProgramKey& key, osg::Program* program, unsigned frameNumber, const User user)
+{
+    Entry& e = _db[key];
+    e._frameLastUsed = frameNumber;
+    e._program = program;
+    e._users.insert(user);
+    OE_TEST << LC << "PR ADD prog=" << program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
+}
+
+void
+ProgramRepo::release(osg::Program* program, const User user, osg::State* state)
+{
+    for(ProgramMap::iterator i = _db.begin(); i != _db.end(); ++i)
+    {
+        Entry& e = i->second;
+        if (e._program.get() == program)
+        {
+            // remove "user" from the users list:
+            if (user)
+                e._users.erase(user);
+
+            if (e._users.empty())
+            {
+                // when the users list is empty, release the program and remove it
+                // from the repository. But, remove the actual shaders first because
+                // they may be shared with other programs.
+                while(e._program->getNumShaders() > 0)
+                {
+                    e._program->removeShader(e._program->getShader(0));
+                }
+
+                // release the GL memory
+                e._program->releaseGLObjects(state);
+
+                // remove from the repo
+                _db.erase(i);
+            }
+            break;
+        }
+    }
+}
+
+void
+ProgramRepo::release(const User user, osg::State* state)
+{
+    if (!user)
+        return;
+
+    for(ProgramMap::iterator i = _db.begin(); i != _db.end(); )
+    {
+        Entry& e = i->second;
+        bool increment = true;
+
+        if (e._users.find(user) != e._users.end())
+        {
+            // remove "user" from the users list:
+            e._users.erase(user);
+            
+            OE_TEST << LC << "PR REL prog=" << (e._program->getName()) << " user=" << (user) << " total=" << e._users.size() << std::endl;
+
+            if (e._users.empty())
+            {
+                // when the users list is empty, release the program and remove it
+                // from the repository. But, remove the actual shaders first because
+                // they may be shared with other programs.
+                while(e._program->getNumShaders() > 0)
+                {
+                    osg::ref_ptr<osg::Shader> shader = e._program->getShader(0);
+                    e._program->removeShader(shader.get());
+                    if (shader->referenceCount() == 1)
+                    {
+                        //TODO: look into this; don't think it ever gets called -gw
+                        shader->releaseGLObjects(state);
+                        OE_TEST << LC << "...released shader GL " << shader.get() << std::endl;
+                    }
+                }
+
+                // release the GL memory
+                e._program->releaseGLObjects(state);
+
+                // remove from the repo
+                _db.erase(i++);
+                increment = false;
+
+                OE_TEST << LC << "...released program GL." << std::endl;
+            }            
+        }
+
+        if (increment)
+            ++i;
+    }
+}
+
+bool
+ProgramRepo::share(osg::ref_ptr<osg::Program>& in_out, const User user)
+{
+    for(ProgramMap::iterator i = _db.begin(); i != _db.end(); ++i)
+    {
+        Entry& e = i->second;
+
+        // same pointer? do nothing but update the user
+        if (e._program.get() == in_out.get())
+        {
+            if (user)
+                e._users.insert(user);
+            
+            OE_TEST << LC << "PR SHA prog=" << e._program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
+
+            return true;
+        }
+
+        // different pointer but equivalent? replace input with output
+        // and let input go out of scope
+        else if (e._program->compare(*in_out.get()) == 0)
+        {
+            in_out = e._program.get();
+            if (user)
+                e._users.insert(user);
+
+            OE_TEST << LC << "PR SHA prog=" << e._program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
+        
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void
+ProgramRepo::prune(unsigned frameNumber, osg::State* state)
+{
+    //todo
+}
+
+void
+ProgramRepo::resizeGLObjectBuffers(unsigned maxSize)
+{
+    for (ProgramMap::iterator i = _db.begin(); i != _db.end(); ++i)
+    {
+        i->second._program->resizeGLObjectBuffers(maxSize);
+    }
+}
+
+//------------------------------------------------------------------------
+
 // environment variable control
 #define OSGEARTH_DUMP_SHADERS  "OSGEARTH_DUMP_SHADERS"
 #define OSGEARTH_MERGE_SHADERS "OSGEARTH_MERGE_SHADERS"
+
+#define OSGEARTH_DISABLE_GLRELEASE "OSGEARTH_VP_DISABLE_GL_RELEASE"
+static bool s_disableVPRelease = false;
 
 namespace
 {
@@ -745,7 +925,6 @@ VirtualProgram::cloneOrCreate(osg::StateSet* stateset)
 
 //------------------------------------------------------------------------
 
-
 VirtualProgram::VirtualProgram( unsigned mask ) : 
 _mask              ( mask ),
 _active            ( true ),
@@ -759,6 +938,8 @@ _isAbstract        ( false )
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
 
+    _id = osgEarth::Registry::instance()->createUID();
+
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
     {
@@ -769,6 +950,11 @@ _isAbstract        ( false )
     if ( ::getenv(OSGEARTH_MERGE_SHADERS) != 0L )
     {
         s_mergeShaders = true;
+    }
+
+    if ( ::getenv(OSGEARTH_DISABLE_GLRELEASE) != 0L)
+    {
+        s_disableVPRelease = true;
     }
 
     // a template object to hold program data (so we don't have to dupliate all the 
@@ -798,6 +984,8 @@ _template          ( osg::clone(rhs._template.get()) ),
 _acceptCallbacksVaryPerFrame( rhs._acceptCallbacksVaryPerFrame ),
 _isAbstract        ( rhs._isAbstract )
 {    
+    _id = osgEarth::Registry::instance()->createUID();
+
     // Attribute bindings.
     const osg::Program::AttribBindingList &abl = rhs.getAttribBindingList();
     for( osg::Program::AttribBindingList::const_iterator attribute = abl.begin(); attribute != abl.end(); ++attribute )
@@ -816,7 +1004,12 @@ _isAbstract        ( rhs._isAbstract )
 
 VirtualProgram::~VirtualProgram()
 {
-    //NOP
+    if (Registry::instance())
+    {
+        Registry::programRepo().lock();
+        Registry::programRepo().release(_id, 0L);
+        Registry::programRepo().unlock();
+    }
 }
 
 int
@@ -904,6 +1097,8 @@ VirtualProgram::removeBindAttribLocation( const std::string& name )
 void
 VirtualProgram::compileGLObjects(osg::State& state) const
 {
+    //OE_INFO << LC << "VirtualProgram::compileGLObjects (" << (this) << ")" << std::endl;
+
     // Don't do this here. compileGLObjects() runs from a pre-compilation visitor,
     // and the state is not complete enough to create fully formed programs; so
     // this is not only pointless but can result in shader linkage errors 
@@ -914,12 +1109,9 @@ VirtualProgram::compileGLObjects(osg::State& state) const
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
-    _programCacheMutex.lock();
+    Registry::programRepo().lock();
 
-    for (ProgramMap::iterator i = _programCache.begin(); i != _programCache.end(); ++i)
-    {
-        i->second._program->resizeGLObjectBuffers(maxSize);
-    }
+    Registry::programRepo().resizeGLObjectBuffers(maxSize);
 
     // Resize shaders in the PolyShader
     for( ShaderMap::iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
@@ -929,32 +1121,20 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
             i->data()._shader->resizeGLObjectBuffers(maxSize );
         }
     }
-
-    _programCacheMutex.unlock();
+    Registry::programRepo().unlock();
 }
 
 void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
-    _programCacheMutex.lock();
+    if (s_disableVPRelease)
+        return;
 
-    for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
-    {
-        //if ( i->second->referenceCount() == 1 )
-            i->second._program->releaseGLObjects(state);
-    }
+    //OE_INFO << LC << "VirtualProgram::releaseGLObjects (" << (this) << ")" << std::endl;
 
-    for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
-    {
-       if (i->data()._shader.valid())
-       {
-          i->data()._shader->releaseGLObjects(state);
-       }
-    }
-
-    _programCache.clear();
-
-    _programCacheMutex.unlock();
+    Registry::programRepo().lock();
+    Registry::programRepo().release(_id, state);
+    Registry::programRepo().unlock();
 }
 
 PolyShader*
@@ -1204,9 +1384,9 @@ VirtualProgram::setInheritShaders( bool value )
 
         // clear the program cache please
         {
-            _programCacheMutex.lock();
-            _programCache.clear();
-            _programCacheMutex.unlock();
+            Registry::programRepo().lock();
+            Registry::programRepo().release(_id, 0L);
+            Registry::programRepo().unlock();
         }
 
         _inheritSet = true;
@@ -1346,85 +1526,73 @@ VirtualProgram::apply( osg::State& state ) const
         // current frame number, for shader program expiry.
         unsigned frameNumber = state.getFrameStamp() ? state.getFrameStamp()->getFrameNumber() : 0;
 
-        // look up the program:
-        {
-            _programCacheMutex.lock();
-            const_cast<VirtualProgram*>(this)->readProgramCache(local.programKey, frameNumber, program);
-            _programCacheMutex.unlock();
-        }
+        // LOCK the program repo to look up the program.
+        Registry::programRepo().lock();
 
-        // if not found, lock and build it:
-        if ( !program.valid() )
+        program = Registry::programRepo().use(local.programKey, frameNumber, _id);
+
+        if (!program.valid())
         {
             // build a new set of accumulated functions, to support the creation of main()
             ShaderComp::FunctionLocationMap accumFunctions;
             accumulateFunctions( state, accumFunctions );
 
-            // now double-check the program cache, and failing that, build the
-            // new shader Program.
+            local.programKey.clear();
+
+            //OE_NOTICE << LC << "Building new Program for VP " << getName() << std::endl;
+
+            program = buildProgram(
+                getName(),
+                state,
+                accumFunctions,
+                local.accumShaderMap,
+                _globalExtensions,
+                local.accumAttribBindings,
+                local.accumAttribAliases,
+                _template.get(),
+                local.programKey);
+
+            if (_logShaders && program.valid())
             {
-                Threading::ScopedMutexLock lock(_programCacheMutex);
-
-                // double-check: look again to negate race conditions
-                const_cast<VirtualProgram*>(this)->readProgramCache(local.programKey, frameNumber, program);
-                if ( !program.valid() )
+                std::stringstream buf;
+                for (unsigned i = 0; i < program->getNumShaders(); i++)
                 {
-                    local.programKey.clear();
+                    buf << program->getShader(i)->getShaderSource() << std::endl << std::endl;
+                }
 
-                    //OE_NOTICE << LC << "Building new Program for VP " << getName() << std::endl;
-
-                    program = buildProgram(
-                        getName(),
-                        state,
-                        accumFunctions,
-                        local.accumShaderMap, 
-                        _globalExtensions,
-                        local.accumAttribBindings, 
-                        local.accumAttribAliases, 
-                        _template.get(),
-                        local.programKey);
-
-                    if ( _logShaders && program.valid() )
+                if (_logPath.length() > 0)
+                {
+                    std::fstream outStream;
+                    outStream.open(_logPath.c_str(), std::ios::out);
+                    if (outStream.fail())
                     {
-                        std::stringstream buf;
-                        for (unsigned i=0; i < program->getNumShaders(); i++)
-                        {
-                            buf << program->getShader(i)->getShaderSource() << std::endl << std::endl;
-                        }
-
-                        if ( _logPath.length() > 0 )
-                        {
-                            std::fstream outStream;
-                            outStream.open(_logPath.c_str(), std::ios::out);
-                            if (outStream.fail())
-                            {
-                                OE_WARN << LC << "Unable to open " << _logPath << " for logging shaders." << std::endl;
-                            }
-                            else
-                            {
-                                outStream << buf.str();
-                                outStream.close();
-                            }
-                        }
-                        else
-                        {
-                          OE_NOTICE << LC << "Shader source: " << getName() << std::endl << "===============" << std::endl << buf.str() << std::endl << "===============" << std::endl;
-                        }
+                        OE_WARN << LC << "Unable to open " << _logPath << " for logging shaders." << std::endl;
                     }
-
-                    // global sharing.
-                    Registry::programSharedRepo()->share( program );
-
-                    // finally, put own new program in the cache.
-                    ProgramEntry& pe = _programCache[local.programKey];
-                    pe._program = program.get();
-                    pe._frameLastUsed = frameNumber;
-
-                    // purge expired programs.
-                    const_cast<VirtualProgram*>(this)->removeExpiredProgramsFromCache(state, frameNumber);
+                    else
+                    {
+                        outStream << buf.str();
+                        outStream.close();
+                    }
+                }
+                else
+                {
+                    OE_NOTICE << LC << "Shader source: " << getName() << std::endl << "===============" << std::endl << buf.str() << std::endl << "===============" << std::endl;
                 }
             }
+
+            // Is there already an equivalent program in the repo?
+            bool foundOneToShare = Registry::programRepo().share(program, _id);
+
+            if (!foundOneToShare)
+            {
+                // no, so add this one.
+                Registry::programRepo().add(local.programKey, program.get(), frameNumber, _id);
+            }
+
+            // purge expired programs.
+            Registry::programRepo().prune(frameNumber, &state);
         }
+        Registry::programRepo().unlock();
     }
 
     // finally, apply the program attribute.
@@ -1510,45 +1678,6 @@ VirtualProgram::apply( osg::State& state ) const
 #endif
     }
 }
-
-void
-VirtualProgram::removeExpiredProgramsFromCache(osg::State& state, unsigned frameNumber)
-{
-    if ( frameNumber > 0 && _programCache.size() > MAX_PROGRAM_CACHE_SIZE )
-    {
-        // ASSUME a mutex lock on the cache.
-        for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); )
-        {
-            if ( frameNumber - k->second._frameLastUsed > 2 )
-            {
-                if ( k->second._program->referenceCount() == 1 )
-                {
-                    k->second._program->releaseGLObjects(&state);
-                }
-                k = _programCache.erase(k);
-            }
-            else
-            {
-                ++k;
-            }
-        }
-    }
-}
-
-bool
-VirtualProgram::readProgramCache(const ProgramKey& vec, unsigned frameNumber, osg::ref_ptr<osg::Program>& program)
-//VirtualProgram::readProgramCache(const ShaderVector& vec, unsigned frameNumber, osg::ref_ptr<osg::Program>& program)
-{
-    ProgramMap::iterator p = _programCache.find( vec );
-    if ( p != _programCache.end() )
-    {
-        // update as current..
-        p->second._frameLastUsed = frameNumber;
-        program = p->second._program.get();
-    }
-    return program.valid();
-}
-
 
 bool
 VirtualProgram::checkSharing()
@@ -1989,7 +2118,7 @@ PolyShader* PolyShader::lookUpShader(const std::string& functionName, const std:
       shader->setLocation(location);
       shader->setShaderSource(source);
       shader->prepare();
-      _polyShaderCache[hashKey] = shader;
+      //_polyShaderCache[hashKey] = shader;
    }
 
    _cacheMutex.unlock();

@@ -61,6 +61,16 @@ OceanOptions::getConfig() const
 
 //------------------------------------------------------------------------
 
+OceanLayer::OceanLayer(OceanLayerOptions* optionsPtr) :
+VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
+_options(optionsPtr ? optionsPtr : &_optionsConcrete)
+{
+    //nop - init() called by subclass.
+}
+
+
+//------------------------------------------------------------------------
+
 #undef  LC
 #define LC "[OceanNode] "
 

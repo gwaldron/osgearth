@@ -53,7 +53,7 @@ using namespace osgEarth::Util;
 #define RESOURCE_LIB_URL "../data/resources/textures_us/catalog.xml"
 #define STREETS_URL      "../data/boston-scl-utm19n-meters.shp"
 #define PARKS_URL        "../data/boston-parks.shp"
-#define TREE_MODEL_URL   "../data/loopix/tree4.osgb"
+#define TREE_MODEL_URL   "../data/tree.osg"
 
 // forward declarations.
 void addImagery  (Map* map);
@@ -275,11 +275,9 @@ void addParks(Map* map)
     // data are polygons, the PLACEMENT_RANDOM directive below will scatter
     // points within the polygon boundary at the specified density.
     ModelSymbol* model = style.getOrCreate<ModelSymbol>();
-    //model->url()->setLiteral(TREE_MODEL_URL);
-    model->scale()->setLiteral( 0.2 );
+    model->url()->setLiteral(TREE_MODEL_URL);
     model->placement() = model->PLACEMENT_RANDOM;
-    model->density() = 3000.0f; // instances per sqkm
-    model->setModel(osgDB::readRefNodeFile(TREE_MODEL_URL).release());
+    model->density() = 6000.0f; // instances per sqkm
     
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
@@ -296,7 +294,7 @@ void addParks(Map* map)
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 650;
-    layout.maxRange() = 2000.0f;
+    layout.addLevel(FeatureLevel(0.0f, 2000.0f, "parks"));
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureModelLayerOptions parks;
@@ -309,5 +307,11 @@ void addParks(Map* map)
     parks.instancing() = true;
     parks.clusterCulling() = false;
 
-    map->addLayer(new FeatureModelLayer(parks));
+    Layer* parksLayer = new FeatureModelLayer(parks);
+    map->addLayer(parksLayer);
+
+    if (parksLayer->getStatus().isError())
+    {
+        OE_WARN << parksLayer->getStatus().message() << std::endl;
+    }
 }

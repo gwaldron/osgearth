@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "TritonLayer"
-#include "TritonNode"
 #include "TritonContext"
 #include "TritonDrawable"
 #include "TritonHeightMap"
@@ -196,7 +195,7 @@ namespace osgEarth { namespace Triton
 
 
 TritonLayer::TritonLayer(Callback* userCallback) :
-osgEarth::VisibleLayer(&_optionsConcrete),
+osgEarth::Util::OceanLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _callback(userCallback)
 {
@@ -204,7 +203,7 @@ _callback(userCallback)
 }
 
 TritonLayer::TritonLayer(const TritonLayerOptions& options, Callback* userCallback) :
-osgEarth::VisibleLayer(&_optionsConcrete),
+osgEarth::Util::OceanLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options),
 _callback(userCallback)
@@ -217,7 +216,9 @@ TritonLayer::init()
 {
     OE_INFO << LC << "Creating TritonLayer\n";
 
-    osgEarth::VisibleLayer::init();
+    osgEarth::Util::OceanLayer::init();
+
+    _seaLevel = 0.0f;
 
     // Trick to force the VisibleLayer to install its opacity shader, 
     // which a modified Triton user-functions.glsl shader needs in order to control
@@ -271,4 +272,16 @@ TritonLayer::removedFromMap(const osgEarth::Map* map)
         _layerListener.clear();
         setMaskLayer(0L);
     }
+}
+
+void
+TritonLayer::setSeaLevel(float value)
+{
+    _seaLevel = value;
+}
+
+float
+TritonLayer::getSeaLevel() const
+{
+    return _seaLevel;
 }

@@ -78,6 +78,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // All LayerDrawables share the common terrain bounds.
         osg::BoundingSphere computeBound() const { return _drawState->_bs; }
         osg::BoundingBox computeBoundingBox() const { return _drawState->_box; }
+
+    protected:
+        // overriden to prevent OSG from releasing GL objects on an attached stateset.
+        virtual ~LayerDrawable();
     };
 
 

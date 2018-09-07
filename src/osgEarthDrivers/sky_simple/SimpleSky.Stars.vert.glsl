@@ -4,6 +4,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_Stars_VS
 #pragma vp_location vertex_clip
 
+uniform float oe_GL_PointSize;
 uniform vec3 atmos_v3LightDir; 
 uniform mat4 osg_ViewMatrixInverse; 
 out float oe_Stars_visibility; 
@@ -17,7 +18,7 @@ float remap( float val, float vmin, float vmax, float r0, float r1 )
 
 void oe_Stars_VS(inout vec4 vertexClip)
 { 
-    gl_PointSize = vp_Color.r * 12.0;
+    gl_PointSize = vp_Color.r * oe_GL_PointSize;
     vec3 eye = osg_ViewMatrixInverse[3].xyz; 
     float hae = length(eye) - 6378137.0; 
     // highness: visibility increases with altitude

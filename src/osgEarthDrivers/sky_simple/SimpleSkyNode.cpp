@@ -743,8 +743,7 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
     double minMag = DBL_MAX, maxMag = DBL_MIN;
 
     PointDrawable* drawable = new PointDrawable();
-    //drawable->setPointSmooth(true);
-    //drawable->setPointSize(10.0f);
+    drawable->setPointSize(_options.starSize().get());
     drawable->allocate(stars.size());
 
     for(unsigned p=0; p<stars.size(); ++p)
@@ -756,7 +755,7 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
             star.declination, 
             _starRadius );
 
-        drawable->pushVertex(v);
+        drawable->setVertex(p, v);
 
         if ( star.magnitude < minMag ) minMag = star.magnitude;
         if ( star.magnitude > maxMag ) maxMag = star.magnitude;

@@ -63,13 +63,6 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
         addElevation( model.get(), map, key, filter, border, progress );
     }
 
-#if 0
-    if ( requirements == 0L || requirements->normalTexturesRequired() )
-    {
-        addNormalMap( model.get(), frame, key, progress );
-    }
-#endif
-
     // done.
     return model.release();
 }
@@ -301,40 +294,6 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
 }
 
-void
-TerrainTileModelFactory::addNormalMap(TerrainTileModel* model,
-                                      const Map* map,
-                                      const TileKey&    key,
-                                      ProgressCallback* progress)
-{
-    OE_START_TIMER(fetch_normalmap);
-
-    if (model->elevationModel().valid())
-    {
-        const osgEarth::ElevationInterpolation& interp =
-            map->getMapOptions().elevationInterpolation().get();
-
-        // Can only generate the normal map if the center heightfield was built:
-        osg::ref_ptr<osg::Image> image = HeightFieldUtils::convertToNormalMap(
-            model->heightFields(),
-            key.getProfile()->getSRS() );
-
-        if (image.valid())
-        {
-            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setName( "oe_normal_map" );
-
-            // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createNormalTexture( image.get(), *_options.compressNormalMaps() );
-            layerModel->setTexture( texture );
-            model->normalModel() = layerModel;
-        }
-    }
-
-    if (progress)
-        progress->stats()["fetch_normalmap_time"] += OE_STOP_TIMER(fetch_normalmap);
-}
-
 bool
 TerrainTileModelFactory::getOrCreateHeightField(const Map*                      map,
                                                 const TileKey&                  key,
@@ -507,17 +466,21 @@ osg::Texture*
 TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) const
 {
     if (compress)
-    {        
-        METRIC_SCOPED("normalmap compression");
-        // See if we have a CPU compressor generator:
-        osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
-        if (ip)
+    {            
+        // Only compress the image if it's not already compressed.
+        if (image->getPixelFormat() != GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
         {
-            ip->compress(*image, osg::Texture::USE_RGTC2_COMPRESSION, true, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::FASTEST);
-        }
-        else
-        {
-            OE_NOTICE << LC << "Failed to get image processor, cannot compress normal map" << std::endl;
+            METRIC_SCOPED("normalmap compression");
+            // See if we have a CPU compressor generator:
+            osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
+            if (ip)
+            {
+                ip->compress(*image, osg::Texture::USE_RGTC2_COMPRESSION, true, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::NORMAL);
+            }
+            else
+            {
+                OE_NOTICE << LC << "Failed to get image processor, cannot compress normal map" << std::endl;
+            }
         }
     }    
 

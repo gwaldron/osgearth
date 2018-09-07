@@ -479,7 +479,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     else
     {
         mainContainer = new VBox();
-        mainContainer->setAbsorbEvents( true );
+        mainContainer->setAbsorbEvents( false );
         mainContainer->setBackColor( Color(Color::Black, 0.8) );
         mainContainer->setHorizAlign( Control::ALIGN_LEFT );
         mainContainer->setVertAlign( Control::ALIGN_BOTTOM );

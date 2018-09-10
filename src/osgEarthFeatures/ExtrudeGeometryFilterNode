@@ -22,15 +22,13 @@ namespace osgEarth {
             osg::Matrixd xform;
          };
 
-         ExtrudeGeometryFilterNode(osg::Group* attachPoint, osg::Group* extrusionGroup, const osg::Matrixd& xform)
+         ExtrudeGeometryFilterNode(osg::Group* extrusionGroup, const osg::Matrixd& xform)
             : _extrusionGroup(extrusionGroup)
-            , _attachPoint(attachPoint)
             , _xform(xform)
          {
 
          }
          osg::Group* extrusionGroup() { return _extrusionGroup; }
-         osg::Group* attachPoint() { return _attachPoint; }
          const osg::Matrixd& xform() { return _xform; }
 
          void clearExtrusionGroup()
@@ -39,7 +37,6 @@ namespace osgEarth {
          }
       private:
          osg::ref_ptr<osg::Group> _extrusionGroup;
-         osg::ref_ptr<osg::Group> _attachPoint;
          osg::Matrixd _xform;
       };
    }

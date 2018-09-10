@@ -674,7 +674,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
           resultGroup->addChild(attachPoint);
 
           // make a filter node with the extrusion group as the data
-          ExtrudeGeometryFilterNode* extrudeGeometryFilterNode = new ExtrudeGeometryFilterNode(attachPoint, extrusionGroup, xform);
+          ExtrudeGeometryFilterNode* extrudeGeometryFilterNode = new ExtrudeGeometryFilterNode(extrusionGroup, xform);
 
           attachPoint->setUserData(extrudeGeometryFilterNode);
        }

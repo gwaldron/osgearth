@@ -195,7 +195,7 @@ namespace osgEarth { namespace Triton
 
 
 TritonLayer::TritonLayer(Callback* userCallback) :
-osgEarth::Util::OceanLayer(&_optionsConcrete),
+osgEarth::VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _callback(userCallback)
 {
@@ -203,7 +203,7 @@ _callback(userCallback)
 }
 
 TritonLayer::TritonLayer(const TritonLayerOptions& options, Callback* userCallback) :
-osgEarth::Util::OceanLayer(&_optionsConcrete),
+osgEarth::VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options),
 _callback(userCallback)
@@ -216,7 +216,7 @@ TritonLayer::init()
 {
     OE_INFO << LC << "Creating TritonLayer\n";
 
-    osgEarth::Util::OceanLayer::init();
+    osgEarth::VisibleLayer::init();
 
     _seaLevel = 0.0f;
 
@@ -272,16 +272,4 @@ TritonLayer::removedFromMap(const osgEarth::Map* map)
         _layerListener.clear();
         setMaskLayer(0L);
     }
-}
-
-void
-TritonLayer::setSeaLevel(float value)
-{
-    _seaLevel = value;
-}
-
-float
-TritonLayer::getSeaLevel() const
-{
-    return _seaLevel;
 }

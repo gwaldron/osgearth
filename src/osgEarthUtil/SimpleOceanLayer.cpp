@@ -40,14 +40,14 @@ REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
 
 SimpleOceanLayer::SimpleOceanLayer() :
-OceanLayer(&_optionsConcrete),
+VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete)
 {
     init();
 }
 
 SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
-OceanLayer(&_optionsConcrete),
+VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options)
 {
@@ -59,7 +59,7 @@ SimpleOceanLayer::init()
 {
     OE_INFO << LC << "Creating a Simple Ocean Layer\n";
 
-    OceanLayer::init();
+    VisibleLayer::init();
 
     this->setName("Simple Ocean");
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
@@ -87,17 +87,14 @@ SimpleOceanLayer::init()
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     // Material.
-#if 1
     osg::Material* m = new MaterialGL3();
     m->setAmbient(m->FRONT, osg::Vec4(0, 0, 0, 1));
     m->setDiffuse(m->FRONT, osg::Vec4(1, 1, 1, 1));
     m->setSpecular(m->FRONT, osg::Vec4(1, 1, 1, 1)); //0.2, 0.2, 0.2, 1));
     m->setEmission(m->FRONT, osg::Vec4(0, 0, 0, 1));
     m->setShininess(m->FRONT, 100.0);
-    ss->setAttributeAndModes(m, 1); //osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    //m->setUpdateCallback(new MaterialCallback());
+    ss->setAttributeAndModes(m, 1);
     MaterialCallback().operator()(m, 0L);
-#endif
     
     setColor(options().color().get());
     setMaxAltitude(options().maxAltitude().get());

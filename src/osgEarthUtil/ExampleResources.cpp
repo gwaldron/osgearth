@@ -922,8 +922,8 @@ namespace
 {
     struct OceanSeaLevel : public ui::ControlEventHandler
     {
-        OceanSeaLevel(OceanLayer* ocean) : _ocean(ocean) { }
-        OceanLayer* _ocean;
+        OceanSeaLevel(SimpleOceanLayer* ocean) : _ocean(ocean) { }
+        SimpleOceanLayer* _ocean;
         void onValueChanged(ui::Control* control, float value )
         {
             _ocean->setSeaLevel(value);
@@ -932,7 +932,7 @@ namespace
 }
 
 ui::Control*
-OceanControlFactory::create(OceanLayer* ocean)
+OceanControlFactory::create(SimpleOceanLayer* ocean)
 {
     ui::Grid* grid = new ui::Grid();
     grid->setBackColor(0,0,0,.1);

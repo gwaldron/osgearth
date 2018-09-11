@@ -1420,7 +1420,6 @@ RexTerrainEngineNode::updateState()
             // Normal mapping shaders:
             if (this->normalTexturesRequired())
             {
-                OE_NOTICE << "Loading normal map" << std::endl;
                 package.load(surfaceVP, package.NORMAL_MAP_VERT);
                 package.load(surfaceVP, package.NORMAL_MAP_FRAG);
                 surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");

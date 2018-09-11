@@ -318,23 +318,24 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
     e->_inputSRS = srs; 
     e->_lod = lod;
     e->_pool = this;
-
-    // user-specified layers?
-    if (_layers.size() > 0)
+    
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
     {
-        e->_layers = _layers;
-    }
-
-    // full map layers:
-    else
-    {
-        osg::ref_ptr<const Map> map;
-        if (_map.lock(map))
+        if (_layers.size() > 0)
         {
-            map->getLayers(e->_layers);
-            e->_mapProfile = map->getProfile();
+            // user-specified layers
+            e->_layers = _layers;
         }
+        else
+        {
+            // all elevation layers
+            map->getLayers(e->_layers);
+        }
+
+        e->_mapProfile = map->getProfile();
     }
+
     return e;
 }
 

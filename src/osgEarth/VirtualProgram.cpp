@@ -99,94 +99,49 @@ void ProgramRepo::unlock()
 }
 
 osg::ref_ptr<osg::Program>
-ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, const ProgramRepo::User user)
+ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, UID user)
 {
     ProgramMap::iterator i = _db.find( key );
     if ( i != _db.end() )
     {
-        Entry& e = i->second;
-        e._frameLastUsed = frameNumber;
-        if (user)
-            e._users.insert(user);
-        OE_TEST << LC << "PR USE prog=" << e._program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
+        Entry* e = i->second.get();
+        e->_frameLastUsed = frameNumber;
+        e->_users.insert(user);
 
-        //osgEarth::Registry::instance()->startActivity("ProgramRepo", Stringify()<<_db.size());
+        OE_TEST << LC << "PR USE prog=" << e->_program.get() << " user=" << (user) << " total=" << e->_users.size() << std::endl;
 
-        return e._program;
+        return e->_program;
     }
     return 0L;
 }
 
 void
-ProgramRepo::add(const ProgramKey& key, osg::Program* program, unsigned frameNumber, const User user)
-{
-    Entry& e = _db[key];
-    e._frameLastUsed = frameNumber;
-    e._program = program;
-    e._users.insert(user);
-    OE_TEST << LC << "PR ADD prog=" << program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
-}
-
-void
-ProgramRepo::release(osg::Program* program, const User user, osg::State* state)
-{
-    for(ProgramMap::iterator i = _db.begin(); i != _db.end(); ++i)
-    {
-        Entry& e = i->second;
-        if (e._program.get() == program)
-        {
-            // remove "user" from the users list:
-            if (user)
-                e._users.erase(user);
-
-            if (e._users.empty())
-            {
-                // when the users list is empty, release the program and remove it
-                // from the repository. But, remove the actual shaders first because
-                // they may be shared with other programs.
-                while(e._program->getNumShaders() > 0)
-                {
-                    e._program->removeShader(e._program->getShader(0));
-                }
-
-                // release the GL memory
-                e._program->releaseGLObjects(state);
-
-                // remove from the repo
-                _db.erase(i);
-            }
-            break;
-        }
-    }
-}
-
-void
-ProgramRepo::release(const User user, osg::State* state)
+ProgramRepo::release(UID user, osg::State* state)
 {
     if (!user)
         return;
 
     for(ProgramMap::iterator i = _db.begin(); i != _db.end(); )
     {
-        Entry& e = i->second;
+        Entry* e = i->second.get();
         bool increment = true;
 
-        if (e._users.find(user) != e._users.end())
+        if (e->_users.find(user) != e->_users.end())
         {
             // remove "user" from the users list:
-            e._users.erase(user);
+            e->_users.erase(user);
             
-            OE_TEST << LC << "PR REL prog=" << (e._program->getName()) << " user=" << (user) << " total=" << e._users.size() << std::endl;
+            OE_TEST << LC << "PR REL prog=" << (e->_program->getName()) << " user=" << (user) << " total=" << e->_users.size() << std::endl;
 
-            if (e._users.empty())
+            if (e->_users.empty())
             {
                 // when the users list is empty, release the program and remove it
                 // from the repository. But, remove the actual shaders first because
                 // they may be shared with other programs.
-                while(e._program->getNumShaders() > 0)
+                while(e->_program->getNumShaders() > 0)
                 {
-                    osg::ref_ptr<osg::Shader> shader = e._program->getShader(0);
-                    e._program->removeShader(shader.get());
+                    osg::ref_ptr<osg::Shader> shader = e->_program->getShader(0);
+                    e->_program->removeShader(shader.get());
                     if (shader->referenceCount() == 1)
                     {
                         //TODO: look into this; don't think it ever gets called -gw
@@ -196,7 +151,7 @@ ProgramRepo::release(const User user, osg::State* state)
                 }
 
                 // release the GL memory
-                e._program->releaseGLObjects(state);
+                e->_program->releaseGLObjects(state);
 
                 // remove from the repo
                 _db.erase(i++);
@@ -211,40 +166,47 @@ ProgramRepo::release(const User user, osg::State* state)
     }
 }
 
-bool
-ProgramRepo::share(osg::ref_ptr<osg::Program>& in_out, const User user)
+void
+ProgramRepo::add(const ProgramKey& key, osg::ref_ptr<osg::Program>& in_out, unsigned frameNumber, UID user)
 {
+    // First try to find an entry with an equivalent program:
     for(ProgramMap::iterator i = _db.begin(); i != _db.end(); ++i)
     {
-        Entry& e = i->second;
+        osg::ref_ptr<Entry>& e = i->second;
 
         // same pointer? do nothing but update the user
-        if (e._program.get() == in_out.get())
+        if (e->_program.get() == in_out.get())
         {
-            if (user)
-                e._users.insert(user);
+            osg::ref_ptr<Entry>& newEntry = _db[key];
+            newEntry = e.get();
+            in_out = e->_program.get();
+            e->_users.insert(user);
             
-            OE_TEST << LC << "PR SHA prog=" << e._program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
+            OE_TEST << LC << "PR SHR1 prog=" << e->_program.get() << " user=" << (user) << " total=" << e->_users.size() << std::endl;
 
-            return true;
+            return;
         }
 
         // different pointer but equivalent? replace input with output
         // and let input go out of scope
-        else if (e._program->compare(*in_out.get()) == 0)
+        else if (e->_program->compare(*in_out.get()) == 0)
         {
-            in_out = e._program.get();
-            if (user)
-                e._users.insert(user);
+            osg::ref_ptr<Entry>& newEntry = _db[key];
+            newEntry = e.get();
+            in_out = e->_program.get();
+            e->_users.insert(user);
 
-            OE_TEST << LC << "PR SHA prog=" << e._program->getName() << " user=" << (user) << " total=" << e._users.size() << std::endl;
+            OE_TEST << LC << "PR SHR2 prog=" << e->_program.get() << " user=" << (user) << " total=" << e->_users.size() << std::endl;
         
-
-            return true;
+            return;
         }
     }
 
-    return false;
+    osg::ref_ptr<Entry>& newEntry = _db[key];    
+    newEntry = new Entry();
+    newEntry->_program = in_out.get();
+    newEntry->_frameLastUsed = frameNumber;
+    newEntry->_users.insert(user);
 }
 
 void
@@ -258,7 +220,7 @@ ProgramRepo::resizeGLObjectBuffers(unsigned maxSize)
 {
     for (ProgramMap::iterator i = _db.begin(); i != _db.end(); ++i)
     {
-        i->second._program->resizeGLObjectBuffers(maxSize);
+        i->second->_program->resizeGLObjectBuffers(maxSize);
     }
 }
 
@@ -1490,7 +1452,6 @@ VirtualProgram::apply( osg::State& state ) const
         
         // Next, add the shaders from this VP.
         {
-            //Threading::ScopedReadLock readonly(_dataModelMutex);
             _dataModelMutex.lock();
 
             for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
@@ -1580,14 +1541,9 @@ VirtualProgram::apply( osg::State& state ) const
                 }
             }
 
-            // Is there already an equivalent program in the repo?
-            bool foundOneToShare = Registry::programRepo().share(program, _id);
-
-            if (!foundOneToShare)
-            {
-                // no, so add this one.
-                Registry::programRepo().add(local.programKey, program.get(), frameNumber, _id);
-            }
+            // Adds this program to the repo, or finds an equivalent pre-existing program
+            // in the repo and associates this program key with it.
+            Registry::programRepo().add(local.programKey, program, frameNumber, _id);
 
             // purge expired programs.
             Registry::programRepo().prune(frameNumber, &state);

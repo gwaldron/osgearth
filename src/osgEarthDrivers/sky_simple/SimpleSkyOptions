@@ -37,7 +37,8 @@ namespace osgEarth { namespace SimpleSky
           _atmosphericLighting (true),
           _exposure            (2.4f),
           _daytimeAmbientBoost (5.0f),
-          _allowWireframe      (false)
+          _allowWireframe      (false),
+          _starSize            (14.0f)
         {
             setDriver( "simple" );
             fromConfig( _conf );
@@ -65,6 +66,10 @@ namespace osgEarth { namespace SimpleSky
         optional<std::string>& starFile() { return _starFile; }
         const optional<std::string>& starFile() const { return _starFile; }
 
+        //! Point size to use for stars (default=14)
+        optional<float>& starSize() { return _starSize; }
+        const optional<float>& starSize() const { return _starSize; }
+
         /** Whether to permit wireframe/point polygonmode rendering. Default is false. */
         optional<bool>& allowWireframe() { return _allowWireframe; }
         const optional<bool>& allowWireframe() const { return _allowWireframe; }
@@ -76,6 +81,7 @@ namespace osgEarth { namespace SimpleSky
             conf.addIfSet("exposure", _exposure);
             conf.addIfSet("daytime_ambient_boost", _daytimeAmbientBoost);
             conf.addIfSet("star_file", _starFile);
+            conf.addIfSet("star_size", _starSize);
             conf.addIfSet("allow_wireframe", _allowWireframe);
             return conf;
         }
@@ -92,6 +98,7 @@ namespace osgEarth { namespace SimpleSky
             conf.getIfSet("exposure", _exposure);
             conf.getIfSet("daytime_ambient_boost", _daytimeAmbientBoost);
             conf.getIfSet("star_file", _starFile);
+            conf.getIfSet("star_size", _starSize);
             conf.getIfSet("allow_wireframe", _allowWireframe);
         }
 
@@ -99,6 +106,7 @@ namespace osgEarth { namespace SimpleSky
         optional<float>       _exposure;
         optional<float>       _daytimeAmbientBoost;
         optional<std::string> _starFile;
+        optional<float>       _starSize;
         optional<bool>        _allowWireframe;
     };
 

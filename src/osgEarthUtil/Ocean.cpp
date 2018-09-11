@@ -59,6 +59,7 @@ OceanOptions::getConfig() const
     return conf;
 }
 
+#if 0
 //------------------------------------------------------------------------
 
 OceanLayer::OceanLayer(OceanLayerOptions* optionsPtr) :
@@ -67,7 +68,7 @@ _options(optionsPtr ? optionsPtr : &_optionsConcrete)
 {
     //nop - init() called by subclass.
 }
-
+#endif
 
 //------------------------------------------------------------------------
 

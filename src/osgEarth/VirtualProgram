@@ -216,16 +216,17 @@ namespace osgEarth
     class /*internal*/ ProgramRepo : public osg::Referenced
     {
     public:
-        typedef osgEarth::UID User;
 
-        struct Entry
+        // Referenced, b/c more than one ProgramKey can point to the same Entry
+        // (shared program)
+        struct Entry : public osg::Referenced
         {
             osg::ref_ptr<osg::Program> _program;
             unsigned                   _frameLastUsed;
-            std::set<User>             _users;
+            std::set<UID>              _users;
         };
 
-        typedef std::map<ProgramKey, Entry> ProgramMap;
+        typedef std::map<ProgramKey, osg::ref_ptr<Entry> > ProgramMap;
 
         //! Exclusive lock on the repo - enclose any calls to this object
         //! with a lock/unlock pair
@@ -236,22 +237,13 @@ namespace osgEarth
 
         //! Search for a program matching the key and return it, adding the user
         //! to its users list and updating the frame number.
-        osg::ref_ptr<osg::Program> use(const ProgramKey& key, unsigned frameNumber, const User user);
+        osg::ref_ptr<osg::Program> use(const ProgramKey& key, unsigned frameNumber, UID user);
 
         //! Insert a new program into the repo
-        void add(const ProgramKey& key, osg::Program* program, unsigned frameNumber, const User user);
+        void add(const ProgramKey& key, osg::ref_ptr<osg::Program>& inOut, unsigned frameNumber, UID user);
 
         //! Release anything used by this user
-        void release(const User user, osg::State* state);
-
-        //! Release a program back to the repo
-        void release(osg::Program* program, const User user, osg::State* state);
-
-        //! Look for an existing program in the repo that is equivalent to
-        //! the one passed in; if found, replace the input with the output
-        //! and update the user list.
-        //! Returns TRUE if a match was found.
-        bool share(osg::ref_ptr<osg::Program>& in_out, const User user);
+        void release(UID user, osg::State* state);
 
         //! Prune expired data
         void prune(unsigned frameNumber, osg::State* state);

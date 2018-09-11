@@ -33,11 +33,11 @@ namespace osgEarth { namespace Triton
     /**
      * Serializable options for initializing the TritonLayer.
      */
-    class OSGEARTHTRITON_EXPORT TritonLayerOptions : public osgEarth::Util::OceanLayerOptions
+    class OSGEARTHTRITON_EXPORT TritonLayerOptions : public osgEarth::VisibleLayerOptions
     {
     public:
         TritonLayerOptions(const osgEarth::ConfigOptions& options = osgEarth::ConfigOptions()) :
-            osgEarth::Util::OceanLayerOptions( options )
+            osgEarth::VisibleLayerOptions( options )
         {
             _useHeightMap.init( true );
             _heightMapSize.init( 1024 );
@@ -84,7 +84,7 @@ namespace osgEarth { namespace Triton
 
     public:
         osgEarth::Config getConfig() const {
-            osgEarth::Config conf = osgEarth::Util::OceanLayerOptions::getConfig();
+            osgEarth::Config conf = osgEarth::VisibleLayerOptions::getConfig();
             conf.key() = "triton";
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
@@ -99,7 +99,7 @@ namespace osgEarth { namespace Triton
 
     protected:
         void mergeConfig( const osgEarth::Config& conf ) {
-            osgEarth::Util::OceanLayerOptions::mergeConfig( conf );
+            osgEarth::VisibleLayerOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
@@ -130,7 +130,7 @@ namespace osgEarth { namespace Triton
     /**
      * Node that roots the Triton adapter.
      */
-    class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::Util::OceanLayer
+    class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::VisibleLayer
     {
     public:
         META_Layer(osgEarth, TritonLayer, TritonLayerOptions);
@@ -149,11 +149,6 @@ namespace osgEarth { namespace Triton
     public: // Layer
 
         virtual osg::Node* getNode() const;
-
-    public: // Ocean
-        
-        void setSeaLevel(float seaLevel);
-        float getSeaLevel() const;
 
     protected: // Layer
 

@@ -1,15 +1,15 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-in float visibility; 
-in vec4 osg_FrontColor; 
+#pragma vp_entryPoint oe_Stars_FS
+#pragma vp_location fragment_coloring
 
-out vec4 out_FragColor;
+in float oe_Stars_visibility; 
 
-void main( void ) 
+void oe_Stars_FS(inout vec4 color)
 { 
     float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); 
     float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); 
     float i = b1*b1 * b2*b2; 
-    out_FragColor = osg_FrontColor * i * visibility; 
+    color = color * i * oe_Stars_visibility;
 }

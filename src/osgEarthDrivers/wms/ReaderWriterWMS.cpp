@@ -182,25 +182,37 @@ public:
         // Next, try to glean the extents from the layer list
         if ( capabilities.valid() )
         {
-            //TODO: "layers" mights be a comma-separated list. need to loop through and
-            //combine the extents?? yes
-            WMSLayer* layer = capabilities->getLayerByName( _options.layers().value() );
-            if ( layer )
-            {
-                // Get the lat/lon extents
-                double minLon, minLat, maxLon, maxLat;
-                layer->getLatLonExtents(minLon, minLat, maxLon, maxLat);
-                GeoExtent wgs84Extent(SpatialReference::create("wgs84"), minLon, minLat, maxLon, maxLat);
-                getDataExtents().push_back(DataExtent(wgs84Extent, 0));
+            StringTokenizer tok(",");
+            StringVector tized;
+            tok.tokenize(_options.layers().value(), tized);
 
-                // If we don't have a profile yet, transform the lat/lon extents to the requested srs and use it as the extents of the profile.
-                if (!result.valid())
+            for (StringVector::const_iterator itr = tized.begin(); itr != tized.end(); ++itr)
+            {
+                std::string layerName = *itr;
+                WMSLayer* layer = capabilities->getLayerByName(layerName);
+                if (layer)
                 {
-                    const SpatialReference* srs = SpatialReference::create(_srsToUse);
-                    GeoExtent nativeExtent;
-                    wgs84Extent.transform(srs, nativeExtent);
-                    result = Profile::create(srs, nativeExtent.xMin(), nativeExtent.yMin(), nativeExtent.xMax(), nativeExtent.yMax());
+                    // Get the lat/lon extents
+                    double minLon, minLat, maxLon, maxLat;
+                    layer->getLatLonExtents(minLon, minLat, maxLon, maxLat);
+                    GeoExtent wgs84Extent(SpatialReference::create("wgs84"), minLon, minLat, maxLon, maxLat);
+                    getDataExtents().push_back(DataExtent(wgs84Extent, 0));
                 }
+            }
+
+            // If we don't have a profile yet, transform the lat/lon extents to the requested srs and use it as the extents of the profile.
+            if (!result.valid())
+            {
+                const SpatialReference* srs = SpatialReference::create(_srsToUse);
+                GeoExtent totalExtent(srs);
+                for (DataExtentList::const_iterator itr = getDataExtents().begin(); itr != getDataExtents().end(); ++itr)
+                {
+                    GeoExtent dataExtent = *itr;
+                    GeoExtent nativeExtent;
+                    dataExtent.transform(srs, nativeExtent);
+                    totalExtent.expandToInclude(nativeExtent);
+                }
+                result = Profile::create(srs, totalExtent.xMin(), totalExtent.yMin(), totalExtent.xMax(), totalExtent.yMax());
             }
         }
 

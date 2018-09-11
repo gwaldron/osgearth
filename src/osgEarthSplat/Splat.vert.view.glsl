@@ -18,12 +18,15 @@ flat out float oe_splat_coverageTexSize;
 
 uniform mat4 OE_SPLAT_COVERAGE_TEXMAT;   // assigned at runtime
 
+uniform vec3 oe_eye_pos;
+
 
 void oe_splat_vertex_view(inout vec4 VertexVIEW)
 {
     // range from camera to vertex
-    oe_splat_range = -VertexVIEW.z;
-
+    //oe_splat_range = -VertexVIEW.z;
+	oe_splat_range = oe_eye_pos.z;
+    
     // calculate the coverage sampling coordinates. The texture matrix accounts
     // for any super-sampling that might be in effect for the current LOD.
     oe_splat_covtc = (OE_SPLAT_COVERAGE_TEXMAT * oe_layer_tilec).st;

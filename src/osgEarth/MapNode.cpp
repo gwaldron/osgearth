@@ -209,6 +209,41 @@ _terrainEngine(0L)
     }
 }
 
+class EyeUniformCallback : public osg::NodeCallback
+{
+public:
+    EyeUniformCallback(const SpatialReference* srs):
+        _srs(srs)
+    {
+    }
+
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+        const osg::Camera* camera = cv->getCurrentCamera();
+
+        osg::Vec3d eye = cv->getViewPoint();
+        if (_srs && !_srs->isProjected())
+        {
+            GeoPoint mapPoint;
+            mapPoint.fromWorld(_srs, eye);
+            eye = mapPoint.vec3d();
+        }
+
+        osg::ref_ptr<osg::StateSet> ss = new osg::StateSet();
+        ss->addUniform(new osg::Uniform("oe_eye_pos", osg::Vec3(eye.x(), eye.y(), eye.z())));
+        cv->pushStateSet(ss.get());
+
+        traverse(node, nv);
+
+        if (ss.valid())
+            cv->popStateSet();      
+    }
+
+    const SpatialReference* _srs;
+};
+
+
 
 void
 MapNode::init()
@@ -380,7 +415,7 @@ MapNode::init()
             stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f()) );
         }
 #endif
-    }
+    }    
 
     // install a default material for everything in the map
     osg::Material* defaultMaterial = new MaterialGL3();
@@ -393,6 +428,7 @@ MapNode::init()
 
     // install a callback that sets the viewport size uniform:
     this->addCullCallback(new InstallViewportSizeUniform());
+    this->addCullCallback(new EyeUniformCallback(getMapSRS()));
 
     // install a callback that updates a horizon object and installs a clipping plane
     if (getMapSRS()->isGeographic())

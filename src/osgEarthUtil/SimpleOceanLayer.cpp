@@ -35,6 +35,7 @@ using namespace osgEarth::Util;
 
 
 /** Register this layer so it can be used in an earth file */
+REGISTER_OSGEARTH_LAYER(ocean, SimpleOceanLayer);
 REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
 

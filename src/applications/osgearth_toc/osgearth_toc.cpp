@@ -144,6 +144,7 @@ main( int argc, char** argv )
 
     // Load an earth file 
     Container* uiRoot = new VBox();
+    uiRoot->setAbsorbEvents(false);
     createControlPanel(uiRoot);
 
     osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, uiRoot);

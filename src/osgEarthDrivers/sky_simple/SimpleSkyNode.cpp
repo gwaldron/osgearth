@@ -38,6 +38,7 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
+#include <osgEarth/PointDrawable>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -741,76 +742,54 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 {
     double minMag = DBL_MAX, maxMag = DBL_MIN;
 
-    osg::Vec3Array* coords = new osg::Vec3Array();
-    std::vector<StarData>::const_iterator p;
-    for( p = stars.begin(); p != stars.end(); p++ )
+    PointDrawable* drawable = new PointDrawable();
+    drawable->setPointSize(_options.starSize().get());
+    drawable->allocate(stars.size());
+
+    for(unsigned p=0; p<stars.size(); ++p)
     {
+        const StarData& star = stars[p];
+
         osg::Vec3d v = getEphemeris()->getECEFfromRADecl(
-            p->right_ascension, 
-            p->declination, 
+            star.right_ascension, 
+            star.declination, 
             _starRadius );
 
-        coords->push_back( v );
+        drawable->setVertex(p, v);
 
-        if ( p->magnitude < minMag ) minMag = p->magnitude;
-        if ( p->magnitude > maxMag ) maxMag = p->magnitude;
+        if ( star.magnitude < minMag ) minMag = star.magnitude;
+        if ( star.magnitude > maxMag ) maxMag = star.magnitude;
     }
 
-    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
-    for( p = stars.begin(); p != stars.end(); p++ )
+    for(unsigned p=0; p<stars.size(); ++p)
     {
-        float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
-        colors->push_back( osg::Vec4(c,c,c,1.0f) );
+        const StarData& star = stars[p];
+        float c = (star.magnitude-minMag) / (maxMag-minMag);
+        drawable->setColor(p, osg::Vec4(c,c,c,1.0f));
     }
 
-    osg::Geometry* geometry = new osg::Geometry;
-    geometry->setUseVertexBufferObjects(true);
+    drawable->finish();
 
-    geometry->setVertexArray( coords );
-    geometry->setColorArray( colors );
-    geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
-
-    osg::StateSet* sset = geometry->getOrCreateStateSet();
+    osg::StateSet* sset = drawable->getOrCreateStateSet();
 
     const osgEarth::Capabilities& caps = osgEarth::Registry::capabilities();
-    // In GL3 core profile, PointSprite is no longer available, and is always on.  However,
-    // in compatibility profile, PointSprite is available, required, and defaults off.
-    if (!caps.isCoreProfile())
-      sset->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
-    sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
 
-    Shaders pkg;
-    std::string starVertSource, starFragSource;
-    if ( Registry::capabilities().isGLES() )
-    {
-        starVertSource = ShaderLoader::load(pkg.Stars_GLES_Vert, pkg);
-        starFragSource = ShaderLoader::load(pkg.Stars_GLES_Frag, pkg);
-    }
-    else
-    {
-        starVertSource = ShaderLoader::load(pkg.Stars_Vert, pkg);
-        starFragSource = ShaderLoader::load(pkg.Stars_Frag, pkg);
-    }
-
-    osg::Program* program = new osg::Program;
-    program->addShader( new osg::Shader(osg::Shader::VERTEX, starVertSource) );
-    program->addShader( new osg::Shader(osg::Shader::FRAGMENT, starFragSource) );
-    sset->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    VirtualProgram* vp = VirtualProgram::getOrCreate(drawable->getOrCreateStateSet());
+    Shaders shaders;
+    shaders.load(vp, shaders.Stars_Vert);
+    shaders.load(vp, shaders.Stars_Frag);
+    vp->setInheritShaders(false);
 
     sset->setRenderBinDetails( BIN_STARS, "RenderBin");
     sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     sset->setMode(GL_BLEND, 1);
 
-    osg::Geode* starGeode = new osg::Geode;
-    starGeode->addDrawable( geometry );
-
     // A separate camera isolates the projection matrix calculations.
     osg::Camera* cam = new osg::Camera();
     cam->getOrCreateStateSet()->setRenderBinDetails( BIN_STARS, "RenderBin" );
     cam->setRenderOrder( osg::Camera::NESTED_RENDER );
-    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
-    cam->addChild( starGeode );
 
+    cam->addChild( drawable );
     return cam;
 }
 

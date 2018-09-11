@@ -995,7 +995,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
     // If we only have a single contender layer, and the tile is the same size as the requested 
     // heightfield then we just use it directly and avoid having to resample it
-    if (contenders.size() == 1)
+    if (contenders.size() == 1 && offsets.empty())
     {
         ElevationLayer* layer = contenders[0].layer.get();
         TileKey& contenderKey = contenders[0].key;

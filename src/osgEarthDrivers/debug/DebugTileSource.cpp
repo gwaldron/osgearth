@@ -55,8 +55,21 @@ namespace
             for( int src_s=0, dst_s=dx; src_s < src->s(); src_s++, dst_s++ )
             {           
                 osg::Vec4 color = read(src_s, src_t);
-                if ( color.a() > 0.5f )
-                    color = newColor;
+
+                // GL_RED images through read() will be (c,c,c,1.0), with alpha never set
+                if ( src->getInternalTextureFormat() == GL_RED || src->getInternalTextureFormat() == GL_LUMINANCE )
+                {
+                    if ( color.r() <= 0.5f )
+                        continue;
+                }
+                else
+                {
+                    if ( color.a() <= 0.5f )
+                        continue;
+                }
+
+                // Only write non-transparent colors
+                color = newColor;
                 write( color, dst_s, dst_t );
             }
         }

@@ -225,14 +225,6 @@ SimpleOceanLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& bo
     box.zMax() = std::max(box.zMax(), (osg::BoundingBox::value_type)0.0);
 }
 
-Config
-SimpleOceanLayer::getConfig() const
-{
-    Config conf = options().getConfig();
-    conf.key() = "simple_ocean";
-    return conf;
-}
-
 void
 SimpleOceanLayer::setSeaLevel(float value)
 {

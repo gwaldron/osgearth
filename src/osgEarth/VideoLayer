@@ -70,7 +70,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT VideoLayer : public osgEarth::ImageLayer
     {
     public:
-        META_Layer(osgEarth, VideoLayer, VideoLayerOptions);
+        META_Layer(osgEarth, VideoLayer, VideoLayerOptions, video);
 
         VideoLayer();        
         

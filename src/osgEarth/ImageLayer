@@ -203,7 +203,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
     {
     public:
-        META_Layer(osgEarth, ImageLayer, ImageLayerOptions);
+        META_Layer(osgEarth, ImageLayer, ImageLayerOptions, image);
 
         /**
          * Construct a new ImageLayer. Use the options() to configure it

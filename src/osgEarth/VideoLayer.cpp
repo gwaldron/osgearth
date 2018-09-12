@@ -54,10 +54,7 @@ Config
 VideoLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
-    conf.key() = "video";
-
     conf.set("url", _url);
-
     return conf;
 }
 

@@ -98,7 +98,7 @@ Config
 LandCoverDictionaryOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
-    conf.key() = "land_cover_dictionary";
+
     if (!classes().empty())
     {
         Config classes("classes");

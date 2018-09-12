@@ -133,7 +133,6 @@ Config
 ImageLayerOptions::getConfig() const
 {
     Config conf = TerrainLayerOptions::getConfig();
-    conf.key() = "image";
 
     conf.set( "nodata_image",   _noDataImageFilename );
     conf.set( "min_range",      _minRange );

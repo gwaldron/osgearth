@@ -72,7 +72,6 @@ Config
 MGRSGraticuleOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
-    conf.key() = "mgrs_graticule";
     conf.set("sqid_data", _sqidURI);
     conf.setObj("styles", _styleSheet);
     conf.set("use_default_styles", _useDefaultStyles);

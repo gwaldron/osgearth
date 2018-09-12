@@ -429,7 +429,6 @@ Config
 LandCoverLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
-    conf.key() = "land_cover";
 
     conf.addIfSet("warp", _warp);
     conf.addIfSet("noise_lod", _noiseLOD);

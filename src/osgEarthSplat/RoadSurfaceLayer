@@ -66,7 +66,6 @@ namespace osgEarth { namespace Splat
         Config getConfig() const
         {
             Config conf = ImageLayerOptions::getConfig();
-            conf.key() = "road_surface";
             conf.addObjIfSet("features",  _featureSourceOptions);
             conf.addIfSet("feature_source", _featureSourceLayer);
             conf.addIfSet("buffer_width", _bufferWidth);
@@ -103,7 +102,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
     public:
-        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions);
+        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions, road_surface);
 
         //! Create a blank layer to be configured with options()
         RoadSurfaceLayer();

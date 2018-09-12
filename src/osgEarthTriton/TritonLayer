@@ -85,7 +85,6 @@ namespace osgEarth { namespace Triton
     public:
         osgEarth::Config getConfig() const {
             osgEarth::Config conf = osgEarth::VisibleLayerOptions::getConfig();
-            conf.key() = "triton";
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);
@@ -133,7 +132,7 @@ namespace osgEarth { namespace Triton
     class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::VisibleLayer
     {
     public:
-        META_Layer(osgEarth, TritonLayer, TritonLayerOptions);
+        META_Layer(osgEarth, TritonLayer, TritonLayerOptions, triton);
 
         explicit TritonLayer(Callback* userCallback =0L);
 

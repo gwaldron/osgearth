@@ -80,7 +80,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
     public:
-        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions);
+        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions, elevation);
 
         /**
          * Constructs a blank Elevation Layer;

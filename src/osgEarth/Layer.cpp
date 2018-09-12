@@ -179,7 +179,9 @@ Layer::getCacheID() const
 Config
 Layer::getConfig() const
 {
-    return options().getConfig();
+    Config conf = options().getConfig();
+    conf.key() = getConfigKey();
+    return conf;
 }
 
 bool

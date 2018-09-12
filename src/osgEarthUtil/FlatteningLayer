@@ -80,7 +80,6 @@ namespace osgEarth { namespace Util
         Config getConfig() const
         {
             Config conf = ElevationLayerOptions::getConfig();
-            conf.key() = "flattened_elevation";
             conf.addObjIfSet("features",  _featureSource);
             conf.addIfSet("feature_source", _featureSourceLayer);
             conf.addObjIfSet("line_width", _lineWidth);
@@ -165,7 +164,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions);
+        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions, flattened_elevation);
 
         // Create a layer with initial options.
         FlatteningLayer(const FlatteningLayerOptions& options = FlatteningLayerOptions());

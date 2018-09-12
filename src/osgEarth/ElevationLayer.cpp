@@ -74,16 +74,10 @@ Config
 ElevationLayerOptions::getConfig() const
 {
     Config conf = TerrainLayerOptions::getConfig();
-    conf.key() = "elevation";
-
     conf.set("offset", _offset);
     conf.set("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.set("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
     conf.set("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
-
-    //if (driver().isSet())
-    //    conf.set("driver", driver()->getDriver());
-
     return conf;
 }
 

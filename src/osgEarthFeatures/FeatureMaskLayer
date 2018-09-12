@@ -65,7 +65,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureMaskLayer : public MaskLayer
     {
     public:
-        META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions);
+        META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions, feature_mask);
 
         /**
          * Constructs a new mask layer based on a configuration setup.

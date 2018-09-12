@@ -40,7 +40,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT PatchLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, PatchLayer, PatchLayerOptions);
+        META_Layer(osgEarth, PatchLayer, PatchLayerOptions, patch);
 
         struct TileData : public osg::Referenced
         {

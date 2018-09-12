@@ -47,7 +47,6 @@ Config
 MultiElevationLayerOptions::getConfig() const
 {
     Config conf = ElevationLayerOptions::getConfig();
-    conf.key() = "multi_elevation";
     Config layers("layers");
     for (std::vector<ConfigOptions>::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
         layers.add(i->getConfig());

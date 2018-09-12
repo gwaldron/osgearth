@@ -72,7 +72,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions);
+        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions, feature_model);
 
         //! Create a feature layer with defaults. Use options() to set it up before adding
         //! the layer to a Map.

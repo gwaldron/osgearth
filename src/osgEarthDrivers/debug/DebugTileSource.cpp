@@ -50,12 +50,15 @@ namespace
         ImageUtils::PixelReader read(src);
         ImageUtils::PixelWriter write(dst);
 
+        // for one-channel images, use the RED channel, otherwise ALPHA channel
+        unsigned chan = src->getPixelFormat() == GL_RED || src->getPixelFormat() == GL_LUMINANCE? 0 : 3;
+
         for( int src_t=0, dst_t=dy; src_t < src->t(); src_t++, dst_t++ )
         {
             for( int src_s=0, dst_s=dx; src_s < src->s(); src_s++, dst_s++ )
             {           
                 osg::Vec4 color = read(src_s, src_t);
-                if ( color.a() > 0.5f )
+                if ( color[chan] > 0.5f )
                     color = newColor;
                 write( color, dst_s, dst_t );
             }

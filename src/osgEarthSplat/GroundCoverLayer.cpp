@@ -49,7 +49,6 @@ Config
 GroundCoverLayerOptions::getConfig() const
 {
     Config conf = PatchLayerOptions::getConfig();
-    conf.key() = "splat_groundcover";
     conf.set("land_cover_layer", _landCoverLayerName);
     conf.set("mask_layer", _maskLayerName);
     conf.set("lod", _lod);

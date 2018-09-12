@@ -64,7 +64,6 @@ Config
 ModelLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
-    conf.key() = "model";
 
     conf.set( "name",           _name );
     conf.set( "lighting",       _lighting );

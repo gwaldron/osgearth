@@ -85,12 +85,12 @@ namespace osgEarth { namespace Util
 
         Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.addIfSet("color", _color);
-            conf.addIfSet("max_altitude", _maxAltitude);
-            conf.addIfSet("mask_layer", _maskLayer);
-            conf.addIfSet("use_bathymetry", _useBathymetry);
-            conf.addIfSet("texture", _textureURI);
-            conf.addIfSet("texture_lod", _textureLOD);
+            conf.set("color", _color);
+            conf.set("max_altitude", _maxAltitude);
+            conf.set("mask_layer", _maskLayer);
+            conf.set("use_bathymetry", _useBathymetry);
+            conf.set("texture", _textureURI);
+            conf.set("texture_lod", _textureLOD);
             return conf;
         }
 
@@ -111,7 +111,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions);
+        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions, simple_ocean);
 
         /** Constructs a new ocean layer */
         SimpleOceanLayer();
@@ -138,9 +138,6 @@ namespace osgEarth { namespace Util
         float getSeaLevel() const;
 
     public: // Layer
-
-        /** serialize */
-        virtual Config getConfig() const;
 
         /** callback that ensures proper culling */
         void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;

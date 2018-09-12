@@ -104,7 +104,6 @@ Config
 FractalElevationLayerOptions::getConfig() const
 {
     Config conf = ElevationLayerOptions::getConfig();
-    conf.key() = "fractal_elevation";
     conf.addIfSet("base_lod", _baseLOD);
     conf.addIfSet("amplitude", _amplitude);
     conf.addIfSet("frequency", _frequency);

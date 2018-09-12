@@ -86,7 +86,6 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.key() = "geodetic_graticule";
             conf.addIfSet("line_width", _lineWidth);
             conf.addIfSet("color",      _color);
             conf.addIfSet("label_color", _labelColor );
@@ -132,7 +131,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT GeodeticGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, GeodeticGraticule, GeodeticGraticuleOptions);
+        META_Layer(osgEarthUtil, GeodeticGraticule, GeodeticGraticuleOptions, geodetic_graticule);
 
         //! Construct a graticule with default settings.
         GeodeticGraticule();

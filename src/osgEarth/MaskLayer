@@ -66,7 +66,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT MaskLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, MaskLayer, MaskLayerOptions);
+        META_Layer(osgEarth, MaskLayer, MaskLayerOptions, mask);
 
         /**
          * Minimum terrain LOD at which masking should occur

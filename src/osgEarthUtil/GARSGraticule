@@ -46,7 +46,6 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.key() = "gars_graticule";
             conf.addObjIfSet("style", _style);
             return conf;
         }
@@ -71,7 +70,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT GARSGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions);
+        META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions, gars_graticule);
 
         //! Construct a default GARS graticule
         GARSGraticule();

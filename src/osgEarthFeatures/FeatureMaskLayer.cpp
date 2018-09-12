@@ -27,7 +27,6 @@ using namespace osgEarth::Features;
 #define LC "[FeatureMaskLayer] "
 
 REGISTER_OSGEARTH_LAYER(feature_mask, FeatureMaskLayer);
-REGISTER_OSGEARTH_LAYER(mask, FeatureMaskLayer);
 
 //........................................................................
 
@@ -55,7 +54,6 @@ Config
 FeatureMaskLayerOptions::getConfig() const
 {
     Config conf = MaskLayerOptions::getConfig();
-    conf.key() = "feature_mask";
     conf.addIfSet("feature_source", _featureSourceLayer);
     conf.addObjIfSet("features", _featureSource);
     return conf;

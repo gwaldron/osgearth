@@ -60,7 +60,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MultiElevationLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, MultiElevationLayer, MultiElevationLayerOptions);
+        META_Layer(osgEarth, MultiElevationLayer, MultiElevationLayerOptions, multi_elevation);
 
         //! Create a blank layer to be configurated through options().
         MultiElevationLayer();

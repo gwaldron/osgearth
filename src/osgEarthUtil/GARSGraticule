@@ -19,12 +19,9 @@
 #ifndef OSGEARTHANNOTATION_GARS_GRATICLE
 #define OSGEARTHANNOTATION_GARS_GRATICLE
 
-#include <osgEarth/Extension>
 #include <osgEarth/VisibleLayer>
 #include <osgEarthUtil/Common>
-#include <osgEarthUtil/GeodeticLabelingEngine>
 #include <osgEarthSymbology/Style>
-#include <osg/ClipPlane>
 
 namespace osgEarth { namespace Util
 {
@@ -107,7 +104,6 @@ namespace osgEarth { namespace Util
 
         UID _uid;
         osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<osg::ClipPlane> _clipPlane;
         osg::ref_ptr<osg::Group> _root;
     };  
 } } // namespace osgEarth::Util

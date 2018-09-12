@@ -103,6 +103,14 @@ namespace osgEarth_kml
 					{
 						url = link->value();
 					}
+
+					std::string httpQuery = getValue(link, "httpQuery");
+					if (!httpQuery.empty())
+					{
+					    std::stringstream buf;
+					    buf << url << "?" << httpQuery;
+						url = buf.str();
+					}
 					return url;
 				}
 				else

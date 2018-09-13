@@ -37,7 +37,8 @@ TileDrawable::TileDrawable(const TileKey& key,
 osg::Drawable( ),
 _key         ( key ),
 _geom        ( geometry ),
-_tileSize    ( tileSize )
+_tileSize    ( tileSize ),
+_bboxCB      ( 0L )
 {   
     // a mesh to materialize the heightfield for functors
     _mesh = new osg::Vec3f[ tileSize*tileSize ];

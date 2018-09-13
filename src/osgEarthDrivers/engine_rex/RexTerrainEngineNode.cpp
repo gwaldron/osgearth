@@ -148,7 +148,9 @@ _tileCount            ( 0 ),
 _tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
-_stateUpdateRequired  ( false )
+_stateUpdateRequired  ( false ),
+_rasterizer           ( 0L ),
+_renderModelUpdateRequired( false )
 {
     // Necessary for pager object data
     this->setName("osgEarth.RexTerrainEngineNode");

@@ -30,6 +30,8 @@ LayerDrawable::LayerDrawable() :
 _renderType(Layer::RENDERTYPE_TERRAIN_SURFACE),
 _order(0),
 _layer(0L),
+_visibleLayer(0L),
+_imageLayer(0L),
 _clearOsgState(false),
 _draw(true)
 {

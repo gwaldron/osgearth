@@ -96,6 +96,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _sharedSamplers(0L),
             _colorSamplers(0L),
             _geom(0L),
+            _key(0L),
             _elevTexelCoeff(1.0f, 0.0f),
             _drawCallback(0L),
             _drawPatch(false),

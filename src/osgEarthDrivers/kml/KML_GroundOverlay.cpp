@@ -49,6 +49,7 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
 
     // the extent of the overlay image
 	xml_node<>* llb = node->first_node("latlonbox", 0, false);
+    xml_node<>* llab = node->first_node("latlonaltbox", 0, false);
 	xml_node<>* llq = node->first_node("gx:latlonquad", 0, false);
     if ( llb)
     {
@@ -68,6 +69,25 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
         im = new ImageOverlay( cx._mapNode, image.get() );
         im->setBoundsAndRotation( Bounds(west, south, east, north), rotation );
         cx._groupStack.top()->addChild( im );
+    }
+    else if (llab)
+    {
+        double north = as<double>(getValue(llab, "north"), 0.0);
+        double south = as<double>(getValue(llab, "south"), 0.0);
+        double east = as<double>(getValue(llab, "east"), 0.0);;
+        double west = as<double>(getValue(llab, "west"), 0.0);;
+        Angular rotation(-as<double>(getValue(llab, "rotation"), 0.0), Units::DEGREES);
+
+        osg::ref_ptr<osg::Image> image = URI(href, cx._referrer).readImage().getImage();
+        if (!image.valid())
+        {
+            OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
+            return;
+        }
+
+        im = new ImageOverlay(cx._mapNode, image.get());
+        im->setBoundsAndRotation(Bounds(west, south, east, north), rotation);
+        cx._groupStack.top()->addChild(im);
     }
 
     else if ( llq )

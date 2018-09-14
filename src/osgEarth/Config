@@ -413,31 +413,31 @@ namespace osgEarth
 #define OSGEARTH_SPECIALIZE_CONFIG(TYPE) \
     namespace osgEarth { \
         template<> inline \
-        void Config::set<::##TYPE>(const std::string& key, const ::##TYPE& obj) { \
+        void Config::set<TYPE>(const std::string& key, const TYPE& obj) { \
             set( key, obj.getConfig() ); \
         } \
         template<> inline \
-        void Config::set<::##TYPE>(const std::string& key, const optional<::##TYPE>& opt) { \
+        void Config::set<TYPE>(const std::string& key, const optional<TYPE>& opt) { \
             if ( opt.isSet() ) \
                 set(key, opt.get()); \
         } \
         template<> inline \
-        bool Config::get<::##TYPE>(const std::string& key, ::##TYPE& opt) const { \
+        bool Config::get<TYPE>(const std::string& key, TYPE& opt) const { \
             if ( hasChild(key) ) { \
-                opt = ::##TYPE(child(key)); \
+                opt = TYPE(child(key)); \
                 return true; \
             } \
             else return false; \
         } \
         template<> inline \
-        bool Config::get<::##TYPE>(const std::string& key, optional<::##TYPE>& opt) const { \
+        bool Config::get<TYPE>(const std::string& key, optional<TYPE>& opt) const { \
             if ( hasChild(key) ) { \
-                opt = ::##TYPE(child(key)); \
+                opt = TYPE(child(key)); \
                 return true; \
             } \
             else return false; \
         } \
-        template<> inline void Config::add<::##TYPE>(const std::string& key, const ::##TYPE& value) { \
+        template<> inline void Config::add<TYPE>(const std::string& key, const TYPE& value) { \
             Config conf = value.getConfig(); \
             conf.key() = key; \
             add( conf ); \

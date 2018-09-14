@@ -104,9 +104,11 @@ namespace osgEarth
         optional<bool>           _coverage;
         optional<std::string>    _osgOptionString;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileSourceOptions);
 
-    OSGEARTH_SPECIALIZE_CONFIG(TileSourceOptions);
-
+namespace osgEarth
+{
     /**
      * A collection of tiles that should be considered blacklisted
      */

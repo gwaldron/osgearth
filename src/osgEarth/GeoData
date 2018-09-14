@@ -324,9 +324,11 @@ namespace osgEarth
          GeoPoint _center;
          double   _radius;
      };
-     OSGEARTH_SPECIALIZE_CONFIG(GeoPoint);
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GeoPoint);
 
-
+namespace osgEarth
+{
     /**
      * An axis-aligned geospatial extent. A bounding box that is aligned with a
      * spatial reference's coordinate system.

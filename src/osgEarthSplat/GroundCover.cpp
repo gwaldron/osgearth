@@ -292,7 +292,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     const char* defaultCode = "int oe_GroundCover_getBiomeIndex(in vec4 coords) { return -1; }\n";
 
     std::stringstream buf;
-    buf << "#version 330\n";
+    buf << "#version " GLSL_VERSION_STR "\n";
 
         if ( !landCoverDict )
     {
@@ -379,23 +379,21 @@ GroundCover::createTexture() const
 
             osg::ref_ptr<osg::Image> im;
 
+            // make sure the texture array is POT - required now for mipmapping to work
             if ( s < 0 )
             {
-                s  = bb._image->s();
-                t  = bb._image->t();
-                im = bb._image.get();
+                s  = nextPowerOf2(bb._image->s());
+                t  = nextPowerOf2(bb._image->t());
                 tex->setTextureSize(s, t, getTotalNumBillboards());                              
+            }
+
+            if ( bb._image->s() != s || bb._image->t() != t )
+            {
+                ImageUtils::resizeImage( bb._image.get(), s, t, im );
             }
             else
             {
-                if ( bb._image->s() != s || bb._image->t() != t )
-                {
-                    ImageUtils::resizeImage( bb._image.get(), s, t, im );
-                }
-                else
-                {
-                    im = bb._image.get();
-                }
+                im = bb._image.get();
             }
 
             tex->setImage( arrayIndex, im.get() );
@@ -408,7 +406,6 @@ GroundCover::createTexture() const
     tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
     tex->setUnRefImageDataAfterApply( true );
     tex->setMaxAnisotropy( 4.0 );
-    tex->setResizeNonPowerOfTwoHint( false );
 
     return tex;
 }

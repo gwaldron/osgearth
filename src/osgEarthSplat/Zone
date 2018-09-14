@@ -160,4 +160,6 @@ namespace osgEarth { namespace Splat
 
 } } // namespace osgEarth::Splat
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::ZoneOptions);
+
 #endif // OSGEARTH_PROCEDURAL_ZONE

@@ -325,7 +325,9 @@ namespace osgEarth { namespace Features
         static FeatureSource* create( const FeatureSourceOptions& options );
     };
 
-} } // namespace osgEarth::Features
+} }  // namespace osgEarth::Features
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSourceOptions);
 
 #endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
 

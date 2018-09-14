@@ -138,7 +138,7 @@ Zone::contains(const osg::Vec3& point) const
 void
 ZoneOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("name", _name);
+    conf.get("name", _name);
     const Config* boundaries = conf.child_ptr("boundaries");
     if ( boundaries ) {
         for(ConfigSet::const_iterator i = boundaries->children().begin(); i != boundaries->children().end(); ++i) {
@@ -147,15 +147,15 @@ ZoneOptions::fromConfig(const Config& conf)
                 i->value("xmax",  FLT_MAX), i->value("ymax",  FLT_MAX), i->value("zmax",  FLT_MAX)));
         }
     }
-    conf.getObjIfSet( "surface",    _surface );
-    conf.getObjIfSet( "groundcover", _groundCover);
+    conf.get( "surface",     _surface );
+    conf.get( "groundcover", _groundCover);
 }
 
 Config
 ZoneOptions::getConfig() const
 {
     Config conf("zone");
-    conf.addIfSet("name", _name);
+    conf.set("name", _name);
     if ( _boundaries.size() > 0 ) {
         Config regions("boundaries");
         for(int i=0; i<_boundaries.size(); ++i) {
@@ -168,10 +168,10 @@ ZoneOptions::getConfig() const
             if ( _boundaries[i].zMax() <  FLT_MAX ) region.set("zmax", _boundaries[i].zMax());
             regions.add(region);
         }
-        conf.add(regions);
+        conf.set(regions);
     }
-    conf.setObj( "surface",    _surface );
-    conf.setObj( "groundcover", _groundCover );
+    conf.set( "surface",     _surface );
+    conf.set( "groundcover", _groundCover );
     return conf;
 }
 

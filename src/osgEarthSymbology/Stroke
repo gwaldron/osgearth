@@ -129,4 +129,6 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Stroke);
+
 #endif // OSGEARTHSYMBOLOGY_STROKE_H

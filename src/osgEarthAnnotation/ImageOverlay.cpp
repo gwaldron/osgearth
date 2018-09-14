@@ -92,13 +92,13 @@ _draped(true)
 {
     construct();
 
-    conf.getIfSet( "url",   _imageURI );
+    conf.get( "url",   _imageURI );
     if ( _imageURI.isSet() )
     {
         setImage( _imageURI->getImage(readOptions) );
     }
 
-    conf.getIfSet( "alpha", _alpha );
+    conf.get( "alpha", _alpha );
     
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )
@@ -121,20 +121,20 @@ _draped(true)
 
 
     //Load the filter settings
-    conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.get("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.get("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.get("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.get("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.get("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.get("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.get("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.get("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.get("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.get("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.get("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.get("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.getIfSet("draped", _draped);
+    conf.get("draped", _draped);
 
     if (conf.hasValue("geometry_resolution"))
     {
@@ -155,16 +155,16 @@ ImageOverlay::getConfig() const
 
     if ( _imageURI.isSet() )
     {
-        conf.addIfSet("url", _imageURI );
+        conf.set("url", _imageURI );
     }
     else if ( _image.valid() && !_image->getFileName().empty() )
     {
         optional<URI> temp;
         temp = URI(_image->getFileName());
-        conf.addIfSet("url", temp);
+        conf.set("url", temp);
     }
 
-    conf.addIfSet("alpha", _alpha);
+    conf.set("alpha", _alpha);
 
     osg::ref_ptr<Geometry> g = new Polygon();
     g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
@@ -194,7 +194,7 @@ ImageOverlay::getConfig() const
 
     if (_geometryResolution != default_geometryResolution)
     {
-        conf.update("geometry_resolution", _geometryResolution.asParseableString());
+        conf.set("geometry_resolution", _geometryResolution.asParseableString());
     }
 
     return conf;

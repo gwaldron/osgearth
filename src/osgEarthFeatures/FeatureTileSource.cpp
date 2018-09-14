@@ -46,16 +46,16 @@ FeatureTileSourceOptions::getConfig() const
 {
     Config conf = TileSourceOptions::getConfig();
 
-    conf.setObj( "features", _featureOptions );
-    conf.setObj( "styles", _styles );
+    conf.set( "features", _featureOptions );
+    conf.set( "styles", _styles );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
-            conf.update( "geometry_type", "line" );
+            conf.set( "geometry_type", "line" );
         else if ( _geomTypeOverride == Geometry::TYPE_POINTSET )
-            conf.update( "geometry_type", "point" );
+            conf.set( "geometry_type", "point" );
         else if ( _geomTypeOverride == Geometry::TYPE_POLYGON )
-            conf.update( "geometry_type", "polygon" );
+            conf.set( "geometry_type", "polygon" );
     }
 
     return conf;
@@ -71,9 +71,9 @@ FeatureTileSourceOptions::mergeConfig( const Config& conf )
 void
 FeatureTileSourceOptions::fromConfig( const Config& conf )
 {
-    conf.getObjIfSet( "features", _featureOptions );
+    conf.get( "features", _featureOptions );
 
-    conf.getObjIfSet( "styles", _styles );
+    conf.get( "styles", _styles );
     
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )

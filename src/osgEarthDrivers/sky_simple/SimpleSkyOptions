@@ -77,12 +77,12 @@ namespace osgEarth { namespace SimpleSky
     public:
         Config getConfig() const {
             Config conf = SkyOptions::getConfig();
-            conf.addIfSet("atmospheric_lighting", _atmosphericLighting);
-            conf.addIfSet("exposure", _exposure);
-            conf.addIfSet("daytime_ambient_boost", _daytimeAmbientBoost);
-            conf.addIfSet("star_file", _starFile);
-            conf.addIfSet("star_size", _starSize);
-            conf.addIfSet("allow_wireframe", _allowWireframe);
+            conf.set("atmospheric_lighting", _atmosphericLighting);
+            conf.set("exposure", _exposure);
+            conf.set("daytime_ambient_boost", _daytimeAmbientBoost);
+            conf.set("star_file", _starFile);
+            conf.set("star_size", _starSize);
+            conf.set("allow_wireframe", _allowWireframe);
             return conf;
         }
 
@@ -94,12 +94,12 @@ namespace osgEarth { namespace SimpleSky
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("atmospheric_lighting", _atmosphericLighting);
-            conf.getIfSet("exposure", _exposure);
-            conf.getIfSet("daytime_ambient_boost", _daytimeAmbientBoost);
-            conf.getIfSet("star_file", _starFile);
-            conf.getIfSet("star_size", _starSize);
-            conf.getIfSet("allow_wireframe", _allowWireframe);
+            conf.get("atmospheric_lighting", _atmosphericLighting);
+            conf.get("exposure", _exposure);
+            conf.get("daytime_ambient_boost", _daytimeAmbientBoost);
+            conf.get("star_file", _starFile);
+            conf.get("star_size", _starSize);
+            conf.get("allow_wireframe", _allowWireframe);
         }
 
         optional<bool>        _atmosphericLighting;

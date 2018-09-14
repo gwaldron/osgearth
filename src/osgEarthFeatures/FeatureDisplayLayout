@@ -194,4 +194,8 @@ namespace osgEarth { namespace Features
 
 } } // namespace osgEarth::Features
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureLevel);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureDisplayLayout);
+
+
 #endif // OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H

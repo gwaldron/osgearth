@@ -64,7 +64,7 @@ namespace osgEarth { namespace Drivers
         {
             Config conf = TileSourceOptions::getConfig();
             conf.set( "attr", _attr );
-            conf.setObj( "features", _featureOptions );
+            conf.set( "features", _featureOptions );
             conf.set( "offset", _offset );
 
             return conf;
@@ -76,8 +76,8 @@ namespace osgEarth { namespace Drivers
         }
 
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "attr", _attr );
-            conf.getIfSet( "offset", _offset );
+            conf.get( "attr", _attr );
+            conf.get( "offset", _offset );
 
             if ( conf.hasChild("features") )
                 _featureOptions->merge( conf.child("features") );

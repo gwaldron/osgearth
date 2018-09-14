@@ -41,7 +41,7 @@ GeometryCompilerOptions(options)
         
 void FeatureModelLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("feature_source", _featureSourceLayer);
+    conf.get("feature_source", _featureSourceLayer);
 }
 
 Config

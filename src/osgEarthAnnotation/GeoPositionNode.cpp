@@ -246,16 +246,16 @@ GeoPositionNode::getConfig() const
 {
     Config conf = AnnotationNode::getConfig();
 
-    conf.addObj( "position", getGeoTransform()->getPosition() );
+    conf.set( "position", getGeoTransform()->getPosition() );
 
     const osg::Vec3d& scale = getPositionAttitudeTransform()->getScale();
     if ( scale.x() != 1.0f || scale.y() != 1.0f || scale.z() != 1.0f )
     {
         Config c( "scale" );
-        c.add( "x", scale.x() );
-        c.add( "y", scale.y() );
-        c.add( "z", scale.z() );
-        conf.add( c );
+        c.set( "x", scale.x() );
+        c.set( "y", scale.y() );
+        c.set( "z", scale.z() );
+        conf.set( c );
     }
 
     const osg::Vec3d& offset = getPositionAttitudeTransform()->getPosition();
@@ -265,7 +265,7 @@ GeoPositionNode::getConfig() const
         c.set( "x", offset.x() );
         c.set( "y", offset.y() );
         c.set( "z", offset.z() );
-        conf.add( c );
+        conf.set( c );
     }
 
     const osg::Quat& rot = getPositionAttitudeTransform()->getAttitude();
@@ -276,7 +276,7 @@ GeoPositionNode::getConfig() const
         c.set( "y", rot.y() );
         c.set( "z", rot.z() );
         c.set( "w", rot.w() );
-        conf.add( c );
+        conf.set( c );
     }
 
     return conf;

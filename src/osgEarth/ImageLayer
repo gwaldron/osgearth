@@ -161,6 +161,8 @@ namespace osgEarth
         optional<std::string> _shareTexMatUniformName;
     };
 
+    OSGEARTH_SPECIALIZE_CONFIG(ImageLayerOptions);
+
     //--------------------------------------------------------------------
 
     /**

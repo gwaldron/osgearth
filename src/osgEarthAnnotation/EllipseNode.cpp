@@ -219,10 +219,10 @@ LocalGeometryNode(conf, dbOptions)
 {
     construct();
 
-    conf.getObjIfSet( "radius_major", _radiusMajor );
-    conf.getObjIfSet( "radius_minor", _radiusMinor );
-    conf.getObjIfSet( "rotation", _rotationAngle );
-    conf.getIfSet   ( "num_segments", _numSegments );
+    conf.get( "radius_major", _radiusMajor );
+    conf.get( "radius_minor", _radiusMinor );
+    conf.get( "rotation", _rotationAngle );
+    conf.get( "num_segments", _numSegments );
 
     buildGeometry();
 }
@@ -233,12 +233,12 @@ EllipseNode::getConfig() const
     Config conf = LocalGeometryNode::getConfig();
     conf.key() = "ellipse";
 
-    conf.addObj( "radius_major", _radiusMajor );
-    conf.addObj( "radius_minor", _radiusMinor );
-    conf.addObj( "rotation", _rotationAngle );
+    conf.set( "radius_major", _radiusMajor );
+    conf.set( "radius_minor", _radiusMinor );
+    conf.set( "rotation", _rotationAngle );
 
     if ( _numSegments != 0 )
-        conf.add( "num_segments", _numSegments );
+        conf.set( "num_segments", _numSegments );
 
     return conf;
 }

@@ -66,14 +66,14 @@ _capStyle   ( Stroke::LINECAP_SQUARE )
 {
     if (conf.key() == "buffer")
     {
-        conf.getIfSet( "distance", _distance );
+        conf.get( "distance", _distance );
     }
 }
 
 Config BufferFilter::getConfig() const
 {
     Config config( "buffer" );
-    config.addIfSet( "distance", _distance);
+    config.set( "distance", _distance);
     return config;
 }
 

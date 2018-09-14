@@ -72,10 +72,10 @@ namespace osgEarth { namespace Drivers
         }
 
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "token", _token);
-            conf.getIfSet( "format", _format);
-            conf.getIfSet( "layers", _layers);
+            conf.get( "url", _url );
+            conf.get( "token", _token);
+            conf.get( "format", _format);
+            conf.get( "layers", _layers);
         }
 
     private:

@@ -54,13 +54,13 @@ namespace osgEarth { namespace Util
 
     public:
         void fromConfig(const Config& conf) {
-            conf.getIfSet("opacity", _opacity);
-            conf.getIfSet("grayscale", _grayscale);
+            conf.get("opacity", _opacity);
+            conf.get("grayscale", _grayscale);
         }
         Config getConfig() const {
             Config conf;
-            conf.addIfSet("opacity", _opacity);
-            conf.addIfSet("grayscale", _grayscale);
+            conf.set("opacity", _opacity);
+            conf.set("grayscale", _grayscale);
             return conf;
         }
         

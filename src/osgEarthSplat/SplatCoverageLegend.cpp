@@ -49,17 +49,17 @@ SplatCoverageLegend::getPredicatesForClass(const std::string& className,
 void
 SplatCoverageLegend::fromConfig(const Config& conf)
 {
-    conf.getIfSet("name",   _name);
-    conf.getIfSet("source", _source);
+    conf.get("name",   _name);
+    conf.get("source", _source);
 
     ConfigSet predicatesConf = conf.child("mappings").children();
     for(ConfigSet::const_iterator i = predicatesConf.begin(); i != predicatesConf.end(); ++i)
     {
         osg::ref_ptr<CoverageValuePredicate> p = new CoverageValuePredicate();
 
-        i->getIfSet( "name",  p->_description );
-        i->getIfSet( "value", p->_exactValue );
-        i->getIfSet( "class", p->_mappedClassName );
+        i->get( "name",  p->_description );
+        i->get( "value", p->_exactValue );
+        i->get( "class", p->_mappedClassName );
         
         if ( p->_mappedClassName.isSet() )
         {
@@ -73,20 +73,21 @@ SplatCoverageLegend::getConfig() const
 {
     Config conf;
     
-    conf.addIfSet("name",   _name);
-    conf.addIfSet("source", _source);
+    conf.set("name",   _name);
+    conf.set("source", _source);
 
     Config preds;
     for(Predicates::const_iterator i = _predicates.begin(); i != _predicates.end(); ++i)
     {
         CoverageValuePredicate* p = i->get();
         Config pred;
-        pred.addIfSet( "name",  p->_description );
-        pred.addIfSet( "value", p->_exactValue );
-        pred.addIfSet( "class", p->_mappedClassName );
+        pred.set( "name",  p->_description );
+        pred.set( "value", p->_exactValue );
+        pred.set( "class", p->_mappedClassName );
+
         preds.add( "mapping", pred );
     }
-    conf.add( "mappings", preds );
+    conf.set( "mappings", preds );
 
     return conf;
 }

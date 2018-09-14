@@ -56,26 +56,26 @@ _nodeCaching(false)
 void
 FeatureModelOptions::fromConfig(const Config& conf)
 {
-    conf.getObjIfSet("features", _featureSource);
+    conf.get("features", _featureSource);
 
-    conf.getObjIfSet( "styles",           _styles );
-    conf.getObjIfSet( "layout",           _layout );
-    conf.getObjIfSet( "fading",           _fading );
-    conf.getObjIfSet( "feature_name",     _featureNameExpr );
-    conf.getObjIfSet( "feature_indexing", _featureIndexing );
+    conf.get( "styles",           _styles );
+    conf.get( "layout",           _layout );
+    conf.get( "fading",           _fading );
+    conf.get( "feature_name",     _featureNameExpr );
+    conf.get( "feature_indexing", _featureIndexing );
 
-    conf.getIfSet( "lighting",         _lit );
-    conf.getIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet( "cluster_culling",  _clusterCulling );
-    conf.getIfSet( "backface_culling", _backfaceCulling );
-    conf.getIfSet( "alpha_blending",   _alphaBlending );
-    conf.getIfSet( "node_caching",     _nodeCaching );
+    conf.get( "lighting",         _lit );
+    conf.get( "max_granularity",  _maxGranularity_deg );
+    conf.get( "cluster_culling",  _clusterCulling );
+    conf.get( "backface_culling", _backfaceCulling );
+    conf.get( "alpha_blending",   _alphaBlending );
+    conf.get( "node_caching",     _nodeCaching );
     
-    conf.getIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
+    conf.get( "session_wide_resource_cache", _sessionWideResourceCache );
 
     // Support a singleton style (convenience)
     optional<Style> style;
-    conf.getObjIfSet("style", style);
+    conf.get("style", style);
     if (style.isSet())
     {
         if (_styles.valid() == false) _styles = new StyleSheet();
@@ -87,13 +87,13 @@ Config
 FeatureModelOptions::getConfig() const
 {
     Config conf;
-    conf.setObj("features", _featureSource);
+    conf.set("features", _featureSource);
 
-    conf.setObj( "styles",           _styles );
-    conf.setObj( "layout",           _layout );
-    conf.setObj( "fading",           _fading );
-    conf.setObj( "feature_name",     _featureNameExpr );
-    conf.setObj( "feature_indexing", _featureIndexing );
+    conf.set( "styles",           _styles );
+    conf.set( "layout",           _layout );
+    conf.set( "fading",           _fading );
+    conf.set( "feature_name",     _featureNameExpr );
+    conf.set( "feature_indexing", _featureIndexing );
 
     conf.set( "lighting",         _lit );
     conf.set( "max_granularity",  _maxGranularity_deg );
@@ -119,23 +119,23 @@ FeatureModelOptions()
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    conf.getObjIfSet( "features", _featureOptions );
+    conf.get( "features", _featureOptions );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
     
-    conf.getObjIfSet( "styles",           _styles );
-    conf.getObjIfSet( "layout",           _layout );
-    conf.getObjIfSet( "fading",           _fading );
-    conf.getObjIfSet( "feature_name",     _featureNameExpr );
-    conf.getObjIfSet( "feature_indexing", _featureIndexing );
+    conf.get( "styles",           _styles );
+    conf.get( "layout",           _layout );
+    conf.get( "fading",           _fading );
+    conf.get( "feature_name",     _featureNameExpr );
+    conf.get( "feature_indexing", _featureIndexing );
 
-    conf.getIfSet( "lighting",         _lit );
-    conf.getIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet( "cluster_culling",  _clusterCulling );
-    conf.getIfSet( "backface_culling", _backfaceCulling );
-    conf.getIfSet( "alpha_blending",   _alphaBlending );
-    conf.getIfSet( "node_caching",     _nodeCaching );
+    conf.get( "lighting",         _lit );
+    conf.get( "max_granularity",  _maxGranularity_deg );
+    conf.get( "cluster_culling",  _clusterCulling );
+    conf.get( "backface_culling", _backfaceCulling );
+    conf.get( "alpha_blending",   _alphaBlending );
+    conf.get( "node_caching",     _nodeCaching );
     
-    conf.getIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
+    conf.get( "session_wide_resource_cache", _sessionWideResourceCache );
 }
 
 Config
@@ -143,18 +143,18 @@ FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
 
-    conf.setObj( "features", _featureOptions );    
+    conf.set( "features", _featureOptions );    
     if (_featureSource.valid())
     {
-        conf.addNonSerializable("feature_source", _featureSource.get());
+        conf.setNonSerializable("feature_source", _featureSource.get());
     }
     conf.set("feature_source", _featureSourceLayer);
 
-    conf.setObj( "styles",           _styles );
-    conf.setObj( "layout",           _layout );
-    conf.setObj( "fading",           _fading );
-    conf.setObj( "feature_name",     _featureNameExpr );
-    conf.setObj( "feature_indexing", _featureIndexing );
+    conf.set( "styles",           _styles );
+    conf.set( "layout",           _layout );
+    conf.set( "fading",           _fading );
+    conf.set( "feature_name",     _featureNameExpr );
+    conf.set( "feature_indexing", _featureIndexing );
 
     conf.set( "lighting",         _lit );
     conf.set( "max_granularity",  _maxGranularity_deg );

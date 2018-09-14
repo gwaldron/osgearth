@@ -57,42 +57,42 @@ IconSymbol::getConfig() const
     Config conf = InstanceSymbol::getConfig();
     conf.key() = "icon";
 
-    conf.addIfSet( "alignment", "left_top",      _alignment, ALIGN_LEFT_TOP );
-    conf.addIfSet( "alignment", "left_center",   _alignment, ALIGN_LEFT_CENTER );
-    conf.addIfSet( "alignment", "left_bottom",   _alignment, ALIGN_LEFT_BOTTOM );
-    conf.addIfSet( "alignment", "center_top",    _alignment, ALIGN_CENTER_TOP );
-    conf.addIfSet( "alignment", "center_center", _alignment, ALIGN_CENTER_CENTER );
-    conf.addIfSet( "alignment", "center_bottom", _alignment, ALIGN_CENTER_BOTTOM );
-    conf.addIfSet( "alignment", "right_top",     _alignment, ALIGN_RIGHT_TOP );
-    conf.addIfSet( "alignment", "right_center",  _alignment, ALIGN_RIGHT_CENTER );
-    conf.addIfSet( "alignment", "right_bottom",  _alignment, ALIGN_RIGHT_BOTTOM );
+    conf.set( "alignment", "left_top",      _alignment, ALIGN_LEFT_TOP );
+    conf.set( "alignment", "left_center",   _alignment, ALIGN_LEFT_CENTER );
+    conf.set( "alignment", "left_bottom",   _alignment, ALIGN_LEFT_BOTTOM );
+    conf.set( "alignment", "center_top",    _alignment, ALIGN_CENTER_TOP );
+    conf.set( "alignment", "center_center", _alignment, ALIGN_CENTER_CENTER );
+    conf.set( "alignment", "center_bottom", _alignment, ALIGN_CENTER_BOTTOM );
+    conf.set( "alignment", "right_top",     _alignment, ALIGN_RIGHT_TOP );
+    conf.set( "alignment", "right_center",  _alignment, ALIGN_RIGHT_CENTER );
+    conf.set( "alignment", "right_bottom",  _alignment, ALIGN_RIGHT_BOTTOM );
 
-    conf.addObjIfSet( "heading",   _heading );
-    conf.addIfSet   ( "declutter", _declutter );	                  
-	conf.addIfSet   ( "icon-occlusion-cull", _occlusionCull );
-    conf.addIfSet   ( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
+    conf.set( "heading",   _heading );
+    conf.set( "declutter", _declutter );	                  
+	conf.set( "icon-occlusion-cull", _occlusionCull );
+    conf.set( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
 
-    conf.addNonSerializable( "IconSymbol::image", _image.get() );
+    conf.setNonSerializable( "IconSymbol::image", _image.get() );
     return conf;
 }
 
 void 
 IconSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "alignment", "left_top",      _alignment, ALIGN_LEFT_TOP );
-    conf.getIfSet( "alignment", "left_center",   _alignment, ALIGN_LEFT_CENTER );
-    conf.getIfSet( "alignment", "left_bottom",   _alignment, ALIGN_LEFT_BOTTOM );
-    conf.getIfSet( "alignment", "center_top",    _alignment, ALIGN_CENTER_TOP );
-    conf.getIfSet( "alignment", "center_center", _alignment, ALIGN_CENTER_CENTER );
-    conf.getIfSet( "alignment", "center_bottom", _alignment, ALIGN_CENTER_BOTTOM );
-    conf.getIfSet( "alignment", "right_top",     _alignment, ALIGN_RIGHT_TOP );
-    conf.getIfSet( "alignment", "right_center",  _alignment, ALIGN_RIGHT_CENTER );
-    conf.getIfSet( "alignment", "right_bottom",  _alignment, ALIGN_RIGHT_BOTTOM );
+    conf.get( "alignment", "left_top",      _alignment, ALIGN_LEFT_TOP );
+    conf.get( "alignment", "left_center",   _alignment, ALIGN_LEFT_CENTER );
+    conf.get( "alignment", "left_bottom",   _alignment, ALIGN_LEFT_BOTTOM );
+    conf.get( "alignment", "center_top",    _alignment, ALIGN_CENTER_TOP );
+    conf.get( "alignment", "center_center", _alignment, ALIGN_CENTER_CENTER );
+    conf.get( "alignment", "center_bottom", _alignment, ALIGN_CENTER_BOTTOM );
+    conf.get( "alignment", "right_top",     _alignment, ALIGN_RIGHT_TOP );
+    conf.get( "alignment", "right_center",  _alignment, ALIGN_RIGHT_CENTER );
+    conf.get( "alignment", "right_bottom",  _alignment, ALIGN_RIGHT_BOTTOM );
 
-    conf.getObjIfSet( "heading",   _heading );
-    conf.getIfSet   ( "declutter", _declutter );
-	conf.getIfSet   ( "icon-occlusion-cull", _occlusionCull );
-    conf.getIfSet   ( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
+    conf.get( "heading",   _heading );
+    conf.get( "declutter", _declutter );
+	conf.get( "icon-occlusion-cull", _occlusionCull );
+    conf.get( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
 
     _image = conf.getNonSerializable<osg::Image>( "IconSymbol::image" );
 }

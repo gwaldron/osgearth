@@ -61,7 +61,7 @@ VideoLayerOptions::getConfig() const
 void
 VideoLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet("url", _url );
+    conf.get("url", _url );
 }
 
 void

@@ -113,33 +113,33 @@ GeoPoint::GeoPoint(const Config& conf, const SpatialReference* srs) :
 _srs    ( srs ),
 _altMode( ALTMODE_ABSOLUTE )
 {
-    conf.getIfSet( "x", _p.x() );
-    conf.getIfSet( "y", _p.y() );
-    conf.getIfSet( "z", _p.z() );
-    conf.getIfSet( "alt", _p.z() );
-    conf.getIfSet( "hat", _p.z() ); // height above terrain (relative)
+    conf.get( "x", _p.x() );
+    conf.get( "y", _p.y() );
+    conf.get( "z", _p.z() );
+    conf.get( "alt", _p.z() );
+    conf.get( "hat", _p.z() ); // height above terrain (relative)
 
     if ( !_srs.valid() )
         _srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
 
     if ( conf.hasValue("lat") && (!_srs.valid() || _srs->isGeographic()) )
     {
-        conf.getIfSet( "lat", _p.y() );
+        conf.get( "lat", _p.y() );
         if ( !_srs.valid() ) 
             _srs = SpatialReference::create("wgs84");
     }
     if ( conf.hasValue("long") && (!_srs.valid() || _srs->isGeographic()) )
     {
-        conf.getIfSet("long", _p.x());
+        conf.get("long", _p.x());
         if ( !_srs.valid() ) 
             _srs = SpatialReference::create("wgs84");
     }
 
     if ( conf.hasValue("mode") )
     {
-        conf.getIfSet( "mode", "relative",            _altMode, ALTMODE_RELATIVE );
-        conf.getIfSet( "mode", "relative_to_terrain", _altMode, ALTMODE_RELATIVE );
-        conf.getIfSet( "mode", "absolute",            _altMode, ALTMODE_ABSOLUTE );
+        conf.get( "mode", "relative",            _altMode, ALTMODE_RELATIVE );
+        conf.get( "mode", "relative_to_terrain", _altMode, ALTMODE_RELATIVE );
+        conf.get( "mode", "absolute",            _altMode, ALTMODE_ABSOLUTE );
     }
     else
     {

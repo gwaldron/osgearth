@@ -65,22 +65,22 @@ LineSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "line";
-    conf.addObjIfSet("stroke",       _stroke);
-    conf.addIfSet   ("tessellation", _tessellation);
-    conf.addIfSet   ("crease_angle", _creaseAngle);
-    conf.addObjIfSet("tessellation_size", _tessellationSize );
-    conf.addObjIfSet   ("image", _imageURI);
+    conf.set("stroke",       _stroke);
+    conf.set("tessellation", _tessellation);
+    conf.set("crease_angle", _creaseAngle);
+    conf.set("tessellation_size", _tessellationSize );
+    conf.set("image", _imageURI);
     return conf;
 }
 
 void 
 LineSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet("stroke",       _stroke);
-    conf.getIfSet   ("tessellation", _tessellation);
-    conf.getIfSet   ("crease_angle", _creaseAngle);
-    conf.getObjIfSet("tessellation_size", _tessellationSize);
-    conf.getObjIfSet("image", _imageURI);
+    conf.get("stroke",       _stroke);
+    conf.get("tessellation", _tessellation);
+    conf.get("crease_angle", _creaseAngle);
+    conf.get("tessellation_size", _tessellationSize);
+    conf.get("image", _imageURI);
 }
 
 void

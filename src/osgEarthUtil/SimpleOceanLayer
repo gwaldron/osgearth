@@ -75,12 +75,12 @@ namespace osgEarth { namespace Util
         }
 
         void mergeConfig(const Config& conf) {
-            conf.getIfSet("color", _color);
-            conf.getIfSet("max_altitude", _maxAltitude);
-            conf.getIfSet("mask_layer", _maskLayer);
-            conf.getIfSet("use_bathymetry", _useBathymetry);
-            conf.getIfSet("texture", _textureURI);
-            conf.getIfSet("texture_lod", _textureLOD);
+            conf.get("color", _color);
+            conf.get("max_altitude", _maxAltitude);
+            conf.get("mask_layer", _maskLayer);
+            conf.get("use_bathymetry", _useBathymetry);
+            conf.get("texture", _textureURI);
+            conf.get("texture_lod", _textureLOD);
         }
 
         Config getConfig() const {

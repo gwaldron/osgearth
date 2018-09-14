@@ -163,30 +163,30 @@ namespace
 void
 ScreenSpaceLayoutOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "min_animation_scale", _minAnimScale );
-    conf.getIfSet( "min_animation_alpha", _minAnimAlpha );
-    conf.getIfSet( "in_animation_time",   _inAnimTime );
-    conf.getIfSet( "out_animation_time",  _outAnimTime );
-    conf.getIfSet( "sort_by_priority",    _sortByPriority );
-    conf.getIfSet( "sort_by_distance",    _sortByDistance);
-    conf.getIfSet( "snap_to_pixel",       _snapToPixel );
-    conf.getIfSet( "max_objects",         _maxObjects );
-    conf.getIfSet( "render_order",        _renderBinNumber );
+    conf.get( "min_animation_scale", _minAnimScale );
+    conf.get( "min_animation_alpha", _minAnimAlpha );
+    conf.get( "in_animation_time",   _inAnimTime );
+    conf.get( "out_animation_time",  _outAnimTime );
+    conf.get( "sort_by_priority",    _sortByPriority );
+    conf.get( "sort_by_distance",    _sortByDistance);
+    conf.get( "snap_to_pixel",       _snapToPixel );
+    conf.get( "max_objects",         _maxObjects );
+    conf.get( "render_order",        _renderBinNumber );
 }
 
 Config
 ScreenSpaceLayoutOptions::getConfig() const
 {
     Config conf;
-    conf.addIfSet( "min_animation_scale", _minAnimScale );
-    conf.addIfSet( "min_animation_alpha", _minAnimAlpha );
-    conf.addIfSet( "in_animation_time",   _inAnimTime );
-    conf.addIfSet( "out_animation_time",  _outAnimTime );
-    conf.addIfSet( "sort_by_priority",    _sortByPriority );
-    conf.addIfSet( "sort_by_distance",    _sortByDistance);
-    conf.addIfSet( "snap_to_pixel",       _snapToPixel );
-    conf.addIfSet( "max_objects",         _maxObjects );
-    conf.addIfSet( "render_order",        _renderBinNumber );
+    conf.set( "min_animation_scale", _minAnimScale );
+    conf.set( "min_animation_alpha", _minAnimAlpha );
+    conf.set( "in_animation_time",   _inAnimTime );
+    conf.set( "out_animation_time",  _outAnimTime );
+    conf.set( "sort_by_priority",    _sortByPriority );
+    conf.set( "sort_by_distance",    _sortByDistance);
+    conf.set( "snap_to_pixel",       _snapToPixel );
+    conf.set( "max_objects",         _maxObjects );
+    conf.set( "render_order",        _renderBinNumber );
     return conf;
 }
 

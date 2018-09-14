@@ -85,9 +85,9 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "format", _format );
-            conf.getIfSet( "tms_type", _tmsType );
+            conf.get( "url", _url );
+            conf.get( "format", _format );
+            conf.get( "tms_type", _tmsType );
         }
 
         optional<URI>         _url;

@@ -98,9 +98,9 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("key",                  _apiKey);
-            conf.getIfSet("imagery_set",          _imagerySet );
-            conf.getIfSet("imagery_metadata_api", _imageryMetadataAPI );
+            conf.get("key",                  _apiKey);
+            conf.get("imagery_set",          _imagerySet );
+            conf.get("imagery_metadata_api", _imageryMetadataAPI );
         }
 
         optional<std::string> _apiKey;

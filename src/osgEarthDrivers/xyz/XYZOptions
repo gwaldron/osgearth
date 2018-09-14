@@ -78,10 +78,10 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "format", _format );
-            conf.getIfSet( "invert_y", _invertY );
-            conf.getIfSet( "elevation_encoding", _elevationEncoding );
+            conf.get( "url", _url );
+            conf.get( "format", _format );
+            conf.get( "invert_y", _invertY );
+            conf.get( "elevation_encoding", _elevationEncoding );
         }
 
         optional<URI>         _url;

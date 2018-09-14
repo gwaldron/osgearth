@@ -86,14 +86,14 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.addIfSet("line_width", _lineWidth);
-            conf.addIfSet("color",      _color);
-            conf.addIfSet("label_color", _labelColor );
-            conf.addIfSet("grid_lines", _gridLines);
-            conf.addIfSet("resolutions", _resolutions);
-            conf.addIfSet("grid_lines_visible", _gridLinesVisible);
-            conf.addIfSet("grid_labels_visible", _gridLabelsVisible);
-            conf.addIfSet("edge_labels_visible", _edgeLabelsVisible);
+            conf.set("line_width", _lineWidth);
+            conf.set("color",      _color);
+            conf.set("label_color", _labelColor );
+            conf.set("grid_lines", _gridLines);
+            conf.set("resolutions", _resolutions);
+            conf.set("grid_lines_visible", _gridLinesVisible);
+            conf.set("grid_labels_visible", _gridLabelsVisible);
+            conf.set("edge_labels_visible", _edgeLabelsVisible);
             return conf;
         }
 
@@ -104,14 +104,14 @@ namespace osgEarth { namespace Util
         }
 
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("line_width", _lineWidth);
-            conf.getIfSet("color",      _color);
-            conf.getIfSet("label_color", _labelColor);
-            conf.getIfSet("grid_lines", _gridLines);
-            conf.getIfSet("resolutions", _resolutions);
-            conf.getIfSet("grid_lines_visible", _gridLinesVisible);
-            conf.getIfSet("grid_labels_visible", _gridLabelsVisible);
-            conf.getIfSet("edge_labels_visible", _edgeLabelsVisible);
+            conf.get("line_width", _lineWidth);
+            conf.get("color",      _color);
+            conf.get("label_color", _labelColor);
+            conf.get("grid_lines", _gridLines);
+            conf.get("resolutions", _resolutions);
+            conf.get("grid_lines_visible", _gridLinesVisible);
+            conf.get("grid_labels_visible", _gridLabelsVisible);
+            conf.get("edge_labels_visible", _edgeLabelsVisible);
         }
 
         optional<float>       _lineWidth;

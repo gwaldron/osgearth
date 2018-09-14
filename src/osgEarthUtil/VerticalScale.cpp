@@ -137,13 +137,13 @@ VerticalScale::onUninstall(TerrainEngineNode* engine)
 void
 VerticalScale::mergeConfig(const Config& conf)
 {
-    conf.getIfSet( "scale", _scale );
+    conf.get( "scale", _scale );
 }
 
 Config
 VerticalScale::getConfig() const
 {
     Config conf("vertical_scale");
-    conf.addIfSet( "scale", _scale );
+    conf.set( "scale", _scale );
     return conf;
 }

@@ -99,9 +99,9 @@ namespace osgEarth { namespace Drivers
             conf.set("base_name", _baseName );
             conf.set("terrain_tile_cache_size", _terrainTileCacheSize);
             if ( _dirStruct.isSet() ) {
-                if ( _dirStruct == DS_FLAT ) conf.update("directory_structure", "flat");
-                else if ( _dirStruct == DS_TASK ) conf.update("directory_structure", "task");
-                else if ( _dirStruct == DS_NESTED ) conf.update("directory_structure", "nested");
+                if ( _dirStruct == DS_FLAT ) conf.set("directory_structure", "flat");
+                else if ( _dirStruct == DS_TASK ) conf.set("directory_structure", "task");
+                else if ( _dirStruct == DS_NESTED ) conf.set("directory_structure", "nested");
             }
             return conf;
         }
@@ -114,15 +114,15 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("url", _url);
-            conf.getIfSet("primary_split_level", _primarySplitLevel);
-            conf.getIfSet("secondary_split_level", _secondarySplitLevel);
-            conf.getIfSet("layer", _layer);
-            conf.getIfSet("layer_setname", _layerSetName);
-            conf.getIfSet("num_tiles_wide_at_lod_0", _widthLod0 );
-            conf.getIfSet("num_tiles_high_at_lod_0", _heightLod0 );
-            conf.getIfSet("base_name", _baseName);
-            conf.getIfSet("terrain_tile_cache_size", _terrainTileCacheSize);
+            conf.get("url", _url);
+            conf.get("primary_split_level", _primarySplitLevel);
+            conf.get("secondary_split_level", _secondarySplitLevel);
+            conf.get("layer", _layer);
+            conf.get("layer_setname", _layerSetName);
+            conf.get("num_tiles_wide_at_lod_0", _widthLod0 );
+            conf.get("num_tiles_high_at_lod_0", _heightLod0 );
+            conf.get("base_name", _baseName);
+            conf.get("terrain_tile_cache_size", _terrainTileCacheSize);
             
             std::string ds = conf.value("directory_structure");
             if ( ds == "flat" ) _dirStruct = DS_FLAT;

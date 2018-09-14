@@ -95,13 +95,13 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {            
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "geometry_profile", _geometryProfileConf );
-            conf.getIfSet( "typename", _typename);
-            conf.getIfSet( "outputformat", _outputFormat );
-            conf.getIfSet( "maxfeatures", _maxFeatures );
-            conf.getIfSet( "disable_tiling", _disableTiling);
-            conf.getIfSet( "request_buffer", _buffer);            
+            conf.get( "url", _url );
+            conf.get( "geometry_profile", _geometryProfileConf );
+            conf.get( "typename", _typename);
+            conf.get( "outputformat", _outputFormat );
+            conf.get( "maxfeatures", _maxFeatures );
+            conf.get( "disable_tiling", _disableTiling);
+            conf.get( "request_buffer", _buffer);            
         }
 
         optional<URI>         _url;        

@@ -50,7 +50,7 @@ namespace osgEarth { namespace Drivers
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.addIfSet( "path", _path );
+            conf.set( "path", _path );
             return conf;
         }
         virtual void mergeConfig( const Config& conf ) {
@@ -60,7 +60,7 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "path", _path );
+            conf.get( "path", _path );
         }
 
         optional<std::string> _path;

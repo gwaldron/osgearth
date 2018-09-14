@@ -70,39 +70,39 @@ Stroke::init()
 Config 
 Stroke::getConfig() const {
     Config conf("stroke");
-    conf.add( "color", _color.toHTML() );
-    conf.addIfSet("linecap", "flat",   _lineCap, LINECAP_FLAT);
-    conf.addIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
-    conf.addIfSet("linecap", "round",  _lineCap, LINECAP_ROUND);
-    conf.addIfSet("linejoin", "mitre", _lineJoin, LINEJOIN_MITRE);
-    conf.addIfSet("linejoin", "round", _lineJoin, LINEJOIN_ROUND);
-    conf.addIfSet("width", _width);
-    conf.addIfSet("stipple_factor", _stippleFactor);
-    conf.addIfSet("stipple_pattern", _stipplePattern);
-    conf.addIfSet("rounding_ratio", _roundingRatio);
+    conf.set( "color", _color.toHTML() );
+    conf.set("linecap", "flat",   _lineCap, LINECAP_FLAT);
+    conf.set("linecap", "square", _lineCap, LINECAP_SQUARE);
+    conf.set("linecap", "round",  _lineCap, LINECAP_ROUND);
+    conf.set("linejoin", "mitre", _lineJoin, LINEJOIN_MITRE);
+    conf.set("linejoin", "round", _lineJoin, LINEJOIN_ROUND);
+    conf.set("width", _width);
+    conf.set("stipple_factor", _stippleFactor);
+    conf.set("stipple_pattern", _stipplePattern);
+    conf.set("rounding_ratio", _roundingRatio);
     if ( _widthUnits.isSet() )
-        conf.add( "width_units", _widthUnits->getAbbr() );
-    conf.addIfSet("min_pixels", _minPixels );
-    conf.addIfSet("smooth", _smooth);
+        conf.set( "width_units", _widthUnits->getAbbr() );
+    conf.set("min_pixels", _minPixels );
+    conf.set("smooth", _smooth);
     return conf;
 }
 
 void 
 Stroke::mergeConfig( const Config& conf ) {
     _color = Color( conf.value("color") );
-    conf.getIfSet("linecap", "flat",   _lineCap, LINECAP_FLAT);
-    conf.getIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
-    conf.getIfSet("linecap", "round",  _lineCap, LINECAP_ROUND);
-    conf.getIfSet("linejoin", "mitre", _lineJoin, LINEJOIN_MITRE);
-    conf.getIfSet("linejoin", "miter", _lineJoin, LINEJOIN_MITRE); // alternate spelling
-    conf.getIfSet("linejoin", "round", _lineJoin, LINEJOIN_ROUND);
-    conf.getIfSet("width", _width);
-    conf.getIfSet("stipple", _stipplePattern); // back compat
-    conf.getIfSet("stipple_factor", _stippleFactor);
-    conf.getIfSet("stipple_pattern", _stipplePattern);
-    conf.getIfSet("rounding_ratio", _roundingRatio);
+    conf.get("linecap", "flat",   _lineCap, LINECAP_FLAT);
+    conf.get("linecap", "square", _lineCap, LINECAP_SQUARE);
+    conf.get("linecap", "round",  _lineCap, LINECAP_ROUND);
+    conf.get("linejoin", "mitre", _lineJoin, LINEJOIN_MITRE);
+    conf.get("linejoin", "miter", _lineJoin, LINEJOIN_MITRE); // alternate spelling
+    conf.get("linejoin", "round", _lineJoin, LINEJOIN_ROUND);
+    conf.get("width", _width);
+    conf.get("stipple", _stipplePattern); // back compat
+    conf.get("stipple_factor", _stippleFactor);
+    conf.get("stipple_pattern", _stipplePattern);
+    conf.get("rounding_ratio", _roundingRatio);
     if ( conf.hasValue("width_units" ) )
         Units::parse( conf.value("width_units"), _widthUnits.mutable_value() );
-    conf.getIfSet("min_pixels", _minPixels );
-    conf.getIfSet("smooth", _smooth);
+    conf.get("min_pixels", _minPixels );
+    conf.get("smooth", _smooth);
 }

@@ -210,4 +210,6 @@ namespace osgEarth { namespace Features
 
 } } // namespace osgEarth::Features
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSourceIndexOptions);
+
 #endif // OSGEARTHFEATURES_FEATURE_SOURCE_INDEX_NODE_H

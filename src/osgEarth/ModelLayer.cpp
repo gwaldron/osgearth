@@ -82,8 +82,8 @@ ModelLayerOptions::getConfig() const
 void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "lighting",       _lighting );
-    conf.getIfSet( "mask_min_level", _maskMinLevel );
+    conf.get( "lighting",       _lighting );
+    conf.get( "mask_min_level", _maskMinLevel );
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);

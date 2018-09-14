@@ -78,6 +78,10 @@ namespace osgEarth { namespace Symbology
         optional<int> _limit;
     };
 
-} } // namespace osgEarth::Symbology
+} // namespace Symbology
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Query);
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_QUERY_H

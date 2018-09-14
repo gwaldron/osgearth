@@ -59,8 +59,8 @@ namespace osgEarth { namespace Splat
 
     public:
         void fromConfig(const Config& conf) {
-            conf.getIfSet("layer", _coverageLayer);
-            conf.getIfSet("legend", _legendURI);
+            conf.get("layer", _coverageLayer);
+            conf.get("legend", _legendURI);
         }
         
         Config getConfig() const {

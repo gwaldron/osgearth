@@ -80,11 +80,11 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "format", _format );
-            conf.getIfSet( "invert_y", _invertY );
-            conf.getIfSet( "min_level", _minLevel);
-            conf.getIfSet( "max_level", _maxLevel);
+            conf.get( "url", _url );
+            conf.get( "format", _format );
+            conf.get( "invert_y", _invertY );
+            conf.get( "min_level", _minLevel);
+            conf.get( "max_level", _maxLevel);
         }
 
         optional<URI>         _url;        

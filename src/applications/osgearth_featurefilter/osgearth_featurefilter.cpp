@@ -44,16 +44,16 @@ public:
     {
         if (conf.key() == "change_attribute")
         {
-            conf.getIfSet("key", _key);
-            conf.getIfSet("value", _value);
+            conf.get("key", _key);
+            conf.get("value", _value);
         }
     }
 
     virtual Config getConfig() const
     {
         Config config("change_attribute");
-        config.addIfSet("key", _key);
-        config.addIfSet("value", _value);
+        config.set("key", _key);
+        config.set("value", _value);
         return config;
     }
 

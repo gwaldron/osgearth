@@ -45,16 +45,16 @@ PolygonSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "polygon";
-    conf.addObjIfSet( "fill", _fill );
-    conf.addIfSet("outline", _outline);
+    conf.set( "fill", _fill );
+    conf.set("outline", _outline);
     return conf;
 }
 
 void 
 PolygonSymbol::mergeConfig(const Config& conf )
 {
-    conf.getObjIfSet( "fill", _fill );
-    conf.getIfSet("outline", _outline);
+    conf.get( "fill", _fill );
+    conf.get("outline", _outline);
 }
 
 void

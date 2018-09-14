@@ -56,21 +56,21 @@ namespace osgEarth { namespace Features
         const optional<ResampleMode>& resampleMode() const { return _mode; }
 
         void fromConfig(const Config& conf) {
-            conf.getIfSet("min_length", _minLen);
-            conf.getIfSet("max_length", _maxLen);
-            conf.getIfSet("mode", "linear",       _mode, RESAMPLE_LINEAR);
-            conf.getIfSet("mode", "great_circle", _mode, RESAMPLE_GREATCIRCLE);
-            conf.getIfSet("mode", "rhumb_line",   _mode, RESAMPLE_RHUMB);
+            conf.get("min_length", _minLen);
+            conf.get("max_length", _maxLen);
+            conf.get("mode", "linear",       _mode, RESAMPLE_LINEAR);
+            conf.get("mode", "great_circle", _mode, RESAMPLE_GREATCIRCLE);
+            conf.get("mode", "rhumb_line",   _mode, RESAMPLE_RHUMB);
         }
 
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "resample";
-            conf.addIfSet("min_length", _minLen);
-            conf.addIfSet("max_length", _maxLen);
-            conf.addIfSet("mode", "linear",       _mode, RESAMPLE_LINEAR);
-            conf.addIfSet("mode", "great_circle", _mode, RESAMPLE_GREATCIRCLE);
-            conf.addIfSet("mode", "rhumb_line",   _mode, RESAMPLE_RHUMB);
+            conf.set("min_length", _minLen);
+            conf.set("max_length", _maxLen);
+            conf.set("mode", "linear",       _mode, RESAMPLE_LINEAR);
+            conf.set("mode", "great_circle", _mode, RESAMPLE_GREATCIRCLE);
+            conf.set("mode", "rhumb_line",   _mode, RESAMPLE_RHUMB);
             return conf;
         }
 

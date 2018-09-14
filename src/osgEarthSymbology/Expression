@@ -170,6 +170,11 @@ namespace osgEarth { namespace Symbology
     };
 
 
-} } // namespace osgEarth::Symbology
+} // namespace Symbology
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::NumericExpression);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::StringExpression);
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_EXPRESSION_H

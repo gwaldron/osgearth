@@ -53,16 +53,16 @@ FeatureSourceIndexOptions::FeatureSourceIndexOptions(const Config& conf) :
 _enabled      ( true ),
 _embedFeatures( false )
 {
-    conf.getIfSet( "enabled",        _enabled );
-    conf.getIfSet( "embed_features", _embedFeatures );
+    conf.get( "enabled",        _enabled );
+    conf.get( "embed_features", _embedFeatures );
 }
 
 Config
 FeatureSourceIndexOptions::getConfig() const
 {
     Config conf("feature_indexing");
-    conf.addIfSet( "enabled",        _enabled );
-    conf.addIfSet( "embed_features", _embedFeatures );
+    conf.set( "enabled",        _enabled );
+    conf.set( "embed_features", _embedFeatures );
     return conf;
 }
 

@@ -46,18 +46,18 @@ PointSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "point";
-    conf.addObjIfSet( "fill", _fill );
-    conf.addIfSet( "size", _size );
-    conf.addIfSet( "smooth", _smooth );
+    conf.set( "fill", _fill );
+    conf.set( "size", _size );
+    conf.set( "smooth", _smooth );
     return conf;
 }
 
 void 
 PointSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet( "fill", _fill );
-    conf.getIfSet( "size", _size );
-    conf.getIfSet( "smooth", _smooth );
+    conf.get( "fill", _fill );
+    conf.get( "size", _size );
+    conf.get( "smooth", _smooth );
 }
 
 

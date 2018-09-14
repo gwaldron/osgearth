@@ -41,7 +41,7 @@ _maxAltitude       ( 20000.0 )
 void
 OceanOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "max_altitude", _maxAltitude );
+    conf.get( "max_altitude", _maxAltitude );
 }
 
 void
@@ -55,7 +55,7 @@ Config
 OceanOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
-    conf.addIfSet( "max_altitude", _maxAltitude );
+    conf.set( "max_altitude", _maxAltitude );
     return conf;
 }
 

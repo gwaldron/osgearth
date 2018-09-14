@@ -72,10 +72,10 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "server", _server );
-            conf.getIfSet( "format", _format );
-            conf.getIfSet( "asset_id", _assetId);
-            conf.getIfSet( "token", _token);
+            conf.get( "server", _server );
+            conf.get( "format", _format );
+            conf.get( "asset_id", _assetId);
+            conf.get( "token", _token);
         }
 
         optional<URI>         _server;

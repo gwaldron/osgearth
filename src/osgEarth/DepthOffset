@@ -96,6 +96,8 @@ namespace osgEarth
         optional<bool>  _auto;
     };
 
+    OSGEARTH_SPECIALIZE_CONFIG(DepthOffsetOptions);
+
 
     /**
      * Interface for adding depth offset methods to anothe class without

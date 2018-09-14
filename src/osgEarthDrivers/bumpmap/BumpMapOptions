@@ -96,12 +96,12 @@ namespace osgEarth { namespace BumpMap
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("image",     _imageURI);
-            conf.getIfSet("intensity", _intensity);
-            conf.getIfSet("scale",     _scale);
-            conf.getIfSet("octaves",   _octaves);
-            conf.getIfSet("max_range", _maxRange);
-            conf.getIfSet("base_lod",  _baseLOD);
+            conf.get("image",     _imageURI);
+            conf.get("intensity", _intensity);
+            conf.get("scale",     _scale);
+            conf.get("octaves",   _octaves);
+            conf.get("max_range", _maxRange);
+            conf.get("base_lod",  _baseLOD);
         }
 
         optional<URI>      _imageURI;

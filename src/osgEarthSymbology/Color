@@ -119,24 +119,16 @@ namespace osgEarth
     using namespace osgEarth::Symbology;
 
     // Config specializations for Color:
-
-    template <> inline
-    void Config::addIfSet<Color>( const std::string& key, const optional<Color>& opt ) {
-        if ( opt.isSet() ) {
-            add( key, opt->toHTML() );
-        }
-    }
-
     template<> inline
-    void Config::updateIfSet<Color>( const std::string& key, const optional<Color>& opt ) {
+    void Config::set<Color>( const std::string& key, const optional<Color>& opt ) {
         if ( opt.isSet() ) {
             remove( key );
-            add( key, opt->toHTML() );
+            set( key, opt->toHTML() );
         }
     }
 
     template<> inline
-    bool Config::getIfSet<Color>( const std::string& key, optional<Color>& output ) const {
+    bool Config::get<Color>( const std::string& key, optional<Color>& output ) const {
         if ( hasValue( key ) ) {
             output = Color( value(key) );
             return true;

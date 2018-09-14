@@ -84,10 +84,10 @@ ElevationLayerOptions::getConfig() const
 void
 ElevationLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet("offset", _offset );
-    conf.getIfSet("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
-    conf.getIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
-    conf.getIfSet("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
+    conf.get("offset", _offset );
+    conf.get("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
+    conf.get("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
+    conf.get("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
 }
 
 void

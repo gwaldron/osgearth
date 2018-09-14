@@ -54,44 +54,44 @@ AltitudeSymbol::getConfig() const
     Config conf = Symbol::getConfig();
 
     conf.key() = "altitude";
-    conf.addIfSet   ( "clamping",  "none",       _clamping, CLAMP_NONE );
-    conf.addIfSet   ( "clamping",  "terrain",    _clamping, CLAMP_TO_TERRAIN );
-    conf.addIfSet   ( "clamping",  "absolute",   _clamping, CLAMP_ABSOLUTE );
-    conf.addIfSet   ( "clamping",  "relative",   _clamping, CLAMP_RELATIVE_TO_TERRAIN );
+    conf.set( "clamping", "none",     _clamping, CLAMP_NONE );
+    conf.set( "clamping", "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.set( "clamping", "absolute", _clamping, CLAMP_ABSOLUTE );
+    conf.set( "clamping", "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
 
-    conf.addIfSet   ( "technique", "map",   _technique, TECHNIQUE_MAP );
-    conf.addIfSet   ( "technique", "scene", _technique, TECHNIQUE_SCENE );
-    conf.addIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
-    conf.addIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
+    conf.set( "technique", "map",   _technique, TECHNIQUE_MAP );
+    conf.set( "technique", "scene", _technique, TECHNIQUE_SCENE );
+    conf.set( "technique", "gpu",   _technique, TECHNIQUE_GPU );
+    conf.set( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
-    conf.addIfSet   ( "binding", "vertex",   _binding, BINDING_VERTEX );
-    conf.addIfSet   ( "binding", "centroid", _binding, BINDING_CENTROID );
+    conf.set( "binding", "vertex",   _binding, BINDING_VERTEX );
+    conf.set( "binding", "centroid", _binding, BINDING_CENTROID );
 
-    conf.addIfSet   ( "clamping_resolution",     _resolution );
-    conf.addObjIfSet( "vertical_offset",         _verticalOffset );
-    conf.addObjIfSet( "vertical_scale",          _verticalScale );
+    conf.set( "clamping_resolution", _resolution );
+    conf.set( "vertical_offset",     _verticalOffset );
+    conf.set( "vertical_scale",      _verticalScale );
     return conf;
 }
 
 void 
 AltitudeSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet   ( "clamping",  "none",     _clamping, CLAMP_NONE );
-    conf.getIfSet   ( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
-    conf.getIfSet   ( "clamping",  "absolute", _clamping, CLAMP_ABSOLUTE );
-    conf.getIfSet   ( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
+    conf.get( "clamping",  "none",     _clamping, CLAMP_NONE );
+    conf.get( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.get( "clamping",  "absolute", _clamping, CLAMP_ABSOLUTE );
+    conf.get( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
 
-    conf.getIfSet   ( "technique", "map",   _technique, TECHNIQUE_MAP );
-    conf.getIfSet   ( "technique", "scene", _technique, TECHNIQUE_SCENE );
-    conf.getIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
-    conf.getIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
+    conf.get( "technique", "map",   _technique, TECHNIQUE_MAP );
+    conf.get( "technique", "scene", _technique, TECHNIQUE_SCENE );
+    conf.get( "technique", "gpu",   _technique, TECHNIQUE_GPU );
+    conf.get( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
-    conf.getIfSet   ( "binding", "vertex",   _binding, BINDING_VERTEX );
-    conf.getIfSet   ( "binding", "centroid", _binding, BINDING_CENTROID );
+    conf.get( "binding", "vertex",   _binding, BINDING_VERTEX );
+    conf.get( "binding", "centroid", _binding, BINDING_CENTROID );
 
-    conf.getIfSet   ( "clamping_resolution",   _resolution );
-    conf.getObjIfSet( "vertical_offset",       _verticalOffset );
-    conf.getObjIfSet( "vertical_scale",        _verticalScale );
+    conf.get( "clamping_resolution", _resolution );
+    conf.get( "vertical_offset",     _verticalOffset );
+    conf.get( "vertical_scale",      _verticalScale );
 }
 
 void

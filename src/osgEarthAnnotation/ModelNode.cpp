@@ -192,7 +192,7 @@ _readOptions(readOptions)
 {
     construct();
 
-    conf.getObjIfSet( "style", _style );
+    conf.get( "style", _style );
 
     std::string uri = conf.value("url");
     if ( !uri.empty() )
@@ -211,7 +211,7 @@ ModelNode::getConfig() const
     conf.key() = "model";
 
     if ( !_style.empty() )
-        conf.addObj( "style", _style );
+        conf.set( "style", _style );
 
     return conf;
 }

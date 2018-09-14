@@ -30,14 +30,14 @@ void
 ScriptEngineOptions::fromConfig( const Config& conf )
 {
     optional<std::string> val;
-    if (conf.getIfSet<std::string>( "script_code", val))
+    if (conf.get<std::string>( "script_code", val))
     {
         Script cfgScript(val.get());
         
-        if (conf.getIfSet<std::string>( "script_language", val ))
+        if (conf.get<std::string>( "script_language", val ))
           cfgScript.setLanguage(val.get());
 
-        if (conf.getIfSet<std::string>( "script_name", val ))
+        if (conf.get<std::string>( "script_name", val ))
           cfgScript.setName(val.get());
     }
 }
@@ -56,9 +56,9 @@ ScriptEngineOptions::getConfig() const
 
     if (_script.isSet())
     {
-      if (!_script->getCode().empty()) conf.update("script_code", _script->getCode());
-      if (!_script->getLanguage().empty()) conf.update("script_language", _script->getLanguage());
-      if (!_script->getName().empty()) conf.update("script_name", _script->getName());
+      if (!_script->getCode().empty()) conf.set("script_code", _script->getCode());
+      if (!_script->getLanguage().empty()) conf.set("script_language", _script->getLanguage());
+      if (!_script->getName().empty()) conf.set("script_name", _script->getName());
     }
 
     return conf;

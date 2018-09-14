@@ -179,7 +179,7 @@ Style::mergeConfig( const Config& conf, const StyleSheet* sheet )
     if ( _name.empty() )
         _name = conf.key();
 
-    conf.getIfSet( "url", _uri ); // named "url" for back compat
+    conf.get( "url", _uri ); // named "url" for back compat
 
     _origType = conf.value( "type" );
     std::string textData = trim(conf.value());
@@ -222,7 +222,7 @@ Style::getConfig( bool keepOrigType ) const
     Config conf( "style" );
     conf.set("name", _name);
 
-    conf.addIfSet( "url", _uri );
+    conf.set( "url", _uri );
     
     if ( _origType == "text/css" && keepOrigType )
     {

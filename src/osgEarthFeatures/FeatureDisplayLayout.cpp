@@ -48,19 +48,19 @@ FeatureLevel::FeatureLevel( float minRange, float maxRange, const std::string& s
 void
 FeatureLevel::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "min_range", _minRange );
-    conf.getIfSet( "max_range", _maxRange );
-    conf.getIfSet( "style",     _styleName ); 
-    conf.getIfSet( "class",     _styleName ); // alias
+    conf.get( "min_range", _minRange );
+    conf.get( "max_range", _maxRange );
+    conf.get( "style",     _styleName ); 
+    conf.get( "class",     _styleName ); // alias
 }
 
 Config
 FeatureLevel::getConfig() const
 {
     Config conf( "level" );
-    conf.addIfSet( "min_range", _minRange );
-    conf.addIfSet( "max_range", _maxRange );
-    conf.addIfSet( "style",     _styleName );
+    conf.set( "min_range", _minRange );
+    conf.set( "max_range", _maxRange );
+    conf.set( "style",     _styleName );
     return conf;
 }
 
@@ -82,15 +82,15 @@ _paged(true)
 void
 FeatureDisplayLayout::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "tile_size",        _tileSize );
-    conf.getIfSet( "tile_size_factor", _tileSizeFactor );
-    conf.getIfSet( "crop_features",    _cropFeatures );
-    conf.getIfSet( "priority_offset",  _priorityOffset );
-    conf.getIfSet( "priority_scale",   _priorityScale );
-    conf.getIfSet( "min_expiry_time",  _minExpiryTime );
-    conf.getIfSet( "min_range",        _minRange );
-    conf.getIfSet( "max_range",        _maxRange );
-    conf.getIfSet("paged", _paged);
+    conf.get( "tile_size",        _tileSize );
+    conf.get( "tile_size_factor", _tileSizeFactor );
+    conf.get( "crop_features",    _cropFeatures );
+    conf.get( "priority_offset",  _priorityOffset );
+    conf.get( "priority_scale",   _priorityScale );
+    conf.get( "min_expiry_time",  _minExpiryTime );
+    conf.get( "min_range",        _minRange );
+    conf.get( "max_range",        _maxRange );
+    conf.get("paged", _paged);
     ConfigSet children = conf.children( "level" );
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         addLevel( FeatureLevel( *i ) );
@@ -100,15 +100,15 @@ Config
 FeatureDisplayLayout::getConfig() const
 {
     Config conf( "layout" );
-    conf.addIfSet( "tile_size",        _tileSize );
-    conf.addIfSet( "tile_size_factor", _tileSizeFactor );
-    conf.addIfSet( "crop_features",    _cropFeatures );
-    conf.addIfSet( "priority_offset",  _priorityOffset );
-    conf.addIfSet( "priority_scale",   _priorityScale );
-    conf.addIfSet( "min_expiry_time",  _minExpiryTime );
-    conf.addIfSet( "min_range",        _minRange );
-    conf.addIfSet( "max_range",        _maxRange );
-    conf.addIfSet("paged", _paged);
+    conf.set( "tile_size",        _tileSize );
+    conf.set( "tile_size_factor", _tileSizeFactor );
+    conf.set( "crop_features",    _cropFeatures );
+    conf.set( "priority_offset",  _priorityOffset );
+    conf.set( "priority_scale",   _priorityScale );
+    conf.set( "min_expiry_time",  _minExpiryTime );
+    conf.set( "min_range",        _minRange );
+    conf.set( "max_range",        _maxRange );
+    conf.set("paged", _paged);
     for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )
         conf.add( i->second.getConfig() );
     return conf;

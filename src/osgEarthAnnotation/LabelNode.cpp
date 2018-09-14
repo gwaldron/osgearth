@@ -316,8 +316,8 @@ GeoPositionNode( conf, dbOptions )
 {
     construct();
 
-    conf.getObjIfSet("style", _style);
-    conf.getIfSet("text", _text);
+    conf.get("style", _style);
+    conf.get("text", _text);
 
     compile();
 }
@@ -326,8 +326,8 @@ Config
 LabelNode::getConfig() const
 {
     Config conf( "label" );
-    conf.add   ( "text",   _text );
-    conf.addObj( "style",  _style );
+    conf.set( "text",   _text );
+    conf.set( "style",  _style );
 
     return conf;
 }

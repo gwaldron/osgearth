@@ -498,11 +498,11 @@ _readOptions( readOptions )
 {
     construct();
 
-    conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "text",   _text );
+    conf.get( "style",  _style );
+    conf.get( "text",   _text );
 
     optional<URI> imageURI;
-    conf.getIfSet( "icon", imageURI );
+    conf.get( "icon", imageURI );
     if ( imageURI.isSet() )
     {
         _image = imageURI->getImage();
@@ -518,11 +518,11 @@ PlaceNode::setConfig(const Config& conf)
 {
     GeoPositionNode::setConfig(conf);
 
-    conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "text",   _text );
+    conf.get( "style",  _style );
+    conf.get   ( "text",   _text );
 
     optional<URI> imageURI;
-    conf.getIfSet( "icon", imageURI );
+    conf.get( "icon", imageURI );
     if ( imageURI.isSet() )
     {
         _image = imageURI->getImage();
@@ -537,13 +537,13 @@ Config
 PlaceNode::getConfig() const
 {
     Config conf( "place" );
-    conf.add   ( "text",   _text );
-    conf.addObj( "style",  _style );
+    conf.set( "text",   _text );
+    conf.set( "style",  _style );
     if ( _image.valid() ) {
         if ( !_image->getFileName().empty() )
-            conf.add( "icon", _image->getFileName() );
+            conf.set( "icon", _image->getFileName() );
         else if ( !_image->getName().empty() )
-            conf.add( "icon", _image->getName() );
+            conf.set( "icon", _image->getName() );
     }
 
     return conf;

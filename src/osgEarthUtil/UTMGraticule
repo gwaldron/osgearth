@@ -57,14 +57,14 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.addObjIfSet("gzd_style", _gzdStyle);
-            conf.addIfSet("text_scale", _textScale);
+            conf.set("gzd_style", _gzdStyle);
+            conf.set("text_scale", _textScale);
             return conf;
         }
 
         virtual void fromConfig(const Config& conf) {
-            conf.getObjIfSet("gzd_style", _gzdStyle);
-            conf.getIfSet("text_scale", _textScale);
+            conf.get("gzd_style", _gzdStyle);
+            conf.get("text_scale", _textScale);
         }
 
     protected:

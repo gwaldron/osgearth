@@ -106,48 +106,48 @@ _useGPULines           ( s_defaults.useGPUScreenSpaceLines().value() )
 void
 GeometryCompilerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet   ( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet   ( "merge_geometry",   _mergeGeometry );
-    conf.getIfSet   ( "clustering",       _clustering );
-    conf.getIfSet   ( "instancing",       _instancing );
-    conf.getObjIfSet( "feature_name",     _featureNameExpr );
-    conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
-    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
-    conf.getIfSet   ( "optimize", _optimize );
-    conf.getIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.getIfSet   ( "validate", _validate );
-    conf.getIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.getIfSet   ( "use_gpu_screen_space_lines", _useGPULines );
+    conf.get( "max_granularity",  _maxGranularity_deg );
+    conf.get( "merge_geometry",   _mergeGeometry );
+    conf.get( "clustering",       _clustering );
+    conf.get( "instancing",       _instancing );
+    conf.get( "feature_name",     _featureNameExpr );
+    conf.get( "ignore_altitude",  _ignoreAlt );
+    conf.get( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.get( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.get( "optimize_state_sharing", _optimizeStateSharing );
+    conf.get( "optimize", _optimize );
+    conf.get( "optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.get( "validate", _validate );
+    conf.get( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.get( "use_gpu_screen_space_lines", _useGPULines );
 
-    conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+    conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.get( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 }
 
 Config
 GeometryCompilerOptions::getConfig() const
 {
     Config conf;
-    conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
-    conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
-    conf.addIfSet   ( "clustering",       _clustering );
-    conf.addIfSet   ( "instancing",       _instancing );
-    conf.addObjIfSet( "feature_name",     _featureNameExpr );
-    conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
-    conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
-    conf.addIfSet   ( "optimize", _optimize );
-    conf.addIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.addIfSet   ( "validate", _validate );
-    conf.addIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.addIfSet   ( "use_gpu_screen_space_lines", _useGPULines );
+    conf.set( "max_granularity",  _maxGranularity_deg );
+    conf.set( "merge_geometry",   _mergeGeometry );
+    conf.set( "clustering",       _clustering );
+    conf.set( "instancing",       _instancing );
+    conf.set( "feature_name",     _featureNameExpr );
+    conf.set( "ignore_altitude",  _ignoreAlt );
+    conf.set( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.set( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.set( "optimize_state_sharing", _optimizeStateSharing );
+    conf.set( "optimize", _optimize );
+    conf.set( "optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.set( "validate", _validate );
+    conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.set( "use_gpu_screen_space_lines", _useGPULines );
 
-    conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+    conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.set( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
     return conf;
 }
 

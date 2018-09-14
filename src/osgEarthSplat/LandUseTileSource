@@ -75,9 +75,9 @@ namespace osgEarth { namespace Splat
         Config getConfig() const
         {
             Config conf;
-            conf.addIfSet("warp",      _warp);
-            conf.addIfSet("base_lod",  _baseLOD);
-            conf.addIfSet("bits",      _bits);
+            conf.set("warp",      _warp);
+            conf.set("base_lod",  _baseLOD);
+            conf.set("bits",      _bits);
 
             // multiple
             if ( _imageLayerOptionsVec.size() > 0 )
@@ -89,7 +89,7 @@ namespace osgEarth { namespace Splat
                 {
                     images.add( "image", i->getConfig() );
                 }
-                conf.add( images );
+                conf.set( images );
             }
 
             return conf;
@@ -104,9 +104,9 @@ namespace osgEarth { namespace Splat
     private:
         void fromConfig( const Config& conf )
         {
-            conf.getIfSet("warp", _warp);
-            conf.getIfSet("base_lod", _baseLOD);
-            conf.getIfSet("bits",      _bits);
+            conf.get("warp", _warp);
+            conf.get("base_lod", _baseLOD);
+            conf.get("bits",      _bits);
             
             ConfigSet layerConfs = conf.child("images").children("image");
             for(ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)

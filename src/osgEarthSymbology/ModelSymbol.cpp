@@ -66,46 +66,46 @@ ModelSymbol::getConfig() const
 {
     Config conf = InstanceSymbol::getConfig();
     conf.key() = "model";
-    conf.addObjIfSet( "heading",    _heading );
-    conf.addObjIfSet( "pitch",      _pitch );
-    conf.addObjIfSet( "roll",       _roll );
-    conf.addObjIfSet( "name",       _name );
+    conf.set( "heading",    _heading );
+    conf.set( "pitch",      _pitch );
+    conf.set( "roll",       _roll );
+    conf.set( "name",       _name );
     
-    conf.addIfSet( "auto_scale", _autoScale );
-	conf.addIfSet( "min_auto_scale", _minAutoScale );
-	conf.addIfSet( "max_auto_scale", _maxAutoScale );
-    conf.addIfSet( "alias_map", _uriAliasMap );
+    conf.set( "auto_scale", _autoScale );
+	conf.set( "min_auto_scale", _minAutoScale );
+	conf.set( "max_auto_scale", _maxAutoScale );
+    conf.set( "alias_map", _uriAliasMap );
 
-    conf.addIfSet( "max_size_x", _maxSizeX );
-    conf.addIfSet( "max_size_y", _maxSizeY );
+    conf.set( "max_size_x", _maxSizeX );
+    conf.set( "max_size_y", _maxSizeY );
     
-    conf.addObjIfSet( "scale_x", _scaleX );
-    conf.addObjIfSet( "scale_y", _scaleY );
-    conf.addObjIfSet( "scale_z", _scaleZ );
+    conf.set( "scale_x", _scaleX );
+    conf.set( "scale_y", _scaleY );
+    conf.set( "scale_z", _scaleZ );
 
-    conf.addNonSerializable( "ModelSymbol::node", _node.get() );
+    conf.setNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
 }
 
 void 
 ModelSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet( "heading", _heading );
-    conf.getObjIfSet( "pitch",   _pitch );
-    conf.getObjIfSet( "roll",    _roll );
-    conf.getObjIfSet( "name",    _name );
+    conf.get( "heading", _heading );
+    conf.get( "pitch",   _pitch );
+    conf.get( "roll",    _roll );
+    conf.get( "name",    _name );
 
-    conf.getIfSet( "max_size_x", _maxSizeX );
-    conf.getIfSet( "max_size_y", _maxSizeY );
+    conf.get( "max_size_x", _maxSizeX );
+    conf.get( "max_size_y", _maxSizeY );
 
-    conf.getIfSet( "auto_scale", _autoScale );
-	conf.getIfSet( "min_auto_scale", _minAutoScale);
-	conf.getIfSet( "max_auto_scale", _maxAutoScale);
-    conf.getIfSet( "alias_map", _uriAliasMap );
+    conf.get( "auto_scale", _autoScale );
+	conf.get( "min_auto_scale", _minAutoScale);
+	conf.get( "max_auto_scale", _maxAutoScale);
+    conf.get( "alias_map", _uriAliasMap );
     
-    conf.getObjIfSet( "scale_x", _scaleX );
-    conf.getObjIfSet( "scale_y", _scaleY );
-    conf.getObjIfSet( "scale_z", _scaleZ );
+    conf.get( "scale_x", _scaleX );
+    conf.get( "scale_y", _scaleY );
+    conf.get( "scale_z", _scaleZ );
 
     _node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
 }

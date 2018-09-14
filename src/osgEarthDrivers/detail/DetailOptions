@@ -81,11 +81,11 @@ namespace osgEarth { namespace Detail
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "image", _imageURI );
-            conf.getIfSet( "lod", _lod );
-            conf.getIfSet( "alpha", _alpha );
-            conf.getIfSet( "max_range", _maxRange );
-            conf.getIfSet( "attenuation", _attenDist);
+            conf.get( "image", _imageURI );
+            conf.get( "lod", _lod );
+            conf.get( "alpha", _alpha );
+            conf.get( "max_range", _maxRange );
+            conf.get( "attenuation", _attenDist);
         }
 
         optional<URI> _imageURI;

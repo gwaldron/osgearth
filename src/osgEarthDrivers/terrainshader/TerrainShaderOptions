@@ -76,7 +76,7 @@ namespace osgEarth { namespace TerrainShader
             conf.remove("code");
             for(unsigned i=0; i<_code.size(); ++i) {
                 Config c("code", _code[i]._source);
-                c.addIfSet("url", _code[i]._uri);
+                c.set("url", _code[i]._uri);
                 conf.add( c );
             }
 
@@ -100,8 +100,8 @@ namespace osgEarth { namespace TerrainShader
             conf.remove("uniform");
             for(unsigned i=0; i<_uniforms.size(); ++i) {
                 Config c("uniform");
-                c.add("name", _uniforms[i]._name);
-                c.addIfSet("value", _uniforms[i]._value);
+                c.set("name", _uniforms[i]._name);
+                c.set("value", _uniforms[i]._value);
                 conf.add( c );
             }
             
@@ -125,7 +125,7 @@ namespace osgEarth { namespace TerrainShader
             for(ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
                 _code.push_back(Code());
                 _code.back()._source = i->value();
-                i->getIfSet("url", _code.back()._uri);
+                i->get("url", _code.back()._uri);
             }
 
             s = conf.children("sampler");
@@ -142,7 +142,7 @@ namespace osgEarth { namespace TerrainShader
                 }
                 else {
                    optional<URI> uri;
-                   i->getIfSet("url", uri);
+                   i->get("url", uri);
                    if ( uri.isSet() )
                        _samplers.back()._uris.push_back( uri.get() );
                 }
@@ -152,7 +152,7 @@ namespace osgEarth { namespace TerrainShader
             for(ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
                 _uniforms.push_back(Uniform());
                 _uniforms.back()._name = i->value("name");
-                i->getIfSet("value", _uniforms.back()._value);
+                i->get("value", _uniforms.back()._value);
             }
         }
 

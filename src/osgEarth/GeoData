@@ -324,6 +324,7 @@ namespace osgEarth
          GeoPoint _center;
          double   _radius;
      };
+     OSGEARTH_SPECIALIZE_CONFIG(GeoPoint);
 
 
     /**
@@ -546,6 +547,7 @@ namespace osgEarth
 
         void setOriginAndSize(double west, double south, double width, double height);
     };
+
 
     /**
      * A geospatial area with tile data LOD extents

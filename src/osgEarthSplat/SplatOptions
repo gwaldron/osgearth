@@ -62,7 +62,7 @@ namespace osgEarth { namespace Splat
                     zones.add(zone);
             }
             if ( !zones.empty() )
-                conf.update(zones);
+                conf.set(zones);
             return conf;
         }
 

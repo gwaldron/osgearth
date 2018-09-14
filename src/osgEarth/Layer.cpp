@@ -53,7 +53,7 @@ Config LayerOptions::getConfig() const
     conf.set("enabled", _enabled);
     conf.set("cacheid", _cacheId);
     if (_cachePolicy.isSet() && !_cachePolicy->empty())
-        conf.setObj("cache_policy", _cachePolicy);
+        conf.set("cache_policy", _cachePolicy);
     conf.set("shader_define", _shaderDefine);
     conf.set("shader", _shader);
     conf.set("attribution", _attribution);
@@ -65,12 +65,12 @@ void LayerOptions::fromConfig(const Config& conf)
 {
     setDefaults();
 
-    conf.getIfSet("name", _name);
-    conf.getIfSet("enabled", _enabled);
-    conf.getIfSet("cache_id", _cacheId); // compat
-    conf.getIfSet("cacheid", _cacheId);
-    conf.getIfSet("attribution", _attribution);
-    conf.getObjIfSet("cache_policy", _cachePolicy);
+    conf.get("name", _name);
+    conf.get("enabled", _enabled);
+    conf.get("cache_id", _cacheId); // compat
+    conf.get("cacheid", _cacheId);
+    conf.get("attribution", _attribution);
+    conf.get("cache_policy", _cachePolicy);
 
     // legacy support:
     if (!_cachePolicy.isSet())
@@ -80,11 +80,11 @@ void LayerOptions::fromConfig(const Config& conf)
         if ( conf.value<bool>( "cache_enabled", true ) == false )
             _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
     }
-    conf.getIfSet("shader_define", _shaderDefine);
-    conf.getIfSet("shader", _shader);
+    conf.get("shader_define", _shaderDefine);
+    conf.get("shader", _shader);
 
-    conf.getIfSet("terrain", _terrainPatch);
-    conf.getIfSet("patch", _terrainPatch);
+    conf.get("terrain", _terrainPatch);
+    conf.get("patch", _terrainPatch);
 }
 
 void LayerOptions::mergeConfig(const Config& conf)

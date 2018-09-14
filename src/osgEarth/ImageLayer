@@ -160,11 +160,12 @@ namespace osgEarth
         optional<std::string> _shareTexUniformName;
         optional<std::string> _shareTexMatUniformName;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ImageLayerOptions);
 
-    OSGEARTH_SPECIALIZE_CONFIG(ImageLayerOptions);
 
-    //--------------------------------------------------------------------
-
+namespace osgEarth
+{
     /**
      * Internal utility class for post-processing image tiles that come from 
      * a TileSource

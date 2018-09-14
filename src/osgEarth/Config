@@ -408,38 +408,41 @@ namespace osgEarth
 
     // Use this macro to "activate" any object with a getConfig/ctor(const Config&) pair
     // and make it usable with Config::set/get/add.
+    // NOTE: You must only use this macro in the global namespace!
 
 #define OSGEARTH_SPECIALIZE_CONFIG(TYPE) \
-    template<> inline \
-    void osgEarth::Config::set<TYPE>(const std::string& key, const TYPE& obj) { \
-        set( key, obj.getConfig() ); \
-    } \
-    template<> inline \
-    void osgEarth::Config::set<TYPE>(const std::string& key, const optional<TYPE>& opt) { \
-        if ( opt.isSet() ) \
-            set(key, opt.get()); \
-    } \
-    template<> inline \
-    bool osgEarth::Config::get<TYPE>(const std::string& key, TYPE& opt) const { \
-        if ( hasChild(key) ) { \
-            opt = TYPE(child(key)); \
-            return true; \
+    namespace osgEarth { \
+        template<> inline \
+        void Config::set<::##TYPE>(const std::string& key, const ::##TYPE& obj) { \
+            set( key, obj.getConfig() ); \
         } \
-        else return false; \
-    } \
-    template<> inline \
-    bool osgEarth::Config::get<TYPE>(const std::string& key, optional<TYPE>& opt) const { \
-        if ( hasChild(key) ) { \
-            opt = TYPE(child(key)); \
-            return true; \
+        template<> inline \
+        void Config::set<::##TYPE>(const std::string& key, const optional<::##TYPE>& opt) { \
+            if ( opt.isSet() ) \
+                set(key, opt.get()); \
         } \
-        else return false; \
-    } \
-    template<> inline void osgEarth::Config::add<TYPE>(const std::string& key, const TYPE& value) { \
-        osgEarth::Config conf = value.getConfig(); \
-        conf.key() = key; \
-        add( conf ); \
-    }
+        template<> inline \
+        bool Config::get<::##TYPE>(const std::string& key, ::##TYPE& opt) const { \
+            if ( hasChild(key) ) { \
+                opt = ::##TYPE(child(key)); \
+                return true; \
+            } \
+            else return false; \
+        } \
+        template<> inline \
+        bool Config::get<::##TYPE>(const std::string& key, optional<::##TYPE>& opt) const { \
+            if ( hasChild(key) ) { \
+                opt = ::##TYPE(child(key)); \
+                return true; \
+            } \
+            else return false; \
+        } \
+        template<> inline void Config::add<::##TYPE>(const std::string& key, const ::##TYPE& value) { \
+            Config conf = value.getConfig(); \
+            conf.key() = key; \
+            add( conf ); \
+        } \
+    } // namespace osgEarth
 
     //--------------------------------------------------------------------
 

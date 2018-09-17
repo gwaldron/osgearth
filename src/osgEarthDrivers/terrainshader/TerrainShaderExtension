@@ -34,7 +34,7 @@ namespace osgEarth { namespace TerrainShader
                                    public TerrainShaderOptions
     {
     public:
-        META_Object(osgearth_ext_terrainshader, TerrainShaderExtension);
+        META_OE_Extension(osgEarth, TerrainShaderExtension, terrainshader);
 
         // CTORs
         TerrainShaderExtension();
@@ -55,10 +55,6 @@ namespace osgEarth { namespace TerrainShader
         bool connect(MapNode* mapNode);
 
         bool disconnect(MapNode* mapNode);
-
-
-    protected: // Object
-        TerrainShaderExtension(const TerrainShaderExtension& rhs, const osg::CopyOp& op) { }
 
     private:
         osg::ref_ptr<const osgDB::Options> _dbOptions;

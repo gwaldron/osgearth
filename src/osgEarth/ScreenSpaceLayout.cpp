@@ -982,13 +982,17 @@ namespace osgEarth
                                        public ScreenSpaceLayoutOptions
     {
     public:
-        META_osgEarth_Extension(ScreenSpaceLayoutExtension);
+        META_OE_Extension(osgEarth, ScreenSpaceLayoutExtension, screen_space_layout);
+
+        ScreenSpaceLayoutExtension() { }
 
         ScreenSpaceLayoutExtension(const ConfigOptions& co) : ScreenSpaceLayoutOptions(co)
         {
             // sets the global default options.
             ScreenSpaceLayout::setOptions(*this);
         }
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
     };
 
     REGISTER_OSGEARTH_EXTENSION(osgearth_screen_space_layout, ScreenSpaceLayoutExtension);

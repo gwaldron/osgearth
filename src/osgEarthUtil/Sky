@@ -86,7 +86,7 @@ namespace osgEarth { namespace Util
 
     protected:
         virtual void mergeConfig( const Config& conf ) {
-            DriverConfigOptions::mergeConfig( conf );
+            ConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 

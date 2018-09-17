@@ -37,7 +37,7 @@ namespace osgEarth { namespace MapInspector
                                   public ExtensionInterface<Control>
     {
     public:
-        META_Object(osgearth_ext_MapInspector, MapInspectorExtension);
+        META_OE_Extension(osgEarth, MapInspectorExtension, mapinspector);
 
         // CTORs
         MapInspectorExtension();
@@ -61,11 +61,6 @@ namespace osgEarth { namespace MapInspector
 
         bool disconnect(Control* control);
         
-
-
-    protected: // Object
-
-        MapInspectorExtension(const MapInspectorExtension& rhs, const osg::CopyOp& op) { }
 
 
     private:

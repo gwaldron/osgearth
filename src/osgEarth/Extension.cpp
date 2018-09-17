@@ -29,6 +29,7 @@ using namespace osgEarth;
 Extension::Extension()
 {
     //nop
+    _defaultOptions = Config("extension");
 }
 
 const ConfigOptions&

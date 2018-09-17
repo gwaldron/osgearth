@@ -37,7 +37,7 @@ namespace osgEarth { namespace Detail
                             public ExtensionInterface<MapNode>
     {
     public:
-        META_Object(osgearth_detail, DetailExtension);
+        META_OE_Extension(osgEarth, DetailExtension, detail);
 
         // CTORs
         DetailExtension();
@@ -51,6 +51,8 @@ namespace osgEarth { namespace Detail
 
         void setDBOptions(const osgDB::Options* dbOptions);
 
+        const ConfigOptions& getConfigOptions() const { return _options; }
+
 
     public: // ExtensionInterface<MapNode>
 
@@ -58,13 +60,10 @@ namespace osgEarth { namespace Detail
 
         bool disconnect(MapNode* mapNode);
 
-
-    protected: // Object
-        DetailExtension(const DetailExtension& rhs, const osg::CopyOp& op) { }
-
+        
     private:
         const DetailOptions                 _options;
-        osg::ref_ptr<const osgDB::Options>     _dbOptions;
+        osg::ref_ptr<const osgDB::Options>  _dbOptions;
         osg::ref_ptr<DetailTerrainEffect>   _effect;
     };
 

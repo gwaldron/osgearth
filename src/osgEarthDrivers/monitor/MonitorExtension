@@ -39,7 +39,7 @@ namespace osgEarth { namespace Monitor
                              public ExtensionInterface<Control>
     {
     public:
-        META_Object(osgearth_ext_Monitor, MonitorExtension);
+        META_OE_Extension(osgEarth, MonitorExtension, monitor);
 
         // CTORs
         MonitorExtension();
@@ -63,16 +63,11 @@ namespace osgEarth { namespace Monitor
         bool connect(Control* control);
 
         bool disconnect(Control* control);
-
-
-    protected: // Object
-
-        MonitorExtension(const MonitorExtension& rhs, const osg::CopyOp& op) { }
-
+        
 
     private:
         osg::observer_ptr<MapNode> _mapNode;
-        osg::ref_ptr<MonitorUI>      _ui;
+        osg::ref_ptr<MonitorUI>    _ui;
 
         void ctor();
     };

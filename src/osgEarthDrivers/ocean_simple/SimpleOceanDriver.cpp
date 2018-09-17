@@ -44,12 +44,14 @@ namespace osgEarth { namespace SimpleOcean
                                  public OceanNodeFactory
     {
     public:
-        META_Object(osgearth_ocean_simple, SimpleOceanExtension);
+        META_OE_Extension(osgEarth, SimpleOceanExtension, simple_oecan);
 
         SimpleOceanExtension() { }
 
         SimpleOceanExtension(const ConfigOptions& options) :
             SimpleOceanOptions(options) { }
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
 
     public: // ExtensionInterface<MapNode>
 
@@ -82,8 +84,6 @@ namespace osgEarth { namespace SimpleOcean
         }
 
     protected:
-        SimpleOceanExtension(const SimpleOceanExtension& rhs, const osg::CopyOp& op) { }
-
         virtual ~SimpleOceanExtension() { }
 
         osg::ref_ptr<OceanNode> _oceanNode;

@@ -41,7 +41,7 @@ namespace osgEarth { namespace Viewpoints
                                 public ConfigOptions
     {
     public:
-        META_Object(osgearth_ext_viewpoints, ViewpointsExtension);
+        META_OE_Extension(osgEarth, ViewpointsExtension, viewpoints);
 
         // CTORs
         ViewpointsExtension();
@@ -71,10 +71,6 @@ namespace osgEarth { namespace Viewpoints
         bool connect(Control* control);
 
         bool disconnect(Control* control);
-
-
-    protected: // Object
-        ViewpointsExtension(const ViewpointsExtension& rhs, const osg::CopyOp& op) { }
 
     private:
         osg::ref_ptr<const osgDB::Options>   _dbOptions;

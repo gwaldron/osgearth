@@ -50,16 +50,16 @@ InstanceSymbol::getConfig() const
 {
     Config conf = Taggable<Symbol>::getConfig();
     conf.key() = "instance";
-    conf.addObjIfSet( "url", _url );
-    conf.addObjIfSet( "library", _library );
-    conf.addObjIfSet( "scale", _scale );
-    conf.addObjIfSet( "script", _script );
-    conf.addIfSet   ( "placement", "vertex",    _placement, PLACEMENT_VERTEX );
-    conf.addIfSet   ( "placement", "interval",  _placement, PLACEMENT_INTERVAL );
-    conf.addIfSet   ( "placement", "random",    _placement, PLACEMENT_RANDOM );
-    conf.addIfSet   ( "placement", "centroid",  _placement, PLACEMENT_CENTROID );
-    conf.addIfSet   ( "density", _density );
-    conf.addIfSet   ( "random_seed", _randomSeed );
+    conf.set( "url", _url );
+    conf.set( "library", _library );
+    conf.set( "scale", _scale );
+    conf.set( "script", _script );
+    conf.set( "placement", "vertex",    _placement, PLACEMENT_VERTEX );
+    conf.set( "placement", "interval",  _placement, PLACEMENT_INTERVAL );
+    conf.set( "placement", "random",    _placement, PLACEMENT_RANDOM );
+    conf.set( "placement", "centroid",  _placement, PLACEMENT_CENTROID );
+    conf.set( "density", _density );
+    conf.set( "random_seed", _randomSeed );
 
     std::string tagstring = this->tagString();
     if ( !tagstring.empty() )
@@ -71,16 +71,16 @@ InstanceSymbol::getConfig() const
 void 
 InstanceSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet( "url", _url );
-    conf.getObjIfSet( "library", _library );
-    conf.getObjIfSet( "scale", _scale );
-    conf.getObjIfSet( "script", _script );
-    conf.getIfSet   ( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
-    conf.getIfSet   ( "placement", "interval", _placement, PLACEMENT_INTERVAL );
-    conf.getIfSet   ( "placement", "random",   _placement, PLACEMENT_RANDOM );
-    conf.getIfSet   ( "placement", "centroid", _placement, PLACEMENT_CENTROID );
-    conf.getIfSet   ( "density", _density );
-    conf.getIfSet   ( "random_seed", _randomSeed );
+    conf.get( "url", _url );
+    conf.get( "library", _library );
+    conf.get( "scale", _scale );
+    conf.get( "script", _script );
+    conf.get( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
+    conf.get( "placement", "interval", _placement, PLACEMENT_INTERVAL );
+    conf.get( "placement", "random",   _placement, PLACEMENT_RANDOM );
+    conf.get( "placement", "centroid", _placement, PLACEMENT_CENTROID );
+    conf.get( "density", _density );
+    conf.get( "random_seed", _randomSeed );
     
     addTags( conf.value("tags") );
 }

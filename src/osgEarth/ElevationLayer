@@ -66,8 +66,12 @@ namespace osgEarth
         optional<bool>                  _offset;
         optional<ElevationNoDataPolicy> _noDataPolicy;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationLayerOptions);
     
 
+namespace osgEarth
+{
     struct ElevationLayerCallback : public TerrainLayerCallback
     {
         //EMPTY
@@ -80,7 +84,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
     public:
-        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions);
+        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions, elevation);
 
         /**
          * Constructs a blank Elevation Layer;

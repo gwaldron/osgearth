@@ -80,12 +80,11 @@ namespace osgEarth { namespace Util
         Config getConfig() const
         {
             Config conf = ElevationLayerOptions::getConfig();
-            conf.key() = "flattened_elevation";
-            conf.addObjIfSet("features",  _featureSource);
-            conf.addIfSet("feature_source", _featureSourceLayer);
-            conf.addObjIfSet("line_width", _lineWidth);
-            conf.addObjIfSet("buffer_width", _bufferWidth);
-            conf.addIfSet("fill", _fill);
+            conf.set("features",  _featureSource);
+            conf.set("feature_source", _featureSourceLayer);
+            conf.set("line_width", _lineWidth);
+            conf.set("buffer_width", _bufferWidth);
+            conf.set("fill", _fill);
 
             if ( _script.valid() )
             {
@@ -113,11 +112,11 @@ namespace osgEarth { namespace Util
         {
             URIContext uriContext = URIContext( conf.referrer() );
 
-            conf.getObjIfSet("features",  _featureSource);
-            conf.getIfSet("feature_source", _featureSourceLayer);
-            conf.getObjIfSet("line_width", _lineWidth);
-            conf.getObjIfSet("buffer_width", _bufferWidth);
-            conf.getIfSet("fill", _fill);
+            conf.get("features",  _featureSource);
+            conf.get("feature_source", _featureSourceLayer);
+            conf.get("line_width", _lineWidth);
+            conf.get("buffer_width", _bufferWidth);
+            conf.get("fill", _fill);
 
             // TODO:  Separate out ScriptDef from Stylesheet and include it as a standalone class, along with this loading code.
             ConfigSet scripts = conf.children( "script" );
@@ -165,7 +164,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions);
+        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions, flattened_elevation);
 
         // Create a layer with initial options.
         FlatteningLayer(const FlatteningLayerOptions& options = FlatteningLayerOptions());

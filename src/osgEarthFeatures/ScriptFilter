@@ -54,15 +54,15 @@ namespace osgEarth { namespace Features
 
         void fromConfig(const Config& conf) {
             _expression = conf.value();
-            conf.getIfSet("language", _language);
-            conf.getIfSet("profile", _profile);
+            conf.get("language", _language);
+            conf.get("profile", _profile);
         }
 
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.value() = _expression.get();
-            conf.addIfSet("language", _language);
-            conf.addIfSet("profile", _profile);
+            conf.set("language", _language);
+            conf.set("profile", _profile);
             return conf;
         }
 

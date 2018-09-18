@@ -70,7 +70,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT VisibleLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions);
+        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions, visible_layer);
 
     protected:
         // Construcable from a base class only.

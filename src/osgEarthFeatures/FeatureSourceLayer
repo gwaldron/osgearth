@@ -40,7 +40,6 @@ namespace osgEarth { namespace Features
     public:
         virtual Config getConfig() const {
             Config conf = LayerOptions::getConfig();
-            conf.key() = "feature_source";
             if (_featureSource.isSet())
                 conf.merge(_featureSource->getConfig());
             return conf;
@@ -58,7 +57,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions);
+        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions, feature_source);
 
         /**
          * Construct an empty feature source layer.

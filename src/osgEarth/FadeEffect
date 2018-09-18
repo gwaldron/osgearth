@@ -58,8 +58,11 @@ namespace osgEarth
         optional<float> _maxRange;
         optional<float> _attenDist;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FadeOptions);
 
-
+namespace osgEarth
+{
     /**
      * Decorator node that will only display it's children when the camera is within a given elevation range
      */

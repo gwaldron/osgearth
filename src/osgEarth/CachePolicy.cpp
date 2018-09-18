@@ -139,24 +139,24 @@ CachePolicy::empty() const
 void
 CachePolicy::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "usage", "read_write",   _usage, USAGE_READ_WRITE );
-    conf.getIfSet( "usage", "read_only",    _usage, USAGE_READ_ONLY );
-    conf.getIfSet( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
-    conf.getIfSet( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
-    conf.getIfSet( "usage", "none",         _usage, USAGE_NO_CACHE );
-    conf.getIfSet( "max_age", _maxAge );
-    conf.getIfSet( "min_time", _minTime );
+    conf.get( "usage", "read_write",   _usage, USAGE_READ_WRITE );
+    conf.get( "usage", "read_only",    _usage, USAGE_READ_ONLY );
+    conf.get( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
+    conf.get( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
+    conf.get( "usage", "none",         _usage, USAGE_NO_CACHE );
+    conf.get( "max_age", _maxAge );
+    conf.get( "min_time", _minTime );
 }
 
 Config
 CachePolicy::getConfig() const
 {
     Config conf( "cache_policy" );
-    conf.addIfSet( "usage", "read_write",   _usage, USAGE_READ_WRITE );
-    conf.addIfSet( "usage", "read_only",    _usage, USAGE_READ_ONLY );
-    conf.addIfSet( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
-    conf.addIfSet( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
-    conf.addIfSet( "max_age", _maxAge );
-    conf.addIfSet( "min_time", _minTime );
+    conf.set( "usage", "read_write",   _usage, USAGE_READ_WRITE );
+    conf.set( "usage", "read_only",    _usage, USAGE_READ_ONLY );
+    conf.set( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
+    conf.set( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
+    conf.set( "max_age", _maxAge );
+    conf.set( "min_time", _minTime );
     return conf;
 }

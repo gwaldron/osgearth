@@ -41,22 +41,22 @@ _textureIndex( -1 )
 SplatDetailData::SplatDetailData(const Config& conf) :
 _textureIndex( -1 )
 {
-    conf.getIfSet("image",      _imageURI);
-    conf.getIfSet("brightness", _brightness);
-    conf.getIfSet("contrast",   _contrast);
-    conf.getIfSet("threshold",  _threshold);
-    conf.getIfSet("slope",      _slope);
+    conf.get("image",      _imageURI);
+    conf.get("brightness", _brightness);
+    conf.get("contrast",   _contrast);
+    conf.get("threshold",  _threshold);
+    conf.get("slope",      _slope);
 }
 
 Config
 SplatDetailData::getConfig() const
 {
     Config conf;
-    conf.addIfSet("image",      _imageURI);
-    conf.addIfSet("brightness", _brightness);
-    conf.addIfSet("contrast",   _contrast);
-    conf.addIfSet("threshold",  _threshold);
-    conf.addIfSet("slope",      _slope);
+    conf.set("image",      _imageURI);
+    conf.set("brightness", _brightness);
+    conf.set("contrast",   _contrast);
+    conf.set("threshold",  _threshold);
+    conf.set("slope",      _slope);
     return conf;
 }
 
@@ -71,11 +71,11 @@ _textureIndex( -1 )
 SplatRangeData::SplatRangeData(const Config& conf) :
 _textureIndex( -1 )
 {
-    conf.getIfSet("max_lod",    _maxLOD);
-    conf.getIfSet("image",      _imageURI);
-    conf.getIfSet("model",      _modelURI);
-    conf.getIfSet("modelCount", _modelCount);
-    conf.getIfSet("modelLevel", _modelLevel);
+    conf.get("max_lod",    _maxLOD);
+    conf.get("image",      _imageURI);
+    conf.get("model",      _modelURI);
+    conf.get("modelCount", _modelCount);
+    conf.get("modelLevel", _modelLevel);
 
     if ( conf.hasChild("detail") )
         _detail = SplatDetailData(conf.child("detail"));
@@ -85,13 +85,13 @@ Config
 SplatRangeData::getConfig() const
 {
     Config conf;
-    conf.addIfSet("max_lod",    _maxLOD);
-    conf.addIfSet("image",      _imageURI);
-    conf.addIfSet("model",      _modelURI);
-    conf.addIfSet("modelCount", _modelCount);
-    conf.addIfSet("modelLevel", _modelLevel);
+    conf.set("max_lod",    _maxLOD);
+    conf.set("image",      _imageURI);
+    conf.set("model",      _modelURI);
+    conf.set("modelCount", _modelCount);
+    conf.set("modelLevel", _modelLevel);
     if ( _detail.isSet() )
-        conf.add( "detail", _detail->getConfig() );
+        conf.set( "detail", _detail->getConfig() );
 
     return conf;
 }
@@ -148,9 +148,9 @@ SplatCatalog::SplatCatalog()
 void
 SplatCatalog::fromConfig(const Config& conf)
 {
-    conf.getIfSet("version",     _version);
-    conf.getIfSet("name",        _name);
-    conf.getIfSet("description", _description);
+    conf.get("version",     _version);
+    conf.get("name",        _name);
+    conf.get("description", _description);
 
     Config classesConf = conf.child("classes");
     if ( !classesConf.empty() )
@@ -170,9 +170,9 @@ Config
 SplatCatalog::getConfig() const
 {
     Config conf;
-    conf.addIfSet("version",     _version);
-    conf.addIfSet("name",        _name);
-    conf.addIfSet("description", _description);
+    conf.set("version",     _version);
+    conf.set("name",        _name);
+    conf.set("description", _description);
     
     Config classes("classes");
     {
@@ -181,7 +181,7 @@ SplatCatalog::getConfig() const
             classes.add( "class", i->second.getConfig() );
         }
     }    
-    conf.add( classes );
+    conf.set( classes );
 
     return conf;
 }
@@ -342,7 +342,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         out._texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
         out._texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
         out._texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-        out._texture->setResizeNonPowerOfTwoHint( false );
+        //out._texture->setResizeNonPowerOfTwoHint( false );
         out._texture->setMaxAnisotropy( 4.0f );
 
         for(unsigned i=0; i<imagesInOrder.size(); ++i)

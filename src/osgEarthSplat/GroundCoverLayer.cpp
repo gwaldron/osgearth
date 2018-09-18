@@ -49,7 +49,6 @@ Config
 GroundCoverLayerOptions::getConfig() const
 {
     Config conf = PatchLayerOptions::getConfig();
-    conf.key() = "splat_groundcover";
     conf.set("land_cover_layer", _landCoverLayerName);
     conf.set("mask_layer", _maskLayerName);
     conf.set("lod", _lod);
@@ -62,17 +61,17 @@ GroundCoverLayerOptions::getConfig() const
             zones.add(zone);
     }
     if (!zones.empty())
-        conf.update(zones);
+        conf.set(zones);
     return conf;
 }
 
 void
 GroundCoverLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("land_cover_layer", _landCoverLayerName);
-    conf.getIfSet("mask_layer", _maskLayerName);
-    conf.getIfSet("lod", _lod);
-    conf.getIfSet("cast_shadows", _castShadows);
+    conf.get("land_cover_layer", _landCoverLayerName);
+    conf.get("mask_layer", _maskLayerName);
+    conf.get("lod", _lod);
+    conf.get("cast_shadows", _castShadows);
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {

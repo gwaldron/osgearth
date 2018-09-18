@@ -55,17 +55,17 @@ namespace osgEarth { namespace Splat
 
     public:
         void fromConfig(const Config& conf) {
-            conf.getIfSet("catalog", _catalogURI);
+            conf.get("catalog", _catalogURI);
         }
         
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.key() = "surface";
+            //conf.key() = "surface";
             conf.set("catalog", _catalogURI);
             return conf;
         }
 
-        void mergeConfig( const Config& conf ) {
+        virtual void mergeConfig( const Config& conf ) {
             ConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
@@ -114,5 +114,7 @@ namespace osgEarth { namespace Splat
     };
 
 } } // namespace osgEarth::Splat
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::SurfaceOptions);
 
 #endif // OSGEARTH_PROCEDURAL_SURFACE

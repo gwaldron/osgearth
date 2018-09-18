@@ -63,8 +63,8 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "color", _colorCode );
-            conf.getIfSet( "invert_y", _invertY);
+            conf.get( "color", _colorCode );
+            conf.get( "invert_y", _invertY);
         }
 
         optional<std::string> _colorCode;

@@ -307,7 +307,7 @@ GeoPositionNode(conf, options)
 {
     construct();
 
-    conf.getObjIfSet( "style", _style );
+    conf.get( "style", _style );
 
     if ( conf.hasChild("geometry") )
     {
@@ -324,12 +324,10 @@ LocalGeometryNode::getConfig() const
     conf.key() = "local_geometry";
 
     if ( !_style.empty() )
-        conf.addObj( "style", _style );
+        conf.set( "style", _style );
 
     if ( _geom.valid() )
-    {
-        conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
-    }
+        conf.set( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
 
     return conf;
 }

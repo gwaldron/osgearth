@@ -1,4 +1,4 @@
-#version 330
+#version $GLSL_VERSION_STR
 #pragma vp_name       Land cover billboard texture application
 #pragma vp_entryPoint oe_GroundCover_fragment
 #pragma vp_location   fragment_coloring

@@ -106,7 +106,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverDictionary : public Layer
     {
     public:
-        META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions);
+        META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions, land_cover_dictionary);
 
         //! Constructs an empty dictionary */
         LandCoverDictionary();
@@ -220,7 +220,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverCoverageLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, LandCoverCoverageLayer, LandCoverCoverageLayerOptions);
+        META_Layer(osgEarth, LandCoverCoverageLayer, LandCoverCoverageLayerOptions, coverage);
 
         /** Construct an empty land cover coverage layer. */
         LandCoverCoverageLayer();

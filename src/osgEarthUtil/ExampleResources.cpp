@@ -29,6 +29,7 @@
 #include <osgEarthUtil/Shadowing>
 #include <osgEarthUtil/ActivityMonitorTool>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarthUtil/SimpleOceanLayer>
 
 #include <osgEarthUtil/VerticalScale>
 
@@ -478,7 +479,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     else
     {
         mainContainer = new VBox();
-        mainContainer->setAbsorbEvents( true );
+        mainContainer->setAbsorbEvents( false );
         mainContainer->setBackColor( Color(Color::Black, 0.8) );
         mainContainer->setHorizAlign( Control::ALIGN_LEFT );
         mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
@@ -706,7 +707,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Simple ocean model:
     if (args.read("--ocean"))
     {
-        mapNode->addExtension(Extension::create("ocean_simple", ConfigOptions()));
+        //mapNode->addExtension(Extension::create("ocean_simple", ConfigOptions()));
+        SimpleOceanLayer* layer = new SimpleOceanLayer();
+        mapNode->getMap()->addLayer(layer);
+        Control* ui = OceanControlFactory::create(layer);
+        mainContainer->addControl(ui);
     }
 
     // Arbitrary extension:
@@ -804,7 +809,8 @@ MapNodeHelper::usage() const
         << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
         << "  --define [name]               : install a shader #define\n"
         << "  --path [file]                 : load and playback an animation path\n"
-        << "  --extension [name]            : loads a named extension\n";
+        << "  --extension [name]            : loads a named extension\n"
+        << "  --ocean                       : add a simple ocean model (requires bathymetry)\n";
 }
 
 
@@ -904,6 +910,43 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
         ui::HSliderControl* ambient = grid->setControl(1, r, new ui::HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
         ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
         grid->setControl(2, r, new ui::LabelControl(ambient) );
+    }
+
+    return grid;
+}
+
+//........................................................................
+
+
+namespace
+{
+    struct OceanSeaLevel : public ui::ControlEventHandler
+    {
+        OceanSeaLevel(SimpleOceanLayer* ocean) : _ocean(ocean) { }
+        SimpleOceanLayer* _ocean;
+        void onValueChanged(ui::Control* control, float value )
+        {
+            _ocean->setSeaLevel(value);
+        }
+    };
+}
+
+ui::Control*
+OceanControlFactory::create(SimpleOceanLayer* ocean)
+{
+    ui::Grid* grid = new ui::Grid();
+    grid->setBackColor(0,0,0,.1);
+    grid->setChildVertAlign( ui::Control::ALIGN_CENTER );
+    grid->setChildSpacing( 10 );
+
+    if (ocean)
+    {
+        int r=0;
+
+        grid->setControl( 0, r, new ui::LabelControl("Sea Level: ", 16) );
+        ui::HSliderControl* seaLevel = grid->setControl(1, r, new ui::HSliderControl(-250.0f, 250.0f, 0.0f, new OceanSeaLevel(ocean)));
+        seaLevel->setHorizFill( true, 250 );
+        grid->setControl(2, r, new ui::LabelControl(seaLevel) );
     }
 
     return grid;

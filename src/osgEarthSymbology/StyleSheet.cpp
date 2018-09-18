@@ -227,7 +227,7 @@ StyleSheet::getConfig() const
 void
 StyleSheet::mergeConfig( const Config& conf )
 {
-    conf.getIfSet("name", _name);
+    conf.get("name", _name);
 
     _uriContext = URIContext( conf.referrer() );
 

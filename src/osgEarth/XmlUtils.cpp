@@ -226,16 +226,6 @@ XmlElement::addSubElement(const std::string& tag, const std::string& text)
     children.push_back(ele);
 }
 
-void
-XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const std::string& text)
-{
-    XmlElement* ele = new XmlElement(tag);
-    for( Properties::const_iterator i = attrs.begin(); i != attrs.end(); i++ )
-        ele->attrs[i->first] = i->second;
-    ele->getChildren().push_back(new XmlText(text));
-    children.push_back(ele);
-}
-
 Config
 XmlElement::getConfig(const std::string& referrer) const
 {

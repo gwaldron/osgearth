@@ -58,8 +58,8 @@ VisibleLayerOptions::getConfig() const
 void
 VisibleLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet( "visible", _visible );
-    conf.getIfSet("opacity", _opacity);
+    conf.get( "visible", _visible );
+    conf.get("opacity", _opacity);
 }
 
 void

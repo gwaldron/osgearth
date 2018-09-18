@@ -22,6 +22,8 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
+#include <osgEarth/URI>
+#include <osgEarthUtil/Ocean>
 #include <osgEarthSymbology/Color>
 
 namespace osgEarth {
@@ -55,27 +57,40 @@ namespace osgEarth { namespace Util
         optional<bool>& useBathymetry() { return _useBathymetry; }
         const optional<bool>& useBathymetry() const { return _useBathymetry; }
 
+        /** URI of surface texture to apply */
+        optional<URI>& texture() { return _textureURI; }
+        const optional<URI>& texture() const { return _textureURI; }
+
+        /** LOD at which to apply surface texture 1:1 (default = 13) */
+        optional<unsigned>& textureLOD() { return _textureLOD; }
+        const optional<unsigned>& textureLOD() const { return _textureLOD; }
+
     public:
         SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : VisibleLayerOptions(op) {
-            _color.init(Color("#1D2C4FE7"));
-            _maxAltitude.init(500000.f);
-            _useBathymetry.init(false);
+            _color.init(Color("#1D2C4FFF"));
+            _maxAltitude.init(1500000.f);
+            _useBathymetry.init(true);
+            _textureLOD.init(13u);
             mergeConfig(_conf);
         }
 
         void mergeConfig(const Config& conf) {
-            conf.getIfSet("color", _color);
-            conf.getIfSet("max_altitude", _maxAltitude);
-            conf.getIfSet("mask_layer", _maskLayer);
-            conf.getIfSet("use_bathymetry", _useBathymetry);
+            conf.get("color", _color);
+            conf.get("max_altitude", _maxAltitude);
+            conf.get("mask_layer", _maskLayer);
+            conf.get("use_bathymetry", _useBathymetry);
+            conf.get("texture", _textureURI);
+            conf.get("texture_lod", _textureLOD);
         }
 
         Config getConfig() const {
-            Config conf;
-            conf.addIfSet("color", _color);
-            conf.addIfSet("max_altitude", _maxAltitude);
-            conf.addIfSet("mask_layer", _maskLayer);
-            conf.addIfSet("use_bathymetry", _useBathymetry);
+            Config conf = VisibleLayerOptions::getConfig();
+            conf.set("color", _color);
+            conf.set("max_altitude", _maxAltitude);
+            conf.set("mask_layer", _maskLayer);
+            conf.set("use_bathymetry", _useBathymetry);
+            conf.set("texture", _textureURI);
+            conf.set("texture_lod", _textureLOD);
             return conf;
         }
 
@@ -84,6 +99,8 @@ namespace osgEarth { namespace Util
         optional<float> _maxAltitude;
         optional<std::string> _maskLayer;
         optional<bool> _useBathymetry;
+        optional<URI> _textureURI;
+        optional<unsigned> _textureLOD;
     };
 
 
@@ -94,7 +111,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions);
+        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions, simple_ocean);
 
         /** Constructs a new ocean layer */
         SimpleOceanLayer();
@@ -115,13 +132,17 @@ namespace osgEarth { namespace Util
         /** Sets a masking layer, or pass NULL to clear the masking layer. Returns true upon success */
         void setMaskLayer(const ImageLayer* layer);
 
-    public: // Layer
+    public: // Ocean
+        
+        void setSeaLevel(float seaLevel);
+        float getSeaLevel() const;
 
-        /** serialize */
-        virtual Config getConfig() const;
+    public: // Layer
 
         /** callback that ensures proper culling */
         void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
+        
+        void setTerrainResources(TerrainResources* res);
 
     protected: // Layer
 
@@ -138,6 +159,10 @@ namespace osgEarth { namespace Util
     private:
 
         LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
+
+        float _seaLevel;
+
+        TextureImageUnitReservation _texReservation;
     };
     
 

@@ -137,5 +137,6 @@ namespace osgEarth
         optional<TimeStamp> _minTime;
     };
 }
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CachePolicy);
 
 #endif // OSGEARTH_CACHE_POLICY_H

@@ -42,7 +42,7 @@ Resource( conf )
 void
 InstanceResource::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "url", _uri );
+    conf.get( "url", _uri );
 }
 
 Config

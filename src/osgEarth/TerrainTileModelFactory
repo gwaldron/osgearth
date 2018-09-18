@@ -105,12 +105,6 @@ namespace osgEarth
             unsigned                     border,
             ProgressCallback*            progress);
 
-        virtual void addNormalMap(
-            TerrainTileModel*            model,
-            const Map*                   map,
-            const TileKey&               key,
-            ProgressCallback*            progress);
-
         virtual void addPatchLayers(
             TerrainTileModel*            model,
             const Map*                   map,
@@ -143,7 +137,9 @@ namespace osgEarth
             osg::Image* image) const;
 
         osg::Texture* createNormalTexture(
-            osg::Image* image) const;
+            osg::Image* image,
+            bool compress
+            ) const;
 
         const TerrainOptions _options;
         

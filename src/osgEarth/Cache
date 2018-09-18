@@ -140,9 +140,14 @@ namespace osgEarth
             //future
         }
     };
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CacheOptions);
 
 //--------------------------------------------------------------------
 
+namespace osgEarth
+{
     typedef PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
 
 

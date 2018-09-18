@@ -120,14 +120,14 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "skirt_ratio", _skirtRatio );
-            conf.getIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.getIfSet( "normalize_edges", _normalizeEdges );
-            conf.getIfSet( "color", _color );
-            conf.getIfSet( "incremental_update", _incrementalUpdate );
-            conf.getIfSet( "elevation_smoothing", _smoothing );
-            conf.getIfSet( "normal_maps", _normalMaps );
-            conf.getIfSet( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
+            conf.get( "skirt_ratio", _skirtRatio );
+            conf.get( "quick_release_gl_objects", _quickRelease );
+            conf.get( "normalize_edges", _normalizeEdges );
+            conf.get( "color", _color );
+            conf.get( "incremental_update", _incrementalUpdate );
+            conf.get( "elevation_smoothing", _smoothing );
+            conf.get( "normal_maps", _normalMaps );
+            conf.get( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
        }
 
         optional<float>               _skirtRatio;

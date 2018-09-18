@@ -45,11 +45,11 @@ ModelSourceOptions::~ModelSourceOptions()
 void
 ModelSourceOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet<float>( "min_range", _minRange );
-    conf.getIfSet<float>( "max_range", _maxRange );
-    conf.getIfSet<int>( "render_order", _renderOrder );
-    conf.getIfSet("render_bin", _renderBin );
-    conf.getIfSet<bool>( "depth_test_enabled", _depthTestEnabled );
+    conf.get<float>( "min_range", _minRange );
+    conf.get<float>( "max_range", _maxRange );
+    conf.get<int>( "render_order", _renderOrder );
+    conf.get("render_bin", _renderBin );
+    conf.get<bool>( "depth_test_enabled", _depthTestEnabled );
 }
 
 void

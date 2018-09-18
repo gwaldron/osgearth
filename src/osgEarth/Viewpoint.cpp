@@ -52,10 +52,10 @@ Viewpoint::Viewpoint(const char* name, double lon, double lat, double z, double 
 
 Viewpoint::Viewpoint(const Config& conf)
 {
-    conf.getIfSet( "name",    _name );
-    conf.getIfSet( "heading", _heading );
-    conf.getIfSet( "pitch",   _pitch );
-    conf.getIfSet( "range",   _range );
+    conf.get( "name",    _name );
+    conf.get( "heading", _heading );
+    conf.get( "pitch",   _pitch );
+    conf.get( "range",   _range );
 
     // piecewise point.
     std::string horiz = conf.value("srs");
@@ -111,10 +111,10 @@ Viewpoint::getConfig() const
 {
     Config conf( "viewpoint" );
 
-    conf.addIfSet( "name",    _name );
-    conf.addIfSet( "heading", _heading );
-    conf.addIfSet( "pitch",   _pitch );
-    conf.addIfSet( "range",   _range );
+    conf.set( "name",    _name );
+    conf.set( "heading", _heading );
+    conf.set( "pitch",   _pitch );
+    conf.set( "range",   _range );
     
     if ( _point.isSet() )
     {

@@ -113,33 +113,33 @@ GeoPoint::GeoPoint(const Config& conf, const SpatialReference* srs) :
 _srs    ( srs ),
 _altMode( ALTMODE_ABSOLUTE )
 {
-    conf.getIfSet( "x", _p.x() );
-    conf.getIfSet( "y", _p.y() );
-    conf.getIfSet( "z", _p.z() );
-    conf.getIfSet( "alt", _p.z() );
-    conf.getIfSet( "hat", _p.z() ); // height above terrain (relative)
+    conf.get( "x", _p.x() );
+    conf.get( "y", _p.y() );
+    conf.get( "z", _p.z() );
+    conf.get( "alt", _p.z() );
+    conf.get( "hat", _p.z() ); // height above terrain (relative)
 
     if ( !_srs.valid() )
         _srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
 
     if ( conf.hasValue("lat") && (!_srs.valid() || _srs->isGeographic()) )
     {
-        conf.getIfSet( "lat", _p.y() );
+        conf.get( "lat", _p.y() );
         if ( !_srs.valid() ) 
             _srs = SpatialReference::create("wgs84");
     }
     if ( conf.hasValue("long") && (!_srs.valid() || _srs->isGeographic()) )
     {
-        conf.getIfSet("long", _p.x());
+        conf.get("long", _p.x());
         if ( !_srs.valid() ) 
             _srs = SpatialReference::create("wgs84");
     }
 
     if ( conf.hasValue("mode") )
     {
-        conf.getIfSet( "mode", "relative",            _altMode, ALTMODE_RELATIVE );
-        conf.getIfSet( "mode", "relative_to_terrain", _altMode, ALTMODE_RELATIVE );
-        conf.getIfSet( "mode", "absolute",            _altMode, ALTMODE_ABSOLUTE );
+        conf.get( "mode", "relative",            _altMode, ALTMODE_RELATIVE );
+        conf.get( "mode", "relative_to_terrain", _altMode, ALTMODE_RELATIVE );
+        conf.get( "mode", "absolute",            _altMode, ALTMODE_ABSOLUTE );
     }
     else
     {
@@ -456,6 +456,11 @@ GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
 GeoPoint
 GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 {
+    if (t == 0.0)
+        return *this;
+    else if (t == 1.0)
+        return rhs;
+
     GeoPoint result;
 
     GeoPoint to = rhs.transform(getSRS());
@@ -476,8 +481,12 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
     else // geographic
     {
+        // Geometric slerp in unit sphere space
+        // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+
         double deltaZ = to.z()-z();
 
+        // Convert each point to unit sphere world space:
         osg::Vec3d unitToEllip(
             getSRS()->getEllipsoid()->getRadiusEquator(),
             getSRS()->getEllipsoid()->getRadiusEquator(),
@@ -485,21 +494,34 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
         osg::Vec3d ellipToUnit = osg::componentDivide(
             osg::Vec3d(1,1,1), unitToEllip);
-
+        
         osg::Vec3d w1;
         toWorld(w1);
         w1 = osg::componentMultiply(w1, ellipToUnit);
+        w1.normalize();
 
         osg::Vec3d w2;
         to.toWorld(w2);
         w2 = osg::componentMultiply(w2, ellipToUnit);
+        w2.normalize();
 
-        osg::Vec3d axis = w1 ^ w2;
-        double angle = acos(w1 * w2);
-        osg::Quat q(angle*t, axis);
+        // perform geometric slerp:
+        double dp = w1*w2;
+        if (dp == 1.0)
+            return *this;
 
-        osg::Vec3d n = q*w1;
+        double angle = acos(dp);
 
+        double s = sin(angle);
+        if (s == 0.0)
+            return *this;
+
+        double c1 = sin((1.0-t)*angle)/s;
+        double c2 = sin(t*angle)/s;
+
+        osg::Vec3d n = w1*c1 + w2*c2;
+
+        // convert back to world space and apply altitude lerp
         n = osg::componentMultiply(n, unitToEllip);
         result.fromWorld(getSRS(), n);
         result.z() = z() + t*deltaZ;

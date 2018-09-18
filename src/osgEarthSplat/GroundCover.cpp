@@ -24,7 +24,7 @@ using namespace osgEarth::Symbology;
 void
 GroundCoverBiomeOptions::fromConfig(const Config& conf) 
 {
-    conf.getIfSet("classes", _biomeClasses);
+    conf.get("classes", _biomeClasses);
     const ConfigSet& symbols = conf.children();
     for (ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
         Symbol* s = SymbolRegistry::instance()->create(*i);
@@ -81,7 +81,7 @@ GroundCoverOptions::getConfig() const
         for (int i = 0; i < _biomes.size(); ++i) {
             biomes.add("biome", _biomes[i].getConfig());
         }
-        conf.update(biomes);
+        conf.set(biomes);
     }
     return conf;
 }
@@ -89,14 +89,14 @@ GroundCoverOptions::getConfig() const
 void
 GroundCoverOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("name", _name);
-    conf.getIfSet("lod", _lod);
-    conf.getIfSet("max_distance", _maxDistance);
-    conf.getIfSet("density", _density);
-    conf.getIfSet("fill", _fill);
-    conf.getIfSet("wind", _wind);
-    conf.getIfSet("brightness", _brightness);
-    conf.getIfSet("contrast", _contrast);
+    conf.get("name", _name);
+    conf.get("lod", _lod);
+    conf.get("max_distance", _maxDistance);
+    conf.get("density", _density);
+    conf.get("fill", _fill);
+    conf.get("wind", _wind);
+    conf.get("brightness", _brightness);
+    conf.get("contrast", _contrast);
     const Config* biomes = conf.child_ptr("biomes");
     if (biomes) {
         const ConfigSet& biomesVec = biomes->children();
@@ -292,7 +292,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     const char* defaultCode = "int oe_GroundCover_getBiomeIndex(in vec4 coords) { return -1; }\n";
 
     std::stringstream buf;
-    buf << "#version 330\n";
+    buf << "#version " GLSL_VERSION_STR "\n";
 
         if ( !landCoverDict )
     {
@@ -348,6 +348,19 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     return shader;
 }
 
+namespace
+{
+    int nextPowerOf2(int x) {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+}
+
 osg::Texture*
 GroundCover::createTexture() const
 {
@@ -366,23 +379,21 @@ GroundCover::createTexture() const
 
             osg::ref_ptr<osg::Image> im;
 
+            // make sure the texture array is POT - required now for mipmapping to work
             if ( s < 0 )
             {
-                s  = bb._image->s();
-                t  = bb._image->t();
-                im = bb._image.get();
+                s  = nextPowerOf2(bb._image->s());
+                t  = nextPowerOf2(bb._image->t());
                 tex->setTextureSize(s, t, getTotalNumBillboards());                              
+            }
+
+            if ( bb._image->s() != s || bb._image->t() != t )
+            {
+                ImageUtils::resizeImage( bb._image.get(), s, t, im );
             }
             else
             {
-                if ( bb._image->s() != s || bb._image->t() != t )
-                {
-                    ImageUtils::resizeImage( bb._image.get(), s, t, im );
-                }
-                else
-                {
-                    im = bb._image.get();
-                }
+                im = bb._image.get();
             }
 
             tex->setImage( arrayIndex, im.get() );
@@ -395,7 +406,6 @@ GroundCover::createTexture() const
     tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
     tex->setUnRefImageDataAfterApply( true );
     tex->setMaxAnisotropy( 4.0 );
-    tex->setResizeNonPowerOfTwoHint( false );
 
     return tex;
 }

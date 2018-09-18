@@ -95,8 +95,12 @@ namespace osgEarth
         optional<Distance> _maxRange;
         optional<bool>  _auto;
     };
+}
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::DepthOffsetOptions);
 
+namespace osgEarth
+{
     /**
      * Interface for adding depth offset methods to anothe class without
      * disturbing the class hierarchy. Use this in conjuction with the

@@ -40,7 +40,7 @@ namespace osgEarth { namespace SilverLining
                                   public SkyNodeFactory
     {
     public:
-        META_Object(osgearth_sky_silverlining, SilverLiningExtension);
+        META_OE_Extension(osgEarth, SilverLiningExtension, sky_silverlining);
 
         // CTORs
         SilverLiningExtension() { }
@@ -116,9 +116,7 @@ namespace osgEarth { namespace SilverLining
 
 
     protected: // Object
-
-        SilverLiningExtension(const SilverLiningExtension& rhs, const osg::CopyOp& op) { }
-
+        
         // DTOR
         virtual ~SilverLiningExtension() { }
 

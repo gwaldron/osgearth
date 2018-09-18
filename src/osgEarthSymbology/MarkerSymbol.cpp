@@ -66,9 +66,9 @@ MarkerSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "marker";
-    conf.addObjIfSet( "url", _url );
-    conf.addObjIfSet( "library", _library );
-    conf.addObjIfSet( "scale", _scale );
+    conf.setObj( "url", _url );
+    conf.setObj( "library", _library );
+    conf.setObj( "scale", _scale );
     conf.addIfSet( "orientation", _orientation);
     conf.addIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
@@ -98,23 +98,23 @@ MarkerSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "url", _url );
     conf.getObjIfSet( "library", _library );
     conf.getObjIfSet( "scale", _scale );    
-    conf.getIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
-    conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
-    conf.getIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
-    conf.getIfSet( "density", _density );
-    conf.getIfSet( "random_seed", _randomSeed );
-    conf.getIfSet( "orientation", _orientation);
-    conf.getIfSet( "is_model", _isModelHint );
+    conf.get( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
+    conf.get( "placement", "interval", _placement, PLACEMENT_INTERVAL );
+    conf.get( "placement", "random",   _placement, PLACEMENT_RANDOM );
+    conf.get( "density", _density );
+    conf.get( "random_seed", _randomSeed );
+    conf.get( "orientation", _orientation);
+    conf.get( "is_model", _isModelHint );
 
-    conf.getIfSet( "alignment", "left_top",                _alignment, ALIGN_LEFT_TOP );
-    conf.getIfSet( "alignment", "left_center",             _alignment, ALIGN_LEFT_CENTER );
-    conf.getIfSet( "alignment", "left_bottom",             _alignment, ALIGN_LEFT_BOTTOM );
-    conf.getIfSet( "alignment", "center_top",              _alignment, ALIGN_CENTER_TOP );
-    conf.getIfSet( "alignment", "center_center",           _alignment, ALIGN_CENTER_CENTER );
-    conf.getIfSet( "alignment", "center_bottom",           _alignment, ALIGN_CENTER_BOTTOM );
-    conf.getIfSet( "alignment", "right_top",               _alignment, ALIGN_RIGHT_TOP );
-    conf.getIfSet( "alignment", "right_center",            _alignment, ALIGN_RIGHT_CENTER );
-    conf.getIfSet( "alignment", "right_bottom",            _alignment, ALIGN_RIGHT_BOTTOM );
+    conf.get( "alignment", "left_top",                _alignment, ALIGN_LEFT_TOP );
+    conf.get( "alignment", "left_center",             _alignment, ALIGN_LEFT_CENTER );
+    conf.get( "alignment", "left_bottom",             _alignment, ALIGN_LEFT_BOTTOM );
+    conf.get( "alignment", "center_top",              _alignment, ALIGN_CENTER_TOP );
+    conf.get( "alignment", "center_center",           _alignment, ALIGN_CENTER_CENTER );
+    conf.get( "alignment", "center_bottom",           _alignment, ALIGN_CENTER_BOTTOM );
+    conf.get( "alignment", "right_top",               _alignment, ALIGN_RIGHT_TOP );
+    conf.get( "alignment", "right_center",            _alignment, ALIGN_RIGHT_CENTER );
+    conf.get( "alignment", "right_bottom",            _alignment, ALIGN_RIGHT_BOTTOM );
 
     _image = conf.getNonSerializable<osg::Image>( "MarkerSymbol::image" );
     _node = conf.getNonSerializable<osg::Node>( "MarkerSymbol::node" );

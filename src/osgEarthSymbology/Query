@@ -80,4 +80,6 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Query);
+
 #endif // OSGEARTHSYMBOLOGY_QUERY_H

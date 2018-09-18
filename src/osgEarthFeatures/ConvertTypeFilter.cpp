@@ -49,9 +49,9 @@ _toType( Geometry::TYPE_UNKNOWN )
     if (conf.key() == "convert")
     {
         optional<Geometry::Type> type = Geometry::TYPE_POINTSET;
-        conf.getIfSet( "type", "point",   type, Geometry::TYPE_POINTSET );
-        conf.getIfSet( "type", "line",    type, Geometry::TYPE_LINESTRING );
-        conf.getIfSet( "type", "polygon", type, Geometry::TYPE_POLYGON );
+        conf.get( "type", "point",   type, Geometry::TYPE_POINTSET );
+        conf.get( "type", "line",    type, Geometry::TYPE_LINESTRING );
+        conf.get( "type", "polygon", type, Geometry::TYPE_POLYGON );
         _toType = *type;        
     }
 }
@@ -60,9 +60,9 @@ Config ConvertTypeFilter::getConfig() const
 {
     Config config( "convert" );
     optional<Geometry::Type> type( _toType, _toType); // weird optional ctor :)
-    config.addIfSet( "type", "point",   type, Geometry::TYPE_POINTSET );
-    config.addIfSet( "type", "line",    type, Geometry::TYPE_LINESTRING );
-    config.addIfSet( "type", "polygon", type, Geometry::TYPE_POLYGON );    
+    config.set( "type", "point",   type, Geometry::TYPE_POINTSET );
+    config.set( "type", "line",    type, Geometry::TYPE_LINESTRING );
+    config.set( "type", "polygon", type, Geometry::TYPE_POLYGON );    
 
     return config;
 }

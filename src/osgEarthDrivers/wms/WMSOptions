@@ -114,21 +114,21 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("url", _url);
-            conf.getIfSet("capabilities_url", _capabilitiesUrl);
-            conf.getIfSet("tile_service_url", _tileServiceUrl);
-            conf.getIfSet("layers", _layers);
-            conf.getIfSet("style", _style);
-            conf.getIfSet("format", _format);
-            conf.getIfSet("wms_format", _wmsFormat);
-            conf.getIfSet("wms_version", _wmsVersion);
-            conf.getIfSet("elevation_unit", _elevationUnit);
-            conf.getIfSet("srs", _srs);
-            conf.getIfSet("crs", _crs);
-            conf.getIfSet("transparent", _transparent);
-            conf.getIfSet("times", _times);
-            conf.getIfSet("time", _times); // alternative
-            conf.getIfSet("seconds_per_frame", _secondsPerFrame );
+            conf.get("url", _url);
+            conf.get("capabilities_url", _capabilitiesUrl);
+            conf.get("tile_service_url", _tileServiceUrl);
+            conf.get("layers", _layers);
+            conf.get("style", _style);
+            conf.get("format", _format);
+            conf.get("wms_format", _wmsFormat);
+            conf.get("wms_version", _wmsVersion);
+            conf.get("elevation_unit", _elevationUnit);
+            conf.get("srs", _srs);
+            conf.get("crs", _crs);
+            conf.get("transparent", _transparent);
+            conf.get("times", _times);
+            conf.get("time", _times); // alternative
+            conf.get("seconds_per_frame", _secondsPerFrame );
         }
 
         optional<URI>         _url;

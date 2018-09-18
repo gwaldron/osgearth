@@ -257,4 +257,7 @@ namespace osgEarth { namespace Splat
 
 } } // namespace osgEarth::Splat
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::GroundCoverOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::GroundCoverBiomeOptions);
+
 #endif // OSGEARTH_PROCEDURAL_GroundCover

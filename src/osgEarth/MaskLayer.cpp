@@ -43,14 +43,14 @@ MaskLayerOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
     conf.key() = "mask";
-    conf.addIfSet( "min_level", _minLevel );
+    conf.set( "min_level", _minLevel );
     return conf;
 }
 
 void
 MaskLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "min_level", _minLevel );
+    conf.get( "min_level", _minLevel );
 }
 
 void

@@ -178,8 +178,8 @@ LocalGeometryNode(conf, dbOptions)
 {
     construct();
 
-    conf.getObjIfSet( "radius",       _radius );
-    conf.getIfSet   ( "num_segments", _numSegments );
+    conf.get( "radius",       _radius );
+    conf.get( "num_segments", _numSegments );
 
     buildGeometry();
 }
@@ -190,7 +190,7 @@ CircleNode::getConfig() const
     Config conf = LocalGeometryNode::getConfig();
     conf.key() = "circle";
 
-    conf.addObj( "radius", _radius );
+    conf.set( "radius", _radius );
 
     if ( _numSegments != 0 )
         conf.add( "num_segments", _numSegments );

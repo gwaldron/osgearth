@@ -39,12 +39,12 @@ _limit(rhs._limit)
 void
 Query::mergeConfig( const Config& conf )
 {
-    if ( !conf.getIfSet( "expr", _expression ) )
-        if ( !conf.getIfSet( "where", _expression ) )
-            if ( !conf.getIfSet( "sql", _expression ) )
-                conf.getIfSet( "expression", _expression );
+    if ( !conf.get( "expr", _expression ) )
+        if ( !conf.get( "where", _expression ) )
+            if ( !conf.get( "sql", _expression ) )
+                conf.get( "expression", _expression );
 
-    conf.getIfSet("orderby", _orderby);
+    conf.get("orderby", _orderby);
 
     Config b = conf.child( "extent" );
     if( !b.empty() )
@@ -56,16 +56,16 @@ Query::mergeConfig( const Config& conf )
             b.value<double>( "ymax", 0.0 ) );
     }
 
-    conf.getIfSet("limit", _limit);
+    conf.get("limit", _limit);
 }
 
 Config
 Query::getConfig() const
 {
     Config conf( "query" );
-    conf.addIfSet( "expr", _expression );
-    conf.addIfSet( "orderby", _orderby);
-    conf.addIfSet( "limit", _limit);
+    conf.set( "expr", _expression );
+    conf.set( "orderby", _orderby);
+    conf.set( "limit", _limit);
     if ( _bounds.isSet() ) {
         Config bc( "extent" );
         bc.add( "xmin", toString(_bounds->xMin()) );

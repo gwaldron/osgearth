@@ -145,8 +145,8 @@ namespace osgEarth
         const optional<float>& maxValidValue() const { return _maxValidValue; }
 
     public:
-        virtual Config getConfig() const; // { return getConfig(false); }
-        //virtual Config getConfig( bool isolate ) const;
+        virtual Config getConfig() const;
+
         virtual void mergeConfig( const Config& conf );
 
     private:
@@ -182,7 +182,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions);
+        META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions, terrain);
 
     protected:
         //! Construct from subclass with a pointer to the concerete options structure.

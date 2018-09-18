@@ -55,28 +55,28 @@ _atlasHint        ( true )
 void
 SkinResource::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "url",                 _imageURI );
-    conf.getIfSet( "image_width",         _imageWidth );
-    conf.getIfSet( "image_height",        _imageHeight );
-    conf.getIfSet( "min_object_height",   _minObjHeight );
-    conf.getIfSet( "max_object_height",   _maxObjHeight );
-    conf.getIfSet( "tiled",               _isTiled );
-    conf.getIfSet( "max_texture_span",    _maxTexSpan );
+    conf.get( "url",                 _imageURI );
+    conf.get( "image_width",         _imageWidth );
+    conf.get( "image_height",        _imageHeight );
+    conf.get( "min_object_height",   _minObjHeight );
+    conf.get( "max_object_height",   _maxObjHeight );
+    conf.get( "tiled",               _isTiled );
+    conf.get( "max_texture_span",    _maxTexSpan );
 
-    conf.getIfSet( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
-    conf.getIfSet( "texture_mode", "modulate", _texEnvMode, osg::TexEnv::MODULATE );
-    conf.getIfSet( "texture_mode", "replace",  _texEnvMode, osg::TexEnv::REPLACE );
-    conf.getIfSet( "texture_mode", "blend",    _texEnvMode, osg::TexEnv::BLEND );
+    conf.get( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
+    conf.get( "texture_mode", "modulate", _texEnvMode, osg::TexEnv::MODULATE );
+    conf.get( "texture_mode", "replace",  _texEnvMode, osg::TexEnv::REPLACE );
+    conf.get( "texture_mode", "blend",    _texEnvMode, osg::TexEnv::BLEND );
 
     // texture atlas support
-    conf.getIfSet( "image_bias_s",        _imageBiasS );
-    conf.getIfSet( "image_bias_t",        _imageBiasT );
-    conf.getIfSet( "image_layer",         _imageLayer );
-    conf.getIfSet( "image_scale_s",       _imageScaleS );
-    conf.getIfSet( "image_scale_t",       _imageScaleT );
+    conf.get( "image_bias_s",        _imageBiasS );
+    conf.get( "image_bias_t",        _imageBiasT );
+    conf.get( "image_layer",         _imageLayer );
+    conf.get( "image_scale_s",       _imageScaleS );
+    conf.get( "image_scale_t",       _imageScaleT );
 
-    conf.getIfSet( "atlas", _atlasHint );
-    conf.getIfSet( "read_options", _readOptions );
+    conf.get( "atlas", _atlasHint );
+    conf.get( "read_options", _readOptions );
 }
 
 Config
@@ -271,13 +271,13 @@ _randomSeed   ( 0 )
 void 
 SkinSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "library",             _library );
-    conf.getIfSet( "object_height",       _objHeight );
-    conf.getIfSet( "min_object_height",   _minObjHeight );
-    conf.getIfSet( "max_object_height",   _maxObjHeight );
-    conf.getIfSet( "tiled",               _isTiled );
-    conf.getIfSet( "random_seed",         _randomSeed );
-    conf.getObjIfSet( "name",                _name );
+    conf.get( "library",             _library );
+    conf.get( "object_height",       _objHeight );
+    conf.get( "min_object_height",   _minObjHeight );
+    conf.get( "max_object_height",   _maxObjHeight );
+    conf.get( "tiled",               _isTiled );
+    conf.get( "random_seed",         _randomSeed );
+    conf.get( "name",                _name );
 
     addTags( conf.value("tags" ) );
 }
@@ -288,13 +288,13 @@ SkinSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "skin";
 
-    conf.addIfSet( "library",             _library );
-    conf.addIfSet( "object_height",       _objHeight );
-    conf.addIfSet( "min_object_height",   _minObjHeight );
-    conf.addIfSet( "max_object_height",   _maxObjHeight );
-    conf.addIfSet( "tiled",               _isTiled );
-    conf.addIfSet( "random_seed",         _randomSeed );
-    conf.addObjIfSet( "name",                _name );
+    conf.set( "library",             _library );
+    conf.set( "object_height",       _objHeight );
+    conf.set( "min_object_height",   _minObjHeight );
+    conf.set( "max_object_height",   _maxObjHeight );
+    conf.set( "tiled",               _isTiled );
+    conf.set( "random_seed",         _randomSeed );
+    conf.set( "name",                _name );
 
     std::string tagstring = this->tagString();
     if ( !tagstring.empty() )

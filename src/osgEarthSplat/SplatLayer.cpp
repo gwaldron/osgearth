@@ -48,7 +48,6 @@ Config
 SplatLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
-    conf.key() = "splat_imagery";
     conf.set("land_cover_layer", _landCoverLayerName);
 
     Config zones("zones");
@@ -58,14 +57,14 @@ SplatLayerOptions::getConfig() const
             zones.add(zone);
     }
     if (!zones.empty())
-        conf.update(zones);
+        conf.set(zones);
     return conf;
 }
 
 void
 SplatLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("land_cover_layer", _landCoverLayerName);
+    conf.get("land_cover_layer", _landCoverLayerName);
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {

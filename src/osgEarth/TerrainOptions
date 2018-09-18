@@ -150,6 +150,12 @@ namespace osgEarth
         const optional<bool>& enableBlending() const { return _enableBlending; }
 
         /**
+         * Whether to compress the normal map
+         */
+        optional<bool>& compressNormalMaps() { return _compressNormalMaps; }
+        const optional<bool>& compressNormalMaps() const { return _compressNormalMaps; }
+
+        /**
          * Whether to enable the "fast path" for spherical Mercator image layers
          * Default = true. If enabled, Mercator image tiles will be rendered on a
          * geocentric map with no reprojection. The trade-off is higher texture
@@ -231,6 +237,7 @@ namespace osgEarth
         optional<bool>  _enableMipmapping;
         optional<bool> _clusterCulling;
         optional<bool> _enableBlending;
+        optional<bool> _compressNormalMaps;
         optional<bool> _mercatorFastPath;
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;

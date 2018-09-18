@@ -50,24 +50,24 @@ ExtrusionSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "extrusion";
-    conf.addIfSet   ( "height",            _height );
-    conf.addIfSet   ( "flatten",           _flatten );
-    conf.addObjIfSet( "height_expression", _heightExpr );
-    conf.addIfSet   ( "wall_style", _wallStyleName );
-    conf.addIfSet   ( "roof_style", _roofStyleName );
-    conf.addIfSet   ( "wall_gradient", _wallGradientPercentage );
+    conf.set( "height", _height );
+    conf.set( "flatten", _flatten );
+    conf.set( "height_expression", _heightExpr );
+    conf.set( "wall_style", _wallStyleName );
+    conf.set( "roof_style", _roofStyleName );
+    conf.set( "wall_gradient", _wallGradientPercentage );
     return conf;
 }
 
 void 
 ExtrusionSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet   ( "height",  _height );
-    conf.getIfSet   ( "flatten", _flatten );
-    conf.getObjIfSet( "height_expression", _heightExpr );
-    conf.getIfSet   ( "wall_style", _wallStyleName );
-    conf.getIfSet   ( "roof_style", _roofStyleName );
-    conf.getIfSet   ( "wall_gradient", _wallGradientPercentage );
+    conf.get( "height",  _height );
+    conf.get( "flatten", _flatten );
+    conf.get( "height_expression", _heightExpr );
+    conf.get( "wall_style", _wallStyleName );
+    conf.get( "roof_style", _roofStyleName );
+    conf.get( "wall_gradient", _wallGradientPercentage );
 }
 
 void

@@ -75,7 +75,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions);
+        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions, land_cover);
 
         /** Construct an emptry land cover layer. Use options() to configure */
         LandCoverLayer();

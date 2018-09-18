@@ -55,7 +55,7 @@ ResourceLibrary::mergeConfig( const Config& conf )
     if (_name.empty())
         _name = conf.value( "name" );
 
-    conf.getIfSet( "url", _uri );
+    conf.get( "url", _uri );
 
     for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
     {
@@ -94,7 +94,7 @@ ResourceLibrary::getConfig() const
 
         if ( _uri.isSet() )
         {
-            conf.addIfSet( "url", _uri );
+            conf.set( "url", _uri );
         }
         else
         {

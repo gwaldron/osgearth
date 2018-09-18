@@ -57,15 +57,14 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.key() = "utm_graticule";
-            conf.addObjIfSet("gzd_style", _gzdStyle);
-            conf.addIfSet("text_scale", _textScale);
+            conf.set("gzd_style", _gzdStyle);
+            conf.set("text_scale", _textScale);
             return conf;
         }
 
         virtual void fromConfig(const Config& conf) {
-            conf.getObjIfSet("gzd_style", _gzdStyle);
-            conf.getIfSet("text_scale", _textScale);
+            conf.get("gzd_style", _gzdStyle);
+            conf.get("text_scale", _textScale);
         }
 
     protected:
@@ -109,7 +108,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT UTMGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, UTMGraticule, UTMGraticuleOptions);
+        META_Layer(osgEarthUtil, UTMGraticule, UTMGraticuleOptions, utm_graticule);
 
         /**
          * Construct a new UTM graticule with default settings.

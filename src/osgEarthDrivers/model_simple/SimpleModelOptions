@@ -89,11 +89,11 @@ namespace osgEarth { namespace Drivers
             conf.set( "loading_priority_offset", _loadingPriorityOffset );
             conf.set( "paged", _paged);
 
-            conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-            conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-            conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+            conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.set( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 
-            conf.updateNonSerializable( "SimpleModelOptions::Node", _node.get() );
+            conf.setNonSerializable( "SimpleModelOptions::Node", _node.get() );
             return conf;
         }
 
@@ -105,17 +105,17 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "lod_scale", _lod_scale );
-            conf.getIfSet( "location", _location);
-            conf.getIfSet( "orientation", _orientation);
-            conf.getIfSet( "loading_priority_scale", _loadingPriorityScale );
-            conf.getIfSet( "loading_priority_offset", _loadingPriorityOffset );
-            conf.getIfSet( "paged", _paged );
+            conf.get( "url", _url );
+            conf.get( "lod_scale", _lod_scale );
+            conf.get( "location", _location);
+            conf.get( "orientation", _orientation);
+            conf.get( "loading_priority_scale", _loadingPriorityScale );
+            conf.get( "loading_priority_offset", _loadingPriorityOffset );
+            conf.get( "paged", _paged );
 
-            conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-            conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-            conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+            conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.get( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 
             _node = conf.getNonSerializable<osg::Node>( "SimpleModelOptions::Node" );
         }

@@ -172,4 +172,7 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::NumericExpression);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::StringExpression);
+
 #endif // OSGEARTHSYMBOLOGY_EXPRESSION_H

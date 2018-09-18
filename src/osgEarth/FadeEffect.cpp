@@ -30,18 +30,18 @@ _duration      ( 1.0f ),
 _maxRange      ( FLT_MAX ),
 _attenDist     ( 1000.0f )
 {
-    conf.getIfSet( "duration",             _duration );
-    conf.getIfSet( "max_range",            _maxRange );
-    conf.getIfSet( "attenuation_distance", _attenDist );
+    conf.get( "duration",             _duration );
+    conf.get( "max_range",            _maxRange );
+    conf.get( "attenuation_distance", _attenDist );
 }
 
 Config
 FadeOptions::getConfig() const
 {
     Config conf("fading");
-    conf.addIfSet( "duration",             _duration );
-    conf.addIfSet( "max_range",            _maxRange );
-    conf.addIfSet( "attenuation_distance", _attenDist );
+    conf.set( "duration",             _duration );
+    conf.set( "max_range",            _maxRange );
+    conf.set( "attenuation_distance", _attenDist );
     return conf;
 }
 

@@ -27,6 +27,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Profile>
+#include <osgEarth/VisibleLayer>
 #include <osg/Group>
 #include <osg/View>
 #include <osgDB/ReaderWriter>
@@ -41,9 +42,9 @@ namespace osgDB {
 namespace osgEarth { namespace Util 
 {
     using namespace osgEarth;
-
     /**
      * Base Options structure for loading an Ocean node from a plugin.
+     * @deprecated
      */
     class OSGEARTHUTIL_EXPORT OceanOptions : public DriverConfigOptions
     {
@@ -65,9 +66,9 @@ namespace osgEarth { namespace Util
         optional<float> _maxAltitude;
     };
 
-
     /**
     * Interface for a Node that renders an ocean surface.
+    * @deprecated
     */
     class OSGEARTHUTIL_EXPORT OceanNode : public osg::Group
     {
@@ -124,6 +125,7 @@ namespace osgEarth { namespace Util
 
     /**
      * Base class for an ocean driver plugin implementation.
+     * @deprecated
      */
     class OSGEARTHUTIL_EXPORT OceanDriver : public osgDB::ReaderWriter
     {

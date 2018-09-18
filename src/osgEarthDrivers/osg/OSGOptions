@@ -69,9 +69,9 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "luminance_to_rgba", _lum2rgba );
-            conf.getIfSet( "add_alpha", _addAlpha);
+            conf.get( "url", _url );
+            conf.get( "luminance_to_rgba", _lum2rgba );
+            conf.get( "add_alpha", _addAlpha);
         }
 
         optional<URI>  _url;

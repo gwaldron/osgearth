@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/RTTPicker>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
@@ -51,54 +52,6 @@ namespace
             }
         }
     };
-
-    // SHADERS for the RTT pick camera.
-
-    const char* pickVertexEncode =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "#pragma vp_entryPoint oe_pick_encodeObjectID\n"
-        "#pragma vp_location   vertex_clip\n"
-        
-        "uint oe_index_objectid; \n"                        // Vertex stage global containing the Object ID; set in ObjectIndex shader.
-
-        "flat out vec4 oe_pick_encoded_objectid; \n"        // output encoded oid to fragment shader
-        "flat out int oe_pick_color_contains_objectid; \n"  // whether color already contains oid (written by another RTT camera)
-
-        "void oe_pick_encodeObjectID(inout vec4 vertex) \n"
-        "{ \n"
-        "    oe_pick_color_contains_objectid = (oe_index_objectid == 1u) ? 1 : 0; \n"
-        "    if ( oe_pick_color_contains_objectid == 0 ) \n"
-        "    { \n"
-        "        float b0 = float((oe_index_objectid & 0xff000000u) >> 24u); \n"
-        "        float b1 = float((oe_index_objectid & 0x00ff0000u) >> 16u); \n"
-        "        float b2 = float((oe_index_objectid & 0x0000ff00u) >> 8u ); \n"
-        "        float b3 = float((oe_index_objectid & 0x000000ffu)       ); \n"
-        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) / 255.0; \n"
-        "    } \n"
-        "} \n";
-
-    const char* pickFragment =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "#pragma vp_entryPoint oe_pick_renderEncodedObjectID\n"
-        "#pragma vp_location   fragment_output\n"
-        "#pragma vp_order      last\n"
-
-        "flat in vec4 oe_pick_encoded_objectid; \n"
-        "flat in int oe_pick_color_contains_objectid; \n"
-        
-        "out vec4 fragColor; \n"
-
-        "void oe_pick_renderEncodedObjectID(inout vec4 color) \n"
-        "{ \n"
-        "    if ( oe_pick_color_contains_objectid == 1 ) \n"
-        "        fragColor = color; \n"
-        "    else \n"
-        "        fragColor = oe_pick_encoded_objectid; \n"
-        "} \n";
 }
 
 VirtualProgram* 
@@ -108,10 +61,8 @@ RTTPicker::createRTTProgram()
     vp->setName( "osgEarth::RTTPicker" );
 
     // Install RTT picker shaders:
-    ShaderPackage pickShaders;
-    pickShaders.add( "RTTPicker.vert.glsl", pickVertexEncode );
-    pickShaders.add( "RTTPicker.frag.glsl", pickFragment );
-    pickShaders.loadAll( vp );
+    Shaders shaders;
+    shaders.load(vp, shaders.RTTPicker);
 
     // Install shaders and bindings from the ObjectIndex:
     Registry::objectIndex()->loadShaders( vp );

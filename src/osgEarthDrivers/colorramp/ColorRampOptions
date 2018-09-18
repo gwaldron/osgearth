@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.setObj("elevation", _elevationLayerOptions );
+            conf.set("elevation", _elevationLayerOptions );
             conf.set("ramp", _ramp);
             return conf;
         }
@@ -64,13 +64,13 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getObjIfSet("elevation", _elevationLayerOptions );
+            conf.get("elevation", _elevationLayerOptions );
             if (!_elevationLayerOptions.isSet())
             {
                 // Try to get the settings from a heightfield specification instead
-                conf.getObjIfSet("heightfield", _elevationLayerOptions );
+                conf.get("heightfield", _elevationLayerOptions );
             }
-            conf.getIfSet("ramp", _ramp);
+            conf.get("ramp", _ramp);
         }
 
       

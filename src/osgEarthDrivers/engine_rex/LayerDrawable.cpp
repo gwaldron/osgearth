@@ -36,6 +36,14 @@ _draw(true)
     setUseVertexBufferObjects(true);
 }
 
+LayerDrawable::~LayerDrawable()
+{
+    // Drawable's DTOR will release GL objects on any attached stateset;
+    // we don't want that because our Layer stateset is shared and re-usable.
+    // So detach it before OSG has a chance to do so.
+    setStateSet(0L);
+}
+
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {

@@ -78,23 +78,23 @@ namespace osgEarth { namespace Util
         virtual ~SkyOptions() { }
         virtual Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            conf.addIfSet("coordsys", _coordsys);
-            conf.addIfSet("hours", _hours);
-            conf.addIfSet("ambient", _ambient);
+            conf.set("coordsys", _coordsys);
+            conf.set("hours", _hours);
+            conf.set("ambient", _ambient);
             return conf;
         }
 
     protected:
         virtual void mergeConfig( const Config& conf ) {
-            DriverConfigOptions::mergeConfig( conf );
+            ConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("coordsys", _coordsys);
-            conf.getIfSet("hours", _hours);
-            conf.getIfSet("ambient", _ambient);
+            conf.get("coordsys", _coordsys);
+            conf.get("hours", _hours);
+            conf.get("ambient", _ambient);
         }
 
         optional<int> _coordsys;

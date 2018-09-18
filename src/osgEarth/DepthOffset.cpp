@@ -90,12 +90,12 @@ _minRange(     1000.0f ),
 _maxRange( 10000000.0f ),
 _auto    ( true )
 {
-    conf.getIfSet( "enabled",   _enabled );
-    conf.getIfSet( "min_bias",  _minBias );
-    conf.getIfSet( "max_bias",  _maxBias );
-    conf.getIfSet( "min_range", _minRange );
-    conf.getIfSet( "max_range", _maxRange );
-    conf.getIfSet( "auto",      _auto );
+    conf.get( "enabled",   _enabled );
+    conf.get( "min_bias",  _minBias );
+    conf.get( "max_bias",  _maxBias );
+    conf.get( "min_range", _minRange );
+    conf.get( "max_range", _maxRange );
+    conf.get( "auto",      _auto );
 }
 
 
@@ -103,12 +103,12 @@ Config
 DepthOffsetOptions::getConfig() const
 {
     Config conf("depth_offset");
-    conf.addIfSet( "enabled",   _enabled );
-    conf.addIfSet( "min_bias",  _minBias );
-    conf.addIfSet( "max_bias",  _maxBias );
-    conf.addIfSet( "min_range", _minRange );
-    conf.addIfSet( "max_range", _maxRange );
-    conf.addIfSet( "auto",      _auto );
+    conf.set( "enabled",   _enabled );
+    conf.set( "min_bias",  _minBias );
+    conf.set( "max_bias",  _maxBias );
+    conf.set( "min_range", _minRange );
+    conf.set( "max_range", _maxRange );
+    conf.set( "auto",      _auto );
     return conf;
 }
 

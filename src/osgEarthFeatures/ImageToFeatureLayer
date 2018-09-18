@@ -55,7 +55,6 @@ namespace osgEarth { namespace Features
     public:
         Config getConfig() const {
             Config conf = FeatureSourceLayerOptions::getConfig();
-            conf.key() = "image_to_feature";
             conf.set("image", _imageLayerName);
             conf.set("level", _level);
             conf.set("attribute", _attribute);
@@ -63,9 +62,9 @@ namespace osgEarth { namespace Features
         }
 
         void fromConfig(const Config& conf) {
-            conf.getIfSet("image", _imageLayerName);
-            conf.getIfSet("level", _level);
-            conf.getIfSet("attribute", _attribute);
+            conf.get("image", _imageLayerName);
+            conf.get("level", _level);
+            conf.get("attribute", _attribute);
         }
 
         virtual void mergeConfig( const Config& conf ) {
@@ -87,7 +86,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT ImageToFeatureLayer : public FeatureSourceLayer
     {
     public:
-        META_Layer(osgEarth, ImageToFeatureLayer, ImageToFeatureLayerOptions);
+        META_Layer(osgEarth, ImageToFeatureLayer, ImageToFeatureLayerOptions, image_to_feature);
 
         //! Create an empty layer
         ImageToFeatureLayer();

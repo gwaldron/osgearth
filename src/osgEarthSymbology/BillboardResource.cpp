@@ -33,8 +33,8 @@ InstanceResource( conf )
 void
 BillboardResource::mergeConfig(const Config& conf)
 {
-    conf.getIfSet( "width", _width );
-    conf.getIfSet( "height", _height );
+    conf.get( "width", _width );
+    conf.get( "height", _height );
 }
 
 Config
@@ -42,8 +42,8 @@ BillboardResource::getConfig() const
 {
     Config conf = InstanceResource::getConfig();
     conf.key() = "billboard";
-    conf.addIfSet( "width", _width );
-    conf.addIfSet( "height", _height );
+    conf.set( "width", _width );
+    conf.set( "height", _height );
     //nop
     return conf;
 }

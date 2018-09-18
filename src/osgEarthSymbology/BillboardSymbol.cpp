@@ -44,17 +44,17 @@ BillboardSymbol::getConfig() const
 {
     Config conf = InstanceSymbol::getConfig();
     conf.key() = "billboard";
-    conf.addIfSet( "width", _width );
-    conf.addIfSet( "height", _height );
-    conf.addNonSerializable( "BillboardSymbol::image", _image.get() );
+    conf.set( "width", _width );
+    conf.set( "height", _height );
+    conf.setNonSerializable( "BillboardSymbol::image", _image.get() );
     return conf;
 }
 
 void 
 BillboardSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "width", _width );
-    conf.getIfSet( "height", _height );
+    conf.get( "width", _width );
+    conf.get( "height", _height );
     _image = conf.getNonSerializable<osg::Image>( "BillboardSymbol::image" );
 }
 

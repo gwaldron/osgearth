@@ -48,13 +48,13 @@ FeatureSourceOptions::fromConfig(const Config& conf)
 {
     unsigned numResamples = 0;
 
-    conf.getIfSet   ( "open_write",   _openWrite );
-    conf.getIfSet   ( "name",         _name );
-    conf.getObjIfSet( "profile",      _profile );
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
-    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.getIfSet   ( "fid_attribute", _fidAttribute );
+    conf.get( "open_write",   _openWrite );
+    conf.get( "name",         _name );
+    conf.get( "profile",      _profile );
+    conf.get( "cache_policy", _cachePolicy );
+    conf.get( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.get( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.get( "fid_attribute", _fidAttribute );
 
     // For backwards-compatibility (before adding the "filters" block)
     // TODO: Remove at some point in the distant future.
@@ -75,13 +75,13 @@ FeatureSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
 
-    conf.updateIfSet   ( "open_write",   _openWrite );
-    conf.updateIfSet   ( "name",         _name );
-    conf.setObj( "profile",      _profile );
-    conf.setObj( "cache_policy", _cachePolicy );
-    conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.updateIfSet   ( "fid_attribute", _fidAttribute );
+    conf.set( "open_write",   _openWrite );
+    conf.set( "name",         _name );
+    conf.set( "profile",      _profile );
+    conf.set( "cache_policy", _cachePolicy );
+    conf.set( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.set( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.set( "fid_attribute", _fidAttribute );
 
     if ( !_filterOptions.empty() )
     {
@@ -90,7 +90,7 @@ FeatureSourceOptions::getConfig() const
         {
             filters.add( _filterOptions[i].getConfig() );
         }
-        conf.update( "filters", filters );
+        conf.set( "filters", filters );
     }
 
     return conf;

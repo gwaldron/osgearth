@@ -415,8 +415,8 @@ _warp(0.0f)
 void
 LandCoverLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("warp", _warp);
-    conf.getIfSet("noise_lod", _noiseLOD);
+    conf.get("warp", _warp);
+    conf.get("noise_lod", _noiseLOD);
 
     ConfigSet layerConfs = conf.child("coverages").children("coverage");
     for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
@@ -429,10 +429,9 @@ Config
 LandCoverLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
-    conf.key() = "land_cover";
 
-    conf.addIfSet("warp", _warp);
-    conf.addIfSet("noise_lod", _noiseLOD);
+    conf.set("warp", _warp);
+    conf.set("noise_lod", _noiseLOD);
 
     if (_coverages.size() > 0)
     {
@@ -443,7 +442,7 @@ LandCoverLayerOptions::getConfig() const
         {
             images.add("coverage", i->getConfig());
         }
-        conf.update(images);
+        conf.set(images);
     }
 
     return conf;

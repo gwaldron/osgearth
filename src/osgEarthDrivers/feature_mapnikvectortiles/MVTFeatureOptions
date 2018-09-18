@@ -63,7 +63,7 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
+            conf.get( "url", _url );
         }
 
         optional<URI>         _url;        

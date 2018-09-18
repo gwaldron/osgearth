@@ -44,10 +44,12 @@ namespace osgEarth { namespace GLSky
                            public GLSkyOptions
     {
     public:
-        META_Object( osgEarth, GLSkyExtension );
+        META_OE_Extension( osgEarth, GLSkyExtension, sky_gl );
 
         GLSkyExtension() { }
         GLSkyExtension(const GLSkyOptions& options);
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
 
     public: // ExtensionInterface<MapNode>
 
@@ -69,7 +71,6 @@ namespace osgEarth { namespace GLSky
         SkyNode* createSkyNode();
 
     protected:
-        GLSkyExtension(const GLSkyExtension&, const osg::CopyOp&) { }
         virtual ~GLSkyExtension() { }
 
         osg::ref_ptr<ui::Control> _ui;

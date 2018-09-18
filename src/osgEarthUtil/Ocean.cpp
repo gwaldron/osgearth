@@ -41,7 +41,7 @@ _maxAltitude       ( 20000.0 )
 void
 OceanOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "max_altitude", _maxAltitude );
+    conf.get( "max_altitude", _maxAltitude );
 }
 
 void
@@ -55,9 +55,20 @@ Config
 OceanOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
-    conf.addIfSet( "max_altitude", _maxAltitude );
+    conf.set( "max_altitude", _maxAltitude );
     return conf;
 }
+
+#if 0
+//------------------------------------------------------------------------
+
+OceanLayer::OceanLayer(OceanLayerOptions* optionsPtr) :
+VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
+_options(optionsPtr ? optionsPtr : &_optionsConcrete)
+{
+    //nop - init() called by subclass.
+}
+#endif
 
 //------------------------------------------------------------------------
 

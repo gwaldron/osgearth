@@ -65,11 +65,11 @@ namespace osgEarth { namespace SilverLining
     public:
         osgEarth::Config getConfig() const {
             osgEarth::Config conf = osgEarth::Util::SkyOptions::getConfig();
-            conf.addIfSet("user", _user);
-            conf.addIfSet("license_code", _licenseCode);
-            conf.addIfSet("resource_path", _resourcePath);
-            conf.addIfSet("clouds", _drawClouds);
-			conf.addIfSet("clouds_max_altitude", _cloudsMaxAltitude);
+            conf.set("user", _user);
+            conf.set("license_code", _licenseCode);
+            conf.set("resource_path", _resourcePath);
+            conf.set("clouds", _drawClouds);
+			conf.set("clouds_max_altitude", _cloudsMaxAltitude);
             return conf;
         }
 
@@ -81,11 +81,11 @@ namespace osgEarth { namespace SilverLining
 
     private:
         void fromConfig( const osgEarth::Config& conf ) {
-            conf.getIfSet("user", _user);
-            conf.getIfSet("license_code", _licenseCode);
-            conf.getIfSet("resource_path", _resourcePath);
-            conf.getIfSet("clouds", _drawClouds);
-			conf.getIfSet("clouds_max_altitude", _cloudsMaxAltitude);
+            conf.get("user", _user);
+            conf.get("license_code", _licenseCode);
+            conf.get("resource_path", _resourcePath);
+            conf.get("clouds", _drawClouds);
+			conf.get("clouds_max_altitude", _cloudsMaxAltitude);
         }
 
         osgEarth::optional<std::string> _user;

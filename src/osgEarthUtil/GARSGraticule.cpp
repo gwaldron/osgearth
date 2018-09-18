@@ -29,10 +29,6 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-#ifndef GL_CLIP_DISTANCE0
-#define GL_CLIP_DISTANCE0 0x3000
-#endif
-
 namespace
 {
     osg::BoundingSphere getBounds(const GeoExtent& extent)
@@ -209,16 +205,16 @@ namespace
 
         TextSymbolizer symbolizer(textSym.get());                
 
-        osgText::Text* text = new osgEarth::Text();
+        osgText::Text* text = new osgEarth::Text(label);
         symbolizer.apply(text);
         text->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
-        text->getOrCreateStateSet()->setRenderBinToInherit();
+        //text->getOrCreateStateSet()->setRenderBinToInherit();
 
-        osg::Geode* textGeode = new osg::Geode;
-        textGeode->addDrawable(text);
+        //osg::Geode* textGeode = new osg::Geode;
+        //textGeode->addDrawable(text);
 
         osg::MatrixTransform* mt = new osg::MatrixTransform;
-        mt->addChild(textGeode);
+        mt->addChild(text);
 
         // Position the label at the bottom left of the grid cell.
         osg::Matrixd local2World;
@@ -348,7 +344,7 @@ GARSGraticule::init()
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
     _root = new osg::Group();
-    _root->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::OFF);
+    //_root->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::OFF);
 
     if (getEnabled() == true)
     {

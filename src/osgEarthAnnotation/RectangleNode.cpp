@@ -389,9 +389,9 @@ GeoPositionNode(conf, dbOptions)
 {
     construct();
 
-    conf.getObjIfSet( "width", _width );
-    conf.getObjIfSet( "height", _height );
-    conf.getObjIfSet( "style",  _style );
+    conf.get( "width", _width );
+    conf.get( "height", _height );
+    conf.get( "style",  _style );
 
     compile();
 }
@@ -402,9 +402,9 @@ RectangleNode::getConfig() const
     Config conf = GeoPositionNode::getConfig();
     conf.key() = "rectangle";
 
-    conf.addObj( "width",  _width );
-    conf.addObj( "height", _height );
-    conf.addObj( "style",  _style );
+    conf.set( "width",  _width );
+    conf.set( "height", _height );
+    conf.set( "style",  _style );
 
     return conf;
 }

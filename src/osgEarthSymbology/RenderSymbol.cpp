@@ -62,36 +62,36 @@ RenderSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "render";
-    conf.addIfSet   ( "depth_test",       _depthTest );
-    conf.addIfSet   ( "lighting",         _lighting );
-    conf.addObjIfSet( "depth_offset",     _depthOffset );
-    conf.addIfSet   ( "backface_culling", _backfaceCulling );
-    conf.addObjIfSet( "order",            _order );
-    conf.addIfSet   ( "clip_plane",       _clipPlane );
-    conf.addIfSet   ( "min_alpha",        _minAlpha );
-    conf.addIfSet   ( "render_bin",       _renderBin );
-    conf.addIfSet   ( "transparent",      _transparent );
-    conf.addIfSet   ( "decal",            _decal);
-    conf.addIfSet   ("max_crease_angle",  _maxCreaseAngle);
-    conf.addIfSet   ("max_altitude",      _maxAltitude);
+    conf.set( "depth_test",       _depthTest );
+    conf.set( "lighting",         _lighting );
+    conf.set( "depth_offset",     _depthOffset );
+    conf.set( "backface_culling", _backfaceCulling );
+    conf.set( "order",            _order );
+    conf.set( "clip_plane",       _clipPlane );
+    conf.set( "min_alpha",        _minAlpha );
+    conf.set( "render_bin",       _renderBin );
+    conf.set( "transparent",      _transparent );
+    conf.set( "decal",            _decal);
+    conf.set( "max_crease_angle", _maxCreaseAngle);
+    conf.set( "max_altitude",     _maxAltitude);
     return conf;
 }
 
 void 
 RenderSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet   ( "depth_test",       _depthTest );
-    conf.getIfSet   ( "lighting",         _lighting );
-    conf.getObjIfSet( "depth_offset",     _depthOffset );
-    conf.getIfSet   ( "backface_culling", _backfaceCulling );
-    conf.getObjIfSet( "order",            _order );
-    conf.getIfSet   ( "clip_plane",       _clipPlane );
-    conf.getIfSet   ( "min_alpha",        _minAlpha );
-    conf.getIfSet   ( "render_bin",       _renderBin );
-    conf.getIfSet   ( "transparent",      _transparent );
-    conf.getIfSet   ( "decal",            _decal);
-    conf.getIfSet   ("max_crease_angle",  _maxCreaseAngle);
-    conf.getIfSet   ("max_altitude",      _maxAltitude);
+    conf.get( "depth_test",       _depthTest );
+    conf.get( "lighting",         _lighting );
+    conf.get( "depth_offset",     _depthOffset );
+    conf.get( "backface_culling", _backfaceCulling );
+    conf.get( "order",            _order );
+    conf.get( "clip_plane",       _clipPlane );
+    conf.get( "min_alpha",        _minAlpha );
+    conf.get( "render_bin",       _renderBin );
+    conf.get( "transparent",      _transparent );
+    conf.get( "decal",            _decal);
+    conf.get( "max_crease_angle", _maxCreaseAngle);
+    conf.get( "max_altitude",     _maxAltitude);
 }
 
 void

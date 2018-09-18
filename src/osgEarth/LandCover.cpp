@@ -98,7 +98,7 @@ Config
 LandCoverDictionaryOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
-    conf.key() = "land_cover_dictionary";
+
     if (!classes().empty())
     {
         Config classes("classes");
@@ -219,16 +219,16 @@ _lcClassName(className)
 void
 LandCoverValueMapping::fromConfig(const Config& conf)
 {
-    conf.getIfSet("value", _value);
-    conf.getIfSet("class", _lcClassName);
+    conf.get("value", _value);
+    conf.get("class", _lcClassName);
 }
 
 Config
 LandCoverValueMapping::getConfig() const
 {
     Config conf("mapping");
-    conf.addIfSet("value", _value);
-    conf.addIfSet("class", _lcClassName);
+    conf.set("value", _value);
+    conf.set("class", _lcClassName);
     return conf;
 }
 
@@ -254,7 +254,7 @@ LandCoverCoverageLayerOptions::fromConfig(const Config& conf)
         _valueMappings.push_back(mapping.get());
     }
 
-    conf.getIfSet("warp", _warp);
+    conf.get("warp", _warp);
 }
 
 Config

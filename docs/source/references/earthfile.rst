@@ -10,7 +10,7 @@ The *map* is the top-level element in an earth file.
     <map name    = "my map"
          type    = "geocentric"
          version = "2" >
-         
+
         <:ref:`options   <MapOptions>`>
         <:ref:`image     <ImageLayer>`>
         <:ref:`elevation <ElevationLayer>`>
@@ -158,6 +158,10 @@ These options control the rendering of the terrain surface.
 |                       | appearance of higher-resolution terrain than can be represented    |
 |                       | with triangles alone. Default is engine-dependent.                 |
 +-----------------------+--------------------------------------------------------------------+
+| compress_normal_maps  | Whether to compress normal maps before sending them to the GPU.    |
+|                       | You must have the nvidia texture tools image processor plugin      |
+|                       | built in your OpenSceneGraph build.  Default is false              |
++-----------------------+--------------------------------------------------------------------+
 | min_expiry_frames     | The number of frames that a terrain tile hasn't been seen before   |
 |                       | it can be considered for expiration. Default = 0                   |
 +-----------------------+--------------------------------------------------------------------+
@@ -194,7 +198,7 @@ An *image layer* is a raster image overlaid on the map's geometry.
                coverage       = "false"
                feather_pixels = "false"
                min_filter     = "LINEAR"
-               mag_filter     = "LINEAR" 
+               mag_filter     = "LINEAR"
                texture_compression = "auto" >
 
             <:ref:`cache_policy <CachePolicy>`>
@@ -376,7 +380,7 @@ The Model Layer also allows you to define a cut-out mask. The terrain engine wil
 in the terrain surface matching a *boundary geometry* that you supply. You can use the tool
 *osgearth_boundarygen* to create such a geometry.
 
-This is useful if you have an external terrain model and you want to insert it into the 
+This is useful if you have an external terrain model and you want to insert it into the
 osgEarth terrain. The model MUST be in the same coordinate system as the terrain.
 
 .. parsed-literal::
@@ -391,11 +395,11 @@ The Mask can take any polygon feature as input. You can specify masking geometry
 by using an inline geometry:
 
 .. parsed-literal::
-    
+
     <features ...>
         <geometry>POLYGON((120 42 0, 121 41 0, 121 40 0))</geometry>
 
-Or you use a shapefile or other feature source, in which case osgEarth will use the 
+Or you use a shapefile or other feature source, in which case osgEarth will use the
 *first* feature in the source.
 
 Refer to the *mask.earth* sample for an example.
@@ -499,7 +503,7 @@ Proxy Settings
            port     = "8080"
            username = "jason"
            password = "helloworld" >
-           
+
 Hopefully the properties are self-explanatory.
 
 
@@ -517,7 +521,7 @@ color data in a layer before the osgEarth engine composites it into the terrain.
         <color_filters>
             <gamma rgb="1.3">
             ...
-            
+
 You can chain multiple color filters together. Please refer to :doc:`/references/colorfilters` for
 details on color filters.
 
@@ -531,8 +535,8 @@ Preload any libraries.
 
     <libraries>a</libraries>
 
-Multiple library names could be listed by using ';' as separator. 
-    
+Multiple library names could be listed by using ';' as separator.
+
     <libraries>a;b;c;d;e</libraries>
 
 The libraries are searched in the osg library path and library name needs to follow the osg nodekit library name convention (postfixed with osg library version)

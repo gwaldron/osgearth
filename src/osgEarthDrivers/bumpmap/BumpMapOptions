@@ -31,7 +31,7 @@ namespace osgEarth { namespace BumpMap
      * A Bump Map is a repeating normal texture that modifies the
      * existing normal vector per fragment.
      */
-    class BumpMapOptions : public DriverConfigOptions // NO EXPORT; header only
+    class BumpMapOptions : public ConfigOptions // NO EXPORT; header only
     {
     public:
         // bump map texture to load.
@@ -60,10 +60,8 @@ namespace osgEarth { namespace BumpMap
         const optional<unsigned>& baseLOD() const { return _baseLOD; }
 
     public:
-        BumpMapOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
+        BumpMapOptions( const ConfigOptions& opt =ConfigOptions() ) : ConfigOptions( opt )
         {
-            setDriver( "bumpmap" );
-
             // Defaults.
             _intensity.init( 1.0f );
             _scale.init    ( 1.0f );
@@ -78,7 +76,7 @@ namespace osgEarth { namespace BumpMap
 
     public:
         Config getConfig() const {
-            Config conf = DriverConfigOptions::getConfig();
+            Config conf = ConfigOptions::getConfig();
             conf.set("image",     _imageURI);
             conf.set("intensity", _intensity);
             conf.set("scale",     _scale);
@@ -90,18 +88,18 @@ namespace osgEarth { namespace BumpMap
 
     protected:
         void mergeConfig( const Config& conf ) {
-            DriverConfigOptions::mergeConfig( conf );
+            ConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("image",     _imageURI);
-            conf.getIfSet("intensity", _intensity);
-            conf.getIfSet("scale",     _scale);
-            conf.getIfSet("octaves",   _octaves);
-            conf.getIfSet("max_range", _maxRange);
-            conf.getIfSet("base_lod",  _baseLOD);
+            conf.get("image",     _imageURI);
+            conf.get("intensity", _intensity);
+            conf.get("scale",     _scale);
+            conf.get("octaves",   _octaves);
+            conf.get("max_range", _maxRange);
+            conf.get("base_lod",  _baseLOD);
         }
 
         optional<URI>      _imageURI;

@@ -81,12 +81,12 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("url", _url);
-            conf.getIfSet("identifier", _identifier);
-            conf.getIfSet("format", _format);
-            conf.getIfSet("elevation_unit", _elevationUnit);
-            conf.getIfSet("srs", _srs);
-            conf.getIfSet("range_subset", _rangeSubset);
+            conf.get("url", _url);
+            conf.get("identifier", _identifier);
+            conf.get("format", _format);
+            conf.get("elevation_unit", _elevationUnit);
+            conf.get("srs", _srs);
+            conf.get("range_subset", _rangeSubset);
         }
 
         optional<URI>         _url;

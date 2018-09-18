@@ -407,7 +407,7 @@ _index(0)
 
     optional<GeoInterpolation> geoInterp;
 
-    conf.getObjIfSet( "style", _style );
+    conf.get( "style", _style );
 
     //FeatureNode::setMapNode( mapNode );
 
@@ -415,8 +415,8 @@ _index(0)
     {
         Feature* feature = new Feature(geom.get(), srs.get() );
 
-        conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );
-        conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
+        conf.get( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );
+        conf.get( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
 
         _features.push_back( feature );
 
@@ -453,7 +453,7 @@ FeatureNode::getConfig() const
 
     if (!_style.empty() )
     {
-        conf.addObj( "style", _style );
+        conf.set( "style", _style );
     }
 
     return conf;

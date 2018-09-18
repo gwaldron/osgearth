@@ -19,6 +19,7 @@
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Map>
+#include <osgEarth/Metrics>
 
 #include <osg/Texture2D>
 
@@ -61,13 +62,6 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
 
         addElevation( model.get(), map, key, filter, border, progress );
     }
-
-#if 0
-    if ( requirements == 0L || requirements->normalTexturesRequired() )
-    {
-        addNormalMap( model.get(), frame, key, progress );
-    }
-#endif
 
     // done.
     return model.release();
@@ -290,7 +284,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
             layerModel->setName( "oe_normal_map" );
 
             // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createNormalTexture(normalMap.get());
+            osg::Texture* texture = createNormalTexture(normalMap.get(), *_options.compressNormalMaps());
             layerModel->setTexture( texture );
             model->normalModel() = layerModel;
         }
@@ -298,40 +292,6 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
     if (progress)
         progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
-}
-
-void
-TerrainTileModelFactory::addNormalMap(TerrainTileModel* model,
-                                      const Map* map,
-                                      const TileKey&    key,
-                                      ProgressCallback* progress)
-{
-    OE_START_TIMER(fetch_normalmap);
-
-    if (model->elevationModel().valid())
-    {
-        const osgEarth::ElevationInterpolation& interp =
-            map->getMapOptions().elevationInterpolation().get();
-
-        // Can only generate the normal map if the center heightfield was built:
-        osg::ref_ptr<osg::Image> image = HeightFieldUtils::convertToNormalMap(
-            model->heightFields(),
-            key.getProfile()->getSRS() );
-
-        if (image.valid())
-        {
-            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setName( "oe_normal_map" );
-
-            // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createNormalTexture( image.get() );
-            layerModel->setTexture( texture );
-            model->normalModel() = layerModel;
-        }
-    }
-
-    if (progress)
-        progress->stats()["fetch_normalmap_time"] += OE_STOP_TIMER(fetch_normalmap);
 }
 
 bool
@@ -503,15 +463,34 @@ TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
 }
 
 osg::Texture*
-TerrainTileModelFactory::createNormalTexture(osg::Image* image) const
+TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) const
 {
-    osg::Texture2D* tex = new osg::Texture2D( image );
+    if (compress)
+    {            
+        // Only compress the image if it's not already compressed.
+        if (image->getPixelFormat() != GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
+        {
+            METRIC_SCOPED("normalmap compression");
+            // See if we have a CPU compressor generator:
+            osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
+            if (ip)
+            {
+                ip->compress(*image, osg::Texture::USE_RGTC2_COMPRESSION, true, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::NORMAL);
+            }
+            else
+            {
+                OE_NOTICE << LC << "Failed to get image processor, cannot compress normal map" << std::endl;
+            }
+        }
+    }    
+
+    osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
-    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    tex->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
-    tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
-    tex->setResizeNonPowerOfTwoHint( false );
-    tex->setMaxAnisotropy( 1.0f );
+    tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+    tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+    tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    tex->setResizeNonPowerOfTwoHint(false);
+    tex->setMaxAnisotropy(1.0f);
     return tex;
 }

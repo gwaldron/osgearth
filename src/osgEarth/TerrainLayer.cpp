@@ -83,7 +83,7 @@ TerrainLayerOptions::getConfig() const
     conf.set( "edge_buffer_ratio", _edgeBufferRatio);
     conf.set( "reprojected_tilesize", _reprojectedTileSize);
     conf.set( "vdatum", _vertDatum );
-    conf.setObj( "proxy", _proxySettings );
+    conf.set( "proxy", _proxySettings );
     conf.set("no_data_value", _noDataValue);
     conf.set("min_valid_value", _minValidValue);
     conf.set("max_valid_value", _maxValidValue);
@@ -95,21 +95,21 @@ TerrainLayerOptions::getConfig() const
 void
 TerrainLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet( "min_level", _minLevel );
-    conf.getIfSet( "max_level", _maxLevel );
-    conf.getIfSet( "min_resolution", _minResolution );
-    conf.getIfSet( "max_resolution", _maxResolution );
-    conf.getIfSet( "max_data_level", _maxDataLevel );
-    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
-    conf.getIfSet( "vdatum", _vertDatum );
-    conf.getIfSet( "vsrs", _vertDatum );    // back compat
-    conf.getObjIfSet( "proxy",        _proxySettings );
-    conf.getIfSet("no_data_value", _noDataValue);
-    conf.getIfSet("nodata_value", _noDataValue); // back compat
-    conf.getIfSet("min_valid_value", _minValidValue);
-    conf.getIfSet("max_valid_value", _maxValidValue);
-    conf.getIfSet( "tile_size", _tileSize);
+    conf.get( "min_level", _minLevel );
+    conf.get( "max_level", _maxLevel );
+    conf.get( "min_resolution", _minResolution );
+    conf.get( "max_resolution", _maxResolution );
+    conf.get( "max_data_level", _maxDataLevel );
+    conf.get( "edge_buffer_ratio", _edgeBufferRatio);
+    conf.get( "reprojected_tilesize", _reprojectedTileSize);
+    conf.get( "vdatum", _vertDatum );
+    conf.get( "vsrs", _vertDatum );    // back compat
+    conf.get( "proxy",        _proxySettings );
+    conf.get("no_data_value", _noDataValue);
+    conf.get("nodata_value", _noDataValue); // back compat
+    conf.get("min_valid_value", _minValidValue);
+    conf.get("max_valid_value", _maxValidValue);
+    conf.get( "tile_size", _tileSize);
 
     if (conf.hasValue("driver"))
         driver() = TileSourceOptions(conf);
@@ -147,13 +147,13 @@ TerrainLayer::CacheBinMetadata::CacheBinMetadata(const Config& conf)
 {
     _valid = !conf.empty();
 
-    conf.getIfSet("cachebin_id", _cacheBinId);
-    conf.getIfSet("source_name", _sourceName);
-    conf.getIfSet("source_driver", _sourceDriver);
-    conf.getIfSet("source_tile_size", _sourceTileSize);
-    conf.getObjIfSet("source_profile", _sourceProfile);
-    conf.getObjIfSet("cache_profile", _cacheProfile);
-    conf.getIfSet("cache_create_time", _cacheCreateTime);
+    conf.get("cachebin_id", _cacheBinId);
+    conf.get("source_name", _sourceName);
+    conf.get("source_driver", _sourceDriver);
+    conf.get("source_tile_size", _sourceTileSize);
+    conf.get("source_profile", _sourceProfile);
+    conf.get("cache_profile", _cacheProfile);
+    conf.get("cache_create_time", _cacheCreateTime);
 
     const Config* extentsRoot = conf.child_ptr("extents");
     if ( extentsRoot )
@@ -171,8 +171,8 @@ TerrainLayer::CacheBinMetadata::CacheBinMetadata(const Config& conf)
             ymin = i->value("ymin", 0.0f);
             xmax = i->value("xmax", 0.0f);
             ymax = i->value("ymax", 0.0f);
-            i->getIfSet("minlevel", minLevel);
-            i->getIfSet("maxlevel", maxLevel);
+            i->get("minlevel", minLevel);
+            i->get("maxlevel", maxLevel);
 
             const SpatialReference* srs = SpatialReference::get(srsString);
             DataExtent e( GeoExtent(srs, xmin,  ymin, xmax, ymax) );
@@ -202,13 +202,13 @@ Config
 TerrainLayer::CacheBinMetadata::getConfig() const
 {
     Config conf("osgearth_terrainlayer_cachebin");
-    conf.addIfSet("cachebin_id", _cacheBinId);
-    conf.addIfSet("source_name", _sourceName);
-    conf.addIfSet("source_driver", _sourceDriver);
-    conf.addIfSet("source_tile_size", _sourceTileSize);
-    conf.addObjIfSet("source_profile", _sourceProfile);
-    conf.addObjIfSet("cache_profile", _cacheProfile);
-    conf.addIfSet("cache_create_time", _cacheCreateTime);
+    conf.set("cachebin_id", _cacheBinId);
+    conf.set("source_name", _sourceName);
+    conf.set("source_driver", _sourceDriver);
+    conf.set("source_tile_size", _sourceTileSize);
+    conf.set("source_profile", _sourceProfile);
+    conf.set("cache_profile", _cacheProfile);
+    conf.set("cache_create_time", _cacheCreateTime);
 
     if (!_dataExtents.empty())
     {
@@ -221,8 +221,9 @@ TerrainLayer::CacheBinMetadata::getConfig() const
             extent.set("ymin", i->yMin());
             extent.set("xmax", i->xMax());
             extent.set("ymax", i->yMax());
-            extent.addIfSet("minlevel", i->minLevel());
-            extent.addIfSet("maxlevel", i->maxLevel());
+            extent.set("minlevel", i->minLevel());
+            extent.set("maxlevel", i->maxLevel());
+
             extents.add("extent", extent);
         }
         conf.add("extents", extents);

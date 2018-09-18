@@ -40,7 +40,7 @@ namespace osgEarth { namespace SimpleSky
                                public SkyNodeFactory
     {
     public:
-        META_Object(osgearth_sky_simple, SimpleSkyExtension);
+        META_OE_Extension(osgEarth, SimpleSkyExtension, simple_sky);
 
         // CTORs
         SimpleSkyExtension() { }
@@ -119,8 +119,6 @@ namespace osgEarth { namespace SimpleSky
 
 
     protected: // Object
-
-        SimpleSkyExtension(const SimpleSkyExtension& rhs, const osg::CopyOp& op) { }
 
         // DTOR
         virtual ~SimpleSkyExtension() { }

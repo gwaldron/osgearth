@@ -80,8 +80,8 @@ namespace osgEarth { namespace Drivers
             conf.set( "geometry", _geometryConf );    
             conf.set( "geometry_url", _geometryUrl );
             conf.set( "layer", _layer );
-            conf.setObj( "query", _query );
-            conf.updateNonSerializable( "OGRFeatureOptions::geometry", _geometry.get() );
+            conf.set( "query", _query );
+            conf.setNonSerializable( "OGRFeatureOptions::geometry", _geometry.get() );
             return conf;
         }
 
@@ -93,15 +93,15 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
-            conf.getIfSet( "connection", _connection );
-            conf.getIfSet( "ogr_driver", _ogrDriver );
-            conf.getIfSet( "build_spatial_index", _buildSpatialIndex );
-            conf.getIfSet( "force_rebuild_spatial_index", _forceRebuildSpatialIndex );
-            conf.getIfSet( "geometry", _geometryConf );
-            conf.getIfSet( "geometry_url", _geometryUrl );
-            conf.getIfSet( "layer", _layer);
-            conf.getObjIfSet( "query", _query );
+            conf.get( "url", _url );
+            conf.get( "connection", _connection );
+            conf.get( "ogr_driver", _ogrDriver );
+            conf.get( "build_spatial_index", _buildSpatialIndex );
+            conf.get( "force_rebuild_spatial_index", _forceRebuildSpatialIndex );
+            conf.get( "geometry", _geometryConf );
+            conf.get( "geometry_url", _geometryUrl );
+            conf.get( "layer", _layer);
+            conf.get( "query", _query );
             _geometry = conf.getNonSerializable<Symbology::Geometry>( "OGRFeatureOptions::geometry" );
         }
 

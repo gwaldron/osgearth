@@ -70,7 +70,11 @@ namespace osgEarth
         std::string _userName;
         std::string _password;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ProxySettings);
 
+namespace osgEarth
+{
     typedef std::map<std::string,std::string> Headers;
 
 

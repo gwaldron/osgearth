@@ -99,7 +99,7 @@ Resource( conf )
 void
 MarkerResource::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "url", _markerURI );
+    conf.get( "url", _markerURI );
 }
 
 Config

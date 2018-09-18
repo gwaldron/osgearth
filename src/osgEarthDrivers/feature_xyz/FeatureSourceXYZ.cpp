@@ -266,7 +266,9 @@ public:
 
               URI uri( location, _options.url()->context() );
               if ( !cacheKey.empty() )
-                  uri.setCacheKey( cacheKey );
+              {
+                  uri.setCacheKey(Cache::makeCacheKey(location, "uri"));
+              }
 
               return uri;
           }

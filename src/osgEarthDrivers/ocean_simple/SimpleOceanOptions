@@ -112,7 +112,7 @@ namespace osgEarth { namespace SimpleOcean
             conf.set("max_lod",             _maxLOD );
             conf.set("base_color",          _baseColor );
             conf.set("texture_url",         _textureURI );
-            conf.setObj("mask_layer",       _maskLayerOptions );
+            conf.set("mask_layer",          _maskLayerOptions );
             conf.set("render_bin_number",   _renderBinNumber);
             return conf;
         }
@@ -125,16 +125,16 @@ namespace osgEarth { namespace SimpleOcean
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("sea_level",           _seaLevel );
-            conf.getIfSet("high_feather_offset", _highFeatherOffset );
-            conf.getIfSet("low_feather_offset",  _lowFeatherOffset );
-            conf.getIfSet("max_range",           _maxRange );
-            conf.getIfSet("fade_range",          _fadeRange );
-            conf.getIfSet("max_lod",             _maxLOD );
-            conf.getIfSet("base_color",          _baseColor );
-            conf.getIfSet("texture_url",         _textureURI );
-            conf.getObjIfSet("mask_layer",       _maskLayerOptions );
-            conf.getIfSet("render_bin_number",   _renderBinNumber);
+            conf.get("sea_level",           _seaLevel );
+            conf.get("high_feather_offset", _highFeatherOffset );
+            conf.get("low_feather_offset",  _lowFeatherOffset );
+            conf.get("max_range",           _maxRange );
+            conf.get("fade_range",          _fadeRange );
+            conf.get("max_lod",             _maxLOD );
+            conf.get("base_color",          _baseColor );
+            conf.get("texture_url",         _textureURI );
+            conf.get("mask_layer",          _maskLayerOptions );
+            conf.get("render_bin_number",   _renderBinNumber);
         }
 
     private:

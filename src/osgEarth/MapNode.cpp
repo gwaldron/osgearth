@@ -455,10 +455,8 @@ MapNode::getConfig() const
     {
         Extension* e = i->get();
         Config conf = e->getConfigOptions().getConfig();
-        if ( !conf.key().empty() )
-        {
-            mapConf.add( conf );
-        }
+        conf.key() = e->getConfigKey();
+        mapConf.add( conf );
     }
 
     Config ext = externalConfig();

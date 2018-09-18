@@ -202,11 +202,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Shader>    _geomShader;
         osg::ref_ptr<osg::Shader>    _tessevalShader;
 
-        // shader source before running thru the preprocessor. Keep this around so that
-        // someone can call VirtualProgram::getShaders and have access to code that has
-        // not been set up for ShaderFactory.
-        //std::string                  _originalSource;
-
         bool                         _dirty;
 
         static Threading::Mutex _cacheMutex;
@@ -216,6 +211,49 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
+
+
+    class /*internal*/ ProgramRepo : public osg::Referenced
+    {
+    public:
+
+        // Referenced, b/c more than one ProgramKey can point to the same Entry
+        // (shared program)
+        struct Entry : public osg::Referenced
+        {
+            osg::ref_ptr<osg::Program> _program;
+            unsigned                   _frameLastUsed;
+            std::set<UID>              _users;
+        };
+
+        typedef std::map<ProgramKey, osg::ref_ptr<Entry> > ProgramMap;
+
+        //! Exclusive lock on the repo - enclose any calls to this object
+        //! with a lock/unlock pair
+        void lock();
+
+        //! unlock the repo
+        void unlock();
+
+        //! Search for a program matching the key and return it, adding the user
+        //! to its users list and updating the frame number.
+        osg::ref_ptr<osg::Program> use(const ProgramKey& key, unsigned frameNumber, UID user);
+
+        //! Insert a new program into the repo
+        void add(const ProgramKey& key, osg::ref_ptr<osg::Program>& inOut, unsigned frameNumber, UID user);
+
+        //! Release anything used by this user
+        void release(UID user, osg::State* state);
+
+        //! Prune expired data
+        void prune(unsigned frameNumber, osg::State* state);
+
+        void resizeGLObjectBuffers(unsigned maxSize);
+
+    private:
+        mutable ProgramMap _db;
+        mutable Threading::Mutex _m;
+    };
 
 
     /**
@@ -422,12 +460,6 @@ namespace osgEarth
             bool operator < (const ShaderEntry& rhs) const;
         };
 
-        struct ProgramEntry
-        {
-            osg::ref_ptr<osg::Program> _program;
-            unsigned                   _frameLastUsed;
-        };
-
         typedef unsigned                              ShaderID;
         typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
         typedef std::set<std::string>                 ExtensionsSet;
@@ -435,7 +467,7 @@ namespace osgEarth
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias >            AttribAliasVector;
 
-        typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
+        //typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
         typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
         typedef std::vector< AttributePair > AttrStack;
 
@@ -509,9 +541,6 @@ namespace osgEarth
         // The program cache holds an osg::Program instance for each collection of shaders
         // that comprises this VP. There can be multiple programs in the cache if the VP is
         // shared in the scene graph.
-        mutable ProgramMap       _programCache;
-        mutable Threading::Mutex _programCacheMutex;
-
         mutable optional<bool> _active;
         bool _inheritSet;
 
@@ -519,6 +548,8 @@ namespace osgEarth
         std::string _logPath;
 
         bool _isAbstract;
+
+        UID _id;
 
         AttribAliasMap _attribAliases;
 
@@ -557,15 +588,6 @@ namespace osgEarth
             AttribBindingList& accumAttribBindings,
             AttribAliasMap&    accumAttribAliases,
             bool&              acceptCallbacksPresent);
-        
-        bool readProgramCache(
-            const ProgramKey& key,
-            unsigned frameNumber,
-            osg::ref_ptr<osg::Program>& program);
-
-        void removeExpiredProgramsFromCache(
-            osg::State& state,
-            unsigned frameNumber);
 
         bool checkSharing();
     };

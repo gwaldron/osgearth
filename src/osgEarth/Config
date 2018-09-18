@@ -31,19 +31,7 @@
 
 namespace osgEarth
 {
-    class URI;
-
     typedef std::list<class Config> ConfigSet;
-
-
-    // general-purpose name/value pair set.
-    struct Properties : public std::map<std::string,std::string> {
-        std::string get( const std::string& key ) const {
-            std::map<std::string,std::string>::const_iterator i = find(key);
-            return i != end()? i->second : std::string();
-        }
-    };
-
 
     /**
      * Config is a general-purpose container for serializable data. You store an object's members
@@ -174,40 +162,6 @@ namespace osgEarth
         Config* find( const std::string& key, bool checkThis =true );
         const Config* find( const std::string& key, bool checkThis =true) const;
 
-        /** Adds an optional value as a child, but only if its value is set */
-        template<typename T>
-        void addIfSet( const std::string& key, const optional<T>& opt ) {
-            if ( opt.isSet() ) {
-                add( key, osgEarth::toString<T>( opt.value() ) );
-            }
-        }
-        
-        /** Adds a referenced object as a child, but only if its value is set */
-        template<typename T>
-        void addObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
-            if ( opt.valid() ) {
-                Config conf = opt->getConfig();
-                conf.key() = key;
-                add( conf );
-            }
-        }
-
-        /** Adds an optional object as a child, but only if its value is set */
-        template<typename T>
-        void addObjIfSet( const std::string& key, const optional<T>& obj ) {
-            if ( obj.isSet() ) {
-                Config conf = obj->getConfig();
-                conf.key() = key;
-                add( conf );
-            }
-        }
-
-        /** Adds an enumeration value as a child, but only if its value is set */
-        template<typename X, typename Y>
-        void addIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
-            if ( target.isSetTo( targetValue ) )
-                add( key, val );
-        }
 
         /** Add a value as a child */
         template<typename T>
@@ -234,100 +188,45 @@ namespace osgEarth
             for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
                 add( *i );
         }
-
-        /** Adds an object as a child. */
-        template<typename T>
-        void addObj( const std::string& key, const T& value ) {
-            Config conf = value.getConfig();
-            conf.key() = key;
-            add( conf );
-        }
-
-        /** Adds or replaces a value as a child, but only if it is set */
-        template<typename T>
-        void updateIfSet( const std::string& key, const optional<T>& opt ) {
-            remove(key);
-            if ( opt.isSet() ) {
-                add( key, osgEarth::toString<T>( opt.value() ) );
-            }
-        }
+        
+        /** Adds or replaces an optional value as a child, but only if it is set */
         template<typename T>
         void set( const std::string& key, const optional<T>& opt ) {
-            updateIfSet(key, opt);
-        }
-        
-        /** Adds or replaces a referenced object as a child, but only if it is set */
-        template<typename T>
-        void updateObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
             remove(key);
-            if ( opt.valid() ) {
-                Config conf = opt->getConfig();
-                conf.key() = key;
-                add( conf );
+            if ( opt.isSet() ) {
+                Config conf(key, Stringify()<<opt.get());
+                set( conf );
             }
         }
-        template<typename T>
-        void setObj( const std::string& key, const osg::ref_ptr<T>& opt ) {
-            updateObjIfSet(key, opt);
-        }
         
-        /** Adds or replaces an object as a child, but only if it is set */
         template<typename T>
-        void updateObjIfSet( const std::string& key, const optional<T>& obj ) {
-            if ( obj.isSet() ) {
-                remove(key);
+        void set( const std::string& key, const osg::ref_ptr<T>& obj ) {
+            remove(key);
+            if ( obj.valid() ) {
                 Config conf = obj->getConfig();
                 conf.key() = key;
-                add( conf );
-            }
-        }
-        template<typename T>
-        void setObj( const std::string& key, const optional<T>& obj ) {
-            updateObjIfSet(key, obj);
-        }
-        
-        /** Adds or replaces an enumeration value as a child, but only if it is set */
-        template<typename X, typename Y>
-        void updateIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
-            if (target.isSetTo(targetValue)) {
-                remove(key);
-                add( key, val );
+                set( conf );
             }
         }
 
         // If target is set to targetValue, set key to val.
         template<typename X, typename Y>
         void set( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
-            updateIfSet(key, val, target, targetValue);
-        }
-        
-        /** Adds or replaces value as a child */
-        template<typename T>
-        void update( const std::string& key, const T& value ) {
-            update( Config(key, Stringify() << value) );
+            if (target.isSetTo(targetValue)) {
+                remove(key);
+                set( key, val );
+            }
         }
 
         /** Adds or replaces a config as a child. */
-        void update( const Config& conf ) {
+        void set( const Config& conf ) {
             remove(conf.key());
             add( conf );
         }
+
         template<typename T>
         void set( const std::string& key, const T& value ) {
-            update( key, value );
-        }
-
-        /** Adds or replaces an object as a child */
-        template<typename T>
-        void updateObj( const std::string& key, const T& value ) {
-            remove(key);
-            Config conf = value.getConfig();
-            conf.key() = key;
-            add( conf );
-        }
-        template<typename T>
-        void setObj( const std::string& key, const T& value ) {
-            updateObj(key, value);
+            set(Config(key, Stringify()<<value));
         }
 
         /** Whether this object has the key OR has a child with the key */
@@ -359,7 +258,7 @@ namespace osgEarth
 
         /** Populates the output value iff the Config exists. */
         template<typename T>
-        bool getIfSet( const std::string& key, optional<T>& output ) const {
+        bool get( const std::string& key, optional<T>& output ) const {
             std::string r;
             if ( hasChild(key) )
                 r = child(key).value();
@@ -371,20 +270,9 @@ namespace osgEarth
                 return false;
         }
         
-        /** Populates the output object iff the Config exists. */
-        template<typename T>
-        bool getObjIfSet( const std::string& key, optional<T>& output ) const {
-            if ( hasChild( key ) ) {
-                output = T( child(key) );
-                return true;
-            }
-            else
-                return false;
-        }
-        
         /** Populates the output referenced value iff the Config exists. */
         template<typename T>
-        bool getObjIfSet( const std::string& key, osg::ref_ptr<T>& output ) const {
+        bool get( const std::string& key, osg::ref_ptr<T>& output ) const {
             if ( hasChild( key ) ) {
                 output = new T( child(key) );
                 return true;
@@ -393,19 +281,9 @@ namespace osgEarth
                 return false;
         }
         
-        /** Populates the output object value iff the Config exists. */
-        template<typename T>
-        bool getObjIfSet( const std::string& key, T& output ) const {
-            if ( hasChild(key) ) {
-                output = T( child(key) );
-                return true;
-            }
-            return false;
-        }
-        
         /** Populates the output enumerable pair iff the Config exists. */
         template<typename X, typename Y>
-        bool getIfSet( const std::string& key, const std::string& val, optional<X>& target, const Y& targetValue ) const {
+        bool get( const std::string& key, const std::string& val, optional<X>& target, const Y& targetValue ) const {
             if ( hasValue( key ) && value( key ) == val ) {
                 target = targetValue;
                 return true;
@@ -416,7 +294,7 @@ namespace osgEarth
         
         /** Populates the output enumerable pair iff the Config exists. */
         template<typename X, typename Y>
-        bool getIfSet( const std::string& key, const std::string& val, X& target, const Y& targetValue ) const {
+        bool get( const std::string& key, const std::string& val, X& target, const Y& targetValue ) const {
             if ( hasValue(key) && value(key) == val ) {
                 target = targetValue;
                 return true;
@@ -426,7 +304,7 @@ namespace osgEarth
         
         /** Populates the ouptut value iff the Config exists. */
         template<typename T>
-        bool getIfSet( const std::string& key, T& output ) const {
+        bool get( const std::string& key, T& output ) const {
             if ( hasValue(key) ) {
                 output = value<T>(key, output);
                 return true;
@@ -436,12 +314,8 @@ namespace osgEarth
 
         /** support for conveying non-serializable objects in a Config (in memory only) */
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > RefMap;
-
-        void addNonSerializable( const std::string& key, osg::Referenced* obj ) {
-            _refMap[key] = obj;
-        }
         
-        void updateNonSerializable( const std::string& key, osg::Referenced* obj ) {
+        void setNonSerializable( const std::string& key, osg::Referenced* obj ) {
             _refMap[key] = obj;
         }
 
@@ -464,26 +338,14 @@ namespace osgEarth
         RefMap      _refMap;
     };
 
-
-
-    // specialization for Config
-    template <> inline
-    void Config::addIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
-        if ( opt.isSet() ) {
-            Config conf = opt.value();
-            conf.key() = key;
-            add( conf );
-        }
-    }
+    // SPECIALIZATION - Config
 
     template<> inline
-    void Config::updateIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
-        if ( opt.isSet() ) {
-            remove(key);
-            Config conf = opt.value();
-            conf.key() = key;
-            add( conf );
-        }
+    void Config::set<Config>( const std::string& key, const Config& conf ) {
+        remove(key);
+        Config temp = conf;
+        temp.key() = key;
+        add( temp );
     }
 
     template<> inline
@@ -497,7 +359,7 @@ namespace osgEarth
     }
 
     template<> inline
-    bool Config::getIfSet<Config>( const std::string& key, optional<Config>& output ) const {
+    bool Config::get<Config>( const std::string& key, optional<Config>& output ) const {
         if ( hasChild( key ) ) {
             output = child(key);
             return true;
@@ -506,6 +368,8 @@ namespace osgEarth
             return false;
     }
 
+    // SPECIALIZATION - std::string
+
     template<> inline
     void Config::add<std::string>( const std::string& key, const std::string& value ) {
         _children.push_back( Config( key, value ) );
@@ -513,41 +377,72 @@ namespace osgEarth
     }
 
     template<> inline
-    void Config::update<std::string>( const std::string& key, const std::string& value ) {
+    void Config::set<std::string>( const std::string& key, const std::string& value ) {
         remove(key);
         add( Config(key, value) );
     }
 
-    template<> inline
-    void Config::update<Config>( const std::string& key, const Config& conf ) {
-        remove(key);
-        Config temp = conf;
-        temp.key() = key;
-        add( temp );
-    }
+    // SPECIALATIONS - float
 
     template<> inline
     void Config::add<float>( const std::string& key, const float& value ) {
         add( key, Stringify() << std::setprecision(8) << value );
-        //add( key, Stringify() << std::fixed << std::setprecision(8) << value );
     }
+
+    template<> inline
+    void Config::set<float>( const std::string& key, const float& value ) {
+        set( key, Stringify() << std::setprecision(8) << value );
+    }
+
+    // SPECIALIZATION - double
 
     template<> inline
     void Config::add<double>( const std::string& key, const double& value ) {
         add( key, Stringify() << std::setprecision(16) << value );
-        //add( key, Stringify() << std::fixed << std::setprecision(16) << value );
     }
 
     template<> inline
-    void Config::update<float>( const std::string& key, const float& value ) {
-        update( key, Stringify() << std::setprecision(8) << value );
-        //update( key, Stringify() << std::fixed << std::setprecision(8) << value );
+    void Config::set<double>( const std::string& key, const double& value ) {
+        set( key, Stringify() << std::setprecision(16) << value );
     }
 
-    template<> inline
-    void Config::update<double>( const std::string& key, const double& value ) {
-        update( key, Stringify() << std::setprecision(16) << value );
-    }
+    // Use this macro to "activate" any object with a getConfig/ctor(const Config&) pair
+    // and make it usable with Config::set/get/add.
+    // NOTE: You must only use this macro in the global namespace!
+
+#define OSGEARTH_SPECIALIZE_CONFIG(TYPE) \
+    namespace osgEarth { \
+        template<> inline \
+        void Config::set<TYPE>(const std::string& key, const TYPE& obj) { \
+            set( key, obj.getConfig() ); \
+        } \
+        template<> inline \
+        void Config::set<TYPE>(const std::string& key, const optional<TYPE>& opt) { \
+            if ( opt.isSet() ) \
+                set(key, opt.get()); \
+        } \
+        template<> inline \
+        bool Config::get<TYPE>(const std::string& key, TYPE& opt) const { \
+            if ( hasChild(key) ) { \
+                opt = TYPE(child(key)); \
+                return true; \
+            } \
+            else return false; \
+        } \
+        template<> inline \
+        bool Config::get<TYPE>(const std::string& key, optional<TYPE>& opt) const { \
+            if ( hasChild(key) ) { \
+                opt = TYPE(child(key)); \
+                return true; \
+            } \
+            else return false; \
+        } \
+        template<> inline void Config::add<TYPE>(const std::string& key, const TYPE& value) { \
+            Config conf = value.getConfig(); \
+            conf.key() = key; \
+            add( conf ); \
+        } \
+    } // namespace osgEarth
 
     //--------------------------------------------------------------------
 

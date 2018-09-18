@@ -55,4 +55,6 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Fill);
+
 #endif // OSGEARTHSYMBOLOGY_FILL_H

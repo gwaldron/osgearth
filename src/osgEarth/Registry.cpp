@@ -100,6 +100,7 @@ _devicePixelRatio(1.0f)
     //osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml; charset=utf8", "kml");
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
@@ -635,10 +636,10 @@ Registry::getStateSetCache() const
     return _stateSetCache.get();
 }
 
-ProgramSharedRepo*
-Registry::getProgramSharedRepo()
+ProgramRepo&
+Registry::getProgramRepo()
 {
-    return &_programRepo;
+    return _programRepo;
 }
 
 ObjectIndex*

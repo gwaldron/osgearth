@@ -1336,7 +1336,7 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 void
 RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layerMoved)
 {
-    if ( layerMoved->getEnabled() == false )
+    if (layerMoved->getEnabled() == false)
         return;
 
     // only need to refresh is the elevation layer is visible.
@@ -1347,7 +1347,7 @@ RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layerMoved)
 }
 
 void
-RexTerrainEngineNode::toggleElevationLayer( ElevationLayer* layer )
+RexTerrainEngineNode::toggleElevationLayer(ElevationLayer* layer)
 {
     refresh();
 }
@@ -1356,7 +1356,7 @@ RexTerrainEngineNode::toggleElevationLayer( ElevationLayer* layer )
 void
 RexTerrainEngineNode::updateState()
 {
-    if ( _batchUpdateInProgress )
+    if (_batchUpdateInProgress)
     {
         _stateUpdateRequired = true;
     }
@@ -1371,31 +1371,31 @@ RexTerrainEngineNode::updateState()
 
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
-            new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
+            new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
 
         surfaceStateSet->setAttributeAndModes(
             new osg::CullFace(), osg::StateAttribute::ON);
 
         // activate standard mix blending.
         terrainStateSet->setAttributeAndModes(
-            new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA),
-            osg::StateAttribute::ON );
+            new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+            osg::StateAttribute::ON);
 
         // install patch param if we are tessellation on the GPU.
-        if ( _terrainOptions.gpuTessellation() == true )
+        if (_terrainOptions.gpuTessellation() == true)
         {
-            #ifdef HAVE_PATCH_PARAMETER
-              terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
-            #endif
+#ifdef HAVE_PATCH_PARAMETER
+            terrainStateSet->setAttributeAndModes(new osg::PatchParameter(3));
+#endif
         }
 
         // install shaders, if we're using them.
-        if ( Registry::capabilities().supportsGLSL() )
+        if (Registry::capabilities().supportsGLSL())
         {
             Shaders package;
 
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
-            terrainVP->setName( "Rex Terrain" );
+            terrainVP->setName("Rex Terrain");
             package.load(terrainVP, package.ENGINE_VERT_MODEL);
 
             surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
@@ -1418,7 +1418,7 @@ RexTerrainEngineNode::updateState()
             }
 
             // Normal mapping shaders:
-            if ( this->normalTexturesRequired() )
+            if (this->normalTexturesRequired())
             {
                 package.load(surfaceVP, package.NORMAL_MAP_VERT);
                 package.load(surfaceVP, package.NORMAL_MAP_FRAG);
@@ -1428,6 +1428,11 @@ RexTerrainEngineNode::updateState()
             if (_terrainOptions.enableBlending() == true)
             {
                 surfaceStateSet->setDefine("OE_TERRAIN_BLEND_IMAGERY");
+            } 
+
+            if (_terrainOptions.compressNormalMaps() == true)
+            {
+                surfaceStateSet->setDefine("OE_COMPRESSED_NORMAL_MAP");
             }
 
             // Morphing?

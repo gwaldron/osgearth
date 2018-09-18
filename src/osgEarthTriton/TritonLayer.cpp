@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "TritonLayer"
-#include "TritonNode"
 #include "TritonContext"
 #include "TritonDrawable"
 #include "TritonHeightMap"
@@ -218,6 +217,8 @@ TritonLayer::init()
     OE_INFO << LC << "Creating TritonLayer\n";
 
     osgEarth::VisibleLayer::init();
+
+    _seaLevel = 0.0f;
 
     // Trick to force the VisibleLayer to install its opacity shader, 
     // which a modified Triton user-functions.glsl shader needs in order to control

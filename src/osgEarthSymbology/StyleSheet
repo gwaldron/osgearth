@@ -122,5 +122,6 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
+//OSGEARTH_SPECIALIZE_REF_CONFIG(osgEarth::Symbology::StyleSheet);
 
 #endif // OSGEARTHSYMBOLOGY_STYLE_SHEET_H

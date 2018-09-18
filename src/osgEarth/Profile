@@ -87,7 +87,12 @@ namespace osgEarth
         optional<int>         _numTilesWideAtLod0;
         optional<int>         _numTilesHighAtLod0;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ProfileOptions);
 
+
+namespace osgEarth
+{
     /**
      * A "profile" defines the layout of a data source. The profile conveys the
      * spatial reference system (SRS), the geospatial extents within that SRS, and

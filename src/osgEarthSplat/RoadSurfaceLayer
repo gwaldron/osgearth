@@ -66,11 +66,10 @@ namespace osgEarth { namespace Splat
         Config getConfig() const
         {
             Config conf = ImageLayerOptions::getConfig();
-            conf.key() = "road_surface";
-            conf.addObjIfSet("features",  _featureSourceOptions);
-            conf.addIfSet("feature_source", _featureSourceLayer);
-            conf.addIfSet("buffer_width", _bufferWidth);
-            conf.addObjIfSet("styles", _styles);
+            conf.set("features",  _featureSourceOptions);
+            conf.set("feature_source", _featureSourceLayer);
+            conf.set("buffer_width", _bufferWidth);
+            conf.set("styles", _styles);
             return conf;
         }
 
@@ -83,10 +82,10 @@ namespace osgEarth { namespace Splat
     private:
         void fromConfig( const Config& conf )
         {
-            conf.getObjIfSet("features",  _featureSourceOptions);
-            conf.getIfSet("feature_source", _featureSourceLayer);
-            conf.getIfSet("buffer_width", _bufferWidth);
-            conf.getObjIfSet("styles", _styles);
+            conf.get("features",  _featureSourceOptions);
+            conf.get("feature_source", _featureSourceLayer);
+            conf.get("buffer_width", _bufferWidth);
+            conf.get("styles", _styles);
         }
         
     private:
@@ -103,7 +102,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
     public:
-        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions);
+        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions, road_surface);
 
         //! Create a blank layer to be configured with options()
         RoadSurfaceLayer();

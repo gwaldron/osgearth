@@ -61,10 +61,10 @@ ProfileOptions::fromConfig( const Config& conf )
     if ( !conf.value().empty() )
         _namedProfile = conf.value();
 
-    conf.getIfSet( "srs", _srsInitString );
+    conf.get( "srs", _srsInitString );
 
-    conf.getIfSet( "vdatum", _vsrsInitString );
-    conf.getIfSet( "vsrs", _vsrsInitString ); // back compat
+    conf.get( "vdatum", _vsrsInitString );
+    conf.get( "vsrs", _vsrsInitString ); // back compat
 
     if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
     {
@@ -75,8 +75,8 @@ ProfileOptions::fromConfig( const Config& conf )
             conf.value<double>( "ymax", 0 ) );
     }
 
-    conf.getIfSet( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
-    conf.getIfSet( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+    conf.get( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+    conf.get( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
 }
 
 Config
@@ -94,10 +94,10 @@ ProfileOptions::getConfig() const
 
         if ( _bounds.isSet() )
         {
-            conf.update( "xmin", toString(_bounds->xMin()) );
-            conf.update( "ymin", toString(_bounds->yMin()) );
-            conf.update( "xmax", toString(_bounds->xMax()) );
-            conf.update( "ymax", toString(_bounds->yMax()) );
+            conf.set( "xmin", toString(_bounds->xMin()) );
+            conf.set( "ymin", toString(_bounds->yMin()) );
+            conf.set( "xmax", toString(_bounds->xMax()) );
+            conf.set( "ymax", toString(_bounds->yMax()) );
         }
 
         conf.set( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );

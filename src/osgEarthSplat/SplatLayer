@@ -78,7 +78,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions);
+        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions, splat_imagery);
 
         //! Construct a splat layer with default configuration
         SplatLayer();

@@ -127,7 +127,9 @@ public:
 
           URI uri( location, _options.url()->context() );
           if ( !cacheKey.empty() )
-              uri.setCacheKey( cacheKey );
+          {
+              uri.setCacheKey(Cache::makeCacheKey(location, "uri"));
+          }
 
           OE_TEST << LC << "URI: " << uri.full() << ", key: " << uri.cacheKey() << std::endl;
 

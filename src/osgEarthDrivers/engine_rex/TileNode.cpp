@@ -281,13 +281,14 @@ TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix
 const osg::Image*
 TileNode::getElevationRaster() const
 {
-    return _surface->getElevationRaster();
+    return _surface.valid() ? _surface->getElevationRaster() : 0L;
 }
 
 const osg::Matrixf&
 TileNode::getElevationMatrix() const
 {
-    return _surface->getElevationMatrix();
+    static osg::Matrixf s_identity;
+    return _surface.valid() ? _surface->getElevationMatrix() : s_identity;
 }
 
 void

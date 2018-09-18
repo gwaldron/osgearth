@@ -22,6 +22,7 @@
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
 #include <osgEarth/MapInfo>
+#include <osgEarth/ModelLayer>
 #include <osgEarthSymbology/Geometry>
 
 #include <osgUtil/DelaunayTriangulator>
@@ -164,6 +165,18 @@ _key( key ), _tileSize(tileSize)
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
             setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+        }
+
+        // add masks from model layers with embedded masks?
+        ModelLayerVector modelLayers;
+        map->getLayers(modelLayers);
+        for(ModelLayerVector::const_iterator i = modelLayers.begin(); i != modelLayers.end(); ++i)
+        {
+            ModelLayer* layer = i->get();
+            if (layer->getMaskSource() && layer->getMaskMinLevel() <= key.getLevelOfDetail())
+            {
+                setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary(1.0f, key.getExtent().getSRS(), (ProgressCallback*)0L) );
+            }
         }
     }
 }

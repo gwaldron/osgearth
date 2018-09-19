@@ -31,7 +31,6 @@ static TerrainOptions s_defaultTerrainOptions;
 MapNodeOptions::MapNodeOptions( const Config& conf ) :
 ConfigOptions          ( conf ),
 _proxySettings         ( ProxySettings() ),
-_cacheOnly             ( false ),
 _enableLighting        ( true ),
 _overlayBlending       ( true ),
 _overlayMipMapping     ( false ),
@@ -45,7 +44,6 @@ _overlayResolutionRatio( 3.0f )
 
 MapNodeOptions::MapNodeOptions( const TerrainOptions& to ) :
 _proxySettings         ( ProxySettings() ),
-_cacheOnly             ( false ),
 _enableLighting        ( true ),
 _overlayBlending       ( true ),
 _overlayTextureSize    ( 4096 ),
@@ -59,7 +57,6 @@ _terrainOptions        ( 0L )
 
 MapNodeOptions::MapNodeOptions( const MapNodeOptions& rhs ) :
 _proxySettings         ( ProxySettings() ),
-_cacheOnly             ( false ),
 _enableLighting        ( true ),
 _overlayBlending       ( true ),
 _overlayTextureSize    ( 4096 ),
@@ -88,7 +85,6 @@ MapNodeOptions::getConfig() const
     conf.key() = "options";
 
     conf.set( "proxy",                    _proxySettings );
-    conf.set( "cache_only",               _cacheOnly );
     conf.set( "lighting",                 _enableLighting );
     conf.set( "terrain",                  _terrainOptionsConf );
     conf.set( "overlay_warping",          _overlayVertexWarping );
@@ -107,7 +103,6 @@ MapNodeOptions::mergeConfig( const Config& conf )
     ConfigOptions::mergeConfig( conf );
 
     conf.get( "proxy",                    _proxySettings );
-    conf.get( "cache_only",               _cacheOnly );
     conf.get( "lighting",                 _enableLighting );
     conf.get( "overlay_warping",          _overlayVertexWarping );
     conf.get( "overlay_blending",         _overlayBlending );

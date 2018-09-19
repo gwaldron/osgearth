@@ -56,13 +56,6 @@ namespace osgEarth
         const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
 
         /**
-         * Whether the map should be run exclusively off of the cache.
-         * Default = false
-         */
-        optional<bool>& cacheOnly() { return _cacheOnly; }
-        const optional<bool>& cacheOnly() const { return _cacheOnly; }
-
-        /**
          * Whether to explicity enable or disable GL lighting on the map node.
          */
         optional<bool>& enableLighting() { return _enableLighting; }
@@ -120,7 +113,6 @@ namespace osgEarth
 
     private:            
         optional<ProxySettings> _proxySettings;
-        optional<bool> _cacheOnly;
         optional<bool> _enableLighting;
 
         optional<bool>     _overlayVertexWarping;

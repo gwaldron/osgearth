@@ -409,6 +409,11 @@ MPTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     dirtyBound();
 
     OE_INFO << LC << "Edge normalization is " << (_terrainOptions.normalizeEdges() == true? "ON" : "OFF") << std::endl;
+
+    if (_terrainOptions.enableMercatorFastPath().isSetTo(true))        
+    {
+        OE_NOTICE << LC << "Mercator fast path is enabled - warning: it is incompatible with caching" << std::endl;
+    }
 }
 
 

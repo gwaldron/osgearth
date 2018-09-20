@@ -175,50 +175,7 @@ IF(UNIX)
 ENDIF(UNIX)
 
 
-OPTION(OSGEARTH_QT_BUILD "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
-OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
-set(DESIRED_QT_VERSION 5 CACHE STRING "Qt version to use")
-
-IF(OSGEARTH_QT_BUILD)
-  # To select a specific version of QT define DESIRED_QT_VERSION
-  # via cmake -DDESIRED_QT_VERSION=5
-  # QUIET option disables messages if the package cannot be found.
-  IF  (DESIRED_QT_VERSION)
-      IF  (DESIRED_QT_VERSION MATCHES "5")
-          FIND_PACKAGE(Qt5Widgets REQUIRED)
-      ELSEIF (DESIRED_QT_VERSION MATCHES "4")
-          FIND_PACKAGE(Qt4 REQUIRED)
-      ENDIF()
-  ELSE()
-      FIND_PACKAGE(Qt5Widgets QUIET)
-      IF ( NOT Qt5Widgets_FOUND )
-          FIND_PACKAGE(Qt4 REQUIRED)
-      ENDIF()
-  ENDIF()
-ENDIF(OSGEARTH_QT_BUILD)
-
-IF(Qt5Widgets_FOUND)
-  message(STATUS "Qt: Using version 5")
-  FIND_PACKAGE(Qt5Core QUIET)
-  FIND_PACKAGE(Qt5Gui QUIET)
-  FIND_PACKAGE(Qt5OpenGL QUIET)
-  FIND_PACKAGE(Qt5OpenGLExtensions QUIET)
-  IF ( Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND AND Qt5OpenGLExtensions_FOUND )
-    SET(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS} ${Qt5OpenGLExtensions_INCLUDE_DIRS})
-  ENDIF ()
-ELSEIF(QT4_FOUND)
-  message(STATUS "Qt: Using version 4")
-  INCLUDE(${QT_USE_FILE})
-  SET(QT_INCLUDES ${QT_INCLUDES} ${QT_INCLUDE_DIR} ${QT_QTCORE_INCLUDE_DIR} ${QT_QTGUI_INCLUDE_DIR}${QT_QTOPENGL_INCLUDE_DIR} )
-  SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
-ENDIF ()
-
-
-# Common global definitions
-#ADD_DEFINITIONS(-D)
 # Platform specific definitions
-
-
 IF(WIN32)
   FIND_PACKAGE(GLCORE)
   IF(GLCORE_FOUND)

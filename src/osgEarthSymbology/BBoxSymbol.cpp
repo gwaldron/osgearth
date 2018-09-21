@@ -48,7 +48,7 @@ Config
 BBoxSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
-    conf.key() = "text-bbox";
+    conf.key() = "bbox";
     conf.set( "fill", _fill );
     conf.set( "border", _border );
     conf.set( "margin", _margin );

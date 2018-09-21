@@ -26,6 +26,13 @@ using namespace osgEarth;
 
 #define LC "[Capabilities] "
 
+#ifndef GL_CONTEXT_PROFILE_MASK
+#define GL_CONTEXT_PROFILE_MASK           0x9126
+#endif
+#ifndef GL_CONTEXT_CORE_PROFILE_BIT
+#define GL_CONTEXT_CORE_PROFILE_BIT       0x00000001
+#endif
+
 // ---------------------------------------------------------------------------
 // A custom P-Buffer graphics context that we will use to query for OpenGL 
 // extension and hardware support. (Adapted from osgconv in OpenSceneGraph)
@@ -197,8 +204,17 @@ _isCoreProfile          ( true )
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
         OE_INFO << LC << "  Version = " << _version << std::endl;
 
-        // Core profile requires OSG 3.2, and the compatibility extension not being present
-        _isCoreProfile = (GL2->glVersion >= 3.2f && !osg::isGLExtensionSupported(id, "GL_ARB_compatibility"));
+        // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
+        if ( GL2->glVersion < 3.2f )
+        {
+            _isCoreProfile = false;
+        }
+        else
+        {
+            GLint profileMask = 0;
+            glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profileMask);
+            _isCoreProfile = ((profileMask & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
+        }
         OE_INFO << LC << "  Core Profile = " << SAYBOOL(_isCoreProfile) << std::endl;
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)

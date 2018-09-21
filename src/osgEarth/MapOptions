@@ -28,14 +28,13 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/GeoCommon>
 #include <osgEarth/Profile>
-#include <osgEarth/TerrainOptions>
 
 namespace osgEarth
 {
     /**
      * Configuration for a runtime map.
      */
-    class OSGEARTH_EXPORT MapOptions : public ConfigOptions // no export (header-only)
+    class OSGEARTH_EXPORT MapOptions : public ConfigOptions
     {
     public:
         enum CoordinateSystemType

@@ -666,7 +666,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                         if (bindings[SamplerBinding::COLOR_PARENT].isActive())
                         {
                             pass->samplers()[SamplerBinding::COLOR_PARENT]._texture = model->getTexture();
-                            pass->samplers()[SamplerBinding::COLOR_PARENT]._matrix.makeIdentity();
+                            pass->samplers()[SamplerBinding::COLOR_PARENT]._matrix = *model->getMatrix();
                         }
                     }
                     pass->samplers()[SamplerBinding::COLOR]._texture = model->getTexture();

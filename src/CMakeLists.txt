@@ -14,7 +14,6 @@ ENDFOREACH( lib )
 
 
 FOREACH( lib
-         osgEarthQt
          osgEarthSplat
          osgEarthSilverLining
          osgEarthTriton )

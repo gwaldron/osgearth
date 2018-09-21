@@ -24,14 +24,10 @@
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/DataScanner>
 #include <osgEarthUtil/Shadowing>
 #include <osgEarthUtil/ActivityMonitorTool>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarthUtil/SimpleOceanLayer>
-
-#include <osgEarthUtil/VerticalScale>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarth/TerrainEngineNode>
@@ -308,10 +304,6 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
                     Container*             userContainer,
                     const osgDB::Options*  readOptions) const
 {
-    // do this first before scanning for an earth file
-    std::string outEarth;
-    args.read( "--out-earth", outEarth );
-
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
 
     Config c;
@@ -326,27 +318,11 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
-    osg::ref_ptr<MapNode> mapNode;
-    if ( !node )
+    osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
+    if ( !mapNode.valid() )
     {
-        if ( args.find("--images") < 0 )
-        {
-            OE_WARN << LC << "No earth file." << std::endl;
-            return 0L;
-        }
-        else
-        {
-            mapNode = new MapNode();
-        }
-    }
-    else
-    {
-        mapNode = MapNode::get(node.get());
-        if ( !mapNode.valid() )
-        {
-            OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
-            return 0L;
-        }
+        OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
+        return 0L;
     }
 
     // collect the views
@@ -375,13 +351,6 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     if ( !views.empty() )
     {
         parse( mapNode.get(), args, views.front(), root, userContainer );
-    }
-
-    // Dump out an earth file if so directed.
-    if ( !outEarth.empty() )
-    {
-        OE_NOTICE << LC << "Writing earth file: " << outEarth << std::endl;
-        osgDB::writeNodeFile( *mapNode, outEarth );
     }
 
     // configures each view with some stock goodies
@@ -432,12 +401,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
     // parse out custom example arguments first:
-    bool useMGRS       = args.read("--mgrs");
-    bool useDMS        = args.read("--dms");
-    bool useDD         = args.read("--dd");
-    bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
-
-    bool useAutoClip   = args.read("--autoclip");
+    bool useCoords     = args.read("--coords");
     bool showActivity  = args.read("--activity");
     bool useLogDepth   = args.read("--logdepth");
     bool useLogDepth2  = args.read("--logdepth2");
@@ -445,12 +409,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
-
-    std::string imageFolder;
-    args.read( "--images", imageFolder );
-
-    std::string imageExtensions;
-    args.read("--image-extensions", imageExtensions);
 
     // animation path:
     std::string animpath;
@@ -491,10 +449,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     // look for external data in the map node:
     const Config& externals = mapNode->externalConfig();
-
-    // some terrain effects.
-    // TODO: Most of these are likely to move into extensions.
-    const Config& vertScaleConf   = externals.child("vertical_scale");
 
     // Loading KML from the command line:
     if ( !kmlFile.empty() )
@@ -539,14 +493,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
         readout->setHorizAlign( Control::ALIGN_RIGHT );
         readout->setVertAlign( Control::ALIGN_BOTTOM );
 
-        Formatter* formatter =
-            useMGRS ? (Formatter*)new MGRSFormatter(MGRSFormatter::PRECISION_1M, 0L, MGRSFormatter::USE_SPACES) :
-            useDMS  ? (Formatter*)new LatLongFormatter(LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS) :
-            useDD   ? (Formatter*)new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES) :
-            0L;
-
         MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
-        mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
+        mcTool->addCallback( new MouseCoordsLabelCallback(readout) );
         view->addEventHandler( mcTool );
 
         canvas->addControl( readout );
@@ -581,12 +529,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
         canvas->addControl( vbox );
     }
 
-    // Install an auto clip plane clamper
-    if ( useAutoClip )
-    {
-        mapNode->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
-    }
-
     // Install logarithmic depth buffer on main camera
     if ( useLogDepth )
     {
@@ -602,39 +544,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
         logDepth.setUseFragDepth( true );
         logDepth.install( view->getCamera() );
-    }
-
-    // Scan for images if necessary.
-    if ( !imageFolder.empty() )
-    {
-        std::vector<std::string> extensions;
-        if ( !imageExtensions.empty() )
-            StringTokenizer( imageExtensions, extensions, ",;", "", false, true );
-        if ( extensions.empty() )
-            extensions.push_back( "tif" );
-
-        OE_INFO << LC << "Loading images from " << imageFolder << "..." << std::endl;
-        ImageLayerVector imageLayers;
-        DataScanner scanner;
-        scanner.findImageLayers( imageFolder, extensions, imageLayers );
-
-        if ( imageLayers.size() > 0 )
-        {
-            mapNode->getMap()->beginUpdate();
-            for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-            {
-                mapNode->getMap()->addLayer( i->get() );
-            }
-            mapNode->getMap()->endUpdate();
-        }
-        OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
-    }
-
-    // Install vertical scaler.
-    // TODO: deprecate this, or move it to an extension.
-    if ( !vertScaleConf.empty() )
-    {
-        mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
     }
 
     // Generic named value uniform with min/max.
@@ -796,15 +705,10 @@ MapNodeHelper::usage() const
         << "  --kml <file.kml>              : load a KML or KMZ file\n"
         << "  --kmlui                       : display a UI for toggling nodes loaded with --kml\n"
         << "  --coords                      : display map coords under mouse\n"
-        << "  --dms                         : dispay deg/min/sec coords under mouse\n"
-        << "  --dd                          : display decimal degrees coords under mouse\n"
-        << "  --mgrs                        : show MGRS coords under mouse\n"
         << "  --ortho                       : use an orthographic camera\n"
         << "  --logdepth                    : activates the logarithmic depth buffer\n"
         << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"
         << "  --shadows                     : activates model layer shadows\n"
-        << "  --images [path]               : finds and loads image layers from folder [path]\n"
-        << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"
         << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
         << "  --define [name]               : install a shader #define\n"

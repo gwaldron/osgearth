@@ -1163,13 +1163,6 @@ LineDrawable::setupShaders()
             //_gpuStateSet->getOrCreateUniform("oe_GL_LineStippleFactor", osg::Uniform::INT)->set(1);
             //_gpuStateSet->getOrCreateUniform("oe_GL_LineStipplePattern", osg::Uniform::INT)->set((int)~0);
             
-#if defined(OSG_GLES3_AVAILABLE)
-            if(_gpuStateSet->getUniform("oe_GL_LineStipplePattern") == NULL)
-            {
-                _gpuStateSet->getOrCreateUniform("oe_GL_LineStipplePattern", osg::Uniform::INT)->set((int)~0);
-            }
-#endif
-            
             ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
         }
         s_mutex.unlock();

@@ -702,7 +702,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
         "void oe_sg_clipnode(inout vec4 vertex_view)\n"
         "{\n"
         "    vec4 plane_view = gl_ModelViewMatrix * oe_sg_clipnode_plane_model; \n"
-        "#ifndef GL_ES'n"
+        "#ifndef GL_ES\n"
         "    gl_ClipDistance[0] = dot(plane_view, vertex_view); \n"
         "#endif\n"
         //"    gl_ClipVertex = vertexVIEW; \n"

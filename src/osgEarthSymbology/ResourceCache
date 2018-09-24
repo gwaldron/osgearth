@@ -22,7 +22,6 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
-#include <osgEarthSymbology/MarkerResource>
 #include <osgEarthSymbology/InstanceResource>
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarth/Containers>

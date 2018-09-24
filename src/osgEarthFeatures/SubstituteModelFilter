@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/MarkerResource>
 #include <osgEarth/Containers>
 
 namespace osgEarth {

@@ -141,7 +141,6 @@ SET(LIB_PUBLIC_HEADERS
     MapNodeOptions
     MapOptions
     MaskLayer
-    MaskNode
     MaskSource
     Memory
     MemCache
@@ -163,7 +162,6 @@ SET(LIB_PUBLIC_HEADERS
     PointDrawable
     PrimitiveIntersector
     Profile
-    Profiler
     Progress
     Random
     Registry
@@ -180,7 +178,6 @@ SET(LIB_PUBLIC_HEADERS
     SimplexNoise
     SpatialReference
     StateSetCache
-    StateSetLOD
     Status
     StringUtils
     TaskService
@@ -194,7 +191,6 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileModel
     TerrainTileModelFactory
     TerrainTileNode
-    TileKeyDataStore
     Tessellator
     Text
     TileKey
@@ -214,7 +210,6 @@ SET(LIB_PUBLIC_HEADERS
     Viewpoint
     VirtualProgram
     VisibleLayer
-    WrapperLayer
     XmlUtils
 )
 
@@ -315,7 +310,6 @@ set(TARGET_SRC
     MapNodeOptions.cpp
     MapOptions.cpp
     MaskLayer.cpp
-    MaskNode.cpp
     MaskSource.cpp
     MemCache.cpp
     Memory.cpp
@@ -334,7 +328,6 @@ set(TARGET_SRC
     PointDrawable.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
-    Profiler.cpp
     Progress.cpp
     Random.cpp
     Registry.cpp
@@ -350,7 +343,6 @@ set(TARGET_SRC
     SimplexNoise.cpp
     SpatialReference.cpp
     StateSetCache.cpp
-    StateSetLOD.cpp
     Status.cpp
     StringUtils.cpp
     TaskService.cpp

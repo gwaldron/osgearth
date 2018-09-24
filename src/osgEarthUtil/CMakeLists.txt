@@ -10,7 +10,6 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
     ActivityMonitorTool
-    AnnotationEvents
     AutoClipPlaneHandler
     AutoScaleCallback
     ArcGIS
@@ -106,7 +105,6 @@ configure_shaders(
 
 SET(SOURCES_ROOT
     ActivityMonitorTool.cpp
-    AnnotationEvents.cpp
     ArcGIS.cpp
     AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp

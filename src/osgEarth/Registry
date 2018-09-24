@@ -78,9 +78,6 @@ namespace osgEarth
         /** Gets the spherical-mercator builtin profile (mercator/sphere) */
         const Profile* getSphericalMercatorProfile() const;
 
-        /** @deprecated Gets the unified cube builtin profile */
-        const Profile* getCubeProfile() const;
-
         /** Gets a spatial reference object */
         SpatialReference* getOrCreateSRS(const SpatialReference::Key& key);
 

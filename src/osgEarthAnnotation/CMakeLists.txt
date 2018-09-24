@@ -22,8 +22,8 @@ set(LIB_PUBLIC_HEADERS
     Draggers
     EllipseNode
     Export
-    FeatureNode
     FeatureEditing
+    FeatureNode
     GeoPositionNode
     GeoPositionNodeAutoScaler
     LocalGeometryNode
@@ -48,8 +48,8 @@ set(LIB_COMMON_FILES
     CircleNode.cpp
     Draggers.cpp
     EllipseNode.cpp
-    FeatureNode.cpp
     FeatureEditing.cpp
+    FeatureNode.cpp
     GeoPositionNode.cpp
     GeoPositionNodeAutoScaler.cpp
     LocalGeometryNode.cpp

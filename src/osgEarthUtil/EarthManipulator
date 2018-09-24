@@ -920,11 +920,6 @@ namespace osgEarth { namespace Util
         virtual void handleContinuousAction( const Action& action, osg::View* view );
         virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
 
-        /**
-         * Gets the viewpoint of the TetherNode.
-         */
-        Viewpoint getTetherNodeViewpoint() const;
-
     protected:
 
         // makeshift "stack" of the last 2 incoming events.

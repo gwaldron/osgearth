@@ -44,7 +44,7 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
     /**
      * Base Options structure for loading an Ocean node from a plugin.
-     * @deprecated
+     * @deprecated (remove after 2.10)
      */
     class OSGEARTHUTIL_EXPORT OceanOptions : public DriverConfigOptions
     {
@@ -68,7 +68,7 @@ namespace osgEarth { namespace Util
 
     /**
     * Interface for a Node that renders an ocean surface.
-    * @deprecated
+    * @deprecated (remove after 2.10)
     */
     class OSGEARTHUTIL_EXPORT OceanNode : public osg::Group
     {
@@ -125,7 +125,7 @@ namespace osgEarth { namespace Util
 
     /**
      * Base class for an ocean driver plugin implementation.
-     * @deprecated
+     * @deprecated (remove after 2.10)
      */
     class OSGEARTHUTIL_EXPORT OceanDriver : public osgDB::ReaderWriter
     {
@@ -139,6 +139,7 @@ namespace osgEarth { namespace Util
      * convert the ocean extensions into proper NodeKits, at which point this method
      * will probably be no longer necessary since you can just link with the library
      * and create the OceanNode normally.
+     * @deprecated (remove after 2.10)
      */
     class /*header-only*/ OceanNodeFactory
     {

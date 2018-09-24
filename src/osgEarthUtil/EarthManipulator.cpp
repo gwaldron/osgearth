@@ -2014,20 +2014,6 @@ EarthManipulator::updateTether()
     }
 }
 
-Viewpoint
-EarthManipulator::getTetherNodeViewpoint() const
-{
-    // @deprecated; please do not add new code here.
-    if ( isTethering() )
-    {
-        return _setVP1.get();
-    }
-    else
-    {
-        return Viewpoint();
-    }
-}
-
 bool
 EarthManipulator::serviceTask()
 {

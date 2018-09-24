@@ -42,15 +42,15 @@ namespace osgEarth { namespace Annotation
             return conf;
         }
 
-        virtual void fromConfig(const Config& conf) {
-            //nop
-        }
-
     protected:
 
-        void mergeConfig(const Config& conf) {
+        virtual void mergeConfig(const Config& conf) {
             VisibleLayerOptions::mergeConfig(conf);
             fromConfig(conf);
+        }
+
+        void fromConfig(const Config& conf) {
+            //nop
         }
     };
 

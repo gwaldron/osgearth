@@ -286,7 +286,7 @@ PlaceNode::compile()
             // todo: optimize this better:
             _imageDrawable->getOrCreateStateSet()->merge(*_imageStateSet.get());
             _geode->addChild(_imageDrawable);
-            imageBox = osgEarth::Utils::getBoundingBox(_imageDrawable);
+            imageBox = _imageDrawable->getBoundingBox();
         }    
     }
 
@@ -305,7 +305,7 @@ PlaceNode::compile()
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
     if ( bboxsymbol && _textDrawable )
     {
-        _bboxDrawable = new BboxDrawable( osgEarth::Utils::getBoundingBox(_textDrawable), *bboxsymbol );
+        _bboxDrawable = new BboxDrawable( _textDrawable->getBoundingBox(), *bboxsymbol );
         _geode->addChild(_bboxDrawable);
     }
 

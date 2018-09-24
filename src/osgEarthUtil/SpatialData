@@ -38,6 +38,7 @@ namespace osgEarth { namespace Util
 
     /**
      * A group corresponding to a specific geospatial cell.
+     * @deprecated (remove after 2.10)
      */
     class OSGEARTHUTIL_EXPORT GeoCell : public osg::LOD
     {
@@ -112,6 +113,9 @@ namespace osgEarth { namespace Util
         friend class GeoCellVisitor;
     };
 
+    /**
+     * @deprecated (remove after 2.10)
+     */
     class OSGEARTHUTIL_EXPORT GeoGraph : public GeoCell
     {
     public:
@@ -132,7 +136,10 @@ namespace osgEarth { namespace Util
     private:
         unsigned _rootWidth, _rootHeight;
     };
-
+    
+    /**
+     * @deprecated (remove after 2.10)
+     */
     class GeoCellVisitor : public osg::NodeVisitor
     {
     public:
@@ -151,6 +158,7 @@ namespace osgEarth { namespace Util
 
     /**
      * Base class for an object indexed by a GeoCell hierarchy.
+     * @deprecated (remove after 2.10)
      */
     class OSGEARTHUTIL_EXPORT GeoObject : public osg::Referenced
     {

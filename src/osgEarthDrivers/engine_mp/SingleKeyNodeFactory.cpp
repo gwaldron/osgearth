@@ -302,14 +302,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
 
     if ( makeTile )
     {
-        if ( _options.incrementalUpdate() == true )
-        {
-            quad = new TileGroup(key, _engine->getUID(), _liveTiles.get(), _releaser.get());
-        }
-        else
-        {
-            quad = new osg::Group();
-        }
+        quad = new osg::Group();
 
         for( unsigned q=0; q<4; ++q )
         {

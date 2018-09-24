@@ -224,7 +224,7 @@ show(osg::ArgumentParser& arguments)
     osgEarth::ImageUtils::flattenImage(image.get(), images);
     osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
 
-    const osg::BoundingBox& bbox = osgEarth::Utils::getBoundingBox(geode->getDrawable(0));
+    const osg::BoundingBox& bbox = geode->getDrawable(0)->getBoundingBox();
     float width = bbox.xMax() - bbox.xMin();
     float height = bbox.zMax() - bbox.zMin();
 

@@ -71,7 +71,6 @@ namespace osgEarth
         osg::observer_ptr<T> _obj;
     };
 
-
     struct Utils
     {
         /**
@@ -82,108 +81,7 @@ namespace osgEarth
             float vr = (osg::clampBetween(v, vmin, vmax)-vmin)/(vmax-vmin);
             return r0 + vr * (r1-r0);
         }
-        
-
-        // Polyfill
-        // @deprecated (since we require OSG 3.4.x now)
-        static const osg::BoundingBox& getBoundingBox(const osg::Drawable* d) {
-            return d->getBoundingBox();
-        }
     };
-
-    /**
-     * Removes the given event handler from the view.
-     * This is the equivalent of osgViewer::View::removeEventHandler which is not available
-     * in older versions of OSG
-     * @deprecated
-     */
-    extern OSGEARTH_EXPORT void removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler);
-
-    // utility: functor for traversing a target node
-    // @deprecated
-    template<typename T> struct TraverseFunctor {
-        T* _target;
-        TraverseFunctor(T* target) : _target(target) { }
-        void operator()(osg::NodeVisitor& nv) { _target->T::traverse(nv); }
-    };
-
-    // utility: node that traverses another node via a functor
-    // @deprecated
-    template<typename T>
-    struct TraverseNode : public osg::Node {
-        TraverseFunctor<T> _tf;
-        TraverseNode(TraverseFunctor<T>& tf) : _tf(tf) { }
-        TraverseNode(T* target) : _tf(TraverseFunctor<T>(target)) { }
-        void traverse(osg::NodeVisitor& nv) { _tf(nv); }
-        osg::BoundingSphere computeBound() const { return _tf._target->getBound(); }
-    };
-
-    // utility: cull callback that traverses another node
-    // @deprecated
-    struct TraverseNodeCallback : public osg::NodeCallback {
-        osg::ref_ptr<osg::Node> _node;
-        TraverseNodeCallback(osg::Node* node) : _node(node) { }
-        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-            _node->accept(*nv);
-            traverse(node, nv);
-        }
-    };
-
-#if OSG_VERSION_LESS_THAN(3,5,6)
-#define OE_HAVE_PIXEL_AUTO_TRANSFORM 1
-    /**
-     * A pixel-based AutoTransform variant.
-     * NOTE: AutoTransform was refactored for OSG 3.5.6 and this class does
-     * not work with the new version.
-     */
-    class OSGEARTH_EXPORT PixelAutoTransform : public osg::AutoTransform
-    {
-    public:
-        PixelAutoTransform();
-
-        /** 
-         * Sets the minimim width of the object, in pixels, when the scale
-         * factor is 1.0.
-         */
-        void setMinPixelWidthAtScaleOne( double pixels ) { _minPixels = pixels; }
-
-        /**
-         * Sets the node to use to calculate the screen size. If this is NULL,
-         * it will use the size of the first child node.
-         */
-        void setSizingNode( osg::Node* node ) { _sizingNode = node; dirty(); }
-
-        /**
-         * Forces a recalculation of the autoscale on the next traversal
-         * (this usually doesn't happen unless the camera moves)
-         */
-        void dirty();
-
-        /**
-         * Set up the transform to orient the node based on a 2D screen-space
-         * rotation.
-         */
-        void setRotateInScreenSpace(bool value) { _rotateInScreenSpace = value; }
-        bool getRotateInScreenSpace() const { return _rotateInScreenSpace; }
-        
-        /**
-         * If setRotateInScreenSpace is true, this is the value of the 2D rotation
-         * in radians.
-         */
-        void setScreenSpaceRotation(double radians) { _screenSpaceRotationRadians = radians; }
-        double getScreenSpaceRotation() const { return _screenSpaceRotationRadians; }
-
-    public: // override
-        virtual void accept( osg::NodeVisitor& nv );
-
-    protected:
-        double _minPixels;
-        bool   _dirty;
-        bool   _rotateInScreenSpace;
-        double _screenSpaceRotationRadians;
-        osg::observer_ptr<osg::Node> _sizingNode;
-    };
-#endif // OSG_VERSION_LESS_THAN(3,5,6)
 
     /**
      * Proxy class that registers a custom render bin's prototype with the

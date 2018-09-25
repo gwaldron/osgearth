@@ -15,8 +15,6 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             <format>pbf</format>
         </features>
 
-        <instancing>true</instancing>
-
         <feature_indexing enabled="false"></feature_indexing>
 
         <styles>
@@ -51,7 +49,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                 }
 
                 forest {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;
@@ -60,7 +58,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                 }
 
                 grass {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;

@@ -947,7 +947,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             t->setBackdropColor( haloColor().value() );
         }
 
-        osg::BoundingBox bbox = t->getTextBB();
+        osg::BoundingBox bbox = t->getBoundingBox(); //t->getTextBB();
         if ( cx._viewContextID != ~0u )
         {
             //the Text's autoTransformCache matrix puts some mojo on the bounding box

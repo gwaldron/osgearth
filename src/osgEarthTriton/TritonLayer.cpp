@@ -242,6 +242,7 @@ TritonLayer::init()
     _root->addChild(_tritonNode.get());
 }
 
+
 osg::Node*
 TritonLayer::getNode() const
 {

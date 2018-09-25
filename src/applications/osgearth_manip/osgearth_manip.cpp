@@ -86,7 +86,7 @@ namespace
             "scroll wheel :",      "zoom in/out",
             "arrows :",            "pan",
             //"1-6 :",               "fly to preset viewpoints",
-            "shift-right-mouse :", "locked panning",
+            "shift-left-mouse :",  "locked pan",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
             "8 :",                 "Tether to thing 1",
@@ -96,8 +96,7 @@ namespace
             "a :",                 "toggle viewpoint arcing",
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
-            "L :",                 "toggle log depth buffer",
-            ") :",                 "toggle sceen space layout"
+            "L :",                 "toggle log depth buffer"
         };
 
         Grid* g = new Grid();
@@ -203,16 +202,8 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                if ( !_installed )
-                {
-                    ScreenSpaceLayout::activate(_group->getOrCreateStateSet());
-                }
-                else
-                {
-                    ScreenSpaceLayout::deactivate(_group->getOrCreateStateSet());
-                }
-
                 _installed = !_installed;
+                ScreenSpaceLayout::setDeclutteringEnabled(_installed);
                 return true;
             }
             return false;

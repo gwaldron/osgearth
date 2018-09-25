@@ -53,11 +53,14 @@ struct App
 {
     App() {
         _playing = false;
+        readout = new ui::LabelControl();
+        readout->setVertAlign(ui::Control::ALIGN_CENTER);
     }
 
     osg::ref_ptr<PlaceNode> sunPos;
     osg::ref_ptr<PlaceNode> moonPos;
     SkyNode* sky;
+    ui::LabelControl* readout;
 
     void play() { _playing = true; }
     void stop() { _playing = false; }
@@ -67,6 +70,7 @@ struct App
             TimeStamp t = sky->getDateTime().asTimeStamp() + 1;
             sky->setDateTime(DateTime(t));
         }
+        readout->setText(sky->getDateTime().asRFC1123());
     }
     
     bool _playing;
@@ -89,6 +93,7 @@ ui::Container* createUI(App& app)
     ui::HBox* vcr = new ui::HBox();
     vcr->addControl(new ui::ButtonControl("Play", new Play(app)));
     vcr->addControl(new ui::ButtonControl("Stop", new Stop(app)));
+    vcr->addControl(app.readout);
     return vcr;
 }
 

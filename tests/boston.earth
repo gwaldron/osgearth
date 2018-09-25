@@ -124,8 +124,6 @@ to extruded buildings.
             <level max_range="2000"/>
         </layout>
         
-        <instancing>true</instancing>
-		<cluster_culling>false</cluster_culling>
         <feature_indexing enabled="false"/>
         
         <styles>

@@ -287,13 +287,6 @@ namespace
 #if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
             // No modes in non-ffp
             return true;
-#endif
-
-#if OSG_VERSION_LESS_THAN(3,3,1)
-            return
-                dynamic_cast<osg::Texture2DArray*>(sa) ||
-                dynamic_cast<osg::Texture2DMultisample*>(sa) ||
-				dynamic_cast<osg::TextureBuffer*>(sa);
 #else
             return false;
 #endif

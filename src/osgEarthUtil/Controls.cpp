@@ -2307,12 +2307,7 @@ _height   ( 0 )
     //nop
 }
 
-// version helper.
-#if OSG_VERSION_GREATER_THAN(3,3,0)
-#   define AS_ADAPTER(e) e->asGUIEventAdapter()
-#else
-#   define AS_ADAPTER(e) e
-#endif
+#define AS_ADAPTER(e) e->asGUIEventAdapter()
 
 void
 ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)

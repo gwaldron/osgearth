@@ -83,15 +83,6 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         renderInfo.getState()->dirtyAllVertexArrays();
         renderInfo.getState()->dirtyAllAttributes();
 
-#if 0
-#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
-        osg::GLExtensions* api = renderInfo.getState()->get<osg::GLExtensions>();
-#else
-        osg::GL2Extensions* api = osg::GL2Extensions::Get(renderInfo.getState()->getContextID(), true);
-#endif
-        api->glUseProgram((GLuint)0);
-#endif
-
         // Reset the saved program.  SilverLining exits its functionality with a glUseProgram(0). Without this line,
         // GL Core 3.3 rendering will attempt to load uniforms without an active program, which is an error.  This
         // tells the state that there is currently no installed program, so if it needs one, to load one.
@@ -102,11 +93,7 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 }
 
 osg::BoundingBox
-#if OSG_VERSION_GREATER_THAN(3,3,1)
 SkyDrawable::computeBoundingBox() const
-#else
-SkyDrawable::computeBound() const
-#endif
 {
     osg::BoundingBox skyBoundBox;
     if ( !_SL->ready() )

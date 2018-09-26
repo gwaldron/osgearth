@@ -6,7 +6,11 @@
             <url>../data/points.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-                
+
+	<layout tile_size="650">
+            <level max_range="200000"/>
+	</layout> 
+		
         <styles>
             <style type="text/css">
                 points {

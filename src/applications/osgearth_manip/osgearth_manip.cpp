@@ -37,7 +37,6 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
@@ -640,13 +639,13 @@ namespace
      * The point of this is to test the EarthManipulator::UpdateCameraCallback
      * which provides a frame-synched camera matrix (post-update traversal)
      */
-    struct CalculateWindowCoords : public osgGA::GUIEventHandler,
-                                   public EarthManipulator::UpdateCameraCallback
+    struct CalculateWindowCoords : public osgGA::GUIEventHandler
+                                   
     {
         CalculateWindowCoords(char key, EarthManipulator* manip, Simulator* sim)
-            : _key(key), _manip(manip), _active(false), _sim(sim), _xform(0L)
+            : _key(key), _active(false), _sim(sim), _xform(0L)
         {
-            _manip->setUpdateCameraCallback(this);
+            //nop
         }
 
         void onUpdateCamera(const osg::Camera* cam)
@@ -717,7 +716,18 @@ namespace
         Simulator* _sim;
         bool _active;
         char _key;
-        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
+    struct CameraUpdater : public EarthManipulator::UpdateCameraCallback
+    {
+        CalculateWindowCoords* _calc;
+
+        CameraUpdater(CalculateWindowCoords* calc) : _calc(calc) { }
+        
+        void onUpdateCamera(const osg::Camera* cam)
+        {
+            _calc->onUpdateCamera(cam);
+        }
     };
 }
 
@@ -816,8 +826,11 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new SetPositionOffset(manip));
     viewer.addEventHandler(new ToggleLDB('L'));
     viewer.addEventHandler(new ToggleSSL(sims, ')'));
-    viewer.addEventHandler(new CalculateWindowCoords('W', manip, sim1));
     viewer.addEventHandler(new FitViewToPoints('j', manip, mapNode->getMapSRS()));
+    
+    CalculateWindowCoords* calc = new CalculateWindowCoords('W', manip, sim1);
+    viewer.addEventHandler(calc);
+    manip->setUpdateCameraCallback(new CameraUpdater(calc));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

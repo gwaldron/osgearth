@@ -180,6 +180,10 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         {
             const RenderingPass& parentPass = parent->_renderModel._passes[p];
 
+            // If the key is now out of the layer's valid min/max range, skip this pass.
+            if (!passInLegalRange(parentPass))
+                continue;
+
             // Copy the parent pass:
             _renderModel._passes.push_back(parentPass);
             RenderingPass& myPass = _renderModel._passes.back();
@@ -880,16 +884,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                     if (mySampler._texture.get() != parentSampler._texture.get() ||
                         mySampler._matrix != newMatrix)
                     {
-                        const TerrainLayer* terrainLayer = dynamic_cast<const TerrainLayer*>(parentPass.visibleLayer());
-                        bool keyInLegalRange = true;
-                        // If this is a terrain layer, make sure it's in the legal range so we don't inherit a parent
-                        // when we shouldn't be displaying it b/c we are a level higher than it's configured max level.
-                        if (terrainLayer)
-                        {
-                            keyInLegalRange = terrainLayer->isKeyInLegalRange(this->getKey());
-                        }
-
-                        if (parentSampler._texture.valid() && (!terrainLayer || keyInLegalRange))
+                        if (parentSampler._texture.valid() && passInLegalRange(parentPass))
                         {
                             // set the parent-color texture to the parent's color texture
                             // and scale/bias the matrix.
@@ -920,15 +915,18 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         else
         {
             // Pass exists in the parent node, but not in this node, so add it now.
-            myPass = &_renderModel.addPass();
-            *myPass = parentPass;
-
-            for (unsigned s = 0; s < myPass->samplers().size(); ++s)
+            if (passInLegalRange(parentPass))
             {
-                Sampler& sampler = myPass->samplers()[s];
-                sampler._matrix.preMult(scaleBias[quadrant]);
+                myPass = &_renderModel.addPass();
+                *myPass = parentPass;
+
+                for (unsigned s = 0; s < myPass->samplers().size(); ++s)
+                {
+                    Sampler& sampler = myPass->samplers()[s];
+                    sampler._matrix.preMult(scaleBias[quadrant]);
+                }
+                ++changes;
             }
-            ++changes;
         }
     }
 
@@ -978,6 +976,14 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     {
         //OE_INFO << LC << _key.str() << ": refreshInheritedData, stopped short.\n";
     }
+}
+
+bool
+TileNode::passInLegalRange(const RenderingPass& pass) const
+{
+    return 
+        pass.terrainLayer() == 0L ||
+        pass.terrainLayer()->isKeyInLegalRange(getKey());
 }
 
 void

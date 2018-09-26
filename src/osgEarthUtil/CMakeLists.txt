@@ -45,7 +45,6 @@ SET(HEADERS_ROOT
     MouseCoordsTool
     MultiElevationLayer
     Ocean
-    PolyhedralLineOfSight
     RadialLineOfSight
     RTTPicker
     Shaders
@@ -135,7 +134,6 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
     Ocean.cpp
-    PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     RTTPicker.cpp
     Shadowing.cpp

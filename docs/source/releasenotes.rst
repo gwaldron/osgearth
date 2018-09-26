@@ -14,7 +14,7 @@ Version 2.10 (TBD 2018)
 * Prototype support for ECI reference frames
 * Support for "new" osgText implementation in VirtualProgram framework
 * New ClusterNode utility class for clustering proximite objects
-* Removed deprecations: MaskNode, Profiler, StateSetLOD, TileKeyDataStore, WrapperLayer, MarkerResource, MarkerSymbol, StencilVolumeNode, TritonNode, AnnotationEvents, some CullingUtils objects
+* Removed deprecations: MaskNode, Profiler, StateSetLOD, TileKeyDataStore, WrapperLayer, MarkerResource, MarkerSymbol, StencilVolumeNode, TritonNode, AnnotationEvents, PolyhedralLineOfSight, some CullingUtils objects
 
 Version 2.9 (February 2018)
 ---------------------------

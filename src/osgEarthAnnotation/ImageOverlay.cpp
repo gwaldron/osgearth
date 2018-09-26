@@ -64,8 +64,10 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_ImageOverlay_texcoord; \n"
         "uniform sampler2D oe_ImageOverlay_tex; \n"
+        "uniform float oe_ImageOverlay_alpha; \n"
         "void oe_ImageOverlay_FS(inout vec4 color) { \n"
-        "    color = texture(oe_ImageOverlay_tex, oe_ImageOverlay_texcoord); \n"
+        "    color = texture(oe_ImageOverlay_tex, oe_ImageOverlay_texcoord);\n"
+        "    color.a *= oe_ImageOverlay_alpha; \n"
         "} \n";
 
 }
@@ -74,7 +76,7 @@ namespace
 
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
 
-osg::ref_ptr<osg::StateSet> ImageOverlay::_overlayStateSet;
+osg::ref_ptr<VirtualProgram> ImageOverlay::_program;
 
 ImageOverlay::ImageOverlay(const Config& conf, const osgDB::Options* readOptions) :
 AnnotationNode(conf, readOptions),
@@ -235,24 +237,26 @@ ImageOverlay::construct()
     d->setDrapingEnabled(*_draped);
     addChild( d );
     
-    if (_overlayStateSet.valid() == false)
+    if (!_program.valid())
     {
         static Threading::Mutex mutex;
         mutex.lock();
-        if (_overlayStateSet.valid() == false)
+        if (_program.valid() == false)
         {
-            _overlayStateSet = new osg::StateSet();
-            VirtualProgram* vp = VirtualProgram::getOrCreate(_overlayStateSet.get());
-            vp->setFunction("oe_ImageOverlay_VS", imageVS, ShaderComp::LOCATION_VERTEX_MODEL);
-            vp->setFunction("oe_ImageOverlay_FS", imageFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
-            _overlayStateSet->addUniform(new osg::Uniform("oe_ImageOverlay_tex", 0));
-            
-            _overlayStateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+            _program = new VirtualProgram;
+            _program->setInheritShaders(true);
+            _program->setFunction("oe_ImageOverlay_VS", imageVS, ShaderComp::LOCATION_VERTEX_MODEL);
+            _program->setFunction("oe_ImageOverlay_FS", imageFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
         }
         mutex.unlock();
     }
+
     _root = new osg::Group();
-    _root->setStateSet(_overlayStateSet.get());
+    osg::StateSet *ss = _root->getOrCreateStateSet();
+    ss->setAttributeAndModes(_program.get(), osg::StateAttribute::ON);
+    ss->addUniform(new osg::Uniform("oe_ImageOverlay_tex", 0));
+    ss->addUniform(new osg::Uniform("oe_ImageOverlay_alpha", *_alpha));
+    ss->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     d->addChild( _root );
 
     ADJUST_EVENT_TRAV_COUNT(this, 1);
@@ -428,11 +432,6 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
     if ( verts->getVertexBufferObject() )
         verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
-    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
-    (*colors)[0] = osg::Vec4(1,1,1,*_alpha);
-
-    geometry->setColorArray( colors );
-
     GLushort tris[6] = { 0, 1, 2,
         0, 2, 3
     };        
@@ -546,7 +545,7 @@ ImageOverlay::setAlpha(float alpha)
     if (*_alpha != alpha)
     {
         _alpha = osg::clampBetween(alpha, 0.0f, 1.0f);
-        dirty();
+        _root->getOrCreateStateSet()->getOrCreateUniform("oe_ImageOverlay_alpha", osg::Uniform::FLOAT)->set(*_alpha);
     }
 }
 

@@ -24,6 +24,7 @@
 #include <osgEarth/Units>
 #include <osgEarth/URI>
 #include <osgEarth/Terrain>
+#include <osgEarth/VirtualProgram>
 
 #include <osgEarthFeatures/Feature>
 
@@ -190,7 +191,7 @@ namespace osgEarth { namespace Annotation
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }
 
     private:
-        static osg::ref_ptr<osg::StateSet> _overlayStateSet;
+        static osg::ref_ptr<VirtualProgram> _program;
     };
 
 } } // namespace osgEarth::Annotation

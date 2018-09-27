@@ -215,40 +215,6 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     return good;
 }
 
-#if 0 // removing, pretty sure doesn't work properly -gw
-bool
-Terrain::getWorldCoordsUnderMouse(osg::View* view,
-                                  float x, float y,
-                                  osg::Vec3d& out_coords,
-                                  osg::ref_ptr<osg::Node>& out_node ) const
-{
-    osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
-    if ( !view2 || !_graph.valid() )
-        return false;
-
-    osgUtil::LineSegmentIntersector::Intersections results;
-
-    osg::NodePath path;
-    path.push_back( _graph.get() );
-
-    if ( view2->computeIntersections( x, y, path, results ) )
-    {
-        // find the first hit under the mouse:
-        osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-        out_coords = first.getWorldIntersectPoint();
-        for( osg::NodePath::reverse_iterator j = first.nodePath.rbegin(); j != first.nodePath.rend(); ++j ) {
-            if ( !(*j)->getName().empty() ) {
-                out_node = (*j);
-                break;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-#endif
-
-
 void
 Terrain::addTerrainCallback( TerrainCallback* cb )
 {

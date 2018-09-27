@@ -2542,27 +2542,7 @@ EarthManipulator::pan( double dx, double dy )
                 _centerRotation = _centerRotation * pan_rotation;
                 _previousUp = new_localUp;
             }
-
-#if 0
-            else
-            {
-                //OE_DEBUG<<"New up orientation nearly inline - no need to rotate"<<std::endl;
-            }
-
-            double new_azim;
-            getEulerAngles( _rotation, &new_azim, 0L );
-            double delta_azim = new_azim - old_azim;
-
-            osg::Quat q;
-            q.makeRotate( delta_azim, new_localUp );
-            if ( !q.zeroRotation() )
-            {
-                _centerRotation = _centerRotation * q;
-            }
-#endif
         }
-
-        //recalculateLocalPitchAndAzimuth();
     }
     else
     {

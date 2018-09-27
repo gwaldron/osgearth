@@ -314,7 +314,7 @@ PlaceNode::compile()
         _geode->addChild( _textDrawable );
     }
 
-#if 0
+#if 0 // test a drop line
     LineDrawable* line = new LineDrawable(GL_LINES);
     line->pushVertex(osg::Vec3(0,0,0));
     line->pushVertex(osg::Vec3(0,0,-100000));

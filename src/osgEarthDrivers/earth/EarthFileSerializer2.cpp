@@ -437,23 +437,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             // nop - handled earlier
         }
 
-#if 0
-        else if ( i->key() == "image" )
-        {
-            addImageLayer( *i, map );
-        }
-
-        else */if ( i->key() == "model" )
-        {
-            addModelLayer( *i, map );
-        }
-
-        else if ( i->key() == "mask" )
-        {
-            addMaskLayer( *i, map );
-        }
-#endif
-
         else if ( i->key() == "external" || i->key() == "extensions" )
         {
             externalConfig = *i;
@@ -463,7 +446,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
                 Extension* extension = loadExtension(*e);
                 if (extension)
                     extensions.push_back(extension);
-                //addExtension( *e, mapNode.get() );
             }
         }
 

@@ -160,8 +160,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         -1.0f);
 
     // initialize all the per-tile uniforms the shaders will need:
-    float start = (float)context->getSelectionInfo().visParameters(_key.getLOD())._fMorphStart;
-    float end   = (float)context->getSelectionInfo().visParameters(_key.getLOD())._fMorphEnd;
+    float start = (float)context->getSelectionInfo().getLOD(_key.getLOD())._morphStart;
+    float end   = (float)context->getSelectionInfo().getLOD(_key.getLOD())._morphEnd;
     float one_by_end_minus_start = end - start;
     one_by_end_minus_start = 1.0f/one_by_end_minus_start;
     _morphConstants.set( end * one_by_end_minus_start, one_by_end_minus_start );
@@ -361,7 +361,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     {
         if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
         {
-            float range = selectionInfo.visParameters(currLOD+1)._visibilityRange;
+            float range = selectionInfo.getLOD(currLOD+1)._visibilityRange;
 #if 1
             // slightly slower than the alternate block below, but supports a user overriding
             // CullVisitor::getDistanceToViewPoint -gw
@@ -1003,7 +1003,7 @@ TileNode::load(TerrainCuller* culler)
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
-    float maxRange = si.visParameters(0)._visibilityRange;
+    float maxRange = si.getLOD(0)._visibilityRange;
     float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority

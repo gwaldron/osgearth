@@ -10,7 +10,8 @@
         <styles>
             <style type="text/css">
                 points {
-                   model: "../data/red_flag.osg.2500.scale";
+                   model: "../data/red_flag.osg";
+                   model-scale: 2500;
                 }                                            
             </style>
         </styles>   

@@ -84,12 +84,6 @@ void RESTResponse::setServiceURL( const std::string& serviceURL )
     _serviceURL = serviceURL;
 }
 
-bool RESTResponse::getFolder(const std::string& folder, RESTResponse& response ) const
-{
-    std::string folderURL = _serviceURL + "/" + folder;
-    return ServiceReader::read(folderURL, 0, response );
-}
-
 /***************************************************************************************/
 
 ServiceReader::ServiceReader()
@@ -105,12 +99,12 @@ ServiceReader::~ServiceReader()
 }
 
 bool 
-ServiceReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options, RESTResponse& response )
+ServiceReader::read( const URI& location, const osgDB::Options* options, RESTResponse& response )
 {
-    response.setServiceURL( location );
-    std::string serviceLocation = location + "?f=json&pretty=true";
+    response.setServiceURL( location.full() );
+    std::string serviceLocation = location.full() + "?f=json&pretty=true";
 
-    ReadResult r = URI(serviceLocation).readString();
+    ReadResult r = URI(serviceLocation, location.context()).readString();
     if ( r.failed() )
     {
         OE_WARN << "Failed to read ArcGIS Services tile map file from " << serviceLocation << std::endl;

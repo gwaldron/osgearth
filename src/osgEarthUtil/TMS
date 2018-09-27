@@ -36,6 +36,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Common>
 #include <osgEarth/DateTime>
+#include <osgEarth/URI>
 
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -434,7 +435,7 @@ namespace osgEarth { namespace Util { namespace TMS
     class OSGEARTHUTIL_EXPORT TileMapReaderWriter
     {
     public:
-        static TileMap* read( const std::string &location, const osgDB::ReaderWriter::Options* options );
+        static TileMap* read( const URI& location, const osgDB::ReaderWriter::Options* options );
         static TileMap* read( std::istream &in );
         static TileMap* read( const Config& conf );
 

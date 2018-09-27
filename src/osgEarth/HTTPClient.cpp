@@ -1293,6 +1293,13 @@ HTTPClient::doGet(const HTTPRequest&    request,
             << url << "\" (" << DateTime(filetime).asRFC1123() << ") t="
             << std::setprecision(4) << response.getDuration() << "s" << std::endl;
 
+        for(HTTPRequest::Parameters::const_iterator itr = request.getHeaders().begin();
+            itr != request.getHeaders().end(); 
+            ++itr)
+        {
+            OE_NOTICE << LC << "    Header: " << itr->first << " = " << itr->second << std::endl;
+        }
+
         {
             Threading::ScopedMutexLock lock(s_HTTP_DEBUG_mutex);
             s_HTTP_DEBUG_request_count++;

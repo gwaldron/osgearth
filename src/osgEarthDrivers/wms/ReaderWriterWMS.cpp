@@ -116,7 +116,7 @@ public:
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
+        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, dbOptions );
         if ( !capabilities.valid() )
         {
             return Status::Error( Status::ResourceUnavailable, "Unable to read WMS GetCapabilities." );
@@ -228,7 +228,7 @@ public:
         URI tsUrl = _options.tileServiceUrl().value();
         if ( tsUrl.empty() )
         {
-            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService") );
+            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService"), tsUrl.context());
         }
 
         OE_INFO << LC << "Testing for JPL/TileService at " << tsUrl.full() << std::endl;
@@ -305,7 +305,7 @@ public:
         }
 
         // Try to get the image first
-        out_response = URI( uri ).readImage( _dbOptions.get(), progress);
+        out_response = URI(uri, _options.url()->context()).readImage( _dbOptions.get(), progress);
 
         if ( out_response.succeeded() )
         {

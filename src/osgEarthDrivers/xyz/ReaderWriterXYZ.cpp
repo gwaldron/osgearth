@@ -90,8 +90,7 @@ public:
       }
 
 
-      osg::Image* createImage(const TileKey&     key,
-          ProgressCallback*  progress )
+      osg::Image* createImage(const TileKey& key, ProgressCallback*  progress )
       {
           unsigned x, y;
           key.getTileXY( x, y );
@@ -141,8 +140,7 @@ public:
           return _format;
       }
 
-      osg::HeightField* createHeightField( const TileKey&        key,
-          ProgressCallback*     progress)
+      osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress)
       {
           // MapBox encoded elevation PNG.
           // https://www.mapbox.com/blog/terrain-rgb/

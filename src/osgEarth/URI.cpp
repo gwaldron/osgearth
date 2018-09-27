@@ -236,6 +236,47 @@ URI::isRemote() const
     return osgDB::containsServerAddress( _fullURI );
 }
 
+Config
+URI::getConfig() const
+{
+    Config conf("uri", base());
+    conf.set("option_string", _optionString);
+    conf.setReferrer(context().referrer());
+    conf.setIsLocation(true);
+
+    const Headers& headers = context().getHeaders();
+    if (!headers.empty())
+    {
+        Config headersconf("headers");
+        for(Headers::const_iterator i = headers.begin(); i != headers.end(); ++i)
+        {
+            if (!i->first.empty() && !i->second.empty())
+            {
+                headersconf.add(Config(i->first, i->second));
+            }
+        }
+        conf.add(headersconf);
+    }
+
+    return conf;
+}
+
+void
+URI::mergeConfig(const Config& conf)
+{    
+    conf.get("option_string", _optionString);
+
+    const ConfigSet headers = conf.child("headers").children();
+    for (ConfigSet::const_iterator i = headers.begin(); i != headers.end(); ++i)
+    {
+        const Config& header = *i;
+        if (!header.key().empty() && !header.value().empty())
+        {
+            _context.addHeader(header.key(), header.value());
+        }
+    }
+}
+
 namespace
 {
     // convert an osgDB::ReaderWriter::ReadResult to an osgEarth::ReadResult

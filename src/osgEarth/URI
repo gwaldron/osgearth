@@ -266,19 +266,9 @@ namespace osgEarth
 
     public: // config methods
 
-        Config getConfig() const
-        {
-            Config conf("uri", base());
-            conf.set("option_string", _optionString);
-            conf.setReferrer( context().referrer() );
-            conf.setIsLocation( true );
-            return conf;
-        }
+        Config getConfig() const;
 
-        void mergeConfig(const Config& conf)
-        {
-            conf.get("option_string", _optionString);
-        }
+        void mergeConfig(const Config& conf);
 
     public: // Static convenience methods
 
@@ -437,13 +427,16 @@ namespace osgEarth
 
     template<> inline
     bool Config::get<URI>( const std::string& key, optional<URI>& output ) const {
-        if ( hasValue(key) ) {
-            output = URI( value(key), referrer(key) );
-            output->mergeConfig(*this);
-            return true;
+        if ( hasChild(key) ) {
+            const Config& uriconf = child(key);
+            if (!uriconf.value().empty()) {
+                output = URI(uriconf.value(), referrer());
+                output->mergeConfig(uriconf);
+                return true;
+            }
+            else return false;
         }
-        else
-            return false;
+        else return false;
     }
 
     // Config specialization for URIAliasMap

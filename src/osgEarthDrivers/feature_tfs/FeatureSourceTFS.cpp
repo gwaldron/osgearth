@@ -288,7 +288,7 @@ public:
             return 0L;
 
         OE_DEBUG << LC << url << std::endl;
-        URI uri(url);
+        URI uri(url, _options.url()->context());
 
         // read the data:
         ReadResult r = uri.readString(_readOptions.get(), progress);

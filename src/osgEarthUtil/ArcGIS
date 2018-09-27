@@ -28,6 +28,7 @@
 #include <osg/Referenced>
 #include <osg/ref_ptr>
 #include <osgEarth/Common>
+#include <osgEarth/URI>
 
 #include <osgDB/ReaderWriter>
 #include <osg/Version>
@@ -79,8 +80,6 @@ namespace osgEarth { namespace Util { namespace ArcGIS {
         const std::string& getCurrentVersion() const;
         void setCurrentVersion( const std::string& currentVersion);
 
-        bool getFolder(const std::string& folder, RESTResponse& response ) const;
-
         const std::string& getServiceURL() const;
         void setServiceURL( const std::string& serviceURL );
 
@@ -94,7 +93,7 @@ namespace osgEarth { namespace Util { namespace ArcGIS {
     class OSGEARTHUTIL_EXPORT ServiceReader
     {
     public:
-        static bool read( const std::string &location, const osgDB::ReaderWriter::Options* options, RESTResponse& response );    
+        static bool read( const URI &location, const osgDB::Options* options, RESTResponse& response );    
         static bool read( const Config& conf,  RESTResponse& response );
 
     private:

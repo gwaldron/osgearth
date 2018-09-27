@@ -135,12 +135,12 @@ WMSCapabilities::getLayerByName(const std::string &name)
 }
 
 WMSCapabilities* 
-WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
+WMSCapabilitiesReader::read( const URI& location, const osgDB::ReaderWriter::Options* options )
 {
     WMSCapabilities *caps = NULL;
-    if ( osgDB::containsServerAddress( location ) )
+    if (location.isRemote())
     {
-        ReadResult rr = URI(location).readString( options );
+        ReadResult rr = location.readString( options );
         if ( rr.succeeded() )
         {
             std::istringstream in( rr.getString() );
@@ -149,9 +149,9 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
     }
     else
     {
-        if ((osgDB::fileExists(location)) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
+        if ((osgDB::fileExists(location.full())) && (osgDB::fileType(location.full()) == osgDB::REGULAR_FILE))
         {
-            std::ifstream in( location.c_str() );
+            std::ifstream in( location.full().c_str() );
             caps = read( in );
         }
     }

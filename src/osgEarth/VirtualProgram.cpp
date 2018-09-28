@@ -291,12 +291,18 @@ namespace
     }
 
 
-    void parseShaderForMerging( const std::string& source, unsigned& version, std::string& subversion, HeaderMap& precisions, HeaderMap& headers, std::stringstream& body )
+    void parseShaderForMerging( const std::string& source, unsigned& version, std::string& subversion, HeaderMap& extensions, HeaderMap& precisions, HeaderMap& defblocks, HeaderMap& structs, HeaderMap& headers, HeaderMap& deffuncs, std::stringstream& body )
     {
     
         // types we consider declarations
-        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "bool", "int", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp", "struct", "attribute", "#extension", "#define"};
+        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "flat", "bool", "int", "uint", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp", "attribute", "#extension", "#define"};
         std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
+        
+        // store any structs in this as they need to be decalred first
+        std::string structkeyword = "struct";
+        std::string extensionkeyword = "#extension";
+        std::string startdefsarray[] = {"#if", "#ifdef" };
+        std::vector<std::string> startdefs (startdefsarray, startdefsarray + sizeof(startdefsarray) / sizeof(startdefsarray[0]) );
         
         // break into lines:
         StringVector lines;
@@ -318,11 +324,16 @@ namespace
                 indent -= std::count(line.begin(), line.end(), '}');
                 
                 // we say it's a declaration if it starts with one of the dectyps, has a ; at the end and is in the global scope
-                bool isdec = (std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line[line.size()-1] == ';' && indent == 0) || (tokens[0] == "#extension" || tokens[0] == "#define");
+                bool isdec = (std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line[line.size()-1] == ';' && indent == 0) || (tokens[0] == "#define");
                 
                 // discard forward declarations of functions, we know it's a declaration so just see if it has brackets (should be safe)
                 bool isfunc = isdec && (line.find("(") != std::string::npos && line.find(")") != std::string::npos);
                 if(isfunc) continue;
+                
+                // is it a struct decleration
+                bool isstruct = tokens[0] == structkeyword && indent == 0;
+                bool isext = tokens[0] == extensionkeyword && indent == 0;
+                bool isdefblock = std::find(startdefs.begin(), startdefs.end(), tokens[0]) != startdefs.end() && indent == 0;
 
                 if (tokens[0] == "#version")
                 {
@@ -352,17 +363,80 @@ namespace
                     if(currentlevel == "mediump" && tokens[1] == "highp") currentlevel = tokens[1];
                 }
 
-                else if (isdec
-                    /*tokens[0] == "#extension"   ||
-                    tokens[0] == "#define"      ||
-                    tokens[0] == "precision"    ||
-                    tokens[0] == "struct"       ||
-                    tokens[0] == "varying"      ||
-                    tokens[0] == "uniform"      ||
-                    tokens[0] == "attribute"*/)
+                else if (isdec)
                 {
-                    std::string& header = headers[line];
-                    header = line;
+                    if(headers.find(line) == headers.end())
+                    {
+                        std::string& header = headers[line];
+                        header = line;
+                    }
+                }
+
+                else if (isext)
+                {
+                    std::string& extline = extensions[line];
+                    extline = line;
+                }
+
+                else if(isstruct)
+                {
+                    // scan forward copying all lines till we hit the closing }; of the struct
+                    std::string& structstr = structs[tokens[1]];
+                    while ((*line_iter) != "};") {
+                        structstr += (*line_iter) + "\n";
+                        line_iter++;
+                    }
+                    structstr += "};\n";
+                }
+                
+                else if(isdefblock)
+                {
+                    // san forward copying all lines till we hit the closing endif
+                    
+                    bool containsext = false;
+                    bool containsfunc = false;
+                    int defindent = 1;
+                    std::string blocktr = "";
+                    while(defindent > 0)
+                    {
+                        blocktr += (*line_iter) + "\n";
+                        line_iter++;
+                        std::string defline = trimAndCompress(*line_iter);
+                        if(defline.size() > 0)
+                        {
+                            StringVector deflinetokens;
+                            StringTokenizer( defline, deflinetokens, " \t", "", false, true );
+                            
+                            bool deflineisdec = (std::find(dectypes.begin(), dectypes.end(), deflinetokens[0]) != dectypes.end() && indent == 0);
+                
+                            // discard forward declarations of functions, we know it's a declaration so just see if it has brackets (should be safe)
+                            bool deflineisfunc = deflineisdec && (defline.find("(") != std::string::npos && defline.find(")") != std::string::npos && defline[defline.size()-1] != ';' );
+                            
+                            if(deflineisfunc) deflineisdec = false;
+                            
+                            if(deflinetokens[0] == extensionkeyword) containsext = true;
+                            if(deflineisfunc) containsfunc = true;
+                            if(deflineisdec)
+                            {
+                                // if the var decleration is inside  a def block endsure it's not added to headers
+                                std::string& header = headers[defline];
+                                header = "";
+                            }
+                            
+                            if(std::find(startdefs.begin(), startdefs.end(), deflinetokens[0]) != startdefs.end()) defindent++;
+                            if(deflinetokens[0] == "#endif")
+                            {
+                                defindent--;
+                                if(defindent == 0)
+                                {
+                                    blocktr += "#endif\n";
+                                }
+                            }
+                        }
+                    }
+                    
+                    std::string& defblock = containsext ? extensions[tokens[1]] : (containsfunc ? deffuncs[tokens[1]] : defblocks[tokens[1]]);
+                    defblock += blocktr; // plus equals for now as could have multiple if defs with same arg / token[1]
                 }
 
                 else
@@ -374,7 +448,11 @@ namespace
         
 #if defined(OSG_GLES3_AVAILABLE)
         // just force gles 3 to use correct version number as shaders in earth files might include a version
+    #if __ANDROID__
+        version = 310;
+    #else
         version = 300;
+    #endif
         subversion = "es";
 #endif
     }
@@ -500,14 +578,22 @@ namespace
         {
             unsigned          vertVersion = 0;
             std::string       vertSubversion = "";
+            HeaderMap         vertExtensions;
             HeaderMap         vertPrecisions;
+            HeaderMap         vertDefblocks;
+            HeaderMap         vertStructs;
             HeaderMap         vertHeaders;
+            HeaderMap         vertDeffuncs;
             std::stringstream vertBody;
 
             unsigned          fragVersion = 0;
             std::string       fragSubversion = "";
+            HeaderMap         fragExtensions;
             HeaderMap         fragPrecisions;
+            HeaderMap         fragDefblocks;
+            HeaderMap         fragStructs;
             HeaderMap         fragHeaders;
+            HeaderMap         fragDeffuncs;
             std::stringstream fragBody;
 
             // parse the shaders, combining header lines and finding the highest version:
@@ -518,11 +604,11 @@ namespace
                 {
                     if ( s->getType() == osg::Shader::VERTEX )
                     {
-                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertSubversion, vertPrecisions, vertHeaders, vertBody );
+                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertSubversion, vertExtensions, vertPrecisions, vertDefblocks, vertStructs, vertHeaders, vertDeffuncs, vertBody );
                     }
                     else if ( s->getType() == osg::Shader::FRAGMENT )
                     {
-                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragSubversion, fragPrecisions, fragHeaders, fragBody );
+                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragSubversion, fragExtensions, fragPrecisions, fragDefblocks, fragStructs, fragHeaders, fragDeffuncs, fragBody );
                     }
                 }
             }
@@ -538,14 +624,30 @@ namespace
                 vertShaderBuf << "\n";
             }
 
+#if __ANDROID__
+            vertShaderBuf << "#extension GL_EXT_shader_io_blocks : require\n";
+#endif
+            for( HeaderMap::const_iterator h = vertExtensions.begin(); h != vertExtensions.end(); ++h )
+                vertShaderBuf << h->second << "\n";
+
             if(vertPrecisions.size() > 0) {
                 for(HeaderMap::iterator pitr = vertPrecisions.begin(); pitr != vertPrecisions.end(); ++pitr) {
                     vertShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
                 }
             }
+            
+            for( HeaderMap::const_iterator h = vertDefblocks.begin(); h != vertDefblocks.end(); ++h )
+                vertShaderBuf << h->second << "\n";
+            
+            for( HeaderMap::const_iterator h = vertStructs.begin(); h != vertStructs.end(); ++h )
+                vertShaderBuf << h->second << "\n";
 
             for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
                 vertShaderBuf << h->second << "\n";
+            
+            for( HeaderMap::const_iterator h = vertDeffuncs.begin(); h != vertDeffuncs.end(); ++h )
+                vertShaderBuf << h->second << "\n";
+            
             vertShaderBuf << vertBodyText << "\n";
             vertBodyText = vertShaderBuf.str();
 
@@ -562,18 +664,36 @@ namespace
             }
 
 #if defined(OSG_GLES3_AVAILABLE)
+    #if __ANDROID__
+            fragShaderBuf << "#extension GL_EXT_shader_io_blocks : require\n";
+    #endif
+
             // ensure there's a default for floats in the frag shader
             std::string& defaultFragFloat = fragPrecisions["float;"];
             if(defaultFragFloat.size() == 0) defaultFragFloat = "highp";
 #endif
+
+            for( HeaderMap::const_iterator h = fragExtensions.begin(); h != fragExtensions.end(); ++h )
+                fragShaderBuf << h->second << "\n";
+
             if(fragPrecisions.size() > 0) {
                 for(HeaderMap::iterator pitr = fragPrecisions.begin(); pitr != fragPrecisions.end(); ++pitr) {
                     fragShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
                 }
             }
+            
+            for( HeaderMap::const_iterator h = fragDefblocks.begin(); h != fragDefblocks.end(); ++h )
+                fragShaderBuf << h->second << "\n";
+            
+            for( HeaderMap::const_iterator h = fragStructs.begin(); h != fragStructs.end(); ++h )
+                fragShaderBuf << h->second << "\n";
 
             for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
                 fragShaderBuf << h->second << "\n";
+            
+            for( HeaderMap::const_iterator h = fragDeffuncs.begin(); h != fragDeffuncs.end(); ++h )
+                fragShaderBuf << h->second << "\n";
+            
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
 

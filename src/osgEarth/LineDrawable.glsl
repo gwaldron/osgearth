@@ -170,7 +170,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 
         // flip the vector so stippling always proceedes from left to right
         // regardless of the direction of the segment
-        stippleDir = normalize(stippleDir.x < 0? -stippleDir : stippleDir);
+        stippleDir = normalize(stippleDir.x < 0.0 ? -stippleDir : stippleDir);
 
         // calculate the rotation angle that will project the
         // fragment coord onto the X-axis for stipple pattern sampling.
@@ -226,7 +226,7 @@ void oe_LineDrawable_Stippler_FS(inout vec4 color)
             * coord;
 
         // sample the stippling pattern (16-bits repeating)
-        int ci = int(mod(coordProj.x, 16 * oe_GL_LineStippleFactor)) / oe_GL_LineStippleFactor;
+        int ci = int(mod(coordProj.x, 16.0 * float(oe_GL_LineStippleFactor))) / oe_GL_LineStippleFactor;
         int pattern16 = 0xffff & (oe_GL_LineStipplePattern & (1 << ci));
         if (pattern16 == 0)
             discard; 
@@ -240,6 +240,6 @@ void oe_LineDrawable_Stippler_FS(inout vec4 color)
 #ifdef OE_LINE_SMOOTH
     // anti-aliasing
     float L = abs(oe_LineDrawable_lateral);
-    color.a = color.a * smoothstep(0, 1, 1.0-(L*L));
+    color.a = color.a * smoothstep(0.0, 1.0, 1.0-(L*L));
 #endif
 }

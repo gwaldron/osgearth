@@ -160,6 +160,6 @@ void atmos_vertex_main(inout vec4 VertexVIEW)
 
     // Transition from space to atmosphere
     atmos_renderFromSpace = 1.0 - clamp(
-        (atmos_fOuterRadius-atmos_fCameraHeight)/50000,
+        (atmos_fOuterRadius-atmos_fCameraHeight)/50000.0,
         0.0, 1.0 );
 }

@@ -132,7 +132,7 @@ using namespace osgEarth::Util;
 	traits->sharedContext = 0;
 	traits->setInheritedWindowPixelFormat = true;
     
-	osg::ref_ptr<osg::Referenced> windata = new osgViewer::GraphicsWindowIOS::WindowData(self.view, osgViewer::GraphicsWindowIOS::WindowData::PORTRAIT_ORIENTATION, scale);
+	osg::ref_ptr<osg::Referenced> windata = new osgViewer::GraphicsWindowIOS::WindowData(self.view, self, osgViewer::GraphicsWindowIOS::WindowData::PORTRAIT_ORIENTATION, scale);
 	traits->inheritedWindowData = windata;
     
 	// Create the Graphics Context

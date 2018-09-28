@@ -254,21 +254,6 @@ Registry::getSphericalMercatorProfile() const
 }
 
 const Profile*
-Registry::getCubeProfile() const
-{
-    if ( !_cube_profile.valid() )
-    {
-        GDAL_SCOPED_LOCK;
-
-        if ( !_cube_profile.valid() ) // double-check pattern
-        {
-            const_cast<Registry*>(this)->_cube_profile = new UnifiedCubeProfile();
-        }
-    }
-    return _cube_profile.get();
-}
-
-const Profile*
 Registry::getNamedProfile( const std::string& name ) const
 {
     if ( name == STR_GLOBAL_GEODETIC )
@@ -277,8 +262,6 @@ Registry::getNamedProfile( const std::string& name ) const
         return getGlobalMercatorProfile();
     else if ( name == STR_SPHERICAL_MERCATOR )
         return getSphericalMercatorProfile();
-    else if ( name == STR_CUBE )
-        return getCubeProfile();
     else
         return NULL;
 }

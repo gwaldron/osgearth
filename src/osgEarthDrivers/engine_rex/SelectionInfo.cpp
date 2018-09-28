@@ -17,95 +17,69 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "SelectionInfo"
-#include "SurfaceNode"
-#include "RexTerrainEngineOptions"
-
-#include <osgEarth/Profile>
-#include <osg/CullStack>
+#include <osgEarth/TileKey>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[SelectionInfo] "
 
-const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 0;
-const double   SelectionInfo::_fLodLowerBound   = 12.0;
-const double   SelectionInfo::_fMorphStartRatio = 0.66;
+const double SelectionInfo::_morphStartRatio = 0.66;
 
-// Reverse-engineers the LOD scale that is active in the cull visitor.
-// Why not just call getLODScale()? Because if someone (mak) overrides
-// CullVisitor::getDistanceToViewPoint(), they can alter the return value in
-// other ways. This function will detect that.
-float SelectionInfo::computeRangeScale(osg::NodeVisitor* nv) const
+const SelectionInfo::LOD&
+SelectionInfo::getLOD(unsigned lod) const
 {
-    osg::CullStack& cs = *dynamic_cast<osg::CullStack*>(nv);
-    const osg::Vec3 viewLocal = cs.getViewPointLocal();
-    osg::Vec3 viewVector = cs.getLookVectorLocal();
-    viewVector.normalize();
-    osg::Vec3 point = viewLocal + viewVector*visParameters(0)._visibilityRange;
-    float distance = nv->getDistanceToViewPoint(point, true);
-    return distance / visParameters(0)._visibilityRange;
-}
+    static SelectionInfo::LOD s_dummy;
 
-unsigned SelectionInfo::getLODForMorphing(bool isProjected)
-{
-    return (isProjected) ? 0 : _uiLODForMorphingRoundEarth;
-}
-
-VisParameters SelectionInfo::visParameters(unsigned lod) const
-{
-    if (lod-_uiFirstLOD>=_vecVisParams.size())
+    if (lod-_firstLOD >= _lods.size())
     {
         // note, this can happen if firstLOD() is set
         OE_DEBUG << LC <<"Index out of bounds"<<std::endl;
-        return VisParameters();
+        return s_dummy;
     }
-    return _vecVisParams[lod-_uiFirstLOD];
+    return _lods[lod-_firstLOD];
 }
 
-bool SelectionInfo::initialized(void) const
+void
+SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* profile, double mtrf)
 {
-    return _vecVisParams.size()>0;
-}
-
-void SelectionInfo::initialize(unsigned uiFirstLod, unsigned uiMaxLod, const Profile* profile, double mtrf)
-{
-    if (initialized())
+    if (getNumLODs() > 0)
     {
         OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;
         return;
     }
-    if (uiFirstLod>uiMaxLod)
+
+    if (firstLod > maxLod)
     {
         OE_INFO << LC <<"Error: Inconsistent First and Max LODs"<<std::endl;
         return;
     }
 
-    _uiFirstLOD = uiFirstLod;
+    _firstLOD = firstLod;
 
     double fLodNear = 0;
     float fRatio = 1.0;
 
-    _numLods = uiMaxLod+1u; // - uiFirstLod;
+    unsigned numLods = maxLod + 1u;
 
-    _vecVisParams.resize(_numLods);
+    _lods.resize(numLods);
 
-    for (unsigned lod = 0; lod <= uiMaxLod; ++lod)
+    for (unsigned lod = 0; lod <= maxLod; ++lod)
     {
         TileKey key(lod, 0, 0, profile);
         GeoExtent e = key.getExtent();
         GeoCircle c = e.computeBoundingGeoCircle();
         double range = c.getRadius() * mtrf * 2.0;
 
-        _vecVisParams[lod]._visibilityRange = range;
+        _lods[lod]._visibilityRange = range;
     }
     
-    fLodNear = 0;
-    double fPrevPos = fLodNear;
-    for (int i=(int)(_numLods-1); i>=0; --i)
+    double lodNear = 0;
+    double prevPos = lodNear;
+    for (int i=(int)(numLods-1); i>=0; --i)
     {
-        _vecVisParams[i]._fMorphEnd   = _vecVisParams[i]._visibilityRange;
-        _vecVisParams[i]._fMorphStart = fPrevPos + (_vecVisParams[i]._fMorphEnd - fPrevPos) * _fMorphStartRatio;
-        fPrevPos = _vecVisParams[i]._fMorphStart;
+        _lods[i]._morphEnd   = _lods[i]._visibilityRange;
+        _lods[i]._morphStart = prevPos + (_lods[i]._morphEnd - prevPos) * _morphStartRatio;
+        prevPos = _lods[i]._morphStart;
     }
 }

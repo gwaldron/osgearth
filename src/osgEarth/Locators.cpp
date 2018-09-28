@@ -86,7 +86,7 @@ GeoLocator::createForExtent( const GeoExtent& extent, const class MapInfo& map)
     // A locator will place the tile on the globe:
     GeoLocator* locator = extent.getSRS()->createLocator(
         extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(),
-        map.isPlateCarre() );
+        map.getSRS()->isPlateCarre() );
 
     if ( map.isGeocentric() )
         locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );

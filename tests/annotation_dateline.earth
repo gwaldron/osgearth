@@ -19,6 +19,7 @@ LINESTRING(140.385 35.765 0, 141.1 35.4917 3944.77, 142.163 35.1617 9645.92, 142
                 stroke:              #ffff00;
                 stroke-width:        3;
                 render-lighting:     false;
+                stroke-tessellation-size: 100km;
             </style>
         </feature>
 

@@ -48,7 +48,7 @@ osgEarth Sample - Annotations
         
         <circle name="draped circle">
             <position lat="34.051" long="-117.974"/>
-            <radius value="50" units="km"/>
+            <radius>50km</radius>
             <style type="text/css">
                 fill:               #ffff0080;
                 stroke:             #ffffff;
@@ -60,7 +60,7 @@ osgEarth Sample - Annotations
         
         <circle name="scene-clamped circle">
             <position lat="22.074" long="-159.606"/>
-            <radius value="1.2" units="km"/>
+            <radius>1.2km</radius>
             <style type="text/css">
                 stroke:             #ffffff;
                 stroke-width:       2px;
@@ -72,8 +72,8 @@ osgEarth Sample - Annotations
         
         <ellipse name="ellipse relative">
             <position lat="40" long="-100" hat="5000"/>
-            <radius_major value="50" units="km"/>
-            <radius_minor value="40" units="km"/>
+            <radius_major>50km</radius_major>
+            <radius_minor>40km</radius_minor>
             <style type="text/css">
                 fill: #ff00ff7f;
                 stroke: #ffffff;
@@ -83,8 +83,8 @@ osgEarth Sample - Annotations
         
         <ellipse name="ellipse extruded">
             <position lat="32" long="-100.0"/>
-            <radius_major value="50" units="km"/>
-            <radius_minor value="20" units="km"/>
+            <radius_major>50km</radius_major>
+            <radius_minor>20km</radius_minor>
             <style type="text/css">
                 fill:             #ff7f007f;
                 stroke:           #ff0000ff;

@@ -56,12 +56,6 @@ namespace osgEarth
         //! True if the map's visualization is geocentric
         bool isGeocentric() const { return _isGeocentric; }
 
-        //! @deprecated (always false)
-        bool isCube() const { return _isCube; }
-
-        //! True if the map's SRS is a plate carre projected profile
-        bool isPlateCarre() const { return _profile->getSRS()->isPlateCarre(); }
-
         //! True if the map's SRS is projected
         bool isProjectedSRS() const { return !isGeographicSRS(); }
 

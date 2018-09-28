@@ -272,7 +272,7 @@ namespace osgEarth
         /** Gets the geocentric reference system associated with this SRS' ellipsoid. */
         const SpatialReference* getGeocentricSRS() const;
 
-        //! @deprecated - call getGeocentricSRS() instead
+        //! @deprecated after 2.10 - call getGeocentricSRS() instead
         const SpatialReference* getECEF() const;
 
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */

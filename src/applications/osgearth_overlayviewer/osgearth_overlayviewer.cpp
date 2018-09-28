@@ -32,8 +32,6 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
-#include <osgEarthSymbology/Color>
 
 #define LC "[viewer] "
 
@@ -43,46 +41,8 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-static CheckBoxControl* s_cameraCheck;
-//static CheckBoxControl* s_overlayCheck;
-static CheckBoxControl* s_intersectionCheck;
-static CheckBoxControl* s_rttCheck;
-
 namespace
 {
-    void toggle(osg::Group* p, const std::string& name, bool onoff)
-    {
-        if (p->getNumChildren() > 1)
-        {
-            osg::Group* g = p->getChild(1)->asGroup();
-            for(unsigned i=0; i<g->getNumChildren(); ++i)
-            {
-                if ( g->getChild(i)->getName() == name )
-                {
-                    g->getChild(i)->setNodeMask( onoff ? ~0 : 0 );
-                    break;
-                }
-            }
-        }
-        else
-        {
-            OE_WARN << "No overlays to display / toggle." << std::endl;
-        }
-    }
-
-
-    struct Toggle : public ControlEventHandler
-    {
-        osg::Group* _g;
-        std::string _name;
-        Toggle(osg::Group* g, const std::string& name) : _g(g), _name(name) { }
-        void onValueChanged( Control* control, bool value )
-        {
-            toggle(_g, _name, value);
-        }
-    };
-
-
     // it's not used by osgEarth, but you can copy this code into a viewer app and
     // use it to visualize the various polyhedra created by the overlay decorator.
     // see the end of OverlayDecorator::cull for the dump types.
@@ -116,7 +76,9 @@ namespace
                     osg::Group* g0 = new osg::Group();
                     g->addChild( g0 );
                     osg::StateSet* g0ss = g0->getOrCreateStateSet();
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
                     g0ss->setAttributeAndModes(new osg::LineStipple(1, 0x000F), 1);
+#endif
                     g0->addChild( dump );
 
                     osg::Group* g1 = new osg::Group();
@@ -128,11 +90,6 @@ namespace
                     _parent->removeChildren(1, _parent->getNumChildren()-1);
                     _parent->addChild( g );
 
-                    toggle(_parent, "camera", s_cameraCheck->getValue());
-                    //toggle(_parent, "overlay", s_overlayCheck->getValue());
-                    toggle(_parent, "intersection", s_intersectionCheck->getValue());
-                    toggle(_parent, "rtt", s_rttCheck->getValue());
-
                     aa.requestRedraw();
                 }
             }
@@ -140,44 +97,6 @@ namespace
         }
     };
 }
-
-
-void
-setupOverlayView( osgViewer::View* view, osg::Group* parent, MapNode* mapNode )
-{
-    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
-
-    VBox* v = canvas->addControl(new VBox());
-    v->setBackColor( Color(Color::Black,0.75) );
-    {
-        HBox* camBox = v->addControl(new HBox());
-        {
-            camBox->addControl(s_cameraCheck = new CheckBoxControl(true, new Toggle(parent,"camera")));
-            camBox->addControl(new LabelControl("Camera", Color("#00ff00")));
-        }
-
-        //HBox* overlayBox = v->addControl(new HBox());
-        //{
-        //    overlayBox->addControl(s_overlayCheck = new CheckBoxControl(false, new Toggle(parent,"overlay")));
-        //    overlayBox->addControl(new LabelControl("Overlay", Color("#00ffff")));
-        //}
-
-        HBox* isectBox = v->addControl(new HBox());
-        {
-            isectBox->addControl(s_intersectionCheck = new CheckBoxControl(true, new Toggle(parent,"intersection")));
-            isectBox->addControl(new LabelControl("Intersection",Color("#ff7f00")));
-        }
-
-        HBox* rttBox = v->addControl(new HBox());
-        {
-            rttBox->addControl(s_rttCheck = new CheckBoxControl(true, new Toggle(parent,"rtt")));
-            rttBox->addControl(new LabelControl("RTT", Color("#ffff00")));
-        }
-    }
-    
-    view->addEventHandler( new PHDumper(mapNode, parent) );
-}
-
 
 int
 main(int argc, char** argv)
@@ -201,16 +120,13 @@ main(int argc, char** argv)
     EarthManipulator* em = new EarthManipulator();
     em->getSettings()->setMinMaxPitch(-90, 0);
     mainView->setCameraManipulator( em );
-    //mainView->setUpViewInWindow( 50, 50, 600, 600 );
     mainView->setUpViewInWindow( b, b, (width/2)-b*2, (height-b*4) );
     viewer.addView( mainView );
 
     osgViewer::View* overlayView = new osgViewer::View();
     overlayView->getCamera()->setNearFarRatio(0.00002);
-    //overlayView->getCamera()->setProjectionMatrixAsOrtho2D(-1,1,-1,1);
     overlayView->setCameraManipulator( new EarthManipulator() );
     
-    //overlayView->setUpViewInWindow( 700, 50, 600, 600 );
     overlayView->setUpViewInWindow( (width/2), b, (width/2)-b*2, (height-b*4) );
     overlayView->addEventHandler(new osgGA::StateSetManipulator(overlayView->getCamera()->getOrCreateStateSet()));
     viewer.addView( overlayView );
@@ -229,9 +145,8 @@ main(int argc, char** argv)
 
         osg::Group* group = new osg::Group();
         group->addChild( MapNode::get(node) );
-        overlayView->setSceneData( group );
-
-        setupOverlayView( overlayView, group, MapNode::get(node) );
+        overlayView->setSceneData( group );       
+        overlayView->addEventHandler( new PHDumper(MapNode::get(node), group) );
 
         return viewer.run();
     }

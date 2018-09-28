@@ -154,8 +154,10 @@ makeFrustumFromCamera( osg::Camera* camera )
     geode->addDrawable( geom );
 
     Lighting::set(geode->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-
+    
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     geode->getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(2.0f), 1);
+#endif
 
 
     // Create parent MatrixTransform to transform the view volume by
@@ -167,7 +169,9 @@ makeFrustumFromCamera( osg::Camera* camera )
     osg::Group* g0 = new osg::Group();
     g0->addChild(mt);
     g0->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     g0->getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(1, 0x000F), 1);
+#endif
     g0->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 
     osg::Group* g1 = new osg::Group();

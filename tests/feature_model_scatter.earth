@@ -23,9 +23,6 @@ is randomized, but it is randomized exactly the same way each time.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
-        <!-- Instancing enables GL's "DrawInstanced" support. -->             
-        <instancing>true</instancing>
-        
         <!-- The stylesheet will describe how to render the feature data. In this case
              we indicate model substitution with density-based scattering. The "density"
              units are instances-per-sqkm. -->

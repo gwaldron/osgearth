@@ -66,7 +66,7 @@ GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
 _maxGranularity_deg    ( 10.0 ),
 _mergeGeometry         ( true ),
 _clustering            ( false ),
-_instancing            ( false ),
+_instancing            ( true ),
 _ignoreAlt             ( false ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),

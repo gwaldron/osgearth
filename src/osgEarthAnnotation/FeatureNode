@@ -105,37 +105,8 @@ namespace osgEarth { namespace Annotation
          */
         void dirty();
 
-        //! @deprecated - backwards compatiblity
+        //! @deprecated backwards compatiblity (remove after 2.10)
         void init() { dirty(); }
-
-
-    //public: // older constructors that take a MapNode
-
-    //    /**
-    //     * Constructs a new FeatureNode from a single Feature and a MapNode.
-    //     * You can use this variant if you the FeatureNode will not be a
-    //     * descendant of the MapNode.
-    //     * NOTE: candidate for deprecation
-    //     */
-    //    FeatureNode(
-    //        MapNode* mapNode,
-    //        Feature* feature,
-    //        const Style& style = Style(),
-    //        const GeometryCompilerOptions& options = GeometryCompilerOptions(),
-    //        StyleSheet* styleSheet = 0);
-
-    //    /**
-    //     * Constructs a new FeatureNode from a FeatureList and a MapNode.
-    //     * You can use this variant if you the FeatureNode will not be a
-    //     * descendant of the MapNode.
-    //     * NOTE: candidate for deprecation
-    //     */
-    //    FeatureNode(
-    //        MapNode* mapNode,
-    //        const FeatureList& features,
-    //        const Style& style = Style(),
-    //        const GeometryCompilerOptions& options = GeometryCompilerOptions(),
-    //        StyleSheet* styleSheet = 0);
 
     public: // AnnotationNode
 

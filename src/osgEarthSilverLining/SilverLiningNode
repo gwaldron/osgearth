@@ -43,7 +43,7 @@ namespace osgEarth { namespace SilverLining
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 
-        // @deprecated Use SilverLining(const SilverLiningOptions&, Callback*)
+        // @deprecated Use SilverLining(const SilverLiningOptions&, Callback*) (remove after 2.10)
         SilverLiningNode(
             const osgEarth::SpatialReference* mapSRS,
             const SilverLiningOptions& options,

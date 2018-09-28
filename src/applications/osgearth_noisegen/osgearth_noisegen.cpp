@@ -48,7 +48,7 @@ int usage()
         "                  --out string         ; output filename\n"
         "                  [--frequency n]      ; default = 16\n"
         "                  [--octaves n]        ; default = 12\n"
-        ;
+        << std::endl;
     return -1;
 }
 /**

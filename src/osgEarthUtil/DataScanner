@@ -30,6 +30,7 @@ namespace osgEarth { namespace Util
 {
     /**
      * Scans local directories in search of image and elevation data.
+     * @deprecated (remove after 2.10)
      */
     class OSGEARTHUTIL_EXPORT DataScanner
     {

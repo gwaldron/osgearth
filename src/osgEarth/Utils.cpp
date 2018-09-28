@@ -23,17 +23,6 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler)
-{
-    osgViewer::View::EventHandlers::iterator itr = std::find(view->getEventHandlers().begin(), view->getEventHandlers().end(), handler);
-    if (itr != view->getEventHandlers().end())
-    {
-        view->getEventHandlers().erase(itr);
-    }
-}
-
-//------------------------------------------------------------------------
-
 #ifdef OE_HAVE_PIXEL_AUTO_TRANSFORM
 
 #undef LC

@@ -102,7 +102,7 @@ struct App
         osgEarth::Triton::TritonOptions tritonOptions;
         tritonOptions.user()        = "my_user_name";
         tritonOptions.licenseCode() = "my_license_code";
-        tritonOptions.maxAltitude() = 10000;
+        tritonOptions.maxAltitude() = 100000;
         tritonOptions.useHeightMap() = true;
 
         const char* ev_t = ::getenv("TRITON_PATH");
@@ -222,7 +222,7 @@ main(int argc, char** argv)
         viewer.setSceneData( node );
 
         s_app.map = MapNode::get( node )->getMap();
-        //s_app.addTriton();
+        s_app.addTriton();
 
         return viewer.run();
     }

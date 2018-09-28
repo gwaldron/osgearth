@@ -551,7 +551,7 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
 
         // for a projected feature, we're done. For a geocentric one, transform the polytope
         // into world (ECEF) space.
-        if ( srs->isGeographic() && !srs->isPlateCarre() )
+        if ( srs->isGeographic() )
         {
             const osg::EllipsoidModel* e = srs->getEllipsoid();
 

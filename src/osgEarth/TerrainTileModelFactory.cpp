@@ -377,13 +377,6 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
 
     if ( populated )
     {
-        // Treat Plate Carre specially by scaling the height values. (There is no need
-        // to do this with an empty heightfield)
-        if (map->getSRS()->isPlateCarre())
-        {
-            HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
-        }
-
         // cache it.
         if (_heightFieldCacheEnabled )
         {

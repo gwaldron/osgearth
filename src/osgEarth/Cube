@@ -121,9 +121,7 @@ namespace osgEarth
         /** dtor */
         virtual ~CubeSpatialReference();
 
-        virtual GeoLocator* createLocator(
-            double xmin, double ymin, double xmax, double ymax,
-            bool plate_carre =false) const;
+        virtual GeoLocator* createLocator(double xmin, double ymin, double xmax, double ymax) const;
 
         // CUBE is a projected coordinate system.
         virtual bool isGeographic() const { return false; }

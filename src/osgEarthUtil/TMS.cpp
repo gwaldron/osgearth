@@ -217,8 +217,7 @@ TileMap::createProfile() const
     }
 
     else if ( 
-        spatialReference->isGeographic()  && 
-        !spatialReference->isPlateCarre() &&
+        spatialReference->isGeographic() &&
         osg::equivalent(_minX, -180.) &&
         osg::equivalent(_maxX,  180.) &&
         osg::equivalent(_minY,  -90.) &&

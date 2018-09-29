@@ -443,9 +443,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                 dataExtent = DataExtent(ext, minLevel, maxLevel);                                
                 getDataExtents().push_back( dataExtent );
             }          
-        }
 
-        ++i;
+            ++i;
+        }
     }
 
     // If there is no profile set by the user or by a component, fall back

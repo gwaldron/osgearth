@@ -43,6 +43,14 @@ namespace osgEarth
         /** Opacity of the visible layer [0..1] */
         optional<float>& opacity() { return _opacity; }
         const optional<float>& opacity() const { return _opacity; }
+        
+        //! The initial minimum camera range at which this layer is visible.
+        optional<float>& minVisibleRange() { return _minRange; }
+        const optional<float>& minVisibleRange() const { return _minRange; }
+
+        //! The initial maximum camera range at which this layer is visible.
+        optional<float>& maxVisibleRange() { return _maxRange; }
+        const optional<float>& maxVisibleRange() const { return _maxRange; }
 
     public:
         virtual Config getConfig() const;
@@ -53,6 +61,8 @@ namespace osgEarth
         void setDefaults();       
         optional<bool> _visible;
         optional<float> _opacity;
+        optional<float> _minRange;
+        optional<float> _maxRange;
     };
 
 
@@ -60,6 +70,7 @@ namespace osgEarth
     {
         virtual void onVisibleChanged(class VisibleLayer* layer) { }
         virtual void onOpacityChanged(class VisibleLayer* layer) { }
+        virtual void onVisibleRangeChanged(class VisibleLayer* layer) { }
         typedef void (VisibleLayerCallback::*MethodPtr)(class VisibleLayer* layer);
     };
 
@@ -86,6 +97,14 @@ namespace osgEarth
         /** Opacity with which to draw this layer. */
         virtual void setOpacity(float value);
         float getOpacity() const;
+
+        //! Minimum camera range at which this image layer is visible (if supported)
+        float getMinVisibleRange() const;
+        void setMinVisibleRange( float minVisibleRange );
+        
+        //! Maximum camera range at which this image layer is visible (if supported)
+        float getMaxVisibleRange() const;
+        void setMaxVisibleRange( float maxVisibleRange );
 
     public: // Layer
 

@@ -32,6 +32,8 @@ in vec2 oe_splat_covtc;                     // coverage texture coords
 in float oe_splat_range;                    // distance from camera to vertex
 flat in float oe_splat_coverageTexSize;     // size of coverage texture
 
+in float oe_layer_rangeOpacity;
+
 // from SplatLayerFactory:
 uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
@@ -286,6 +288,8 @@ void oe_splat_simple(inout vec4 color)
     color = oe_splat_bilinear(tc, env);
 
     //color = mix(color, vec4(tc.s, tc.t, 0.0, 1.0), 0.5);
+
+    color.a *= oe_layer_rangeOpacity;
 }
 
 //............................................................................
@@ -349,4 +353,6 @@ void oe_splat_complex(inout vec4 color)
 #endif
     // uncomment to visualize slope, noise, etc.
     //color.rgba = vec4(env.noise.x,0,0,1);  
+
+    color.a *= oe_layer_rangeOpacity;
 }

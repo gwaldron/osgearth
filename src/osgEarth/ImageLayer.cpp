@@ -70,8 +70,6 @@ void
 ImageLayerOptions::setDefaults()
 {
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
-    _minRange.init( 0.0 );
-    _maxRange.init( FLT_MAX );
     _featherPixels.init( false );
     _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
@@ -91,8 +89,6 @@ void
 ImageLayerOptions::fromConfig(const Config& conf)
 {
     conf.get( "nodata_image",   _noDataImageFilename );
-    conf.get( "min_range",      _minRange );
-    conf.get( "max_range",      _maxRange );
     conf.get( "shared",         _shared );
     conf.get( "coverage",       _coverage );
     conf.get( "feather_pixels", _featherPixels);
@@ -135,8 +131,6 @@ ImageLayerOptions::getConfig() const
     Config conf = TerrainLayerOptions::getConfig();
 
     conf.set( "nodata_image",   _noDataImageFilename );
-    conf.set( "min_range",      _minRange );
-    conf.set( "max_range",      _maxRange );
     conf.set( "shared",         _shared );
     conf.set( "coverage",       _coverage );
     conf.set( "feather_pixels", _featherPixels );
@@ -364,32 +358,6 @@ ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
         ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
-}
-
-void
-ImageLayer::setMinVisibleRange( float minVisibleRange )
-{
-    options().minVisibleRange() = minVisibleRange;
-    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
-}
-
-float
-ImageLayer::getMinVisibleRange() const
-{
-    return options().minVisibleRange().get();
-}
-
-void
-ImageLayer::setMaxVisibleRange( float maxVisibleRange )
-{
-    options().maxVisibleRange() = maxVisibleRange;
-    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
-}
-
-float
-ImageLayer::getMaxVisibleRange() const
-{
-    return options().maxVisibleRange().get();
 }
 
 bool

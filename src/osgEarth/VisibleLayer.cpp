@@ -44,14 +44,18 @@ VisibleLayerOptions::setDefaults()
 {
     _visible.init( true );
     _opacity.init( 1.0f );
+    _minRange.init( 0.0 );
+    _maxRange.init( FLT_MAX );
 }
 
 Config
 VisibleLayerOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
-    conf.set("visible", _visible);
-    conf.set("opacity", _opacity);
+    conf.set( "visible", _visible);
+    conf.set( "opacity", _opacity);
+    conf.set( "min_range", _minRange );
+    conf.set( "max_range", _maxRange );
     return conf;
 }
 
@@ -59,7 +63,9 @@ void
 VisibleLayerOptions::fromConfig(const Config& conf)
 {
     conf.get( "visible", _visible );
-    conf.get("opacity", _opacity);
+    conf.get( "opacity", _opacity);
+    conf.get( "min_range", _minRange );
+    conf.get( "max_range", _maxRange );
 }
 
 void
@@ -164,6 +170,32 @@ float
 VisibleLayer::getOpacity() const
 {
     return options().opacity().get();
+}
+
+void
+VisibleLayer::setMinVisibleRange( float minVisibleRange )
+{
+    options().minVisibleRange() = minVisibleRange;
+    fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
+}
+
+float
+VisibleLayer::getMinVisibleRange() const
+{
+    return options().minVisibleRange().get();
+}
+
+void
+VisibleLayer::setMaxVisibleRange( float maxVisibleRange )
+{
+    options().maxVisibleRange() = maxVisibleRange;
+    fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
+}
+
+float
+VisibleLayer::getMaxVisibleRange() const
+{
+    return options().maxVisibleRange().get();
 }
 
 void

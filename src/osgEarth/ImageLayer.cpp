@@ -644,7 +644,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         ReadResult r = cacheBin->readImage(cacheKey, 0L);
         if ( r.succeeded() )
         {
-           series.write_message("successfully loaded %s:%s",getName(), cacheKey.c_str());
+           series.write_message("successfully loaded %s:%s",getName().c_str(), cacheKey.c_str());
            cachedImage = r.releaseImage();
             cachedImage->setName(cacheKey);
             ImageUtils::fixInternalFormat( cachedImage.get() );            

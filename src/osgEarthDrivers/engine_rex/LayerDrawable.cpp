@@ -62,10 +62,10 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
             ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
         if (ds._layerOpacityUL >= 0 && _visibleLayer)
             ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_visibleLayer->getOpacity());
-        if (ds._layerMinRangeUL >= 0 && _imageLayer)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_imageLayer->getMinVisibleRange());
-        if (ds._layerMaxRangeUL >= 0 && _imageLayer)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_imageLayer->getMaxVisibleRange());
+        if (ds._layerMinRangeUL >= 0 && _visibleLayer)
+            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_visibleLayer->getMinVisibleRange());
+        if (ds._layerMaxRangeUL >= 0 && _visibleLayer)
+            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_visibleLayer->getMaxVisibleRange());
     }
     else
     {

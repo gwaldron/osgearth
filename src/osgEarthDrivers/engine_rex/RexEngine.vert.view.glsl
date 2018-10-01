@@ -2,17 +2,14 @@
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       REX Engine - Vertex/View
-#pragma vp_entryPoint oe_rex_elevateVertexAndSetTexCoords
+#pragma vp_entryPoint oe_rex_setTexCoordsAndCalculateRangeOpacity
 #pragma vp_location   vertex_view
 #pragma vp_order      0.4
 
 // Stage globals
 vec4 oe_layer_tilec;
-vec3 oe_UpVectorView;
 vec4 oe_layer_texc;
 vec4 oe_layer_texcParent;
-
-vec4 vp_Color;
 
 uniform mat4 oe_layer_texMatrix;
 uniform mat4 oe_layer_texParentMatrix;
@@ -23,10 +20,8 @@ uniform float oe_layer_attenuationRange;
 
 out float oe_layer_rangeOpacity;
 
-// SDK functions:
-float oe_terrain_getElevation(in vec2 uv);
 
-void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
+void oe_rex_setTexCoordsAndCalculateRangeOpacity(inout vec4 vertexView)
 {
     // calculate the texture coordinates:
     oe_layer_texc       = oe_layer_texMatrix       * oe_layer_tilec;

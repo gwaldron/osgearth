@@ -56,18 +56,6 @@ namespace osgEarth
     public: // properties
         
         /**
-         * The initial minimum camera range at which this layer is visible.
-         */
-        optional<float>& minVisibleRange() { return _minRange; }
-        const optional<float>& minVisibleRange() const { return _minRange; }
-
-        /**
-         * The initial maximum camera range at which this layer is visible.
-         */
-        optional<float>& maxVisibleRange() { return _maxRange; }
-        const optional<float>& maxVisibleRange() const { return _maxRange; }
-
-        /**
          * Gets or sets the nodata image for this MapLayer
          */
         optional<URI>& noDataImageFilename() { return _noDataImageFilename; }
@@ -145,9 +133,6 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        //optional<float>       _opacity;
-        optional<float>       _minRange;
-        optional<float>       _maxRange;
         optional<osg::Vec4ub> _transparentColor;
         optional<URI>         _noDataImageFilename;
         ColorFilterChain      _colorFilters;
@@ -251,18 +236,6 @@ namespace osgEarth
         const ColorFilterChain& getColorFilters() const;
 
     public: // runtime properties
-
-        /**
-         * Minimum camera range at which this image layer is visible 
-         */
-        float getMinVisibleRange() const;
-        void setMinVisibleRange( float minVisibleRange );
-        
-        /**
-         * Maximum camera range at which this image layer is visible 
-         */
-        float getMaxVisibleRange() const;
-        void setMaxVisibleRange( float maxVisibleRange );
 
         /**
          * Whether this layer is marked for render sharing

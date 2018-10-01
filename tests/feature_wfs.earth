@@ -11,7 +11,7 @@ Demonstrates how to read feature data from a WFS server
     
     <model name="States" driver="feature_geom">
         <features name="states" driver="wfs">
-            <url>http://demo.opengeo.org/geoserver/wfs</url>           
+            <url>http://demo.boundlessgeo.com/geoserver/wfs</url>           
             <typename>topp:states</typename>
             <outputformat>json</outputformat>
         </features>
@@ -30,7 +30,7 @@ Demonstrates how to read feature data from a WFS server
     
     <model name="Labels" driver="feature_geom">
         <features name="states" driver="wfs">
-            <url>http://demo.opengeo.org/geoserver/wfs</url>           
+            <url>http://demo.boundlessgeo.com/geoserver/wfs</url>           
             <typename>topp:states</typename>
             <outputformat>json</outputformat>
         </features>

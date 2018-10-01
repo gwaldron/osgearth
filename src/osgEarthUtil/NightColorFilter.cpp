@@ -38,19 +38,43 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "in vec3 atmos_lightDir;\n"    // light direction (view coords)
-        "in vec3 atmos_up;\n"          // earth up vector at fragment (in view coords)
+        "#pragma import_defines(OE_NUM_LIGHTS)\n"
+
+        "struct osg_LightSourceParameters\n"
+        "{\n"
+        "    vec4 ambient;\n"
+        "    vec4 diffuse;\n"
+        "    vec4 specular;\n"
+        "    vec4 position;\n"
+        "    vec3 spotDirection;\n"
+        "    float spotExponent;\n"
+        "    float spotCutoff;\n"
+        "    float spotCosCutoff;\n"
+        "    float constantAttenuation;\n"
+        "    float linearAttenuation;\n"
+        "    float quadraticAttenuation;\n"
+        "    bool enabled;\n"
+        "};\n"
+
+        "#if OE_NUM_LIGHTS>0\n"
+        "  uniform osg_LightSourceParameters osg_LightSource[OE_NUM_LIGHTS];\n"
+        "#endif\n"
+
+        // stage global - interpolated UP vector at fragment
+        "vec3 vp_Normal;\n"
 
         "void __ENTRY_POINT__(inout vec4 color)\n"
         "{\n"
-        "    vec3 L = normalize(atmos_lightDir);\n"
-        "    vec3 N = normalize(atmos_up);\n"
+        "#if OE_NUM_LIGHTS>0\n"
+        "    vec3 L = normalize(osg_LightSource[0].position.xyz);\n"
+        "    vec3 N = normalize(vp_Normal);\n"
         "    float NdotL = dot(N,L);\n"
         "    float vmin = -0.25;\n"
         "    float vmax = 0.0;\n"
         //   Remap the -0.25 to 0 to 0 to 1.0
         "    float day = (clamp( NdotL, vmin, vmax) - vmin)/(vmax-vmin);\n"
         "    color.a *= (1.0 - day);\n"
+        "#endif\n"
         "} \n";
 }
 

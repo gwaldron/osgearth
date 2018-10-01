@@ -421,8 +421,7 @@ CubeSpatialReference::_init()
 }
 
 GeoLocator*
-CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax,
-                                    bool plate_carre) const
+CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax) const
 {
     int face;
     CubeUtils::cubeToFace( xmin, ymin, xmax, ymax, face );

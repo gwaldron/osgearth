@@ -364,7 +364,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             const ScreenSpaceLayoutData* layoutData = dynamic_cast<const ScreenSpaceLayoutData*>(drawable->getUserData());
 
             // transform the bounding box of the drawable into window-space.
-            osg::BoundingBox box = Utils::getBoundingBox(drawable);
+            osg::BoundingBox box = drawable->getBoundingBox();
 
             osg::Vec3f offset;
             osg::Quat rot;

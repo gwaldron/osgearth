@@ -14,7 +14,6 @@ SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Common
     Export
-    TritonNode
     TritonOptions
     TritonContext
     TritonDrawable
@@ -27,7 +26,6 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
-    TritonNode.cpp
     TritonContext.cpp
     TritonDrawable.cpp
     TritonAPIWrapper.cpp

@@ -176,10 +176,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             osg::Matrixd w2l, l2w;
             if (makeECEF)
             {
-                osgEarth::GeoExtent featureExtent(featureSRS);
-                featureExtent.expandToInclude(part->getBounds());
-
-                computeLocalizers(context, featureExtent, w2l, l2w);
+                osgEarth::GeoExtent partExtent(featureSRS, part->getBounds());
+                computeLocalizers(context, partExtent, w2l, l2w);
             }
             else
             {
@@ -548,25 +546,6 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
                 drawable->setName( name );
             }
-
-#if 0 // Removed. User should use tessellationSize.
-            // subdivide the mesh if necessary to conform to an ECEF globe;
-            // but if the tessellation is set to zero, or if the style specifies a
-            // tessellation size, skip this step.
-            // TODO: get rid of this and just make the user use tessellation?? -gw 4/3/2018
-            if ( makeECEF && !line->tessellation().isSetTo(0) && !line->tessellationSize().isSet() )
-            {
-                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
-                OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
-
-                MeshSubdivider ms( _world2local, _local2world );
-                //ms.setMaxElementsPerEBO( INT_MAX );
-                if ( input->geoInterp().isSet() )
-                    ms.run( *drawable->asGeometry(), threshold, *input->geoInterp() );
-                else
-                    ms.run( *drawable->asGeometry(), threshold, *_geoInterp );
-            }
-#endif
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )

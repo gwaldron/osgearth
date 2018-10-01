@@ -198,8 +198,9 @@ TMSTileSource::createImage(const TileKey&    key,
 
         osg::ref_ptr<osg::Image> image;
         if (!image_url.empty())
-        {
-            image = URI(image_url).readImage( _dbOptions.get(), progress ).getImage();
+        {     
+            URI uri(image_url, _options.url()->context());
+            image = uri.readImage( _dbOptions.get(), progress ).getImage();
         }
 
         if (!image.valid())

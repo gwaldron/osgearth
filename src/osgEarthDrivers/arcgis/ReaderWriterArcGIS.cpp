@@ -235,7 +235,7 @@ public:
 
         std::string bufStr;
         bufStr = buf.str();
-        return URI(bufStr).getImage( _dbOptions.get(), progress );
+        return URI(bufStr, _options.url()->context()).getImage( _dbOptions.get(), progress );
     }
 
     // override

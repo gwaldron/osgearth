@@ -222,9 +222,6 @@ namespace osgEarth
         /** Tests whether this SRS is a Local Tangent Plane projection (osgEarth-internal) */
         virtual bool isLTP() const { return _is_ltp; }
 
-        /** Whether this is a geographic plate carre SRS */
-        virtual bool isPlateCarre() const { return _is_plate_carre; }
-
         /** Gets the readable name of this SRS. */
         const std::string& getName() const;
 
@@ -272,7 +269,7 @@ namespace osgEarth
         /** Gets the geocentric reference system associated with this SRS' ellipsoid. */
         const SpatialReference* getGeocentricSRS() const;
 
-        //! @deprecated - call getGeocentricSRS() instead
+        //! @deprecated after 2.10 - call getGeocentricSRS() instead
         const SpatialReference* getECEF() const;
 
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */
@@ -297,11 +294,6 @@ namespace osgEarth
             basic tmerc (transverse mercator) above. */
         const SpatialReference* createUTMFromLonLat( const Angle& lon, const Angle& lat ) const;
 
-        /** Creates a copy of this SRS, but flags the new SRS so that it will operate in
-            Plate Carre mode for the purposes of world coordinate conversion. The SRS is
-            otherwise mathematically equivalent to its vanilla counterpart. */
-        //const SpatialReference* createPlateCarreGeographicSRS() const;
-
         /** Create an equirectangular projected SRS corresponding to the geographic SRS
             contained in this spatial reference. This is an approximation of a Plate Carre
             SRS but using equatorial meters. */
@@ -319,13 +311,8 @@ namespace osgEarth
          * @param xmin, ymin, xmax, ymax
          *      Extents of the tile for which to create a locator. These should
          *      be in degrees for a geographic/geocentric scene.
-         * @param plate_carre
-         *      Set this to true for the special case in which you are using a
-         *      geographic SRS with a PROJECTED map (like flat-earth lat/long).
          */
-        virtual GeoLocator* createLocator(
-            double xmin, double ymin, double xmax, double ymax,
-            bool plate_carre =false ) const;
+        virtual GeoLocator* createLocator(double xmin, double ymin, double xmax, double ymax) const;
 
 		/**
 		 * Gets the underlying OGRLayerH that this SpatialReference owns.
@@ -359,7 +346,6 @@ namespace osgEarth
         bool _is_contiguous;
         bool _is_user_defined;
         bool _is_ltp;
-        bool _is_plate_carre;
         bool _is_geocentric;
         unsigned _ellipsoidId;
         std::string _name;

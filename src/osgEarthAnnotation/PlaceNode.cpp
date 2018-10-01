@@ -286,7 +286,7 @@ PlaceNode::compile()
             // todo: optimize this better:
             _imageDrawable->getOrCreateStateSet()->merge(*_imageStateSet.get());
             _geode->addChild(_imageDrawable);
-            imageBox = osgEarth::Utils::getBoundingBox(_imageDrawable);
+            imageBox = _imageDrawable->getBoundingBox();
         }    
     }
 
@@ -305,7 +305,7 @@ PlaceNode::compile()
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
     if ( bboxsymbol && _textDrawable )
     {
-        _bboxDrawable = new BboxDrawable( osgEarth::Utils::getBoundingBox(_textDrawable), *bboxsymbol );
+        _bboxDrawable = new BboxDrawable( _textDrawable->getBoundingBox(), *bboxsymbol );
         _geode->addChild(_bboxDrawable);
     }
 
@@ -314,7 +314,7 @@ PlaceNode::compile()
         _geode->addChild( _textDrawable );
     }
 
-#if 0
+#if 0 // test a drop line
     LineDrawable* line = new LineDrawable(GL_LINES);
     line->pushVertex(osg::Vec3(0,0,0));
     line->pushVertex(osg::Vec3(0,0,-100000));

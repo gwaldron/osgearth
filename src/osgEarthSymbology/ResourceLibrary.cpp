@@ -64,11 +64,6 @@ ResourceLibrary::mergeConfig( const Config& conf )
         {
             addResource( new SkinResource(child) );
         }
-        else if ( child.key() == "marker" )
-        {
-            // to be decrepated
-            addResource( new MarkerResource(child) );
-        }
         else if ( child.key() == "model" )
         {
             addResource( new ModelResource(child) );
@@ -104,12 +99,6 @@ ResourceLibrary::getConfig() const
                 conf.add( res->getConfig() );
             }
 
-            for( ResourceMap<MarkerResource>::const_iterator i = _markers.begin(); i != _markers.end(); ++i )
-            {
-                MarkerResource* res = i->second.get();
-                conf.add( res->getConfig() );
-            }
-
             for( ResourceMap<InstanceResource>::const_iterator i = _instances.begin(); i != _instances.end(); ++i )
             {
                 InstanceResource* res = i->second.get();
@@ -127,11 +116,6 @@ ResourceLibrary::addResource( Resource* resource )
     {
         Threading::ScopedWriteLock exclusive(_mutex);
         _skins[resource->name()] = static_cast<SkinResource*>(resource);
-    }
-    else if ( dynamic_cast<MarkerResource*>(resource) )
-    {
-        Threading::ScopedWriteLock exclusive(_mutex);
-        _markers[resource->name()] = static_cast<MarkerResource*>(resource);
     }
     else if ( dynamic_cast<InstanceResource*>(resource) )
     {
@@ -151,11 +135,6 @@ ResourceLibrary::removeResource( Resource* resource )
     {
         Threading::ScopedWriteLock exclusive(_mutex);
         _skins.erase( resource->name() );
-    }
-    else if ( dynamic_cast<MarkerResource*>( resource ) )
-    {
-        Threading::ScopedWriteLock exclusive(_mutex);
-        _markers.erase( resource->name() );
     }
     else if ( dynamic_cast<InstanceResource*>( resource ) )
     {

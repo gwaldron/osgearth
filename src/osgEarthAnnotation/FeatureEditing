@@ -31,7 +31,7 @@ namespace osgEarth { namespace Annotation
 {    
     /**
      * AddPointHandler is a GUIEventHandler that allows you to append points to a Feature's Geometry
-     * @deprecated
+     * @deprecated (remove or refactor as example after 2.10)
      */
     struct OSGEARTHANNO_EXPORT AddPointHandler : public osgGA::GUIEventHandler 
     {
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Annotation
     
     /**
      * Node you can add to your scene graph to edit the verts of a Feature's Geometry
-     * @deprecated
+     * @deprecated (remove or refactor as example after 2.10)
      */
     class OSGEARTHANNO_EXPORT FeatureEditor : public AnnotationEditor
     {

@@ -73,7 +73,7 @@ config.json was:
                 }
 
                 forest {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;
@@ -82,7 +82,7 @@ config.json was:
                 }
 
                 grass {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;

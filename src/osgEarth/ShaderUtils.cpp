@@ -37,68 +37,6 @@ namespace
 
 
     typedef std::list<const osg::StateSet*> StateSetStack;
-
-#if 0
-
-    static osg::StateAttribute::GLModeValue 
-    getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
-    {
-        osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
-
-        for(StateSetStack::const_iterator itr = statesetStack.begin();
-            itr != statesetStack.end();
-            ++itr)
-        {
-            osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
-
-            if ( (val & osg::StateAttribute::INHERIT) == 0 )
-            {
-
-                if ((val & osg::StateAttribute::PROTECTED)!=0 ||
-                    (base_val & osg::StateAttribute::OVERRIDE)==0)
-                {
-                    base_val = val;
-                }
-            }
-        }
-        return base_val;
-    }
-#endif
-    
-#if 0
-    static const osg::Light*
-    getLightByID(const StateSetStack& statesetStack, int id)
-    {
-        const osg::Light* base_light = NULL;
-        osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
-        
-        for(StateSetStack::const_iterator itr = statesetStack.begin();
-            itr != statesetStack.end();
-            ++itr)
-        {
-            
-            osg::StateAttribute::GLModeValue val = (*itr)->getMode(GL_LIGHT0+id);
-
-            //if ( (val & osg::StateAttribute::INHERIT) == 0 )
-            {
-            //    if ((val & osg::StateAttribute::PROTECTED)!=0 ||
-            //        (base_val & osg::StateAttribute::OVERRIDE)==0)
-                {
-                    base_val = val;
-                    const osg::StateAttribute* lightAtt = (*itr)->getAttribute(osg::StateAttribute::LIGHT, id);
-                    if(lightAtt){
-                        const osg::Light* asLight = dynamic_cast<const osg::Light*>(lightAtt);
-                        if(val){
-                            base_light = asLight;
-                        }
-                    }
-                }
-            }
-            
-        }
-        return base_light;
-    }
-#endif
     
     static const osg::Material*
     getFrontMaterial(const StateSetStack& statesetStack)

@@ -274,11 +274,7 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     }
 
     // next compute the bounding box in local space:
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
     const osg::BoundingBox& box = _drawable->getBoundingBox();
-#else
-    const osg::BoundingBox& box = _drawable->getBound();
-#endif
 
     // Compute the medians of each potential child node:
 
@@ -408,9 +404,5 @@ SurfaceNode::setDebugText(const std::string& strText)
 const osg::BoundingBox&
 SurfaceNode::getAlignedBoundingBox() const
 {
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
     return _drawable->getBoundingBox();
-#else
-    return _drawable->getBound();
-#endif
 }

@@ -1,7 +1,7 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-varying float visibility; 
+in float visibility; 
 in vec4 osg_FrontColor; 
 
 out vec4 out_FragColor;

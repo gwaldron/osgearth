@@ -159,10 +159,7 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
     ids->setBinding(osg::Array::BIND_PER_VERTEX);
     ids->setNormalize(false);
     geom->setVertexAttribArray(_attribLocation, ids);
-    
-#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
     ids->setPreserveDataType(true);
-#endif
 
     // The tag is actually FeatureID + 1, to preserve "0" as an "empty" value.
     // TODO: use a ObjectID generator and mapping instead.

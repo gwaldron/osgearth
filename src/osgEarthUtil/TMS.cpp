@@ -217,8 +217,7 @@ TileMap::createProfile() const
     }
 
     else if ( 
-        spatialReference->isGeographic()  && 
-        !spatialReference->isPlateCarre() &&
+        spatialReference->isGeographic() &&
         osg::equivalent(_minX, -180.) &&
         osg::equivalent(_maxX,  180.) &&
         osg::equivalent(_minY,  -90.) &&
@@ -448,14 +447,14 @@ TileMap::create(const std::string& url,
 
 
 TileMap* 
-TileMapReaderWriter::read( const std::string& location, const osgDB::Options* options )
+TileMapReaderWriter::read( const URI& uri, const osgDB::Options* options )
 {
     TileMap* tileMap = NULL;
 
-    ReadResult r = URI(location).readString(options);
+    ReadResult r = uri.readString(options);
     if ( r.failed() )
     {
-        OE_DEBUG << LC << "Failed to read TMS tile map file from " << location
+        OE_DEBUG << LC << "Failed to read TMS tile map file from " << uri.full()
             << " ... " << r.errorDetail() << std::endl;
         return 0L;
     }
@@ -470,7 +469,7 @@ TileMapReaderWriter::read( const std::string& location, const osgDB::Options* op
 
     if (tileMap)
     {
-        tileMap->setFilename( location );
+        tileMap->setFilename( uri.full() );
 
         // record the timestamp (if there is one) in the tilemap. It's not a persistent field
         // but will help with things like per-session caching.

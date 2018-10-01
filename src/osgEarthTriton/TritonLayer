@@ -163,6 +163,7 @@ namespace osgEarth { namespace Triton
         osg::ref_ptr<osg::Node> _tritonNode;
         osg::ref_ptr<Callback> _callback;
         float _seaLevel;
+        float _opacity;
 
     private:
 

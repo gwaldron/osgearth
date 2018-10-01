@@ -443,7 +443,7 @@ void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Draw
 {
     if (reachedLimit() || !drawable) return;
 
-    osg::BoundingBox bb = Utils::getBoundingBox(drawable);
+    osg::BoundingBox bb = drawable->getBoundingBox();
 
     if (bb.valid())
         bb.expandBy(osg::BoundingSphere(bb.center(), (_thickness - _start).length()));

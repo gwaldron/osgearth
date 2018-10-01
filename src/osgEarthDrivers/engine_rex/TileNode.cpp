@@ -39,6 +39,8 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/ValueObject>
 
+#include <osgDB/WriteFile>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -160,8 +162,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         -1.0f);
 
     // initialize all the per-tile uniforms the shaders will need:
-    float start = (float)context->getSelectionInfo().visParameters(_key.getLOD())._fMorphStart;
-    float end   = (float)context->getSelectionInfo().visParameters(_key.getLOD())._fMorphEnd;
+    float start = (float)context->getSelectionInfo().getLOD(_key.getLOD())._morphStart;
+    float end   = (float)context->getSelectionInfo().getLOD(_key.getLOD())._morphEnd;
     float one_by_end_minus_start = end - start;
     one_by_end_minus_start = 1.0f/one_by_end_minus_start;
     _morphConstants.set( end * one_by_end_minus_start, one_by_end_minus_start );
@@ -179,6 +181,10 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         for (unsigned p = 0; p < parent->_renderModel._passes.size(); ++p)
         {
             const RenderingPass& parentPass = parent->_renderModel._passes[p];
+
+            // If the key is now out of the layer's valid min/max range, skip this pass.
+            if (!passInLegalRange(parentPass))
+                continue;
 
             // Copy the parent pass:
             _renderModel._passes.push_back(parentPass);
@@ -357,7 +363,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     {
         if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
         {
-            float range = selectionInfo.visParameters(currLOD+1)._visibilityRange;
+            float range = selectionInfo.getLOD(currLOD+1)._visibilityRange;
 #if 1
             // slightly slower than the alternate block below, but supports a user overriding
             // CullVisitor::getDistanceToViewPoint -gw
@@ -880,16 +886,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                     if (mySampler._texture.get() != parentSampler._texture.get() ||
                         mySampler._matrix != newMatrix)
                     {
-                        const TerrainLayer* terrainLayer = dynamic_cast<const TerrainLayer*>(parentPass.visibleLayer());
-                        bool keyInLegalRange = true;
-                        // If this is a terrain layer, make sure it's in the legal range so we don't inherit a parent
-                        // when we shouldn't be displaying it b/c we are a level higher than it's configured max level.
-                        if (terrainLayer)
-                        {
-                            keyInLegalRange = terrainLayer->isKeyInLegalRange(this->getKey());
-                        }
-
-                        if (parentSampler._texture.valid() && (!terrainLayer || keyInLegalRange))
+                        if (parentSampler._texture.valid() && passInLegalRange(parentPass))
                         {
                             // set the parent-color texture to the parent's color texture
                             // and scale/bias the matrix.
@@ -920,15 +917,18 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         else
         {
             // Pass exists in the parent node, but not in this node, so add it now.
-            myPass = &_renderModel.addPass();
-            *myPass = parentPass;
-
-            for (unsigned s = 0; s < myPass->samplers().size(); ++s)
+            if (passInLegalRange(parentPass))
             {
-                Sampler& sampler = myPass->samplers()[s];
-                sampler._matrix.preMult(scaleBias[quadrant]);
+                myPass = &_renderModel.addPass();
+                *myPass = parentPass;
+
+                for (unsigned s = 0; s < myPass->samplers().size(); ++s)
+                {
+                    Sampler& sampler = myPass->samplers()[s];
+                    sampler._matrix.preMult(scaleBias[quadrant]);
+                }
+                ++changes;
             }
-            ++changes;
         }
     }
 
@@ -980,6 +980,14 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     }
 }
 
+bool
+TileNode::passInLegalRange(const RenderingPass& pass) const
+{
+    return 
+        pass.terrainLayer() == 0L ||
+        pass.terrainLayer()->isKeyInLegalRange(getKey());
+}
+
 void
 TileNode::load(TerrainCuller* culler)
 {    
@@ -997,7 +1005,7 @@ TileNode::load(TerrainCuller* culler)
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
-    float maxRange = si.visParameters(0)._visibilityRange;
+    float maxRange = si.getLOD(0)._visibilityRange;
     float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority

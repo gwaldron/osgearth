@@ -13,5 +13,7 @@ uniform vec4 oe_ClipPlane_plane;
 
 void oe_ClipPlane_VS(inout vec4 vertex_view)
 {
+#ifndef GL_ES
     gl_ClipDistance[OE_CLIPPLANE_NUM] = dot(osg_ViewMatrixInverse * vertex_view, oe_ClipPlane_plane);
+#endif
 }

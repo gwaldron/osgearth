@@ -26,17 +26,14 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ModelLayer>
 
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
 #include <osgEarthFeatures/FeatureModelLayer>
 
 #include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 #include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
@@ -92,13 +89,8 @@ main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
 
-    // Pick a terrain engine expressly:
-    RexTerrainEngine::RexTerrainEngineOptions terrainOptions;
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.setTerrainOptions(terrainOptions);
-
     // make the map scene graph:
-    MapNode* mapNode = new MapNode(map, mapNodeOptions);
+    MapNode* mapNode = new MapNode(map);
     root->addChild( mapNode );
 
     // zoom to a good startup position
@@ -303,9 +295,6 @@ void addParks(Map* map)
     parks.layout() = layout;
     parks.styles() = new StyleSheet();
     parks.styles()->addStyle( style );
-
-    parks.instancing() = true;
-    parks.clusterCulling() = false;
 
     Layer* parksLayer = new FeatureModelLayer(parks);
     map->addLayer(parksLayer);

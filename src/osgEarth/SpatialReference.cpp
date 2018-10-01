@@ -210,13 +210,13 @@ SpatialReference::create(const Key& key)
     }
 
     // WGS84 Plate Carre:
-    else if (key.horizLower == "plate-carre")
+    else if (key.horizLower == "plate-carre" || key.horizLower == "plate-carree")
     {
+        // https://proj4.org/operations/projections/eqc.html
         srs = createFromPROJ4(
-            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
-            "WGS84" );
+           "+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +units=m +ellps=WGS84 +datum=WGS84 +no_defs",
+           "WGS84" );
 
-        srs->_is_plate_carre = true;
         srs->_is_geographic  = false;
     }
 
@@ -366,7 +366,6 @@ _is_cube        ( false ),
 _is_contiguous  ( false ),
 _is_user_defined( false ),
 _is_ltp         ( false ),
-_is_plate_carre ( false ),
 _is_spherical_mercator( false ),
 _ellipsoidId(0u)
 {
@@ -379,7 +378,6 @@ _initialized   ( false ),
 _handle        ( handle ),
 _owns_handle   ( ownsHandle ),
 _is_ltp        ( false ),
-_is_plate_carre( false ),
 _is_geocentric ( false )
 {
     //nop
@@ -887,8 +885,7 @@ getTransformFromExtents(double minX, double minY, double maxX, double maxY)
 }
 
 GeoLocator*
-SpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax,
-                                bool plate_carre ) const
+SpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax ) const
 {
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
@@ -898,7 +895,7 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
     locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
     // note: not setting the format/cs on purpose.
 
-    if ( isGeographic() && !plate_carre )
+    if ( isGeographic() )
     {
         locator->setTransform( getTransformFromExtents(
             osg::DegreesToRadians( xmin ),
@@ -916,7 +913,7 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
 bool
 SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {
-    if ( (isProjected() || _is_plate_carre) && !isCube() )
+    if ( isProjected() && !isCube() )
     {
         osg::Vec3d world;
         if ( !transformToWorld( xyz, world ) )
@@ -1195,11 +1192,11 @@ bool
 SpatialReference::transformToWorld(const osg::Vec3d& input,
                                    osg::Vec3d&       output ) const
 {
-    if ( (isGeographic() && !isPlateCarre()) || isCube() )
+    if ( isGeographic() || isCube() )
     {
         return transform(input, getGeocentricSRS(), output);
     }
-    else // isProjected || _is_plate_carre
+    else // isProjected
     {
         output = input;
         if ( _vdatum.valid() )
@@ -1219,7 +1216,7 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
                                      osg::Vec3d&       output,
                                      double*           out_haeZ ) const
 {
-    if ( (isGeographic() && !isPlateCarre()) || isCube() )
+    if ( isGeographic() || isCube() )
     {
         bool ok = getGeocentricSRS()->transform(world, this, output);
         if ( ok && out_haeZ )
@@ -1231,7 +1228,7 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
         }
         return ok;
     }
-    else // isProjected || _is_plate_carre
+    else // isProjected
     {
         output = world;
 
@@ -1447,7 +1444,7 @@ SpatialReference::_init()
     _is_user_defined = false; 
     _is_contiguous = true;
     _is_cube = false;
-    if ( _is_geocentric || _is_plate_carre )
+    if ( _is_geocentric )
         _is_geographic = false;
     else
         _is_geographic = OSRIsGeographic( _handle ) != 0;

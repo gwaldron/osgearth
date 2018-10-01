@@ -27,7 +27,7 @@
 namespace osgEarth
 {
     /**
-     * @deprecated - Use ElevationPool instead, via Map::getElevationPool to
+     * @deprecated after 2.10 - Use ElevationPool instead, via Map::getElevationPool to
      *    query elevation data, and use Terrain::getHeight to query the in-scene
      *    terrain graph.
      *

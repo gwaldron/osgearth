@@ -452,9 +452,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                     getDataExtents().push_back( dataExtent );
                 }
             }            
-        }
 
-        ++i;
+            ++i;
+        }
     }
 
     // If there is no profile set by the user or by a component, fall back

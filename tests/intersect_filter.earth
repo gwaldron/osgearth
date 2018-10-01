@@ -25,7 +25,7 @@ to a polygon mask.
     
     <model name="Cities in France" driver="feature_geom">
         <features name="cities" driver="ogr">
-            <url>../data/cities.shp</url>
+            <url>../data/cities.gpkg</url>
             <filters>
                 <intersect>
                     <comment>
@@ -48,6 +48,7 @@ to a polygon mask.
                 cities {
                     icon:           "../data/placemark32.png";
                     text-content:   [name];
+                    text-encoding:  utf-8;
                     text-halo:      #3f3f3f;
                 }     
             </style>

@@ -10,7 +10,6 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
     ActivityMonitorTool
-    AnnotationEvents
     AutoClipPlaneHandler
     AutoScaleCallback
     ArcGIS
@@ -46,7 +45,6 @@ SET(HEADERS_ROOT
     MouseCoordsTool
     MultiElevationLayer
     Ocean
-    PolyhedralLineOfSight
     RadialLineOfSight
     RTTPicker
     Shaders
@@ -106,7 +104,6 @@ configure_shaders(
 
 SET(SOURCES_ROOT
     ActivityMonitorTool.cpp
-    AnnotationEvents.cpp
     ArcGIS.cpp
     AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
@@ -137,7 +134,6 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
     Ocean.cpp
-    PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     RTTPicker.cpp
     Shadowing.cpp

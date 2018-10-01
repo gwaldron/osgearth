@@ -116,7 +116,7 @@ public:
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
+        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, dbOptions );
         if ( !capabilities.valid() )
         {
             return Status::Error( Status::ResourceUnavailable, "Unable to read WMS GetCapabilities." );
@@ -228,7 +228,7 @@ public:
         URI tsUrl = _options.tileServiceUrl().value();
         if ( tsUrl.empty() )
         {
-            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService") );
+            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService"), tsUrl.context());
         }
 
         OE_INFO << LC << "Testing for JPL/TileService at " << tsUrl.full() << std::endl;
@@ -305,54 +305,12 @@ public:
         }
 
         // Try to get the image first
-        out_response = URI( uri ).readImage( _dbOptions.get(), progress);
+        out_response = URI(uri, _options.url()->context()).readImage( _dbOptions.get(), progress);
 
         if ( out_response.succeeded() )
         {
             image = out_response.getImage();
         }
-        
-#if 0
-        if ( !out_response.succeeded() )
-        {
-            // If it failed, see whether there's any info in the response.
-            OE_WARN << LC << "Failed, response:\n" << out_response.metadata().toJSON(true);
-            
-            // BAD: caches string data in an image cache. -gw
-            out_response = URI( uri ).readString( _dbOptions.get(), progress );      
-
-            // get the mime type:
-            std::string mt = out_response.metadata().value( IOMetadata::CONTENT_TYPE );
-
-            if ( mt == "application/vnd.ogc.se_xml" || mt == "text/xml" )
-            {
-                std::istringstream content( out_response.getString() );
-
-                // an XML result means there was a WMS service exception:
-                Config se;
-                if ( se.fromXML(content) )
-                {
-                    Config ex = se.child("serviceexceptionreport").child("serviceexception");
-                    if ( !ex.empty() )
-                    {
-                        OE_INFO << LC << "WMS Service Exception: " << ex.toJSON(true) << std::endl;
-                    }
-                    else
-                    {
-                        OE_INFO << LC << "WMS Response: " << se.toJSON(true) << std::endl;
-                    }
-                }
-                else
-                {
-                    OE_INFO << LC << "WMS: unknown error." << std::endl;
-                }
-            }     
-        }
-        else
-        {
-            image = out_response.getImage();
-        }
-#endif
 
         return image.release();
     }
@@ -434,11 +392,7 @@ public:
         }
 
         // Just return an empty image if we didn't get any images
-#if OSG_VERSION_LESS_THAN(3,1,4)
-        unsigned size = seq->getNumImages();
-#else
         unsigned size = seq->getNumImageData();
-#endif
 
         if (size == 0)
         {

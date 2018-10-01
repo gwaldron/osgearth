@@ -221,6 +221,12 @@ LODBlending::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
     {
+        if (engine->getName() == "osgEarth.RexTerrainEngineNode")
+        {
+            OE_WARN << LC << "LODBlending extension will be disabled; terrain engine supports blending natively" << std::endl;
+            return;
+        }
+
         // need the parent textures for blending.
         engine->requireParentTextures();
 

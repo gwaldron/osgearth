@@ -43,6 +43,8 @@ namespace osgEarth
      *
      * Note: a MapFrame can "lose sync" with the actual Map at any time, if the underlying
      * Map is destroyed. So be sure to check return values from the methods below.
+     *
+     * @deprecated (move to MP engine driver?)
      */
     class OSGEARTH_EXPORT MapFrame
     {

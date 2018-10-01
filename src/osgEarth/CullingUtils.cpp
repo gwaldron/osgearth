@@ -299,26 +299,6 @@ Culling::asCullVisitor(osg::NodeVisitor* nv)
     return 0L;
 }
 
-//------------------------------------------------------------------------
-
-void
-DoNotComputeNearFarCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    osgUtil::CullVisitor* cv = static_cast< osgUtil::CullVisitor*>( nv );
-    osg::CullSettings::ComputeNearFarMode oldMode;
-    if( cv )
-    {
-        oldMode = cv->getComputeNearFarMode();
-        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    }
-    traverse(node, nv);
-    if( cv )
-    {
-        cv->setComputeNearFarMode(oldMode);
-    }
-}
-
-
 //----------------------------------------------------------------------------
 
 bool 
@@ -525,59 +505,12 @@ ClusterCullingFactory::create(const GeoExtent& extent)
         maxRadius);
 }
 
-//------------------------------------------------------------------------
-
-CullNodeByNormal::CullNodeByNormal( const osg::Vec3d& normal )
-{
-    _normal = normal;
-    //_normal.normalize();
-}
-
-void
-CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    osg::Vec3d eye, center, up;
-    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-
-    cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
-
-    eye.normalize();
-    osg::Vec3d normal = _normal;
-    normal.normalize();
-
-    double dotProduct = eye * normal;
-    if ( dotProduct > 0.0 )
-    {
-        traverse(node, nv);
-    }
-}
-
-//------------------------------------------------------------------------
-
-void
-DisableSubgraphCulling::operator()(osg::Node* n, osg::NodeVisitor* v)
-{
-    osgUtil::CullVisitor* cv = Culling::asCullVisitor(v);
-    cv->getCurrentCullingSet().setCullingMask( osg::CullSettings::NO_CULLING );
-    traverse(n, v);
-}
-
 
 //------------------------------------------------------------------------
 
 // The max frame time in ms
 double OcclusionCullingCallback::_maxFrameTime = 10.0;
 
-//OcclusionCullingCallback::OcclusionCullingCallback(const osgEarth::SpatialReference *srs, const osg::Vec3d& world, osg::Node* node):
-//_srs        ( srs ),
-//_world      ( world ),
-//_node       ( node ),
-//_visible    ( true ),
-//_maxAltitude( 200000 )
-//{
-//    //nop
-//}
-//
 OcclusionCullingCallback::OcclusionCullingCallback(GeoTransform* xform) :
 _xform      ( xform ),
 _visible    ( true ),
@@ -870,7 +803,7 @@ ProxyCullVisitor::apply(osg::Drawable& drawable)
     if (node_state) _cv->pushStateSet(node_state);
 
     osg::RefMatrix& matrix = *_cv->getModelViewMatrix();
-    const osg::BoundingBox& bb = Utils::getBoundingBox(&drawable);
+    const osg::BoundingBox& bb = drawable.getBoundingBox();
 
     bool culledOut = false;
 

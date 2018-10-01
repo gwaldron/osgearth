@@ -310,13 +310,12 @@ Profile::createNamed(const std::string& name)
     if ( ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
     {
         // Yes I know this is not really Plate Carre but it will stand in for now.
-        return Profile::create(
-            "+proj=eqc +units=m +no_defs",
-            -20037508, -10001966,
-             20037508,  10001966,
-            "", // vdatum
-            2, 1 );
+        osg::Vec3d ex;
+        const SpatialReference* plateCarre = SpatialReference::get("plate-carre");
+        const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+        wgs84->transform(osg::Vec3d(180,90,0), plateCarre, ex);
 
+        return Profile::create(plateCarre, -ex.x(), -ex.y(), ex.x(), ex.y(), 2u, 1u);
     }
 
     else

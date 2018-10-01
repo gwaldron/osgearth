@@ -34,8 +34,6 @@ SET(LIB_PUBLIC_HEADERS
     InstanceResource
     InstanceSymbol
     LineSymbol
-    MarkerResource
-    MarkerSymbol
     MeshConsolidator
     MeshFlattener
     MeshSubdivider
@@ -49,7 +47,6 @@ SET(LIB_PUBLIC_HEADERS
     ResourceCache
     ResourceLibrary
     Skins
-    StencilVolumeNode
     Stroke
     Style
     StyleSelector
@@ -81,8 +78,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     InstanceResource.cpp
     InstanceSymbol.cpp
     LineSymbol.cpp
-    MarkerResource.cpp
-    MarkerSymbol.cpp
     MeshConsolidator.cpp
     MeshFlattener.cpp
     MeshSubdivider.cpp
@@ -96,7 +91,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ResourceCache.cpp
     ResourceLibrary.cpp
     Skins.cpp
-    StencilVolumeNode.cpp
     Stroke.cpp
     Style.cpp
     StyleSelector.cpp

@@ -27,6 +27,7 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/GeoTransform>
+#include <osgEarth/CompositeTileSource>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
@@ -39,10 +40,22 @@
 #include <osgEarthDrivers/xyz/XYZOptions>
 
 #include <osg/PositionAttitudeTransform>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
+
+int
+usage(int argc, char** argv)
+{
+    OE_NOTICE 
+        << "\n" << argv[0]
+        << "\n    [--out outFile] : write map node to outFile before exit"
+        << std::endl;
+
+    return 0;
+}
 
 /**
  * How to create a simple osgEarth map and display it.
@@ -51,6 +64,8 @@ int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
+    if (arguments.read("--help"))
+        return usage(argc, argv);
 
     // create the empty map.
     Map* map = new Map();
@@ -97,6 +112,21 @@ main(int argc, char** argv)
     osg.profile()->bounds()->set(-90.0, 10.0, -80.0, 15.0);
     map->addLayer(new ImageLayer("Simple image", osg));
 
+    // create a composite image layer that combines two other sources:
+    GDALOptions c1;
+    c1.url() = "../data/boston-inset-wgs84.tif";
+
+    GDALOptions c2;
+    c2.url() = "../data/nyc-inset-wgs84.tif";
+
+    CompositeTileSourceOptions composite;
+    composite.add(ImageLayerOptions(c1));
+    composite.add(ImageLayerOptions(c2));
+
+    ImageLayerOptions compLayerOptions("My Composite Layer", composite);
+    map->addLayer(new ImageLayer(compLayerOptions));
+    
+
     // put a model on the map atop Pike's Peak, Colorado, USA
     osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("cow.osgt.(0,0,3).trans.osgearth_shadergen");
     if (model.valid())
@@ -124,5 +154,11 @@ main(int argc, char** argv)
     // add some stock OSG handlers:
     MapNodeHelper().configureView(&viewer);
 
-    return viewer.run();
+    int r = viewer.run();
+
+    std::string outFile;
+    if (arguments.read("--out", outFile))
+        osgDB::writeNodeFile(*node, outFile);
+
+    return r;
 }

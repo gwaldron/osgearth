@@ -26,7 +26,7 @@ Shows how to use Levels and Selectors together when rendering feature data.
     <feature_model name="cities">
 
         <features name="cities" driver="ogr">
-            <url>../data/cities.shp</url>
+            <url>../data/cities.gpkg</url>
         </features>
         
         <layout>
@@ -38,19 +38,19 @@ Shows how to use Levels and Selectors together when rendering feature data.
         <styles>
             <selector name="large" class="label-large">
                 <query>
-                    <expr> <![CDATA[ scalerank <= 2 ]]> </expr>
+                    <expr> <![CDATA[ rank_max >= 12 ]]> </expr>
                 </query>
             </selector>
             
             <selector name="medium" class="label-medium">
                 <query>
-                    <expr> <![CDATA[ scalerank > 3 AND scalerank <= 7 ]]> </expr>
+                    <expr> <![CDATA[ rank_max >= 8 AND rank_max < 12 ]]> </expr>
                 </query>
             </selector>
             
             <selector name="small" class="label-small">
                 <query>
-                    <expr> <![CDATA[ scalerank > 7 ]]> </expr>
+                    <expr> <![CDATA[ rank_max < 8 ]]> </expr>
                 </query>
             </selector>
             
@@ -58,8 +58,9 @@ Shows how to use Levels and Selectors together when rendering feature data.
                 label {
                     text-declutter: true;
                     text-content:   [name];
+                    text-encoding:  utf-8;
                     text-align:     center_center;
-                    text-priority:  10-[scalerank];
+                    text-priority:  [rank_max];
                     text-halo:      #2f2f2f;
                 }                
                 label-large : label {

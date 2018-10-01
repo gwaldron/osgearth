@@ -148,8 +148,6 @@ namespace
 RexTerrainEngineNode::RexTerrainEngineNode() :
 TerrainEngineNode     ( ),
 _terrain              ( 0L ),
-_tileCount            ( 0 ),
-_tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),
@@ -474,7 +472,7 @@ RexTerrainEngineNode::setupRenderBindings()
     colorParent.samplerName() = "oe_layer_texParent";
     colorParent.matrixName()  = "oe_layer_texParentMatrix";
     if (this->parentTexturesRequired())
-        getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Color (Parent)");
+        getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
 
     // Apply a default, empty texture to each render binding.
     OE_DEBUG << LC << "Render Bindings:\n";

@@ -46,11 +46,7 @@ namespace osgEarth { namespace SilverLining
         void drawImplementation(osg::RenderInfo& ri) const;
         
         // custom bounds computation
-#if OSG_VERSION_GREATER_THAN(3,3,1)
         osg::BoundingBox computeBoundingBox() const;
-#else
-        osg::BoundingBox computeBound() const;
-#endif
 
     protected:
         virtual ~CloudsDrawable() { }

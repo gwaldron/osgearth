@@ -22,7 +22,6 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
-#include <osgEarthSymbology/MarkerResource>
 #include <osgEarthSymbology/InstanceResource>
 #include <osgEarthSymbology/ModelResource>
 #include <osgEarthSymbology/ModelSymbol>
@@ -142,7 +141,6 @@ namespace osgEarth { namespace Symbology
         mutable Threading::ReadWriteMutex  _mutex;
 
         ResourceMap<SkinResource>          _skins;
-        ResourceMap<MarkerResource>        _markers;
         ResourceMap<InstanceResource>      _instances;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;

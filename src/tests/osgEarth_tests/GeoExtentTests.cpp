@@ -111,6 +111,36 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(invalid == GeoExtent(WGS84, -15.0, -15.0, -15.0, -15.0));
     }
 
+    SECTION("expandToInclude another geoextent to the east") {
+        GeoExtent ext(WGS84, -130, -10, -100, 10);
+        ext.expandToInclude(GeoExtent(WGS84, 0, -10, 40, 10));
+        REQUIRE(ext == GeoExtent(WGS84, -130, -10, 40, 10));
+    }
+
+    SECTION("expandToInclude another geoextent wrapping around") {
+        GeoExtent ext(WGS84, -130, -10, -100, 10);
+        ext.expandToInclude(GeoExtent(WGS84, 70, -10, 80, 10));
+        REQUIRE(ext == GeoExtent(WGS84, 70, -10, -100, 10));
+    }
+
+    SECTION("expandToInclude LHS completely contains RHS") {
+        GeoExtent ext(WGS84, -90, 0, -45, 45);
+        ext.expandToInclude(GeoExtent(WGS84, -60, 10, -50, 20));
+        REQUIRE(ext == GeoExtent(WGS84, -90, 0, -45, 45));
+    }
+
+    SECTION("expandToInclude LHS overlaps RHS") {
+        GeoExtent ext(WGS84, -90, 0, -45, 45);
+        ext.expandToInclude(GeoExtent(WGS84, -60, 20, -35, 50));
+        REQUIRE(ext == GeoExtent(WGS84, -90, 0, -35, 50));
+    }
+
+    SECTION("expandToInclude LHS overlaps RHS and RHS wraps around") {
+        GeoExtent ext(WGS84, 150, 0, 170, 10);
+        ext.expandToInclude(GeoExtent(WGS84, 160, 5, -165, 25));
+        REQUIRE(ext == GeoExtent(WGS84, 150, 0, -165, 25));
+    }
+
     //SECTION("expandToInclude expands to the full extent") {
     //    GeoExtent full(WGS84);
     //    full.expandToInclude(-180.0, -90);

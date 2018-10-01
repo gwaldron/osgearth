@@ -181,7 +181,7 @@ LabelNode::compile()
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
     if ( bboxsymbol && text )
     {
-        osg::Drawable* bboxGeom = new BboxDrawable( Utils::getBoundingBox(text), *bboxsymbol );
+        osg::Drawable* bboxGeom = new BboxDrawable(text->getBoundingBox(), *bboxsymbol );
         if (bboxGeom)
         {
             _geode->addDrawable(bboxGeom);

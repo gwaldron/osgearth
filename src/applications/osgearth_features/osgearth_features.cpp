@@ -24,24 +24,19 @@
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgEarth/Map>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/FeatureModelLayer>
 
-#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
-#include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
-
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -122,6 +117,7 @@ int main(int argc, char** argv)
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = Color::Yellow;
     ls->stroke()->width() = 2.0f;
+    ls->tessellationSize()->set(100, Units::KILOMETERS);
 
     if (useDraping)
     {

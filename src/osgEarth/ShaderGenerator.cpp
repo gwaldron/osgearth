@@ -37,6 +37,7 @@
 #include <osg/TexGen>
 #include <osg/TexMat>
 #include <osg/ClipNode>
+#include <osg/Point>
 #include <osg/PointSprite>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -287,13 +288,6 @@ namespace
 #if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
             // No modes in non-ffp
             return true;
-#endif
-
-#if OSG_VERSION_LESS_THAN(3,3,1)
-            return
-                dynamic_cast<osg::Texture2DArray*>(sa) ||
-                dynamic_cast<osg::Texture2DMultisample*>(sa) ||
-				dynamic_cast<osg::TextureBuffer*>(sa);
 #else
             return false;
 #endif
@@ -701,7 +695,9 @@ ShaderGenerator::apply(osg::ClipNode& node)
         "void oe_sg_clipnode(inout vec4 vertex_view)\n"
         "{\n"
         "    vec4 plane_view = gl_ModelViewMatrix * oe_sg_clipnode_plane_model; \n"
+        "#ifndef GL_ES\n"
         "    gl_ClipDistance[0] = dot(plane_view, vertex_view); \n"
+        "#endif\n"
         //"    gl_ClipVertex = vertexVIEW; \n"
         "}\n";
 
@@ -1317,8 +1313,20 @@ ShaderGenerator::apply(osg::StateSet::AttributeList& attrs, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::StateAttribute* attr, GenBuffers& buf)
 {
-    // NOP for now.
-    return false;
+    bool addedSomething = false;
+
+#if defined(OSG_GLES3_AVAILABLE)
+    osg::Point* asPoint = dynamic_cast<osg::Point*>(attr);
+    if(asPoint != NULL)
+    {
+        buf._viewHead << "uniform float oe_sg_pointSize;\n";
+        buf._viewBody << INDENT << "gl_PointSize = oe_sg_pointSize;\n";
+        buf._stateSet->getOrCreateUniform( "oe_sg_pointSize", osg::Uniform::FLOAT )->set( asPoint->getSize() );
+        addedSomething = true;
+    }
+#endif
+    
+    return addedSomething;
 }
 
 void

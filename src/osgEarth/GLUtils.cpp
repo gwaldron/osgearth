@@ -34,6 +34,14 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
+#ifndef GL_LINE_SMOOTH
+#define GL_LINE_SMOOTH 0x0B20
+#endif
+
+#ifndef GL_POINT_SIZE
+#define GL_POINT_SIZE 0x0B11
+#endif
+
 #ifndef GL_NORMALIZE
 #define GL_NORMALIZE 0x0BA1
 #endif

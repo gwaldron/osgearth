@@ -21,6 +21,7 @@
 */
 #include <osgEarth/SpatialReference>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Profile>
 #include <iostream>
 
 bool eq(const double& a, const double& b, double e =1e-6) {
@@ -62,6 +63,29 @@ main(int argc, char** argv)
                 std::cout << test << ": transform failed for texst #" << i << std::endl;
             else if (!eq(output.z(), 0.0, 0.01)) {
                 std::cout << test << ": output doesn't match for test #" << i << "; expected Z=0, got Z=" << output.z() << std::endl;
+            }
+        }
+    }
+
+    // Plate Carre EQC Test.
+    {
+        test = "Plate Carre EQC Test";
+        const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+        const SpatialReference* pceqc = SpatialReference::get("plate-carre");
+        osg::Vec3d input[4] = {
+            osg::Vec3d(-180, -90, 0),
+            osg::Vec3d(-180, +90, 0),
+            osg::Vec3d( 180, -90, 0),
+            osg::Vec3d( 180, +90, 0)
+        };
+        osg::Vec3d output;
+        for (int i = 0; i<4; ++i) {
+            osg::Vec3d output;
+            if (!wgs84->transform(input[i], pceqc, output)) {
+                std::cout << test << ": transform failed for test #" << i << std::endl;
+            }
+            else  {
+                std::cout << "result = " << std::setprecision(24) << output.x() << ", " << output.y() << std::endl;
             }
         }
     }

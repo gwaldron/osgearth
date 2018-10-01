@@ -66,11 +66,9 @@ namespace osgEarth
         void setUseVertexZ(bool value) { _useVertexZ = value; }
         bool getUseVertexZ() const     { return _useVertexZ; }
 
-        //! @deprecated
         void setScale(float scale) { _scale = scale; }
         float getScale() const     { return _scale; }
 
-        //! @deprecated
         void setOffset(float offset) { _offset = offset; }
         float getOffset() const      { return _offset; }
 

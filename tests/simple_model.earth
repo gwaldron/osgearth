@@ -15,10 +15,6 @@ needs to be absolutely positioned.
       <location>-74.018 40.717 10</location>	  
     </model>
     
-    <options lighting="false">
-        <terrain min_lod="12"/>
-    </options>
-    
     <viewpoints>
         <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
     </viewpoints>

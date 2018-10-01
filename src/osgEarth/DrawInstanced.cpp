@@ -59,7 +59,7 @@ namespace
                 _first = false;
             }
 
-            const osg::BoundingBox bbox = Utils::getBoundingBox(geom);
+            const osg::BoundingBox bbox = geom->getBoundingBox();
             float radius = bbox.radius();
 
             osg::Vec3d centerView = bbox.center() * ri.getState()->getModelViewMatrix();

@@ -27,6 +27,7 @@
 #include <osg/Referenced>
 #include <osg/ref_ptr>
 #include <osgEarth/Common>
+#include <osgEarth/URI>
 
 #include <osgDB/ReaderWriter>
 #include <osg/Version>
@@ -53,7 +54,7 @@ namespace osgEarth { namespace Util
         /**
         *Gets the name of the style
         */
-	const std::string& getName() const {return _name;}
+	    const std::string& getName() const {return _name;}
 
         /**
         *Sets the name of the style
@@ -63,7 +64,7 @@ namespace osgEarth { namespace Util
         /**
         *Gets the title of the style
         */
-	const std::string& getTitle() const {return _title;}
+	    const std::string& getTitle() const {return _title;}
 
         /**
         *Sets the title of the style
@@ -253,7 +254,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT WMSCapabilitiesReader
     {
     public:
-        static WMSCapabilities* read( const std::string &location, const osgDB::ReaderWriter::Options *options );
+        static WMSCapabilities* read( const URI& location, const osgDB::Options *options );
         static WMSCapabilities* read( std::istream &in );
     private:
         WMSCapabilitiesReader(){}

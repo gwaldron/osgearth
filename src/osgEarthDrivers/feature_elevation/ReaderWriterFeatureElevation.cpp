@@ -50,7 +50,6 @@ using namespace std;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-#include <osgEarth/Profiler>
 #include <osgEarth/Metrics>
 
 

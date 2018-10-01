@@ -86,56 +86,6 @@ namespace osgEarth
         static osg::NodeCallback* create(const class GeoExtent& extent);
     };
 
-    
-    /**
-     * A simple culling-plane callback (a simpler version of ClusterCullingCallback)
-     * @deprecated
-     */
-    struct OSGEARTH_EXPORT CullNodeByNormal : public osg::NodeCallback {
-        osg::Vec3d _normal;
-        CullNodeByNormal( const osg::Vec3d& normal );
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
-    };
-
-    // @deprecated
-    struct CullDrawableByNormal : public osg::Drawable::CullCallback {
-        osg::Vec3d _normal;
-        CullDrawableByNormal( const osg::Vec3d& normal ) : _normal(normal) { }
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::State* state) const {
-            return nv && nv->getEyePoint() * _normal <= 0;
-        }
-    };
-
-    // @deprecated
-    struct OSGEARTH_EXPORT CullNodeByFrameNumber : public osg::NodeCallback {
-        unsigned _frame;
-        CullNodeByFrameNumber() : _frame(0) { }
-        void operator()( osg::Node* node, osg::NodeVisitor* nv ) {
-            if ( nv->getFrameStamp()->getFrameNumber() - _frame <= 1 )
-                traverse(node, nv);
-        }
-    };
-
-    // @deprecated
-    struct DisableSubgraphCulling : public osg::NodeCallback {
-        void operator()(osg::Node* n, osg::NodeVisitor* v);
-    };
-
-    // @deprecated
-    struct StaticBound : public osg::Node::ComputeBoundingSphereCallback {
-        osg::BoundingSphere _bs;
-        StaticBound(const osg::BoundingSphere& bs) : _bs(bs) { }
-        osg::BoundingSphere computeBound(const osg::Node&) const { return _bs; }
-    };
-
-    // a cull callback that prevents objects from being included in the near/fear clip
-    // plane calculates that OSG does.
-    // @deprecated
-    struct OSGEARTH_EXPORT DoNotComputeNearFarCullCallback : public osg::NodeCallback
-    {
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
-    };
-
     /**
      * Simple occlusion culling callback that does a ray interseciton between the eyepoint
      * and a A GeoTransform node.

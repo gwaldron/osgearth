@@ -39,6 +39,8 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/ValueObject>
 
+#include <osgDB/WriteFile>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 

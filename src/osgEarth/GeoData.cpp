@@ -1183,14 +1183,6 @@ GeoExtent::expandToInclude(double x, double y)
     }
 }
 
-void
-GeoExtent::expandToInclude(const Bounds& rhs)
-{
-    expandToInclude( rhs.center() );
-    expandToInclude( rhs.xMin(), rhs.yMin() );
-    expandToInclude( rhs.xMax(), rhs.yMax() );
-}
-
 bool
 GeoExtent::expandToInclude(const GeoExtent& rhs)
 {
@@ -1203,12 +1195,48 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
     }
 
     else
-    {
-        // include the centroid first in order to get the optimal
-        // expansion direction.
-        expandToInclude( rhs.getCentroid() );
-        expandToInclude( rhs.west(), rhs.south() );
-        expandToInclude( rhs.east(), rhs.north() );
+    {        
+        double h = std::max(north(), rhs.north()) - std::min(south(), rhs.south());
+        if (rhs.south() < south())
+        {
+            _south = rhs.south();
+        }
+        _height = h;
+        
+        // non-wrap-around new width:
+        double w0 = std::max(xMax(), rhs.xMax()) - std::min(xMin(), rhs.xMin());
+
+        if (isGeographic())
+        {
+            // wrap-around width:
+            double w1 = west() > rhs.east()? (180-west())+(rhs.east()-(-180)) : (180-rhs.west()) + (east()-(-180));
+
+            // pick the smaller one:
+            if (w0 < w1)
+            {
+                if (w0 > _width)
+                {
+                    _width = w0;
+                    _west = std::min(west(), rhs.west());
+                }
+            }
+            else
+            {
+                if (w1 > _width)
+                {
+                    _width = w1;
+                    if (west() <= rhs.east())
+                        _west = rhs.west();
+                }
+            }
+        }
+        else
+        {
+            // projected mode is the same approach as Y
+            _west = std::min(west(), rhs.west());
+            _width = w0;
+        }
+
     }
 
     return true;

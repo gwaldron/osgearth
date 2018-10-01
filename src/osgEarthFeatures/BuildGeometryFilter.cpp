@@ -176,10 +176,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             osg::Matrixd w2l, l2w;
             if (makeECEF)
             {
-                osgEarth::GeoExtent featureExtent(featureSRS);
-                featureExtent.expandToInclude(part->getBounds());
-
-                computeLocalizers(context, featureExtent, w2l, l2w);
+                osgEarth::GeoExtent partExtent(featureSRS, part->getBounds());
+                computeLocalizers(context, partExtent, w2l, l2w);
             }
             else
             {

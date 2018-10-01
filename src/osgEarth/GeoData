@@ -475,7 +475,7 @@ namespace osgEarth
          */
         void expandToInclude( double x, double y ); 
         void expandToInclude( const osg::Vec3d& v ) { expandToInclude(v.x(), v.y()); }
-        void expandToInclude( const Bounds& bounds );
+        //void expandToInclude( const Bounds& bounds );
 
         /**
          * Expand this extent to include the bounds of another extent.

@@ -93,6 +93,7 @@ namespace osgEarth
         /**
          * Callback that accepts a user-injected shader function (set with
          * setFunction) for inclusing in the program at render time.
+         * @deprecated (remove after user support)
          */
         class AcceptCallback : public osg::Referenced
         {
@@ -107,10 +108,9 @@ namespace osgEarth
         struct Function
         {
             std::string                  _name;
-            osg::ref_ptr<AcceptCallback> _accept;
-            optional<float>              _minRange;
-            optional<float>              _maxRange;
+            osg::ref_ptr<AcceptCallback> _accept; // @deprecated (remove after user support)
             
+            // @dperecated (remove after user support)
             bool accept(const osg::State& state) const {
                 return (!_accept.valid()) || (_accept->operator()(state) == true);
             }
@@ -329,14 +329,10 @@ namespace osgEarth
             ShaderComp::AcceptCallback*  acceptCallback,
             float                        order =1.0f );
 
-        /**
-         * Sets the minimum active range for a named function. The function must already
-         * exist in the VirtualProgram. For this to work, there must to a uniform in the
-         * scene graph that conveys the current range; use the VirtualProgramRangeCallback
-         * to activate this.
-         */
+        /** @deprecated and NOOP (remove after 2.10) */
         void setFunctionMinRange(const std::string& name, float minRange);
 
+        /** @deprecated and NOOP (remove after 2.10) */
         void setFunctionMaxRange(const std::string& name, float maxRange);
 
         /**
@@ -398,9 +394,7 @@ namespace osgEarth
             osg::Shader*                       shader,
             osg::StateAttribute::OverrideValue ov         =osg::StateAttribute::ON );
 
-        /**
-         * Removes a shader from the local VP.
-         */
+        /** Removes a shader from the local VP. */
         void removeShader( const std::string& shaderID );
 
         /** Add an attribute location binding. */
@@ -423,10 +417,12 @@ namespace osgEarth
         /** Enable logging to a file, for debugging. */
         void setShaderLogging( bool log, const std::string& filepath );
 
-        /** Gets whether the accept callbacks vary per frame */
+        /** Gets whether the accept callbacks vary per frame
+          * @deprecated (remove after user support */
         bool getAcceptCallbacksVaryPerFrame() const;
 
-        /** Sets whether the accept callbacks vary per frame */
+        /** Sets whether the accept callbacks vary per frame
+          * @deprecated (remove after user support) */
         void setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame);
 
         /** Inheritance mask */
@@ -456,7 +452,7 @@ namespace osgEarth
             bool accept(const osg::State& state) const;
             osg::ref_ptr<PolyShader>                 _shader;
             osg::StateAttribute::OverrideValue       _overrideValue;
-            osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
+            osg::ref_ptr<ShaderComp::AcceptCallback> _accept; // @deprecated
             bool operator < (const ShaderEntry& rhs) const;
         };
 

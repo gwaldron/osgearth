@@ -270,6 +270,12 @@ SimpleSkyNode::construct()
         makeMoon();
 
         makeStars();
+
+        // Decorations are shown by default, so hide them as needed
+        if (_options.sunVisible() == false) setSunVisible(false);
+        if (_options.moonVisible() == false) setMoonVisible(false);
+        if (_options.starsVisible() == false) setStarsVisible(false);
+        if (_options.atmosphereVisible() == false) setAtmosphereVisible(false);
     }
 
     // Update everything based on the date/time.

@@ -235,19 +235,13 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     // "absolute" means to treat the Z values as-is
     else if ( am == "absolute" )
     {
-        alt->clamping() = AltitudeSymbol::CLAMP_NONE;
+        alt->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
     }
 
     if ( _extrude )
     {
         ExtrusionSymbol* es = style.getOrCreate<ExtrusionSymbol>();
         es->flatten() = false;
-        if (*alt->clamping() == AltitudeSymbol::CLAMP_NONE)
-        {
-            // Set the height to the max elevation + the approx depth of the mariana trench so that it will extend low enough to be always go to the surface of the earth.
-            // This lets us avoid clamping absolute absolute extruded polygons completely.
-            es->height() = -(maxElevation + 11100.0);
-        }
     }
     else
     {

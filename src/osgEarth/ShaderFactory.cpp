@@ -37,26 +37,6 @@ using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
 
 
-namespace
-{
-    void insertRangeConditionals(const Function& f, std::ostream& buf)
-    {
-        if ( f._minRange.isSet() && !f._maxRange.isSet() )
-        {
-            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << "))\n" << INDENT;
-        }
-        else if ( !f._minRange.isSet() && f._maxRange.isSet() )
-        {
-            buf << INDENT << "if (" << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
-        }
-        else if ( f._minRange.isSet() && f._maxRange.isSet() )
-        {
-            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << ") && " << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
-        }
-    }
-}
-
-
 ShaderFactory::ShaderFactory()
 {
     _fragStageOrder = FRAGMENT_STAGE_ORDER_COLORING_LIGHTING;
@@ -337,7 +317,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
             {
-                //insertRangeConditionals( i->second, buf );
                 buf << INDENT << i->second._name << "(vp_Vertex); \n";
             }
         }

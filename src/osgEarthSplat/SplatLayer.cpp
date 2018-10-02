@@ -312,18 +312,14 @@ SplatLayer::buildStateSets()
         osg::ref_ptr<osg::Texture> noiseTexture = noise.create(256u, 1u);
         stateset->setTextureAttribute(_noiseBinding.unit(), noiseTexture.get());
         stateset->addUniform(new osg::Uniform(NOISE_SAMPLER, _noiseBinding.unit()));
-        stateset->setDefine("OE_SPLAT_HAVE_NOISE_SAMPLER");
+        stateset->setDefine("OE_SPLAT_NOISE_SAMPLER", NOISE_SAMPLER);
     }
 
     osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, landCoverLayer->shareImageUnit().get());
     stateset->addUniform(lcTexUniform);
 
     stateset->addUniform(new osg::Uniform("oe_splat_scaleOffsetInt", 0));
-    stateset->addUniform(new osg::Uniform("oe_splat_warp", 0.0f));
-    stateset->addUniform(new osg::Uniform("oe_splat_blur", 1.0f));
-    stateset->addUniform(new osg::Uniform("oe_splat_useBilinear", 1.0f));
     stateset->addUniform(new osg::Uniform("oe_splat_noiseScale", 12.0f));
-
     stateset->addUniform(new osg::Uniform("oe_splat_detailRange", 100000.0f));
 
     if (_editMode)

@@ -12,7 +12,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma include Splat.types.glsl
 
 // statset defines
-#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER)
+#pragma import_defines(OE_SPLAT_NOISE_SAMPLER)
 #pragma import_defines(OE_SPLAT_EDIT_MODE)
 #pragma import_defines(OE_SPLAT_GPU_NOISE)
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
@@ -220,7 +220,8 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     vec4 sw_mix = mix(sw_primary, sw_detail, sw_detail.a);
     vec4 se_mix = mix(se_primary, se_detail, se_detail.a);
 
-    vec2 weight = fract( oe_splat_covtc*size - 0.5+(1.0/size) );
+    //vec2 weight = fract( oe_splat_covtc*size - 0.5+(1.0/size) );
+    vec2 weight = fract( oe_splat_covtc*size - 0.4999999+(1.0/size) );
 
     vec4 temp0 = mix(nw_mix, ne_mix, weight.x);
     vec4 temp1 = mix(sw_mix, se_mix, weight.x);
@@ -249,11 +250,11 @@ vec4 oe_splat_getNoise(in vec2 tc)
 
 #else // !SPLAT_GPU_NOISE
 
-#ifdef OE_SPLAT_HAVE_NOISE_SAMPLER
-uniform sampler2D oe_splat_noiseTex;
+#ifdef OE_SPLAT_NOISE_SAMPLER
+uniform sampler2D OE_SPLAT_NOISE_SAMPLER;
 vec4 oe_splat_getNoise(in vec2 tc)
 {
-    return texture(oe_splat_noiseTex, tc.st);
+    return texture(OE_SPLAT_NOISE_SAMPLER, tc.st);
 }
 #else
 vec4 oe_splat_getNoise(in vec2 tc)
@@ -286,6 +287,7 @@ void oe_splat_simple(inout vec4 color)
     vec2 tc = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + float(oe_splat_scaleOffsetInt));
 
     color = oe_splat_bilinear(tc, env);
+    //color = oe_splat_nearest(tc, env);
 
     //color = mix(color, vec4(tc.s, tc.t, 0.0, 1.0), 0.5);
 

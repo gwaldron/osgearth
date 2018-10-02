@@ -18,6 +18,7 @@
  */
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/VirtualProgram>
+#include <osg/BlendFunc>
 
 using namespace osgEarth;
 
@@ -46,6 +47,7 @@ VisibleLayerOptions::setDefaults()
     _opacity.init( 1.0f );
     _minRange.init( 0.0 );
     _maxRange.init( FLT_MAX );
+    _blend.init( BLEND_INTERPOLATE );
 }
 
 Config
@@ -56,6 +58,8 @@ VisibleLayerOptions::getConfig() const
     conf.set( "opacity", _opacity);
     conf.set( "min_range", _minRange );
     conf.set( "max_range", _maxRange );
+    conf.set( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
+    conf.set( "blend", "modulate", _blend, BLEND_MODULATE );
     return conf;
 }
 
@@ -66,6 +70,8 @@ VisibleLayerOptions::fromConfig(const Config& conf)
     conf.get( "opacity", _opacity);
     conf.get( "min_range", _minRange );
     conf.get( "max_range", _maxRange );
+    conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
+    conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
 }
 
 void
@@ -102,9 +108,27 @@ VisibleLayer::open()
     {
         setVisible(options().visible().get());
     }
+
     if (options().opacity().isSet())
     {
         setOpacity(options().opacity().get());
+    }
+
+    if (options().blend().isSetTo(options().BLEND_INTERPOLATE))
+    {
+        getOrCreateStateSet()->setAttributeAndModes(
+            new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
+        setOpacity(options().opacity().get());
+    }
+    else if (options().blend().isSetTo(options().BLEND_MODULATE))
+    {
+        getOrCreateStateSet()->setAttributeAndModes(
+            new osg::BlendFunc(GL_DST_COLOR, GL_ZERO),
+            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
+        initializeBlending();
     }
     return Layer::open();
 }
@@ -130,39 +154,47 @@ VisibleLayer::getVisible() const
 
 namespace
 {
-    const char* opacityFS =
+    const char* opacityInterpolateFS =
         "#version " GLSL_VERSION_STR "\n"
         "uniform float oe_VisibleLayer_opacity; \n"
         "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"
         "    color.a *= oe_VisibleLayer_opacity; \n"
         "} \n";
+
+    const char* opacityModulateFS =
+        "#version " GLSL_VERSION_STR "\n"
+        "uniform float oe_VisibleLayer_opacity; \n"
+        "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"    
+        "    vec3 rgbHi = color.rgb * 2.3/oe_VisibleLayer_opacity; \n"
+        "    color.rgb = mix(vec3(1), rgbHi, oe_VisibleLayer_opacity); \n"
+        "} \n";
+}
+
+void
+VisibleLayer::initializeBlending()
+{
+    if (!_opacityU.valid())
+    {
+        osg::StateSet* stateSet = getOrCreateStateSet();
+
+        _opacityU = new osg::Uniform("oe_VisibleLayer_opacity", options().opacity().get());
+        stateSet->addUniform(_opacityU.get());
+
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+
+        if (options().blend() == VisibleLayerOptions::BLEND_MODULATE)
+            vp->setFunction("oe_VisibleLayer_setOpacity", opacityModulateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+        else
+            vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+    }
 }
 
 void
 VisibleLayer::setOpacity(float value)
 {
     options().opacity() = value;
-
-    // On-demand installation of the opacity shader and rendering hint,
-    // since they do incur a small performance penalty.
-    if (value < 1.0f)
-    {
-        if (!_opacityU.valid())
-        {
-            osg::StateSet* stateSet = getOrCreateStateSet();
-            _opacityU = new osg::Uniform("oe_VisibleLayer_opacity", value);
-            stateSet->addUniform(_opacityU.get());
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-            vp->setFunction("oe_VisibleLayer_setOpacity", opacityFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
-            // NOTE: do not alter the render bin here - it will screw up terrain rendering order!
-        }
-    }
-    
-    if (_opacityU.valid())
-    {
-        _opacityU->set(value);
-    }
-
+    initializeBlending();
+    _opacityU->set(value);
     fireCallback(&VisibleLayerCallback::onOpacityChanged);
 }
 

@@ -90,20 +90,16 @@ These options control the rendering of the terrain surface.
 
     <map>
         <options>
-            <terrain driver                = "mp"
+            <terrain driver                = "rex"
                      lighting              = "true"
                      min_tile_range_factor = "6"
-                     min_lod               = "0"
-                     max_lod               = "23"
                      first_lod             = "0"
-                     cluster_culling       = "true"
-                     mercator_fast_path    = "true"
                      blending              = "false"
                      color                 = "#ffffffff"
                      tile_size             = "17"
                      normalize_edges       = "false"
                      elevation_smoothing   = "false"
-                     normal_maps           = "false">
+                     normal_maps           = "true">
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -120,24 +116,8 @@ These options control the rendering of the terrain surface.
 |                       | For example, if a tile has a 10km radius, and the MTRF=7, then the |
 |                       | tile will become visible at a range of about 70km.                 |
 +-----------------------+--------------------------------------------------------------------+
-| min_lod               | The lowest level of detail that the terrain is guaranteed to       |
-|                       | display, even if no source data is available at that LOD. The      |
-|                       | terrain will continue to subdivide up to this LOD even if it runs  |
-|                       | out of data.                                                       |
-+-----------------------+--------------------------------------------------------------------+
-| max_lod               | The highest level of detail at which the terrain will render, even |
-|                       | if there is higher resolution source data available.               |
-+-----------------------+--------------------------------------------------------------------+
 | first_lod             | The lowest level of detail at which the terrain will display tiles.|
 |                       | I.e., the terrain will never display a lower LOD than this.        |
-+-----------------------+--------------------------------------------------------------------+
-| cluster_culling       | Disable "cluster culling" by setting this to ``false``. You may    |
-|                       | wish to do this is you are placing the camera underground.         |
-+-----------------------+--------------------------------------------------------------------+
-| mercator_fast_path    | The *mercator fast path* allows the renderer to display Mercator   |
-|                       | projection imagery without reprojecting it. You can disable this   |
-|                       | technique (and allow reprojection as necessary) by setting this    |
-|                       | to ``false``.                                                      |
 +-----------------------+--------------------------------------------------------------------+
 | blending              | Set this to ``true`` to enable GL blending on the terrain's        |
 |                       | underlying geometry. This lets you make the globe partially        |
@@ -196,9 +176,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
                shared_sampler = "string"
                shared_matrix  = "string"
                coverage       = "false"
-               feather_pixels = "false"
                min_filter     = "LINEAR"
                mag_filter     = "LINEAR"
+               blend          = "interpolate"
                texture_compression = "auto" >
 
             <:ref:`cache_policy <CachePolicy>`>
@@ -266,10 +246,6 @@ An *image layer* is a raster image overlaid on the map's geometry.
 |                       | coverage disables any interpolation, filtering, or compression as  |
 |                       | these will corrupt the sampled data values on the GPU.             |
 +-----------------------+--------------------------------------------------------------------+
-| feather_pixels        | Whether to feather out alpha regions for this image layer with the |
-|                       | featherAlphaRegions function. Used to get proper blending when you |
-|                       | have datasets that abutt exactly with no overlap.                  |
-+-----------------------+--------------------------------------------------------------------+
 | min_filter            | OpenGL texture minification filter to use for this layer.          |
 |                       | Options are NEAREST, LINEAR, NEAREST_MIPMAP_NEAREST,               |
 |                       | NEAREST_MIPMIP_LINEAR, LINEAR_MIPMAP_NEAREST, LINEAR_MIPMAP_LINEAR |
@@ -280,6 +256,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | texture_compression   | "auto" to compress textures on the GPU;                            |
 |                       | "none" to disable.                                                 |
 |                       | "fastdxt" to use the FastDXT real time DXT compressor              |
++-----------------------+--------------------------------------------------------------------+
+| blend                 | "modulate" to multiply pixels with the framebuffer;                |
+|                       | "interpolate" to blend with the framebuffer based on alpha (def)   |
 +-----------------------+--------------------------------------------------------------------+
 
 

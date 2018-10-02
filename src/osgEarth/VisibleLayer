@@ -30,6 +30,12 @@ namespace osgEarth
     class OSGEARTH_EXPORT VisibleLayerOptions : public LayerOptions
     {
     public:
+        enum Blend {
+            BLEND_INTERPOLATE,
+            BLEND_MODULATE
+        };
+
+    public:
         VisibleLayerOptions();
         VisibleLayerOptions(const ConfigOptions& options);
 
@@ -52,6 +58,10 @@ namespace osgEarth
         optional<float>& maxVisibleRange() { return _maxRange; }
         const optional<float>& maxVisibleRange() const { return _maxRange; }
 
+        //! Blending function (GL_BLEND or GL_MODULATE)
+        optional<Blend>& blend() { return _blend; }
+        const optional<Blend>& blend() const { return _blend; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -63,6 +73,7 @@ namespace osgEarth
         optional<float> _opacity;
         optional<float> _minRange;
         optional<float> _maxRange;
+        optional<Blend> _blend;
     };
 
 
@@ -118,6 +129,7 @@ namespace osgEarth
 
     private: 
         osg::ref_ptr<osg::Uniform> _opacityU;
+        void initializeBlending();
     };
 
     typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;

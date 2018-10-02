@@ -24,6 +24,7 @@
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shadowing>
+#include <osgEarth/ClampableNode>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
@@ -102,8 +103,7 @@ namespace
             }
 
             // if this is a depth-pass camera (and not a shadow cam), reject it.
-            unsigned clearMask = camera->getClearMask();
-            bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
+            bool isDepthCamera = ClampableNode::isDepthCamera(camera);
             if (isDepthCamera)
                 return false;
 

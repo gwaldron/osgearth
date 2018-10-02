@@ -141,6 +141,18 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
 }
 
 
+bool ClampableNode::isDepthCamera(const osg::Camera* camera)
+{
+    if (camera->getStateSet() == NULL)
+    {
+        return false;
+    }
+
+    // Check for the existence of the OE_IS_DEPTH_CAMERA define
+    return (camera->getStateSet()->getDefineList().find("OE_IS_DEPTH_CAMERA") != camera->getStateSet()->getDefineList().end());
+}
+
+
 //...........................................................................
 
 #undef  LC

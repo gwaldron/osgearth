@@ -22,14 +22,14 @@ uniform float     oe_layer_opacity;
 #ifdef OE_TERRAIN_MORPH_IMAGERY
 uniform sampler2D oe_layer_texParent;
 uniform float oe_layer_texParentExists;
-in vec4 oe_layer_texcParent;
+in vec2 oe_layer_texcParent;
 in float oe_rex_morphFactor;
 #endif
 
-in vec4 oe_layer_texc;
+in vec2 oe_layer_texc;
 in vec4 oe_layer_tilec;
 
-in float oe_layer_rangeOpacity;
+//in float oe_layer_rangeOpacity;
 
 // Vertex Markers:
 #define VERTEX_MARKER_DISCARD  1
@@ -72,12 +72,12 @@ void oe_rexEngine_frag(inout vec4 color)
 #endif
 
     float isImageLayer = oe_layer_uid >= 0 ? 1.0 : 0.0;
-	vec4 texelSelf = texture(oe_layer_tex, oe_layer_texc.st);
+	vec4 texelSelf = texture(oe_layer_tex, oe_layer_texc);
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
 
     // sample the parent texture:
-	vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent.st);
+	vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent);
 
     // if the parent texture does not exist, use the current texture with alpha=0 as the parent
     // so we can "fade in" an image layer that starts at LOD > 0:
@@ -98,7 +98,8 @@ void oe_rexEngine_frag(inout vec4 color)
 
     // Integrate layer opacity into the texture:
     //texel.a = mix(texel.a, texel.a*oe_layer_rangeOpacity, isImageLayer);
-    texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_layer_rangeOpacity, isImageLayer);
+    //texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_layer_rangeOpacity, isImageLayer);
+    //texel.a = mix(texel.a, texel.a*oe_layer_rangeOpacity, isImageLayer);
     
 #ifdef OE_TERRAIN_BLEND_IMAGERY
 

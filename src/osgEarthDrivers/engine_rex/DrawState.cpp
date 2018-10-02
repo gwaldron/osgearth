@@ -61,10 +61,7 @@ PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings
         _elevTexelCoeffUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevTexelCoeff"));
         _parentTextureExistsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_texParentExists"));
         _layerUidUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
-        _layerOpacityUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_opacity"));
         _layerOrderUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
-        _layerMinRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_minRange"));
-        _layerMaxRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_maxRange"));
         _morphConstantsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
     }
 

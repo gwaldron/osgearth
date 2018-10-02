@@ -1,0 +1,14 @@
+<!--
+osgEarth Sample - Image Layer Modulation Blending
+-->
+<map name="readymap.org" type="geocentric">
+
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+
+    <image name="Noise" driver="osg" blend="modulate" opacity="0.5">
+        <url> ../data/fractal.png </url>
+        <profile> global-geodetic </profile>
+    </image>
+</map>

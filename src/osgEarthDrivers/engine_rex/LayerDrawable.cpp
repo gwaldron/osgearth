@@ -58,23 +58,23 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     {
         if (ds._layerUidUL >= 0)
             ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
-        if (ds._layerOpacityUL >= 0 && _visibleLayer)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_visibleLayer->getOpacity());
-        if (ds._layerMinRangeUL >= 0 && _visibleLayer)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_visibleLayer->getMinVisibleRange());
-        if (ds._layerMaxRangeUL >= 0 && _visibleLayer)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_visibleLayer->getMaxVisibleRange());
+        //if (ds._layerOpacityUL >= 0 && _visibleLayer)
+        //    ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_visibleLayer->getOpacity());
+        //if (ds._layerMinRangeUL >= 0 && _visibleLayer)
+        //    ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_visibleLayer->getMinVisibleRange());
+        //if (ds._layerMaxRangeUL >= 0 && _visibleLayer)
+        //    ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_visibleLayer->getMaxVisibleRange());
     }
     else
     {
         if (ds._layerUidUL >= 0)
             ds._ext->glUniform1i(ds._layerUidUL,      (GLint)-1);
-        if (ds._layerOpacityUL >= 0)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)1.0f);
-        if (ds._layerMinRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)0.0f);
-        if (ds._layerMaxRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)FLT_MAX);
+        //if (ds._layerOpacityUL >= 0)
+        //    ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)1.0f);
+        //if (ds._layerMinRangeUL >= 0)
+        //    ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)0.0f);
+        //if (ds._layerMaxRangeUL >= 0)
+        //    ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)FLT_MAX);
     }
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)

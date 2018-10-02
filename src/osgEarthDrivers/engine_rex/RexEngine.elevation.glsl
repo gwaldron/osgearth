@@ -16,7 +16,6 @@
 
 // stage
 vec3 vp_Normal; // up vector
-vec4 oe_layer_texc;
 vec4 oe_layer_tilec;
 
 flat out int oe_terrain_vertexMarker;

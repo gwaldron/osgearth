@@ -202,10 +202,6 @@ namespace osgEarth
         //! Cache ID for this layer
         virtual std::string getCacheID() const;
 
-    public: // VisibleLayer
-
-        //! Override the opacity setter
-        virtual void setOpacity(float value);
 
     public:
 

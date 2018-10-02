@@ -129,7 +129,9 @@ namespace osgEarth
 
     private: 
         osg::ref_ptr<osg::Uniform> _opacityU;
+        osg::ref_ptr<osg::Uniform> _minRangeU, _maxRangeU;
         void initializeBlending();
+        void initializeMinMaxRangeOpacity();
     };
 
     typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;

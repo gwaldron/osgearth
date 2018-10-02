@@ -109,27 +109,16 @@ VisibleLayer::open()
         setVisible(options().visible().get());
     }
 
-    if (options().opacity().isSet())
+    if (options().opacity().isSet() || options().blend().isSet())
     {
-        setOpacity(options().opacity().get());
-    }
-
-    if (options().blend().isSetTo(options().BLEND_INTERPOLATE))
-    {
-        getOrCreateStateSet()->setAttributeAndModes(
-            new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
-            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
-        setOpacity(options().opacity().get());
-    }
-    else if (options().blend().isSetTo(options().BLEND_MODULATE))
-    {
-        getOrCreateStateSet()->setAttributeAndModes(
-            new osg::BlendFunc(GL_DST_COLOR, GL_ZERO),
-            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
         initializeBlending();
     }
+
+    if (options().minVisibleRange().isSet() || options().maxVisibleRange().isSet())
+    {
+        initializeMinMaxRangeOpacity();
+    }
+
     return Layer::open();
 }
 
@@ -154,20 +143,48 @@ VisibleLayer::getVisible() const
 
 namespace
 {
+    const char* opacityVS =
+        "#version " GLSL_VERSION_STR "\n"
+        "uniform float oe_VisibleLayer_opacityUniform; \n"
+        "out float oe_VisibleLayer_opacity; \n"
+        "void oe_VisibleLayer_initOpacity(inout vec4 vertex) { \n"
+        "    oe_VisibleLayer_opacity = oe_VisibleLayer_opacityUniform; \n"
+        "} \n";
+
     const char* opacityInterpolateFS =
         "#version " GLSL_VERSION_STR "\n"
-        "uniform float oe_VisibleLayer_opacity; \n"
+        "in float oe_VisibleLayer_opacity; \n"
         "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"
         "    color.a *= oe_VisibleLayer_opacity; \n"
         "} \n";
 
     const char* opacityModulateFS =
         "#version " GLSL_VERSION_STR "\n"
-        "uniform float oe_VisibleLayer_opacity; \n"
-        "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"    
-        "    vec3 rgbHi = color.rgb * 2.3/oe_VisibleLayer_opacity; \n"
+        "in float oe_VisibleLayer_opacity; \n"
+        "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"
+        "    vec3 rgbHi = oe_VisibleLayer_opacity > 0.0? color.rgb * 2.3/oe_VisibleLayer_opacity : vec3(1); \n"
         "    color.rgb = mix(vec3(1), rgbHi, oe_VisibleLayer_opacity); \n"
+        "    color.a = 1.0; \n"
         "} \n";
+
+    const char* rangeOpacityVS =
+        "uniform float oe_VisibleLayer_minRange; \n"
+        "uniform float oe_VisibleLayer_maxRange; \n"
+        "uniform float oe_terrain_attenuationRange; \n"
+        "float oe_VisibleLayer_opacity; \n"
+        "void oe_VisibleLayer_applyRangeOpacity(inout vec4 vertexView) { \n"
+        "    float range = max(-vertexView.z, 0.0); \n"
+        "    float attenMin    = oe_VisibleLayer_minRange - oe_terrain_attenuationRange; \n"
+        "    float attenMax    = oe_VisibleLayer_maxRange + oe_terrain_attenuationRange; \n"
+        "    float rangeOpacity = \n"
+        "        oe_VisibleLayer_minRange >= oe_VisibleLayer_maxRange ? 1.0 : \n"
+        "        range >= oe_VisibleLayer_minRange && range < oe_VisibleLayer_maxRange ? 1.0 : \n"
+        "        range < oe_VisibleLayer_minRange ? clamp((range-attenMin)/oe_terrain_attenuationRange, 0.0, 1.0) : \n"
+        "        range > oe_VisibleLayer_maxRange ? clamp((attenMax-range)/oe_terrain_attenuationRange, 0.0, 1.0) : \n"
+        "        0.0; \n"
+        "    oe_VisibleLayer_opacity *= rangeOpacity; \n"
+        "} \n";
+
 }
 
 void
@@ -177,15 +194,53 @@ VisibleLayer::initializeBlending()
     {
         osg::StateSet* stateSet = getOrCreateStateSet();
 
-        _opacityU = new osg::Uniform("oe_VisibleLayer_opacity", options().opacity().get());
+        _opacityU = new osg::Uniform("oe_VisibleLayer_opacityUniform", (float)options().opacity().get());
         stateSet->addUniform(_opacityU.get());
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
 
+        vp->setFunction("oe_VisibleLayer_initOpacity", opacityVS, ShaderComp::LOCATION_VERTEX_MODEL);
+
         if (options().blend() == VisibleLayerOptions::BLEND_MODULATE)
+        {
             vp->setFunction("oe_VisibleLayer_setOpacity", opacityModulateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+
+            stateSet->setAttributeAndModes(
+                new osg::BlendFunc(GL_DST_COLOR, GL_ZERO),
+                osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        }
         else
+        {
             vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+
+            if (options().blend().isSetTo(options().BLEND_INTERPOLATE))
+            {
+                stateSet->setAttributeAndModes(
+                    new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+                    osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
+            }
+        }        
+    }
+}
+
+void
+VisibleLayer::initializeMinMaxRangeOpacity()
+{
+    initializeBlending();
+
+    if (!_minRangeU.valid())
+    {
+        osg::StateSet* stateSet = getOrCreateStateSet();
+
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+
+        vp->setFunction("oe_VisibleLayer_applyRangeOpacity", rangeOpacityVS, ShaderComp::LOCATION_VERTEX_VIEW);
+
+        _minRangeU = new osg::Uniform("oe_VisibleLayer_minRange", (float)options().minVisibleRange().get());
+        stateSet->addUniform(_minRangeU.get());
+
+        _maxRangeU = new osg::Uniform("oe_VisibleLayer_maxRange", (float)options().maxVisibleRange().get());
+        stateSet->addUniform(_maxRangeU.get());
     }
 }
 
@@ -207,6 +262,7 @@ VisibleLayer::getOpacity() const
 void
 VisibleLayer::setMinVisibleRange( float minVisibleRange )
 {
+    initializeMinMaxRangeOpacity();
     options().minVisibleRange() = minVisibleRange;
     fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
 }
@@ -220,6 +276,7 @@ VisibleLayer::getMinVisibleRange() const
 void
 VisibleLayer::setMaxVisibleRange( float maxVisibleRange )
 {
+    initializeMinMaxRangeOpacity();
     options().maxVisibleRange() = maxVisibleRange;
     fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
 }

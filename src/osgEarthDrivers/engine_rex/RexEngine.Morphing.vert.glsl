@@ -13,7 +13,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 // stage
 vec3 vp_Normal; // up vector
 
-vec4 oe_layer_texc;
 vec4 oe_layer_tilec;
 
 out float oe_rex_morphFactor;

@@ -1537,9 +1537,6 @@ RexTerrainEngineNode::updateState()
             }
 #endif
 
-            // uniform that controls per-layer opacity
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_opacity", 1.0f) );
-
             // uniform that conveys the layer UID to the shaders; necessary
             // for per-layer branching (like color filters)
             // UID -1 => no image layer (no texture)
@@ -1550,13 +1547,7 @@ RexTerrainEngineNode::updateState()
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_order", (int)0) );
 
             // default min/max range uniforms. (max < min means ranges are disabled)
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", -1.0f) );
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attenuationDistance().get()) );
-
-            terrainStateSet->getOrCreateUniform(
-                "oe_min_tile_range_factor",
-                osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
+            terrainStateSet->addUniform( new osg::Uniform("oe_terrain_attenuationRange", _terrainOptions.attenuationDistance().get()) );
 
             terrainStateSet->addUniform(new osg::Uniform("oe_tile_size", (float)_terrainOptions.tileSize().get()));
 

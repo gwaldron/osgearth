@@ -29,20 +29,15 @@ _tileSize( 17 ),
 _verticalScale( 1.0f ),
 _verticalOffset( 0.0f ),
 _minTileRangeFactor( 7.0 ),
-_combineLayers( true ),
 _maxLOD( 23 ),
 _minLOD( 0 ),
 _firstLOD( 0 ),
 _enableLighting( false ),
 _attenuationDistance( 10000.0f ),
-_lodTransitionTimeSeconds( 0.5f ),
-_enableMipmapping( true ),
 _clusterCulling( true ),
 _enableBlending( true ),
 _compressNormalMaps( false ),
 _mercatorFastPath( false ),
-_minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
-_magFilter( osg::Texture::LINEAR),
 _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
 _debug( false ),
@@ -70,8 +65,6 @@ TerrainOptions::getConfig() const
     conf.set( "first_lod", _firstLOD );
     conf.set( "lighting", _enableLighting );
     conf.set( "attenuation_distance", _attenuationDistance );
-    conf.set( "lod_transition_time", _lodTransitionTimeSeconds );
-    conf.set( "mipmapping", _enableMipmapping );
     conf.set( "cluster_culling", _clusterCulling );
     conf.set( "blending", _enableBlending );
     conf.set( "compress_normal_maps", _compressNormalMaps);
@@ -82,24 +75,10 @@ TerrainOptions::getConfig() const
     conf.set( "bin_number", _binNumber );
     conf.set( "min_expiry_time", _minExpiryTime);
     conf.set( "min_expiry_frames", _minExpiryFrames);
-    conf.set("cast_shadows", _castShadows);
-    conf.set("tile_pixel_size", _tilePixelSize);
-    conf.set("range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
-    conf.set("range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
-
-    //Save the filter settings
-	conf.set("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.set("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.set("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.set("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.set("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.set("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.set("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.set("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.set("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.set("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.set("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.set("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.set( "cast_shadows", _castShadows);
+    conf.set( "tile_pixel_size", _tilePixelSize);
+    conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
+    conf.set( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 
     return conf;
 }
@@ -117,8 +96,6 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.get( "first_lod", _firstLOD ); conf.get( "first_level", _firstLOD );
     conf.get( "lighting", _enableLighting );
     conf.get( "attenuation_distance", _attenuationDistance );
-    conf.get( "lod_transition_time", _lodTransitionTimeSeconds );
-    conf.get( "mipmapping", _enableMipmapping );
     conf.get( "cluster_culling", _clusterCulling );
     conf.get( "blending", _enableBlending );
     conf.get( "compress_normal_maps", _compressNormalMaps);
@@ -129,22 +106,8 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.get( "bin_number", _binNumber );
     conf.get( "min_expiry_time", _minExpiryTime);
     conf.get( "min_expiry_frames", _minExpiryFrames);
-    conf.get("cast_shadows", _castShadows);
-    conf.get("tile_pixel_size", _tilePixelSize);
-    conf.get("range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
-    conf.get("range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
-
-    //Load the filter settings
-	conf.get("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.get("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.get("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.get("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.get("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.get("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.get("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.get("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.get("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.get("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.get("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.get("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.get( "cast_shadows", _castShadows);
+    conf.get( "tile_pixel_size", _tilePixelSize);
+    conf.get( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
+    conf.get( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 }

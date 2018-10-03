@@ -24,6 +24,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
+#include <osg/Drawable>
 
 namespace osg {
     class TextureBuffer;
@@ -83,6 +84,7 @@ namespace osgEarth
             std::list<osg::PrimitiveSet*> _primitiveSets;
             osg::TextureBuffer* _tbo;
             int _tboUnit;
+            osg::ref_ptr<osg::Drawable::ComputeBoundingBoxCallback> _bboxComputer;
         };
 
 

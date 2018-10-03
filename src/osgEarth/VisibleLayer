@@ -58,6 +58,10 @@ namespace osgEarth
         optional<float>& maxVisibleRange() { return _maxRange; }
         const optional<float>& maxVisibleRange() const { return _maxRange; }
 
+        //! Ratio (or min range to max range) over which to ramp min and max range blending
+        optional<float>& attenuation() { return _attenuation; }
+        const optional<float>& attenuation() const { return _attenuation; }
+
         //! Blending function (GL_BLEND or GL_MODULATE)
         optional<Blend>& blend() { return _blend; }
         const optional<Blend>& blend() const { return _blend; }
@@ -73,6 +77,7 @@ namespace osgEarth
         optional<float> _opacity;
         optional<float> _minRange;
         optional<float> _maxRange;
+        optional<float> _attenuation;
         optional<Blend> _blend;
     };
 
@@ -116,6 +121,10 @@ namespace osgEarth
         //! Maximum camera range at which this image layer is visible (if supported)
         float getMaxVisibleRange() const;
         void setMaxVisibleRange( float maxVisibleRange );
+        
+        //! Ratio (of min range to max range) over which to ramp min and max range blending
+        float getAttenuation() const;
+        void setAttenuation( float ratio );
 
     public: // Layer
 
@@ -129,7 +138,7 @@ namespace osgEarth
 
     private: 
         osg::ref_ptr<osg::Uniform> _opacityU;
-        osg::ref_ptr<osg::Uniform> _minRangeU, _maxRangeU;
+        osg::ref_ptr<osg::Uniform> _rangeU;
         void initializeBlending();
         void initializeMinMaxRangeOpacity();
     };

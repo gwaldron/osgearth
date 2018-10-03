@@ -289,6 +289,17 @@ ModelLayer::addedToMap(const Map* map)
     }
 }
 
+void
+ModelLayer::removedFromMap(const Map* map)
+{
+    // dispose of the scene graph.
+    while (_root->getNumChildren() > 0)
+    {
+        getSceneGraphCallbacks()->fireRemoveNode(_root->getChild(0));
+        _root->removeChildren(0, 1);
+    }
+}
+
 osg::Node*
 ModelLayer::getNode() const
 {

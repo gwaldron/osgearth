@@ -435,7 +435,7 @@ Map::removeLayer(Layer* layer)
     uninstallLayerCallbacks(layerToRemove.get());
 
     // a separate block b/c we don't need the mutex
-    if ( newRevision >= 0 ) // layerToRemove.get() )
+    if ( newRevision >= 0 )
     {
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {

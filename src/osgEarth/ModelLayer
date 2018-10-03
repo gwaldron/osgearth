@@ -174,11 +174,14 @@ namespace osgEarth
 
     public: // Layer
 
-        /** Open the layer and return its status */
+        //! Open the layer and return its status
         virtual const Status& open();
 
         //! Called when this layer is added to a Map
         virtual void addedToMap(const Map*);
+
+        //! Called when this layer is removed from a Map
+        virtual void removedFromMap(const Map*);
 
         //! Node created by this model layer
         virtual osg::Node* getNode() const;

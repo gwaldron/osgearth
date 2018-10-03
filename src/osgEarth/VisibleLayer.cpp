@@ -47,6 +47,7 @@ VisibleLayerOptions::setDefaults()
     _opacity.init( 1.0f );
     _minRange.init( 0.0 );
     _maxRange.init( FLT_MAX );
+    _attenuation.init(0.20f);
     _blend.init( BLEND_INTERPOLATE );
 }
 
@@ -58,6 +59,7 @@ VisibleLayerOptions::getConfig() const
     conf.set( "opacity", _opacity);
     conf.set( "min_range", _minRange );
     conf.set( "max_range", _maxRange );
+    conf.set( "attenuation", _attenuation );
     conf.set( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.set( "blend", "modulate", _blend, BLEND_MODULATE );
     return conf;
@@ -70,6 +72,7 @@ VisibleLayerOptions::fromConfig(const Config& conf)
     conf.get( "opacity", _opacity);
     conf.get( "min_range", _minRange );
     conf.get( "max_range", _maxRange );
+    conf.get( "attenuation", _attenuation );
     conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
 }
@@ -160,28 +163,35 @@ namespace
 
     const char* opacityModulateFS =
         "#version " GLSL_VERSION_STR "\n"
+        "#define OE_MODULATION_EXPOSURE 2.35 \n"
         "in float oe_VisibleLayer_opacity; \n"
         "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"
-        "    vec3 rgbHi = oe_VisibleLayer_opacity > 0.0? color.rgb * 2.3/oe_VisibleLayer_opacity : vec3(1); \n"
+        "    vec3 rgbHi = oe_VisibleLayer_opacity > 0.0? color.rgb * float( OE_MODULATION_EXPOSURE )/oe_VisibleLayer_opacity : vec3(1); \n"
         "    color.rgb = mix(vec3(1), rgbHi, oe_VisibleLayer_opacity); \n"
         "    color.a = 1.0; \n"
         "} \n";
 
     const char* rangeOpacityVS =
-        "uniform float oe_VisibleLayer_minRange; \n"
-        "uniform float oe_VisibleLayer_maxRange; \n"
-        "uniform float oe_terrain_attenuationRange; \n"
+        "uniform vec3 oe_VisibleLayer_ranges; \n"
         "float oe_VisibleLayer_opacity; \n"
-        "void oe_VisibleLayer_applyRangeOpacity(inout vec4 vertexView) { \n"
+        "#define MAX_MAX_RANGE 1e20 \n"
+        
+        "void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView) \n"
+        "{ \n"
+        "    float minRange = oe_VisibleLayer_ranges[0]; \n"
+        "    float maxRange = oe_VisibleLayer_ranges[1]; \n"
+        "    float attenFactor = oe_VisibleLayer_ranges[2]; \n"
+
         "    float range = max(-vertexView.z, 0.0); \n"
-        "    float attenMin    = oe_VisibleLayer_minRange - oe_terrain_attenuationRange; \n"
-        "    float attenMax    = oe_VisibleLayer_maxRange + oe_terrain_attenuationRange; \n"
+        "    float maxOpaqueRange = maxRange-((maxRange-minRange)*attenFactor); \n"
+        "    float minOpaqueRange = minRange+(minRange*attenFactor); \n"
+
         "    float rangeOpacity = \n"
-        "        oe_VisibleLayer_minRange >= oe_VisibleLayer_maxRange ? 1.0 : \n"
-        "        range >= oe_VisibleLayer_minRange && range < oe_VisibleLayer_maxRange ? 1.0 : \n"
-        "        range < oe_VisibleLayer_minRange ? clamp((range-attenMin)/oe_terrain_attenuationRange, 0.0, 1.0) : \n"
-        "        range > oe_VisibleLayer_maxRange ? clamp((attenMax-range)/oe_terrain_attenuationRange, 0.0, 1.0) : \n"
-        "        0.0; \n"
+        "        minRange >= maxRange ? 1.0 : \n"
+        "        range >= maxRange || range <= minRange ? 0.0 : \n"
+        "        range > maxOpaqueRange && maxRange < MAX_MAX_RANGE ? 1.0-((range-maxOpaqueRange)/(maxRange-maxOpaqueRange)) : \n"
+        "        range < minOpaqueRange && minRange > 0.0 ? ((range-minRange)/(minOpaqueRange-minRange)) : \n"
+        "        1.0; \n"
         "    oe_VisibleLayer_opacity *= rangeOpacity; \n"
         "} \n";
 
@@ -228,19 +238,20 @@ VisibleLayer::initializeMinMaxRangeOpacity()
 {
     initializeBlending();
 
-    if (!_minRangeU.valid())
+    if (!_rangeU.valid())
     {
         osg::StateSet* stateSet = getOrCreateStateSet();
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
 
-        vp->setFunction("oe_VisibleLayer_applyRangeOpacity", rangeOpacityVS, ShaderComp::LOCATION_VERTEX_VIEW);
+        vp->setFunction("oe_VisibleLayer_applyMinMaxRange", rangeOpacityVS, ShaderComp::LOCATION_VERTEX_VIEW);
 
-        _minRangeU = new osg::Uniform("oe_VisibleLayer_minRange", (float)options().minVisibleRange().get());
-        stateSet->addUniform(_minRangeU.get());
+        _rangeU = new osg::Uniform("oe_VisibleLayer_ranges", osg::Vec3f(
+            (float)options().minVisibleRange().get(),
+            (float)options().maxVisibleRange().get(),
+            (float)options().attenuation().get()));
 
-        _maxRangeU = new osg::Uniform("oe_VisibleLayer_maxRange", (float)options().maxVisibleRange().get());
-        stateSet->addUniform(_maxRangeU.get());
+        stateSet->addUniform(_rangeU.get());
     }
 }
 
@@ -264,6 +275,10 @@ VisibleLayer::setMinVisibleRange( float minVisibleRange )
 {
     initializeMinMaxRangeOpacity();
     options().minVisibleRange() = minVisibleRange;
+    _rangeU->set(osg::Vec3f(
+        (float)options().minVisibleRange().get(),
+        (float)options().maxVisibleRange().get(),
+        (float)options().attenuation().get()));
     fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
 }
 
@@ -278,6 +293,10 @@ VisibleLayer::setMaxVisibleRange( float maxVisibleRange )
 {
     initializeMinMaxRangeOpacity();
     options().maxVisibleRange() = maxVisibleRange;
+    _rangeU->set(osg::Vec3f(
+        (float)options().minVisibleRange().get(),
+        (float)options().maxVisibleRange().get(),
+        (float)options().attenuation().get()));
     fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
 }
 
@@ -285,6 +304,23 @@ float
 VisibleLayer::getMaxVisibleRange() const
 {
     return options().maxVisibleRange().get();
+}
+
+void
+VisibleLayer::setAttenuation(float value)
+{
+    initializeMinMaxRangeOpacity();
+    options().attenuation() = value;
+    _rangeU->set(osg::Vec3f(
+        (float)options().minVisibleRange().get(),
+        (float)options().maxVisibleRange().get(),
+        (float)options().attenuation().get()));
+}
+
+float
+VisibleLayer::getAttenuation() const
+{
+    return options().attenuation().get();
 }
 
 void

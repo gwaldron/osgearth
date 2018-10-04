@@ -156,6 +156,7 @@ void
 ModelLayer::init()
 {
     VisibleLayer::init();
+    installDefaultOpacityShader();
     _root = new osg::Group();
     _root->setName(getName());
 }

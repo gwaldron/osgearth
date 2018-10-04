@@ -98,7 +98,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                     //    << " key " << tileNode->getKey().str()
                     //    << " because it was culled by extent." << std::endl;
                     return 0L;
-                }
+                }            
             }
 
             drawable->_tiles.push_back(DrawTileCommand());
@@ -112,10 +112,11 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile->_geom = surface->getDrawable()->_geom.get();
             tile->_morphConstants = tileNode->getMorphConstants();
             tile->_key = &tileNode->getKey();
-            tile->_order = drawable->_order; // layer order in map tile.
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
             tile->_range = getDistanceToViewPoint(c, true);
+
+            tile->_layerOrder = drawable->_drawOrder;
 
             const osg::Image* elevRaster = tileNode->getElevationRaster();
             if (elevRaster)
@@ -145,6 +146,10 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         // this information so we can run a cleanup visitor later on.
         ++_orphanedPassesDetected;
     }
+    else
+    {
+        OE_WARN << "Added nothing for a UID -1 darw command" << std::endl;
+    }
     
     return 0L;
 }
@@ -154,6 +159,7 @@ TerrainCuller::apply(osg::Node& node)
 {
     // push the node's state.
     osg::StateSet* node_state = node.getStateSet();
+        
 
     TileNode* tileNode = dynamic_cast<TileNode*>(&node);
     if (tileNode)
@@ -161,11 +167,9 @@ TerrainCuller::apply(osg::Node& node)
         _currentTileNode = tileNode;
 
         // reset the pointer to the first DrawTileCommand. We keep track of this so
-        // we can set it's "order" member to zero at the end, so the rendering engine
+        // we can set it's "layerOrder" member to zero at the end, so the rendering engine
         // knows to blend it with the terrain geometry color.
-        _firstTileDrawCommandForTile = 0L;
-
-        //_currentTileDrawCommands = 0u;
+        _firstDrawCommandForTile = 0L;
         
         if (!_terrain.patchLayers().empty())
         {
@@ -223,6 +227,7 @@ TerrainCuller::apply(osg::Node& node)
             pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
 
             int order = 0;
+            unsigned count = 0;
 
             // First go through any legit rendering pass data in the Tile and
             // and add a DrawCommand for each.
@@ -232,14 +237,13 @@ TerrainCuller::apply(osg::Node& node)
                 DrawTileCommand* cmd = addDrawCommand(pass.sourceUID(), &renderModel, &pass, _currentTileNode);
                 if (cmd)
                 {
-                    if (_firstTileDrawCommandForTile == 0L)
+                    if (_firstDrawCommandForTile == 0L)
                     {
-                        _firstTileDrawCommandForTile = cmd;
+                        _firstDrawCommandForTile = cmd;
                     }
-                    else if (cmd->_order < _firstTileDrawCommandForTile->_order)
+                    else if (cmd->_layerOrder < _firstDrawCommandForTile->_layerOrder)
                     {
-                        //_firstTileDrawCommandForTile->_order = 1;
-                        _firstTileDrawCommandForTile = cmd;
+                        _firstDrawCommandForTile = cmd;
                     }
                 }
             }
@@ -247,19 +251,21 @@ TerrainCuller::apply(osg::Node& node)
             // If the culler added no draw commands for this tile... we still need
             // to draw something or else there will be a hole! So draw a blank tile.
             // UID = -1 is the special UID code for a blank.
-            if (_firstTileDrawCommandForTile == 0L)
+            if (_firstDrawCommandForTile == 0L)
             {
                 //OE_INFO << LC << "Adding blank render for tile " << _currentTileNode->getKey().str() << std::endl;
                 DrawTileCommand* cmd = addDrawCommand(-1, &renderModel, 0L, _currentTileNode);
                 if (cmd)
-                    cmd->_order = 0;
+                {
+                    _firstDrawCommandForTile = cmd;
+                }
             }
 
             // Set the layer order of the first draw command for this tile to zero,
             // to support proper terrain blending.
-            if (_firstTileDrawCommandForTile)
+            if (_firstDrawCommandForTile)
             {
-                _firstTileDrawCommandForTile->_order = 0;
+                _firstDrawCommandForTile->_layerOrder = 0;
             }
                 
             // pop the matrix from the cull stack

@@ -42,7 +42,7 @@ PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings
     if (pcp && (pcp != _pcp))
     {
         // Reset all sampler matrix states since their uniform locations are going to change.
-        _layerOrder.clear();
+        //_runningLayerDrawOrder = 0;
         _elevTexelCoeff.clear();
         _morphConstants.clear();
         _parentTextureExists.clear();

@@ -112,10 +112,7 @@ VisibleLayer::open()
         setVisible(options().visible().get());
     }
 
-    if (options().opacity().isSet() || options().blend().isSet())
-    {
-        initializeBlending();
-    }
+    initializeBlending();
 
     if (options().minVisibleRange().isSet() || options().maxVisibleRange().isSet())
     {
@@ -146,34 +143,20 @@ VisibleLayer::getVisible() const
 
 namespace
 {
+    // Shader that just copies the uniform value into a stage global/output
     const char* opacityVS =
         "#version " GLSL_VERSION_STR "\n"
         "uniform float oe_VisibleLayer_opacityUniform; \n"
-        "out float oe_VisibleLayer_opacity; \n"
-        "void oe_VisibleLayer_initOpacity(inout vec4 vertex) { \n"
-        "    oe_VisibleLayer_opacity = oe_VisibleLayer_opacityUniform; \n"
+        "out float oe_layer_opacity; \n"
+        "void oe_VisibleLayer_initOpacity(inout vec4 vertex) \n"
+        "{ \n"
+        "    oe_layer_opacity = oe_VisibleLayer_opacityUniform; \n"
         "} \n";
 
-    const char* opacityInterpolateFS =
-        "#version " GLSL_VERSION_STR "\n"
-        "in float oe_VisibleLayer_opacity; \n"
-        "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"
-        "    color.a *= oe_VisibleLayer_opacity; \n"
-        "} \n";
-
-    const char* opacityModulateFS =
-        "#version " GLSL_VERSION_STR "\n"
-        "#define OE_MODULATION_EXPOSURE 2.35 \n"
-        "in float oe_VisibleLayer_opacity; \n"
-        "void oe_VisibleLayer_setOpacity(inout vec4 color) { \n"
-        "    vec3 rgbHi = oe_VisibleLayer_opacity > 0.0? color.rgb * float( OE_MODULATION_EXPOSURE )/oe_VisibleLayer_opacity : vec3(1); \n"
-        "    color.rgb = mix(vec3(1), rgbHi, oe_VisibleLayer_opacity); \n"
-        "    color.a = 1.0; \n"
-        "} \n";
-
+    // Shader that incorporates range-based opacity (min/max range with attenuation)
     const char* rangeOpacityVS =
         "uniform vec3 oe_VisibleLayer_ranges; \n"
-        "float oe_VisibleLayer_opacity; \n"
+        "float oe_layer_opacity; \n"
         "#define MAX_MAX_RANGE 1e20 \n"
         
         "void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView) \n"
@@ -192,9 +175,30 @@ namespace
         "        range > maxOpaqueRange && maxRange < MAX_MAX_RANGE ? 1.0-((range-maxOpaqueRange)/(maxRange-maxOpaqueRange)) : \n"
         "        range < minOpaqueRange && minRange > 0.0 ? ((range-minRange)/(minOpaqueRange-minRange)) : \n"
         "        1.0; \n"
-        "    oe_VisibleLayer_opacity *= rangeOpacity; \n"
+        "    oe_layer_opacity *= rangeOpacity; \n"
         "} \n";
 
+    // Shader that calculates a modulation color based on the "opacity", i.e. intensity
+    const char* opacityInterpolateFS =
+        "#version " GLSL_VERSION_STR "\n"
+        "in float oe_layer_opacity; \n"
+        "void oe_VisibleLayer_setOpacity(inout vec4 color) \n"
+        "{ \n"
+        "    color.a *= oe_layer_opacity; \n"
+        "} \n";
+
+    // Shader that calculates a modulation color based on the "opacity", i.e. intensity
+    const char* opacityModulateFS =
+        "#version " GLSL_VERSION_STR "\n"
+        "#define OE_MODULATION_EXPOSURE 2.35 \n"
+        "in float oe_layer_opacity; \n"
+        "void oe_VisibleLayer_setOpacity(inout vec4 color) \n"
+        "{ \n"
+        "    vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * float( OE_MODULATION_EXPOSURE )/oe_layer_opacity : vec3(1); \n"
+        "    color.rgb = mix(vec3(1), rgbHi, oe_layer_opacity); \n"
+        "    color.a = 1.0; \n"
+        "    oe_layer_opacity = 1.0; \n"
+        "} \n";
 }
 
 void
@@ -221,8 +225,8 @@ VisibleLayer::initializeBlending()
         }
         else
         {
-            vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
-
+            // In this case the fragment shader of the layer is responsible for
+            // incorporating the final value of oe_layer_opacity.
             if (options().blend().isSetTo(options().BLEND_INTERPOLATE))
             {
                 stateSet->setAttributeAndModes(
@@ -330,5 +334,15 @@ VisibleLayer::fireCallback(VisibleLayerCallback::MethodPtr method)
     {
         VisibleLayerCallback* cb = dynamic_cast<VisibleLayerCallback*>(i->get());
         if (cb) (cb->*method)(this);
+    }
+}
+
+void
+VisibleLayer::installDefaultOpacityShader()
+{
+    if (options().blend() == options().BLEND_INTERPOLATE)
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+        vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
     }
 }

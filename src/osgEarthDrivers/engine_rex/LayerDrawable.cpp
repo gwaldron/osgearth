@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "LayerDrawable"
+#include "TerrainRenderData"
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
@@ -26,8 +27,10 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 LayerDrawable::LayerDrawable() :
 _renderType(Layer::RENDERTYPE_TERRAIN_SURFACE),
-_order(0),
+_drawOrder(0),
 _layer(0L),
+_visibleLayer(0L),
+_imageLayer(0L),
 _clearOsgState(false),
 _draw(true)
 {
@@ -54,27 +57,14 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     ds.refresh(ri, _drawState->_bindings);
 
-    if (_layer)
+    if (ds._layerUidUL >= 0)
     {
-        if (ds._layerUidUL >= 0)
-            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
-        //if (ds._layerOpacityUL >= 0 && _visibleLayer)
-        //    ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_visibleLayer->getOpacity());
-        //if (ds._layerMinRangeUL >= 0 && _visibleLayer)
-        //    ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_visibleLayer->getMinVisibleRange());
-        //if (ds._layerMaxRangeUL >= 0 && _visibleLayer)
-        //    ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_visibleLayer->getMaxVisibleRange());
+        GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
+        ds._ext->glUniform1i(ds._layerUidUL, uid);
     }
     else
     {
-        if (ds._layerUidUL >= 0)
-            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)-1);
-        //if (ds._layerOpacityUL >= 0)
-        //    ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)1.0f);
-        //if (ds._layerMinRangeUL >= 0)
-        //    ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)0.0f);
-        //if (ds._layerMaxRangeUL >= 0)
-        //    ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)FLT_MAX);
+        // This just means that the fragment shader for this layer doesn't use oe_layer_uid
     }
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)

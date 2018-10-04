@@ -172,6 +172,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         SelectionInfo _selectionInfo;
 
+        osg::ref_ptr<osg::StateSet> _surfaceStateSet;
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
 
         osg::ref_ptr<ModifyBoundingBoxCallback> _modifyBBoxCallback;

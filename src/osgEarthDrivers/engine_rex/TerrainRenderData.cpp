@@ -108,7 +108,6 @@ TerrainRenderData::setup(const Map* map,
 
     // Include a "blank" layer for missing data.
     LayerDrawable* blank = addLayerDrawable(0L);
-    blank->getOrCreateStateSet()->setDefine("OE_TERRAIN_RENDER_IMAGERY", osg::StateAttribute::OFF);
 }
 
 namespace
@@ -128,19 +127,25 @@ namespace
 LayerDrawable*
 TerrainRenderData::addLayerDrawable(const Layer* layer)
 {
-    UID uid = layer ? layer->getUID() : -1;
-    LayerDrawable* ld = new LayerDrawable();
-    _layerList.push_back(ld);
-    _layerMap[uid] = ld;
-    ld->_layer = layer;
-    ld->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
-    ld->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
-    ld->_order = _layerList.size() - 1;
-    ld->_drawState = _drawState.get();
+    LayerDrawable* drawable = new LayerDrawable();
+    drawable->_drawOrder = _layerList.size();
+    _layerList.push_back(drawable);
+
+    drawable->_drawState = _drawState.get();
+
     if (layer)
     {
-        ld->setStateSet(layer->getStateSet());
-        ld->_renderType = layer->getRenderType();
+        _layerMap[layer->getUID()] = drawable;
+        drawable->_layer = layer;
+        drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
+        drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
+        drawable->setStateSet(layer->getStateSet());
+        drawable->_renderType = layer->getRenderType();
     }
-    return ld;
+    else
+    {
+        _layerMap[-1] = drawable;
+    }
+
+    return drawable;
 }

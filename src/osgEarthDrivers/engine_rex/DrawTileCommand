@@ -75,8 +75,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Distance from camera to center of tile
         float _range;
 
-        // Tile draw order
-        int _order;
+        // Layer order for this tile. i.e., if this is zero, then this command
+        // is drawing a tile for the first LayerDrawable.
+        int _layerOrder;
 
 
         void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
@@ -100,7 +101,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _drawCallback(0L),
             _drawPatch(false),
             _range(0.0f),
-            _order(0) { }
+            _layerOrder(INT_MAX){ }
     };
 
     /**

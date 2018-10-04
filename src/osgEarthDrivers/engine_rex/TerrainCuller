@@ -50,8 +50,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;
-        unsigned _currentTileDrawCommands;
-        DrawTileCommand* _firstTileDrawCommandForTile;
+        DrawTileCommand* _firstDrawCommandForTile;
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
         LayerExtentVector* _layerExtents;

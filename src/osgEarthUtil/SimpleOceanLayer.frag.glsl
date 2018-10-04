@@ -11,6 +11,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 float oe_terrain_getElevation();
 
 in float ocean_visibility; // [0..1] => [invisible..visible]
+in float oe_layer_opacity; // from VisibleLayer
 
 uniform vec4 ocean_color;
 uniform float ocean_seaLevel;
@@ -50,7 +51,7 @@ void ocean_FS(inout vec4 color)
     alpha *= mask;
 #endif
 
-    color = vec4(ocean_color.rgb, alpha*ocean_visibility*ocean_color.a);
+    color = vec4(ocean_color.rgb, alpha*ocean_visibility*oe_layer_opacity*ocean_color.a);
 
 #ifdef OE_OCEAN_TEXTURE
     color *= texture(OE_OCEAN_TEXTURE, ocean_texCoord);

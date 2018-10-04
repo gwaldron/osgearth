@@ -99,6 +99,8 @@ FeatureModelLayer::init()
     // Depth sorting by default
     getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 
+    // activate opacity support
+    installDefaultOpacityShader();
 }
 
 void FeatureModelLayer::setFeatureModelLayerOptions(const FeatureModelLayerOptions& options)

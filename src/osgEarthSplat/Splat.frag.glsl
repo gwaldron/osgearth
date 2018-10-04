@@ -32,7 +32,7 @@ in vec2 oe_splat_covtc;                     // coverage texture coords
 in float oe_splat_range;                    // distance from camera to vertex
 flat in float oe_splat_coverageTexSize;     // size of coverage texture
 
-in float oe_layer_rangeOpacity;
+in float oe_layer_opacity;
 
 // from SplatLayerFactory:
 uniform sampler2D oe_splat_coverageTex;
@@ -287,11 +287,8 @@ void oe_splat_simple(inout vec4 color)
     vec2 tc = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + float(oe_splat_scaleOffsetInt));
 
     color = oe_splat_bilinear(tc, env);
-    //color = oe_splat_nearest(tc, env);
 
-    //color = mix(color, vec4(tc.s, tc.t, 0.0, 1.0), 0.5);
-
-    color.a *= oe_layer_rangeOpacity;
+    color.a *= oe_layer_opacity;
 }
 
 //............................................................................
@@ -339,6 +336,8 @@ void oe_splat_complex(inout vec4 color)
     
 #else
 
+    texel.a *= oe_layer_opacity;
+
 #ifdef OE_TERRAIN_BLEND_IMAGERY
 
     if (oe_layer_order == 0)
@@ -355,6 +354,4 @@ void oe_splat_complex(inout vec4 color)
 #endif
     // uncomment to visualize slope, noise, etc.
     //color.rgba = vec4(env.noise.x,0,0,1);  
-
-    color.a *= oe_layer_rangeOpacity;
 }

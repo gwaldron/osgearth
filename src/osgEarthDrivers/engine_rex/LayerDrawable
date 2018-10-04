@@ -29,6 +29,8 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class TerrainRenderData;
+
     /**
      * Drawable for single "Layer" i.e. rendering pass. 
      * It is important that LayerDrawables be rendered in the order in which
@@ -57,7 +59,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
-        int _order;
+        int _drawOrder;
 
         // The last layer to render will have this flag set, which will
         // prompt the render to dirty the osg::State to prevent corruption.

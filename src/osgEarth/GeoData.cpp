@@ -1186,7 +1186,7 @@ GeoExtent::expandToInclude(double x, double y)
 bool
 GeoExtent::expandToInclude(const GeoExtent& rhs)
 {
-    if ( isInvalid() || rhs.isInvalid() )
+    if (rhs.isInvalid() || !_srs.valid())
         return false;
 
     if ( !rhs.getSRS()->isHorizEquivalentTo( _srs.get() ) )
@@ -1196,6 +1196,12 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
 
     else
     {        
+        if (area() <= 0.0)
+        {
+            *this = rhs;
+            return true;
+        }
+
         double h = std::max(north(), rhs.north()) - std::min(south(), rhs.south());
         if (rhs.south() < south())
         {

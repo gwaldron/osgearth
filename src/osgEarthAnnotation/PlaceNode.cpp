@@ -25,14 +25,13 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/BboxDrawable>
 #include <osgEarth/Utils>
-#include <osgEarth/Registry>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
 #include <osgEarth/ScreenSpaceLayout>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/Lighting>
 #include <osgEarth/Shaders>
-#include <osgEarth/LineDrawable>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderGenerator>
+//#include <osgEarth/LineDrawable>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -48,7 +47,8 @@ namespace
     const char* iconVS =
         "#version " GLSL_VERSION_STR "\n"
         "out vec2 oe_PlaceNode_texcoord; \n"
-        "void oe_PlaceNode_icon_VS(inout vec4 vertex) { \n"
+        "void oe_PlaceNode_icon_VS(inout vec4 vertex) \n"
+        "{ \n"
         "    oe_PlaceNode_texcoord = gl_MultiTexCoord0.st; \n"
         "} \n";
 
@@ -56,7 +56,8 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_PlaceNode_texcoord; \n"
         "uniform sampler2D oe_PlaceNode_tex; \n"
-        "void oe_PlaceNode_icon_FS(inout vec4 color) { \n"
+        "void oe_PlaceNode_icon_FS(inout vec4 color) \n"
+        "{ \n"
         "    color = texture(oe_PlaceNode_tex, oe_PlaceNode_texcoord); \n"
         "} \n";
 }
@@ -109,6 +110,9 @@ PlaceNode::construct()
     _imageDrawable = 0L;
     _bboxDrawable = 0L;
     _textDrawable = 0L;
+
+    // This class makes its own shaders
+    ShaderGenerator::setIgnoreHint(this, true);
 
     if (!_geodeStateSet.valid())
     {

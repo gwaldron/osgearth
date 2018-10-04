@@ -87,6 +87,9 @@ LabelNode::construct()
     _labelRotationRad = 0.0f;
     _followFixedCourse = false;
 
+    // This class makes its own shaders
+    ShaderGenerator::setIgnoreHint(this, true);
+
     // Create and apply the shared LabelNode stateset:
     if (!_geodeStateSet.valid())
     {

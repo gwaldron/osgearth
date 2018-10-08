@@ -67,7 +67,9 @@ OceanOptions::getConfig() const
 OceanNode::OceanNode(const OceanOptions& options) :
 _options ( options ),
 _seaLevel( 0.0f ),
-_alpha( 1.0f )
+_alpha( 1.0f ),
+_planarReflectionMap(0),
+_planarReflectionProjection(0)
 {
     //NOP
 }
@@ -89,6 +91,21 @@ OceanNode::setAlpha(float value)
 {
     _alpha = value;
     onSetAlpha();
+}
+
+
+void
+OceanNode::setPlanarReflectionMap(const osg::ref_ptr<osg::Texture2D> planarReflectionMap)
+{
+    _planarReflectionMap = planarReflectionMap;
+    onSetPlanarReflectionMap();
+}
+
+void
+OceanNode::setPlanarReflectionProjection(const osg::ref_ptr<osg::RefMatrix> planarReflectionProjection)
+{
+    _planarReflectionProjection = planarReflectionProjection;
+    onSetPlanarReflectionProjection();
 }
 
 void

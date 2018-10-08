@@ -72,7 +72,7 @@ TritonDrawable::setPlanarReflectionMap(osg::Texture2D* map)
 }
 
 void
-TritonDrawable::setPlanarReflectionProjection(osg::RefMatrix* proj)
+TritonDrawable::setPlanarReflectionProjection(const osg::ref_ptr<osg::RefMatrix> proj)
 {
     _planarReflectionProjection = proj;
 }

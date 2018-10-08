@@ -61,7 +61,7 @@ namespace osgEarth { namespace Triton
 
         void setPlanarReflectionMap(osg::Texture2D* map);
 
-        void setPlanarReflectionProjection(osg::RefMatrix* proj);
+        void setPlanarReflectionProjection(osg::ref_ptr<osg::RefMatrix> proj);
 
     protected:
         virtual ~TritonDrawable();

@@ -60,6 +60,10 @@ namespace osgEarth { namespace Triton
         void onSetSeaLevel();
 
         void onSetAlpha();
+		
+        virtual void onSetPlanarReflectionMap();
+
+        virtual void onSetPlanarReflectionProjection();
 
     public: // osg::Node
 

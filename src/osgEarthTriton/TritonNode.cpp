@@ -115,6 +115,8 @@ TritonNode::create()
     _alphaUniform->set(getAlpha());
     _drawable->setNodeMask( TRITON_OCEAN_MASK );
     drawable->setMaskLayer(_maskLayer.get());
+    drawable->setPlanarReflectionMap(getPlanarReflectionMap());
+    drawable->setPlanarReflectionProjection(getPlanarReflectionProjection());
     this->addChild(_drawable);
 
     OE_INFO << LC << "TritonNode created" << std::endl;
@@ -166,6 +168,18 @@ void
 TritonNode::onSetAlpha()
 {
     _alphaUniform->set(getAlpha());
+}
+
+void
+TritonNode::onSetPlanarReflectionMap()
+{
+    static_cast<TritonDrawable*>(_drawable)->setPlanarReflectionMap(getPlanarReflectionMap());
+}
+
+void
+TritonNode::onSetPlanarReflectionProjection()
+{
+    static_cast<TritonDrawable*>(_drawable)->setPlanarReflectionProjection(getPlanarReflectionProjection());
 }
 
 osg::BoundingSphere

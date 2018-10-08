@@ -28,6 +28,7 @@
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Profile>
 #include <osg/Group>
+#include <osg/Texture2D>
 #include <osg/View>
 #include <osgDB/ReaderWriter>
 
@@ -99,8 +100,14 @@ namespace osgEarth { namespace Util
         /** Sets the alpha of the ocean */
         void setAlpha(float alpha);
         float getAlpha() const { return _alpha; }
-
-
+		
+        /** Sets the reflection map to use */
+        void setPlanarReflectionMap(const osg::ref_ptr<osg::Texture2D> planarReflectionMap);
+        osg::ref_ptr<osg::Texture2D> getPlanarReflectionMap() const { return _planarReflectionMap; }
+		
+        /** Sets the projection matrix used to render the reflection map on the water */
+        void setPlanarReflectionProjection(const osg::ref_ptr<osg::RefMatrix> planarReflectionProjection);
+        osg::ref_ptr<osg::RefMatrix> getPlanarReflectionProjection() const { return _planarReflectionProjection; }
 
     public: // osg::Group
 
@@ -112,10 +119,17 @@ namespace osgEarth { namespace Util
 
         virtual void onSetAlpha() { }
 
+        virtual void onSetPlanarReflectionMap() { }
+
+        virtual void onSetPlanarReflectionProjection() { }
+
     private:
 
         float _seaLevel;
         float _alpha;
+
+        osg::ref_ptr<osg::Texture2D> _planarReflectionMap;
+        osg::ref_ptr<osg::RefMatrix> _planarReflectionProjection;
 
         osg::ref_ptr<const SpatialReference> _srs;
         const OceanOptions _options;

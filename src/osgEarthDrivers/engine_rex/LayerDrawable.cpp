@@ -76,9 +76,6 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     // necessary when doing custom OpenGL within a Drawable.
     if (_clearOsgState)
     {
-        // Necessary because tile->draw() applies texture attributes without informing the State:
-        ri.getState()->dirtyAllAttributes();
-
         // NOTE: this is a NOOP in OSG 3.5.x, but not in 3.4.x ... Later we will need to
         // revisit whether to call disableAllVertexArrays() in 3.5.x instead.
         ri.getState()->dirtyAllVertexArrays();

@@ -170,15 +170,33 @@ public:
         AltitudeMode mode = ALTMODE_ABSOLUTE;        
         osg::Vec3d localOffset;
 
-        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
-        if ((alt == NULL) ||
-            (alt->technique().isSet() == false) ||
-            (alt->technique() == AltitudeSymbol::TECHNIQUE_SCENE))
-        {
-            mode = ALTMODE_RELATIVE;
-        }                              
+        GeoPoint point;
 
-        GeoPoint point(feature->getSRS(), center.x(), center.y(), center.z(), mode);        
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+
+        // If the symbol asks for map-clamping, disable any auto-scene-clamping on the annotation:
+        if (alt != NULL &&
+            alt->clamping() != alt->CLAMP_NONE &&
+            alt->technique().isSetTo(alt->TECHNIQUE_MAP))
+        {
+            point.set(feature->getSRS(), center.x(), center.y(), center.z(), ALTMODE_ABSOLUTE);
+        }
+
+        // If the symbol says clamp to terrain (but not using the map), zero out the 
+        // Z value and dynamically clamp to the surface:
+        else if (
+            alt != NULL &&
+            alt->clamping() == alt->CLAMP_TO_TERRAIN &&
+            !alt->technique().isSetTo(alt->TECHNIQUE_MAP))
+        {
+            point.set(feature->getSRS(), center.x(), center.y(), 0.0, ALTMODE_RELATIVE);
+        }
+
+        // By default, use terrain-relative scene clamping Zm above the terrain.
+        else
+        {
+            point.set(feature->getSRS(), center.x(), center.y(), center.z(), ALTMODE_RELATIVE);
+        }
 
         PlaceNode* node = new PlaceNode();
         node->setStyle(style, context.getDBOptions());

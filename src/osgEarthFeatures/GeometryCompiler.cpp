@@ -460,7 +460,14 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if ( text || icon )
     {
-        if ( altRequired )
+        // Only clamp annotation types when the technique is 
+        // explicity set to MAP. Otherwise, the annotation subsystem
+        // will automatically use SCENE clamping.
+        bool altRequiredForAnnotations =
+            altRequired &&
+            altitude->technique().isSetTo(altitude->TECHNIQUE_MAP);
+
+        if ( altRequiredForAnnotations )
         {
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );

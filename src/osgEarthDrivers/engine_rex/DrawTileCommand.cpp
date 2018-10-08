@@ -78,7 +78,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
             if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
             {
-                state.applyTextureAttribute((*dsMaster._bindings)[s].unit(), sampler._texture);
+                state.applyTextureAttribute((*dsMaster._bindings)[s].unit(), sampler._texture.get());
                 samplerState._texture = sampler._texture.get();
             }
 
@@ -109,7 +109,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
             if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
             {
-                state.applyTextureAttribute((*dsMaster._bindings)[s].unit(), sampler._texture);
+                state.applyTextureAttribute((*dsMaster._bindings)[s].unit(), sampler._texture.get());
                 samplerState._texture = sampler._texture.get();
             }
 

@@ -62,9 +62,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT Registry : public osg::Referenced
     {
     public:
-        /** Access the global Registry singleton. */
-        static Registry* instance(bool erase = false);
-
+        /** Access the global Registry singleton. Pass in true to destroy it and create a new one. */
+        static Registry* instance(bool reset = false);
 
         /** Gets a well-known named profile instance. */
         const Profile* getNamedProfile( const std::string& name ) const;
@@ -285,13 +284,13 @@ namespace osgEarth
         * This value is useful when running in high dpi environments on high resolution displays.
         */
         void setDevicePixelRatio(float devicePixelRatio);
-
+        
+        //! Release any resources held by the registry so it can be re-used
+        void release();
 
     protected:
         virtual ~Registry();
         Registry();
-
-        void destruct();
 
         bool _gdal_registered;
 

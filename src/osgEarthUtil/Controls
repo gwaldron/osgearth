@@ -326,6 +326,9 @@ namespace osgEarth { namespace Util { namespace Controls
         bool _absorbEvents;
         osg::Geode* _geode;
         osg::ref_ptr<osg::Geometry> _geom;
+
+        static osg::observer_ptr<osg::StateSet> s_geomStateSet;
+        osg::ref_ptr<osg::StateSet> getGeomStateSet();
     };
 
     typedef std::vector< osg::ref_ptr<Control> > ControlVector;
@@ -468,6 +471,9 @@ namespace osgEarth { namespace Util { namespace Controls
         bool _fixSizeForRot;
         osg::Geometry* _geom;
         float _opacity;
+
+        static osg::observer_ptr<osg::StateSet> s_imageStateSet;
+        osg::ref_ptr<osg::StateSet> getImageStateSet();
     };
 
     /**

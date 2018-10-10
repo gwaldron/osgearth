@@ -874,3 +874,50 @@ OverlayDecorator::setMaxHorizonDistance( double horizonDistance )
 {
     _maxHorizonDistance = horizonDistance;
 }
+
+
+void
+OverlayDecorator::resizeGLObjectBuffers(unsigned maxSize)
+{
+    Threading::ScopedWriteLock lock(_perViewDataMutex);
+
+    for(PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i)
+    {
+        PerViewData& pvd = i->second;
+        if (pvd._sharedTerrainStateSet.valid())
+            pvd._sharedTerrainStateSet->resizeGLObjectBuffers(maxSize);
+
+        for(std::vector<TechRTTParams>::iterator t = pvd._techParams.begin(); t != pvd._techParams.end(); ++t)
+        {
+            if (t->_rttCamera.valid())
+                t->_rttCamera->resizeGLObjectBuffers(maxSize);
+            if (t->_rttToPrimaryMatrixUniform.valid())
+                t->_rttToPrimaryMatrixUniform->resizeGLObjectBuffers(maxSize);
+            if (t->_techniqueData.valid())
+                t->_techniqueData->resizeGLObjectBuffers(maxSize);
+        }
+    }
+}
+
+void
+OverlayDecorator::releaseGLObjects(osg::State* state) const
+{
+    Threading::ScopedWriteLock lock(_perViewDataMutex);
+
+    for(PerViewDataMap::const_iterator i = _perViewData.begin(); i != _perViewData.end(); ++i)
+    {
+        const PerViewData& pvd = i->second;
+        if (pvd._sharedTerrainStateSet.valid())
+            pvd._sharedTerrainStateSet->releaseGLObjects(state);
+
+        for(std::vector<TechRTTParams>::const_iterator t = pvd._techParams.begin(); t != pvd._techParams.end(); ++t)
+        {
+            if (t->_rttCamera.valid())
+                t->_rttCamera->releaseGLObjects(state);
+            if (t->_rttToPrimaryMatrixUniform.valid())
+                t->_rttToPrimaryMatrixUniform->releaseGLObjects(state);
+            if (t->_techniqueData.valid())
+                t->_techniqueData->releaseGLObjects(state);
+        }
+    }
+}

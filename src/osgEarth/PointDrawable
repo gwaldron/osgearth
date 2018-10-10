@@ -113,11 +113,9 @@ namespace osgEarth
         void dirty();
         void finish() { dirty(); }
 
-    public: // osg::Geometry, osg::Drawable
+    public: // osg::Geometry
 
         virtual void drawImplementation(osg::RenderInfo& ri) const;
-        
-        virtual void compileGLObjects(osg::RenderInfo& renderInfo) const;
 
     public: // osg::Node
 
@@ -130,6 +128,12 @@ namespace osgEarth
 
         //! Override Node::accept to include the singleton GPU statset
         virtual void accept(osg::NodeVisitor& nv);
+
+    public: // osg::Object
+        
+        virtual void compileGLObjects(osg::RenderInfo& renderInfo) const;
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
 
@@ -150,8 +154,9 @@ namespace osgEarth
         void setupState();
         void updateFirstCount();
 
-        static osg::ref_ptr<osg::StateSet> _sharedStateSet;
-        static bool _sharedStateSetCompiled;
+        static osg::observer_ptr<osg::StateSet> s_sharedStateSet;
+        osg::ref_ptr<osg::StateSet> _sharedStateSet;
+        mutable bool _sharedStateSetCompiled;
 
         void checkSharedStateSet(osg::State*) const;
     };

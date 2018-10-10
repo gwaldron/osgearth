@@ -66,7 +66,7 @@ namespace
 namespace
 {
     // Additional per-view data stored by the clamping technique.
-    struct LocalPerViewData : public osg::Referenced
+    struct LocalPerViewData : public osg::Object
     {
         osg::ref_ptr<osg::Texture2D> _rttTexture;
         osg::ref_ptr<osg::StateSet>  _groupStateSet;
@@ -79,6 +79,24 @@ namespace
         osg::ref_ptr<osg::Uniform>   _horizonDistance2Uniform;
 
         unsigned _renderLeafCount;
+
+        META_Object(osgEarth,LocalPerViewData);
+        LocalPerViewData() { }
+        LocalPerViewData(const LocalPerViewData& rhs, const osg::CopyOp& co) { }
+        
+        void resizeGLObjectBuffers(unsigned maxSize) {
+            if (_rttTexture.valid())
+                _rttTexture->resizeGLObjectBuffers(maxSize);
+            if (_groupStateSet.valid())
+                _groupStateSet->resizeGLObjectBuffers(maxSize);
+        }
+        void releaseGLObjects(osg::State* state) const {
+            if (_rttTexture.valid())
+                _rttTexture->releaseGLObjects(state);
+            if (_groupStateSet.valid())
+                _groupStateSet->releaseGLObjects(state);
+        }
+
 
 #ifdef DUMP_RTT_IMAGE
         osg::ref_ptr<osg::Image> _rttDebugImage;
@@ -201,6 +219,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // This will prevent things like VPs on the main camera (e.g., log depth buffer)
     // from interfering with the depth camera
     VirtualProgram* rttVP = VirtualProgram::getOrCreate(rttStateSet);
+    rttVP->setName("GPU Clamping RTT");
     rttVP->setInheritShaders(false);
     
     // attach the terrain to the camera.

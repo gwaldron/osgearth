@@ -87,6 +87,7 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // configure shaders
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+            vp->setName("BumpMap");
 
             Shaders package;            
             package.define( "OE_USE_NORMAL_MAP", false ); //engine->normalTexturesRequired() );

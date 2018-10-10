@@ -24,6 +24,7 @@
 #define OSGEARTH_LIGHTING_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Node>
 #include <osg/NodeVisitor>
 #include <osg/LightSource>
@@ -140,6 +141,14 @@ namespace osgEarth
     public: // osg::NodeCallback
 
         bool run(osg::Object* obj, osg::Object* data);
+
+    public: // osg::Object
+
+        void resizeGLBufferObjects(unsigned maxSize);
+        void releaseGLObjects(osg::State* state) const;
+
+        mutable std::vector<osg::ref_ptr<osg::StateSet> > _statesets;
+        mutable Threading::Mutex _statesetsMutex;
     };
 }
 

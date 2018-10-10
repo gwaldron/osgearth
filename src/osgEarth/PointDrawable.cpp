@@ -309,7 +309,8 @@ _smooth(false),
 _first(0u),
 _count(0u),
 _current(NULL),
-_colors(NULL)
+_colors(NULL),
+_sharedStateSetCompiled(false)
 {
 #ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
@@ -326,7 +327,8 @@ _smooth(rhs._smooth),
 _first(rhs._first),
 _count(rhs._count),
 _current(NULL),
-_colors(NULL)
+_colors(NULL),
+_sharedStateSetCompiled(rhs._sharedStateSetCompiled)
 {
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
     setupState();
@@ -603,8 +605,7 @@ PointDrawable::dirty()
     addPrimitiveSet(new osg::DrawArrays(GL_POINTS, _first, _count > 0u? _count : _current->size()));
 }
 
-osg::ref_ptr<osg::StateSet> PointDrawable::_sharedStateSet;
-bool PointDrawable::_sharedStateSetCompiled = false;
+osg::observer_ptr<osg::StateSet> PointDrawable::s_sharedStateSet;
 
 void
 PointDrawable::setupState()
@@ -613,37 +614,30 @@ PointDrawable::setupState()
     // shared by all PointDrawable instances so OSG will sort them together.
     if (!_sharedStateSet.valid())
     {
-        static Threading::Mutex s_mutex;
-        s_mutex.lock();
-        if (!_sharedStateSet.valid())
+        if (s_sharedStateSet.lock(_sharedStateSet) == false)
         {
-            _sharedStateSet = new osg::StateSet();
+            static Threading::Mutex s_mutex;
+            Threading::ScopedMutexLock lock(s_mutex);
 
-            _sharedStateSet->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
-
-            if (_gpu)
+            if (s_sharedStateSet.lock(_sharedStateSet) == false)
             {
-                VirtualProgram* vp = VirtualProgram::getOrCreate(_sharedStateSet.get());
-                Shaders shaders;
-                shaders.load(vp, shaders.PointDrawable);
-                _sharedStateSet->setMode(GL_PROGRAM_POINT_SIZE, 1);
-            }
-            else
-            {
-                //todo
-            }
+                s_sharedStateSet = _sharedStateSet = new osg::StateSet();
 
-            s_isCoreProfile = Registry::capabilities().isCoreProfile();
+                s_sharedStateSet->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
+
+                if (_gpu)
+                {
+                    VirtualProgram* vp = VirtualProgram::getOrCreate(_sharedStateSet.get());
+                    vp->setName("osgEarth::PointDrawable");
+                    Shaders shaders;
+                    shaders.load(vp, shaders.PointDrawable);
+                    _sharedStateSet->setMode(GL_PROGRAM_POINT_SIZE, 1);
+                }
+
+                s_isCoreProfile = Registry::capabilities().isCoreProfile();
+            }
         }
-        s_mutex.unlock();
     }
-}
-
-void
-PointDrawable::compileGLObjects(osg::RenderInfo& ri) const
-{
-    checkSharedStateSet(ri.getState());
-    osg::Geometry::compileGLObjects(ri);
 }
 
 void
@@ -656,7 +650,6 @@ PointDrawable::drawImplementation(osg::RenderInfo& ri) const
     if (!s_isCoreProfile)
     {
         glEnable(GL_POINT_SPRITE_ARB);
-        //ri.getState()->applyMode(GL_POINT_SPRITE_ARB, true); // doesn't work :(
     }
 
     osg::Geometry::drawImplementation(ri);
@@ -706,4 +699,27 @@ PointDrawable::accept(osg::NodeVisitor& nv)
 
         nv.popFromNodePath();
     }
+}
+
+void
+PointDrawable::compileGLObjects(osg::RenderInfo& ri) const
+{
+    checkSharedStateSet(ri.getState());
+    osg::Geometry::compileGLObjects(ri);
+}
+
+void
+PointDrawable::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Geometry::resizeGLObjectBuffers(maxSize);
+    if (_sharedStateSet.valid())
+        _sharedStateSet->resizeGLObjectBuffers(maxSize);
+}
+
+void
+PointDrawable::releaseGLObjects(osg::State* state) const
+{
+    osg::Geometry::releaseGLObjects(state);
+    if (_sharedStateSet.valid())
+        _sharedStateSet->releaseGLObjects(state);
 }

@@ -66,6 +66,7 @@ FogEffect::~FogEffect()
 void FogEffect::attach( osg::StateSet* stateSet )
 {
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateSet );
+    vp->setName("Fog");
     Shaders pkg;
     pkg.load( vp, pkg.Fog_Vertex );
     pkg.load( vp, pkg.Fog_Fragment );

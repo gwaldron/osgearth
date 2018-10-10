@@ -125,6 +125,8 @@ namespace osgEarth
 
         void dumpStats();
 
+        void releaseGLObjects(osg::State* state) const;
+
     protected: 
 
         virtual ~StateSetCache();

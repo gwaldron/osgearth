@@ -174,7 +174,7 @@ Registry::~Registry()
 }
 
 Registry*
-Registry::instance(bool erase)
+Registry::instance(bool reset)
 {
     // Make sure the gdal mutex is created before the Registry so it will still be around when the registry is destroyed statically.
     // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
@@ -182,19 +182,38 @@ Registry::instance(bool erase)
 
     static osg::ref_ptr<Registry> s_registry = new Registry;
 
-    if (erase)
+    if (reset)
     {
-        s_registry->destruct();
-        s_registry = 0;
+        s_registry->release();
+        s_registry = new Registry();
     }
 
     return s_registry.get(); // will return NULL on erase
 }
 
 void
-Registry::destruct()
+Registry::release()
 {
-    //NOP
+    // Clear out the state set cache
+    if (_stateSetCache.valid())
+    {
+        _stateSetCache->releaseGLObjects(NULL);
+        _stateSetCache->clear();
+    }
+
+    // Clear out the VirtualProgram shared program repository
+    _programRepo.lock();
+    _programRepo.releaseGLObjects(NULL);
+    _programRepo.unlock();
+    
+    // SpatialReference cache
+    _srsMutex.lock();
+    _srsCache.clear();
+    _srsMutex.unlock();
+
+    // Shared object index
+    if (_objectIndex.valid())
+        _objectIndex = new ObjectIndex();
 }
 
 OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()

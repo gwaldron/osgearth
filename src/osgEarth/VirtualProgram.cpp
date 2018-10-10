@@ -35,14 +35,8 @@
 #include <sstream>
 #include <OpenThreads/Thread>
 
-
-#define LC "[VirtualProgram] "
-
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
-
-Threading::Mutex PolyShader::_cacheMutex;
-PolyShader::PolyShaderCache PolyShader::_polyShaderCache;
 
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
@@ -50,15 +44,31 @@ PolyShader::PolyShaderCache PolyShader::_polyShaderCache;
 //#define DEBUG_APPLY_COUNTS
 //#define DEBUG_ACCUMULATION
 
-#define USE_STACK_MEMORY 1
+#define MAX_CONTEXTS 16
 
 #define MAX_PROGRAM_CACHE_SIZE 128
 
-#define PREALLOCATE_APPLY_VARS 1
+//#define USE_STACK_MEMORY
 
-#define MAX_CONTEXTS 16
+#define PREALLOCATE_APPLY_VARS
+
+#define USE_PROGRAM_REPO
+
+// Without a program repo, we need to store a refptr to the actual Program somewhere.
+#ifndef USE_PROGRAM_REPO
+    #define USE_LAST_USED_PROGRAM
+#endif
+
+// Don't use this until we make it safe (combine with ProgramRepo or something) -gw
+//#define USE_POLYSHADER_CACHE
 
 #define MAKE_SHADER_ID(X) osgEarth::hashString( X )
+
+
+#ifdef USE_POLYSHADER_CACHE
+Threading::Mutex PolyShader::_cacheMutex;
+PolyShader::PolyShaderCache PolyShader::_polyShaderCache;
+#endif
 
 //------------------------------------------------------------------------
 
@@ -87,6 +97,14 @@ namespace
 
 //------------------------------------------------------------------------
 
+#undef  LC
+#define LC "[ProgramRepo] "
+
+ProgramRepo::~ProgramRepo()
+{
+    releaseGLObjects(NULL);
+}
+
 void
 ProgramRepo::lock()
 {
@@ -108,7 +126,7 @@ ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, UID user)
         e->_frameLastUsed = frameNumber;
         e->_users.insert(user);
 
-        OE_TEST << LC << "PR USE prog=" << e->_program.get() << " user=" << (user) << " total=" << e->_users.size() << std::endl;
+        //OE_TEST << LC << "PR USE prog=" << e->_program.get() << " user=" << (user) << " total=" << e->_users.size() << std::endl;
 
         return e->_program;
     }
@@ -131,33 +149,18 @@ ProgramRepo::release(UID user, osg::State* state)
             // remove "user" from the users list:
             e->_users.erase(user);
             
-            OE_TEST << LC << "PR REL prog=" << (e->_program->getName()) << " user=" << (user) << " total=" << e->_users.size() << std::endl;
+            //OE_TEST << LC << "PR REL prog=" << (e->_program.get()) << " user=" << (user) << " total=" << e->_users.size() << std::endl;
 
             if (e->_users.empty())
             {
-                // when the users list is empty, release the program and remove it
-                // from the repository. But, remove the actual shaders first because
-                // they may be shared with other programs.
-                while(e->_program->getNumShaders() > 0)
-                {
-                    osg::ref_ptr<osg::Shader> shader = e->_program->getShader(0);
-                    e->_program->removeShader(shader.get());
-                    if (shader->referenceCount() == 1)
-                    {
-                        //TODO: look into this; don't think it ever gets called -gw
-                        shader->releaseGLObjects(state);
-                        OE_TEST << LC << "...released shader GL " << shader.get() << std::endl;
-                    }
-                }
-
                 // release the GL memory
                 e->_program->releaseGLObjects(state);
+               
+                OE_TEST << LC << "Released program " << e->_program->getName() << "; dbsize=" << _db.size()-1 << std::endl;
 
                 // remove from the repo
                 _db.erase(i++);
                 increment = false;
-
-                OE_TEST << LC << "...released program GL." << std::endl;
             }            
         }
 
@@ -224,7 +227,24 @@ ProgramRepo::resizeGLObjectBuffers(unsigned maxSize)
     }
 }
 
+void
+ProgramRepo::releaseGLObjects(osg::State* state) const
+{
+    OE_TEST << LC << "Main release, size=" << _db.size() << std::endl;
+    // First try to find an entry with an equivalent program:
+    for(ProgramMap::iterator i = _db.begin(); i != _db.end(); ++i)
+    {
+        osg::ref_ptr<Entry>& e = i->second;
+        e->_program->releaseGLObjects(state);
+        OE_TEST << LC << "...released program " << e->_program->getName() << std::endl;
+    }
+    _db.clear();
+}
+
 //------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[VirtualProgram] "
 
 // environment variable control
 #define OSGEARTH_DUMP_SHADERS  "OSGEARTH_DUMP_SHADERS"
@@ -821,7 +841,7 @@ namespace
         buildVector.reserve( accumShaderMap.size() + mains.size() );
 
         for(ProgramKey::iterator i = outputKey.begin(); i != outputKey.end(); ++i)
-            buildVector.push_back( i->get()->getShader(stages) );
+            buildVector.push_back( (*i)->getShader(stages) );
 
         buildVector.insert( buildVector.end(), mains.begin(), mains.end() );
 
@@ -1043,6 +1063,11 @@ _isAbstract        ( false )
     // osg::Program methods..)
     _template = new osg::Program();
 
+
+#ifdef USE_LAST_USED_PROGRAM
+    _lastUsedProgram.resize(MAX_CONTEXTS);
+#endif
+
 #ifdef PREALLOCATE_APPLY_VARS
     _apply.resize(MAX_CONTEXTS);
 #endif
@@ -1074,6 +1099,11 @@ _isAbstract        ( rhs._isAbstract )
     {
         addBindAttribLocation( attribute->first, attribute->second );
     }
+
+
+#ifdef USE_LAST_USED_PROGRAM
+    _lastUsedProgram.resize(MAX_CONTEXTS);
+#endif
     
 #ifdef PREALLOCATE_APPLY_VARS
     _apply.resize(MAX_CONTEXTS);
@@ -1086,12 +1116,16 @@ _isAbstract        ( rhs._isAbstract )
 
 VirtualProgram::~VirtualProgram()
 {
+#ifdef USE_PROGRAM_REPO
     if (Registry::instance())
     {
         Registry::programRepo().lock();
         Registry::programRepo().release(_id, 0L);
         Registry::programRepo().unlock();
     }
+#endif
+
+    OE_TEST << LC << "~VP (" << _id << ") " << getName() << std::endl;
 }
 
 int
@@ -1191,19 +1225,20 @@ VirtualProgram::compileGLObjects(osg::State& state) const
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
+#ifdef USE_PROGRAM_REPO
     Registry::programRepo().lock();
-
     Registry::programRepo().resizeGLObjectBuffers(maxSize);
+    Registry::programRepo().unlock();
+#endif
 
     // Resize shaders in the PolyShader
     for( ShaderMap::iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
     {
         if (i->data()._shader.valid())
         {
-            i->data()._shader->resizeGLObjectBuffers(maxSize );
+            i->data()._shader->resizeGLObjectBuffers(maxSize);
         }
     }
-    Registry::programRepo().unlock();
 }
 
 void
@@ -1212,11 +1247,33 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
     if (s_disableVPRelease)
         return;
 
-    //OE_INFO << LC << "VirtualProgram::releaseGLObjects (" << (this) << ")" << std::endl;
-
+    OE_TEST << LC << "VP::RGLO (" << _id << ") " << getName() << " (" << (_lastUsedProgram[0].get()) << ") state=" << (uintptr_t)state << std::endl;
+    
+#ifdef USE_PROGRAM_REPO
     Registry::programRepo().lock();
     Registry::programRepo().release(_id, state);
     Registry::programRepo().unlock();
+#endif
+
+#ifdef USE_LAST_USED_PROGRAM
+    if (state)
+    {
+        const osg::Program* p = _lastUsedProgram[state->getContextID()].get();
+        if (p)
+            p->releaseGLObjects(state);
+    }
+    else
+    {
+        for(unsigned i=0; i<_lastUsedProgram.size(); ++i)
+        {
+            const osg::Program* p = _lastUsedProgram[i].get();
+            if (p)
+                p->releaseGLObjects(state);
+        }
+    }
+    _lastUsedProgram.setAllElementsTo(NULL);
+
+#endif
 }
 
 PolyShader*
@@ -1448,12 +1505,14 @@ VirtualProgram::setInheritShaders( bool value )
     {
         _inherit = value;
 
+#ifdef USE_PROGRAM_REPO
         // clear the program cache please
         {
             Registry::programRepo().lock();
             Registry::programRepo().release(_id, 0L);
             Registry::programRepo().unlock();
         }
+#endif
 
         _inheritSet = true;
     }
@@ -1463,6 +1522,8 @@ VirtualProgram::setInheritShaders( bool value )
 void
 VirtualProgram::apply( osg::State& state ) const
 {
+    OE_TEST << LC << "Applying (" << this << ") " << getName() << std::endl;
+
     if (_active.isSetTo(false))
     {
         return;
@@ -1591,10 +1652,12 @@ VirtualProgram::apply( osg::State& state ) const
         // current frame number, for shader program expiry.
         unsigned frameNumber = state.getFrameStamp() ? state.getFrameStamp()->getFrameNumber() : 0;
 
+#ifdef USE_PROGRAM_REPO
         // LOCK the program repo to look up the program.
         Registry::programRepo().lock();
 
         program = Registry::programRepo().use(local.programKey, frameNumber, _id);
+#endif
 
         if (!program.valid())
         {
@@ -1645,12 +1708,14 @@ VirtualProgram::apply( osg::State& state ) const
                 }
             }
 
+#ifdef USE_PROGRAM_REPO
             // Adds this program to the repo, or finds an equivalent pre-existing program
             // in the repo and associates this program key with it.
             Registry::programRepo().add(local.programKey, program, frameNumber, _id);
 
             // purge expired programs.
             Registry::programRepo().prune(frameNumber, &state);
+#endif
         }
         Registry::programRepo().unlock();
     }
@@ -1728,14 +1793,21 @@ VirtualProgram::apply( osg::State& state ) const
             }
         }
 
-        //program->apply( state );
-
 #if 0 // test code for detecting race conditions
         for(int i=0; i<10000; ++i) {
             state.setLastAppliedProgramObject(0L);
             program->apply( state );
         }
 #endif
+
+#ifdef USE_LAST_USED_PROGRAM
+        _lastUsedProgram[contextID] = program.get();
+#endif
+
+        if (state.checkGLErrors(this))
+        {
+            int x=0;
+        }
     }
 }
 
@@ -2152,19 +2224,24 @@ void PolyShader::releaseGLObjects(osg::State* state) const
    }
 }
 
-PolyShader* PolyShader::lookUpShader(const std::string& functionName, const std::string& shaderSource, ShaderComp::FunctionLocation location)
+PolyShader*
+PolyShader::lookUpShader(const std::string& functionName, const std::string& shaderSource, ShaderComp::FunctionLocation location)
 {
+   PolyShader* shader = NULL;
+   
+#ifdef USE_POLYSHADER_CACHE
+
+   Threading::ScopedMutexLock lock(_cacheMutex);
 
    std::pair<std::string, std::string> hashKey = std::pair<std::string, std::string>(functionName, shaderSource);
 
-   _cacheMutex.lock();
-   
    PolyShaderCache::iterator iter = _polyShaderCache.find(hashKey);
  
-   PolyShader* shader = NULL;
-   if (iter != _polyShaderCache.end()) {
+   if (iter != _polyShaderCache.end())
+   {
       shader = iter->second.get();
    }
+#endif
 
    if (!shader)
    {
@@ -2178,10 +2255,12 @@ PolyShader* PolyShader::lookUpShader(const std::string& functionName, const std:
       shader->setLocation(location);
       shader->setShaderSource(source);
       shader->prepare();
-      //_polyShaderCache[hashKey] = shader;
+
+#ifdef USE_POLYSHADER_CACHE
+      _polyShaderCache[hashKey] = shader;
+#endif
    }
 
-   _cacheMutex.unlock();
    return shader;
 }
 

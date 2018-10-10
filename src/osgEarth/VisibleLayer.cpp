@@ -212,6 +212,7 @@ VisibleLayer::initializeBlending()
         stateSet->addUniform(_opacityU.get());
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+        vp->setName("VisibleLayer");
 
         vp->setFunction("oe_VisibleLayer_initOpacity", opacityVS, ShaderComp::LOCATION_VERTEX_MODEL);
 
@@ -247,6 +248,7 @@ VisibleLayer::initializeMinMaxRangeOpacity()
         osg::StateSet* stateSet = getOrCreateStateSet();
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+        vp->setName("VisibleLayer");
 
         vp->setFunction("oe_VisibleLayer_applyMinMaxRange", rangeOpacityVS, ShaderComp::LOCATION_VERTEX_VIEW);
 
@@ -343,6 +345,7 @@ VisibleLayer::installDefaultOpacityShader()
     if (options().blend() == options().BLEND_INTERPOLATE)
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+        vp->setName("VisibleLayer");
         vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
     }
 }

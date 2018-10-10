@@ -88,49 +88,6 @@ namespace
         geom->setDataVariance( osg::Object::DYNAMIC );
         return geom;
     }
-
-    osg::StateSet* geomStateSet()
-    {
-        static osg::ref_ptr<osg::StateSet> ss;
-        if (!ss.valid())
-        {
-            ss = new osg::StateSet();
-            VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
-            vp->setInheritShaders(false);
-        }
-        return ss.get();
-    }
-
-    osg::StateSet* imageStateSet()
-    {
-        static osg::ref_ptr<osg::StateSet> ss;
-
-        const char* vert =
-            "#version " GLSL_VERSION_STR "\n"
-            "out vec2 oe_Controls_texCoord; \n"
-            "void oe_Controls_renderImageVert(inout vec4 vert) { \n"
-            "    oe_Controls_texCoord = gl_MultiTexCoord0.xy; \n"
-            "}\n";
-
-        const char* frag =
-            "#version " GLSL_VERSION_STR "\n"
-            "in vec2 oe_Controls_texCoord; \n"
-            "uniform sampler2D oe_Controls_tex; \n"
-            "void oe_Controls_renderImageFrag(inout vec4 color) { \n"
-            "    vec4 texel = texture(oe_Controls_tex, oe_Controls_texCoord); \n"
-            "    color = color * texel; \n"
-            "}\n";
-
-        if (!ss.valid())
-        {
-            ss = new osg::StateSet();
-            VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
-            vp->setInheritShaders(false);
-            vp->setFunction("oe_Controls_renderImageVert", vert, ShaderComp::LOCATION_VERTEX_MODEL);
-            vp->setFunction("oe_Controls_renderImageFrag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
-        }
-        return ss.get();
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +158,7 @@ Control::Control( const Alignment& halign, const Alignment& valign, const Gutter
 void
 Control::init()
 {
-    setStateSet(geomStateSet());
+    setStateSet(getGeomStateSet());
 
     _x.init(0);
     _y.init(0);
@@ -225,6 +182,28 @@ Control::init()
 
     _geode = new osg::Geode();
     this->addChild( _geode );
+}
+
+// shared state set for control geometry
+osg::observer_ptr<osg::StateSet> Control::s_geomStateSet;
+
+osg::ref_ptr<osg::StateSet>
+Control::getGeomStateSet()
+{
+    osg::ref_ptr<osg::StateSet> stateSet;
+    if (s_geomStateSet.lock(stateSet) == false)
+    {
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_geomStateSet.lock(stateSet) == false)
+        {
+            s_geomStateSet = stateSet = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet.get());
+            vp->setName("Control::geomStateSet");
+            vp->setInheritShaders(false);
+        }
+    }
+    return stateSet;
 }
 
 void
@@ -1047,7 +1026,7 @@ _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
 _opacity      ( 1.0f )
 {
-    setStateSet(imageStateSet());
+    setStateSet(getImageStateSet());
     setImage( image );
 }
 
@@ -1056,8 +1035,50 @@ _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
 _opacity      ( 1.0f )
 {
-    setStateSet(imageStateSet());
+    setStateSet(getImageStateSet());
     setTexture( texture );
+}
+
+// shared state set for image geometry
+osg::observer_ptr<osg::StateSet> ImageControl::s_imageStateSet;
+
+osg::ref_ptr<osg::StateSet>
+ImageControl::getImageStateSet()
+{
+    osg::ref_ptr<osg::StateSet> stateSet;
+    if (s_imageStateSet.lock(stateSet) == false)
+    {
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_imageStateSet.lock(stateSet) == false)
+        {
+            s_imageStateSet = stateSet = new osg::StateSet();
+
+            const char* vert =
+                "#version " GLSL_VERSION_STR "\n"
+                "out vec2 oe_Controls_texCoord; \n"
+                "void oe_Controls_renderImageVert(inout vec4 vert) { \n"
+                "    oe_Controls_texCoord = gl_MultiTexCoord0.xy; \n"
+                "}\n";
+
+            const char* frag =
+                "#version " GLSL_VERSION_STR "\n"
+                "in vec2 oe_Controls_texCoord; \n"
+                "uniform sampler2D oe_Controls_tex; \n"
+                "void oe_Controls_renderImageFrag(inout vec4 color) { \n"
+                "    vec4 texel = texture(oe_Controls_tex, oe_Controls_texCoord); \n"
+                "    color = color * texel; \n"
+                "}\n";
+
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet.get());
+            vp->setName("Control::imageStateSet");
+            vp->setInheritShaders(false);
+            vp->setFunction("oe_Controls_renderImageVert", vert, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_Controls_renderImageFrag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
+        }
+    }
+
+    return stateSet;
 }
 
 void
@@ -2314,33 +2335,29 @@ ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(nv);
 
-    osg::ref_ptr<ControlCanvas> canvas;
-    if ( _canvas.lock(canvas) )
+    const osgGA::EventQueue::Events& events = ev->getEvents();
+    if (events.size() > 0)
     {
-        const osgGA::EventQueue::Events& events = ev->getEvents();
-        if ( events.size() > 0 )
+        osg::ref_ptr<ControlCanvas> canvas;
+        if (_canvas.lock(canvas))
         {
-            osg::ref_ptr<ControlCanvas> canvas;
-            if ( _canvas.lock(canvas) )
+            osgGA::GUIActionAdapter* aa = ev->getActionAdapter();
+
+            for (osgGA::EventQueue::Events::const_iterator e = events.begin(); e != events.end(); ++e)
             {
-                osgGA::GUIActionAdapter* aa = ev->getActionAdapter();
+                osgGA::GUIEventAdapter* ea = AS_ADAPTER(e->get());
 
-                for(osgGA::EventQueue::Events::const_iterator e = events.begin(); e != events.end(); ++e)
+                // check for a resize each frame. Don't rely on the RESIZE event;
+                // it does always convey the new viewport dimensions (they aren't
+                // always available until the following FRAME event)
+                if (ea->getEventType() == ea->FRAME)
                 {
-                    osgGA::GUIEventAdapter* ea = AS_ADAPTER(e->get());
+                    handleResize(aa->asView(), canvas.get());
+                }
 
-                    // check for a resize each frame. Don't rely on the RESIZE event;
-                    // it does always convey the new viewport dimensions (they aren't
-                    // always available until the following FRAME event)
-                    if ( ea->getEventType() == ea->FRAME )
-                    {
-                        handleResize(aa->asView(), canvas.get());
-                    }
-
-                    if (canvas->handle( *ea, *aa ))
-                    {
-                        e->get()->setHandled(true);
-                    }
+                if (canvas->handle(*ea, *aa))
+                {
+                    e->get()->setHandled(true);
                 }
             }
         }
@@ -2720,8 +2737,9 @@ ControlCanvas::getOrCreate(osg::View* view)
 
     canvas = new ControlCanvas();
 
-    // ControlCanvas does NOT work as a direct child of the View's camera.
     osg::Group* group = 0L;
+#if 0
+    // ControlCanvas does NOT work as a direct child of the View's camera.
     if ( view->getCamera()->getNumChildren() > 0 )
     {
         group = view->getCamera()->getChild(0)->asGroup();
@@ -2732,6 +2750,7 @@ ControlCanvas::getOrCreate(osg::View* view)
         }
     }
     else
+#endif
     {
         group = new osg::Group();
         view->getCamera()->addChild(group);

@@ -60,6 +60,7 @@ namespace
             osg::StateSet* stateSet = engine->getSurfaceStateSet();
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            vp->setName("TerrainShader");
             _package.loadAll( vp, _dbOptions.get() );
 
 

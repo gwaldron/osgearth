@@ -156,6 +156,11 @@ namespace osgEarth
         //! Override Node::accept to include the singleton GPU statset
         virtual void accept(osg::NodeVisitor& nv);
 
+    public: // osg::Object
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
+
     public:
             
         //! GL mode (for serializer only; do not use)
@@ -192,7 +197,8 @@ namespace osgEarth
         unsigned getRealIndex(unsigned) const;
         void updateFirstCount();
 
-        static osg::ref_ptr<osg::StateSet> _gpuStateSet;
+        static osg::observer_ptr<osg::StateSet> s_gpuStateSet;
+        osg::ref_ptr<osg::StateSet> _gpuStateSet;
     };
 
 

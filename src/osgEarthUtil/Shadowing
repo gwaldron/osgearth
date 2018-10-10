@@ -108,6 +108,12 @@ namespace osgEarth { namespace Util
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+    public:
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+        virtual void releaseGLObjects(osg::State* state) const;
+
     protected:
         virtual ~ShadowCaster() { }
 

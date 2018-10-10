@@ -110,10 +110,9 @@ namespace osgEarth { namespace Annotation
         void updateLayoutData();
 
     private:
-        static osg::ref_ptr<osg::StateSet> _geodeStateSet;
+        static osg::observer_ptr<osg::StateSet> s_geodeStateSet;
         void construct();
         void compile();
-        //void setupState();
 
     };
 

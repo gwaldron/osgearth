@@ -215,6 +215,17 @@ StateSetCache::~StateSetCache()
 }
 
 void
+StateSetCache::releaseGLObjects(osg::State* state) const
+{
+    Threading::ScopedMutexLock lock( _mutex );
+    for(StateSetSet::const_iterator i = _stateSetCache.begin(); i != _stateSetCache.end(); ++i)
+    {
+        i->get()->releaseGLObjects(state);
+    }
+    
+}
+
+void
 StateSetCache::setMaxSize(unsigned value)
 {
     _maxSize = value;

@@ -1137,7 +1137,7 @@ LineDrawable::dirty()
     }
 }
 
-osg::ref_ptr<osg::StateSet> LineDrawable::_gpuStateSet;
+osg::observer_ptr<osg::StateSet> LineDrawable::s_gpuStateSet;
 
 void
 LineDrawable::setupShaders()
@@ -1146,26 +1146,26 @@ LineDrawable::setupShaders()
     // shared by all LineDrawable instances so OSG will sort them together.
     if (_gpu && !_gpuStateSet.valid())
     {
-        static Threading::Mutex s_mutex;
-        s_mutex.lock();
-        if (!_gpuStateSet.valid())
+        if (s_gpuStateSet.lock(_gpuStateSet) == false)
         {
-            _gpuStateSet = new osg::StateSet();
+            // serialize access and double-check:
+            static Threading::Mutex s_mutex;
+            Threading::ScopedMutexLock lock(s_mutex);
 
-            osg::StateSet* ss = _gpuStateSet.get();
-            VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-            Shaders shaders;
-            shaders.load(vp, shaders.LineDrawable);
-            vp->addBindAttribLocation("oe_LineDrawable_prev", LineDrawable::PreviousVertexAttrLocation);
-            vp->addBindAttribLocation("oe_LineDrawable_next", LineDrawable::NextVertexAttrLocation);
-            ss->getOrCreateUniform("oe_LineDrawable_limits", osg::Uniform::FLOAT_VEC2)->set(osg::Vec2f(-1,-1));
-            //_gpuStateSet->getOrCreateUniform("oe_GL_LineWidth", osg::Uniform::FLOAT)->set(30.0f);
-            //_gpuStateSet->getOrCreateUniform("oe_GL_LineStippleFactor", osg::Uniform::INT)->set(1);
-            //_gpuStateSet->getOrCreateUniform("oe_GL_LineStipplePattern", osg::Uniform::INT)->set((int)~0);
-            
-            ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
+            if (s_gpuStateSet.lock(_gpuStateSet) == false)
+            {
+                s_gpuStateSet = _gpuStateSet = new osg::StateSet();
+
+                VirtualProgram* vp = VirtualProgram::getOrCreate(s_gpuStateSet.get());
+                vp->setName("osgEarth::LineDrawable");
+                Shaders shaders;
+                shaders.load(vp, shaders.LineDrawable);
+                vp->addBindAttribLocation("oe_LineDrawable_prev", LineDrawable::PreviousVertexAttrLocation);
+                vp->addBindAttribLocation("oe_LineDrawable_next", LineDrawable::NextVertexAttrLocation);
+                s_gpuStateSet->getOrCreateUniform("oe_LineDrawable_limits", osg::Uniform::FLOAT_VEC2)->set(osg::Vec2f(-1, -1));
+                s_gpuStateSet->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
+            }
         }
-        s_mutex.unlock();
     }
 }
 
@@ -1197,4 +1197,21 @@ LineDrawable::accept(osg::NodeVisitor& nv)
 
         nv.popFromNodePath();
     }
+}
+
+
+void
+LineDrawable::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Geometry::resizeGLObjectBuffers(maxSize);
+    if (_gpuStateSet.valid())
+        _gpuStateSet->resizeGLObjectBuffers(maxSize);
+}
+
+void
+LineDrawable::releaseGLObjects(osg::State* state) const
+{
+    osg::Geometry::releaseGLObjects(state);
+    if (_gpuStateSet.valid())
+        _gpuStateSet->releaseGLObjects(state);
 }

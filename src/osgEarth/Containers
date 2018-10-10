@@ -690,6 +690,10 @@ namespace osgEarth
             virtual void operator()(DATA& data) =0;
         };
 
+        struct ConstFunctor {
+            virtual void operator()(const DATA& data) const =0;
+        };
+
         DATA& get(KEY k)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
@@ -710,6 +714,13 @@ namespace osgEarth
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
             for (typename fast_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
+                functor.operator()(i->second);
+        }
+
+        void forEach(ConstFunctor& functor) const
+        {
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            for (typename fast_map<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 

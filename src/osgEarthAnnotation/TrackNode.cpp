@@ -59,8 +59,8 @@ namespace
 
 //------------------------------------------------------------------------
 
-osg::ref_ptr<osg::StateSet> TrackNode::_geodeStateSet;
-osg::ref_ptr<osg::StateSet> TrackNode::_imageStateSet;
+osg::observer_ptr<osg::StateSet> TrackNode::s_geodeStateSet;
+osg::observer_ptr<osg::StateSet> TrackNode::s_imageStateSet;
 
 
 TrackNode::TrackNode(const GeoPoint&             position,
@@ -103,40 +103,48 @@ _style( style )
 void
 TrackNode::construct()
 {
+    // This class makes its own shaders
+    ShaderGenerator::setIgnoreHint(this, true);
+
     _geode = new osg::Geode();
     getPositionAttitudeTransform()->addChild( _geode );
 
     // initialize the shared stateset for the shared statesets.
-    if (!_imageStateSet.valid())
+    osg::ref_ptr<osg::StateSet> geodeStateSet;
+    if (s_geodeStateSet.lock(geodeStateSet) == false)
     {
-        static Threading::Mutex s_mutex;
-        s_mutex.lock();
-        if (!_geodeStateSet.valid())
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_geodeStateSet.lock(geodeStateSet) == false)
         {
-            _geodeStateSet = new osg::StateSet();
+            s_geodeStateSet = geodeStateSet = new osg::StateSet();
 
             // draw in the screen-space bin
-            ScreenSpaceLayout::activate(_geodeStateSet.get());
+            ScreenSpaceLayout::activate(geodeStateSet.get());
 
             // completely disable depth buffer
-            _geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
+            geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
 
             // Disable lighting for place nodes by default
-            Lighting::set(_geodeStateSet.get(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
-            
-            // shared stateset for the icon
-            {
-                _imageStateSet = new osg::StateSet();
-                VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
-                vp->setFunction("oe_TrackNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
-                vp->setFunction("oe_TrackNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
-                _imageStateSet->addUniform(new osg::Uniform("oe_TrackNode_tex", 0));
-            }
+            Lighting::set(geodeStateSet.get(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
         }
-        s_mutex.unlock();
     }
+    _geode->setStateSet(geodeStateSet.get());
 
-    _geode->setStateSet(_geodeStateSet.get());
+    if (s_imageStateSet.lock(_imageStateSet) == false)
+    {
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_imageStateSet.lock(_imageStateSet) == false)
+        {
+            s_imageStateSet = _imageStateSet = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
+            vp->setName("TrackNode");
+            vp->setFunction("oe_TrackNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_TrackNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            _imageStateSet->addUniform(new osg::Uniform("oe_TrackNode_tex", 0));
+        }
+    }
 }
 
 void

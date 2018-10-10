@@ -182,7 +182,9 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
 
         s->addUniform( _paramsUniform.get() );
         
-        shaders.load(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);    
+        VirtualProgram* vp = VirtualProgram::getOrCreate(s);
+        vp->setName("DepthOffset");
+        shaders.load(vp, shaders.DepthOffsetVertex);    
 
         // disable depth writes
         s->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false), 1);

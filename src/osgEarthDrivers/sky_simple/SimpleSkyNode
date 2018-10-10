@@ -54,6 +54,11 @@ namespace osgEarth { namespace SimpleSky
         void onSetStarsVisible();
         void onSetAtmosphereVisible();
 
+    public: // osg::Object
+
+        void releaseGLObjects(osg::State* state) const;
+        void resizeGLObjectBuffers(unsigned maxSize);
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor&);

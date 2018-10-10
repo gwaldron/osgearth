@@ -79,6 +79,7 @@ DetailTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // configure shaders
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+            vp->setName("DetailTerrainEffect");
 
             Shaders package;            
 

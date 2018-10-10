@@ -105,6 +105,7 @@ osg::Camera()
     setReadBuffer(GL_FRONT);
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->setName("TileRasterizer");
     vp->setInheritShaders(false);
 
     // Someday we might need this to undistort rasterizer cells. We'll see

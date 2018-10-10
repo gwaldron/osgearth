@@ -327,6 +327,7 @@ GeodeticGraticule::installEffect()
     // shader components
     osg::StateSet* stateset = _mapNode->getTerrainEngine()->getSurfaceStateSet();
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    vp->setName("GeodeticGraticule");
 
     // configure shaders
     Shaders package;
@@ -683,6 +684,7 @@ GeodeticGraticule::getCameraData(osg::Camera* cam) const
 
         cdata._labelStateset = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(cdata._labelStateset.get());
+        vp->setName("GeodeticGraticule Text");
         vp->setFunction("oe_GeodeticGraticule_text_frag", textFadeFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
     }
 

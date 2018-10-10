@@ -31,7 +31,6 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderGenerator>
-//#include <osgEarth/LineDrawable>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -62,8 +61,8 @@ namespace
         "} \n";
 }
 
-osg::ref_ptr<osg::StateSet> PlaceNode::_geodeStateSet;
-osg::ref_ptr<osg::StateSet> PlaceNode::_imageStateSet;
+osg::observer_ptr<osg::StateSet> PlaceNode::s_geodeStateSet;
+osg::observer_ptr<osg::StateSet> PlaceNode::s_imageStateSet;
 
 PlaceNode::PlaceNode() :
 GeoPositionNode()
@@ -114,33 +113,41 @@ PlaceNode::construct()
     // This class makes its own shaders
     ShaderGenerator::setIgnoreHint(this, true);
 
-    if (!_geodeStateSet.valid())
+    // Construct the shared state sets
+    if (s_geodeStateSet.lock(_geodeStateSet) == false)
     {
         static Threading::Mutex s_mutex;
-        s_mutex.lock();
-        if (!_geodeStateSet.valid())
+        Threading::ScopedMutexLock lock(s_mutex);
+
+        if (s_geodeStateSet.lock(_geodeStateSet) == false)
         {
-            _geodeStateSet = new osg::StateSet();
+            s_geodeStateSet = _geodeStateSet = new osg::StateSet();
 
             // draw in the screen-space bin
             ScreenSpaceLayout::activate(_geodeStateSet.get());
 
             // completely disable depth buffer
-            _geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
+            _geodeStateSet->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1);
 
             // Disable lighting for place nodes by default
             _geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
-            
-            // shared stateset for the icon
-            {
-                _imageStateSet = new osg::StateSet();
-                VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
-                vp->setFunction("oe_PlaceNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
-                vp->setFunction("oe_PlaceNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
-                _imageStateSet->addUniform(new osg::Uniform("oe_PlaceNode_tex", 0));
-            }
         }
-        s_mutex.unlock();
+    }
+
+    if (s_imageStateSet.lock(_imageStateSet) == false)
+    {
+        static Threading::Mutex s_mutex;
+        Threading::ScopedMutexLock lock(s_mutex);
+
+        if (s_imageStateSet.lock(_imageStateSet) == false)
+        {
+            s_imageStateSet = _imageStateSet = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
+            vp->setName("PlaceNode::imageStateSet");
+            vp->setFunction("oe_PlaceNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_PlaceNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            _imageStateSet->addUniform(new osg::Uniform("oe_PlaceNode_tex", 0));
+        }
     }
 }
 

@@ -158,7 +158,12 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         // Place these uniforms at the root stateset so they affect the entire graph:
         osg::StateSet* ss = cv->getCurrentRenderStage()->getStateSet();
         if (ss == 0L)
+        {
             cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());
+
+            Threading::ScopedMutexLock lock(_statesetsMutex);
+            _statesets.push_back(ss);
+        }
 
         ss->getOrCreateUniform(prefix + "ambient", osg::Uniform::FLOAT_VEC4)->set(light->getAmbient());
         ss->getOrCreateUniform(prefix + "diffuse", osg::Uniform::FLOAT_VEC4)->set(light->getDiffuse());
@@ -203,6 +208,23 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         }
     }
     return traverse(obj, data);
+}
+
+void
+LightSourceGL3UniformGenerator::resizeGLBufferObjects(unsigned maxSize)
+{
+    Threading::ScopedMutexLock lock(_statesetsMutex);
+    for(unsigned i=0; i<_statesets.size(); ++i)
+        _statesets[i]->resizeGLObjectBuffers(maxSize);
+}
+
+void
+LightSourceGL3UniformGenerator::releaseGLObjects(osg::State* state) const
+{
+    Threading::ScopedMutexLock lock(_statesetsMutex);
+    for(unsigned i=0; i<_statesets.size(); ++i)
+        _statesets[i]->releaseGLObjects(state);
+    _statesets.clear();
 }
 
 //............................................................................

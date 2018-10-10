@@ -176,7 +176,7 @@ ContourMap::onInstall(TerrainEngineNode* engine)
         // set the "priority" parameter to setFunction() to a negative number so that it draws
         // before the terrain's layers.)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-
+        vp->setName("ContourMap");
         Shaders pkg;
         //pkg.load(vp, pkg.ContourMap_Vertex);
         pkg.load(vp, pkg.ContourMap_Fragment);

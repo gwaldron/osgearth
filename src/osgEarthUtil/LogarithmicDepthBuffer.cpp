@@ -66,6 +66,7 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         osg::StateSet* stateset = camera->getOrCreateStateSet();
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
+        vp->setName("Log Depth Buffer");
         Shaders pkg;
 
         if ( _useFragDepth )

@@ -125,8 +125,10 @@ namespace osgEarth { namespace Annotation
         PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
 
     private:
-        static osg::ref_ptr<osg::StateSet> _geodeStateSet;
-        static osg::ref_ptr<osg::StateSet> _imageStateSet;
+        static osg::observer_ptr<osg::StateSet> s_geodeStateSet;
+        static osg::observer_ptr<osg::StateSet> s_imageStateSet;
+
+        osg::ref_ptr<osg::StateSet> _geodeStateSet, _imageStateSet;
     };
 
 } } // namespace osgEarth::Annotation

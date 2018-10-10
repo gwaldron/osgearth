@@ -26,7 +26,6 @@
 #include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>

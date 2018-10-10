@@ -210,7 +210,8 @@ namespace osgEarth
 
     };
 
-    typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
+    //typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
+    typedef std::vector<PolyShader*> ProgramKey;
 
 
     class /*internal*/ ProgramRepo : public osg::Referenced
@@ -249,6 +250,10 @@ namespace osgEarth
         void prune(unsigned frameNumber, osg::State* state);
 
         void resizeGLObjectBuffers(unsigned maxSize);
+
+        void releaseGLObjects(osg::State* state) const;
+
+        ~ProgramRepo();
 
     private:
         mutable ProgramMap _db;
@@ -550,6 +555,8 @@ namespace osgEarth
         AttribAliasMap _attribAliases;
 
         bool _acceptCallbacksVaryPerFrame;
+
+        mutable osg::buffered_object< osg::ref_ptr<osg::Program> > _lastUsedProgram;
 
         // Mechnism for remembering whether a VP has been applied during the same frame
         // and with the same attribute stack.

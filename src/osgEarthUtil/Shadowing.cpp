@@ -159,6 +159,7 @@ ShadowCaster::reinitialize()
 
     // Establish a Virtual Program on the stateset.
     VirtualProgram* vp = VirtualProgram::getOrCreate(_renderStateSet.get());
+    vp->setName("ShadowCaster");
 
     // Load the shadowing shaders.
     Shaders package;
@@ -184,6 +185,36 @@ ShadowCaster::reinitialize()
     _shadowColorUniform = _renderStateSet->getOrCreateUniform("oe_shadow_color", osg::Uniform::FLOAT);
 
     _shadowColorUniform->set(_color);
+}
+
+void
+ShadowCaster::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if (_light.valid())
+        _light->resizeGLObjectBuffers(maxSize);
+    if (_shadowmap.valid())
+        _shadowmap->resizeGLObjectBuffers(maxSize);
+    if (_rttStateSet.valid())
+        _rttStateSet->resizeGLObjectBuffers(maxSize);
+    if (_renderStateSet.valid())
+        _renderStateSet->resizeGLObjectBuffers(maxSize);
+    for(unsigned i=0; i<_rttCameras.size(); ++i)
+        _rttCameras[i]->resizeGLObjectBuffers(maxSize);
+}
+
+void
+ShadowCaster::releaseGLObjects(osg::State* state) const
+{
+    if (_light.valid())
+        _light->releaseGLObjects(state);
+    if (_shadowmap.valid())
+        _shadowmap->releaseGLObjects(state);
+    if (_rttStateSet.valid())
+        _rttStateSet->releaseGLObjects(state);
+    if (_renderStateSet.valid())
+        _renderStateSet->releaseGLObjects(state);
+    for(unsigned i=0; i<_rttCameras.size(); ++i)
+        _rttCameras[i]->releaseGLObjects(state);
 }
 
 void

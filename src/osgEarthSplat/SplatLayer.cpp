@@ -338,6 +338,7 @@ SplatLayer::buildStateSets()
 
     SplattingShaders splatting;
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    vp->setName("SplatLayer");
     splatting.load(vp, splatting.VertModel);
     splatting.load(vp, splatting.VertView);
     splatting.load(vp, splatting.Frag);

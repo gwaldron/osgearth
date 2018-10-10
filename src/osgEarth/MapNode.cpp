@@ -747,6 +747,14 @@ MapNode::releaseGLObjects(osg::State* state) const
             (*i)->getStateSet()->releaseGLObjects(state);
         }
     }
+
+    // osg::Node doesn't release nested callbacks, oops
+    for(const osg::Callback* cc = getCullCallback(); cc; cc = cc->getNestedCallback())
+        cc->releaseGLObjects(state);
+    for(const osg::Callback* uc = getUpdateCallback(); uc; uc = uc->getNestedCallback())
+        uc->releaseGLObjects(state);
+    for(const osg::Callback* ec = getEventCallback(); ec; ec = ec->getNestedCallback())
+        ec->releaseGLObjects(state);
 }
 
 DrapingManager*

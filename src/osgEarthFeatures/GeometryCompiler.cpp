@@ -492,7 +492,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             // no ss cache because we will optimize later.
             Registry::shaderGenerator().run( 
                 resultGroup.get(),
-                "osgEarth.GeomCompiler" );
+                "GeometryCompiler shadergen" );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
         {

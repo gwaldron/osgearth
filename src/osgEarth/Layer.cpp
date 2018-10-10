@@ -235,6 +235,7 @@ Layer::open()
     {
         OE_INFO << LC << "Installing inline shader code\n";
         VirtualProgram* vp = VirtualProgram::getOrCreate(this->getOrCreateStateSet());
+        vp->setName("Layer shader");
         ShaderPackage package;
         package.add("", options().shader().get());
         package.loadAll(vp, getReadOptions());

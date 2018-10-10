@@ -59,6 +59,7 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
         d.stateSet->addUniform(d.uniform.get());
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(d.stateSet.get());
+        vp->setName("HorizonClipPlane");
         Shaders shaders;
         shaders.load(vp, shaders.ClipPlane);
         d.stateSet->setDefine("OE_CLIPPLANE_NUM", Stringify() << getClipPlaneNumber());
@@ -79,4 +80,40 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
     cv->pushStateSet(d.stateSet.get());
     traverse(node, nv);
     cv->popStateSet();
+}
+
+void
+HorizonClipPlane::ResizeFunctor::operator()(HorizonClipPlane::PerCameraData& data)
+{
+    if (data.horizon.valid())
+        data.horizon->resizeGLObjectBuffers(_s);
+    if (data.stateSet.valid())
+        data.stateSet->resizeGLObjectBuffers(_s);
+    if (data.uniform.valid())
+        data.uniform->resizeGLObjectBuffers(_s);
+}
+
+void
+HorizonClipPlane::resizeGLObjectBuffers(unsigned maxSize)
+{
+    ResizeFunctor f(maxSize);
+    data.forEach(f);
+}
+
+void
+HorizonClipPlane::ReleaseFunctor::operator()(const HorizonClipPlane::PerCameraData& data) const
+{
+    if (data.horizon.valid())
+        data.horizon->releaseGLObjects(_state);
+    if (data.stateSet.valid())
+        data.stateSet->releaseGLObjects(_state);
+    if (data.uniform.valid())
+        data.uniform->releaseGLObjects(_state);
+}
+
+void
+HorizonClipPlane::releaseGLObjects(osg::State* state) const
+{
+    ReleaseFunctor f(state);
+    data.forEach(f);
 }

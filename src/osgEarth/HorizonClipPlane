@@ -62,6 +62,11 @@ namespace osgEarth
 
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
+    public: // osg::Object
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
+
     private:
 
         unsigned _num;
@@ -72,7 +77,19 @@ namespace osgEarth
             osg::ref_ptr<osg::StateSet> stateSet;
             osg::ref_ptr<osg::Uniform> uniform;
         };
-        PerObjectFastMap<osg::Camera*, PerCameraData> data;
+        typedef PerObjectFastMap<osg::Camera*, PerCameraData> DataMap;
+        DataMap data;
+
+        struct ResizeFunctor : public DataMap::Functor {
+            unsigned _s;
+            ResizeFunctor(unsigned s) : _s(s) { }
+            virtual void operator()(PerCameraData& data);
+        };
+        struct ReleaseFunctor : public DataMap::ConstFunctor {
+            osg::State* _state;
+            ReleaseFunctor(osg::State* state) : _state(state) { }
+            virtual void operator()(const PerCameraData& data) const;
+        };
     };
 
 } // namespace osgEarth

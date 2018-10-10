@@ -540,6 +540,8 @@ DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         if ( vp )
         {
+            vp->setName("Discard Alpha");
+
             std::string code = Stringify()
                 << "#version " << GLSL_VERSION_STR << "\n"
                 << GLSL_DEFAULT_PRECISION_FLOAT << "\n"

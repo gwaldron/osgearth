@@ -93,7 +93,7 @@ Map::ctor()
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer. These will be stored in the readOptions
     // (and ONLY there)
-    CacheSettings* cacheSettings = new CacheSettings();
+    osg::ref_ptr<CacheSettings> cacheSettings = new CacheSettings();
 
     // Set up a cache if there's one in the options:
     if (_mapOptions.cache().isSet())
@@ -110,7 +110,6 @@ Map::ctor()
     cacheSettings->store(_readOptions.get());
 
     OE_INFO << LC << cacheSettings->toString() << "\n";
-
 
     // remember the referrer for relative-path resolution:
     URIContext( _mapOptions.referrer() ).store( _readOptions.get() );

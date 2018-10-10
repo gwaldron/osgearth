@@ -352,6 +352,10 @@ void EmitColorIndices( const byte *colorBlock, const byte *minColor, const byte 
 {
   byte colors[4][4];
   unsigned int indices[16];
+
+  for (int i = 0; i < 16; i++) {
+      indices[i] = 0;
+  }
   
   colors[0][0] = ( maxColor[0] & C565_5_MASK ) | ( maxColor[0] >> 5 );
   colors[0][1] = ( maxColor[1] & C565_6_MASK ) | ( maxColor[1] >> 6 );
@@ -435,6 +439,11 @@ void EmitColorIndicesFast( const byte *colorBlock, const byte *minColor, const b
 void EmitAlphaIndices( const byte *colorBlock, const byte minAlpha, const byte maxAlpha, byte *&outData )
 {
   byte indices[16];
+
+  for (int i = 0; i < 16; i++) {
+      indices[i] = 0;
+  }
+
   byte alphas[8];
 
   alphas[0] = maxAlpha;

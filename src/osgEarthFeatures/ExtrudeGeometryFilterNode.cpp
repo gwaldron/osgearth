@@ -12,7 +12,6 @@ namespace osgEarth
 
       ExtrudeGeometryFilterNode::ExtrudeGeometryFilterNode( osg::Group* extrusionGroup, const osg::Matrixd& xform)
          : _extrusionGroup(extrusionGroup)
-//         , _attachPoint(attachPoint)
          , _xform(xform)
       {
 
@@ -20,7 +19,6 @@ namespace osgEarth
       ExtrudeGeometryFilterNode::ExtrudeGeometryFilterNode(const ExtrudeGeometryFilterNode& rhs, const osg::CopyOp& copyop)
       {
          _extrusionGroup = rhs._extrusionGroup;
-//         _attachPoint = rhs._attachPoint;
          _xform = rhs._xform;
       } 
 

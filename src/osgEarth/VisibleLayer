@@ -58,11 +58,11 @@ namespace osgEarth
         optional<float>& maxVisibleRange() { return _maxRange; }
         const optional<float>& maxVisibleRange() const { return _maxRange; }
 
-        //! Ratio (or min range to max range) over which to ramp min and max range blending
-        optional<float>& attenuation() { return _attenuation; }
-        const optional<float>& attenuation() const { return _attenuation; }
+        //! Distance (m) over which to ramp min and max range blending
+        optional<float>& attenuationRange() { return _attenuationRange; }
+        const optional<float>& attenuationRange() const { return _attenuationRange; }
 
-        //! Blending function (GL_BLEND or GL_MODULATE)
+        //! Blending function (default = interpolate)
         optional<Blend>& blend() { return _blend; }
         const optional<Blend>& blend() const { return _blend; }
 
@@ -77,7 +77,7 @@ namespace osgEarth
         optional<float> _opacity;
         optional<float> _minRange;
         optional<float> _maxRange;
-        optional<float> _attenuation;
+        optional<float> _attenuationRange;
         optional<Blend> _blend;
     };
 
@@ -122,9 +122,9 @@ namespace osgEarth
         float getMaxVisibleRange() const;
         void setMaxVisibleRange( float maxVisibleRange );
         
-        //! Ratio (of min range to max range) over which to ramp min and max range blending
-        float getAttenuation() const;
-        void setAttenuation( float ratio );
+        //! Distance (m) over which to ramp min and max range blending
+        float getAttenuationRange() const;
+        void setAttenuationRange( float value );
 
     public: // Layer
 

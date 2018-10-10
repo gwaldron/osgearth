@@ -159,26 +159,27 @@ An *image layer* is a raster image overlaid on the map's geometry.
 .. parsed-literal::
 
     <map>
-        <image name           = "my image layer"
-               driver         = "gdal"
-               nodata_image   = "http://readymap.org/nodata.png"
-               opacity        = "1.0"
-               min_range      = "0"
-               max_range      = "100000000"
-               min_level      = "0"
-               max_level      = "23"
-               min_resolution = "100.0"
-               max_resolution = "0.0"
-               max_data_level = "23"
-               enabled        = "true"
-               visible        = "true"
-               shared         = "false"
-               shared_sampler = "string"
-               shared_matrix  = "string"
-               coverage       = "false"
-               min_filter     = "LINEAR"
-               mag_filter     = "LINEAR"
-               blend          = "interpolate"
+        <image name              = "my image layer"
+               driver            = "gdal"
+               nodata_image      = "http://readymap.org/nodata.png"
+               opacity           = "1.0"
+               min_range         = "0"
+               max_range         = "100000000"
+               attenuation_range = "0"
+               min_level         = "0"
+               max_level         = "23"
+               min_resolution    = "100.0"
+               max_resolution    = "0.0"
+               max_data_level    = "23"
+               enabled           = "true"
+               visible           = "true"
+               shared            = "false"
+               shared_sampler    = "string"
+               shared_matrix     = "string"
+               coverage          = "false"
+               min_filter        = "LINEAR"
+               mag_filter        = "LINEAR"
+               blend             = "interpolate"
                texture_compression = "auto" >
 
             <:ref:`cache_policy <CachePolicy>`>
@@ -206,6 +207,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
 +-----------------------+--------------------------------------------------------------------+
 | max_range             | Maximum visibility range, in meters from the camera. The tile will |
 |                       | not be drawn beyond this range.                                    |
++-----------------------+--------------------------------------------------------------------+
+| attenuation_range     | Distance over which to blend towards min_range or max_range.       |
+|                       | (not supported for text or icons, only geometry)                   |
 +-----------------------+--------------------------------------------------------------------+
 | min_level             | Minimum visibility level of detail.                                |
 +-----------------------+--------------------------------------------------------------------+

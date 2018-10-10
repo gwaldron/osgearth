@@ -879,9 +879,12 @@ ScreenSpaceLayout::activate(osg::StateSet* stateSet) //, int binNum)
             binNum,
             OSGEARTH_SCREEN_SPACE_LAYOUT_BIN,
             osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
-
+        
         // Force a single shared layout bin per render stage
         stateSet->setNestRenderBins( false );
+
+        // Range opacity is not supported for screen-space rendering
+        stateSet->setDefine("OE_DISABLE_RANGE_OPACITY");
     }
 }
 

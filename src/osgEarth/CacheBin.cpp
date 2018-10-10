@@ -128,44 +128,7 @@ namespace
                         osg::Texture* tex = dynamic_cast<osg::Texture*>(sa);
                         if (tex)
                         {              
-                            tex->setUnRefImageDataAfterApply(false);               
-
-#if 0 // took this out in favor of the osg::DummyObject serializer above.
-
-                            // OSG's DatabasePager attaches "marker objects" to Textures' UserData when it runs a
-                            // FindCompileableGLObjectsVisitor. This operation is not thread-safe; it doesn't
-                            // account for the possibility that the texture may already be in use elsewhere.
-                            //
-                            // To prevent a threading violation, and the ensuing crash that reliably occurs
-                            // in Release mode (but not Debug for whatever reason) we are forced to make a
-                            // shallow clone of the Texture object and use that for serialization instead of
-                            // the original, since the original may change in the middle of the process.
-                            // We then replace the original with our close locally and serialize it safely.
-                            //
-                            // This "hack" prevents a crash in OSG 3.4.0 when trying to modify and then write
-                            // serialize the scene graph containing these shared texture objects.
-                            // Kudos to Jason B for figuring this one out.
-                            osg::Texture* texClone = osg::clone(tex, osg::CopyOp::SHALLOW_COPY);
-                            if ( texClone )
-                            {
-                                for (unsigned k = 0; k < texClone->getNumImages(); ++k)
-                                {
-                                    osg::Image* image = texClone->getImage(k);
-                                    if ( image )
-                                    {
-                                        applyUserData(*image);
-                                    }
-                                }
-
-                                applyUserData(*texClone);
-
-                                j->second.first = texClone;
-                            }
-                            else
-                            {
-                                OE_WARN << LC << "Texture clone failed.\n";
-                            }
-#endif
+                            tex->setUnRefImageDataAfterApply(false);   
                         }
                         else
                         {

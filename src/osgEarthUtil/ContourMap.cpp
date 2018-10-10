@@ -68,39 +68,6 @@ ContourMap::init()
     _xferTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     _xferTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
 
-#if 0
-    // build a default transfer function.
-    // TODO: think about scale/bias controls.
-    osg::TransferFunction1D* xfer = new osg::TransferFunction1D();
-    float s = 2500.0f;
-
-    if ( grayscale() == true )
-    {
-        xfer->setColor( -1.0000 * s, osg::Vec4f(.125,.125,.125, 1), false);
-        xfer->setColor( -0.2500 * s, osg::Vec4f(.25,.25,.25, 1), false);
-        xfer->setColor(  0.0000 * s, osg::Vec4f(.375,.375,.375, 1), false);
-        xfer->setColor(  0.0062 * s, osg::Vec4f(.5,.5,.5,1), false);
-        xfer->setColor(  0.1250 * s, osg::Vec4f(.625,.625,.625,1), false);
-        xfer->setColor(  0.3250 * s, osg::Vec4f(.75,.75,.75,1), false);
-        xfer->setColor(  0.7500 * s, osg::Vec4f(.875,.875,.875,1), false);
-        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
-    }
-    else
-    {
-        xfer->setColor( -1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
-        xfer->setColor( -0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
-        xfer->setColor(  0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
-        xfer->setColor(  0.0062 * s, osg::Vec4f(.84,.84,.25,1), false);
-        xfer->setColor(  0.1250 * s, osg::Vec4f(.125,.62,0,1), false);
-        xfer->setColor(  0.3250 * s, osg::Vec4f(.80,.70,.47,1), false);
-        xfer->setColor(  0.7500 * s, osg::Vec4f(.5,.5,.5,1), false);
-        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
-    }
-    xfer->updateImage();
-    this->setTransferFunction( xfer );
-    _opacityUniform->set( opacity().getOrUse(1.0f) );
-#endif
-
     dirty();
 }
 

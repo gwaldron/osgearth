@@ -367,22 +367,11 @@ _isCoreProfile          ( true )
         // BUT unfortunately, they dont' seem to work too well with shaders. Colors
         // change randomly, etc. Might work OK for textured geometry but not for 
         // untextured. TODO: investigate.
-#if 1
         _preferDLforStaticGeom = false;
         if ( ::getenv("OSGEARTH_TRY_DISPLAY_LISTS") )
         {
             _preferDLforStaticGeom = true;
         }
-#else
-        if ( ::getenv("OSGEARTH_ALWAYS_USE_VBOS") )
-        {
-            _preferDLforStaticGeom = false;
-        }
-        else
-        {
-            _preferDLforStaticGeom = isNVIDIA;
-        }
-#endif
 
         //OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
 
@@ -390,15 +379,6 @@ _isCoreProfile          ( true )
         bool isATI = _vendor.find("ATI ") == 0;
 
         _supportsMipmappedTextureUpdates = isATI && enableATIworkarounds ? false : true;
-        //OE_INFO << LC << "  Mipmapped texture updates = " << SAYBOOL(_supportsMipmappedTextureUpdates) << std::endl;
-
-#if 0
-        // Intel workarounds:
-        bool isIntel = 
-            _vendor.find("Intel ")   != std::string::npos ||
-            _vendor.find("Intel(R)") != std::string::npos ||
-            _vendor.compare("Intel") == 0;
-#endif
 
         _maxFastTextureSize = _maxTextureSize;
 

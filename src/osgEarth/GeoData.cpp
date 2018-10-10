@@ -1921,36 +1921,6 @@ namespace
                 OE_WARN << LC << "RasterIO failed.\n";
             }
 
-
-#if 0
-
-        //Write the image data into the memory dataset
-        //If the image is already RGBA, just read all 4 bands in one call
-        if (image->getPixelFormat() == GL_RGBA)
-        {
-            srcDS->RasterIO(GF_Write, 0, 0, clonedImage->s(), clonedImage->t(), (void*)clonedImage->data(), clonedImage->s(), clonedImage->t(), GDT_Byte, 4, NULL, 4, 4 * image->s(), 1);
-        }
-        else if (image->getPixelFormat() == GL_RGB)
-        {    
-            //OE_NOTICE << "[osgEarth::GeoData] Reprojecting RGB " << std::endl;
-            //Read the read, green and blue bands
-            srcDS->RasterIO(GF_Write, 0, 0, clonedImage->s(), clonedImage->t(), (void*)clonedImage->data(), clonedImage->s(), clonedImage->t(), GDT_Byte, 3, NULL, 3, 3 * image->s(), 1);
-
-            //Initialize the alpha values to 255.
-            unsigned char *alpha = new unsigned char[clonedImage->s() * clonedImage->t()];
-            memset(alpha, 255, clonedImage->s() * clonedImage->t());
-
-            GDALRasterBand* alphaBand = srcDS->GetRasterBand(4);
-            alphaBand->RasterIO(GF_Write, 0, 0, clonedImage->s(), clonedImage->t(), alpha, clonedImage->s(),clonedImage->t(), GDT_Byte, 0, 0);
-
-            delete[] alpha;
-        }
-        else
-        {
-            OE_WARN << LC << "createDataSetFromImage: unsupported pixel format " << std::hex << image->getPixelFormat() << std::endl;
-        }
-#endif
-
             srcDS->FlushCache();
         }
 

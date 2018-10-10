@@ -531,14 +531,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         for(std::set<std::string>::const_iterator i = types.begin(); i != types.end(); ++i)
         {
             buf << *i << " VP_Interpolate3(" << *i << "," << *i << "," << *i << ");\n";
-        }       
-
-        //buf <<
-        //    "\n// TES user-supplied interpolators: \n"
-        //    "float VP_Interpolate3(float,float,float); \n"
-        //    "vec2  VP_Interpolate3(vec2,vec2,vec2); \n"
-        //    "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
-        //    "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
+        }
 
 #if 0
         buf <<

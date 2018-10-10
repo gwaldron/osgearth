@@ -1259,14 +1259,6 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                     }
                 }
             }
-#if 0
-            // For an image layer, attach the default fragment shader:
-            Shaders shaders;
-            osg::StateSet* stateSet = imageLayer->getOrCreateStateSet();
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-            shaders.load(vp, shaders.ENGINE_FRAG);
-#else            
-#endif
         }
 
         else

@@ -1804,10 +1804,12 @@ VirtualProgram::apply( osg::State& state ) const
         _lastUsedProgram[contextID] = program.get();
 #endif
 
+#if 0 // breakpoint for testing
         if (state.checkGLErrors(this))
         {
             int x=0;
         }
+#endif
     }
 }
 

@@ -852,7 +852,7 @@ namespace osgEarth { namespace Util
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
         osg::Quat computeCenterRotation(const osg::Vec3d& center) const;
 
-        void updateTether();
+        void updateTether(double t);
 
         void updateSetViewpoint();
 

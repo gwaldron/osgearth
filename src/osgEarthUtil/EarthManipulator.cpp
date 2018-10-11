@@ -1576,11 +1576,10 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( !established() )
         return false;
 
-    // make sure the camera projection is up to date:
     osg::View* view = aa.asView();
-    updateProjection( view->getCamera() );
 
-    double time_s_now = osg::Timer::instance()->time_s();
+    //double time_s_now = osg::Timer::instance()->time_s();
+    double time_s_now = view->getFrameStamp()->getReferenceTime();
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
@@ -1614,8 +1613,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             {
                 if ( _frameCount < 2 )
                     _setVPStartTime->set(_time_s_now, Units::SECONDS);
-
-                setViewpointFrame( time_s_now );
             }
 
             if (_thrown)
@@ -1935,16 +1932,8 @@ osg::NodePathList getAllParentalNodePaths(osg::Node* node, osg::Node* haltTraver
 }
 
 void
-EarthManipulator::updateTether()
+EarthManipulator::updateTether(double t)
 {
-    double t = 1.0;
-
-    // If we are still setting the viewpoint, tick that now.
-    if ( isSettingViewpoint() )
-    {
-        t = setViewpointFrame( _time_s_now );
-    }
-
     // Initial transition is complete, so update the camera for tether.
     osg::ref_ptr<osg::Node> node;
     if ( _setVP1->getNode(node) )
@@ -2341,12 +2330,31 @@ EarthManipulator::getWorldInverseMatrix() const
 void
 EarthManipulator::updateCamera(osg::Camera& camera)
 {
+    // time exactly now
+    double now = osg::Timer::instance()->time_s();
+
+    // interpolation through a setViewpoint, if applicable
+    double t = 0.0;
+
+    // Update a viewpoint transition:
+    if (isSettingViewpoint())
+    {
+        t = setViewpointFrame(now);
+    }
+
+    // Update a camera tethered to a node:
     if (isTethering())
     {
-        updateTether();
+        updateTether(t);
     }
-    osgGA::CameraManipulator::updateCamera(camera);
 
+    // Update an ortho/perspective projection tracking:
+    updateProjection(&camera);
+
+
+    osgGA::CameraManipulator::updateCamera(camera);
+    
+    // Invoke the callback once the camera's been udpated for the ensuing render:
     if (_updateCameraCallback.valid())
     {
         _updateCameraCallback->onUpdateCamera(&camera);

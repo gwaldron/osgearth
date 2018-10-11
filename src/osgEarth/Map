@@ -329,6 +329,7 @@ namespace osgEarth
 
     template<typename T>
     Revision Map::getLayers(std::vector< osg::ref_ptr<T> >& output) const {
+        Threading::ScopedReadLock lock(_mapDataMutex);
         for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
             T* obj = dynamic_cast<T*>(i->get());
             if (obj) output.push_back(obj);
@@ -338,6 +339,7 @@ namespace osgEarth
 
     template<typename T>
     Revision Map::getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const {
+        Threading::ScopedReadLock lock(_mapDataMutex);
         for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
             T* obj = dynamic_cast<T*>(i->get());
             if (obj) output.push_back(obj);
@@ -345,7 +347,8 @@ namespace osgEarth
         return _dataModelRevision;
     }
 
-    template<typename T> T* Map::getLayer() const {
+    template<typename T> T* Map::getLayer() const {        
+        Threading::ScopedReadLock lock(_mapDataMutex);
         for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
             T* obj = dynamic_cast<T*>(i->get());
             if (obj) return obj;

@@ -662,21 +662,19 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             if (!i->get()->_tiles.empty())
             {
                 lastLayer = i->get();
-                //lastLayer->_drawOrder = -1;
 
                 // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
                 // default surface state set or the image layer state set.
                 if (lastLayer->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
                 {
-                    //lastLayer->_order = order++;
+                    if (!surfaceStateSetPushed)
+                    {
+                        cv->pushStateSet(_surfaceStateSet.get());
+                        surfaceStateSetPushed = true;
+                    }
 
                     if (lastLayer->_imageLayer || lastLayer->_layer == NULL)
                     {
-                        if (surfaceStateSetPushed)
-                        {
-                            cv->popStateSet();
-                            surfaceStateSetPushed = false;
-                        }
                         if (!imageLayerStateSetPushed)
                         {
                             cv->pushStateSet(_imageLayerStateSet.get());
@@ -690,21 +688,20 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                             cv->popStateSet();
                             imageLayerStateSetPushed = false;
                         }
-                        if (!surfaceStateSetPushed)
-                        {
-                            cv->pushStateSet(getSurfaceStateSet());
-                            surfaceStateSetPushed = true;
-                        }
                     }
                 }
 
                 else
                 {
-                    if (surfaceStateSetPushed || imageLayerStateSetPushed)
+                    if (imageLayerStateSetPushed)
+                    {
+                        cv->popStateSet();
+                        imageLayerStateSetPushed = false;
+                    }
+                    if (surfaceStateSetPushed)
                     {
                         cv->popStateSet();
                         surfaceStateSetPushed = false;
-                        imageLayerStateSetPushed = false;
                     }
                 }
 
@@ -747,11 +744,16 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             lastLayer->_clearOsgState = true;
         }
 
-        if (surfaceStateSetPushed || imageLayerStateSetPushed)
+        if (imageLayerStateSetPushed)
+        {
+            cv->popStateSet();
+            imageLayerStateSetPushed = false;
+        }
+
+        if (surfaceStateSetPushed)
         {
             cv->popStateSet();
             surfaceStateSetPushed = false;
-            imageLayerStateSetPushed = false;
         }
 
         // pop the common terrain state set
@@ -1576,7 +1578,8 @@ RexTerrainEngineNode::updateState()
             Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
         
         // For an image layer, attach the default fragment shader:
-        _imageLayerStateSet = osg::clone(surfaceStateSet, osg::CopyOp::DEEP_COPY_ALL);
+        //_imageLayerStateSet = osg::clone(surfaceStateSet, osg::CopyOp::DEEP_COPY_ALL);
+        _imageLayerStateSet = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerStateSet.get());
         package.load(vp, package.ENGINE_FRAG);
 

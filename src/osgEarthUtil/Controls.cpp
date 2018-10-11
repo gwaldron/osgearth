@@ -2736,9 +2736,12 @@ ControlCanvas::getOrCreate(osg::View* view)
         return canvas;
 
     canvas = new ControlCanvas();
-
+    
+    //TODO: Revisit this after 2.10. We should be connecting ControlCanvas to a Camera,
+    //not a View, because in the case of an MRT or other RTT-camera based setup, this
+    //approach will not work properly.
+#if 1
     osg::Group* group = 0L;
-#if 0
     // ControlCanvas does NOT work as a direct child of the View's camera.
     if ( view->getCamera()->getNumChildren() > 0 )
     {
@@ -2750,13 +2753,16 @@ ControlCanvas::getOrCreate(osg::View* view)
         }
     }
     else
-#endif
     {
         group = new osg::Group();
         view->getCamera()->addChild(group);
     }
 
     group->addChild( canvas );
+#else
+    view->getCamera()->addChild(canvas);
+#endif
+
     return canvas;
 }
 

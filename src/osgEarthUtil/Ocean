@@ -109,6 +109,10 @@ namespace osgEarth { namespace Util
         void setPlanarReflectionProjection(const osg::ref_ptr<osg::RefMatrix> planarReflectionProjection);
         osg::ref_ptr<osg::RefMatrix> getPlanarReflectionProjection() const { return _planarReflectionProjection; }
 
+        /** Sets the prominence of planar reflections on this ocean surface, if one was set using Ocean::setPlanarReflectionMap */
+        void setPlanarReflectionBlend(float blendPercent);
+        float getPlanarReflectionBlend() const { return _planarReflectionBlend; }
+
     public: // osg::Group
 
         virtual void traverse(osg::NodeVisitor&);
@@ -122,7 +126,8 @@ namespace osgEarth { namespace Util
         virtual void onSetPlanarReflectionMap() { }
 
         virtual void onSetPlanarReflectionProjection() { }
-
+		
+        virtual void onSetPlanarReflectionBlend() { }
     private:
 
         float _seaLevel;
@@ -130,6 +135,7 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<osg::Texture2D> _planarReflectionMap;
         osg::ref_ptr<osg::RefMatrix> _planarReflectionProjection;
+        float _planarReflectionBlend;
 
         osg::ref_ptr<const SpatialReference> _srs;
         const OceanOptions _options;

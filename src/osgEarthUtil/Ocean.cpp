@@ -109,6 +109,13 @@ OceanNode::setPlanarReflectionProjection(const osg::ref_ptr<osg::RefMatrix> plan
 }
 
 void
+OceanNode::setPlanarReflectionBlend(float blendPercent)
+{
+    _planarReflectionBlend = blendPercent;
+    onSetPlanarReflectionBlend();
+}
+
+void
 OceanNode::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _srs.valid() )

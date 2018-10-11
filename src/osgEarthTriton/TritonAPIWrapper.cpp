@@ -108,6 +108,7 @@ SETGET(Ocean, Choppiness, float);
 SETGET_EXPLICIT(Ocean, EnableSpray, SprayEnabled, bool);
 SETGET_EXPLICIT(Ocean, EnableGodRays, GodRaysEnabled, bool);
 SETGET(Ocean, GodRaysFade, float);
+SETGET(Ocean, PlanarReflectionBlend, float);
 
 void Ocean::EnableWireframe(bool wireframe) { HANDLE->EnableWireframe(wireframe); }
 void Ocean::SetQuality(OceanQuality value) { HANDLE->SetQuality((::Triton::OceanQuality)value); }

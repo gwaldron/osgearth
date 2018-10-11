@@ -65,6 +65,8 @@ namespace osgEarth { namespace Triton
 
         virtual void onSetPlanarReflectionProjection();
 
+        virtual void onSetPlanarReflectionBlend();
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;

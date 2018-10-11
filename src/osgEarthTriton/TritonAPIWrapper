@@ -102,6 +102,8 @@ namespace osgEarth { namespace Triton
         void SetGodRaysFade(float fadeAmount);
         float GetGodRaysFade() const;
 
+        void SetPlanarReflectionBlend(float blendPercent);
+        float GetPlanarReflectionBlend() const;
     public:
         Ocean(uintptr_t handle) : _handle(handle) { }
         uintptr_t _handle;

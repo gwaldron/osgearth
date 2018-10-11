@@ -48,6 +48,9 @@ namespace osgEarth { namespace Triton
         /** Sets the spatial reference system of the map */
         void setSRS(const osgEarth::SpatialReference* srs);
 
+        /** */
+        void setPlanarReflectionBlend(float planarReflectionBlend);
+
         /** Sets the user callback */
         void setCallback(Callback* callback);
         Callback* getCallback() const { return _callback.get(); }
@@ -100,6 +103,7 @@ namespace osgEarth { namespace Triton
         Threading::Mutex _initMutex;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _srs;
+        float _planarReflectionBlend;
 
         mutable ::Triton::ResourceLoader* _resourceLoader;
         mutable ::Triton::Environment*    _environment;

@@ -57,6 +57,14 @@ TritonContext::setSRS(const osgEarth::SpatialReference* srs)
 }
 
 void
+TritonContext::setPlanarReflectionBlend(float planarReflectionBlend)
+{
+    _planarReflectionBlend = planarReflectionBlend;
+    if(_ocean)
+        _ocean->SetPlanarReflectionBlend(_planarReflectionBlend);
+}
+
+void
 TritonContext::setCallback(Callback* callback)
 {
     _callback = callback;
@@ -152,6 +160,8 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
                 _ocean = ::Triton::Ocean::Create(
                     _environment, 
                     ::Triton::JONSWAP );
+
+                _ocean->SetPlanarReflectionBlend(_planarReflectionBlend);
             }
 
             if ( _ocean )

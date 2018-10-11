@@ -110,7 +110,7 @@ TritonNode::create()
         _TRITON->setCallback( _callback.get() );
 
     // Set planar reflection value.
-    _TRITON->getOcean()->SetPlanarReflectionBlend(getPlanarReflectionBlend());
+    _TRITON->setPlanarReflectionBlend(getPlanarReflectionBlend());
 
     TritonDrawable* drawable = new TritonDrawable(_TRITON.get());
     _drawable = drawable;
@@ -188,7 +188,7 @@ TritonNode::onSetPlanarReflectionProjection()
 void
 TritonNode::onSetPlanarReflectionBlend()
 {
-    _TRITON->getOcean()->SetPlanarReflectionBlend(getPlanarReflectionBlend());
+    _TRITON->setPlanarReflectionBlend(getPlanarReflectionBlend());
 }
 
 osg::BoundingSphere

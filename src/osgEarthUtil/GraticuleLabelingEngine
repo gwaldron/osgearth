@@ -46,6 +46,9 @@ namespace osgEarth { namespace Util
 
         bool getVisible(osg::Camera* camera);
 
+        //! Set the labeling style for all labels
+        void setStyle(const Style& style);
+
     public: // osg::Node
         void traverse(osg::NodeVisitor& nv);
 
@@ -76,6 +79,12 @@ namespace osgEarth { namespace Util
             AcceptCameraData(osg::NodeVisitor& nv) : _nv(nv) { }
             void operator()(CameraData& data);
             osg::NodeVisitor& _nv;
+        };
+
+        struct UpdateLabelStyles : public CameraDataMap::Functor {
+            UpdateLabelStyles(const Style& style) : _style(&style) { }
+            void operator()(CameraData& data);
+            const Style* _style;
         };
 
         osg::ref_ptr<const SpatialReference> _srs;

@@ -33,7 +33,7 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
         
-    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover" blend="modulate" max_range="250000" attenuation="0.4">
+    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover" blend="modulate" max_range="250000" attenuation_range="100000">
         <zones>
             <zone name="default">
                 <surface>

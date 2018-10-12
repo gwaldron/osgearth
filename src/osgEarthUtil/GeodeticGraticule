@@ -23,7 +23,6 @@
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/GeodeticLabelingEngine>
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/TerrainEffect>
 #include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarthAnnotation/LabelNode>
@@ -80,6 +79,7 @@ namespace osgEarth { namespace Util
             _gridLinesVisible.init(true);
             _gridLabelsVisible.init(true);
             _edgeLabelsVisible.init(true);
+            _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
             fromConfig( _conf );
         }
 
@@ -160,6 +160,14 @@ namespace osgEarth { namespace Util
         //! Set whether to show the edge labels
         void setEdgeLabelsVisible(bool edgeLabelsVisible);
 
+        //! Set the styling to use for grid labels
+        void setGridLabelStyle(const Style& style);
+        const Style& getGridLabelStyle() const { return _gridLabelStyle; }
+
+        //! Set ths styling to use for edge labels
+        void setEdgeLabelStyle(const Style& style);
+        const Style& getEdgeLabelStyle() const { return _edgeLabelStyle; }
+
     public: // Layer
 
         virtual void addedToMap(const Map* map);
@@ -173,6 +181,12 @@ namespace osgEarth { namespace Util
     public: // VisibleLayer
 
         virtual void setVisible(bool value);
+
+    public: // osg::Object
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+        virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
 
@@ -189,23 +203,18 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<const Profile> _profile;
 
-        osg::ref_ptr<osg::ClipPlane> _clipPlane;
-
         osg::ref_ptr<osg::Group> _root;
 
         osg::observer_ptr<const Map> _map;
-        osg::ref_ptr<TerrainEffect> _effect;
+        osg::ref_ptr<const SpatialReference> _mapSRS;
         osg::ref_ptr<osg::NodeCallback > _callback;
         osg::ref_ptr<LatLongFormatter> _formatter;
         float _defaultResolution;
-
         osg::Vec2f _centerOffset;
 
-        bool _visible;
-
-
         std::vector< double > _resolutions;
-
+        Style _gridLabelStyle;
+        Style _edgeLabelStyle;
 
         struct CameraData
         {
@@ -219,6 +228,8 @@ namespace osgEarth { namespace Util
             double _lon;
             double _lat;
             double _metersPerPixel;
+            void releaseGLObjects(osg::State*) const;
+            ~CameraData();
         };
         typedef std::map<osg::Camera*, CameraData> CameraDataMap;
         mutable CameraDataMap _cameraDataMap;
@@ -230,20 +241,27 @@ namespace osgEarth { namespace Util
 
         std::string getText(const GeoPoint& location, bool lat);
 
-        osg::ref_ptr<MapNode> _mapNode;
-
         GeodeticLabelingEngine* _labelingEngine;
 
-        void installEffect();
-        void removeEffect();
-
         GeoExtent getViewExtent(osgUtil::CullVisitor*) const;
+
 
     public:
 
         void updateLabels();
         void cull(osgUtil::CullVisitor*);
         osg::StateSet* getStateSet(osgUtil::CullVisitor* cv);
+
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+        void setMapNode(MapNode*);
+
+        struct MyGroup : public osg::Group {
+            MyGroup(GeodeticGraticule*);
+            GeodeticGraticule* _graticule;
+            void traverse(osg::NodeVisitor& nv); 
+        };
+        friend struct MyGroup;
     };
 } } // namespace osgEarth::Util
 

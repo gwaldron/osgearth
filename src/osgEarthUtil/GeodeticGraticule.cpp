@@ -188,15 +188,6 @@ GeodeticGraticule::init()
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
     
     _root = new MyGroup(this);
-
-    TextSymbol* gridText = _gridLabelStyle.getOrCreateSymbol<TextSymbol>();
-    gridText->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-    gridText->fill()->color() = options().labelColor().get();
-
-    TextSymbol* edgeText = _edgeLabelStyle.getOrCreate<TextSymbol>();
-    edgeText->fill()->color() = options().labelColor().get();
-    AltitudeSymbol* edgeAlt = _edgeLabelStyle.getOrCreateSymbol<AltitudeSymbol>();
-    edgeAlt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 }
 
 void
@@ -255,51 +246,51 @@ GeodeticGraticule::updateGridLineVisibility()
 bool
 GeodeticGraticule::getGridLinesVisible() const
 {
-    return *_options->gridLinesVisible();
+    return options().gridLinesVisible().get();
 }
 
 void
 GeodeticGraticule::setGridLinesVisible(bool gridLinesVisible)
 {
-    _options->gridLinesVisible() = gridLinesVisible;
+    options().gridLinesVisible() = gridLinesVisible;
     updateGridLineVisibility();
 }
 
 bool
 GeodeticGraticule::getGridLabelsVisible() const
 {
-    return *_options->gridLabelsVisible();
+    return options().gridLabelsVisible().get();
 }
 
 void
 GeodeticGraticule::setGridLabelsVisible(bool gridLabelsVisible)
 {
-    _options->gridLabelsVisible() = gridLabelsVisible;
+    options().gridLabelsVisible() = gridLabelsVisible;
 }
 
 bool
 GeodeticGraticule::getEdgeLabelsVisible() const
 {
-    return *_options->edgeLabelsVisible();
+    return options().edgeLabelsVisible().get();
 }
 
 void
 GeodeticGraticule::setEdgeLabelsVisible(bool edgeLabelsVisible)
 {
-    _options->edgeLabelsVisible() = edgeLabelsVisible;
+    options().edgeLabelsVisible() = edgeLabelsVisible;
 }
 
 void
 GeodeticGraticule::setGridLabelStyle(const Style& style)
 {
-    _gridLabelStyle = style;
+    options().gridLabelStyle() = style;
     rebuild();
 }
 
 void
 GeodeticGraticule::setEdgeLabelStyle(const Style& style)
 {
-    _edgeLabelStyle = style;
+    options().edgeLabelStyle() = style;
     rebuild();
 }
 
@@ -368,7 +359,7 @@ GeodeticGraticule::rebuild()
     setVisible(getVisible());
 
     _labelingEngine = new GeodeticLabelingEngine(_mapSRS.get());
-    _labelingEngine->setStyle(_edgeLabelStyle);
+    _labelingEngine->setStyle(options().edgeLabelStyle().get());
     _root->addChild(_labelingEngine);
 
     // destroy all per-camera data so it can reinitialize itself
@@ -728,7 +719,7 @@ GeodeticGraticule::initLabelPool(CameraData& cdata)
     {
         LabelNode* label = new LabelNode("0,0");
         label->setDynamic(true);
-        label->setStyle(_gridLabelStyle);
+        label->setStyle(options().gridLabelStyle().get());
         cdata._labelPool.push_back(label);
     }
 }

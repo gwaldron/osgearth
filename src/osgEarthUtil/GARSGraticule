@@ -50,16 +50,16 @@ namespace osgEarth { namespace Util
             return conf;
         }
 
-        virtual void fromConfig(const Config& conf) {
-            conf.get("style", _style);
-        }
-
     protected:
         optional<Style> _style;
 
-        void mergeConfig(const Config& conf) {
+        virtual void mergeConfig(const Config& conf) {
             VisibleLayerOptions::mergeConfig(conf);
             fromConfig(conf);
+        }
+
+        void fromConfig(const Config& conf) {
+            conf.get("style", _style);
         }
     };
 

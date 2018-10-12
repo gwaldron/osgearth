@@ -62,15 +62,19 @@ struct App
 
     void cycleStyles()
     {
-        Style gridLabelStyle = graticule->getGridLabelStyle();
+        // Could also use the get/setGridLabelStyle API here, but this demonstrates
+        // changing the options and calling dirty() or apply().
+        Style gridLabelStyle = graticule->options().gridLabelStyle().get();
         gridColorIndex = (gridColorIndex+1)%4;
         gridLabelStyle.getOrCreate<TextSymbol>()->fill()->color() = colors[gridColorIndex];
-        graticule->setGridLabelStyle(gridLabelStyle);
+        graticule->options().gridLabelStyle() = gridLabelStyle;
 
-        Style edgeLabelStyle = graticule->getEdgeLabelStyle();
+        Style edgeLabelStyle = graticule->options().edgeLabelStyle().get(); //graticule->getEdgeLabelStyle();
         edgeColorIndex = (edgeColorIndex+1)%4;
         edgeLabelStyle.getOrCreate<TextSymbol>()->fill()->color() = colors[edgeColorIndex];
-        graticule->setEdgeLabelStyle(edgeLabelStyle);
+        graticule->options().edgeLabelStyle() = edgeLabelStyle;
+
+        graticule->dirty();
     }
 
     void toggleGridLabels()

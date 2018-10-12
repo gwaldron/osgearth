@@ -42,9 +42,13 @@ namespace osgEarth { namespace Util
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
-        //! Label color
-        optional<Color>& labelColor() { return _labelColor; }
-        const optional<Color>& labelColor() const { return _labelColor; }
+        //! Style for grid labels
+        optional<Style>& gridLabelStyle() { return _gridLabelStyle; }
+        const optional<Style>& gridLabelStyle() const { return _gridLabelStyle; }
+
+        //! Style for edge labels
+        optional<Style>& edgeLabelStyle() { return _edgeLabelStyle; }
+        const optional<Style>& edgeLabelStyle() const { return _edgeLabelStyle; }
 
         //! Grid line width in pixels
         optional<float>& lineWidth() { return _lineWidth; }
@@ -74,12 +78,15 @@ namespace osgEarth { namespace Util
         {
             _lineWidth.init(2.0f);
             _color.init(Color(Color::Yellow, 0.5f));
-            _labelColor.init(Color::White);
             _gridLines.init(10);
             _gridLinesVisible.init(true);
             _gridLabelsVisible.init(true);
             _edgeLabelsVisible.init(true);
             _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
+            Style labelStyle;
+            TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
+            _gridLabelStyle.init(labelStyle);
+            _edgeLabelStyle.init(labelStyle);
             fromConfig( _conf );
         }
 
@@ -87,13 +94,14 @@ namespace osgEarth { namespace Util
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
             conf.set("line_width", _lineWidth);
-            conf.set("color",      _color);
-            conf.set("label_color", _labelColor );
+            conf.set("color", _color);
             conf.set("grid_lines", _gridLines);
             conf.set("resolutions", _resolutions);
             conf.set("grid_lines_visible", _gridLinesVisible);
             conf.set("grid_labels_visible", _gridLabelsVisible);
             conf.set("edge_labels_visible", _edgeLabelsVisible);
+            conf.set("grid_label_style", _gridLabelStyle);
+            conf.set("edge_label_style", _edgeLabelStyle);
             return conf;
         }
 
@@ -105,23 +113,25 @@ namespace osgEarth { namespace Util
 
         void fromConfig( const Config& conf ) {
             conf.get("line_width", _lineWidth);
-            conf.get("color",      _color);
-            conf.get("label_color", _labelColor);
+            conf.get("color", _color);
             conf.get("grid_lines", _gridLines);
             conf.get("resolutions", _resolutions);
             conf.get("grid_lines_visible", _gridLinesVisible);
             conf.get("grid_labels_visible", _gridLabelsVisible);
             conf.get("edge_labels_visible", _edgeLabelsVisible);
+            conf.get("grid_label_style", _gridLabelStyle);
+            conf.get("edge_label_style", _edgeLabelStyle);
         }
 
         optional<float>       _lineWidth;
         optional<Color>       _color;
-        optional<Color>       _labelColor;
         optional<int>         _gridLines;
         optional<std::string> _resolutions;
         optional<bool>        _gridLinesVisible;
         optional<bool>        _gridLabelsVisible;
         optional<bool>        _edgeLabelsVisible;
+        optional<Style>       _gridLabelStyle;
+        optional<Style>       _edgeLabelStyle;
     };
 
 
@@ -162,11 +172,11 @@ namespace osgEarth { namespace Util
 
         //! Set the styling to use for grid labels
         void setGridLabelStyle(const Style& style);
-        const Style& getGridLabelStyle() const { return _gridLabelStyle; }
+        const Style& getGridLabelStyle() const { return options().gridLabelStyle().get(); }
 
         //! Set ths styling to use for edge labels
         void setEdgeLabelStyle(const Style& style);
-        const Style& getEdgeLabelStyle() const { return _edgeLabelStyle; }
+        const Style& getEdgeLabelStyle() const { return options().edgeLabelStyle().get(); }
 
     public: // Layer
 
@@ -211,10 +221,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<LatLongFormatter> _formatter;
         float _defaultResolution;
         osg::Vec2f _centerOffset;
-
         std::vector< double > _resolutions;
-        Style _gridLabelStyle;
-        Style _edgeLabelStyle;
 
         struct CameraData
         {

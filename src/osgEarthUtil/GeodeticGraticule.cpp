@@ -34,46 +34,39 @@ using namespace osgEarth::Symbology;
 
 REGISTER_OSGEARTH_LAYER(geodetic_graticule, GeodeticGraticule);
 
+
+GeodeticGraticule::MyGroup::MyGroup(GeodeticGraticule* grat) :
+_graticule(grat)
+{
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+}
+
+void
+GeodeticGraticule::MyGroup::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        if (_graticule->_mapNode.valid() == false)
+        {
+            MapNode* mapNode = osgEarth::findInNodePath<MapNode>(nv);
+            if (mapNode)
+            {
+                _graticule->setMapNode(mapNode);
+            }
+        }
+        _graticule->updateLabels();
+    }
+
+    else if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        _graticule->cull(static_cast<osgUtil::CullVisitor*>(&nv));
+    }
+
+    osg::Group::traverse(nv);
+}
+
 namespace
 {
-    // Helper class to find a MapNode and set it in the graticule
-    // so it can install the terrain effect.
-    struct MyGroup : public osg::Group
-    {
-        GeodeticGraticule* _grat;
-        osg::ref_ptr<MapNode>& _mapNode;
-
-        MyGroup(GeodeticGraticule* grat, osg::ref_ptr<MapNode>& mapNode)
-            : _grat(grat), _mapNode(mapNode)
-        {
-            // Require an update traversal to update the labels.
-            setNumChildrenRequiringUpdateTraversal(1);
-        }
-
-        void traverse(osg::NodeVisitor& nv)
-        {
-            if (nv.getVisitorType() == nv.UPDATE_VISITOR)
-            {
-                if (_mapNode.valid() == false)
-                {
-                    _mapNode = osgEarth::findInNodePath<MapNode>(nv);
-                    if (_mapNode.valid() == true)
-                    {
-                        _grat->dirty();
-                    }
-                }
-                _grat->updateLabels();
-            }
-
-            else if (nv.getVisitorType() == nv.CULL_VISITOR)
-            {
-                _grat->cull(static_cast<osgUtil::CullVisitor*>(&nv));
-            }
-
-            osg::Group::traverse(nv);
-        }
-    };
-
     // Cull callback installed on the terrain that applies
     // a stateset for the proper camera.
     struct GraticuleTerrainCallback : public osg::NodeCallback
@@ -117,6 +110,10 @@ namespace
         "    color.a *= alpha;\n"
         "}\n";
 }
+
+#define RESOLUTION_UNIFORM "oe_GeodeticGraticule_resolution"
+#define COLOR_UNIFORM "oe_GeodeticGraticule_color"
+#define WIDTH_UNIFORM "oe_GeodeticGraticule_lineWidth"
 
 
 GeodeticGraticule::GeodeticGraticule() :
@@ -190,30 +187,38 @@ GeodeticGraticule::init()
     // Initialize the formatter
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
     
-    _root = new MyGroup(this, _mapNode);
+    _root = new MyGroup(this);
+
+    TextSymbol* gridText = _gridLabelStyle.getOrCreateSymbol<TextSymbol>();
+    gridText->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+    gridText->fill()->color() = options().labelColor().get();
+
+    TextSymbol* edgeText = _edgeLabelStyle.getOrCreate<TextSymbol>();
+    edgeText->fill()->color() = options().labelColor().get();
+    AltitudeSymbol* edgeAlt = _edgeLabelStyle.getOrCreateSymbol<AltitudeSymbol>();
+    edgeAlt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 }
 
 void
 GeodeticGraticule::addedToMap(const Map* map)
 {
-    _map = map;
-    rebuild();
+    if (map->isGeocentric())
+    {
+        _map = map;
+        _mapSRS = map->getSRS();
+        rebuild();
+    }
+    else
+    {
+        OE_WARN << LC << "Projected map not supported" << std::endl;
+    }
 }
 
 void
 GeodeticGraticule::removedFromMap(const Map* map)
 {
-    if (_mapNode.valid())
-    {
-        removeEffect();
-
-        if (_callback.valid())
-        {
-            _mapNode->getTerrainEngine()->removeCullCallback(_callback.get());
-            _callback = 0L;
-        }
-    }
-    _map = 0L;
+    setMapNode(NULL);
+    _mapSRS = NULL;
 }
 
 osg::Node*
@@ -232,10 +237,19 @@ GeodeticGraticule::setVisible(bool value)
 void
 GeodeticGraticule::updateGridLineVisibility()
 {
-    if (getVisible() && *_options->gridLinesVisible())
-        installEffect();
-    else
-        removeEffect();
+    osg::ref_ptr<MapNode> mapNode;
+    if (_mapNode.lock(mapNode))
+    {
+        osg::StateSet* ss = mapNode->getTerrainEngine()->getSurfaceStateSet();
+        if (getVisible() && *_options->gridLinesVisible())
+        {
+            ss->removeDefine("OE_DISABLE_GRATICULE");
+        }
+        else
+        {
+            ss->setDefine("OE_DISABLE_GRATICULE");
+        }
+    }
 }
 
 bool
@@ -250,7 +264,6 @@ GeodeticGraticule::setGridLinesVisible(bool gridLinesVisible)
     _options->gridLinesVisible() = gridLinesVisible;
     updateGridLineVisibility();
 }
-
 
 bool
 GeodeticGraticule::getGridLabelsVisible() const
@@ -277,87 +290,90 @@ GeodeticGraticule::setEdgeLabelsVisible(bool edgeLabelsVisible)
 }
 
 void
+GeodeticGraticule::setGridLabelStyle(const Style& style)
+{
+    _gridLabelStyle = style;
+    rebuild();
+}
+
+void
+GeodeticGraticule::setEdgeLabelStyle(const Style& style)
+{
+    _edgeLabelStyle = style;
+    rebuild();
+}
+
+void
+GeodeticGraticule::setMapNode(MapNode* mapNode)
+{
+    osg::ref_ptr<MapNode> oldMapNode;
+    if (_mapNode.lock(oldMapNode))
+    {
+        osg::StateSet* stateset = oldMapNode->getTerrainEngine()->getSurfaceStateSet();
+        if ( stateset )
+        {
+            VirtualProgram* vp = VirtualProgram::get(stateset);
+            if ( vp )
+            {
+                Shaders package;
+                package.unload( vp, package.Graticule_Vertex );
+                package.unload( vp, package.Graticule_Fragment );
+
+                stateset->removeUniform( COLOR_UNIFORM );
+                stateset->removeUniform( WIDTH_UNIFORM );
+            }
+        }
+
+        if (_callback.valid())
+        {
+            oldMapNode->getTerrainEngine()->removeCullCallback(_callback.get());
+        }
+    }
+
+    _mapNode = mapNode;
+
+    if (mapNode)
+    {
+        // shader components
+        osg::StateSet* stateset = mapNode->getTerrainEngine()->getSurfaceStateSet();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        vp->setName("GeodeticGraticule");
+
+        // configure shaders
+        Shaders package;
+        package.load(vp, package.Graticule_Vertex);
+        package.load(vp, package.Graticule_Fragment);
+
+        stateset->addUniform(new osg::Uniform(COLOR_UNIFORM, options().color().get()));
+        stateset->addUniform(new osg::Uniform(WIDTH_UNIFORM, options().lineWidth().get()));
+
+        _callback = new GraticuleTerrainCallback(this);
+        mapNode->getTerrainEngine()->addCullCallback(_callback.get());
+    }
+}
+
+void
 GeodeticGraticule::rebuild()
 {
     // clear everything out
     if (!_root.valid())
         return;
 
-    // we must have the map node, if not, wait
-    if (_mapNode.valid() == false)
-        return;
-
-    // also need a map; if not, wait
-    osg::ref_ptr<const Map> map;
-    if (!_map.lock(map))
+    if (!_mapSRS.valid())
         return;
 
     // start from scratch
     _root->removeChildren( 0, _root->getNumChildren() );
 
-    // requires a geocentric map
-    if ( !map->isGeocentric() )
-    {
-        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
-        return;
-    }
-
-    if (!_callback.valid())
-    {
-        _callback = new GraticuleTerrainCallback(this);
-        _mapNode->getTerrainEngine()->addCullCallback(_callback.get());
-    }
-
     setVisible(getVisible());
 
-    _labelingEngine = new GeodeticLabelingEngine(_mapNode->getMapSRS());
+    _labelingEngine = new GeodeticLabelingEngine(_mapSRS.get());
+    _labelingEngine->setStyle(_edgeLabelStyle);
     _root->addChild(_labelingEngine);
-}
 
-#define RESOLUTION_UNIFORM "oe_GeodeticGraticule_resolution"
-#define COLOR_UNIFORM "oe_GeodeticGraticule_color"
-#define WIDTH_UNIFORM "oe_GeodeticGraticule_lineWidth"
-
-void
-GeodeticGraticule::installEffect()
-{
-    if (_mapNode.valid() == false)
-        return;
-
-    // shader components
-    osg::StateSet* stateset = _mapNode->getTerrainEngine()->getSurfaceStateSet();
-    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-    vp->setName("GeodeticGraticule");
-
-    // configure shaders
-    Shaders package;
-    package.load(vp, package.Graticule_Vertex);
-    package.load(vp, package.Graticule_Fragment);
-
-    stateset->addUniform(new osg::Uniform(COLOR_UNIFORM, options().color().get()));
-    stateset->addUniform(new osg::Uniform(WIDTH_UNIFORM, options().lineWidth().get()));
-}
-
-void
-GeodeticGraticule::removeEffect()
-{
-    if (_mapNode.valid() == false)
-        return;
-
-    osg::StateSet* stateset = _mapNode->getTerrainEngine()->getSurfaceStateSet();
-    if ( stateset )
-    {
-        VirtualProgram* vp = VirtualProgram::get(stateset);
-        if ( vp )
-        {
-            Shaders package;
-            package.unload( vp, package.Graticule_Vertex );
-            package.unload( vp, package.Graticule_Fragment );
-
-            stateset->removeUniform( COLOR_UNIFORM );
-            stateset->removeUniform( WIDTH_UNIFORM );
-        }
-    }
+    // destroy all per-camera data so it can reinitialize itself
+    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    _cameraDataMap.clear();
 }
 
 void
@@ -370,10 +386,14 @@ GeodeticGraticule::cull(osgUtil::CullVisitor* cv)
     CameraData& cdata = getCameraData(cv->getCurrentCamera());
 
     // Only update if the view matrix has changed.
-    if (viewMatrix != cdata._lastViewMatrix && _mapNode.valid())
+    if (viewMatrix != cdata._lastViewMatrix && _mapSRS.valid())
     {
+        osg::ref_ptr<MapNode> mapNode;
+        if (!_mapNode.lock(mapNode))
+            return;
+
         GeoPoint eyeGeo;
-        eyeGeo.fromWorld(_mapNode->getMapSRS(), vp);
+        eyeGeo.fromWorld(_mapSRS.get(), vp);
         cdata._lon = eyeGeo.x();
         cdata._lat = eyeGeo.y();
 
@@ -389,7 +409,7 @@ GeodeticGraticule::cull(osgUtil::CullVisitor* cv)
 
         // Try the center of the screen.
         osg::Vec3d focalPoint;
-        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, focalPoint))
+        if (mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, focalPoint))
         {
             hitValid = true;
         }
@@ -698,25 +718,17 @@ GeodeticGraticule::getText(const GeoPoint& location, bool lat)
     return _formatter->format(value, lat);
 }
 
-
 void
 GeodeticGraticule::initLabelPool(CameraData& cdata)
 {
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
-
-    Style style;
-    TextSymbol* text = style.getOrCreateSymbol<TextSymbol>();
-    text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-    text->fill()->color() = options().labelColor().get();
-    AltitudeSymbol* alt = style.getOrCreateSymbol<AltitudeSymbol>();
-    alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     unsigned int labelPoolSize = 8 * options().gridLines().get();
     for (unsigned int i = 0; i < labelPoolSize; i++)
     {
         LabelNode* label = new LabelNode("0,0");
         label->setDynamic(true);
-        label->setStyle(style);
+        label->setStyle(_gridLabelStyle);
         cdata._labelPool.push_back(label);
     }
 }
@@ -726,4 +738,39 @@ GeodeticGraticule::getStateSet(osgUtil::CullVisitor* cv)
 {
     CameraData& cdata = getCameraData(cv->getCurrentCamera());
     return cdata._stateset.get();
+}
+
+void
+GeodeticGraticule::CameraData::releaseGLObjects(osg::State* state) const
+{
+    if (_stateset.valid())
+        _stateset->releaseGLObjects(state);
+    if (_labelStateset.valid())
+        _labelStateset->releaseGLObjects(state);
+    for(std::vector<osg::ref_ptr<LabelNode> >::const_iterator i = _labelPool.begin(); i != _labelPool.end(); ++i)
+        i->get()->releaseGLObjects(state);
+}
+
+GeodeticGraticule::CameraData::~CameraData()
+{
+    releaseGLObjects(NULL);
+}
+
+void
+GeodeticGraticule::resizeGLObjectBuffers(unsigned maxSize)
+{
+    VisibleLayer::resizeGLObjectBuffers(maxSize);
+}
+
+void
+GeodeticGraticule::releaseGLObjects(osg::State* state) const
+{
+    VisibleLayer::releaseGLObjects(state);
+
+    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    for (CameraDataMap::iterator i = _cameraDataMap.begin(); i != _cameraDataMap.end(); ++i)
+    {
+        CameraData& data = i->second;
+        data.releaseGLObjects(state);
+    }
 }

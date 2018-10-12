@@ -74,7 +74,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             _SL->getCallback()->onDrawClouds(_SL->getAtmosphereWrapper());
 
         renderInfo.getState()->disableAllVertexArrays();
-        _SL->getAtmosphere()->DrawObjects( true, true, true );
+        _SL->getAtmosphere()->DrawObjects(true, true, true, 0.0f, false, 0, true, true, true, _SL->getSRS()->isGeographic());
 
         // Restore the GL state to where it was before.
         state->dirtyAllVertexArrays();

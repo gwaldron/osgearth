@@ -389,3 +389,23 @@ Layer::setAttribution(const std::string& attribution)
 {
     _options->attribution() = attribution;
 }
+
+void
+Layer::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Object::resizeGLObjectBuffers(maxSize);
+    if (getNode())
+        getNode()->resizeGLObjectBuffers(maxSize);
+    if (getStateSet())
+        getStateSet()->resizeGLObjectBuffers(maxSize);
+}
+
+void
+Layer::releaseGLObjects(osg::State* state) const
+{
+    osg::Object::releaseGLObjects(state);
+    if (getNode())
+        getNode()->releaseGLObjects(state);
+    if (getStateSet())
+        getStateSet()->releaseGLObjects(state);
+}

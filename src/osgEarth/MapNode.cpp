@@ -728,9 +728,7 @@ MapNode::resizeGLObjectBuffers(unsigned maxSize)
     getMap()->getLayers(layers);
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
-        if ((*i)->getStateSet()) {
-            (*i)->getStateSet()->resizeGLObjectBuffers(maxSize);
-        }
+        i->get()->resizeGLObjectBuffers(maxSize);
     }
 }
 
@@ -743,9 +741,7 @@ MapNode::releaseGLObjects(osg::State* state) const
     getMap()->getLayers(layers);
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
-        if ((*i)->getStateSet()) {
-            (*i)->getStateSet()->releaseGLObjects(state);
-        }
+        i->get()->releaseGLObjects(state);
     }
 
     // osg::Node doesn't release nested callbacks, oops

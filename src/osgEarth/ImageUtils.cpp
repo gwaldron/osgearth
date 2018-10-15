@@ -1889,6 +1889,8 @@ namespace
             return &ColorReader<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::read;
         case GL_UNSIGNED_BYTE_3_3_2:
             return &ColorReader<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::read;
+        case GL_UNSIGNED_INT_8_8_8_8_REV:
+            return &ColorReader<GLFormat, GLubyte>::read;
         default:
             return &ColorReader<0, GLbyte>::read;
         }

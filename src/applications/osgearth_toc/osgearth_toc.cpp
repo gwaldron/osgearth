@@ -27,6 +27,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/ViewFitter>
+#include <osgEarthUtil/RTTPicker>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -127,6 +128,25 @@ struct DumpElevation : public osgGA::GUIEventHandler
 
 //------------------------------------------------------------------------
 
+struct MyPickCallback : public RTTPicker::Callback
+{
+    void onHit(ObjectID id)
+    {
+        OE_WARN << "Pick - hit" << std::endl;
+    }
+
+    void onMiss()
+    {
+        OE_WARN << "Pick - miss" << std::endl;
+    }
+
+    // pick whenever the mouse moves.
+    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa)
+    {
+        return ea.getEventType() == ea.PUSH;
+    }
+};
+
 int
 main( int argc, char** argv )
 {
@@ -170,6 +190,11 @@ main( int argc, char** argv )
     viewer.addUpdateOperation( new UpdateOperation() );
 
     viewer.addEventHandler(new DumpElevation(mapNode, 'E'));
+
+    RTTPicker* picker = new RTTPicker();
+    picker->addChild(mapNode);    
+    picker->setDefaultCallback(new MyPickCallback());
+    viewer.addEventHandler(picker);
 
     viewer.run();
 }
@@ -231,7 +256,9 @@ struct RemoveLayerHandler : public ControlEventHandler
     void onClick( Control* control, int mouseButtonMask )
     {
         _inactive[_layer->getName()] = _layer->getConfig(); // save it
+        s_activeMap->beginUpdate();
         s_activeMap->removeLayer(_layer.get()); // and remove it
+        s_activeMap->endUpdate();
     }
     osg::ref_ptr<Layer> _layer;
 };

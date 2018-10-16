@@ -152,8 +152,8 @@ namespace
         std::string _name;
         ToggleDefine(osg::StateSet* ss, const std::string& name) : _ss(ss), _name(name) { }
         void onValueChanged(Control* c, bool value) {
-            if (value) _ss->setDefine(_name);
-            else _ss->removeDefine(_name);
+            if (value) _ss->setDefine(_name, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+            else _ss->setDefine(_name, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE); //(_name);
         }
     };
 }

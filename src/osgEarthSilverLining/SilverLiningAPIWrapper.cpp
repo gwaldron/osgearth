@@ -42,10 +42,10 @@ bool Atmosphere::GetFogEnabled() const { return HANDLE->GetFogEnabled(); }
 void Atmosphere::GetFogSettings(float &density, osg::Vec3f &color) const {HANDLE->GetFogSettings(&density, &color.x(), &color.y(), &color.z());}
 void Atmosphere::GetHorizonColor(float yawDeg, float pitchDeg, osg::Vec3f &color) const { HANDLE->GetHorizonColor(yawDeg, pitchDeg, &color.x(), &color.y(), &color.z());}
 void Atmosphere::SetHaze(const osg::Vec3 &color, double depth, double density) { HANDLE->SetHaze(color.x(), color.y(), color.z(),depth, density);}
-bool Atmosphere::GetEnvironmentMap(GLuint &environmentMapTex, int facesToRender, bool floatingPoint, void* cameraID, bool drawClouds, bool drawSunAndMoon) const
+bool Atmosphere::GetEnvironmentMap(GLuint &environmentMapTex, int facesToRender, bool floatingPoint, void* cameraID, bool drawClouds, bool drawSunAndMoon, bool geocentricMode) const
 {
     void * ptr;
-    bool success = HANDLE->GetEnvironmentMap(ptr, facesToRender, floatingPoint, cameraID, drawClouds, drawSunAndMoon);
+    bool success = HANDLE->GetEnvironmentMap(ptr, facesToRender, floatingPoint, cameraID, drawClouds, drawSunAndMoon, geocentricMode);
     if (success)
        environmentMapTex = static_cast<GLuint>(reinterpret_cast<size_t>(ptr));
     return success;

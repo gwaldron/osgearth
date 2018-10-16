@@ -19,6 +19,10 @@
 #include "SilverLiningAPIWrapper"
 #include <SilverLining.h>
 
+#ifndef SILVERLINING_MAJOR_VERSION
+#include <Version.h>
+#endif
+
 #define LC "[SilverLiningAPI] "
 
 using namespace osgEarth::SilverLining;
@@ -35,6 +39,7 @@ using namespace osgEarth::SilverLining;
 #define HANDLE ((::SilverLining::Atmosphere*)_handle)
 
 SETGET_EXPLICIT(Atmosphere, EnableLensFlare, GetLensFlareEnabled, bool);
+
 void Atmosphere::SetSkyModel(SkyModel skyModel) { HANDLE->SetSkyModel(static_cast< ::SkyModel >(skyModel)); }
 Atmosphere::SkyModel Atmosphere::GetSkyModel() const { return static_cast<SkyModel>(HANDLE->GetSkyModel()); }
 AtmosphericConditions Atmosphere::GetConditions() const { return AtmosphericConditions((uintptr_t)HANDLE->GetConditions()); }
@@ -42,10 +47,16 @@ bool Atmosphere::GetFogEnabled() const { return HANDLE->GetFogEnabled(); }
 void Atmosphere::GetFogSettings(float &density, osg::Vec3f &color) const {HANDLE->GetFogSettings(&density, &color.x(), &color.y(), &color.z());}
 void Atmosphere::GetHorizonColor(float yawDeg, float pitchDeg, osg::Vec3f &color) const { HANDLE->GetHorizonColor(yawDeg, pitchDeg, &color.x(), &color.y(), &color.z());}
 void Atmosphere::SetHaze(const osg::Vec3 &color, double depth, double density) { HANDLE->SetHaze(color.x(), color.y(), color.z(),depth, density);}
-bool Atmosphere::GetEnvironmentMap(GLuint &environmentMapTex, int facesToRender, bool floatingPoint, void* cameraID, bool drawClouds, bool drawSunAndMoon) const
+bool Atmosphere::GetEnvironmentMap(GLuint &environmentMapTex, int facesToRender, bool floatingPoint, void* cameraID, bool drawClouds, bool drawSunAndMoon, bool isGeocentric) const
 {
-    void * ptr;
+    void* ptr;
+
+#if ((SILVERLINING_MAJOR_VERSION >= 5) && (SILVERLINING_MINOR_VERSION >= 30))
+    bool success = HANDLE->GetEnvironmentMap(ptr, facesToRender, floatingPoint, cameraID, drawClouds, drawSunAndMoon, isGeocentric);
+#else
     bool success = HANDLE->GetEnvironmentMap(ptr, facesToRender, floatingPoint, cameraID, drawClouds, drawSunAndMoon);
+#endif
+
     if (success)
        environmentMapTex = static_cast<GLuint>(reinterpret_cast<size_t>(ptr));
     return success;

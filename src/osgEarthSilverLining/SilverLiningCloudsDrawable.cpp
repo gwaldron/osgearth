@@ -22,6 +22,10 @@
 #include "SilverLiningContextNode"
 #include <osgEarth/SpatialReference>
 
+#ifndef SILVERLINING_MAJOR_VERSION
+#include <Version.h>
+#endif
+
 #undef  LC
 #define LC "[SilverLining:SkyDrawable] "
 
@@ -74,7 +78,12 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             _SL->getCallback()->onDrawClouds(_SL->getAtmosphereWrapper());
 
         renderInfo.getState()->disableAllVertexArrays();
-        _SL->getAtmosphere()->DrawObjects( true, true, true );
+
+#if ((SILVERLINING_MAJOR_VERSION >= 5) && (SILVERLINING_MINOR_VERSION >= 30))
+        _SL->getAtmosphere()->DrawObjects(true, true, true, 0.0f, false, 0, true, true, true, _SL->getSRS()->isGeographic());
+#else
+        _SL->getAtmosphere()->DrawObjects(true, true, true);
+#endif
 
         // Restore the GL state to where it was before.
         state->dirtyAllVertexArrays();

@@ -85,6 +85,7 @@ namespace osgEarth { namespace Util
             _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
             Style labelStyle;
             TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
+            t->fill()->color().set(1,1,1,1);
             _gridLabelStyle.init(labelStyle);
             _edgeLabelStyle.init(labelStyle);
             fromConfig( _conf );
@@ -210,12 +211,8 @@ namespace osgEarth { namespace Util
         void updateGridLineVisibility();
 
         UID _uid;
-
         osg::ref_ptr<const Profile> _profile;
-
         osg::ref_ptr<osg::Group> _root;
-
-        osg::observer_ptr<const Map> _map;
         osg::ref_ptr<const SpatialReference> _mapSRS;
         osg::ref_ptr<osg::NodeCallback > _callback;
         osg::ref_ptr<LatLongFormatter> _formatter;

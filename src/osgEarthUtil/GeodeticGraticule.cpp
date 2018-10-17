@@ -186,6 +186,8 @@ GeodeticGraticule::init()
 
     // Initialize the formatter
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
+
+    _labelingEngine = 0L;
     
     _root = new MyGroup(this);
 }
@@ -195,8 +197,10 @@ GeodeticGraticule::addedToMap(const Map* map)
 {
     if (map->isGeocentric())
     {
-        _map = map;
         _mapSRS = map->getSRS();
+        if (!_mapSRS.valid())
+            _mapSRS = SpatialReference::get("wgs84");
+
         rebuild();
     }
     else
@@ -347,10 +351,7 @@ void
 GeodeticGraticule::rebuild()
 {
     // clear everything out
-    if (!_root.valid())
-        return;
-
-    if (!_mapSRS.valid())
+    if (!_root.valid() || !_mapSRS.valid())
         return;
 
     // start from scratch
@@ -580,6 +581,12 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
 void
 GeodeticGraticule::updateLabels()
 {
+    if (!_labelingEngine)
+    {
+        OE_WARN << "LabelingEngine is not set" << std::endl;
+        return;
+    }
+
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
 
     Threading::ScopedMutexLock lock(_cameraDataMapMutex);

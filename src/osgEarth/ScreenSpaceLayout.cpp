@@ -53,11 +53,12 @@ namespace
     {
         bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
         {
-            const osg::Node* lhsParentNode = lhs->getDrawable()->getParent(0);
-            if ( lhsParentNode == rhs->getDrawable()->getParent(0) )
+            if (lhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getParent(0) == lhs->getDrawable()->getParent(0))
             {
-                const osg::Geode* geode = static_cast<const osg::Geode*>(lhsParentNode);
-                return geode->getDrawableIndex(lhs->getDrawable()) > geode->getDrawableIndex(rhs->getDrawable());
+                const osg::Group* parent = static_cast<const osg::Group*>(lhs->getDrawable()->getParent(0));
+                return parent->getChildIndex(lhs->getDrawable()) > parent->getChildIndex(rhs->getDrawable());
             }
             else
             {
@@ -72,11 +73,12 @@ namespace
     {
         bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
         {
-            const osg::Node* lhsParentNode = lhs->getDrawable()->getParent(0);
-            if ( lhsParentNode == rhs->getDrawable()->getParent(0) )
+            if (lhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getParent(0) == lhs->getDrawable()->getParent(0))
             {
-                const osg::Geode* geode = static_cast<const osg::Geode*>(lhsParentNode);
-                return geode->getDrawableIndex(lhs->getDrawable()) > geode->getDrawableIndex(rhs->getDrawable());
+                const osg::Group* parent = static_cast<const osg::Group*>(lhs->getDrawable()->getParent(0));
+                return parent->getChildIndex(lhs->getDrawable()) > parent->getChildIndex(rhs->getDrawable());
             }
 
             else
@@ -359,7 +361,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
             osgUtil::RenderLeaf* leaf = *i;
             const osg::Drawable* drawable = leaf->getDrawable();
-            const osg::Node*     drawableParent = drawable->getParent(0);
+            const osg::Node*     drawableParent = drawable->getNumParents()? drawable->getParent(0) : 0L;
 
             const ScreenSpaceLayoutData* layoutData = dynamic_cast<const ScreenSpaceLayoutData*>(drawable->getUserData());
 
@@ -468,7 +470,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 }
 
                 // if this leaf is already in a culled group, skip it.
-                else if ( culledParents.find(drawableParent) != culledParents.end() )
+                else if ( drawableParent != 0L && culledParents.find(drawableParent) != culledParents.end() )
                 {
                     visible = false;
                 }
@@ -502,7 +504,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 // passed the test, so add the leaf's bbox to the "used" list, and add the leaf
                 // to the final draw list.
-                local._used.push_back( std::make_pair(drawableParent, box) );
+                if (drawableParent)
+                    local._used.push_back( std::make_pair(drawableParent, box) );
+
                 local._passed.push_back( leaf );
             }
 
@@ -510,7 +514,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 // culled, so put the parent in the parents list so that any future leaves
                 // with the same parent will be trivially rejected
-                culledParents.insert( drawable->getParent(0) );
+                if (drawableParent)
+                    culledParents.insert(drawableParent);
+
                 local._failed.push_back( leaf );
             }
 
@@ -545,8 +551,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 osgUtil::RenderLeaf* leaf     = *i;
                 const osg::Drawable* drawable = leaf->getDrawable();
+                const osg::Node* drawableParent = drawable->getNumParents() > 0 ? drawable->getParent(0) : 0L;
 
-                if ( culledParents.find( drawable->getParent(0) ) == culledParents.end() )
+                if ( drawableParent == 0L || culledParents.find(drawableParent) == culledParents.end() )
                 {
                     DrawableInfo& info = local._memory[drawable];
 

@@ -136,7 +136,7 @@ ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, UID user)
 void
 ProgramRepo::release(UID user, osg::State* state)
 {
-    if (!user)
+    if (!user || _db.size()==0)
         return;
 
     for(ProgramMap::iterator i = _db.begin(); i != _db.end(); )

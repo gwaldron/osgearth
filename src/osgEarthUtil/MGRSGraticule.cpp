@@ -1115,6 +1115,12 @@ MGRSGraticule::rebuild()
         if (ss->getStyle("1", false)) maxRes = 1.0;
         labeler->setMaxResolution(maxRes);
 
+        // Set labeler styles
+        const Style* xEdgeStyle = ss->getStyle("xedge", false);
+        const Style* yEdgeStyle = ss->getStyle("yedge", false);
+        if (xEdgeStyle && yEdgeStyle)
+            labeler->setStyles(*xEdgeStyle, *yEdgeStyle);
+
         osg::ref_ptr<StateSetCache> sscache = new StateSetCache();
         sscache->optimize(geomTop);
         sscache->optimize(textTop);

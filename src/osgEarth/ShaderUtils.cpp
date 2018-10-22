@@ -228,6 +228,7 @@ namespace
     }
 }
 
+#if 0
 void
 ShaderPreProcessor::applySupportForNoFFP(osg::Shader* shader)
 {
@@ -248,6 +249,7 @@ ShaderPreProcessor::applySupportForNoFFP(osg::Shader* shader)
 
 #endif // !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
 }
+#endif
 
 void
 ShaderPreProcessor::run(osg::Shader* shader)
@@ -273,7 +275,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
 
         if (shader->getType() != osg::Shader::FRAGMENT)
         {
-            applySupportForNoFFPImpl(chunks);
+            //applySupportForNoFFPImpl(chunks);
         }
 
         // Replace varyings with directives that the ShaderFactory can interpret

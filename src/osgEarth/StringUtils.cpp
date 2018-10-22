@@ -388,6 +388,33 @@ osgEarth::trim( const std::string& in )
     return str;
 }
 
+std::string
+osgEarth::trimAndCompress(const std::string& in)
+{
+    bool inwhite = true;
+    std::stringstream buf;
+    for (unsigned i = 0; i < in.length(); ++i)
+    {
+        char c = in[i];
+        if (::isspace(c))
+        {
+            if (!inwhite)
+            {
+                buf << ' ';
+                inwhite = true;
+            }
+        }
+        else
+        {
+            inwhite = false;
+            buf << c;
+        }
+    }
+    std::string r;
+    r = buf.str();
+    trim2(r);
+    return r;
+}
 
 std::string
 osgEarth::joinStrings( const StringVector& input, char delim )

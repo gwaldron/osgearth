@@ -63,6 +63,10 @@ namespace osgEarth
      */
     extern OSGEARTH_EXPORT void trim2( std::string& str );
 
+    //! Removes leading and trailing whitespace, and replaces all other
+    //! whitespace with single spaces
+    extern OSGEARTH_EXPORT std::string trimAndCompress(const std::string& in);
+
     /**
      * True is "ref" starts with "pattern"
      */

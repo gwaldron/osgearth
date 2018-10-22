@@ -22,6 +22,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderMerger>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Containers>
 #include <osg/Shader>
@@ -569,6 +570,16 @@ namespace
         return false;
     }
 
+    std::string getNameForType(osg::Shader::Type type)
+    {
+        return
+            type == osg::Shader::VERTEX ? "VERTEX" :
+            type == osg::Shader::FRAGMENT ? "FRAGMENT" :
+            type == osg::Shader::GEOMETRY ? "GEOMETRY" :
+            type == osg::Shader::TESSCONTROL ? "TESSCONTROL" :
+            "TESSEVAL";
+    }
+
     /**
     * Populates the specified Program with passed-in shaders.
     */
@@ -592,6 +603,39 @@ namespace
             applyAttributeAliases( shader, sortedAliases );
         }
 #endif
+
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
+
+        if (s_mergeShaders)
+        {
+            ShaderMerger merger;
+
+            for(VirtualProgram::ShaderVector::const_iterator i = shaders.begin();
+                i != shaders.end();
+                ++i)
+            {
+                if (shaderInStageMask(i->get(), stages))
+                {
+                    merger.add(i->get());
+                }
+            }
+
+            merger.merge(program);
+
+            if (s_dumpShaders)
+            {
+                for(unsigned i=0; i<program->getNumShaders(); ++i)
+                {
+                    osg::Shader* shader = program->getShader(i);
+                    OE_NOTICE << "\n---------MERGED "
+                        << getNameForType(shader->getType())
+                        << " SHADER------------\n"
+                        << shader->getShaderSource()
+                        << std::endl;
+                }
+            }
+        }
+#else
 
         // merge the shaders if necessary.
         if ( s_mergeShaders )
@@ -729,6 +773,8 @@ namespace
                     << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
             }
         }
+#endif
+
         else
         {
             if ( !s_dumpShaders )

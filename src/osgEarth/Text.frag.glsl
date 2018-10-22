@@ -50,11 +50,11 @@ in vec2 oe_Text_texCoord;
 vec4 vertexColor;
 
 #ifndef TEXTURE_DIMENSION
-const float TEXTURE_DIMENSION = 1024.0;
+    #define TEXTURE_DIMENSION float(1024.0)
 #endif
 
 #ifndef GLYPH_DIMENSION
-const float GLYPH_DIMENSION = 32.0;
+    #define GLYPH_DIMENSION float(32.0)
 #endif
 
 #ifdef SIGNED_DISTANCE_FIELD

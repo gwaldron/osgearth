@@ -341,6 +341,7 @@ GeodeticGraticule::setMapNode(MapNode* mapNode)
 
         stateset->addUniform(new osg::Uniform(COLOR_UNIFORM, options().color().get()));
         stateset->addUniform(new osg::Uniform(WIDTH_UNIFORM, options().lineWidth().get()));
+        updateGridLineVisibility();
 
         _callback = new GraticuleTerrainCallback(this);
         mapNode->getTerrainEngine()->addCullCallback(_callback.get());

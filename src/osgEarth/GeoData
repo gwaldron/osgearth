@@ -826,16 +826,9 @@ namespace osgEarth
          * Gets a pointer to the underlying OSG heightfield.
          */
         const osg::HeightField* getHeightField() const;
-        osg::HeightField* getHeightField();
 
         //! Normal map
         const NormalMap* getNormalMap() const;
-        NormalMap* getNormalMap();
-
-        /**
-         * Gets a pointer to the underlying OSG heightfield, and releases the internal reference.
-         */
-        osg::HeightField* takeHeightField();
 
         /**
          * Gets the X interval of this GeoHeightField

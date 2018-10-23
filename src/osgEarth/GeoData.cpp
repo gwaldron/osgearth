@@ -2664,24 +2664,6 @@ GeoHeightField::getHeightField() const
     return _heightField.get();
 }
 
-osg::HeightField*
-GeoHeightField::getHeightField() 
-{
-    return _heightField.get();
-}
-
-osg::HeightField*
-GeoHeightField::takeHeightField()
-{
-    return _heightField.release();
-}
-
-NormalMap*
-GeoHeightField::getNormalMap()
-{
-    return _normalMap.get();
-}
-
 const NormalMap*
 GeoHeightField::getNormalMap() const
 {

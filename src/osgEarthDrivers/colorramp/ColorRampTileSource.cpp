@@ -106,7 +106,7 @@ public:
         GeoHeightField geoHF = _layer->createHeightField(key, progress);
         if (geoHF.valid())
         {
-            osg::HeightField* hf = geoHF.getHeightField(); 
+            const osg::HeightField* hf = geoHF.getHeightField(); 
             osg::Image* image = new osg::Image();
             image->allocateImage(hf->getNumColumns(),hf->getNumRows(),1, GL_RGBA, GL_UNSIGNED_BYTE);
             memset(image->data(), 0, image->getImageSizeInBytes());

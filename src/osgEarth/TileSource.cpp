@@ -413,8 +413,8 @@ TileSource::createHeightField(const TileKey&        key,
 
 bool
 TileSource::storeHeightField(const TileKey&     key,
-                             osg::HeightField*  hf,
-                              ProgressCallback* progress)
+                             const osg::HeightField*  hf,
+                             ProgressCallback* progress)
 {
     if (getStatus().isError() || hf == 0L )
         return 0L;

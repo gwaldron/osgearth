@@ -38,6 +38,9 @@
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/osg/OSGOptions>
 #include <osgEarthDrivers/xyz/XYZOptions>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+
+#include <osgEarthFeatures/FeatureMaskLayer>
 
 #include <osg/PositionAttitudeTransform>
 #include <osgDB/WriteFile>
@@ -45,6 +48,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
+using namespace osgEarth::Features;
 
 int
 usage(int argc, char** argv)
@@ -125,7 +129,21 @@ main(int argc, char** argv)
 
     ImageLayerOptions compLayerOptions("My Composite Layer", composite);
     map->addLayer(new ImageLayer(compLayerOptions));
-    
+
+    // mask layer
+    OGRFeatureOptions maskOptions;
+    maskOptions.geometry() = new Polygon();
+    maskOptions.geometry()->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-111.0467, 40.9979, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-109.0501, 41.0007, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-109.0452, 36.9991, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-114.0506, 37.0004, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-114.0417, 41.9937, 0));
+    maskOptions.profile() = ProfileOptions("global-geodetic");
+    FeatureMaskLayerOptions maskLayerOptions;
+    maskLayerOptions.name() = "Mask layer";
+    maskLayerOptions.featureSource() = maskOptions;
+    map->addLayer(new FeatureMaskLayer(maskLayerOptions));
 
     // put a model on the map atop Pike's Peak, Colorado, USA
     osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("cow.osgt.(0,0,3).trans.osgearth_shadergen");

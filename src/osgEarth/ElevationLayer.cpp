@@ -789,10 +789,10 @@ namespace
                 }
                 else
                 {
-                    int s0 = std::max(s - (s % step), 0);
-                    int s1 = (s%step == 0)? s0 : std::min(s0+step, w-1);
-                    int t0 = std::max(t - (t % step), 0);
-                    int t1 = (t%step == 0)? t0 : std::min(t0+step, h-1);
+                    int s0 = osg::maximum(s - (s % step), 0);
+                    int s1 = (s%step == 0)? s0 : osg::minimum(s0+step, w-1);
+                    int t0 = osg::maximum(t - (t % step), 0);
+                    int t1 = (t%step == 0)? t0 : osg::minimum(t0+step, h-1);
                     
                     if (s0 == s1 && t0 == t1)
                     {

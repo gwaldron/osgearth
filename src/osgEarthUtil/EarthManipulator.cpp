@@ -16,6 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#undef min
+#undef max
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/GeoMath>
 #include <osgEarth/TerrainEngineNode>
@@ -999,7 +1001,7 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
                 _setVP1->focalPoint() = _setVP0->focalPoint().get();
         }
 
-        _setVPDuration.set( std::max(duration_seconds, 0.0), Units::SECONDS );
+        _setVPDuration.set( osg::maximum(duration_seconds, 0.0), Units::SECONDS );
 
         OE_DEBUG << LC << "setViewpoint:\n"
             << "    from " << _setVP0->toString() << "\n"
@@ -1131,8 +1133,8 @@ EarthManipulator::setViewpointFrame(double time_s)
 
         // Remaining time is the full duration minus the time since initiation:
         double elapsed = time_s - _setVPStartTime->as(Units::SECONDS);
-        double t = std::min(1.0, elapsed / _setVPDuration.as(Units::SECONDS));
-
+        double duration = _setVPDuration.as(Units::SECONDS);
+        double t = osg::minimum(1.0, duration > 0.0 ? elapsed/duration : 1.0);
         double tp = t;
 
         if ( _setVPArcHeight > 0.0 )
@@ -1304,7 +1306,7 @@ void EarthManipulator::collisionDetect()
     osg::Vec3d eyeUp = getUpVector(eyeCoordFrame);
 
     // Try to intersect the terrain with a vector going straight up and down.
-    double r = std::min( _srs->getEllipsoid()->getRadiusEquator(), _srs->getEllipsoid()->getRadiusPolar() );
+    double r = osg::minimum( _srs->getEllipsoid()->getRadiusEquator(), _srs->getEllipsoid()->getRadiusPolar() );
     osg::Vec3d ip, normal;
 
     if (intersect(eye + eyeUp * r, eye - eyeUp * r, ip, normal))
@@ -3107,7 +3109,7 @@ namespace // Utility functions for drag()
         using namespace osg;
         // new sphere with center at midpoint between pt and input sphere
         Vec3d center2 = (pt + center) / 2.0;
-        double rad2 = (pt - center2).length();
+        double radius2 = (pt - center2).length();
         Vec3d resCtr;
         double resRad;
         // Use Thales' theorem, which states that a triangle inscribed in
@@ -3115,7 +3117,7 @@ namespace // Utility functions for drag()
         // third on the circle, is a right triangle. Since one endpoint is
         // the center of the original sphere (the earth) and the other is
         // pt, we can get our tangent from that.
-        bool valid = sphereInterection(center, radius, center2, rad2, resCtr,
+        bool valid = sphereInterection(center, radius, center2, radius2, resCtr,
                                        resRad);
         if (!valid)
             return Vec3d(0.0, 0.0, 0.0);

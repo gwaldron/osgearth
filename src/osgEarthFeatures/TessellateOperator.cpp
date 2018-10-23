@@ -129,7 +129,7 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
                 if ( sliceSize > 0.0 )
                 {
                     double dist = GeoMath::distance(*v, *(v + 1), feature->getSRS());
-                    slices = std::max( 1u, (unsigned)(dist / sliceSize) );
+                    slices = osg::maximum( 1u, (unsigned)(dist / sliceSize) );
                 }
 
                 if ( isGeo )
@@ -143,7 +143,7 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
                 if ( sliceSize > 0.0 )
                 {
                     double dist = GeoMath::distance(*v, *g->begin(), feature->getSRS());
-                    slices = std::max( 1u, (unsigned)(dist / sliceSize) );
+                    slices = osg::maximum( 1u, (unsigned)(dist / sliceSize) );
                 }
 
                 if ( isGeo )

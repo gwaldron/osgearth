@@ -76,7 +76,7 @@ RTTPicker::RTTPicker(int cameraSize)
     _group = new osg::Group();
 
     // Size of the RTT camera image
-    _rttSize = std::max(cameraSize, 4);    
+    _rttSize = osg::maximum(cameraSize, 4);    
 
     // pixels around the click to test
     _buffer = 2;
@@ -435,7 +435,7 @@ RTTPicker::checkForPickResult(Pick& pick, unsigned frameNumber)
 
     bool hit = false;
     osg::Vec4f value;
-    SpiralIterator iter(image->s(), image->t(), std::max(_buffer,1), pick._u, pick._v);
+    SpiralIterator iter(image->s(), image->t(), osg::maximum(_buffer,1), pick._u, pick._v);
     while (iter.next() && (hit == false))
     {
         value = read(iter.s(), iter.t());

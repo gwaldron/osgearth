@@ -194,7 +194,7 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         {
             // Run MERGE_GEOMETRY so that it will merge all the primitive sets
             osgUtil::Optimizer::MergeGeometryVisitor mg;
-            mg.setTargetMaximumNumberOfVertices(std::max(_maxVertsPerCluster, 1000u));
+            mg.setTargetMaximumNumberOfVertices(osg::maximum(_maxVertsPerCluster, 1000u));
             result->accept( mg );
 
             // Remove any empty geoetries. For some reason the MergeGeometryVisitor sometimes 

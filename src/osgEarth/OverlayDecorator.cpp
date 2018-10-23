@@ -95,13 +95,13 @@ namespace
         {
             double l,r,b,t,n,f;
             m.getOrtho(l,r,b,t,n,f);
-            m.makeOrtho(l,r,b,t, std::max(n, newNear), std::min(f,newFar));
+            m.makeOrtho(l,r,b,t, osg::maximum(n, newNear), osg::minimum(f,newFar));
         }
         else
         {
             double v,a,n,f;
             m.getPerspective(v,a,n,f);
-            m.makePerspective(v,a, std::max(n, newNear), std::min(f, newFar));
+            m.makePerspective(v,a, osg::maximum(n, newNear), osg::minimum(f, newFar));
         }
     }
 
@@ -157,7 +157,7 @@ namespace
 
                 if ( t0 >= 0.0 && t1 >= 0.0 )
                 {
-                    osg::Vec3d v = d*std::min(t0,t1);
+                    osg::Vec3d v = d*osg::minimum(t0,t1);
                     dist2 = v.length2();
                 }
                 else if ( t0 >= 0.0 )
@@ -490,7 +490,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
 
     // clamp the far plane (for RTT purposes) to the horizon distance.
-    double maxFar = std::min( horizonDistance, _maxHorizonDistance );
+    double maxFar = osg::minimum( horizonDistance, _maxHorizonDistance );
     cv->clampProjectionMatrix( projMatrix, zNear, maxFar );
 
     // prepare to calculate the ideal far plane for RTT extent resolution.
@@ -519,7 +519,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // clamp down the far plane:
     if ( maxDist2 != 0.0 )
     {
-        maxFar = std::min( zNear+sqrt(maxDist2), maxFar );
+        maxFar = osg::minimum( zNear+sqrt(maxDist2), maxFar );
     }
 
     // reset the projection matrix if we changed the far:
@@ -675,7 +675,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                 // This causes problems for the draping projection matrix optimizer, so
                 // for now instead of re-doing that code we will just center the eyepoint
                 // here by using the larger of xmin and xmax. -gw.                
-                double x = std::max( fabs(xmin), fabs(xmax) );
+                double x = osg::maximum( fabs(xmin), fabs(xmax) );
                 xmin = -x, xmax = x;
             }
 

@@ -798,10 +798,10 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
             osg::Vec3f south( 0, t > 0 ? -dy : 0, h );
             osg::Vec3f north( 0, t < tMax ? dy : 0, h );
 
-            west.z() = readElevation(std::max(0, s - 1), t).r();
-            east.z() = readElevation(std::min(sMax, s + 1), t).r();
-            south.z() = readElevation(s, std::max(0, t - 1)).r();
-            north.z() = readElevation(s, std::min(tMax, t + 1)).r();
+            west.z() = readElevation(osg::maximum(0, s - 1), t).r();
+            east.z() = readElevation(osg::minimum(sMax, s + 1), t).r();
+            south.z() = readElevation(s, osg::maximum(0, t - 1)).r();
+            north.z() = readElevation(s, osg::minimum(tMax, t + 1)).r();
 
             osg::Vec3f n = (east-west) ^ (north-south);
             n.normalize();

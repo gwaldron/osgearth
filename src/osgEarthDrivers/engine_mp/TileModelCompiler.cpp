@@ -1604,10 +1604,10 @@ namespace
 
             // Utility arrays:
             std::vector<osg::Vec3> boundaryVerts;
-            boundaryVerts.reserve( 2 * std::max(d.numRows, d.numCols) );
+            boundaryVerts.reserve( 2 * osg::maximum(d.numRows, d.numCols) );
 
             std::vector< float > boundaryElevations;
-            boundaryElevations.reserve( 2 * std::max(d.numRows, d.numCols) );
+            boundaryElevations.reserve( 2 * osg::maximum(d.numRows, d.numCols) );
 
             //Recalculate the west side
             if (w_neighbor && w_neighbor->getNumColumns() == d.originalNumCols && w_neighbor->getNumRows() == d.originalNumRows)

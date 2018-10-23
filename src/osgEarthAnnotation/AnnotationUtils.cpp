@@ -296,8 +296,8 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
     float lonSpan = maxLon - minLon;
     float aspectRatio = lonSpan/latSpan;
 
-    int latSegments = std::max( 6, (int)ceil(latSpan / maxAngle) );
-    int lonSegments = std::max( 3, (int)ceil(latSegments * aspectRatio) );
+    int latSegments = osg::maximum( 6, (int)ceil(latSpan / maxAngle) );
+    int lonSegments = osg::maximum( 3, (int)ceil(latSegments * aspectRatio) );
 
     float segmentSize = latSpan/latSegments; // degrees
 

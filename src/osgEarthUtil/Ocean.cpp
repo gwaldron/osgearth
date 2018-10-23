@@ -115,7 +115,7 @@ OceanNode::traverse(osg::NodeVisitor& nv)
 
             // clamp the absolute value so it will work above or below sea level
             // and so we don't attempt to set the near clip below 1:
-            altitude = std::max( ::fabs(altitude), 1.0 );
+            altitude = osg::maximum( ::fabs(altitude), 1.0 );
 
             // we don't want the ocean participating in the N/F calculation:
             osg::CullSettings::ComputeNearFarMode mode = cv->getComputeNearFarMode();
@@ -130,7 +130,7 @@ OceanNode::traverse(osg::NodeVisitor& nv)
             // plane distance. Close enough and errs on the safe side.
             double oldNear = cv->getCalculatedNearPlane();
 
-            double newNear = std::min( oldNear, altitude );
+            double newNear = osg::minimum( oldNear, altitude );
             if ( newNear < oldNear )
             {
                 cv->setCalculatedNearPlane( newNear );

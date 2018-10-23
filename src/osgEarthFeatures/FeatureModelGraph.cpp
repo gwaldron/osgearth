@@ -335,7 +335,7 @@ FeatureModelGraph::ctor()
         if ( _options.layout()->maxRange().isSet() )
             userMaxRange = *_options.layout()->maxRange();
         if ( _options.maxRange().isSet() )
-            userMaxRange = std::min(userMaxRange, *_options.maxRange());
+            userMaxRange = osg::minimum(userMaxRange, *_options.maxRange());
         
         if ( featureProfile->getTiled() )
         {
@@ -382,7 +382,7 @@ FeatureModelGraph::ctor()
             float maxRange = FLT_MAX;
             maxRange = _options.maxRange().getOrUse(maxRange);
             maxRange = _options.layout()->maxRange().getOrUse(maxRange);
-            maxRange = std::min( maxRange, _options.layout()->getLevel(0)->maxRange().get() );
+            maxRange = osg::minimum( maxRange, _options.layout()->getLevel(0)->maxRange().get() );
         
             _options.layout()->tileSizeFactor() = maxRange / _options.layout()->tileSize().get();
 
@@ -582,7 +582,7 @@ FeatureModelGraph::setupPaging()
         if ( _options.layout()->maxRange().isSet() )
             userMaxRange = *_options.layout()->maxRange();
         if ( _options.maxRange().isSet() )
-            userMaxRange = std::min(userMaxRange, *_options.maxRange());
+            userMaxRange = osg::minimum(userMaxRange, *_options.maxRange());
         
         if ( !featureProfile->getTiled() )
         {
@@ -1650,17 +1650,17 @@ FeatureModelGraph::redraw()
 
     float minRange = -FLT_MAX;
     if ( _options.minRange().isSet() ) 
-        minRange = std::max(minRange, *_options.minRange());
+        minRange = osg::maximum(minRange, *_options.minRange());
 
     if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
-        minRange = std::max(minRange, *_options.layout()->minRange());
+        minRange = osg::maximum(minRange, *_options.layout()->minRange());
 
     float maxRange = FLT_MAX;
     if ( _options.maxRange().isSet() ) 
-        maxRange = std::min(maxRange, *_options.maxRange());
+        maxRange = osg::minimum(maxRange, *_options.maxRange());
 
     if ( _options.layout().isSet() && _options.layout()->maxRange().isSet() )
-        maxRange = std::min(maxRange, *_options.layout()->maxRange());
+        maxRange = osg::minimum(maxRange, *_options.layout()->maxRange());
     
     //If they've specified a min/max range, setup an LOD
     if ( minRange != -FLT_MAX || maxRange != FLT_MAX )

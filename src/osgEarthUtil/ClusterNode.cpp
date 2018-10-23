@@ -17,7 +17,7 @@ ClusterNode::ClusterNode(MapNode* mapNode, osg::Image* defaultImage) :
     _dirtyIndex(true)
 {
     setCullingActive(false);
-
+    
     _horizon = new Horizon();
 }
 

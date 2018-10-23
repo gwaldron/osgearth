@@ -339,7 +339,7 @@ NumericExpression::eval() const
                 {
                     double op2 = s.top(); s.pop();
                     double op1 = s.top(); s.pop();
-                    s.push( std::min(op1, op2) );
+                    s.push( osg::minimum(op1, op2) );
                 }
             }
             else if ( a.first == MAX )
@@ -348,7 +348,7 @@ NumericExpression::eval() const
                 {
                     double op2 = s.top(); s.pop();
                     double op1 = s.top(); s.pop();
-                    s.push( std::max(op1, op2) );
+                    s.push( osg::maximum(op1, op2) );
                 }
             }
             else // OPERAND or VARIABLE

@@ -241,7 +241,7 @@ TerrainEngineNode::computeBound() const
 {
     if ( getEllipsoidModel() )
     {
-        double maxRad = std::max(
+        double maxRad = osg::maximum(
             getEllipsoidModel()->getRadiusEquator(),
             getEllipsoidModel()->getRadiusPolar());
 

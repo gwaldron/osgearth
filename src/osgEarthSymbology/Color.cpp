@@ -29,8 +29,8 @@ namespace
 {
     void rgb2hsv( osg::Vec4f& c )
     {
-        float minval = std::min( c.r(), std::min( c.g(), c.b() ) );
-        float maxval = std::max( c.r(), std::max( c.g(), c.b() ) );
+        float minval = osg::minimum( c.r(), osg::minimum( c.g(), c.b() ) );
+        float maxval = osg::maximum( c.r(), osg::maximum( c.g(), c.b() ) );
         float delta = maxval - minval;
         float h = 0.0f, s = 0.0, v = maxval;
         if ( delta != 0.0f )

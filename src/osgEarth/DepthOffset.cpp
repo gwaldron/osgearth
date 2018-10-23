@@ -241,7 +241,7 @@ DepthOffsetAdapter::recalculate()
         {
             GeometryAnalysisVisitor v;
             _graph->accept( v );
-            float maxLen = std::max(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
+            float maxLen = osg::maximum(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
             _options.minRange() = sqrtf(maxLen) * 19.0f;
             _dirty = false;
             OE_TEST << LC << "Recalcluated." << std::endl;

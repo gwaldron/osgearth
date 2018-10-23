@@ -162,7 +162,7 @@ double SimplexNoise::getTiledValue(double x, double y) const
 {
     const double TwoPI = 2.0 * osg::PI;
     double freq = _freq;
-    double o = std::max(1u, _octaves);
+    double o = osg::maximum(1u, _octaves);
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
@@ -195,7 +195,7 @@ double SimplexNoise::getTiledValueWithTurbulence(double x, double y, double F) c
 {
     const double TwoPI = 2.0 * osg::PI;
     double freq = _freq;
-    double o = std::max(1u, _octaves);
+    double o = osg::maximum(1u, _octaves);
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
@@ -230,7 +230,7 @@ double SimplexNoise::getTiledValueWithTurbulence(double x, double y, double F) c
 double SimplexNoise::getValue(double xin, double yin) const
 {
     double freq = _freq;
-    double o = std::max(1u, _octaves);
+    double o = osg::maximum(1u, _octaves);
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
@@ -253,7 +253,7 @@ double SimplexNoise::getValue(double xin, double yin) const
 double SimplexNoise::getValue(double xin, double yin, double zin) const
 {
     double freq = _freq;
-    double o = std::max(1u, _octaves);
+    double o = osg::maximum(1u, _octaves);
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
@@ -277,7 +277,7 @@ double SimplexNoise::getValue(double xin, double yin, double zin) const
 double SimplexNoise::getValue(double xin, double yin, double zin, double win) const
 {
     double freq = _freq;
-    double o = std::max(1u, _octaves);
+    double o = osg::maximum(1u, _octaves);
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
@@ -680,8 +680,8 @@ SimplexNoise::createSeamlessImage(unsigned dim) const
         {
             double v = (double)t / (double)dim;
             value.r() = noise.getTiledValue(u, v);
-            minN = std::min(minN, value.r());
-            maxN = std::max(maxN, value.r());
+            minN = osg::minimum(minN, value.r());
+            maxN = osg::maximum(maxN, value.r());
             write(value, s, t);
         }        
     }

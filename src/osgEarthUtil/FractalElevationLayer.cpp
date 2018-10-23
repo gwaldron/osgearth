@@ -332,10 +332,10 @@ FractalElevationLayer::createImplementation(const TileKey& key,
             if (_debug)
             {
                 h_mean += hf->getHeight(s, t);
-                min_n = std::min(min_n, n);
-                max_n = std::max(max_n, n);
-                min_h = std::min(min_h, (double)hf->getHeight(s, t));
-                max_h = std::max(max_h, (double)hf->getHeight(s, t));
+                min_n = osg::minimum(min_n, n);
+                max_n = osg::maximum(max_n, n);
+                min_h = osg::minimum(min_h, (double)hf->getHeight(s, t));
+                max_h = osg::maximum(max_h, (double)hf->getHeight(s, t));
             }
         }
     }

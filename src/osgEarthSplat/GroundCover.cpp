@@ -240,8 +240,8 @@ GroundCover::createShader() const
             if ( index < totalBillboards )
                 billboardBuf << ",\n";
 
-            maxWidth = std::max(maxWidth, bb._width);
-            maxHeight = std::max(maxHeight, bb._height);
+            maxWidth = osg::maximum(maxWidth, bb._width);
+            maxHeight = osg::maximum(maxHeight, bb._height);
         }
 
         // We multiply the height x 2 below because billboards have their origin

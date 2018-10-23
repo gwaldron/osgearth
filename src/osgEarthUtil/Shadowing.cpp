@@ -271,7 +271,7 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 osg::Matrix proj = _prevProjMatrix;
                 double fovy,ar,zn,zf;
                 proj.getPerspective(fovy,ar,zn,zf);
-                proj.makePerspective(fovy,ar,std::max(n,zn),std::min(f,zf));
+                proj.makePerspective(fovy,ar,osg::maximum(n,zn),osg::minimum(f,zf));
                 
                 // extract the corner points of the camera frustum in world space.
                 osg::Matrix MVP = MV * proj;
@@ -290,8 +290,8 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                     bbox.expandBy( (*v) * lightViewMat );
 
                 osg::Matrix lightProjMat;
-                n = -std::max(bbox.zMin(), bbox.zMax());
-                f = -std::min(bbox.zMin(), bbox.zMax());
+                n = -osg::maximum(bbox.zMin(), bbox.zMax());
+                f = -osg::minimum(bbox.zMin(), bbox.zMax());
                 // TODO: consider extending "n" so that objects outside the main view can still cast shadows
                 lightProjMat.makeOrtho(bbox.xMin(), bbox.xMax(), bbox.yMin(), bbox.yMax(), n, f);
 

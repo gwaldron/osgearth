@@ -58,11 +58,11 @@ namespace
             x41 =  x4*cosa + y4*sina,
             y41 = -x4*sina + y3*cosa;
 
-        float xmin = std::min(x11, std::min(x21, std::min(x31, x41)));
-        float ymin = std::min(y11, std::min(y21, std::min(y31, y41)));
+        float xmin = osg::minimum(x11, osg::minimum(x21, osg::minimum(x31, x41)));
+        float ymin = osg::minimum(y11, osg::minimum(y21, osg::minimum(y31, y41)));
 
-        float xmax = std::max(x11, std::max(x21, std::max(x31, x41)));
-        float ymax = std::max(y11, std::max(y21, std::max(y31, y41)));
+        float xmax = osg::maximum(x11, osg::maximum(x21, osg::maximum(x31, x41)));
+        float ymax = osg::maximum(y11, osg::maximum(y21, osg::maximum(y31, y41)));
 
         out_w = xmax-xmin;
         out_h = ymax-ymin;
@@ -1682,8 +1682,8 @@ Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
-        float w = width().isSet()  ? std::max( width().value(),  _renderSize.x() ) : _renderSize.x();
-        float h = height().isSet() ? std::max( height().value(), _renderSize.y() ) : _renderSize.y();
+        float w = width().isSet()  ? osg::maximum( width().value(),  _renderSize.x() ) : _renderSize.x();
+        float h = height().isSet() ? osg::maximum( height().value(), _renderSize.y() ) : _renderSize.y();
 
         _renderSize.set(
             w + padding().x(),
@@ -2146,7 +2146,7 @@ Grid::expandToInclude( int col, int row )
     }
 
     // and that we have sufficient rows:
-    unsigned maxRows = std::max( (unsigned)getNumRows(), (unsigned)(row+1) );
+    unsigned maxRows = osg::maximum( (unsigned)getNumRows(), (unsigned)(row+1) );
 
     // expand everything and use empty groups as placeholders
     for( unsigned r=0; r<maxRows; ++r )

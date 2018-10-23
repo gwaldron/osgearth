@@ -84,7 +84,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
     osgUtil::IntersectionVisitor iv( _lsi.get() );
 
-    double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
+    double r = osg::minimum( em->getRadiusEquator(), em->getRadiusPolar() );
 
     unsigned count = 0;
 

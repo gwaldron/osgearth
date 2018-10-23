@@ -84,8 +84,8 @@ GeoMath::greatCircleMinMaxLatitude(double lat1Rad, double lon1Rad,
                                    double lat2Rad, double lon2Rad,
                                    double& out_minLatRad, double& out_maxLatRad)
 {
-    out_minLatRad = std::min(lat1Rad, lat2Rad);
-    out_maxLatRad = std::max(lat1Rad, lat2Rad);
+    out_minLatRad = osg::minimum(lat1Rad, lat2Rad);
+    out_maxLatRad = osg::maximum(lat1Rad, lat2Rad);
 
     // apply some spherical trig
     // http://en.wikipedia.org/wiki/Spherical_trigonometry
@@ -102,20 +102,20 @@ GeoMath::greatCircleMinMaxLatitude(double lat1Rad, double lon1Rad,
 
     double B = osg::PI_2 - lat1Rad;                       // angle between p1 and the pole
     if ( a < osg::PI_2 && b < osg::PI_2 )
-        out_maxLatRad = std::max( out_maxLatRad, osg::PI_2 - asin(sin(B)*sin(a)) );
+        out_maxLatRad = osg::maximum( out_maxLatRad, osg::PI_2 - asin(sin(B)*sin(a)) );
     //out_maxLatRad = a < osg::PI_2 && b < osg::PI_2 ? 
     //    osg::PI_2 - asin( sin(B)*sin(a) ) : 
-    //    std::max(lat1Rad,lat2Rad);
+    //    osg::maximum(lat1Rad,lat2Rad);
 
     // flip over to the triangle formed by the south pole:
     a = osg::PI - a, b = osg::PI - b;
     B = osg::PI - B; //lat1Rad - (-osg::PI_2);
 
     if ( a < osg::PI_2 && b < osg::PI_2 )
-        out_minLatRad = std::min( out_minLatRad, -osg::PI_2 + asin(sin(B)*sin(a)) );
+        out_minLatRad = osg::minimum( out_minLatRad, -osg::PI_2 + asin(sin(B)*sin(a)) );
     //out_minLatRad = a < osg::PI_2 && b < osg::PI_2 ? 
     //    osg::PI_2 - asin( sin(B)*sin(a) ) :
-    //    std::min(lat1Rad,lat2Rad);
+    //    osg::minimum(lat1Rad,lat2Rad);
 
     //OE_INFO 
     //    << "a = " << osg::RadiansToDegrees(a)

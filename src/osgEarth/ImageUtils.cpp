@@ -314,11 +314,11 @@ ImageUtils::resizeImage(const osg::Image* input,
                         // nearest neighbor:
                         int col = (input_col-(int)input_col) <= (ceil(input_col)-input_col) ?
                             (int)input_col :
-                            std::min( 1+(int)input_col, (int)in_s-1 );
+                            osg::minimum( 1+(int)input_col, (int)in_s-1 );
 
                         int row = (input_row-(int)input_row) <= (ceil(input_row)-input_row) ?
                             (int)input_row :
-                            std::min( 1+(int)input_row, (int)in_t-1 );
+                            osg::minimum( 1+(int)input_row, (int)in_t-1 );
 
                         color = read(col, row, layer); // read pixel from mip level 0.
 
@@ -419,8 +419,8 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
         for (int t = 0; t < target->t(); )
         {
             int offset = (s-1) % stride; // the minus1 accounts for the border
-            int s0 = std::max(s - offset, 0);
-            int s1 = std::min(s0 + (int)stride, target->s()-1);
+            int s0 = osg::maximum(s - offset, 0);
+            int s1 = osg::minimum(s0 + (int)stride, target->s()-1);
             double mu = (double)offset / (double)(s1-s0);
             osg::Vec4 p1 = readTarget(s0, t);
             osg::Vec4 p2 = readTarget(s1, t);
@@ -438,8 +438,8 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
         for (int t = 2; t<target->t()-2; t += 2)
         {
             int offset = (t-1) % stride; // the minus1 accounts for the border
-            int t0 = std::max(t - offset, 0);
-            int t1 = std::min(t0 + (int)stride, target->t()-1);
+            int t0 = osg::maximum(t - offset, 0);
+            int t1 = osg::minimum(t0 + (int)stride, target->t()-1);
             double mu = (double)offset / double(t1-t0);
 
             osg::Vec4 p1 = readTarget(s, t0);
@@ -458,12 +458,12 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
         for (int t = 2; t<target->t()-2; t += 2)
         {
             int s_offset = (s-1) % stride;
-            int s0 = std::max(s - s_offset, 0);
-            int s1 = std::min(s0 + (int)stride, target->s()-1);
+            int s0 = osg::maximum(s - s_offset, 0);
+            int s1 = osg::minimum(s0 + (int)stride, target->s()-1);
 
             int t_offset = (t-1) % stride;
-            int t0 = std::max(t - t_offset, 0);
-            int t1 = std::min(t0 + (int)stride, target->t()-1);
+            int t0 = osg::maximum(t - t_offset, 0);
+            int t1 = osg::minimum(t0 + (int)stride, target->t()-1);
 
             double mu, mu2;
 
@@ -1982,12 +1982,12 @@ ImageUtils::PixelReader::operator()(double u, double v, int r, int m) const
          double s = u * sizeS;
          double t = v * sizeT;
 
-         double s0 = std::max(floorf(s), 0.0f);
-         double s1 = std::min(s0+1.0f, sizeS);
+         double s0 = osg::maximum(floorf(s), 0.0f);
+         double s1 = osg::minimum(s0+1.0f, sizeS);
          double smix = s0 < s1 ? (s-s0)/(s1-s0) : 0.0f;
 
-         double t0 = std::max(floorf(t), 0.0f);
-         double t1 = std::min(t0+1.0f, sizeT);
+         double t0 = osg::maximum(floorf(t), 0.0f);
+         double t1 = osg::minimum(t0+1.0f, sizeT);
          double tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
 
          osg::Vec4 UL = (*_reader)(this, (int)s0, (int)t0, r, m); // upper left

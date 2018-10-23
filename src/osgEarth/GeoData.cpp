@@ -784,9 +784,9 @@ GeoExtent::set(double west, double south, double east, double north)
         while (east < west)
             east += 360.0;
     }
-    width = std::max(0.0, east - west);
+    width = osg::maximum(0.0, east - west);
 
-    height = std::max(0.0, north-south);
+    height = osg::maximum(0.0, north-south);
 
     setOriginAndSize(west, south, width, height);
 }
@@ -1066,7 +1066,7 @@ GeoExtent::computeBoundingGeoCircle() const
 
         if ( getSRS()->isProjected() )
         {
-            double ext = std::max( width(), height() );
+            double ext = osg::maximum( width(), height() );
             circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
         }
         else // isGeographic
@@ -1080,9 +1080,9 @@ GeoExtent::computeBoundingGeoCircle() const
             GeoPoint(getSRS(), west(), north(), 0, ALTMODE_ABSOLUTE).toWorld(nw);
             
             double radius2 = (center-sw).length2();
-            radius2 = std::max(radius2, (center-se).length2());
-            radius2 = std::max(radius2, (center-ne).length2());
-            radius2 = std::max(radius2, (center-sw).length2());
+            radius2 = osg::maximum(radius2, (center-se).length2());
+            radius2 = osg::maximum(radius2, (center-ne).length2());
+            radius2 = osg::maximum(radius2, (center-sw).length2());
 
             circle.setRadius( sqrt(radius2) );
         }
@@ -1202,7 +1202,7 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
             return true;
         }
 
-        double h = std::max(north(), rhs.north()) - std::min(south(), rhs.south());
+        double h = osg::maximum(north(), rhs.north()) - osg::minimum(south(), rhs.south());
         if (rhs.south() < south())
         {
             _south = rhs.south();
@@ -1210,7 +1210,7 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
         _height = h;
         
         // non-wrap-around new width:
-        double w0 = std::max(xMax(), rhs.xMax()) - std::min(xMin(), rhs.xMin());
+        double w0 = osg::maximum(xMax(), rhs.xMax()) - osg::minimum(xMin(), rhs.xMin());
 
         if (isGeographic())
         {
@@ -1223,7 +1223,7 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
                 if (w0 > _width)
                 {
                     _width = w0;
-                    _west = std::min(west(), rhs.west());
+                    _west = osg::minimum(west(), rhs.west());
                 }
             }
             else
@@ -1239,7 +1239,7 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
         else
         {
             // projected mode is the same approach as Y
-            _west = std::min(west(), rhs.west());
+            _west = osg::minimum(west(), rhs.west());
             _width = w0;
         }
 
@@ -1328,13 +1328,13 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
     else
     {
         // projected mode is simple
-        result._west = std::max(west(), rhs.west());
-        double eastTemp = std::min(east(), rhs.east());
+        result._west = osg::maximum(west(), rhs.west());
+        double eastTemp = osg::minimum(east(), rhs.east());
         result._width = eastTemp - result._west;
     }
 
-    result._south = std::max(south(), rhs.south());
-    double northTemp = std::min(north(), rhs.north());
+    result._south = osg::maximum(south(), rhs.south());
+    double northTemp = osg::minimum(north(), rhs.north());
     result._height = northTemp - result._south;
 
     result.clamp();

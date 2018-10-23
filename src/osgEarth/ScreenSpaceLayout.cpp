@@ -407,11 +407,11 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     osg::Vec3f ru = rot * ( osg::Vec3f(box.xMax(), box.yMax(), 0.) );
                     osg::Vec3f rd = rot * ( osg::Vec3f(box.xMax(), box.yMin(), 0.) );
                     if ( angle > - osg::PI / 2. && angle < osg::PI / 2.)
-                        box.set( std::min(ld.x(), lu.x()), std::min(ld.y(), rd.y()), 0,
-                            std::max(rd.x(), ru.x()), std::max(lu.y(), ru.y()), 0 );
+                        box.set( osg::minimum(ld.x(), lu.x()), osg::minimum(ld.y(), rd.y()), 0,
+                            osg::maximum(rd.x(), ru.x()), osg::maximum(lu.y(), ru.y()), 0 );
                     else
-                        box.set( std::min(ld.x(), lu.x()), std::min(lu.y(), ru.y()), 0,
-                            std::max(ld.x(), lu.x()), std::max(ld.y(), rd.y()), 0 );
+                        box.set( osg::minimum(ld.x(), lu.x()), osg::minimum(lu.y(), ru.y()), 0,
+                            osg::maximum(ld.x(), lu.x()), osg::maximum(ld.y(), rd.y()), 0 );
                 }
 
                 offset = refCamScaleMat * offset;
@@ -563,7 +563,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     if ( info._lastScale != 1.0f )
                     {
                         fullyIn = false;
-                        info._lastScale += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
+                        info._lastScale += elapsedSeconds / osg::maximum(*options.inAnimationTime(), 0.001f);
                         if ( info._lastScale > 1.0f )
                             info._lastScale = 1.0f;
                     }
@@ -575,7 +575,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     if ( info._lastAlpha != 1.0f )
                     {
                         fullyIn = false;
-                        info._lastAlpha += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
+                        info._lastAlpha += elapsedSeconds / osg::maximum(*options.inAnimationTime(), 0.001f);
                         if ( info._lastAlpha > 1.0f )
                             info._lastAlpha = 1.0f;
                     }
@@ -610,7 +610,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     if ( info._lastScale != *options.minAnimationScale() )
                     {
                         fullyOut = false;
-                        info._lastScale -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                        info._lastScale -= elapsedSeconds / osg::maximum(*options.outAnimationTime(), 0.001f);
                         if ( info._lastScale < *options.minAnimationScale() )
                             info._lastScale = *options.minAnimationScale();
                     }
@@ -618,7 +618,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     if ( info._lastAlpha != *options.minAnimationAlpha() )
                     {
                         fullyOut = false;
-                        info._lastAlpha -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                        info._lastAlpha -= elapsedSeconds / osg::maximum(*options.outAnimationTime(), 0.001f);
                         if ( info._lastAlpha < *options.minAnimationAlpha() )
                             info._lastAlpha = *options.minAnimationAlpha();
                     }

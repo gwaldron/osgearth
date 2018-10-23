@@ -372,7 +372,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
-        std::min( _terrainOptions.maxLOD().get(), maxLOD ),
+        osg::minimum( _terrainOptions.maxLOD().get(), maxLOD ),
         map->getProfile(),
         _terrainOptions.minTileRangeFactor().get() );
 
@@ -792,7 +792,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 unsigned int
 RexTerrainEngineNode::computeSampleSize(unsigned int levelOfDetail)
 {
-    unsigned maxLevel = std::min( *_terrainOptions.maxLOD(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
+    unsigned maxLevel = osg::minimum( *_terrainOptions.maxLOD(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
     unsigned int meshSize = *_terrainOptions.tileSize();
 
     unsigned int sampleSize = meshSize;

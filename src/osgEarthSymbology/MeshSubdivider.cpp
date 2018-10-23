@@ -516,7 +516,7 @@ namespace
             if ( !ebo )
             {
                 ebo = new ETYPE( GL_LINE_STRIP );
-                ebo->reserve( std::min(numElementsTotal-numElementsWritten, maxElementsPerEBO+1) );
+                ebo->reserve( osg::minimum(numElementsTotal-numElementsWritten, maxElementsPerEBO+1) );
                 numElementsInCurrentEBO = 0;
             }
 

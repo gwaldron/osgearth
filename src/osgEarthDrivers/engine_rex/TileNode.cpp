@@ -249,7 +249,7 @@ TileNode::computeBound() const
     {
         bs = _surface->getBound();
         const osg::BoundingBox bbox = _surface->getAlignedBoundingBox();
-        _tileKeyValue.a() = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
+        _tileKeyValue.a() = osg::maximum( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
     }    
     return bs;
 }
@@ -261,7 +261,7 @@ TileNode::isDormant(const osg::FrameStamp* fs) const
 
     bool dormant = 
            fs &&
-           fs->getFrameNumber() - _lastTraversalFrame > std::max(_minExpiryFrames, minMinExpiryFrames) &&
+           fs->getFrameNumber() - _lastTraversalFrame > osg::maximum(_minExpiryFrames, minMinExpiryFrames) &&
            fs->getReferenceTime() - _lastTraversalTime > _minExpiryTime;
     return dormant;
 }

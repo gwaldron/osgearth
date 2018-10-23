@@ -335,7 +335,7 @@ FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset,
 {
     if ( point )
     {
-        float size = std::max( 0.1f, *point->size() );
+        float size = osg::maximum( 0.1f, *point->size() );
         GLUtils::setPointSize(stateset, size, 1);
     }
 }

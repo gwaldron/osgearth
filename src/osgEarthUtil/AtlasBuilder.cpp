@@ -250,8 +250,8 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     }
 
     // protecte against a div0
-    maxS = std::max(maxS, 1u);
-    maxT = std::max(maxT, 1u);
+    maxS = osg::maximum(maxS, 1u);
+    maxT = osg::maximum(maxT, 1u);
 
     OE_INFO << LC <<
         "Final atlas size will be (" << maxS << ", " << maxT << ")" << std::endl;
@@ -300,8 +300,8 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     
     // for each source in this atlas layer, apply its texture matrix info
     // to the new catalog.
-    maxS = std::max(maxS, 1u);
-    maxT = std::max(maxT, 1u);
+    maxS = osg::maximum(maxS, 1u);
+    maxT = osg::maximum(maxT, 1u);
 
     for(int r=0; r<(int)mainAtlasList.size(); ++r)
     {

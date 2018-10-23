@@ -24,6 +24,7 @@
 #include <osgEarth/Notify>
 #include <osg/Version>
 #include <osg/ref_ptr>
+#include <osg/Math>
 
 // define the OSG Version checks for older OSG versions
 

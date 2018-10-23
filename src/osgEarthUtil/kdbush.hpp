@@ -5,6 +5,9 @@
 * https://github.com/mourner/kdbush.hpp
 */
 
+#undef min
+#undef max
+
 #include <algorithm>
 #include <cmath>
 // Both 

@@ -252,7 +252,7 @@ namespace
                     //break;
                 }
 
-                halfWidthNear = std::max(halfWidthNear, minHalfWidthNear);
+                halfWidthNear = osg::maximum(halfWidthNear, minHalfWidthNear);
             }
 
             // if the far plane is narrower than the near plane, bail out and 

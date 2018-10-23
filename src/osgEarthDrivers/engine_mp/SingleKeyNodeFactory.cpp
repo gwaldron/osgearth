@@ -67,7 +67,7 @@ SingleKeyNodeFactory::getMinimumRequiredLevel()
     unsigned minLevel = _frame.getHighestMinLevel();
 
     return _options.minLOD().isSet() ?
-        std::max( _options.minLOD().value(), minLevel ) :
+        osg::maximum( _options.minLOD().value(), minLevel ) :
         minLevel;
 }
 

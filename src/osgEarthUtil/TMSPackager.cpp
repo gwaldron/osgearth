@@ -447,7 +447,7 @@ void TMSPackager::writeXML(TerrainLayer* layer, Map* map)
     tileMap->setTitle( _layerName );
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );
-    tileMap->generateTileSets( std::min(23u, maxLevel+1) );
+    tileMap->generateTileSets( osg::minimum(23u, maxLevel+1) );
 
 
     // write out the tilemap catalog:

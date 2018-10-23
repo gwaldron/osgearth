@@ -516,7 +516,7 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     {
         double f, a, zn, zf;
         proj.getPerspective(f,a,zn,zf);
-        zf = std::min(zf, eye.length()-1000.0);
+        zf = osg::minimum(zf, eye.length()-1000.0);
         proj.makePerspective(f, a, zn, zf);
 
         nearPlane = proj(3,2) / (proj(2,2)-1.0);

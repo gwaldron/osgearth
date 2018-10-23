@@ -49,7 +49,7 @@ _maxRes(1.0)
 void
 UTMLabelingEngine::setMaxResolution(double value)
 {
-    _maxRes = std::max(value, 1.0);
+    _maxRes = osg::maximum(value, 1.0);
     OE_INFO << LC << "Max resolution = " << _maxRes << std::endl;
 }
 
@@ -123,10 +123,10 @@ UTMLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world
     // These numbers are from trial-and-error.
     double utmInterval;
     if (utmDiff > 150000) return false;
-    else if (utmDiff > 18500) utmInterval = std::max(10000.0, _maxRes);
-    else if (utmDiff > 1750) utmInterval = std::max(1000.0, _maxRes);
-    else if (utmDiff > 170) utmInterval = std::max(100.0, _maxRes);
-    else utmInterval = std::max(10.0, _maxRes);
+    else if (utmDiff > 18500) utmInterval = osg::maximum(10000.0, _maxRes);
+    else if (utmDiff > 1750) utmInterval = osg::maximum(1000.0, _maxRes);
+    else if (utmDiff > 170) utmInterval = osg::maximum(100.0, _maxRes);
+    else utmInterval = osg::maximum(10.0, _maxRes);
 
     //OE_NOTICE << "utmDiff=" << utmDiff << ", utmInterval=" << utmInterval << std::endl;
 

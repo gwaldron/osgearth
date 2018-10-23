@@ -212,7 +212,7 @@ ConvertToDrawInstanced::apply(osg::Node& node)
     if (stateSet)
     {
         int numTexAttrs = stateSet->getNumTextureAttributeLists();
-        _tboUnit = std::max(_tboUnit, numTexAttrs);
+        _tboUnit = osg::maximum(_tboUnit, numTexAttrs);
     }
     traverse(node);
 }

@@ -172,7 +172,11 @@ GeometryClamper::apply(osg::Drawable& drawable)
         }
         else
         {
+#if ((OPENSCENEGRAPH_MAJOR_VERSION <= 3) && (OPENSCENEGRAPH_MINOR_VERSION < 6))
             geom->dirtyDisplayList();
+#else
+            geom->dirtyGLObjects();
+#endif
         }
 
         OE_DEBUG << LC << "clamped " << count << " verts." << std::endl;

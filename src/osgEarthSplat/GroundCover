@@ -175,7 +175,8 @@ namespace osgEarth { namespace Splat
         GroundCoverBillboards _billboards;
 
     public:
-        bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
+        typedef std::map<URI, osg::ref_ptr<osg::Image> > ImageCache;
+        bool configure(const ConfigOptions& conf, const osgDB::Options* dbo, ImageCache& cache);
     };
 
     typedef std::vector< osg::ref_ptr<GroundCoverBiome> > GroundCoverBiomes;

@@ -172,7 +172,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
         }
         else
         {
-#if ((OPENSCENEGRAPH_MAJOR_VERSION <= 3) && (OPENSCENEGRAPH_MINOR_VERSION < 6))
+#if OSG_VERSION_LESS_THAN(3,6,0)
             geom->dirtyDisplayList();
 #else
             geom->dirtyGLObjects();

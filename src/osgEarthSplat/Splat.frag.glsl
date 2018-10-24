@@ -384,28 +384,23 @@ void oe_splat_complex(inout vec4 color)
     // Blend the two samples based on LOD factor:
     vec4 texel = mix(texel0, texel1, lodBlend);
 
-#if 0
-    color = mix(color, texel, texel.a);
-    color.a = oe_layer_order > 0 ? texel.a : 1.0;
-    
-#else
 
+    // incorporate the layer's opacity:
     texel.a *= oe_layer_opacity;
 
 #ifdef OE_TERRAIN_BLEND_IMAGERY
-
+    // If this is a first image layer, blend with the incoming terrain color.
+    // Otherwise, apply directly and let GL blending do the rest.
     if (oe_layer_order == 0)
     {
         color.rgb = texel.rgb*texel.a + color.rgb*(1.0-texel.a);
-        color.a = max(color.a, texel.a);
     }
     else
-#endif
     {
-        color = mix(color, texel, texel.a);
-        color.a = texel.a;
+        color = texel;
     }
-#endif
-    // uncomment to visualize slope, noise, etc.
-    //color.rgba = vec4(env.noise.x,0,0,1);  
+#else
+    // No blending? The output is just the texel value.
+    color = texel;
+#endif // OE_TERRAIN_BLEND_IMAGERY
 }

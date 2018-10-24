@@ -384,6 +384,7 @@ void oe_splat_complex(inout vec4 color)
     // Blend the two samples based on LOD factor:
     vec4 texel = mix(texel0, texel1, lodBlend);
 
+
     // incorporate the layer's opacity:
     texel.a *= oe_layer_opacity;
 

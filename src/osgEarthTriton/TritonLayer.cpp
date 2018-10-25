@@ -115,9 +115,6 @@ namespace
 
             TritonDrawable* drawable = new TritonDrawable(_TRITON.get());
             _drawable = drawable;
-            _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
-            //_alphaUniform->set(getAlpha());
-            _alphaUniform->set(1.0f); // TODO
             _drawable->setNodeMask(TRITON_OCEAN_MASK);
             drawable->setMaskLayer(_maskLayer.get());
             this->addChild(_drawable);
@@ -155,12 +152,6 @@ namespace
                     }
                 }
 
-                // Make sure the opacity is correct
-                if (_tritonLayer.valid())
-                {
-                    _alphaUniform->set(_tritonLayer->getOpacity());
-                }
-
                 // Tick Triton each frame:
                 if (_TRITON->ready())
                 {
@@ -174,7 +165,6 @@ namespace
         osg::ref_ptr<TritonContext> _TRITON;
         TritonOptions               _options;
         osg::Drawable*              _drawable;
-        osg::ref_ptr<osg::Uniform>  _alphaUniform;
         osg::observer_ptr<osgEarth::ResourceReleaser> _releaser;
         osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
         osg::observer_ptr<osgEarth::MapNode> _mapNode;

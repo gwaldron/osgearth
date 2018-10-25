@@ -136,7 +136,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     if ( adapters.empty() )
     {
         OE_INFO << LC << "Initializing Triton program adapters" << std::endl;
-        const char* prefix = NULL; //"oe_"; // because, don't forget osg_*
+        const char* prefix = "oe_"; // because, don't forget osg_*
         adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WATER_SURFACE, 0L, tritonCam), prefix, "WATER_SURFACE"));
         adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WATER_SURFACE_PATCH, 0L, tritonCam), prefix, "WATER_SURFACE_PATCH"));
         adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::GOD_RAYS, 0L, tritonCam), prefix, "GOD_RAYS"));

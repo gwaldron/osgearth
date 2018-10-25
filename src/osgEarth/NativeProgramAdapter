@@ -31,6 +31,7 @@
 #undef  LC
 #define LC "[NativeProgramAdapter] "
 
+#define OE_LOCAL OE_INFO
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
@@ -46,7 +47,7 @@ namespace osgEarth
         /** Create a program adapter under the current state that wraps the provided glProgram handle. */
         NativeProgramAdapter(const osg::State* state, GLint handle, const char* prefix, const std::string& name)
         {
-            OE_DEBUG << LC << "Create adapter for glProgram " << name << std::endl;
+            OE_LOCAL << LC << "Create adapter for glProgram " << name << " (handle=" << handle << ")" << std::endl;
 
             _handle = handle;
             _ext    = osg::GL2Extensions::Get( state->getContextID(), true );
@@ -73,20 +74,42 @@ namespace osgEarth
                         {
                             _uniformLocations[osg::Uniform::getNameID(reinterpret_cast<const char*>(name))] = loc;
                         
-                            OE_DEBUG << LC << "    Uniform = \"" << name << "\", location = " << loc << std::endl;
+                            OE_LOCAL << LC << "    Uniform = \"" << name << "\", location = " << loc << std::endl;
                         }
                     }
                 }
             }
             else
             {
-                OE_DEBUG << LC << "    No uniforms found." << std::endl;
+                OE_LOCAL << LC << "    No uniforms found." << std::endl;
             }
         }
 
         void apply(const osg::State* state)
         {
-            reinterpret_cast<const StateEx*>(state)->applyUniformsToProgram(*this);
+            bool useProgram = true;
+            for (osg::State::UniformMap::const_iterator i = state->getUniformMap().begin(); i != state->getUniformMap().end(); ++i)
+            {
+                const osg::State::UniformStack& as = i->second;
+                if (!as.uniformVec.empty())
+                {
+                    const osg::Uniform* uniform = static_cast<const osg::Uniform*>(as.uniformVec.back().first);
+                    if (apply(uniform, useProgram))
+                        useProgram = false;
+                }
+            }
+
+#if 0
+            // Apply each of the osg_*Matrix uniforms, which may be used by the native program
+            if (apply(_modelViewMatrixUniform.get(), useProgram))
+                useProgram = false;
+            if (apply(_projectionMatrixUniform.get(), useProgram))
+                useProgram = false;
+            if (apply(_modelViewProjectionMatrixUniform.get(), useProgram))
+                useProgram = false;
+            if (apply(_normalMatrixUniform.get(), useProgram))
+                useProgram = false;
+#endif
         }
 
     private:
@@ -112,36 +135,6 @@ namespace osgEarth
             }
             else return false;
         }
-
-        struct StateEx : public osg::State 
-        {
-            void applyUniformsToProgram(const NativeProgramAdapter& adapter) const
-            {
-                bool useProgram = true;
-                for(UniformMap::const_iterator i = _uniformMap.begin(); i != _uniformMap.end(); ++i)
-                {
-                    const UniformStack& as = i->second;
-                    if ( !as.uniformVec.empty() )
-                    {                    
-                        const osg::Uniform* uniform = static_cast<const osg::Uniform*>(as.uniformVec.back().first);
-                        if (adapter.apply(uniform, useProgram))
-                            useProgram = false;
-                    }
-                }
-
-                // Apply each of the osg_*Matrix uniforms, which may be used by the native program
-                if (adapter.apply(_modelViewMatrixUniform.get(), useProgram))
-                    useProgram = false;
-                if (adapter.apply(_projectionMatrixUniform.get(), useProgram))
-                    useProgram = false;
-                if (adapter.apply(_modelViewProjectionMatrixUniform.get(), useProgram))
-                    useProgram = false;
-                if (adapter.apply(_normalMatrixUniform.get(), useProgram))
-                    useProgram = false;
-            }
-        };
-
-        friend struct StateEx;
     };
 
     /**

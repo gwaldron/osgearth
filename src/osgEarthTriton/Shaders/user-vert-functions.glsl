@@ -28,9 +28,9 @@ void user_intercept(in vec3 worldPosition, in vec3 localPosition, in vec4 eyePos
 }
 
 #if __VERSION__ > 140
-out float oe_LogDepth_logz;
+    out float oe_LogDepth_logz;
 #else
-varying float oe_LogDepth_logz;
+    varying float oe_LogDepth_logz;
 #endif
 uniform mat4 trit_projection;
 

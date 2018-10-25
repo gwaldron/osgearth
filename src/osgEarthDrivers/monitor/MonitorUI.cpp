@@ -30,7 +30,7 @@ namespace ui = osgEarth::Util::Controls;
 
 MonitorUI::MonitorUI()
 {
-    this->setHorizAlign(ALIGN_RIGHT);
+    this->setHorizAlign(ALIGN_LEFT);
     this->setVertAlign(ALIGN_BOTTOM);
 
     int r=0;

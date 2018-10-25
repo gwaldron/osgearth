@@ -1035,7 +1035,7 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
 
     const Capabilities& caps = Registry::capabilities();
 
-#if defined(OSG_GLES2_AVAILABLE) && defined(OSG_GLES3_AVAILABLE)
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
 
     if (image->getPixelFormat() == GL_RGBA && image->getPixelSizeInBits() == 32) 
     {

@@ -1,4 +1,4 @@
-OPTION(OSGEARTH_ENABLE_FASTDXT "Set to ON to build optional FastDXT image compressor." OFF)
+OPTION(OSGEARTH_ENABLE_FASTDXT "Set to ON to build optional FastDXT image compressor." ON)
 IF(OSGEARTH_ENABLE_FASTDXT)
 
 OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)

@@ -24,7 +24,7 @@ using namespace osgEarth::Symbology;
 void
 GroundCoverBiomeOptions::fromConfig(const Config& conf) 
 {
-    conf.get("classes", _biomeClasses);
+    conf.getIfSet("classes", _biomeClasses);
     const ConfigSet& symbols = conf.children();
     for (ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
         Symbol* s = SymbolRegistry::instance()->create(*i);
@@ -81,7 +81,7 @@ GroundCoverOptions::getConfig() const
         for (int i = 0; i < _biomes.size(); ++i) {
             biomes.add("biome", _biomes[i].getConfig());
         }
-        conf.set(biomes);
+        conf.update(biomes);
     }
     return conf;
 }
@@ -89,14 +89,14 @@ GroundCoverOptions::getConfig() const
 void
 GroundCoverOptions::fromConfig(const Config& conf)
 {
-    conf.get("name", _name);
-    conf.get("lod", _lod);
-    conf.get("max_distance", _maxDistance);
-    conf.get("density", _density);
-    conf.get("fill", _fill);
-    conf.get("wind", _wind);
-    conf.get("brightness", _brightness);
-    conf.get("contrast", _contrast);
+   conf.getIfSet("name", _name);
+   conf.getIfSet("lod", _lod);
+   conf.getIfSet("max_distance", _maxDistance);
+   conf.getIfSet("density", _density);
+   conf.getIfSet("fill", _fill);
+   conf.getIfSet("wind", _wind);
+   conf.getIfSet("brightness", _brightness);
+   conf.getIfSet("contrast", _contrast);
     const Config* biomes = conf.child_ptr("biomes");
     if (biomes) {
         const ConfigSet& biomesVec = biomes->children();

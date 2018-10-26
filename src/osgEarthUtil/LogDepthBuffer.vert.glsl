@@ -17,8 +17,8 @@ void oe_logDepth_vert(inout vec4 clip)
 
         const float C = 0.001;
         float FC = 1.0 / log(FAR*C + 1);
-        oe_LogDepth_logz = log(clip.w*C + 1.0)*FC;
-        clip.z = (2 * oe_LogDepth_logz - 1)*clip.w;
+        oe_LogDepth_logz = log(max(1e-6, clip.w*C + 1.0))*FC;
+        clip.z = (2.0*oe_LogDepth_logz - 1.0)*clip.w;
     }
     else
     {

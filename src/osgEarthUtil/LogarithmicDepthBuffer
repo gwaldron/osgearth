@@ -73,7 +73,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::NodeCallback> _cullCallback;
         bool _supported;
         bool _useFragDepth;
-        osg::ref_ptr<osg::Uniform> _FCUniform;
     };
 
 } } // namespace osgEarth::Util

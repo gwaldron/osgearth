@@ -26,13 +26,6 @@
 
 #define LC "[LogarithmicDepthBuffer] "
 
-#define LOG2(X) (::log((double)(X))/::log(2.0))
-//#define FC_UNIFORM "oe_logDepth_FC"
-#define LDB_UNIFORM "oe_Far"
-
-// This is only used in the "precise" variant.
-#define NEAR_RES_COEFF 0.001  // a.k.a. "C"
-
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -41,11 +34,7 @@ LogarithmicDepthBuffer::LogarithmicDepthBuffer() :
 _useFragDepth(false)
 {
     _supported = Registry::capabilities().supportsGLSL();
-    if ( _supported )
-    {
-        _FCUniform = new osg::Uniform(LDB_UNIFORM, (float)0.0f);
-    }
-    else
+    if ( !_supported )
     {
         OE_WARN << LC << "Not supported on this platform (no GLSL)" << std::endl;
     }
@@ -97,8 +86,6 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
                 pkg.unload( vp, pkg.LogDepthBuffer_VertFile );
                 pkg.unload( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
             }
-
-            stateset->removeUniform( LDB_UNIFORM );
         }
     }
 }

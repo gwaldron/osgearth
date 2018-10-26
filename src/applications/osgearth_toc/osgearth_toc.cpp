@@ -351,10 +351,22 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // the layer name
-    LabelControl* name = new LabelControl( layer->getName() );
-    if (!layer->getEnabled())
-        name->setForeColor(osg::Vec4f(1,1,1,0.35));
-    grid->setControl( gridCol, gridRow, name );
+    if (layer->getEnabled() && (layer->getExtent().isValid() || layer->getNode()))
+    {
+        ButtonControl* name = new ButtonControl(layer->getName());
+        name->clearBackColor();
+        name->setPadding(4);
+        name->addEventHandler( new ZoomLayerHandler(layer) );
+        grid->setControl( gridCol, gridRow, name );
+    }
+    else
+    {
+        LabelControl* name = new LabelControl( layer->getName() );
+        name->setPadding(4);
+        if (!layer->getEnabled())
+            name->setForeColor(osg::Vec4f(1,1,1,0.35));
+        grid->setControl( gridCol, gridRow, name );
+    }
     gridCol++;
 
     // layer type
@@ -383,16 +395,16 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     }
     gridCol++;
 
-    // zoom button
-    if (layer->getExtent().isValid() || layer->getNode())
-    {
-        LabelControl* zoomButton = new LabelControl("GO", 14);
-        zoomButton->setBackColor( .4,.4,.4,1 );
-        zoomButton->setActiveColor( .8,0,0,1 );
-        zoomButton->addEventHandler( new ZoomLayerHandler(layer) );
-        grid->setControl( gridCol, gridRow, zoomButton );
-    }
-    gridCol++;
+    //// zoom button
+    //if (layer->getExtent().isValid() || layer->getNode())
+    //{
+    //    LabelControl* zoomButton = new LabelControl("GO", 14);
+    //    zoomButton->setBackColor( .4,.4,.4,1 );
+    //    zoomButton->setActiveColor( .8,0,0,1 );
+    //    zoomButton->addEventHandler( new ZoomLayerHandler(layer) );
+    //    grid->setControl( gridCol, gridRow, zoomButton );
+    //}
+    //gridCol++;
 
     // move buttons
     if ( layerIndex < numLayers-1 && isActive )

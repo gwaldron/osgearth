@@ -241,6 +241,14 @@ LandCoverCoverageLayerOptions::LandCoverCoverageLayerOptions(const ConfigOptions
 ImageLayerOptions(co),
 _warp(0.0f)
 {
+    // By default, a CoverageLayer must disable all interpolation
+    // since the values contain actual data.
+    // (TODO: because of an architectural vestige, both the ImageLayerOptions
+    // and the TileSourceOptions have a "coverage" property -- so we must set
+    // them both. Someday fix this.)
+    coverage().init(true);
+    driver()->coverage().init(true);
+
     fromConfig(_conf);
 }
 

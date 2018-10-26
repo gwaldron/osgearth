@@ -611,13 +611,15 @@ Control::draw(const ControlContext& cx)
 
     // by default, rendering a Control directly results in a colored quad. Usually however
     // you will not render a Control directly, but rather one of its subclasses.
-    if ( visible()  && parentIsVisible() )
+    if ( visible() && parentIsVisible() )
     {
-        if ( !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
+        if (_renderSize.x() > 0 && _renderSize.y() > 0)
         {
             float vph = cx._vp->height();
 
             // draw the background poly:
+            if ((_backColor.isSet() && _backColor->a() > 0.0f) ||
+                (_activeColor.isSet() && _activeColor->a() > 0.0f && _active))
             {
                 _geom = newGeometry();
 
@@ -643,7 +645,7 @@ Control::draw(const ControlContext& cx)
             }
 
             // draw the border:
-            if ( _borderColor.isSet() && _borderWidth > 0.0f )
+            if ( _borderColor.isSet() && _borderColor->a() > 0.0f && _borderWidth > 0.0f )
             {
                 float rx = _renderPos.x() - padding().left();
                 float ry = _renderPos.y() - padding().top();

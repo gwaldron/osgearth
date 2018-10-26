@@ -263,7 +263,21 @@ namespace
             const DataExtentList& de = layer->getDataExtents();
             for(DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
             {
-                getDataExtents().push_back(*dei);
+                if (!profile || dei->getSRS()->isHorizEquivalentTo(profile->getSRS()))
+                {
+                    getDataExtents().push_back(*dei);
+                }
+                else
+                {
+                    // Transform the data extents to the layer profile
+                    GeoExtent ep = dei->transform(profile->getSRS());
+                    DataExtent de(ep);
+                    if (dei->minLevel().isSet())
+                        de.minLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->minLevel().get());
+                    if (dei->maxLevel().isSet())
+                        de.maxLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->maxLevel().get());
+                    getDataExtents().push_back(de);
+                }
             }
         }
 

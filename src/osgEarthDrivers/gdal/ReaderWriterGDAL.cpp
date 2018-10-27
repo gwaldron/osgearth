@@ -1272,7 +1272,7 @@ public:
         return 0;
     }
 
-    static void getPalleteIndexColor(GDALRasterBand* band, int index, osg::Vec4ub& color)
+    static bool getPalleteIndexColor(GDALRasterBand* band, int index, osg::Vec4ub& color)
     {
         const GDALColorEntry *colorEntry = band->GetColorTable()->GetColorEntry( index );
         GDALPaletteInterp interp = band->GetColorTable()->GetPaletteInterpretation();
@@ -1285,7 +1285,7 @@ public:
             color.g() = 0;
             color.b() = 0;
             color.a() = 1;
-
+            return false;
         }
         else
         {
@@ -1347,6 +1347,11 @@ public:
                 color.b() = static_cast<unsigned char>(colorEntry->c1*255.0f);
                 color.a() = static_cast<unsigned char>(255.0f);
             }
+            else
+            {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -1791,8 +1796,8 @@ public:
 
             if ( _options.coverage() == true )
             {
-                image->allocateImage(tileSize, tileSize, 1, GL_LUMINANCE, GL_FLOAT);
-                image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+                image->allocateImage(tileSize, tileSize, 1, GL_RED, GL_FLOAT);
+                image->setInternalTextureFormat(GL_R16F);
                 ImageUtils::markAsUnNormalized(image.get(), true);
 
                 // initialize all coverage texels to NODATA. -gw
@@ -1826,20 +1831,29 @@ public:
                     unsigned char p = palette[src_col + src_row * target_width];
 
                     if ( _options.coverage() == true )
-                    {
-                        osg::Vec4 pixel;
-                        if ( isValidValue(p, bandPalette) )
-                            pixel.r() = (float)p;
+                    {                        
+                        osg::Vec4ub color;
+                        osg::Vec4f pixel;
+                        if (getPalleteIndexColor(bandPalette, p, color) &&
+                            isValidValue((float)color.r(), bandPalette)) // need this?
+                        {
+                            pixel.r() = (float)color.r();
+                        }
                         else
+                        {
                             pixel.r() = NO_DATA_VALUE;
+                        }
 
                         write(pixel, dst_col, dst_row);
                     }
                     else
                     {
                         osg::Vec4ub color;
-                        getPalleteIndexColor( bandPalette, p, color );
-                        if (!isValidValue( p, bandPalette))
+                        if (!getPalleteIndexColor( bandPalette, p, color ))
+                        {
+                            color.a() = 0.0f;
+                        }
+                        else if (!isValidValue((float)color.r(), bandPalette)) // is this applicable for palettized data?
                         {
                             color.a() = 0.0f;
                         }

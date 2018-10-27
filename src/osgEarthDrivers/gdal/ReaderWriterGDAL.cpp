@@ -1658,25 +1658,25 @@ public:
                 case GDT_Byte:
                     glDataType = GL_FLOAT;
                     gdalSampleSize = 1;
-                    internalFormat = GL_LUMINANCE32F_ARB;
+                    internalFormat = GL_R16F; // so we can still rep NO_DATA_VALUE?
                     break;
 
                 case GDT_UInt16:
                 case GDT_Int16:
                     glDataType = GL_FLOAT;
                     gdalSampleSize = 2;
-                    internalFormat = GL_LUMINANCE32F_ARB;
+                    internalFormat = GL_R16F;
                     break;
 
                 default:
                     glDataType = GL_FLOAT;
                     gdalSampleSize = 4;
-                    internalFormat = GL_LUMINANCE32F_ARB;
+                    internalFormat = GL_R32F;
                 }
 
                 // Create an un-normalized luminance image to hold coverage values.
                 image = new osg::Image();
-                image->allocateImage( tileSize, tileSize, 1, GL_LUMINANCE, glDataType );
+                image->allocateImage( tileSize, tileSize, 1, GL_RED, glDataType );
                 image->setInternalTextureFormat( internalFormat );
                 ImageUtils::markAsUnNormalized( image.get(), true );
                 memset(image->data(), 0, image->getImageSizeInBytes());

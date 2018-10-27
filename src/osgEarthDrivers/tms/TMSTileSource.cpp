@@ -219,7 +219,7 @@ TMSTileSource::createImage(const TileKey&    key,
         
         if (image.valid() && _options.coverage() == true)
         {
-            image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+            image->setInternalTextureFormat(GL_R16F);
             ImageUtils::markAsUnNormalized(image.get(), true);
         }
 

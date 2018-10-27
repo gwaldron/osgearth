@@ -34,7 +34,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
     chans = osg::clampBetween(chans, 1u, 4u);
 
-    GLenum type = chans >= 2u ? GL_RGBA : GL_LUMINANCE;
+    GLenum type = chans >= 2u ? GL_RGBA : GL_RED;
     
     osg::Image* image = new osg::Image();
     image->allocateImage(dim, dim, 1, type, GL_UNSIGNED_BYTE);

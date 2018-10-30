@@ -266,10 +266,10 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     vec4 ne_detail = detailToggle * oe_splat_getDetailTexel(ri_ne, splat_tc, env);
     vec4 nw_detail = detailToggle * oe_splat_getDetailTexel(ri_nw, splat_tc, env); 
 
-    vec4 nw_mix = mix(nw_primary, nw_detail, nw_detail.a);
-    vec4 ne_mix = mix(ne_primary, ne_detail, ne_detail.a);
-    vec4 sw_mix = mix(sw_primary, sw_detail, sw_detail.a);
-    vec4 se_mix = mix(se_primary, se_detail, se_detail.a);
+    vec4 nw_mix = vec4(mix(nw_primary.rgb, nw_detail.rgb, nw_detail.a), nw_primary.a);
+    vec4 ne_mix = vec4(mix(ne_primary.rgb, ne_detail.rgb, ne_detail.a), ne_primary.a);
+    vec4 sw_mix = vec4(mix(sw_primary.rgb, sw_detail.rgb, sw_detail.a), sw_primary.a);
+    vec4 se_mix = vec4(mix(se_primary.rgb, se_detail.rgb, se_detail.a), se_primary.a);
 
     vec2 weight = fract( oe_splat_covtc*size - 0.5);
 

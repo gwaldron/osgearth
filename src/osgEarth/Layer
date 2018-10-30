@@ -30,6 +30,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/SceneGraphCallback>
 #include <osg/BoundingBox>
+#include <osg/Callback>
 #include <osg/StateSet>
 #include <osgDB/Options>
 #include <vector>
@@ -314,11 +315,21 @@ namespace osgEarth
         virtual std::string getAttribution() const;
 		virtual void setAttribution(const std::string& attribution);
 
-    public: // Experimental
+    public:
 
-        //! Called before culling this layer - return false to reject.
-        virtual bool cull(const osgUtil::CullVisitor*, osg::State::StateSetStack& stateSetStack) const;
+        //! Traversal callback
+        class TraversalCallback : public osg::Callback
+        {
+        public:
+            virtual void operator()(osg::Drawable* node, osg::NodeVisitor* nv) const =0;
+        };
 
+        //! Callback invoked by the terrain engine on this layer before applying
+        void setCullCallback(TraversalCallback* tc);
+        const TraversalCallback* getCullCallback() const;
+
+        //! Called by the engine to traverse this layer
+        void apply(osg::Drawable* node, osg::NodeVisitor* nv) const;
 
     public: // osg::Object
 
@@ -354,6 +365,7 @@ namespace osgEarth
         RenderType _renderType;
         Status _status;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
+        osg::ref_ptr<TraversalCallback> _traversalCallback;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;

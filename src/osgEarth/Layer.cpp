@@ -337,12 +337,29 @@ Layer::removeCallback(LayerCallback* cb)
         _callbacks.erase( i );
 }
 
-bool
-Layer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack& stateSetStack) const
+void
+Layer::apply(osg::Drawable* node, osg::NodeVisitor* nv) const
 {
-    //if (getStateSet())
-    //    cv->pushStateSet(getStateSet());
-    return true;
+    if (_traversalCallback.valid())
+    {
+        _traversalCallback->operator()(node, nv);
+    }
+    else
+    {
+        nv->apply(*node);
+    }
+}
+
+void
+Layer::setCullCallback(TraversalCallback* cb)
+{
+    _traversalCallback = cb;
+}
+
+const Layer::TraversalCallback*
+Layer::getCullCallback() const
+{
+    return _traversalCallback.get();
 }
 
 const GeoExtent&

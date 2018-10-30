@@ -27,6 +27,7 @@
 #include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
+#include <osg/Drawable>
 #include <cstdlib> // getenv
 
 #define LC "[SplatLayer] " << getName() << ": "
@@ -77,6 +78,54 @@ SplatLayerOptions::fromConfig(const Config& conf)
 
 //........................................................................
 
+void
+SplatLayer::ZoneSelector::operator()(osg::Drawable* node, osg::NodeVisitor* nv) const
+{
+    if (nv->getVisitorType() == nv->CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+
+        // If we have zones, select the current one and apply its state set.
+        if (_layer->_zones.size() > 0)
+        {
+            int zoneIndex = 0;
+            osg::Vec3d vp = cv->getViewPoint();
+
+            for(int z=_layer->_zones.size()-1; z > 0 && zoneIndex == 0; --z)
+            {
+                if ( _layer->_zones[z]->contains(vp) )
+                {
+                    zoneIndex = z;
+                }
+            }
+
+            osg::StateSet* zoneStateSet = 0L;
+            Surface* surface = _layer->_zones[zoneIndex]->getSurface();
+            if (surface)
+            {
+                zoneStateSet = surface->getStateSet();
+            }
+
+            if (zoneStateSet == 0L)
+            {
+                OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
+            }
+            else
+            {            
+                cv->pushStateSet(zoneStateSet);
+                cv->apply(*node);
+                cv->popStateSet();
+            }
+        }
+    }
+    else
+    {
+        nv->apply(*node);
+    }
+}
+
+//........................................................................
+
 SplatLayer::SplatLayer() :
 VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete)
@@ -111,6 +160,8 @@ SplatLayer::init()
         osg::ref_ptr<Zone> zone = new Zone(*i);
         _zones.push_back(zone.get());
     }
+
+    setCullCallback(new ZoneSelector(this));
 }
 
 void
@@ -196,42 +247,6 @@ SplatLayer::setTerrainResources(TerrainResources* res)
             buildStateSets();
         }
     }
-}
-
-bool
-SplatLayer::cull(const osgUtil::CullVisitor* cv,
-                 osg::State::StateSetStack& stateSetStack) const
-{
-    if (Layer::cull(cv, stateSetStack) == false)
-        return false;
-
-    // If we have zones, select the current one and apply its state set.
-    if (_zones.size() > 0)
-    {
-        int zoneIndex = 0;
-        osg::Vec3d vp = cv->getViewPoint();
-
-        for(int z=_zones.size()-1; z > 0 && zoneIndex == 0; --z)
-        {
-            if ( _zones[z]->contains(vp) )
-            {
-                zoneIndex = z;
-            }
-        }
-
-        osg::StateSet* zoneStateSet = 0L;
-        Surface* surface = _zones[zoneIndex]->getSurface();
-        if (surface)
-        {
-            zoneStateSet = surface->getStateSet();
-        }
-
-        if (zoneStateSet)
-        {
-            stateSetStack.push_back(zoneStateSet);
-        }
-    }
-    return true;
 }
 
 void

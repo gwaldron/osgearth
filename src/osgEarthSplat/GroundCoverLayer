@@ -118,11 +118,6 @@ namespace osgEarth { namespace Splat
         Zones& zones() { return _zones; }
         const Zones& zones() const { return _zones; }
 
-    public: // Layer
-
-        //! Override
-        bool cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack& ssStack) const;
-
     protected:
 
         //! Override post-ctor init
@@ -156,6 +151,23 @@ namespace osgEarth { namespace Splat
         bool _zonesConfigured;
 
         void buildStateSets();
+
+        struct LayerAcceptor : public PatchLayer::AcceptCallback
+        {
+            GroundCoverLayer* _layer;
+            LayerAcceptor(GroundCoverLayer* layer) : _layer(layer) { }
+            bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const;
+            bool acceptKey(const TileKey& key) const;
+        };
+        friend struct LayerAcceptor;
+
+        struct ZoneSelector : public Layer::TraversalCallback
+        {
+            GroundCoverLayer* _layer;
+            ZoneSelector(GroundCoverLayer* layer) : _layer(layer) { }
+            void operator()(osg::Drawable*, osg::NodeVisitor*) const;
+        };
+        friend struct ZoneSelector;
     };
 
 } } // namespace osgEarth::Splat

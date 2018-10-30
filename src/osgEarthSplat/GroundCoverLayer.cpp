@@ -85,38 +85,77 @@ GroundCoverLayerOptions::fromConfig(const Config& conf)
 
 //........................................................................
 
-namespace
+bool
+GroundCoverLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
 {
-    struct GroundCoverLayerAcceptor : public PatchLayer::AcceptCallback
+    // if this is a shadow camera and the layer is configured to cast shadows, accept it.
+    if (osgEarth::Shadowing::isShadowCamera(camera))
     {
-        GroundCoverLayer* _layer;
+        bool use = (_layer->options().castShadows() == true);
+        return use;
+    }
 
-        GroundCoverLayerAcceptor(GroundCoverLayer* layer) : _layer(layer) { }
+    // if this is a depth-pass camera (and not a shadow cam), reject it.
+    bool isDepthCamera = ClampableNode::isDepthCamera(camera);
+    if (isDepthCamera)
+        return false;
 
-        bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
+    // otherwise accept the layer.
+    return true;
+}
+
+bool
+GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
+{
+    return _layer->getLOD() == key.getLOD();
+}
+
+//........................................................................
+
+void
+GroundCoverLayer::ZoneSelector::operator()(osg::Drawable* node, osg::NodeVisitor* nv) const
+{
+    if (nv->getVisitorType() == nv->CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+
+        // If we have zones, select the current one and apply its state set.
+        if (_layer->_zones.size() > 0)
         {
-            // if this is a shadow camera and the layer is configured to cast shadows, accept it.
-            if (osgEarth::Shadowing::isShadowCamera(camera))
+            int zoneIndex = 0;
+            osg::Vec3d vp = cv->getViewPoint();
+
+            for(int z=_layer->_zones.size()-1; z > 0 && zoneIndex == 0; --z)
             {
-                bool use = (_layer->options().castShadows() == true);
-                return use;
+                if ( _layer->_zones[z]->contains(vp) )
+                {
+                    zoneIndex = z;
+                }
             }
 
-            // if this is a depth-pass camera (and not a shadow cam), reject it.
-            bool isDepthCamera = ClampableNode::isDepthCamera(camera);
-            if (isDepthCamera)
-                return false;
+            osg::StateSet* zoneStateSet = 0L;
+            GroundCover* gc = _layer->_zones[zoneIndex]->getGroundCover();
+            if (gc)
+            {
+                zoneStateSet = gc->getStateSet();
+            }
 
-            // otherwise accept the layer.
-            return true;
+            if (zoneStateSet == 0L)
+            {
+                OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
+            }
+            else
+            {            
+                cv->pushStateSet(zoneStateSet);
+                cv->apply(*node);
+                cv->popStateSet();
+            }
         }
-
-        bool acceptKey(const TileKey& key) const
-        {
-            return _layer->getLOD() == key.getLOD();
-        }
-
-    };
+    }
+    else
+    {
+        nv->apply(*node);
+    }
 }
 
 //........................................................................
@@ -152,7 +191,9 @@ GroundCoverLayer::init()
         _zones.push_back(zone.get());
     }
 
-    setAcceptCallback(new GroundCoverLayerAcceptor(this));
+    setAcceptCallback(new LayerAcceptor(this));
+
+    setCullCallback(new ZoneSelector(this));
 }
 
 const Status&
@@ -256,47 +297,6 @@ GroundCoverLayer::setTerrainResources(TerrainResources* res)
             buildStateSets();
         }
     }
-}
-
-bool
-GroundCoverLayer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack& stateSetStack) const
-{
-    if (Layer::cull(cv, stateSetStack) == false)
-        return false;
-
-    // If we have zones, select the current one and apply its state set.
-    if (_zones.size() > 0)
-    {
-        int zoneIndex = 0;
-        osg::Vec3d vp = cv->getViewPoint();
-
-        for(int z=_zones.size()-1; z > 0 && zoneIndex == 0; --z)
-        {
-            if ( _zones[z]->contains(vp) )
-            {
-                zoneIndex = z;
-            }
-        }
-
-        osg::StateSet* zoneStateSet = 0L;
-        GroundCover* gc = _zones[zoneIndex]->getGroundCover();
-        if (gc)
-        {
-            zoneStateSet = gc->getStateSet();
-        }
-
-        //osg::StateSet* zoneStateSet = _zones[zoneIndex]->getGroundCover()getStateSet();
-
-        if (zoneStateSet == 0L)
-        {
-            OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
-        }
-        else
-        {            
-            stateSetStack.push_back(zoneStateSet);
-        }
-    }
-    return true;
 }
 
 void

@@ -679,7 +679,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     pass->samplers()[SamplerBinding::COLOR]._matrix = *model->getMatrix();
 
                     // Handle an RTT image layer:
-                    if (model->getImageLayer() && model->getImageLayer()->createTextureSupported())
+                    if (model->getImageLayer() && model->getImageLayer()->useCreateTexture())
                     {
                         // Check the texture's userdata for a Node. If there is one there,
                         // render it to the texture using the Tile Rasterizer service.

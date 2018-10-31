@@ -275,9 +275,6 @@ namespace osgEarth
 
     public: // methods
 
-        virtual bool createTextureSupported() const { return false; }
-        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix) { return 0L; }
-
         /**
          * Creates a GeoImage from this layer corresponding to the provided key. The
          * image is in the profile of the key and will be reprojected, mosaiced and
@@ -296,6 +293,17 @@ namespace osgEarth
         void applyTextureCompressionMode(osg::Texture* texture) const;
        
         typedef ImageLayerCallback Callback;
+
+
+    public: // Texture support
+            
+        //! Whether to use createTexture to create data for this layer
+        //! instead of createImage and a TileSource driver
+        bool useCreateTexture() const { return _useCreateTexture; }
+
+        //! Override to create the texture when useCreateTexture is true
+        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix) { return 0L; }
+
 
     public: // Layer
         
@@ -317,6 +325,10 @@ namespace osgEarth
         // Constructor for a subclass that owns the layer options structure
         ImageLayer(ImageLayerOptions* optionsPtr);
 
+        //! Configure the layer to create textures via createTexture instead of
+        //! using a createImage driver
+        void setUseCreateTexture();
+
     private:
 
         // Creates an image that's in the same profile as the provided key.
@@ -337,6 +349,7 @@ namespace osgEarth
         optional<int>                            _shareImageUnit;
         optional<std::string>                    _shareTexUniformName;
         optional<std::string>                    _shareTexMatUniformName;
+        bool                                     _useCreateTexture;
 
         virtual void fireCallback(ImageLayerCallback::MethodPtr method);
 

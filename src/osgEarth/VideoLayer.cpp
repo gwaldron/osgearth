@@ -85,12 +85,20 @@ _optionsConcrete(options)
     init();    
 }
 
+void
+VideoLayer::init()
+{
+    ImageLayer::init();
+    
+    // Configure the layer to use createTexture() to return data
+    setUseCreateTexture();
+}
+
 const Status&
 VideoLayer::open()
 {
     if ( !_openCalled )
     {
-
         if (!options().url().isSet())
         {
             return setStatus(Status::Error(Status::ConfigurationError, "Missing required url"));

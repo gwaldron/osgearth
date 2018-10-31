@@ -101,9 +101,9 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
             osg::Texture* tex = 0L;
             osg::Matrixf textureMatrix;
 
-            if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveDataInExtent(key.getExtent()))
+            if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveData(key)) //imageLayer->mayHaveDataInExtent(key.getExtent()))
             {
-                if (imageLayer->createTextureSupported())
+                if (imageLayer->useCreateTexture())
                 {
                     tex = imageLayer->createTexture( key, progress, textureMatrix );
                 }

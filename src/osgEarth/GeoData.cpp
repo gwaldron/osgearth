@@ -1538,7 +1538,23 @@ GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
 }
 
 bool
-GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrix& output) const
+GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrixf& output) const
+{    
+    double scalex = width() / rhs.width();
+    double scaley = height() / rhs.height();
+    double biasx  = (west()-rhs.west()) / rhs.width();
+    double biasy  = (south()-rhs.south()) / rhs.height();
+
+    output(0,0) = scalex;
+    output(1,1) = scaley;
+    output(3,0) = biasx;
+    output(3,1) = biasy;
+
+    return true;
+}
+
+bool
+GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrixd& output) const
 {    
     double scalex = width() / rhs.width();
     double scaley = height() / rhs.height();

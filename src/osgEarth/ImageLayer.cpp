@@ -333,7 +333,7 @@ ImageLayer::open()
 
     // If we are using createTexture to make image tiles,
     // we don't need to load a tile source plugin.
-    if (createTextureSupported())
+    if (useCreateTexture())
     {
         setTileSourceExpected(false);
     }
@@ -345,6 +345,8 @@ void
 ImageLayer::init()
 {
     TerrainLayer::init();
+
+    _useCreateTexture = false;
 
     // image layers render as a terrain texture.
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
@@ -358,6 +360,13 @@ ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
         ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
+}
+
+void
+ImageLayer::setUseCreateTexture()
+{
+    _useCreateTexture = true;
+    setTileSourceExpected(false);
 }
 
 bool

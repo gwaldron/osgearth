@@ -38,6 +38,7 @@
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/osg/OSGOptions>
 #include <osgEarthDrivers/xyz/XYZOptions>
+#include <osgEarthDrivers/debug/DebugOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <osgEarthFeatures/FeatureMaskLayer>
@@ -60,6 +61,38 @@ usage(int argc, char** argv)
 
     return 0;
 }
+
+// Demonstrates how to subclass ImageLayer to directly create textures
+// for use in a layer.
+class MyTextureLayer : public ImageLayer
+{
+public:
+    osg::ref_ptr<osg::Texture2D> _tex;
+
+    MyTextureLayer(const char* path)
+    {
+        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile(path);
+        if (image.valid())
+            _tex = new osg::Texture2D(image.get());
+
+        // Establish a profile for the layer:
+        setProfile(Profile::create("global-geodetic"));
+
+        // Direct the layer to call createTexture:
+        setUseCreateTexture();
+
+        // Restrict the data extents of this layer to LOD 0 (in this case)
+        dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, 0));
+    }
+
+    osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)
+    {
+        // Set the texture matrix corresponding to the tile key:
+        key.getExtent().createScaleBias(getProfile()->getExtent(), textureMatrix);
+
+        return _tex.get();
+    }
+};
 
 /**
  * How to create a simple osgEarth map and display it.
@@ -91,6 +124,11 @@ main(int argc, char** argv)
     ImageLayer* imageLayer = new ImageLayer("OSM", xyz);
     imageLayer->setOpacity(0.5f);
     map->addLayer(imageLayer);
+
+    // a custom layer that displays a user texture:
+    MyTextureLayer* texLayer = new MyTextureLayer("../data/grid2.png");
+    texLayer->setOpacity(0.5f);
+    map->addLayer(texLayer);  
     
     // add a local GeoTIFF inset layer:
     GDALOptions gdal;

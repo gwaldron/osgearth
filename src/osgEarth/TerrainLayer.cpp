@@ -1012,6 +1012,12 @@ TerrainLayer::getDataExtents() const
     }
 }
 
+DataExtentList&
+TerrainLayer::dataExtents()
+{
+    return const_cast<DataExtentList&>(getDataExtents());
+}
+
 void
 TerrainLayer::dirtyDataExtents()
 {

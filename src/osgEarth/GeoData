@@ -526,7 +526,8 @@ namespace osgEarth
          * validity nor for SRS equivalence -- so be sure to validate those beforehand.
          * It also assumes the output matrix is preset to the identity.
          */
-        bool createScaleBias(const GeoExtent& target, osg::Matrix& output) const;
+        bool createScaleBias(const GeoExtent& target, osg::Matrixd& output) const;
+        bool createScaleBias(const GeoExtent& target, osg::Matrixf& output) const;
 
         /**
          * Generates a BoundingSphere encompassing the extent and a vertical 

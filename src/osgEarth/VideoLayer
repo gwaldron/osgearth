@@ -76,13 +76,15 @@ namespace osgEarth
         
         VideoLayer( const VideoLayerOptions& options );
 
+        osg::Texture2D* getTexture() const { return _texture.get(); }
+
+    public: // ImageLayer:
+
+        void init();
+
         const Status& open();
 
-        virtual bool createTextureSupported() const { return true; }
-
         virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix);
-
-        osg::Texture2D* getTexture() const { return _texture.get(); }
 
     protected:
 

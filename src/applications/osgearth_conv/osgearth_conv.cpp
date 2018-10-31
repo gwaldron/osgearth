@@ -79,7 +79,7 @@ struct ImageLayerToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->mayHaveDataInExtent(key.getExtent());
+        return _source->mayHaveData(key);
     }
 
     osg::ref_ptr<ImageLayer> _source;
@@ -109,7 +109,7 @@ struct ElevationLayerToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->mayHaveDataInExtent(key.getExtent());
+        return _source->mayHaveData(key);
     }
 
     osg::ref_ptr<ElevationLayer> _source;

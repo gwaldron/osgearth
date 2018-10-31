@@ -267,15 +267,6 @@ namespace osgEarth
         virtual TileKey getBestAvailableTileKey(const TileKey& key) const;
 
         /**
-         * Whether the layer possibly has data in the provided extent.
-         * Best guess given available information.
-         *
-         * @param extent Extent for which to test for data availability
-         * @return True or false
-         */
-        virtual bool mayHaveDataInExtent(const GeoExtent& e) const;
-
-        /**
          * Whether the layer possibly has real data for the provided TileKey.
          * Best guess given available information.
          */

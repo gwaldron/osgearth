@@ -151,7 +151,7 @@ CompositeTileSource::createImage(const TileKey&    key,
     {
         ImageLayer* layer = itr->get();
         ImageInfo imageInfo;
-        imageInfo.dataInExtents = layer->mayHaveDataInExtent(key.getExtent());
+        imageInfo.dataInExtents = layer->mayHaveData(key); //.getExtent());
         imageInfo.opacity = layer->getOpacity();
 
         if (imageInfo.dataInExtents)

@@ -850,6 +850,7 @@ TerrainLayer::applyProfileOverrides()
     }
 }
 
+#if 0
 bool
 TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
 {
@@ -893,6 +894,7 @@ TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
     // definite no.
     return false;
 }
+#endif
 
 bool
 TerrainLayer::isKeyInLegalRange(const TileKey& key) const

@@ -22,6 +22,7 @@
 #include <Version.h>
 #include <osg/MatrixTransform>
 #include <osg/FrameBufferObject>
+#include <osg/Depth>
 
 #include <osgEarth/SpatialReference>
 #include <osgEarth/VirtualProgram>
@@ -281,9 +282,14 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         {
             osg::GLExtensions* ext = osg::GLExtensions::Get(state->getContextID(), true);
 
+            bool writeDepth = true;
+            const osg::Depth* depth = static_cast<const osg::Depth*>(state->getLastAppliedAttribute(osg::StateAttribute::DEPTH));
+            if (depth)
+                writeDepth = depth->getWriteMask();
+
             _TRITON->getOcean()->Draw(
                 renderInfo.getView()->getFrameStamp()->getSimulationTime() + osgEarth::Random().next(),
-                true, // depth writes
+                writeDepth, // depth writes
                 true, // draw water
                 false, // draw particles
                 NULL, // optional context

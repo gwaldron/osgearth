@@ -95,6 +95,14 @@ void LayerOptions::mergeConfig(const Config& conf)
 
 //.................................................................
 
+void
+Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
+{
+    node->accept(*nv);
+}
+
+//.................................................................
+
 Layer::Layer() :
 _options(&_optionsConcrete)
 {
@@ -338,7 +346,7 @@ Layer::removeCallback(LayerCallback* cb)
 }
 
 void
-Layer::apply(osg::Drawable* node, osg::NodeVisitor* nv) const
+Layer::apply(osg::Node* node, osg::NodeVisitor* nv) const
 {
     if (_traversalCallback.valid())
     {
@@ -346,7 +354,7 @@ Layer::apply(osg::Drawable* node, osg::NodeVisitor* nv) const
     }
     else
     {
-        nv->apply(*node);
+        node->accept(*nv);
     }
 }
 

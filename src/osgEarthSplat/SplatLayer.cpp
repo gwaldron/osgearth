@@ -79,7 +79,7 @@ SplatLayerOptions::fromConfig(const Config& conf)
 //........................................................................
 
 void
-SplatLayer::ZoneSelector::operator()(osg::Drawable* node, osg::NodeVisitor* nv) const
+SplatLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) const
 {
     if (nv->getVisitorType() == nv->CULL_VISITOR)
     {
@@ -113,14 +113,14 @@ SplatLayer::ZoneSelector::operator()(osg::Drawable* node, osg::NodeVisitor* nv) 
             else
             {            
                 cv->pushStateSet(zoneStateSet);
-                cv->apply(*node);
+                traverse(node, nv);
                 cv->popStateSet();
             }
         }
     }
     else
     {
-        nv->apply(*node);
+        traverse(node, nv);
     }
 }
 

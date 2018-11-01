@@ -318,18 +318,20 @@ namespace osgEarth
     public:
 
         //! Traversal callback
-        class TraversalCallback : public osg::Callback
+        class OSGEARTH_EXPORT TraversalCallback : public osg::Callback
         {
         public:
-            virtual void operator()(osg::Drawable* node, osg::NodeVisitor* nv) const =0;
+            virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) const =0;
+        protected:
+            void traverse(osg::Node* node, osg::NodeVisitor* nv) const;
         };
 
         //! Callback invoked by the terrain engine on this layer before applying
         void setCullCallback(TraversalCallback* tc);
         const TraversalCallback* getCullCallback() const;
 
-        //! Called by the engine to traverse this layer
-        void apply(osg::Drawable* node, osg::NodeVisitor* nv) const;
+        //! Called to traverse this layer
+        void apply(osg::Node* node, osg::NodeVisitor* nv) const;
 
     public: // osg::Object
 

@@ -132,7 +132,7 @@ namespace osgEarth { namespace Splat
         {
             SplatLayer* _layer;
             ZoneSelector(SplatLayer* layer) : _layer(layer) { }
-            void operator()(osg::Drawable*, osg::NodeVisitor*) const;
+            void operator()(osg::Node*, osg::NodeVisitor*) const;
         };
         friend struct ZoneSelector;
     };

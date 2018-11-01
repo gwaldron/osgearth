@@ -710,11 +710,11 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
                 if (lastLayer->_layer)
                 {
-                    lastLayer->_layer->apply(lastLayer, cv);
+                    lastLayer->_layer->apply(lastLayer, cv);                    
                 }
                 else
                 {
-                    cv->apply(*lastLayer);
+                    lastLayer->accept(*cv);
                 }
 
                 ++layersDrawn;

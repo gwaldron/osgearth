@@ -86,6 +86,30 @@ namespace
         osg::observer_ptr<MapNode> _mapNode;
     };
 
+    // proxy cull callback for layers that have their own cull callback
+    struct LayerCullCallbackDispatch : public osg::NodeCallback
+    {
+        Layer* _layer;
+
+        LayerCullCallbackDispatch(Layer* layer) : _layer(layer) { }
+
+        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            if (_layer->getNode())
+            {
+                _layer->apply(_layer->getNode(), nv);
+            }
+            //if (_layer->getCullCallback() && _layer->getNode())
+            //{
+            //    _layer->apply(_layer->getNode(), nv);
+            //}
+            else
+            {
+                traverse(node, nv);
+            }
+        };
+    };
+
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;
 }
 
@@ -614,6 +638,7 @@ namespace
                     container->setName(layer->getName());
                     container->addChild(node);
                     container->setStateSet(layer->getOrCreateStateSet());
+                    container->setCullCallback(new LayerCullCallbackDispatch(layer));
                     layerNodes->addChild(container);
                 }
             }

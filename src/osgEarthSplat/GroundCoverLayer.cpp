@@ -113,7 +113,7 @@ GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 //........................................................................
 
 void
-GroundCoverLayer::ZoneSelector::operator()(osg::Drawable* node, osg::NodeVisitor* nv) const
+GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) const
 {
     if (nv->getVisitorType() == nv->CULL_VISITOR)
     {
@@ -147,14 +147,14 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Drawable* node, osg::NodeVisitor
             else
             {            
                 cv->pushStateSet(zoneStateSet);
-                cv->apply(*node);
+                traverse(node, nv);
                 cv->popStateSet();
             }
         }
     }
     else
     {
-        nv->apply(*node);
+        traverse(node, nv);
     }
 }
 

@@ -125,8 +125,24 @@ ShaderMerger::merge(osg::Shader* output)
 
     if (version.empty() == false)
     {
+#if defined(OSG_GLES3_AVAILABLE)
+    // force version numbers for gles
+    #if __ANDROID__
+        buf << "#version 310 es" << std::endl;
+    #else
+        buf << "#version 300 es" << std::endl;
+    #endif
+#else
         buf << version[0].text << std::endl;
+#endif
     }
+    
+    // android requires the following extension is defined
+#if defined(OSG_GLES3_AVAILABLE)
+    #if __ANDROID__
+        buf << "#extension GL_EXT_shader_io_blocks : require" << std::endl;
+    #endif
+#endif
 
     for(GLSLChunker::Chunks::const_iterator i = extensions.begin(); 
         i != extensions.end();

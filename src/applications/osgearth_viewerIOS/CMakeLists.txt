@@ -40,7 +40,6 @@ osgdb_osgearth_mbtiles
 osgdb_osgearth_model_feature_geom
 osgdb_osgearth_model_simple
 osgdb_osgearth_monitor
-osgdb_osgearth_ocean_simple
 osgdb_osgearth_osg
 osgdb_osgearth_scriptengine_javascript
 osgdb_osgearth_sky_gl

@@ -92,6 +92,7 @@ ImageLayerOptions::fromConfig(const Config& conf)
     conf.get( "shared",         _shared );
     conf.get( "coverage",       _coverage );
     conf.get( "feather_pixels", _featherPixels);
+    conf.get( "altitude",       _altitude );
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -134,6 +135,7 @@ ImageLayerOptions::getConfig() const
     conf.set( "shared",         _shared );
     conf.set( "coverage",       _coverage );
     conf.set( "feather_pixels", _featherPixels );
+    conf.set( "altitude",       _altitude );
 
     if (_transparentColor.isSet())
         conf.set("transparent_color", colorToString( _transparentColor.value()));
@@ -350,6 +352,34 @@ ImageLayer::init()
 
     // image layers render as a terrain texture.
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
+
+    if (options().altitude().isSet())
+    {
+        setAltitude(options().altitude().get());
+    }
+}
+
+void
+ImageLayer::setAltitude(const Distance& value)
+{
+    options().altitude() = value;
+
+    if (value != 0.0)
+    {
+        osg::StateSet* stateSet = getOrCreateStateSet();
+
+        stateSet->addUniform(
+            new osg::Uniform("oe_terrain_altitude", (float)options().altitude()->as(Units::METERS)),
+            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
+        stateSet->setMode(GL_CULL_FACE, 0);
+    }
+    else
+    {
+        osg::StateSet* stateSet = getOrCreateStateSet();
+        getOrCreateStateSet()->removeUniform("oe_terrain_altitude");
+        stateSet->removeMode(GL_CULL_FACE);
+    }
 }
 
 void

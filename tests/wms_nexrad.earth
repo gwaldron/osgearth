@@ -23,6 +23,7 @@ Weather (RADAR and IR) overlaid on the map.
             }
           ]]>
         </shader>
+        <altitude>10000</altitude>
     </image>
     
     <!-- NEXRAD 45 minute RADAR returns -->
@@ -34,6 +35,7 @@ Weather (RADAR and IR) overlaid on the map.
         <srs>EPSG:4326</srs>
         <transparent>true</transparent>
         <cache_policy usage="no_cache"/>
+        <altitude>20000</altitude>
     </image>
     
     <!-- US State Boundaries -->

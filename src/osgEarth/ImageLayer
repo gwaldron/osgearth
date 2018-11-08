@@ -116,6 +116,12 @@ namespace osgEarth
         optional<osg::Texture::InternalFormatMode>& textureCompression() { return _texcomp; }
         const optional<osg::Texture::InternalFormatMode>& textureCompression() const { return _texcomp; }
 
+        /**
+         * Render this layer at the given altitude (default=0) if the engine supports it
+         */
+        optional<Distance>& altitude() { return _altitude; }
+        const optional<Distance>& altitude() const { return _altitude; }
+
         /** For shared layer, name of hte texture sampler uniform. */
         optional<std::string>& shareTexUniformName() { return _shareTexUniformName; }
         const optional<std::string>& shareTexUniformName() const { return _shareTexUniformName; }
@@ -142,6 +148,7 @@ namespace osgEarth
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::InternalFormatMode> _texcomp;
+        optional<Distance>    _altitude;
         optional<std::string> _shareTexUniformName;
         optional<std::string> _shareTexMatUniformName;
     };
@@ -237,6 +244,10 @@ namespace osgEarth
          * Access the image filter chain
          */
         const ColorFilterChain& getColorFilters() const;
+
+        //! Sets the altitude
+        void setAltitude(const Distance& value);
+        const Distance& getAltitude() const { return options().altitude().get(); }
 
     public: // runtime properties
 

@@ -1409,6 +1409,8 @@ RexTerrainEngineNode::updateState()
 
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
 
+        surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_altitude", (float)0.0f));
+
         surfaceStateSet->setDefine("OE_TERRAIN_RENDER_IMAGERY");
 
         // Functions that affect only the terrain surface:

@@ -98,23 +98,24 @@ These options control the rendering of the terrain surface.
                      color                 = "#ffffffff"
                      tile_size             = "17"
                      normalize_edges       = "false"
-                     elevation_smoothing   = "false"
-                     normal_maps           = "true">
+                     compress_normal_maps  = "false"
+                     normal_maps           = "true"
+                     min_expiry_frames     = "0"
+                     min_expiry_time       = "0" >
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
 +=======================+====================================================================+
-| driver                | Terrain engine plugin to load. Default = "mp".                     |
+| driver                | Terrain engine plugin to load. Default = "rex".                    |
 |                       | Please refer to the driver reference guide for properties specific |
 |                       | to each individual plugin.                                         |
 +-----------------------+--------------------------------------------------------------------+
-| lighting              | Whether to enable GL_LIGHTING on the terrain. By default this is   |
-|                       | unset, meaning it will inherit the lighting mode of the scene.     |
+| lighting              | Whether the terrain will accept lighting if present. Default=true  |
 +-----------------------+--------------------------------------------------------------------+
 | min_tile_range_factor | Determines how close you need to be to a terrain tile for it to    |
 |                       | display. The value is the ratio of a tile's extent to its          |
 |                       | For example, if a tile has a 10km radius, and the MTRF=7, then the |
-|                       | tile will become visible at a range of about 70km.                 |
+|                       | tile will become visible at a range of about 70km. Default=6.0     |
 +-----------------------+--------------------------------------------------------------------+
 | first_lod             | The lowest level of detail at which the terrain will display tiles.|
 |                       | I.e., the terrain will never display a lower LOD than this.        |
@@ -124,14 +125,10 @@ These options control the rendering of the terrain surface.
 |                       | transparent. This is handy for seeing underground objects.         |
 +-----------------------+--------------------------------------------------------------------+
 | tile_size             | The dimensions of each terrain tile. Each terrain tile will have   |
-|                       | ``tile_size`` X ``tile_size`` vertices.                            |
+|                       | ``tile_size`` X ``tile_size`` vertices. Default=17                 |
 +-----------------------+--------------------------------------------------------------------+
 | normalize_edges       | Calculate normal vectors along the edges of terrain tiles so that  |
-|                       | lighting appears smoother from one tile to the next.               |
-+-----------------------+--------------------------------------------------------------------+
-| elevation_smoothing   | Whether to smooth the transition across elevation data insets.     |
-|                       | Doing so will give a smoother appearance to disparate height field |
-|                       | data, but elevations will not be as accurate. Default = false      |
+|                       | lighting appears smoother from one tile to the next. Default=false |
 +-----------------------+--------------------------------------------------------------------+
 | normal_maps           | Whether to generate and use normal maps in place of geometry       |
 |                       | normals. Normal maps are used with lighting to create the          |
@@ -139,7 +136,7 @@ These options control the rendering of the terrain surface.
 |                       | with triangles alone. Default is engine-dependent.                 |
 +-----------------------+--------------------------------------------------------------------+
 | compress_normal_maps  | Whether to compress normal maps before sending them to the GPU.    |
-|                       | You must have the nvidia texture tools image processor plugin      |
+|                       | You must have the NVIDIA Texture Tools image processor plugin      |
 |                       | built in your OpenSceneGraph build.  Default is false              |
 +-----------------------+--------------------------------------------------------------------+
 | min_expiry_frames     | The number of frames that a terrain tile hasn't been seen before   |
@@ -180,10 +177,10 @@ An *image layer* is a raster image overlaid on the map's geometry.
                min_filter        = "LINEAR"
                mag_filter        = "LINEAR"
                blend             = "interpolate"
-               texture_compression = "auto" >
+               altitude          = "0"
+               texture_compression = "none" >
 
             <:ref:`cache_policy <CachePolicy>`>
-            <:ref:`color_filters <ColorFilterChain>`>
             <:ref:`proxy <ProxySettings>`>
 
 
@@ -264,6 +261,10 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | blend                 | "modulate" to multiply pixels with the framebuffer;                |
 |                       | "interpolate" to blend with the framebuffer based on alpha (def)   |
 +-----------------------+--------------------------------------------------------------------+
+| altitude              | Meters above sea level at which to render this image layer. You    |
+|                       | can use this to render a weather or cloud layer above the ground,  |
+|                       | for example, as a visual aide. Default=0                           |
++-----------------------+--------------------------------------------------------------------+
 
 
 .. _ElevationLayer:
@@ -332,15 +333,13 @@ will composite all elevation data into a single heightmap and use that to build 
 
 Model Layer
 ~~~~~~~~~~~
-A *Model Layer* renders non-terrain data, like vector features or external 3D models.
+A *Model Layer* renders an external 3D model as a map layer.
 
 .. parsed-literal::
 
     <map>
         <model name    = "my model layer"
-               driver  = "feature_geom"
-               enabled = "true"
-               visible = "true" >
+               driver  = "simple" >
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -351,12 +350,6 @@ A *Model Layer* renders non-terrain data, like vector features or external 3D mo
 | driver                | Plugin to use to create tiles for this layer.                      |
 |                       | Please refer to the driver reference guide for properties specific |
 |                       | to each individual plugin.                                         |
-+-----------------------+--------------------------------------------------------------------+
-| enabled               | Whether to include this layer in the map. You can only set this at |
-|                       | load time; it is just an easy way of "commenting out" a layer in   |
-|                       | the earth file.                                                    |
-+-----------------------+--------------------------------------------------------------------+
-| visible               | Whether to draw the layer.                                         |
 +-----------------------+--------------------------------------------------------------------+
 
 The Model Layer also allows you to define a cut-out mask. The terrain engine will cut a hole
@@ -488,25 +481,6 @@ Proxy Settings
            password = "helloworld" >
 
 Hopefully the properties are self-explanatory.
-
-
-
-.. _ColorFilterChain:
-
-Color Filters
-~~~~~~~~~~~~~
-A *color filter* is a pluggable shader that can alter the appearance of the
-color data in a layer before the osgEarth engine composites it into the terrain.
-
-.. parsed-literal::
-
-    <image>
-        <color_filters>
-            <gamma rgb="1.3">
-            ...
-
-You can chain multiple color filters together. Please refer to :doc:`/references/colorfilters` for
-details on color filters.
 
 .. _Libraries:
 

@@ -276,12 +276,8 @@ Layer::getTypeName() const
 Layer*
 Layer::create(const ConfigOptions& options)
 {
-    return create(options.getConfig().key(), options);
-}
+    std::string name = options.getConfig().key();
 
-Layer*
-Layer::create(const std::string& name, const ConfigOptions& options)
-{
     if ( name.empty() )
     {
         OE_WARN << "[Layer] ILLEGAL- Layer::create requires a plugin name" << std::endl;
@@ -388,6 +384,12 @@ Layer::getOrCreateStateSet()
     return _stateSet.get();
 }
 
+osg::StateSet*
+Layer::getStateSet() const
+{
+    return _stateSet.get();
+}
+
 void
 Layer::fireCallback(LayerCallback::MethodPtr method)
 {
@@ -433,4 +435,10 @@ Layer::releaseGLObjects(osg::State* state) const
         getNode()->releaseGLObjects(state);
     if (getStateSet())
         getStateSet()->releaseGLObjects(state);
+}
+
+void
+Layer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
+{
+    //NOP
 }

@@ -332,8 +332,7 @@ namespace
 
     bool addLayer(const Config& conf, Map* map)
     {
-        std::string name = conf.key();
-        Layer* layer = Layer::create(name, conf);
+        Layer* layer = Layer::create(conf);
         if (layer)
         {
             map->addLayer(layer);

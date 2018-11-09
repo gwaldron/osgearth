@@ -156,118 +156,72 @@ namespace osgEarth
     public:
         META_Layer(osgEarth, Layer, LayerOptions, layer);
 
-        /**
-         * Constructs a map layer
-         */
+        //! Constructs a map layer
         Layer();
 
-        /**
-         * Constructs a map layer by deserializing options.
-         */
+        //! Constructs a map layer by deserializing options.
         Layer(LayerOptions* options);
 
-        /**
-         * This layer's unique ID.
-         * This value is generated automatically at runtime and is not
-         * guaranteed to be the same from one run to the next.
-         */
+        //! This layer's unique ID.
+        //! This value is generated automatically at runtime and is not
+        //! guaranteed to be the same from one run to the next.        
         UID getUID() const { return _uid; }
 
-        /**
-         * Sets the osgDB read options for this Layer.
-         */
+        //! osgDB read options for this Layer.
         virtual void setReadOptions(const osgDB::Options* options);
+
+        //! osgDB read options for this Layer.
         const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
 
-        /**
-         * Open a layer and return the status.
-         * The layer options are applied in open().
-         */
+        //! Open a layer and return the status.
         virtual const Status& open();
 
-        /**
-         * Close a layer
-         */
+        //! Close this layer.
         virtual void close();
 
-        /**
-         * Gets the status of this layer.
-         */
+        //! Gets the status of this layer
         const Status& getStatus() const { return _status; }
 
-        /**
-         * @deprecated (remove after 2.10)
-         * Sequence controller if the layer has one.
-         */
+        //! @deprecated (remove after 2.10)
+        //! Sequence controller if the layer has one.
         virtual SequenceControl* getSequenceControl() { return 0L; }
 
-        /**
-         * Returns a Config object serializing this layer, if applicable.
-         */
+        //! Serialize this layer into a Config object (if applicable)
         virtual Config getConfig() const;
 
-        /**
-         * Whether the layer is used in the map.
-         */
+        //! Whether the layer is used in the map.
         virtual void setEnabled(bool value);
 
-        /**
-         * Whether the layer is used in the map.
-         * This will return false if the layer is set to disabled OR if getStatus returns an error.
-         */
+        //! Whether the layer is used in the map.
+        //! This will return false if the layer is set to disabled OR if getStatus returns an error.
         virtual bool getEnabled() const;
 
-        /**
-         * Gets a optional scene graph provided by the layer.
-         * When this layer is added to a Map, the MapNode will call this method and
-         * add the return value to its scene graph; and remove it when the Layer
-         * is removed from the Map.
-         */
+        //! Gets a optional scene graph provided by the layer.
+        //! When this layer is added to a Map, the MapNode will call this method and
+        //! add the return value to its scene graph; and remove it when the Layer
+        //! is removed from the Map.
         virtual osg::Node* getNode() const { return 0L; }
 
-        /**
-         * Extent of this layer's data.
-         * This method may return GeoExtent::INVALID which just means that the
-         * information is unavailable.
-         */
+        //! Extent of this layer's data.
+        //! This method may return GeoExtent::INVALID which just means that the
+        //!information is unavailable.        
         virtual const GeoExtent& getExtent() const;
 
-        /**
-         * Caching ID for this layer
-         */
+        //! Caching ID for this layer
         virtual std::string getCacheID() const;
 
-        /**
-         * Access to the SceneGraphCallbacks that you can use to detect scene graph changes
-         */
+        //! SceneGraphCallbacks that one can use to detect scene graph changes
         SceneGraphCallbacks* getSceneGraphCallbacks() const;
 
     public:
 
-        /** Adds a property notification callback to this layer */
-        void addCallback(LayerCallback* cb);
-
-        /** Removes a property notification callback from this layer */
-        void removeCallback(LayerCallback* cb);
-
-
-    public:
-
-        /**
-         * Access the layer's stateset, creating it is necessary
-         */
+        //! Layer's stateset, creating it is necessary
         osg::StateSet* getOrCreateStateSet();
 
-        /**
-         * Layer's stateset, or NULL if none exists
-         */
-        osg::StateSet* getStateSet() const {
-            return _stateSet.get();
-        }
+        //! Layer's stateset, or NULL if none exists
+        osg::StateSet* getStateSet() const;
 
-        /**
-         * How (and if) to use this layer when rendering terrain tiles.
-         */
+        //! How (and if) to use this layer when rendering terrain tiles.
         enum RenderType
         {
             // Layer does not draw anything (directly)
@@ -294,12 +248,9 @@ namespace osgEarth
         void setRenderType(RenderType value) { _renderType = value; }
 
         //! Callback that modifies the layer's bounding box for a given tile key
-        virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
+        virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
 
-        /**
-         * Return the class type name without namespace. For example if the leaf class type
-         * is osgEarth::ImageLayer, this method returns "ImageLayer".
-         */
+        //! Class type name without namespace. For example if the leaf class type
         const char* getTypeName() const;
 
         //! Map will call this function when this Layer is added to a Map.
@@ -311,8 +262,10 @@ namespace osgEarth
         //! MapNode will call this function when terrain resources are available.
         virtual void setTerrainResources(TerrainResources*) { }
 
-        /** Attribution to be displayed by the application */
+        //! Attribution to be displayed by the application
         virtual std::string getAttribution() const;
+        
+        //! Attribution to be displayed by the application
 		virtual void setAttribution(const std::string& attribution);
 
     public:
@@ -341,24 +294,39 @@ namespace osgEarth
 
         virtual void releaseGLObjects(osg::State* state) const;
 
-    public: // Loading a layer from a plugin
 
+    public: // Public internal methods
+
+        //! Creates a layer from serialized data - internal use
         static Layer* create(const ConfigOptions& options);
-        static Layer* create(const std::string& driver, const ConfigOptions& options);
 
+        //! Extracts config options from a DB options - internal use
         static const ConfigOptions& getConfigOptions(const osgDB::Options*);
+        
+        //! Adds a property notification callback to this layer
+        void addCallback(LayerCallback* cb);
+
+        //! Removes a property notification callback from this layer
+        void removeCallback(LayerCallback* cb);
+
 
     protected:
 
-        /** dtor */
+        //! DTOR
         virtual ~Layer();
 
-        // post-ctor initialization, chain to subclasses.
+        //! post-ctor initialization, chain to subclasses.
         virtual void init();
 
+        //! Sets the status for this layer - internal
         const Status& setStatus(const Status& status) { _status = status; return _status; }
-        const Status& setStatus(const Status::Code& statusCode, const std::string& message) { return setStatus(Status(statusCode, message)); }
+        
+        //! Sets the status for this layer with a message - internal
+        const Status& setStatus(const Status::Code& statusCode, const std::string& message) { 
+            return setStatus(Status(statusCode, message));
+        }
 
+        //! invoke layer callbacks
         void fireCallback(LayerCallback::MethodPtr);
 
     private:

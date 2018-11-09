@@ -1055,3 +1055,17 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
         tex->setInternalFormatMode(options().textureCompression().get());
     }
 }
+
+
+void
+ImageLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
+{
+    if (options().altitude().isSet())
+    {
+        if (options().altitude()->as(Units::METERS) > box.zMax())
+        {
+            box.zMax() = options().altitude()->as(Units::METERS);
+        }
+    }
+    TerrainLayer::modifyTileBoundingBox(key, box);
+}

@@ -324,6 +324,10 @@ namespace osgEarth
         //! by calling setTileSourceExpected(false).
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress);
 
+        //! Modify the bbox if an altitude is set (for culling)
+        virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
+
+
     protected: // Layer
             
         virtual void init();

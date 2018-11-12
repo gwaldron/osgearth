@@ -262,8 +262,6 @@ _isCoreProfile          ( true )
 #else
         _maxLights = 1;
 #endif
-        OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
-
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )
@@ -278,14 +276,11 @@ _isCoreProfile          ( true )
             osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_INFO << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
-        _supportsTexture3D = osg::isGLExtensionSupported( id, "GL_EXT_texture3D" );
-        OE_INFO << LC << "  3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
-
         _supportsMultiTexture = 
             osg::getGLVersionNumber() >= 1.3f ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
             osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
-        OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
+        //OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
 
         _supportsStencilWrap = osg::isGLExtensionSupported( id, "GL_EXT_stencil_wrap" );
         //OE_INFO << LC << "  Stencil wrapping = " << SAYBOOL(_supportsStencilWrap) << std::endl;
@@ -311,7 +306,7 @@ _isCoreProfile          ( true )
         _supportsUniformBufferObjects = 
             _supportsGLSL &&
             osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
-        OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
+        //OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
 
         if ( _supportsUniformBufferObjects && _maxUniformBlockSize == 0 )
         {
@@ -325,7 +320,7 @@ _isCoreProfile          ( true )
 #else
         _supportsNonPowerOfTwoTextures = true;
 #endif
-        OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
+        //OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
 
 
 #if !defined(OSG_GLES3_AVAILABLE)
@@ -349,7 +344,7 @@ _isCoreProfile          ( true )
 
         bool supportsTransformFeedback =
             osg::isGLExtensionSupported( id, "GL_ARB_transform_feedback2" );
-        OE_INFO << LC << "  Transform feedback = " << SAYBOOL(supportsTransformFeedback) << "\n";
+        //OE_INFO << LC << "  Transform feedback = " << SAYBOOL(supportsTransformFeedback) << "\n";
 
 
         // Writing to gl_FragDepth is not supported under GLES, is supported under gles3

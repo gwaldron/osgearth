@@ -31,7 +31,7 @@
 #undef  LC
 #define LC "[NativeProgramAdapter] "
 
-#define OE_LOCAL OE_INFO
+#define OE_LOCAL OE_DEBUG
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 

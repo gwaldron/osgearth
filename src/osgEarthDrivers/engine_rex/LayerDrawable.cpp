@@ -47,6 +47,35 @@ LayerDrawable::~LayerDrawable()
     setStateSet(0L);
 }
 
+namespace
+{
+    // Hack State so we can dirty the texture attrs without dirtying the other 
+    // attributes (as dirtyAllAttributes() would do.
+    struct StateEx : public osg::State
+    {
+        void dirtyAllTextureAttributes()
+        {
+            // dirtyAllTextureAttributes. (Don't call state->dirtyAllAttributes because that
+            // will mess up positional state attributes like light sources)
+            for (TextureAttributeMapList::iterator tamItr = _textureAttributeMapList.begin();
+                tamItr != _textureAttributeMapList.end();
+                ++tamItr)
+            {
+                osg::State::AttributeMap& attributeMap = *tamItr;
+                for (osg::State::AttributeMap::iterator aitr = attributeMap.begin();
+                    aitr != attributeMap.end();
+                    ++aitr)
+                {
+                    osg::State::AttributeStack& as = aitr->second;
+                    as.last_applied_attribute = 0;
+                    as.changed = true;
+                }
+            }
+        }
+    };
+}
+
+
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
@@ -76,6 +105,11 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     // necessary when doing custom OpenGL within a Drawable.
     if (_clearOsgState)
     {
+        // Dirty the texture attributes so OSG can properly reset them
+        // NOTE: cannot call state.dirtyAllAttributes, because that would invalidate
+        // positional state like light sources!
+        reinterpret_cast<StateEx*>(ri.getState())->dirtyAllTextureAttributes();
+
         // NOTE: this is a NOOP in OSG 3.5.x, but not in 3.4.x ... Later we will need to
         // revisit whether to call disableAllVertexArrays() in 3.5.x instead.
         ri.getState()->dirtyAllVertexArrays();

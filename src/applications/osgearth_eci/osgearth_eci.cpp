@@ -364,7 +364,7 @@ main(int argc, char** argv)
         // First create a Sky which we will place in the (default) ECI frame.
         SkyOptions skyOptions;
         skyOptions.coordinateSystem() = SkyOptions::COORDSYS_ECI;
-        app.sky = SkyNode::create(MapNode::get(earth));
+        app.sky = SkyNode::create();
         app.sky->attach(&viewer);
         app.sky->getSunLight()->setAmbient(osg::Vec4(0.5,0.5,0.5,1.0));
         root->addChild(app.sky);

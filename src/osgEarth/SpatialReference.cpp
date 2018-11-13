@@ -681,13 +681,6 @@ SpatialReference::getGeodeticSRS() const
 }
 
 const SpatialReference*
-SpatialReference::getECEF() const
-{
-    OE_DEPRECATED(SpatialReference::getECEF, getGeocentricSRS);
-    return getGeocentricSRS();
-}
-
-const SpatialReference*
 SpatialReference::getGeocentricSRS() const
 {
     if ( !_initialized )

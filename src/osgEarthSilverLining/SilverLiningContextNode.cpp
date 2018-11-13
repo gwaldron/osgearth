@@ -48,7 +48,7 @@ _lastAltitude(DBL_MAX)
     _SL = new SilverLiningContext( options );
     _SL->setLight( light);
     _SL->setCallback( callback );
-    _SL->setMinimumAmbient( node->getMinimumAmbient() );
+    _SL->setMinimumAmbient( light->getAmbient() );
 
     // Geode to hold each of the SL drawables:
     _geode = new osg::Geode();
@@ -84,12 +84,6 @@ SilverLiningContextNode::onSetDateTime()
     ::SilverLining::LocalTime utcTime;
     utcTime.SetFromEpochSeconds( _silverLiningNode->getDateTime().asTimeStamp() );
     _SL->getAtmosphere()->GetConditions()->SetTime( utcTime );
-}
-
-void
-SilverLiningContextNode::onSetMinimumAmbient()
-{
-    _SL->setMinimumAmbient( _silverLiningNode->getMinimumAmbient() );
 }
 
 void

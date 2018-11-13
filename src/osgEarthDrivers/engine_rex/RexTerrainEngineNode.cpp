@@ -246,15 +246,11 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // Invoke the base class first:
     TerrainEngineNode::setMap(map, options);
 
-    // Force the mercator fast path off, since REX does not support it yet.
-    TerrainOptions myOptions = options;
-    myOptions.enableMercatorFastPath() = false;
-
     // A callback for overriding bounding boxes for tiles
     _modifyBBoxCallback = new ModifyBoundingBoxCallback(map);
 
     // merge in the custom options:
-    _terrainOptions.merge( myOptions );
+    _terrainOptions.merge( options );
 
     // morphing imagery LODs requires we bind parent textures to their own unit.
     if ( _terrainOptions.morphImagery() == true )
@@ -1559,9 +1555,7 @@ RexTerrainEngineNode::updateState()
         // need to know which is the first layer in order to blend properly
         terrainStateSet->addUniform( new osg::Uniform("oe_layer_order", (int)0) );
 
-        // default min/max range uniforms. (max < min means ranges are disabled)
-        terrainStateSet->addUniform( new osg::Uniform("oe_terrain_attenuationRange", _terrainOptions.attenuationDistance().get()) );
-
+        // uniform that conveys the tile vertex dimensions
         terrainStateSet->addUniform(new osg::Uniform("oe_tile_size", (float)_terrainOptions.tileSize().get()));
 
         // special object ID that denotes the terrain surface.

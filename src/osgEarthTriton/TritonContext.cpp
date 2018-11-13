@@ -28,7 +28,7 @@
 using namespace osgEarth::Triton;
 
 
-TritonContext::TritonContext(const TritonOptions& options) :
+TritonContext::TritonContext(const TritonLayerOptions& options) :
 _options              ( options ),
 _initAttempted        ( false ),
 _initFailed           ( false ),

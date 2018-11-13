@@ -1165,18 +1165,6 @@ VirtualProgram::setFunction(const std::string&           functionName,
     } // release lock
 }
 
-void 
-VirtualProgram::setFunctionMinRange(const std::string& name, float minRange)
-{
-    OE_DEPRECATED(VirtualProgram::setFunctionMinRange, shaders) << std::endl;
-}
-
-void 
-VirtualProgram::setFunctionMaxRange(const std::string& name, float maxRange)
-{
-    OE_DEPRECATED(VirtualProgram::setFunctionMaxRange, shaders) << std::endl;
-}
-
 bool
 VirtualProgram::addGLSLExtension(const std::string& extension)
 {

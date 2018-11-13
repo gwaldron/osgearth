@@ -14,7 +14,6 @@ SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Common
     Export
-    TritonOptions
     TritonContext
     TritonDrawable
     TritonAPIWrapper

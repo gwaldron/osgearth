@@ -425,12 +425,7 @@ int list( osg::ArgumentParser& args )
     {
         TerrainLayer* layer = i->get();
 
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
-
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+        const Profile* cacheProfile = map->getProfile();
 
         TerrainLayer::CacheBinMetadata* meta = layer->getCacheBinMetadata(cacheProfile);
         if (meta)
@@ -482,13 +477,6 @@ purge( osg::ArgumentParser& args )
     {
         ImageLayer* layer = i->get();
 
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
-
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
-
         CacheSettings* cacheSettings = layer->getCacheSettings();
         if (cacheSettings)
         {
@@ -508,13 +496,6 @@ purge( osg::ArgumentParser& args )
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
     {
         ElevationLayer* layer = i->get();
-
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
-
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
         
         CacheSettings* cacheSettings = layer->getCacheSettings();
         if (cacheSettings)

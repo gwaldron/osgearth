@@ -20,7 +20,6 @@ SET(HEADERS_ROOT
     ContourMap
     ClampCallback
     ClusterNode
-    DataScanner
     EarthManipulator
     Ephemeris
     ExampleResources
@@ -44,7 +43,6 @@ SET(HEADERS_ROOT
     MGRSGraticule
     MouseCoordsTool
     MultiElevationLayer
-    Ocean
     RadialLineOfSight
     RTTPicker
     Shaders
@@ -52,7 +50,6 @@ SET(HEADERS_ROOT
     SimpleOceanLayer
     SimplePager
     Sky
-    SpatialData
     StarData
     TerrainProfile
     TileIndex
@@ -65,7 +62,6 @@ SET(HEADERS_ROOT
     TopologyGraph
     UTMGraticule
     UTMLabelingEngine
-    VerticalScale
     ViewFitter
     WFS
     WMS
@@ -112,7 +108,6 @@ SET(SOURCES_ROOT
     ClusterNode.cpp
     Controls.cpp
     ContourMap.cpp
-    DataScanner.cpp
     EarthManipulator.cpp
     Ephemeris.cpp
     ExampleResources.cpp
@@ -133,13 +128,11 @@ SET(SOURCES_ROOT
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
-    Ocean.cpp
     RadialLineOfSight.cpp
     RTTPicker.cpp
     Shadowing.cpp
     SimpleOceanLayer.cpp
     SimplePager.cpp
-    SpatialData.cpp
     Sky.cpp
     TerrainProfile.cpp
     TileIndex.cpp
@@ -152,7 +145,6 @@ SET(SOURCES_ROOT
     TopologyGraph.cpp
     UTMGraticule.cpp
     UTMLabelingEngine.cpp
-    VerticalScale.cpp
     ViewFitter.cpp
     WFS.cpp
     WMS.cpp

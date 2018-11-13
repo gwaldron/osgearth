@@ -22,7 +22,7 @@
 #include <Triton.h>
 #include <Camera.h> // Triton
 #include "Common"
-#include "TritonOptions"
+#include "TritonLayer"
 #include "TritonAPIWrapper"
 #include "TritonCallback"
 #include <osg/Referenced>
@@ -43,7 +43,7 @@ namespace osgEarth { namespace Triton
     public:
         META_Object(osgEarth, TritonContext);
 
-        TritonContext(const TritonOptions& options);
+        TritonContext(const TritonLayerOptions&);
 
         /** Sets the spatial reference system of the map */
         void setSRS(const osgEarth::SpatialReference* srs);
@@ -93,7 +93,7 @@ namespace osgEarth { namespace Triton
         TritonContext(const TritonContext&, const osg::CopyOp&) { }
 
     private:
-        TritonOptions    _options;
+        TritonLayerOptions    _options;
 
         bool             _initAttempted;
         bool             _initFailed;

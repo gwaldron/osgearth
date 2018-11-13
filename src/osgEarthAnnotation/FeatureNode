@@ -105,9 +105,6 @@ namespace osgEarth { namespace Annotation
          */
         void dirty();
 
-        //! @deprecated backwards compatiblity (remove after 2.10)
-        void init() { dirty(); }
-
     public: // AnnotationNode
 
         /**

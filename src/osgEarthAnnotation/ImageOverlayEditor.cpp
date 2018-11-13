@@ -75,7 +75,7 @@ struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
 
 
 ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, bool singleVert) :
-AnnotationEditor(),
+osg::Group(),
 _overlay        ( overlay ),
 _singleVert     ( singleVert )
 {   

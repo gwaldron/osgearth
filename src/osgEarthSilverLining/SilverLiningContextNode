@@ -50,7 +50,6 @@ namespace osgEarth { namespace SilverLining
 
         // callbacks from SilverLiningNode.
         void onSetDateTime();
-        void onSetMinimumAmbient();
         //get target camera
         osg::Camera* getTargetCamera() const {return _camera;}
         osg::ref_ptr<osg::Geode> getSLGeode() {return _geode;}

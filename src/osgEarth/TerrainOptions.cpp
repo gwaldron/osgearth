@@ -33,11 +33,9 @@ _maxLOD( 23 ),
 _minLOD( 0 ),
 _firstLOD( 0 ),
 _enableLighting( false ),
-_attenuationDistance( 10000.0f ),
 _clusterCulling( true ),
 _enableBlending( true ),
 _compressNormalMaps( false ),
-_mercatorFastPath( false ),
 _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
 _debug( false ),
@@ -64,11 +62,9 @@ TerrainOptions::getConfig() const
     conf.set( "min_lod", _minLOD );
     conf.set( "first_lod", _firstLOD );
     conf.set( "lighting", _enableLighting );
-    conf.set( "attenuation_distance", _attenuationDistance );
     conf.set( "cluster_culling", _clusterCulling );
     conf.set( "blending", _enableBlending );
     conf.set( "compress_normal_maps", _compressNormalMaps);
-    conf.set( "mercator_fast_path", _mercatorFastPath );
     conf.set( "min_normal_map_lod", _minNormalMapLOD );
     conf.set( "gpu_tessellation", _gpuTessellation );
     conf.set( "debug", _debug );
@@ -95,11 +91,9 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.get( "min_lod", _minLOD ); conf.get( "min_level", _minLOD );
     conf.get( "first_lod", _firstLOD ); conf.get( "first_level", _firstLOD );
     conf.get( "lighting", _enableLighting );
-    conf.get( "attenuation_distance", _attenuationDistance );
     conf.get( "cluster_culling", _clusterCulling );
     conf.get( "blending", _enableBlending );
     conf.get( "compress_normal_maps", _compressNormalMaps);
-    conf.get( "mercator_fast_path", _mercatorFastPath );
     conf.get( "min_normal_map_lod", _minNormalMapLOD );
     conf.get( "gpu_tessellation", _gpuTessellation );
     conf.get( "debug", _debug );

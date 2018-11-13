@@ -43,12 +43,6 @@ namespace osgEarth { namespace SilverLining
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 
-        // @deprecated Use SilverLining(const SilverLiningOptions&, Callback*) (remove after 2.10)
-        SilverLiningNode(
-            const osgEarth::SpatialReference* mapSRS,
-            const SilverLiningOptions& options,
-            Callback*                  callback =0L);
-
     public: // SkyNode
 
         /** The (sun) light that this node controls */
@@ -69,7 +63,6 @@ namespace osgEarth { namespace SilverLining
     public:
         // callbacks from base class.
         void onSetDateTime();
-        void onSetMinimumAmbient();
 
     public: // osg::Node
 

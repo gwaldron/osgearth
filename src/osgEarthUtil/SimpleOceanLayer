@@ -24,7 +24,6 @@
 #include <osgEarth/LayerListener>
 #include <osgEarth/URI>
 #include <osgEarth/TerrainResources>
-#include <osgEarthUtil/Ocean>
 #include <osgEarthSymbology/Color>
 
 namespace osgEarth {

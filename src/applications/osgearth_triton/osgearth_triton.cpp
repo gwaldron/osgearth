@@ -24,7 +24,6 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthTriton/TritonAPIWrapper>
 #include <osgEarthTriton/TritonCallback>
-#include <osgEarthTriton/TritonOptions>
 #include <osgEarthTriton/TritonLayer>
 
 #define LC "[osgearth_triton] "
@@ -99,7 +98,7 @@ struct App
     void addTriton()
     {
         // Create TritonNode from TritonOptions
-        osgEarth::Triton::TritonOptions tritonOptions;
+        osgEarth::Triton::TritonLayerOptions tritonOptions;
         tritonOptions.user()        = "my_user_name";
         tritonOptions.licenseCode() = "my_license_code";
         tritonOptions.maxAltitude() = 100000;

@@ -73,13 +73,6 @@ namespace osgEarth
         const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }
 
         /**
-         * Distance (m) over which to ramp min_range and max_range blending; Default = 0.
-         * @deprecated (remove after 2.10) Use VisibleLayer::attenuation instead.
-         */
-        optional<float>& attenuationDistance() { return _attenuationDistance; }
-        const optional<float>& attenuationDistance() const { return _attenuationDistance; }
-
-        /**
          * Whether cluster culling is enabled on terrain tiles (default = true)
          */
         optional<bool>& clusterCulling() { return _clusterCulling; }
@@ -130,16 +123,6 @@ namespace osgEarth
          */
         optional<bool>& compressNormalMaps() { return _compressNormalMaps; }
         const optional<bool>& compressNormalMaps() const { return _compressNormalMaps; }
-
-        /**
-         * Whether to enable the "fast path" for spherical Mercator image layers
-         * Default = true. If enabled, Mercator image tiles will be rendered on a
-         * geocentric map with no reprojection. The trade-off is higher texture
-         * memory usage and NPOT texture usage.
-         * @deprecated (remove after 2.10)
-         */
-        optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
-        const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
 
         /**
          * The minimum level of detail at which to generate elevation-based normal maps,
@@ -208,11 +191,9 @@ namespace osgEarth
         optional<unsigned> _maxLOD;
         optional<unsigned> _firstLOD;
         optional<bool> _enableLighting;
-        optional<float> _attenuationDistance;
         optional<bool> _clusterCulling;
         optional<bool> _enableBlending;
         optional<bool> _compressNormalMaps;
-        optional<bool> _mercatorFastPath;
         optional<ElevationInterpolation> _elevationInterpolation;
         optional<unsigned> _minNormalMapLOD;
         optional<bool> _gpuTessellation;

@@ -173,7 +173,7 @@ MeasureToolHandler::setGeoInterpolation( GeoInterpolation geoInterpolation )
     {
         _geoInterpolation = geoInterpolation;
         _feature->geoInterp() = _geoInterpolation;
-        _featureNode->init();
+        _featureNode->dirty();
         fireDistanceChanged();
     }
 }
@@ -182,7 +182,7 @@ void
 MeasureToolHandler::setLineStyle( const Style& style )
 {
      _feature->style() = style;
-     _featureNode->init();
+     _featureNode->dirty();
 }
 
 bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
@@ -227,7 +227,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                     {                     
                         _feature->getGeometry()->push_back( osg::Vec3d( lon, lat, 0 ) );
                     }
-                    _featureNode->init();
+                    _featureNode->dirty();
 
                     //_gotFirstLocation = false;
                     //_finished = true;
@@ -283,7 +283,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                 {
                     _feature->getGeometry()->back() = osg::Vec3d( lon, lat, 0 );
                 }
-                _featureNode->init();
+                _featureNode->dirty();
                 fireDistanceChanged();
                 aa.requestRedraw();
             }
@@ -316,8 +316,7 @@ void MeasureToolHandler::clear()
 {
     //Clear the locations    
     _feature->getGeometry()->clear();
-    //_features->dirty();
-    _featureNode->init();
+    _featureNode->dirty();
 
 #ifdef SHOW_EXTENT
     _extentFeature->getGeometry()->clear();

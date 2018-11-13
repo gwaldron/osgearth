@@ -29,7 +29,7 @@
 #endif
 
 #if (OSGEARTH_DEVEL_VERSION > 0)
-#    define isDevelopmentVersion " DEVELOPMENT "
+#    define isDevelopmentVersion " (DEVELOPMENT) "
 #else
 #    define isDevelopmentVersion " "
 #endif

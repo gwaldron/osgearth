@@ -966,7 +966,9 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         // Save any existing tether node so we can properly invoke the callback.
         osg::ref_ptr<osg::Node> oldEndNode;
         if ( isTethering() && _tetherCallback.valid() )
-            _setVP1->getNode(oldEndNode);
+        {
+            oldEndNode = _setVP1->getNode();
+        }
 
         // starting viewpoint; all fields will be set:
         _setVP0 = getViewpoint();
@@ -994,9 +996,9 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
 
         if ( !_setVP1->nodeIsSet() && !_setVP1->focalPoint().isSet() )
         {
-            osg::ref_ptr<osg::Node> safeNode;
-            if ( _setVP0->getNode( safeNode ) )
-                _setVP1->setNode( safeNode.get() );
+            osg::ref_ptr<osg::Node> vpNode = _setVP0->getNode();
+            if (vpNode.valid())
+                _setVP1->setNode(vpNode.get());
             else
                 _setVP1->focalPoint() = _setVP0->focalPoint().get();
         }
@@ -1008,16 +1010,15 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
             << "    to   " << _setVP1->toString() << "\n";
 
         // access the new tether node if it exists:
-        osg::ref_ptr<osg::Node> endNode;
-        _setVP1->getNode(endNode);
+        osg::ref_ptr<osg::Node> endNode = _setVP1->getNode();
 
         // Timed transition, we need to calculate some things:
         if ( duration_seconds > 0.0 )
         {
             // Start point is the current manipulator center:
             osg::Vec3d startWorld;
-            osg::ref_ptr<osg::Node> startNode;
-            startWorld = _setVP0->getNode(startNode) ? computeWorld(startNode.get()) : _center;
+            osg::ref_ptr<osg::Node> startNode = _setVP0->getNode();
+            startWorld = startNode.valid() ? computeWorld(startNode.get()) : _center;
 
             _setVPStartTime.unset();
 
@@ -1117,16 +1118,16 @@ EarthManipulator::setViewpointFrame(double time_s)
     {
         // Start point is the current manipulator center:
         osg::Vec3d startWorld;
-        osg::ref_ptr<osg::Node> startNode;
-        if ( _setVP0->getNode(startNode) )
+        osg::ref_ptr<osg::Node> startNode = _setVP0->getNode();
+        if (startNode.valid())
             startWorld = computeWorld(startNode.get());
         else
             _setVP0->focalPoint()->transform( _srs.get() ).toWorld(startWorld);
 
         // End point is the world coordinates of the target viewpoint:
         osg::Vec3d endWorld;
-        osg::ref_ptr<osg::Node> endNode;
-        if ( _setVP1->getNode(endNode) )
+        osg::ref_ptr<osg::Node> endNode = _setVP1->getNode();
+        if (endNode.valid())
             endWorld = computeWorld(endNode.get());
         else
             _setVP1->focalPoint()->transform( _srs.get() ).toWorld(endWorld);
@@ -1937,8 +1938,8 @@ void
 EarthManipulator::updateTether(double t)
 {
     // Initial transition is complete, so update the camera for tether.
-    osg::ref_ptr<osg::Node> node;
-    if ( _setVP1->getNode(node) )
+    osg::ref_ptr<osg::Node> node = _setVP1->getNode();
+    if (node.valid())
     {
         // We use our getAllParentalNodePaths function instead of tether_node->getParentalNodePaths() so that we can
         // ensure even nodes hidden via a node mask are traversed.

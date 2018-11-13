@@ -10,7 +10,6 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 set(LIB_PUBLIC_HEADERS
     AnnotationSettings
-    AnnotationEditing
     AnnotationData
     AnnotationLayer
     AnnotationNode
@@ -22,7 +21,6 @@ set(LIB_PUBLIC_HEADERS
     Draggers
     EllipseNode
     Export
-    FeatureEditing
     FeatureNode
     GeoPositionNode
     GeoPositionNodeAutoScaler
@@ -37,7 +35,6 @@ set(LIB_PUBLIC_HEADERS
 )
 
 set(LIB_COMMON_FILES
-    AnnotationEditing.cpp
     AnnotationSettings.cpp
     AnnotationData.cpp
     AnnotationLayer.cpp
@@ -48,7 +45,6 @@ set(LIB_COMMON_FILES
     CircleNode.cpp
     Draggers.cpp
     EllipseNode.cpp
-    FeatureEditing.cpp
     FeatureNode.cpp
     GeoPositionNode.cpp
     GeoPositionNodeAutoScaler.cpp

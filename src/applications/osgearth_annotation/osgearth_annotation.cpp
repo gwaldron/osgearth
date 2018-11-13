@@ -35,7 +35,6 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/ModelNode>
 
-#include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/ImageOverlayEditor>
 
 #include <osgEarthSymbology/GeometryFactory>
@@ -253,8 +252,6 @@ main(int argc, char** argv)
             true);
 
         annoGroup->addChild( circle );
-
-        editGroup->addChild( new CircleNodeEditor(circle) );
     }
 
 	{
@@ -273,8 +270,6 @@ main(int argc, char** argv)
             true);
 
 		annoGroup->addChild( circle );
-
-        editGroup->addChild( new CircleNodeEditor(circle) );
 	}
 
     //--------------------------------------------------------------------
@@ -295,8 +290,6 @@ main(int argc, char** argv)
             Angle(360.0 - 45.0, Units::DEGREES), 
             true);
         annoGroup->addChild( ellipse );
-
-        editGroup->addChild( new EllipseNodeEditor(ellipse) );
     }
 	{
 		Style ellipseStyle;
@@ -313,8 +306,6 @@ main(int argc, char** argv)
             Angle(40.0, Units::DEGREES), 
             true);
 		annoGroup->addChild( ellipse );
-
-        editGroup->addChild( new EllipseNodeEditor(ellipse) );
 	}
     
     //--------------------------------------------------------------------
@@ -331,8 +322,6 @@ main(int argc, char** argv)
             Distance(600, Units::KILOMETERS ),
             rectStyle);
         annoGroup->addChild( rect );
-
-        editGroup->addChild( new RectangleNodeEditor(rect) );
     }    
 
     //--------------------------------------------------------------------

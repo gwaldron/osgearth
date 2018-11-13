@@ -169,8 +169,8 @@ namespace
         }
 
         osg::ref_ptr<TritonContext> _TRITON;
-        TritonOptions               _options;
-        osg::Drawable*              _drawable;
+        TritonLayerOptions _options;
+        osg::Drawable* _drawable;
         osg::observer_ptr<osgEarth::ResourceReleaser> _releaser;
         osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
         osg::observer_ptr<osgEarth::MapNode> _mapNode;

@@ -119,23 +119,6 @@ namespace osgEarth { namespace Util
         //! Creates a SkyNode from a raw driver name.
         static SkyNode* create(const std::string& driver);
 
-    public: // DEPRECATED API
-
-        //! @deprecated Use create()
-        static SkyNode* create(osgEarth::MapNode* mapNode) {
-            return create();
-        }
-
-        //! @deprecated Use create(SkyOptions&)
-        static SkyNode* create(const SkyOptions& options, osgEarth::MapNode* mapNode) {
-            return create(options);
-        }
-
-        //! @deprecated Use create(const std::string&)
-        static SkyNode* create(const std::string& driver, osgEarth::MapNode* mapNode) {
-            return create(driver);
-        }
-
     protected:
         // CTOR (abstract base class)
         SkyNode();
@@ -194,11 +177,6 @@ namespace osgEarth { namespace Util
 
         /** Access the osg::Light representing the sun */
         virtual osg::Light* getSunLight() const = 0;
-
-        /** @deprecated. use getSunLight()->setAmbient instead */
-        void setMinimumAmbient(const osg::Vec4f& ambient) { if (getSunLight()) getSunLight()->setAmbient(ambient); }
-        /** @deprecated; use getSunLight()->getAmbient instead */
-        const osg::Vec4 getMinimumAmbient() const { if (!getSunLight()) return osg::Vec4(0,0,0,0); return getSunLight()->getAmbient(); }
 
     public:
 

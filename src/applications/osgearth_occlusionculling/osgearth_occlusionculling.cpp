@@ -28,7 +28,6 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/ExampleResources>
 
-#include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/ImageOverlayEditor>

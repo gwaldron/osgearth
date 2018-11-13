@@ -197,21 +197,6 @@ namespace
 
 //.........................................................
 
-ImageToFeatureLayer::ImageToFeatureLayer() :
-FeatureSourceLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-ImageToFeatureLayer::ImageToFeatureLayer(const ImageToFeatureLayerOptions& inOptions) :
-FeatureSourceLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(inOptions)
-{
-    init();
-}
-
 void
 ImageToFeatureLayer::init()
 {

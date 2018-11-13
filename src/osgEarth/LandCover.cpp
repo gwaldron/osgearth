@@ -133,21 +133,6 @@ LandCoverDictionaryOptions::loadFromXML(const URI& uri)
     }
 }
 
-LandCoverDictionary::LandCoverDictionary() :
-Layer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-LandCoverDictionary::LandCoverDictionary(const LandCoverDictionaryOptions& options) :
-Layer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 LandCoverDictionary::addClass(const std::string& name, int value)
 {
@@ -304,19 +289,3 @@ LandCoverCoverageLayerOptions::map(int value, const std::string& lcClass)
 {
     mappings().push_back(new LandCoverValueMapping(value, lcClass));
 }
-
-LandCoverCoverageLayer::LandCoverCoverageLayer() :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-LandCoverCoverageLayer::LandCoverCoverageLayer(const LandCoverCoverageLayerOptions& options) :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-

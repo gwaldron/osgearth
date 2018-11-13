@@ -86,13 +86,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT ImageToFeatureLayer : public FeatureSourceLayer
     {
     public:
-        META_Layer(osgEarth, ImageToFeatureLayer, ImageToFeatureLayerOptions, image_to_feature);
-
-        //! Create an empty layer
-        ImageToFeatureLayer();
-
-        //! Create a new layer with initialization options
-        ImageToFeatureLayer(const ImageToFeatureLayerOptions& options);
+        META_Layer(osgEarth, ImageToFeatureLayer, ImageToFeatureLayerOptions, FeatureSourceLayer, image_to_feature);
 
         //! Image layer to use to convert raster data to features
         void setImageLayer(ImageLayer* layer);

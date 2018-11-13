@@ -23,6 +23,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/URI>
+#include <osgEarth/TerrainResources>
 #include <osgEarthUtil/Ocean>
 #include <osgEarthSymbology/Color>
 
@@ -111,13 +112,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions, simple_ocean);
-
-        /** Constructs a new ocean layer */
-        SimpleOceanLayer();
-
-        /** Constructs a new layer from an options structure. */
-        SimpleOceanLayer(const SimpleOceanLayerOptions& options);
+        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions, VisibleLayer, simple_ocean);
 
     public:
 

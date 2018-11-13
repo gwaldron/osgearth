@@ -78,13 +78,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions, splat_imagery);
-
-        //! Construct a splat layer with default configuration
-        SplatLayer();
-        
-        //! Construct a splat layer with configuration options
-        SplatLayer(const SplatLayerOptions& options);
+        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions, VisibleLayer, splat_imagery);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);

@@ -186,22 +186,6 @@ UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const St
 
 //---------------------------------------------------------------------------
 
-
-UTMGraticule::UTMGraticule() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-UTMGraticule::UTMGraticule(const UTMGraticuleOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 UTMGraticule::dirty()
 {

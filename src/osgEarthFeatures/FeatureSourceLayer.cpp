@@ -31,28 +31,6 @@ namespace osgEarth {
     }
 }
 
-FeatureSourceLayer::FeatureSourceLayer() :
-Layer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-FeatureSourceLayer::FeatureSourceLayer(const FeatureSourceLayerOptions& inOptions) :
-Layer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(inOptions)
-{
-    init();
-}
-
-FeatureSourceLayer::FeatureSourceLayer(FeatureSourceLayerOptions* optionsPtr) :
-Layer(optionsPtr? optionsPtr : &_optionsConcrete),
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
-{
-    // init() will be called by base class
-}
-
 void
 FeatureSourceLayer::setFeatureSource(FeatureSource* value)
 {

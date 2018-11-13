@@ -182,15 +182,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions, terrain);
+        META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions, VisibleLayer, terrain);
 
     protected:
-        //! Construct from subclass with a pointer to the concerete options structure.
-        TerrainLayer(TerrainLayerOptions* =0L);
-
-        //! Construct from subclass with pointer to concrete options and premade tile source
-        TerrainLayer(TerrainLayerOptions*, TileSource*);
-
         //! DTOR
         virtual ~TerrainLayer();
 
@@ -209,6 +203,9 @@ namespace osgEarth
          * Gets the profile of this layer
          */
         const Profile* getProfile() const;
+
+        //! Install a tile source instance.
+        void setTileSource(TileSource* tileSource);
 
         /**
          * Gets the underlying TileSource engine that serves this map layer. Use with caution.

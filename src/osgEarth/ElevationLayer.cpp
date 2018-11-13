@@ -151,44 +151,6 @@ namespace
 
 //------------------------------------------------------------------------
 
-ElevationLayer::ElevationLayer() :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-ElevationLayer::ElevationLayer(const ElevationLayerOptions& options) :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-ElevationLayer::ElevationLayer(const std::string& name, const TileSourceOptions& driverOptions) :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(name, driverOptions)
-{
-    init();
-}
-
-ElevationLayer::ElevationLayer(const ElevationLayerOptions& options, TileSource* tileSource) :
-TerrainLayer(&_optionsConcrete, tileSource),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-ElevationLayer::ElevationLayer(ElevationLayerOptions* optionsPtr) :
-TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
-{
-    //init(); // will be called by subclass.
-}
-
 void
 ElevationLayer::init()
 {

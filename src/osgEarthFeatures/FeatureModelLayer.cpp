@@ -63,21 +63,6 @@ void FeatureModelLayerOptions::mergeConfig(const Config& conf)
 
 //...........................................................................
 
-FeatureModelLayer::FeatureModelLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-FeatureModelLayer::FeatureModelLayer(const FeatureModelLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 FeatureModelLayer::~FeatureModelLayer()
 {
     //NOP

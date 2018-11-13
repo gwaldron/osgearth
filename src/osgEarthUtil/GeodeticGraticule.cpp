@@ -115,22 +115,6 @@ namespace
 #define COLOR_UNIFORM "oe_GeodeticGraticule_color"
 #define WIDTH_UNIFORM "oe_GeodeticGraticule_lineWidth"
 
-
-GeodeticGraticule::GeodeticGraticule() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-GeodeticGraticule::GeodeticGraticule(const GeodeticGraticuleOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 GeodeticGraticule::dirty()
 {

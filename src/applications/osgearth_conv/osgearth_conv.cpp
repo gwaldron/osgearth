@@ -336,7 +336,8 @@ main(int argc, char** argv)
 
     if (heightFields)
     {
-        ElevationLayer* layer = new ElevationLayer(ElevationLayerOptions(), input.get());
+        ElevationLayer* layer = new ElevationLayer();
+        layer->setTileSource(input.get());
         Status layerStatus = layer->open();
         if (layerStatus.isError())
         {
@@ -353,7 +354,8 @@ main(int argc, char** argv)
 
     else // image layers
     {
-        ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
+        ImageLayer* layer = new ImageLayer();
+        layer->setTileSource(input.get());
         Status layerStatus = layer->open();
         if (layerStatus.isError())
         {

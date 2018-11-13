@@ -102,15 +102,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
     public:
-        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions, road_surface);
-
-        //! Create a blank layer to be configured with options()
-        RoadSurfaceLayer();
-
-        //! Create a layer from deserialized options
-        RoadSurfaceLayer(const RoadSurfaceLayerOptions& options);
-
-    public:
+        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions, osgEarth::ImageLayer, road_surface);
 
         //! Sets the map layer from which to pull feature data. Call either
         //! This or setFeatureSource

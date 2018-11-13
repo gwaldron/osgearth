@@ -112,7 +112,9 @@ void addImagery(Map* map)
     // add a TMS imagery layer:
     TMSOptions imagery;
     imagery.url() = IMAGERY_URL;
-    map->addLayer( new ImageLayer("ReadyMap imagery", imagery) );
+    ImageLayer* layer = new ImageLayer(imagery);
+    layer->setName("ReadyMap imagery");
+    map->addLayer(layer);
 }
 
 
@@ -121,7 +123,9 @@ void addElevation(Map* map)
     // add a TMS elevation layer:
     TMSOptions elevation;
     elevation.url() = ELEVATION_URL;
-    map->addLayer( new ElevationLayer("ReadyMap elevation", elevation) );
+    ElevationLayer* layer = new ElevationLayer(elevation);
+    layer->setName("ReadyMap elevation");
+    map->addLayer(layer);
 }
 
 

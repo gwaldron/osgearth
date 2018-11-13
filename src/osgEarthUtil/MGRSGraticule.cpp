@@ -294,21 +294,6 @@ namespace
 
 //---------------------------------------------------------------------------
 
-MGRSGraticule::MGRSGraticule() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-MGRSGraticule::MGRSGraticule(const MGRSGraticuleOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 MGRSGraticule::dirty()
 {

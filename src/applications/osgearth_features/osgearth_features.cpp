@@ -144,7 +144,7 @@ int main(int argc, char** argv)
         rasterOptions.featureOptions() = featureData;
         rasterOptions.styles() = new StyleSheet();
         rasterOptions.styles()->addStyle( style );
-        map->addLayer(new ImageLayer("My Features", rasterOptions) );
+        map->addLayer(new ImageLayer(rasterOptions) );
     }
 
     else //if (useGeom)

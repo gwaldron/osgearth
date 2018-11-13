@@ -83,39 +83,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
-    public:
-        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions, elevation);
-
-        /**
-         * Constructs a blank Elevation Layer;
-         * Use options() to set up before calling open or adding to a Map.
-         */
-        ElevationLayer();
-
-        /**
-         * Constructs a new elevation layer with the specified options. It expects
-         * the layer options to contain a reference to the neccesary driver options.
-         */
-        ElevationLayer( const ElevationLayerOptions& options );
-
-        /**
-         * Constructs a new elevation layer with the specific name and driver options.
-         * The layer will load its driver by using the tilesource options.
-         */
-        ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions );
-
-        /**
-         * Constructs a new elevation layer with the specified layer options and with a custom
-         * TileSource instance created by the user.
-         *
-         * Note: the ElevationLayerOptions contains a driver() member for configuring a 
-         * TileSource. But in this constructor, you are passing in an existing TileSource,
-         * and thus the driver() member in ElevationLayerOptions will not be used.
-         */
-        ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
-
-        /** dtor */
-        virtual ~ElevationLayer() { }
+        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions, TerrainLayer, elevation);
 
     public: // methods
         
@@ -147,10 +115,9 @@ namespace osgEarth
 
         virtual void init();
 
-    protected:
-
-        // ctor called by a subclass that owns the options structure
-        ElevationLayer(ElevationLayerOptions* optionsPtr);
+    protected:        
+        
+        virtual ~ElevationLayer() { }
 
         //! Subclass can override this by calling setTileSourceExpected(false).
         //! You can create your own normal map, but usually ElevationLayer

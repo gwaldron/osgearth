@@ -61,21 +61,6 @@ FeatureMaskLayerOptions::getConfig() const
 
 //........................................................................
 
-FeatureMaskLayer::FeatureMaskLayer(const FeatureMaskLayerOptions& options) :
-MaskLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-FeatureMaskLayer::FeatureMaskLayer(FeatureMaskLayerOptions* optionsPtr) :
-MaskLayer(optionsPtr),
-_options(optionsPtr)
-{
-    //nop - init called from base class
-}
-
 FeatureMaskLayer::~FeatureMaskLayer()
 {
     //nop

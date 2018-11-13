@@ -71,19 +71,7 @@ VideoLayerOptions::mergeConfig( const Config& conf )
     fromConfig( conf );
 }
 
-
-VideoLayer::VideoLayer()
-{
-    init();
-}
-
-VideoLayer::VideoLayer( const VideoLayerOptions& options ):
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{    
-    init();    
-}
+//-------------------------------------------------------------
 
 void
 VideoLayer::init()

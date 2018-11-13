@@ -38,23 +38,6 @@ using namespace osgEarth::Util;
 REGISTER_OSGEARTH_LAYER(ocean, SimpleOceanLayer);
 REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
-
-
-SimpleOceanLayer::SimpleOceanLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 SimpleOceanLayer::init()
 {

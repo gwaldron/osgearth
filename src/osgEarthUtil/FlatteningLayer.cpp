@@ -614,23 +614,15 @@ namespace
 
 //........................................................................
 
-
-FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
-ElevationLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    // Experiment with this and see what will work.
-    _pool = new ElevationPool();
-    _pool->setTileSize(257u);
-
-    init();
-}
-
 void
 FlatteningLayer::init()
 {
     setTileSourceExpected(false);
+
+    // Experiment with this and see what will work.
+    _pool = new ElevationPool();
+    _pool->setTileSize(257u);
+
     ElevationLayer::init();
 }
 

@@ -66,7 +66,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT MaskLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, MaskLayer, MaskLayerOptions, mask);
+        META_Layer(osgEarth, MaskLayer, MaskLayerOptions, Layer, mask);
 
         /**
          * Minimum terrain LOD at which masking should occur
@@ -83,9 +83,6 @@ namespace osgEarth
             ProgressCallback*       progress) { return 0L; }
 
     protected:
-
-        /** Create from subclass. */
-        MaskLayer(MaskLayerOptions* =0L);
 
         /** dtor */
         virtual ~MaskLayer() { }

@@ -35,21 +35,6 @@ using namespace osgEarth::Symbology;
 
 REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
 
-RoadSurfaceLayer::RoadSurfaceLayer() :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-RoadSurfaceLayer::RoadSurfaceLayer(const RoadSurfaceLayerOptions& options) :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 RoadSurfaceLayer::init()
 {

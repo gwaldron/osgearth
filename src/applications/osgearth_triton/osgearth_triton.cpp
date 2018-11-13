@@ -125,7 +125,8 @@ struct App
         }
 
 
-        tritonLayer = new TritonLayer(tritonOptions, new TritonCallback(settings));
+        tritonLayer = new TritonLayer(tritonOptions);
+        tritonLayer->setUserCallback(new TritonCallback(settings));
         map->addLayer(tritonLayer);
         settings.tritonLayer = tritonLayer;
     }

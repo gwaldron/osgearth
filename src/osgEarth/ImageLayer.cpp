@@ -279,44 +279,6 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 
 //------------------------------------------------------------------------
 
-ImageLayer::ImageLayer() :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-ImageLayer::ImageLayer(const ImageLayerOptions& options) :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-ImageLayer::ImageLayer(const std::string& name, const TileSourceOptions& tileSourceOptions) :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(name, tileSourceOptions)
-{
-    init();
-}
-
-ImageLayer::ImageLayer(const ImageLayerOptions& options, TileSource* tileSource) :
-TerrainLayer(&_optionsConcrete, tileSource),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-ImageLayer::ImageLayer(ImageLayerOptions* optionsPtr) :
-TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
-{
-    //init(); // will be called by subclass.
-}
-
 const Status&
 ImageLayer::open()
 {

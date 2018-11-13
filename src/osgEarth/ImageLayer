@@ -198,32 +198,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
     {
     public:
-        META_Layer(osgEarth, ImageLayer, ImageLayerOptions, image);
-
-        /**
-         * Construct a new ImageLayer. Use the options() to configure it
-         * before adding it to a Map.
-         */
-        ImageLayer();
-
-        /**
-         * Constructs a new image layer.
-         */
-        ImageLayer(const ImageLayerOptions& options);
-
-        /**
-         * Constructs a new image layer with the given name and driver options.
-         */
-        ImageLayer(const std::string& name, const TileSourceOptions& tileSourceOptions);
-
-        /**
-         * Constructs a new image layer with a custom TileSource.
-         *
-         * Note: the ImageLayerOptions contains a driver() member for configuring a 
-         * TileSource. But in this constructor, you are passing in an existing TileSource,
-         * and thus the driver() member in ImageLayerOptions will not be used.
-         */
-        ImageLayer(const ImageLayerOptions& options, TileSource* tileSource);
+        META_Layer(osgEarth, ImageLayer, ImageLayerOptions, TerrainLayer, image);
 
     public:
 
@@ -336,9 +311,6 @@ namespace osgEarth
 
         /** dtor */
         virtual ~ImageLayer() { }
-
-        // Constructor for a subclass that owns the layer options structure
-        ImageLayer(ImageLayerOptions* optionsPtr);
 
         //! Configure the layer to create textures via createTexture instead of
         //! using a createImage driver

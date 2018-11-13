@@ -56,12 +56,12 @@ main(int argc, char** argv)
     // add a TMS imagery layer:
     TMSOptions imagery;
     imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/22/";
-    map->addLayer( new ImageLayer("ReadyMap Imagery", imagery) );
+    map->addLayer( new ImageLayer(imagery) );
 
     // add a TMS elevation layer:
     TMSOptions elevation;
     elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/116/";
-    map->addLayer( new ElevationLayer("ReadyMap Elevation", elevation) );
+    map->addLayer( new ElevationLayer(elevation) );
    
     // Load command line arguments as videos.
     for(int pos=1;pos<arguments.argc();++pos)

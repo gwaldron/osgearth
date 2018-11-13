@@ -86,13 +86,6 @@ VisibleLayerOptions::mergeConfig(const Config& conf)
 
 //........................................................................
 
-VisibleLayer::VisibleLayer(VisibleLayerOptions* optionsPtr) :
-Layer(optionsPtr ? optionsPtr : &_optionsConcrete),
-_options(optionsPtr ? optionsPtr : &_optionsConcrete)
-{
-    //nop
-}
-
 VisibleLayer::~VisibleLayer()
 {
     //nop

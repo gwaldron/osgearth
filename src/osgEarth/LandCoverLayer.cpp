@@ -463,22 +463,6 @@ LandCoverLayerOptions::getConfig() const
 #undef  LC
 #define LC "[LandCoverLayer] "
 
-
-LandCoverLayer::LandCoverLayer() :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-LandCoverLayer::LandCoverLayer(const LandCoverLayerOptions& options) :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 LandCoverLayer::init()
 {

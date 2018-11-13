@@ -39,6 +39,9 @@
 // text inlining macro
 #define OE_MULTILINE(...) #__VA_ARGS__
 
+// expandable comment for macros
+#define OE_COMMENT(STR) /* ## * #STR * ## /
+
 /** osgEarth core */
 namespace osgEarth
 {

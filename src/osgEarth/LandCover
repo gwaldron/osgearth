@@ -106,13 +106,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverDictionary : public Layer
     {
     public:
-        META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions, land_cover_dictionary);
-
-        //! Constructs an empty dictionary */
-        LandCoverDictionary();
-
-        //! Constructs a dictionary from serializable options. */
-        LandCoverDictionary(const LandCoverDictionaryOptions&);
+        META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions, Layer, land_cover_dictionary);
 
         //! Add a class.
         void addClass(const std::string& name, int value =INT_MAX);
@@ -220,13 +214,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverCoverageLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, LandCoverCoverageLayer, LandCoverCoverageLayerOptions, coverage);
-
-        /** Construct an empty land cover coverage layer. */
-        LandCoverCoverageLayer();
-
-        /** Deserialize a land cover coverage layer. */
-        LandCoverCoverageLayer(const LandCoverCoverageLayerOptions& options);
+        META_Layer(osgEarth, LandCoverCoverageLayer, LandCoverCoverageLayerOptions, ImageLayer, coverage);
 
         //! Code mappings.
         LandCoverValueMappingVector& getMappings() { return options().mappings(); }

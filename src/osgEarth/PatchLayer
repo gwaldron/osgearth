@@ -40,7 +40,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT PatchLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, PatchLayer, PatchLayerOptions, patch);
+        META_Layer(osgEarth, PatchLayer, PatchLayerOptions, VisibleLayer, patch);
 
         struct TileData : public osg::Referenced
         {
@@ -81,7 +81,6 @@ namespace osgEarth
 
 
     public:
-        PatchLayer();
 
         /**
          * Draw callback to use to render tiles in this layer
@@ -99,9 +98,6 @@ namespace osgEarth
         TileData* createTileData(const TileKey& key) { return 0L; }
 
     protected:
-
-        //! Subclass constructor
-        PatchLayer(PatchLayerOptions* options);
 
         /** dtor */
         virtual ~PatchLayer() { }

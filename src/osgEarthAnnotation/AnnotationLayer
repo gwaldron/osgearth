@@ -63,13 +63,7 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT AnnotationLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthAnnotation, AnnotationLayer, AnnotationLayerOptions, annotations);
-
-        //! Construct a default layer
-        AnnotationLayer();
-
-        //! Construct a layer with custom options
-        AnnotationLayer(const AnnotationLayerOptions& options);
+        META_Layer(osgEarthAnnotation, AnnotationLayer, AnnotationLayerOptions, VisibleLayer, annotations);
 
         //! Gets the group to which you can add annotations
         osg::Group* getGroup() const;

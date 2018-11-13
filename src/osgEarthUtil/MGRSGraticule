@@ -89,19 +89,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MGRSGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions, mgrs_graticule);
-
-        //! Constructs a default graticule
-        MGRSGraticule();
-
-        /**
-         * Constructs a new graticule for use with the specified map.
-         *
-         * @param options
-         *      Optional "options" that configure the graticule. Defaults will be used
-         *      if you don't specify this.
-         */
-        MGRSGraticule(const MGRSGraticuleOptions& options);
+        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions, VisibleLayer, mgrs_graticule);
 
         /**
          * If you change any of the options, call this to refresh the display

@@ -296,22 +296,6 @@ namespace
 
 REGISTER_OSGEARTH_LAYER(gars_graticule, GARSGraticule);
 
-
-GARSGraticule::GARSGraticule() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-GARSGraticule::GARSGraticule(const GARSGraticuleOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 GARSGraticule::dirty()
 {

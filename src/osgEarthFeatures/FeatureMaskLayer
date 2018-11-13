@@ -65,12 +65,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureMaskLayer : public MaskLayer
     {
     public:
-        META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions, feature_mask);
-
-        /**
-         * Constructs a new mask layer based on a configuration setup.
-         */
-        FeatureMaskLayer(const FeatureMaskLayerOptions& options =FeatureMaskLayerOptions());
+        META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions, MaskLayer, feature_mask);
 
         /** The feature source layer from which to get boundary features */
         void setFeatureSourceLayer(FeatureSourceLayer* layer);
@@ -100,9 +95,6 @@ namespace osgEarth { namespace Features
         virtual void removedFromMap(const Map*);
 
     protected:
-
-        /** Create from subclass. */
-        FeatureMaskLayer(FeatureMaskLayerOptions*);
 
         /** dtor */
         virtual ~FeatureMaskLayer();

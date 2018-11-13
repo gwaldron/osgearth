@@ -20,6 +20,7 @@
 #include "TritonContext"
 #include "TritonDrawable"
 #include "TritonHeightMap"
+#include "TritonCallback"
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
@@ -37,10 +38,10 @@ namespace
     class TritonLayerNode : public osg::Group
     {
     public:
-        TritonLayerNode(const TritonLayerOptions& options, Callback* callback, osgEarth::Triton::TritonLayer* layer) :
+        TritonLayerNode(const TritonLayerOptions& options,osgEarth::Triton::TritonLayer* layer) :
             _options(options),
             _tritonLayer(layer),
-            _callback(callback),
+            _callback(0L),
             _needsMapNode(true)
         {
             // Triton requires a constant update traversal.
@@ -62,6 +63,11 @@ namespace
                     releaser->push(_TRITON.get());
                 }
             }
+        }
+
+        void setUserCallback(osgEarth::Triton::Callback* callback)
+        {
+            _callback = callback;
         }
 
         /** Layer to use to mask the rendering of the ocean surface */
@@ -183,24 +189,6 @@ namespace osgEarth { namespace Triton
     REGISTER_OSGEARTH_LAYER(triton_ocean, TritonLayer);
 } }
 
-
-TritonLayer::TritonLayer(Callback* userCallback) :
-osgEarth::VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_callback(userCallback)
-{
-    init();
-}
-
-TritonLayer::TritonLayer(const TritonLayerOptions& options, Callback* userCallback) :
-osgEarth::VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options),
-_callback(userCallback)
-{
-    init();
-}
-
 void
 TritonLayer::init()
 {
@@ -228,10 +216,15 @@ TritonLayer::init()
         lod->setMaxElevation(options().maxAltitude().get());
     }
 
-    _tritonNode = new TritonLayerNode(options(), _callback.get(), this);
+    _tritonNode = new TritonLayerNode(options(), this);
     _root->addChild(_tritonNode.get());
 }
 
+void
+TritonLayer::setUserCallback(Callback* callback)
+{
+    static_cast<TritonLayerNode*>(_tritonNode.get())->setUserCallback(callback);
+}
 
 osg::Node*
 TritonLayer::getNode() const

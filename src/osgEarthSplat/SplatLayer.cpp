@@ -126,21 +126,6 @@ SplatLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) cons
 
 //........................................................................
 
-SplatLayer::SplatLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-SplatLayer::SplatLayer(const SplatLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 SplatLayer::init()
 {

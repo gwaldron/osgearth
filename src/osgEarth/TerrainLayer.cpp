@@ -234,25 +234,6 @@ TerrainLayer::CacheBinMetadata::getConfig() const
 
 //------------------------------------------------------------------------
 
-TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr) :
-VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
-_options(optionsPtr ? optionsPtr : &_optionsConcrete),
-_openCalled(false),
-_tileSourceExpected(true)
-{
-    //nop - init() called by subclass
-}
-
-TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr, TileSource* tileSource) :
-VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
-_options(optionsPtr ? optionsPtr : &_optionsConcrete),
-_tileSource(tileSource),
-_openCalled(false),
-_tileSourceExpected(true)
-{
-    //nop - init() called by subclass
-}
-
 TerrainLayer::~TerrainLayer()
 {
     //nop
@@ -262,6 +243,9 @@ void
 TerrainLayer::init()
 {
     Layer::init();
+
+    _openCalled = false;
+    _tileSourceExpected = true;
 
     // intiailize our read-options, which store caching and IO information.
     setReadOptions(0L);
@@ -444,6 +428,18 @@ TerrainLayer::refreshTileSourceCachePolicyHint(TileSource* ts)
             OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
         }
     }
+}
+
+void
+TerrainLayer::setTileSource(TileSource* value)
+{
+    if (_openCalled)
+    {
+        OE_WARN << LC << "Illegal: cannot call setTileSource after Layer is open" << std::endl;
+        return;
+    }
+    _tileSource = value;
+    setTileSourceExpected(true);    
 }
 
 TileSource*

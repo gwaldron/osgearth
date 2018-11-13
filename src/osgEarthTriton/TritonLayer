@@ -29,7 +29,6 @@
 
 namespace osgEarth { namespace Triton
 {
-
     /**
      * Serializable options for initializing the TritonLayer.
      */
@@ -132,16 +131,15 @@ namespace osgEarth { namespace Triton
     class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::VisibleLayer
     {
     public:
-        META_Layer(osgEarth, TritonLayer, TritonLayerOptions, triton);
+        META_Layer(osgEarth, TritonLayer, TritonLayerOptions, osgEarth::VisibleLayer, triton);
 
-        explicit TritonLayer(Callback* userCallback =0L);
+        //! Sets the user callback that's invoked when Triton start up
+        void setUserCallback(Triton::Callback* callback);
 
-        TritonLayer(const TritonLayerOptions& options, Callback* userCallback =0L);
-
-        /** Masking layer for the ocean */
+        //! Masking layer for the ocean
         void setMaskLayer(const osgEarth::ImageLayer* maskLayer);
 
-        /** Maximum visibility altitude */
+        //! Maximum visibility altitude
         void setMaxAltitude(float alt);
         float getMaxAltitude() const;
 
@@ -161,7 +159,6 @@ namespace osgEarth { namespace Triton
 
         osg::ref_ptr<osg::Group> _root;
         osg::ref_ptr<osg::Node> _tritonNode;
-        osg::ref_ptr<Callback> _callback;
         float _seaLevel;
         float _opacity;
 

@@ -107,13 +107,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FractalElevationLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, FractalElevationLayer, FractalElevationLayerOptions, fractal_elevation);
-
-        //! Create a blank layer to be configurated through options().
-        FractalElevationLayer();
-
-        //! Create a layer with initial options.
-        FractalElevationLayer(const FractalElevationLayerOptions& options);
+        META_Layer(osgEarth, FractalElevationLayer, FractalElevationLayerOptions, ElevationLayer, fractal_elevation);
 
     public: // ElevationLayer
 

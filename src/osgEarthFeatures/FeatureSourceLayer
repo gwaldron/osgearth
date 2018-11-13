@@ -57,18 +57,8 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions, feature_source);
+        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions, Layer, feature_source);
 
-        /**
-         * Construct an empty feature source layer.
-         * Call setFeatureSource or configure with options() before adding to a Map.
-         */
-        FeatureSourceLayer();
-
-        /**
-         * Construct a feature source layer with initialization options.
-         */
-        FeatureSourceLayer(const FeatureSourceLayerOptions& options);
 
         /**
          * The underlying feature source.
@@ -87,9 +77,6 @@ namespace osgEarth { namespace Features
 
     protected:
         osg::ref_ptr<FeatureSource> _featureSource;
-
-        // constructor for subclasses
-        FeatureSourceLayer(FeatureSourceLayerOptions* options);
     };
 
 

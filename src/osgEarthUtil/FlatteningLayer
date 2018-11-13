@@ -164,10 +164,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions, flattened_elevation);
-
-        // Create a layer with initial options.
-        FlatteningLayer(const FlatteningLayerOptions& options = FlatteningLayerOptions());
+        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions, ElevationLayer, flattened_elevation);
 
         // Feature source layer to get a FeatureSource from
         void setFeatureSourceLayer(FeatureSourceLayer* layer);    

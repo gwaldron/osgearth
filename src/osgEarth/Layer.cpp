@@ -18,8 +18,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Layer>
+#include <osgEarth/Cache>
 #include <osgEarth/Registry>
+#include <osgEarth/SceneGraphCallback>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/TileKey>
+#include <osg/StateSet>
 
 using namespace osgEarth;
 
@@ -168,6 +172,12 @@ Layer::setReadOptions(const osgDB::Options* readOptions)
     _cacheSettings->store(_readOptions.get());
 }
 
+const osgDB::Options*
+Layer::getReadOptions() const
+{
+    return _readOptions.get();
+}
+
 std::string
 Layer::getCacheID() const
 {
@@ -256,6 +266,12 @@ void
 Layer::close()
 {
     setStatus(Status::OK());
+}
+
+const Status&
+Layer::getStatus() const
+{
+    return _status;
 }
 
 void

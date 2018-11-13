@@ -110,18 +110,18 @@ main(int argc, char** argv)
     // add a TMS imagery layer:
     TMSOptions imagery;
     imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/7/";
-    map->addLayer( new ImageLayer("ReadyMap Imagery", imagery) );
+    map->addLayer( new ImageLayer(imagery) );
 
     // add a TMS elevation layer:
     TMSOptions elevation;
     elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/116/";
-    map->addLayer( new ElevationLayer("ReadyMap Elevation", elevation) );
+    map->addLayer( new ElevationLayer(elevation) );
 
     // add a semi-transparent XYZ layer:
     XYZOptions xyz;
     xyz.url() = "http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png";
     xyz.profile()->namedProfile() = "spherical-mercator";
-    ImageLayer* imageLayer = new ImageLayer("OSM", xyz);
+    ImageLayer* imageLayer = new ImageLayer(xyz);
     imageLayer->setOpacity(0.5f);
     map->addLayer(imageLayer);
 
@@ -133,7 +133,7 @@ main(int argc, char** argv)
     // add a local GeoTIFF inset layer:
     GDALOptions gdal;
     gdal.url() = "../data/boston-inset.tif";
-    map->addLayer(new ImageLayer("Boston", gdal));
+    map->addLayer(new ImageLayer(gdal));
 
     // add a WMS radar layer with transparency, and disable caching since
     // this layer updates on the server periodically.
@@ -152,7 +152,7 @@ main(int argc, char** argv)
     osg.url() = "../data/osgearth.gif";
     osg.profile()->srsString() = "wgs84";
     osg.profile()->bounds()->set(-90.0, 10.0, -80.0, 15.0);
-    map->addLayer(new ImageLayer("Simple image", osg));
+    map->addLayer(new ImageLayer(osg));
 
     // create a composite image layer that combines two other sources:
     GDALOptions c1;
@@ -164,9 +164,7 @@ main(int argc, char** argv)
     CompositeTileSourceOptions composite;
     composite.add(ImageLayerOptions(c1));
     composite.add(ImageLayerOptions(c2));
-
-    ImageLayerOptions compLayerOptions("My Composite Layer", composite);
-    map->addLayer(new ImageLayer(compLayerOptions));
+    map->addLayer(new ImageLayer(composite));
 
     // mask layer
     OGRFeatureOptions maskOptions;
@@ -179,7 +177,6 @@ main(int argc, char** argv)
     maskOptions.geometry()->push_back(osg::Vec3d(-114.0417, 41.9937, 0));
     maskOptions.profile() = ProfileOptions("global-geodetic");
     FeatureMaskLayerOptions maskLayerOptions;
-    maskLayerOptions.name() = "Mask layer";
     maskLayerOptions.featureSource() = maskOptions;
     map->addLayer(new FeatureMaskLayer(maskLayerOptions));
 
@@ -195,7 +192,9 @@ main(int argc, char** argv)
         xform->setPosition(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
         xform->addChild(pat);
 
-        map->addLayer(new ModelLayer("Model", xform));
+        ModelLayer* layer = new ModelLayer();
+        layer->setNode(xform);
+        map->addLayer(layer);
     }
 
     // make the map scene graph:

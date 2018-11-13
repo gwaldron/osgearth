@@ -29,6 +29,7 @@
 #include <osgEarth/Lighting>
 #include <osgEarth/GLUtils>
 #include <osgEarth/HorizonClipPlane>
+#include <osgEarth/SceneGraphCallback>
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth;
@@ -99,10 +100,6 @@ namespace
             {
                 _layer->apply(_layer->getNode(), nv);
             }
-            //if (_layer->getCullCallback() && _layer->getNode())
-            //{
-            //    _layer->apply(_layer->getNode(), nv);
-            //}
             else
             {
                 traverse(node, nv);

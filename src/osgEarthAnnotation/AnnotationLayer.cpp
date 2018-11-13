@@ -24,22 +24,6 @@ using namespace osgEarth::Annotation;
 
 REGISTER_OSGEARTH_LAYER(annotations, AnnotationLayer);
 
-
-AnnotationLayer::AnnotationLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-AnnotationLayer::AnnotationLayer(const AnnotationLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 AnnotationLayer::init()
 {

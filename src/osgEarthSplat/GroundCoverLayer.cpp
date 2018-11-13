@@ -160,21 +160,6 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
 
 //........................................................................
 
-GroundCoverLayer::GroundCoverLayer() :
-PatchLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-GroundCoverLayer::GroundCoverLayer(const GroundCoverLayerOptions& options) :
-PatchLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 GroundCoverLayer::init()
 {

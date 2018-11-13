@@ -56,21 +56,6 @@ MultiElevationLayerOptions::getConfig() const
 
 //............................................................................
 
-MultiElevationLayer::MultiElevationLayer() :
-ElevationLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-MultiElevationLayer::MultiElevationLayer(const MultiElevationLayerOptions& options) :
-ElevationLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 MultiElevationLayer::~MultiElevationLayer()
 {
     //todo

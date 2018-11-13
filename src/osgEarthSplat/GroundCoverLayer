@@ -94,13 +94,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public PatchLayer
     {
     public:
-        META_Layer(osgEarthSplat, GroundCoverLayer, GroundCoverLayerOptions, splat_groundcover);
-
-        //! Construct a layer with default configuration
-        GroundCoverLayer();
-        
-        //! Construct a layer with configuration options
-        GroundCoverLayer(const GroundCoverLayerOptions& options);
+        META_Layer(osgEarthSplat, GroundCoverLayer, GroundCoverLayerOptions, PatchLayer, splat_groundcover);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);

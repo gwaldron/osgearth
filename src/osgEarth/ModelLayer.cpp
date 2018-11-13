@@ -101,52 +101,6 @@ ModelLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
-ModelLayer::ModelLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-ModelLayer::ModelLayer(const ModelLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-ModelLayer::ModelLayer(const std::string& name, const ModelSourceOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(ModelLayerOptions(name, options))
-{
-    init();
-}
-
-ModelLayer::ModelLayer(const ModelLayerOptions& options, ModelSource* source) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options),
-_modelSource( source )
-{
-    init();
-}
-
-ModelLayer::ModelLayer(const std::string& name, osg::Node* node) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(ModelLayerOptions())
-{
-    options().name() = name;
-    init();
-    if (node)
-    {
-        _root->addChild(node);
-        setStatus(Status::OK());
-    }
-}
-
 ModelLayer::~ModelLayer()
 {
     //nop
@@ -255,7 +209,7 @@ ModelLayer::addedToMap(const Map* map)
         {
             if ( options().lightingEnabled().isSet() )
             {
-                setLightingEnabledNoLock( options().lightingEnabled().get() );
+                setLightingEnabled( options().lightingEnabled().get() );
             }
 
             _modelSource->sync( _modelSourceRev );
@@ -301,6 +255,17 @@ ModelLayer::removedFromMap(const Map* map)
     }
 }
 
+void
+ModelLayer::setNode(osg::Node* node)
+{
+    _root->removeChildren(0, _root->getNumChildren());
+    if (node)
+    {
+        _root->addChild(node);
+        setStatus(Status::OK());
+    }
+}
+
 osg::Node*
 ModelLayer::getNode() const
 {
@@ -310,27 +275,12 @@ ModelLayer::getNode() const
 void
 ModelLayer::setLightingEnabled( bool value )
 {
-    Threading::ScopedMutexLock lock(_mutex);
-    setLightingEnabledNoLock( value );
-}
-
-void
-ModelLayer::setLightingEnabledNoLock(bool value)
-{
     options().lightingEnabled() = value;
 
-    for(Graphs::iterator i = _graphs.begin(); i != _graphs.end(); ++i)
-    {
-        if ( i->second.valid() )
-        {
-            osg::StateSet* stateset = i->second->getOrCreateStateSet();
-
-            GLUtils::setLighting(
-                stateset,
-                value ? osg::StateAttribute::ON : 
-                (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
-        }
-    }
+    GLUtils::setLighting(
+        _root->getOrCreateStateSet(),
+        value ? osg::StateAttribute::ON : 
+        (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
 }
 
 bool

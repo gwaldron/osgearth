@@ -108,21 +108,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT UTMGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, UTMGraticule, UTMGraticuleOptions, utm_graticule);
-
-        /**
-         * Construct a new UTM graticule with default settings.
-         */
-        UTMGraticule();
-
-        /**
-         * Constructs a new graticule for use with the specified map.
-         *
-         * @param options
-         *      Optional "options" that configure the graticule. Defaults will be used
-         *      if you don't specify this.
-         */
-        UTMGraticule(const UTMGraticuleOptions& options);
+        META_Layer(osgEarthUtil, UTMGraticule, UTMGraticuleOptions, VisibleLayer, utm_graticule);
 
         /**
          * If you change any of the options, call this to refresh the display

@@ -36,46 +36,36 @@ namespace osgEarth
 {
     class Map;
 
-    /**
-     * Configuration options for a ModelLayer.
-     */
+    //! Serializable options for a ModelLayer.
     class OSGEARTH_EXPORT ModelLayerOptions : public VisibleLayerOptions
     {
     public:        
         //! Construct a new, empty options structure
         ModelLayerOptions();
 
-        /** Construct or deserialize new model layer options. */
+        //! Construct or deserialize new model layer options.
         ModelLayerOptions(const ConfigOptions& options);
 
-        /** Construct or deserialize new model layer options. */
+        //! Construct or deserialize new model layer options.
         ModelLayerOptions(
             const std::string& name, 
             const ModelSourceOptions& driverOptions);
 
-        /**
-         * Options for the underlying model source driver.
-         */
+        //! Options for the underlying model source driver.
         optional<ModelSourceOptions>& driver() { return _driver; }
         const optional<ModelSourceOptions>& driver() const { return _driver; }
 
-        /**
-         * Whether to enable OpenGL lighting on the model node.
-         */
+        //! Whether to enable OpenGL lighting on the model node.
         optional<bool>& lightingEnabled() { return _lighting; }
         const optional<bool>& lightingEnabled() const { return _lighting; }
 
-        /**
-         * Masking options for cutting a hole in the terrain to accommodate this model.
-         * Note; the mask will NOT honor any visibility or opacity settings on the
-         * model layer.
-         */
+        //! Masking options for cutting a hole in the terrain to accommodate this model.
+        //! Note; the mask will NOT honor any visibility or opacity settings on the
+        //! model layer.
         optional<MaskSourceOptions>& mask() { return _maskOptions; }
         const optional<MaskSourceOptions>& mask() const { return _maskOptions; }
 
-        /**
-         * Minimum terrain LOD at which to apply the mask (if there if one)
-         */
+        //! Minimum terrain LOD at which to apply the mask (if there if one)
         optional<unsigned>& maskMinLevel() { return _maskMinLevel; }
         const optional<unsigned>& maskMinLevel() const { return _maskMinLevel; }
 
@@ -109,59 +99,26 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, ModelLayer, ModelLayerOptions, model);
-
-        /**
-         * Blank ModelLayer. Use options() to setup before calling open.
-         */
-        ModelLayer();
-
-        /**
-         * Constructs a new model layer.
-         */
-        ModelLayer(const ModelLayerOptions& options);
-
-        /**
-         * Constructs a new model layer with a user-provided driver options.
-         */
-        ModelLayer(const std::string& name, const ModelSourceOptions& options);
-        
-        /**
-         * Constructs a new model layer with a user-provided model source.
-         *
-         * Note: the ModelLayerOptions contains a driver() member for configuring a 
-         * TileSource. But in this constructor, you are passing in an existing TileSource,
-         * and thus the driver() member in ModelLayerOptions will not be used.
-         */
-        ModelLayer(const ModelLayerOptions& options, ModelSource* source );
-
-        /**
-         * Constructs a new model layer with a user provided name and an existing node
-         */
-        ModelLayer(const std::string& name, osg::Node* node);
-
+        META_Layer(osgEarth, ModelLayer, ModelLayerOptions, VisibleLayer, model);
 
     public:
 
-        /**
-         * Access the underlying model source.
-         */
+        //! Sets the node to add to the map's scene graph (optional)
+        void setNode(osg::Node* node);
+
+        //! @deprecated - subclass ModelLayer instead of using ModelSource plugins
+        //! Access the underlying model source.
         ModelSource* getModelSource() const { return _modelSource.get(); }
 
-        /**
-         * The underlying mask source, if one exists.
-         */
+        //! @deprecated - subclass ModelLayer and override getOrCreateMaskBoundary
+        //! Underlying mask source, if one exists.
         MaskSource* getMaskSource() const { return _maskSource.get(); }
 
-        /**
-         * The minimum terrain LOD at which to apply the mask.
-         */
+        //! Minimum terrain LOD at which to apply the mask.
         unsigned getMaskMinLevel() const { return options().maskMinLevel().get(); }
         
-        /**
-         * The boundary geometry for the mask.
-         */
-        osg::Vec3dArray* getOrCreateMaskBoundary(
+        //! Boundary geometry for the mask (if one exists)
+        virtual osg::Vec3dArray* getOrCreateMaskBoundary(
             float                   heightScale,
             const SpatialReference* srs,
             ProgressCallback*       progress);
@@ -189,11 +146,10 @@ namespace osgEarth
         //! Generate a cache ID for this layer
         virtual std::string getCacheID() const;
 
-    protected:
+    protected: // Layer
 
-        /** post-ctor initialization */
+        //! post-ctor initialization
         virtual void init();
-
 
     protected:
 
@@ -206,14 +162,9 @@ namespace osgEarth
         osg::ref_ptr<CacheSettings>   _cacheSettings;
         osg::ref_ptr<osg::Group>      _root;
 
-        typedef fast_map<UID, osg::ref_ptr<osg::Node> > Graphs;
-        Graphs _graphs;
-
         mutable Threading::Mutex _mutex; // general-purpose mutex.
 
         void fireCallback(ModelLayerCallback::MethodPtr method);
-
-        void setLightingEnabledNoLock(bool value);
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;

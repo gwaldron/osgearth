@@ -129,21 +129,6 @@ FractalElevationLayerOptions::getConfig() const
 
 //............................................................................
 
-FractalElevationLayer::FractalElevationLayer() :
-ElevationLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-FractalElevationLayer::FractalElevationLayer(const FractalElevationLayerOptions& options) :
-ElevationLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 FractalElevationLayer::~FractalElevationLayer()
 {
     //todo

@@ -205,13 +205,13 @@ SET(LIB_PUBLIC_HEADERS
     Units
     URI
     Utils
-    Version
     VerticalDatum
     VideoLayer
     Viewpoint
     VirtualProgram
     VisibleLayer
     XmlUtils
+    ${OSGEARTH_VERSION_HEADER}
 )
 
 

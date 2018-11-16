@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<map>
+  <version>2</version>
+  <options />
+  <image>
+    <driver>gdal</driver>
+    <url>../data/world.tif</url>
+    <name>World GeoTIFF</name>
+  </image>
+</map>

@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<map>
+  <version>2</version>
+  <options />
+  <image>
+    <driver>gdal</driver>
+    <url>../data/world.tif</url>
+    <name>World GeoTIFF</name>
+  </image>
+  <lod_blending>
+    <duration>1</duration>
+    <blend_imagery>true</blend_imagery>
+    <blend_elevation>true</blend_elevation>
+  </lod_blending>
+</map>

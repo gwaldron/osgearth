@@ -553,8 +553,11 @@ Map::openLayer(Layer* layer)
         terrainLayer->setTargetProfileHint(_profile.get());
     }
 
-    // Attempt to open the layer. Don't check the status here.
-    if (layer->open().isOK())
+    // Attempt to open the layer
+    layer->open();
+
+    // If it opened OK, tell the layer it is being added to the map.
+    if (layer->getStatus().isOK())
     {
         layer->addedToMap(this);
     }

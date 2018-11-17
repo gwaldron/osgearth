@@ -119,7 +119,7 @@ namespace osgEarth
             const Map*                      map,
             const TileKey&                  key,
             ElevationSamplePolicy           samplePolicy,
-            ElevationInterpolation          interpolation,
+            RasterInterpolation             interpolation,
             unsigned                        border,
             osg::ref_ptr<osg::HeightField>& out_hf,
             osg::ref_ptr<NormalMap>&        out_normalMap,

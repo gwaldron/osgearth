@@ -7,14 +7,16 @@ OSG geometry out of it.
 
 <map name="Feature Geometry Demo">
     	
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
     
-    <feature_model name="states">
-        <features name="states" driver="ogr">
+    <OGRFeatureSource name="States-Data">
+        <url>../data/usa.shp</url>
+    </OGRFeatureSource>
+    
+    <FeatureModel name="US States">
+        <features driver="ogr" name="states">
             <url>../data/usa.shp</url>
-        </features>        
+        </features>
         <styles>
             <style type="text/css">
                 states {
@@ -24,5 +26,5 @@ OSG geometry out of it.
                 }                    
             </style>
         </styles>        
-    </feature_model>
+    </FeatureModel>
 </map>

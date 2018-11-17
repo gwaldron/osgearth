@@ -77,7 +77,7 @@ Geoid::validate()
 }
 
 float 
-Geoid::getHeight(double lat_deg, double lon_deg, const ElevationInterpolation& interp ) const
+Geoid::getHeight(double lat_deg, double lon_deg, const RasterInterpolation& interp ) const
 {
     float result = 0.0f;
 

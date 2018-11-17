@@ -58,7 +58,7 @@ namespace osgEarth
         float getHeight(
             double lat_deg,
             double lon_deg, 
-            const ElevationInterpolation& interp =INTERP_BILINEAR) const;
+            const RasterInterpolation& interp =INTERP_BILINEAR) const;
 
         /** The linear units in which height values are expressed. */
         const Units& getUnits() const { return _units; }

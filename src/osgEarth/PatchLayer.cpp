@@ -20,6 +20,22 @@
 
 using namespace osgEarth;
 
+//............................................................................
+
+Config
+PatchLayerOptions::getConfig() const
+{
+    return VisibleLayerOptions::getConfig();
+}
+
+void
+PatchLayerOptions::fromConfig(const Config& conf)
+{
+    //NOP
+}
+
+//............................................................................
+
 void
 PatchLayer::init()
 {

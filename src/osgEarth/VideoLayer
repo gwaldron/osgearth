@@ -32,33 +32,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT VideoLayerOptions : public ImageLayerOptions
     {
     public:
-        /** Constructs new video layer options. */
-        VideoLayerOptions();
-        
-        /** Deserializes new video layer options. */
-        VideoLayerOptions(const ConfigOptions& options);
-
-        // Constructs new options with a layer name
-        VideoLayerOptions(const std::string& name);
-
-        /** dtor */
-        virtual ~VideoLayerOptions()
-        {
-        }
+        META_LayerOptions(osgEarth, VideoLayerOptions, ImageLayerOptions);
 
     public:
-
+        //! Location of video source
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
 
-
     public:
         virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
         
     private:
         void fromConfig( const Config& conf );
-        void setDefaults();
 
         optional<URI> _url;
     };
@@ -72,15 +57,16 @@ namespace osgEarth
     public:
         META_Layer(osgEarth, VideoLayer, VideoLayerOptions, ImageLayer, video);
 
+        //! Access the texture 
         osg::Texture2D* getTexture() const { return _texture.get(); }
 
     public: // ImageLayer:
 
-        void init();
+        virtual void init();
 
-        const Status& open();
+        virtual const Status& open();
 
-        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix);
+        virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const;
 
     protected:
 

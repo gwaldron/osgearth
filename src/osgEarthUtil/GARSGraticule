@@ -34,9 +34,7 @@ namespace osgEarth { namespace Util
     class GARSGraticuleOptions : public VisibleLayerOptions
     {
     public:
-        GARSGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
-            fromConfig(_conf);
-        }
+        META_LayerOptions(osgEarth, GARSGraticuleOptions, VisibleLayerOptions);
         
     public:
         //! Style for grid zone designator geometry and text
@@ -50,13 +48,8 @@ namespace osgEarth { namespace Util
             return conf;
         }
 
-    protected:
+    private:
         optional<Style> _style;
-
-        virtual void mergeConfig(const Config& conf) {
-            VisibleLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
 
         void fromConfig(const Config& conf) {
             conf.get("style", _style);

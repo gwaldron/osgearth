@@ -38,9 +38,9 @@ namespace osgEarth
     };
 
     /**
-     * Elevation interpolation methods.
+     * Elevation/Image grid interpolation methods.
      */
-    enum ElevationInterpolation
+    enum RasterInterpolation
     {
         INTERP_AVERAGE,
         INTERP_NEAREST,

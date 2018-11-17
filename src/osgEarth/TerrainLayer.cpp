@@ -28,48 +28,6 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
-TerrainLayerOptions::TerrainLayerOptions() :
-VisibleLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-TerrainLayerOptions::TerrainLayerOptions(const ConfigOptions& co) :
-VisibleLayerOptions(co)
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-TerrainLayerOptions::TerrainLayerOptions(const std::string& layerName) :
-VisibleLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-    name() = layerName;
-}
-
-TerrainLayerOptions::TerrainLayerOptions(const std::string& layerName, const TileSourceOptions& driverOptions) :
-VisibleLayerOptions(driverOptions)
-{
-    setDefaults();
-    fromConfig(_conf);
-    _driver = driverOptions;
-    name() = layerName;
-}
-
-void
-TerrainLayerOptions::setDefaults()
-{
-    _exactCropping.init( false );
-    _reprojectedTileSize.init( 256 );
-    _minLevel.init( 0 );
-    _maxLevel.init( 23 );
-    _maxDataLevel.init( 99 );
-    _tileSize.init( 256 );
-}
-
 Config
 TerrainLayerOptions::getConfig() const
 {
@@ -80,14 +38,12 @@ TerrainLayerOptions::getConfig() const
     conf.set( "min_resolution", _minResolution );
     conf.set( "max_resolution", _maxResolution );
     conf.set( "max_data_level", _maxDataLevel );
-    conf.set( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.set( "reprojected_tilesize", _reprojectedTileSize);
-    conf.set( "vdatum", _vertDatum );
     conf.set( "proxy", _proxySettings );
-    conf.set("no_data_value", _noDataValue);
-    conf.set("min_valid_value", _minValidValue);
-    conf.set("max_valid_value", _maxValidValue);
+    conf.set( "no_data_value", _noDataValue);
+    conf.set( "min_valid_value", _minValidValue);
+    conf.set( "max_valid_value", _maxValidValue);
     conf.set( "tile_size", _tileSize);
+    conf.set( "profile", _profile);
 
     return conf;
 }
@@ -95,31 +51,29 @@ TerrainLayerOptions::getConfig() const
 void
 TerrainLayerOptions::fromConfig(const Config& conf)
 {
+    _minLevel.init( 0 );
+    _maxLevel.init( 23 );
+    _maxDataLevel.init( 99 );
+    _tileSize.init( 256 );
+    _noDataValue.init( -32768.0f );
+    _minValidValue.init(-32767.0f );
+    _maxValidValue.init( 32768.0f );
+
     conf.get( "min_level", _minLevel );
     conf.get( "max_level", _maxLevel );
     conf.get( "min_resolution", _minResolution );
     conf.get( "max_resolution", _maxResolution );
     conf.get( "max_data_level", _maxDataLevel );
-    conf.get( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.get( "reprojected_tilesize", _reprojectedTileSize);
-    conf.get( "vdatum", _vertDatum );
-    conf.get( "vsrs", _vertDatum );    // back compat
-    conf.get( "proxy",        _proxySettings );
-    conf.get("no_data_value", _noDataValue);
-    conf.get("nodata_value", _noDataValue); // back compat
-    conf.get("min_valid_value", _minValidValue);
-    conf.get("max_valid_value", _maxValidValue);
+    conf.get( "proxy", _proxySettings );
+    conf.get( "no_data_value", _noDataValue);
+    conf.get( "nodata_value", _noDataValue); // back compat
+    conf.get( "min_valid_value", _minValidValue);
+    conf.get( "max_valid_value", _maxValidValue);
     conf.get( "tile_size", _tileSize);
+    conf.get( "profile", _profile);
 
     if (conf.hasValue("driver"))
         driver() = TileSourceOptions(conf);
-}
-
-void
-TerrainLayerOptions::mergeConfig(const Config& conf)
-{
-    VisibleLayerOptions::mergeConfig(conf);
-    fromConfig(conf);
 }
 
 //------------------------------------------------------------------------
@@ -250,10 +204,17 @@ TerrainLayer::init()
     // intiailize our read-options, which store caching and IO information.
     setReadOptions(0L);
 
+    // Custom tile size?
     if (options().tileSize().isSet())
         _tileSize = options().tileSize().get();
     else
         _tileSize = 256;
+
+    // If the user asked for a custom profile, install it now
+    if (options().profile().isSet())
+    {
+        _profile = Profile::create(options().profile().get());
+    }
 }
 
 const Status&
@@ -820,30 +781,6 @@ TerrainLayer::createAndOpenTileSource()
     }
 
     return ts.release();
-}
-
-void
-TerrainLayer::applyProfileOverrides()
-{
-    // Check for a vertical datum override.
-    bool changed = false;
-    if ( _profile.valid() && options().verticalDatum().isSet() )
-    {
-        std::string vdatum = options().verticalDatum().get();
-        OE_INFO << "override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
-        if ( !ciEquals(_profile->getSRS()->getVertInitString(), vdatum) )
-        {
-            ProfileOptions po = _profile->toProfileOptions();
-            po.vsrsString() = vdatum;
-            setProfile( Profile::create(po) );
-            changed = true;
-        }
-    }
-
-    if (changed && _profile.valid())
-    {
-        OE_INFO << LC << "Override profile: " << _profile->toString() << std::endl;
-    }
 }
 
 #if 0

@@ -40,4 +40,5 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
     </image>    
     
+    <elevation driver="tms" url="http://readymap.org/readymap/tiles/1.0.0/116/"/>
 </map>

@@ -183,7 +183,7 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {        
-        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();
+        RasterInterpolation interp = map->getMapOptions().elevationInterpolation().get();
 
         return _elevationLayers.populateHeightFieldAndNormalMap(
             hf.get(),
@@ -209,7 +209,7 @@ MapFrame::populateHeightFieldAndNormalMap(osg::ref_ptr<osg::HeightField>& hf,
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {        
-        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();
+        RasterInterpolation interp = map->getMapOptions().elevationInterpolation().get();
 
         return _elevationLayers.populateHeightFieldAndNormalMap(
             hf.get(),

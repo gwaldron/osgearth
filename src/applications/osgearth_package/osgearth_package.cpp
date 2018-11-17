@@ -31,13 +31,13 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/TMS>
 
 #include <osgEarthFeatures/FeatureCursor>
 
 #include <osgEarthUtil/TMSPackager>
 
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthDrivers/tms/TMSOptions>
 
 #include <iostream>
 #include <sstream>
@@ -418,14 +418,10 @@ makeTMS( osg::ArgumentParser& args )
                 std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
                 // new TMS driver info:
-                TMSOptions tms;
-                tms.url() = URI(
-                    osgDB::concatPaths( layerFolder, "tms.xml" ),
-                    outEarthFile );
-
-                ImageLayerOptions layerOptions( packager.getLayerName(), tms );
-
-                outMap->addLayer( new ImageLayer( layerOptions ) );
+                TMSImageLayer* layer = new TMSImageLayer();
+                layer->setName(packager.getLayerName());
+                layer->setURL(URI(osgDB::concatPaths( layerFolder, "tms.xml" ), outEarthFile));
+                outMap->addLayer(layer);
             }
         }
 
@@ -454,15 +450,10 @@ makeTMS( osg::ArgumentParser& args )
             {
                 std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
-                // new TMS driver info:
-                TMSOptions tms;
-                tms.url() = URI(
-                    osgDB::concatPaths( layerFolder, "tms.xml" ),
-                    outEarthFile );
-
-                ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
-
-                outMap->addLayer( new ElevationLayer( layerOptions ) );
+                TMSElevationLayer* layer = new TMSElevationLayer();
+                layer->setName(packager.getLayerName());
+                layer->setURL(URI(osgDB::concatPaths( layerFolder, "tms.xml" ), outEarthFile));
+                outMap->addLayer(layer);
             }
         }
 

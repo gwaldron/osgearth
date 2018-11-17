@@ -24,6 +24,23 @@ using namespace osgEarth::Annotation;
 
 REGISTER_OSGEARTH_LAYER(annotations, AnnotationLayer);
 
+//...................................................................
+
+Config
+AnnotationLayerOptions::getConfig() const
+{
+    Config conf = VisibleLayerOptions::getConfig();
+    return conf;
+}
+
+void
+AnnotationLayerOptions::fromConfig(const Config& conf)
+{
+    // NOP
+}
+
+//...................................................................
+
 void
 AnnotationLayer::init()
 {

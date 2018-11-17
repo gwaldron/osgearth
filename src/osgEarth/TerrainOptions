@@ -194,7 +194,7 @@ namespace osgEarth
         optional<bool> _clusterCulling;
         optional<bool> _enableBlending;
         optional<bool> _compressNormalMaps;
-        optional<ElevationInterpolation> _elevationInterpolation;
+        optional<RasterInterpolation> _elevationInterpolation;
         optional<unsigned> _minNormalMapLOD;
         optional<bool> _gpuTessellation;
         optional<bool> _debug;

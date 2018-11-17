@@ -38,36 +38,8 @@ namespace osgEarth {
 
 //------------------------------------------------------------------------
 
-ImageLayerOptions::ImageLayerOptions() :
-TerrainLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-ImageLayerOptions::ImageLayerOptions(const ConfigOptions& options) :
-TerrainLayerOptions(options)
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-ImageLayerOptions::ImageLayerOptions(const std::string& name) :
-TerrainLayerOptions(name)
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-ImageLayerOptions::ImageLayerOptions(const std::string& name, const TileSourceOptions& driverOpt) :
-TerrainLayerOptions(name, driverOpt)
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
 void
-ImageLayerOptions::setDefaults()
+ImageLayerOptions::fromConfig(const Config& conf)
 {
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _featherPixels.init( false );
@@ -75,24 +47,16 @@ ImageLayerOptions::setDefaults()
     _magFilter.init( osg::Texture::LINEAR );
     _texcomp.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
     _shared.init( false );
-    _coverage.init( false );    
-}
+    _coverage.init( false );  
+    _reprojectedTileSize.init( 256 );  
 
-void
-ImageLayerOptions::mergeConfig( const Config& conf )
-{
-    TerrainLayerOptions::mergeConfig( conf );
-    fromConfig( conf );
-}
-
-void
-ImageLayerOptions::fromConfig(const Config& conf)
-{
     conf.get( "nodata_image",   _noDataImageFilename );
     conf.get( "shared",         _shared );
     conf.get( "coverage",       _coverage );
     conf.get( "feather_pixels", _featherPixels);
     conf.get( "altitude",       _altitude );
+    conf.get( "edge_buffer_ratio", _edgeBufferRatio);
+    conf.get( "reprojected_tilesize", _reprojectedTileSize);
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -136,6 +100,8 @@ ImageLayerOptions::getConfig() const
     conf.set( "coverage",       _coverage );
     conf.set( "feather_pixels", _featherPixels );
     conf.set( "altitude",       _altitude );
+    conf.set( "edge_buffer_ratio", _edgeBufferRatio);
+    conf.set( "reprojected_tilesize", _reprojectedTileSize);
 
     if (_transparentColor.isSet())
         conf.set("transparent_color", colorToString( _transparentColor.value()));
@@ -171,9 +137,6 @@ ImageLayerOptions::getConfig() const
     // uniform names
     conf.set("shared_sampler", _shareTexUniformName);
     conf.set("shared_matrix",  _shareTexMatUniformName);
-
-    //if (driver().isSet())
-    //    conf.set("driver", driver()->getDriver());
 
     return conf;
 }
@@ -408,7 +371,7 @@ ImageLayer::setTargetProfileHint( const Profile* profile )
 }
 
 TileSource::ImageOperation*
-ImageLayer::getOrCreatePreCacheOp()
+ImageLayer::getOrCreatePreCacheOp() const
 {
     if ( !_preCacheOp.valid() )
     {
@@ -446,20 +409,14 @@ ImageLayer::createImage(const TileKey&    key,
 }
 
 GeoImage
-ImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+ImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    // Check here in case a subclass calls this method directly.
-    //if ( !isKeyInLegalRange(key) )
-    //{
-    //    return GeoImage::INVALID;
-    //}
-
+    // TODO: when overriding this method, what about getOrCreatePreCacheOp??? -gw
     return createImageFromTileSource(key, progress);
 }
 
 GeoImage
-ImageLayer::createImageInNativeProfile(const TileKey&    key,
-                                       ProgressCallback* progress)
+ImageLayer::createImageInNativeProfile(const TileKey& key, ProgressCallback* progress)
 {
     if (getStatus().isError())
     {
@@ -524,8 +481,7 @@ ImageLayer::createImageInNativeProfile(const TileKey&    key,
 
 
 GeoImage
-ImageLayer::createImageInKeyProfile(const TileKey&    key, 
-                                    ProgressCallback* progress)
+ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progress)
 {
     // If the layer is disabled, bail out.
     if ( !getEnabled() )
@@ -539,7 +495,6 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     {
         return GeoImage::INVALID;
     }
-
 
     GeoImage result;
 
@@ -691,18 +646,17 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
 
 
 GeoImage
-ImageLayer::createImageFromTileSource(const TileKey&    key,
-                                      ProgressCallback* progress)
+ImageLayer::createImageFromTileSource(const TileKey& key, ProgressCallback* progress) const
 {
     TileSource* source = getTileSource();
     if ( !source )
         return GeoImage::INVALID;
 
     // If the profiles are different, use a compositing method to assemble the tile.
-    if ( !key.getProfile()->isHorizEquivalentTo( getProfile() ) )
-    {
-        return assembleImage( key, progress );
-    }
+    //if ( !key.getProfile()->isHorizEquivalentTo( getProfile() ) )
+    //{
+    //    return assembleImage( key, progress );
+    //}
 
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = getOrCreatePreCacheOp();
@@ -757,7 +711,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
 
 GeoImage
-ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
+ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress) 
 {
     // If we got here, asset that there's a non-null layer profile.
     if (!getProfile())

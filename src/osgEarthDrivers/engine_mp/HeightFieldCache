@@ -79,7 +79,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 osg::ref_ptr<osg::HeightField>& out_hf,
                 bool&                           out_isFallback,
                 ElevationSamplePolicy           samplePolicy,
-                ElevationInterpolation          interp,
+                RasterInterpolation          interp,
                 ProgressCallback*               progress );
 
         void clear()

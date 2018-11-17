@@ -26,6 +26,7 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include <osgEarth/MapNode>
+#include <osgEarth/GDAL>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarthUtil/ExampleResources>
@@ -34,7 +35,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/FeatureModelLayer>
 
-#include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 
@@ -82,9 +82,9 @@ int main(int argc, char** argv)
 
     // Start with a basemap imagery layer; we'll be using the GDAL driver
     // to load a local GeoTIFF file:
-    GDALOptions basemap;
-    basemap.url() = "../data/world.tif";
-    map->addLayer( new ImageLayer(ImageLayerOptions("basemap", basemap)));
+    GDALImageLayer* basemap = new GDALImageLayer();
+    basemap->setURL("../data/world.tif");
+    map->addLayer(basemap);
     
     // Next we add a feature layer. 
     OGRFeatureOptions featureData;

@@ -11,12 +11,6 @@
         <terrain driver="rex" color="#ffffff00" tile_size="17"/>
     </options>
     
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-    
-    <elevation name="readymap_elevation" driver="tms" enabled="false">
-        <url>http://readymap.org/readymap/tiles.1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_imagery.xml"/>
 
 </map>

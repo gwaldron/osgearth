@@ -54,7 +54,7 @@ HeightFieldUtils::validateSamples(float &a, float &b, float &c, float &d)
 }
 
 float
-HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, ElevationInterpolation interpolation)
+HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, RasterInterpolation interpolation)
 {
     float result = 0.0;
     switch (interpolation)
@@ -239,7 +239,7 @@ bool
 HeightFieldUtils::getInterpolatedHeight(const osg::HeightField* hf, 
                                         unsigned c, unsigned r, 
                                         float& out_height,
-                                        ElevationInterpolation interpolation)
+                                        RasterInterpolation interpolation)
 {
     int count = 0;
     float total = 0.0f;
@@ -269,7 +269,7 @@ HeightFieldUtils::getInterpolatedHeight(const osg::HeightField* hf,
 }
 
 float
-HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, double y, double llx, double lly, double dx, double dy, ElevationInterpolation interpolation)
+HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, double y, double llx, double lly, double dx, double dy, RasterInterpolation interpolation)
 {
     //Determine the pixel to sample
     double px = osg::clampBetween( (x - llx) / dx, 0.0, (double)(hf->getNumColumns()-1) );
@@ -278,7 +278,7 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, doub
 }
 
 osg::Vec3
-HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, double x, double y, double llx, double lly, double dx, double dy, ElevationInterpolation interp)
+HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, double x, double y, double llx, double lly, double dx, double dy, RasterInterpolation interp)
 {
     const osg::HeightField* hf = hood._center.get();
     if (!hf)
@@ -361,7 +361,7 @@ HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, doubl
 float
 HeightFieldUtils::getHeightAtNormalizedLocation(const osg::HeightField* input,
                                                 double nx, double ny,
-                                                ElevationInterpolation interp)
+                                                RasterInterpolation interp)
 {
     double px = osg::clampBetween(nx, 0.0, 1.0) * (double)(input->getNumColumns() - 1);
     double py = osg::clampBetween(ny, 0.0, 1.0) * (double)(input->getNumRows() - 1);
@@ -372,7 +372,7 @@ bool
 HeightFieldUtils::getHeightAtNormalizedLocation(const HeightFieldNeighborhood& hood,
                                                 double nx, double ny,
                                                 float& output,
-                                                ElevationInterpolation interp)
+                                                RasterInterpolation interp)
 {
     osg::HeightField* hf = 0L;
     double nx2, ny2;
@@ -410,7 +410,7 @@ osg::HeightField*
 HeightFieldUtils::createSubSample(const osg::HeightField* input,
                                   const GeoExtent& inputEx, 
                                   const GeoExtent& outputEx,
-                                  osgEarth::ElevationInterpolation interpolation)
+                                  osgEarth::RasterInterpolation interpolation)
 {
     double div = outputEx.width()/inputEx.width();
     if ( div >= 1.0f )
@@ -457,7 +457,7 @@ HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
                                       const GeoExtent&       extent,
                                       int                    newColumns, 
                                       int                    newRows,
-                                      ElevationInterpolation interp)
+                                      RasterInterpolation interp)
 {
     if ( newColumns <= 1 && newRows <= 1 )
         return 0L;

@@ -42,25 +42,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayerOptions : public VisibleLayerOptions
     {
     public:
-        //! Construct empty (default) options.
-        TerrainLayerOptions();
+        META_LayerOptions(osgEarth, TerrainLayerOptions, VisibleLayerOptions);
 
-        //! Deserialize options from a Config structure
-        TerrainLayerOptions(const ConfigOptions& options);
-
-        //! Construct empty named options.
-        TerrainLayerOptions(const std::string& name);
-
-        //! Construct empty options with TileSource configuration.
-        TerrainLayerOptions(const std::string& name, const TileSourceOptions& driverOptions);
-
-        /**
-         * Gets the explicity vertical datum identifier that will override a vertical
-         * datum specified by the tile source.
-         */
-        optional<std::string>& verticalDatum() { return _vertDatum; }
-        const optional<std::string>& verticalDatum() const { return _vertDatum; }
-
+    public:
         /**
          * Options for the underlyint tile source driver.
          */
@@ -101,28 +85,6 @@ namespace osgEarth
         optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
         const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
 
-        /**
-         * Whether to use exact cropping if image cropping is necessary
-         */
-        optional<bool>& exactCropping() { return _exactCropping; }
-        const optional<bool>& exactCropping() const { return _exactCropping; }
-
-        /**
-         * The desired tile size to reproject imagery to if necessary.
-         * TODO: evaluate for possible deprecation
-         */
-        optional<unsigned int>& reprojectedTileSize() { return _reprojectedTileSize; }
-        const optional<unsigned int>& reprojectedTileSize() const { return _reprojectedTileSize; }
-
-        /**
-         * The ratio used to expand the extent of a tile when the layer
-         * needs to be mosaiced to projected.  This can be used to increase the
-         * number of tiles grabbed to ensure that enough data is grabbed to
-         * overlap the incoming tile.
-         */
-        optional<double>& edgeBufferRatio() { return _edgeBufferRatio;}
-        const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio; }
-
         //! The hostname/port of a proxy server to use for HTTP communications on this layer
         //! Default = no proxy.
         optional<ProxySettings>& proxySettings() { return _proxySettings; }
@@ -144,30 +106,28 @@ namespace osgEarth
         optional<float>& maxValidValue() { return _maxValidValue; }
         const optional<float>& maxValidValue() const { return _maxValidValue; }
 
+        //! Express profile to use when the layer doesn't provide one
+        optional<ProfileOptions>& profile() { return _profile; }
+        const optional<ProfileOptions>& profile() const { return _profile; }
+
     public:
         virtual Config getConfig() const;
 
-        virtual void mergeConfig( const Config& conf );
-
     private:
-        void setDefaults();
         void fromConfig( const Config& conf );
 
-        optional<std::string>       _vertDatum;
         optional<TileSourceOptions> _driver;
         optional<unsigned>          _minLevel;
         optional<unsigned>          _maxLevel;
         optional<double>            _minResolution;
         optional<double>            _maxResolution;
         optional<unsigned>          _maxDataLevel;
-        optional<bool>              _exactCropping;
-        optional<unsigned>          _reprojectedTileSize;
-        optional<double>            _edgeBufferRatio;
         optional<unsigned>          _tileSize;
         optional<ProxySettings>     _proxySettings;
         optional<float>             _noDataValue;
         optional<float>             _minValidValue;
         optional<float>             _maxValidValue;
+        optional<ProfileOptions>    _profile;
     };
 
 
@@ -182,7 +142,42 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions, VisibleLayer, terrain);
+        META_Layer_Abstract(osgEarth, TerrainLayer, TerrainLayerOptions, VisibleLayer);
+
+        //! Minimum of detail for which this layer should generate data.
+        void setMinLevel(unsigned value) { options().minLevel() = value; }
+        unsigned getMinLevel() const { return options().minLevel().get(); }
+
+        //! Minimum resolution for which this layer should generate data.
+        void setMinResolution(double value) { options().minResolution() = value; }
+        double getMinResolution() const { return options().minResolution().get(); }
+
+        //! Maximum level of detail for which this layer should generate data.
+        //! Data from this layer will not appear in map tiles above the maxLevel.
+        void setMaxLevel(unsigned value) { options().maxLevel() = value; }
+        unsigned getMaxLevel() const { return options().maxLevel().get(); }
+
+        //! Maximum level resolution for which this layer should generate data.
+        //! The value is in units per pixel, using the base units of the layer's source data.
+        void setMaxResolution(double value) { options().maxResolution() = value; }
+        double getMaxResolution() const { return options().maxResolution().get(); }
+
+        //! Maximum level of detail for which this layer should generate new data.
+        //! Data from this layer will be upsampled in map tiles above the maxDataLevel.
+        void setMaxDataLevel(unsigned value) { options().maxDataLevel() = value; }
+        unsigned getMaxDataLevel() const { return options().maxDataLevel().get(); }
+
+        //! Number of samples in each dimension.
+        void setTileSize(unsigned value) { options().tileSize() = value; }
+
+        //! Value to treat as a "no data" marker.
+        void setNoDataValue(float value) { options().noDataValue() = value; }
+
+        //! Treat any value less than this as a "no data" marker.
+        void setMinValidValue(float value) { options().minValidValue() = value; }
+
+        //! Treat any value greater than this as a "no data" marker.
+        void setMaxValidValue(float value) { options().maxValidValue() = value; }
 
     protected:
         //! DTOR
@@ -199,10 +194,14 @@ namespace osgEarth
 
     public:
 
-        /**
-         * Gets the profile of this layer
-         */
+        //! Geospatial profile for this layer
         const Profile* getProfile() const;
+
+        //! Geospatial profile of this layer. Many layer types will set this
+        //! automatically based on source metadata. For those that don't you can
+        //! call it directly to set up a profile.
+        void setProfile(const Profile* profile);
+
 
         //! Install a tile source instance.
         void setTileSource(TileSource* tileSource);
@@ -296,7 +295,7 @@ namespace osgEarth
         //! Values less than this will be reinterpreted as "no data"
         virtual float getMinValidValue() const;
 
-        //! Values greater than this weill be reinterpreted as "no data"
+        //! Values greater than this will be reinterpreted as "no data"
         virtual float getMaxValidValue() const;
 
 
@@ -353,17 +352,21 @@ namespace osgEarth
 
     protected:
 
-        // Creates the driver the supplies the actual data.
-        // By default, this function will either return the tile source passed
-        // into the CTOR or it will try to load it from a plugin based on the
-        // driver specification in the TileSourceOptions. You can override this
-        // method to create your own tile source.
+        //! Creates the driver the supplies the actual data.
+        //! By default, this function will either return the tile source passed
+        //! into the CTOR or it will try to load it from a plugin based on the
+        //! driver specification in the TileSourceOptions. You can override this
+        //! method to create your own tile source.
         virtual TileSource* createTileSource();
 
-        void applyProfileOverrides();
+        //! Opportunity for a subclass to alter and/or override components
+        //! of the Profile
+        virtual void applyProfileOverrides() { }
 
+        //! Gets or create a caching bin to use with data in the supplied profile
         CacheBin* getCacheBin(const Profile* profile);
 
+        //! Mutable access to the data extents for this layer
         DataExtentList& dataExtents();
 
         //! Call this if you call dataExtents() and modify it.
@@ -391,9 +394,6 @@ namespace osgEarth
 
         //! Whether this layer expected a tilesource to be installed
         bool isTileSourceExpected() const { return _tileSourceExpected; }
-
-        //! Subclass can set a profile on this layer before opening
-        void setProfile(const Profile* profile);
 
     private:
         bool                     _tileSourceExpected;

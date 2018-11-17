@@ -31,6 +31,25 @@ namespace osgEarth {
     }
 }
 
+//...................................................................
+
+Config
+FeatureSourceLayerOptions::getConfig() const
+{
+    Config conf = LayerOptions::getConfig();
+    if (_featureSource.isSet())
+        conf.merge(_featureSource->getConfig());
+    return conf;
+}
+
+void
+FeatureSourceLayerOptions::fromConfig(const Config& conf)
+{
+    _featureSource = ConfigOptions(conf);
+}
+
+//...................................................................
+
 void
 FeatureSourceLayer::setFeatureSource(FeatureSource* value)
 {

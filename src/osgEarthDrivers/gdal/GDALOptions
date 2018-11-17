@@ -84,8 +84,8 @@ namespace osgEarth { namespace Drivers
          * Interpolation method to use when resampling source data; options are
          * nearest, average, and bilinear.
          */
-        optional<ElevationInterpolation>& interpolation() { return _interpolation; }
-        const optional<ElevationInterpolation>& interpolation() const { return _interpolation; }
+        optional<RasterInterpolation>& interpolation() { return _interpolation; }
+        const optional<RasterInterpolation>& interpolation() const { return _interpolation; }
 
         /**
          * Tells the driver to always generate data to this level even if it means
@@ -186,7 +186,7 @@ namespace osgEarth { namespace Drivers
         optional<std::string>            _connection;
         optional<std::string>            _extensions;
         optional<std::string>            _blackExtensions;
-        optional<ElevationInterpolation> _interpolation;
+        optional<RasterInterpolation> _interpolation;
         optional<unsigned int>           _maxDataLevelOverride;
         optional<unsigned int>           _subDataSet;
         optional<ProfileOptions>         _warpProfile;

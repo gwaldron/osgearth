@@ -29,17 +29,10 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/VideoLayer>
+#include <osgEarth/TMS>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
-#include <osgEarthSymbology/Color>
-#include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/wms/WMSOptions>
-#include <osgEarthDrivers/gdal/GDALOptions>
-#include <osg/ImageStream>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
 
 /**
@@ -54,14 +47,14 @@ main(int argc, char** argv)
     Map* map = new Map();
 
     // add a TMS imagery layer:
-    TMSOptions imagery;
-    imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/22/";
-    map->addLayer( new ImageLayer(imagery) );
+    TMSImageLayer* imagery = new TMSImageLayer();
+    imagery->setURL("http://readymap.org/readymap/tiles/1.0.0/22/");
+    map->addLayer(imagery);
 
     // add a TMS elevation layer:
-    TMSOptions elevation;
-    elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/116/";
-    map->addLayer( new ElevationLayer(elevation) );
+    TMSElevationLayer* elevation = new TMSElevationLayer();
+    elevation->setURL("http://readymap.org/readymap/tiles/1.0.0/116/");
+    map->addLayer(elevation);
    
     // Load command line arguments as videos.
     for(int pos=1;pos<arguments.argc();++pos)
@@ -69,10 +62,10 @@ main(int argc, char** argv)
         if (!arguments.isOption(pos))
         {
             std::string filename = arguments[ pos ];
-            OE_NOTICE << "Loading " << filename << std::endl;
-            VideoLayerOptions opt;
-            opt.url() = filename;
-            VideoLayer* layer = new VideoLayer(opt);
+            OE_NOTICE << "Loading " << filename << std::endl;            
+
+            VideoLayer* layer = new VideoLayer();
+            layer->options().url() = filename;
             map->addLayer(layer);
         }
     }

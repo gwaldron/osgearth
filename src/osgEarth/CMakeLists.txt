@@ -75,6 +75,7 @@ SET(LIB_PUBLIC_HEADERS
     CachePolicy
     CacheSeed
     Capabilities
+    CesiumIon
     Clamping
     ClampableNode
     ClampingTechnique
@@ -103,6 +104,7 @@ SET(LIB_PUBLIC_HEADERS
     Extension
     FadeEffect
     FileUtils
+    GDAL
     GeoCommon
     GeoData
     Geoid
@@ -202,6 +204,7 @@ SET(LIB_PUBLIC_HEADERS
     TimeControl
     TraversalData
     ThreadingUtils
+    TMS
     Units
     URI
     Utils
@@ -211,7 +214,9 @@ SET(LIB_PUBLIC_HEADERS
     Viewpoint
     VirtualProgram
     VisibleLayer
+    WMS
     XmlUtils
+    XYZ
 )
 
 
@@ -254,6 +259,7 @@ set(TARGET_SRC
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
+    CesiumIon.cpp
     Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
@@ -278,6 +284,7 @@ set(TARGET_SRC
     Extension.cpp
     FadeEffect.cpp
     FileUtils.cpp
+    GDAL.cpp
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp
@@ -366,6 +373,7 @@ set(TARGET_SRC
     TimeControl.cpp
     TraversalData.cpp
     ThreadingUtils.cpp
+    TMS.cpp
     Units.cpp
     URI.cpp
     Utils.cpp
@@ -375,7 +383,9 @@ set(TARGET_SRC
     Viewpoint.cpp
     VirtualProgram.cpp
     VisibleLayer.cpp
+    WMS.cpp
     XmlUtils.cpp
+    XYZ.cpp
     ${SHADERS_CPP} )
 
 

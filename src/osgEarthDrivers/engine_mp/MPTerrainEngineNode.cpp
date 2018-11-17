@@ -698,7 +698,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
 
     const MapInfo& mapInfo = _update_mapf->getMapInfo();
 
-    const osgEarth::ElevationInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
+    const osgEarth::RasterInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     int tileSize = _terrainOptions.tileSize().get();

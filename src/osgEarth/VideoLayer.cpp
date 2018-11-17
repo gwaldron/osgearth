@@ -24,31 +24,7 @@ using namespace osgEarth;
 
 REGISTER_OSGEARTH_LAYER(video, VideoLayer);
 
-VideoLayerOptions::VideoLayerOptions() :
-ImageLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-VideoLayerOptions::VideoLayerOptions(const ConfigOptions& options) :
-ImageLayerOptions( options )
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-VideoLayerOptions::VideoLayerOptions(const std::string& name) :
-ImageLayerOptions( name )
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-void
-VideoLayerOptions::setDefaults()
-{
-}
+//.......................................................................
 
 Config
 VideoLayerOptions::getConfig() const
@@ -62,13 +38,6 @@ void
 VideoLayerOptions::fromConfig( const Config& conf )
 {
     conf.get("url", _url );
-}
-
-void
-VideoLayerOptions::mergeConfig( const Config& conf )
-{
-    ImageLayerOptions::mergeConfig( conf );
-    fromConfig( conf );
 }
 
 //-------------------------------------------------------------
@@ -128,9 +97,13 @@ VideoLayer::open()
     return getStatus();
 }
 
-osg::Texture* VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)
+TextureWindow
+VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
 {    
-    if (key.getLOD() > 0) return 0;
+    if (key.getLOD() > 0)
+        return TextureWindow();
+
+    osg::Matrix textureMatrix;
 
     bool flip = _texture->getImage()->getOrigin()==osg::Image::TOP_LEFT;
     osg::Matrixf scale = osg::Matrixf::scale(0.5, flip? -1.0 : 1.0, 1.0);         
@@ -144,5 +117,5 @@ osg::Texture* VideoLayer::createTexture(const TileKey& key, ProgressCallback* pr
         textureMatrix =  scale * osg::Matrixf::translate(0.5, 0.0, 0.0);
     }
 
-    return _texture.get();
+    return TextureWindow(_texture.get(), textureMatrix);
 }

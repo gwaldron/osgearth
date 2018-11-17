@@ -30,42 +30,11 @@ namespace osgEarth {
 
 //------------------------------------------------------------------------
 
-ModelLayerOptions::ModelLayerOptions() :
-VisibleLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-ModelLayerOptions::ModelLayerOptions(const ConfigOptions& options) :
-VisibleLayerOptions( options )
-{
-    setDefaults();
-    fromConfig( _conf ); 
-}
-
-ModelLayerOptions::ModelLayerOptions(const std::string& in_name, const ModelSourceOptions& driverOptions) :
-VisibleLayerOptions()
-{
-    setDefaults();
-    fromConfig( _conf );
-    _driver = driverOptions;
-    name() = in_name;
-}
-
-void
-ModelLayerOptions::setDefaults()
-{
-    _lighting.init    ( true );
-    _maskMinLevel.init( 0 );
-}
-
 Config
 ModelLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
 
-    conf.set( "name",           _name );
     conf.set( "lighting",       _lighting );
     conf.set( "mask_min_level", _maskMinLevel );
 
@@ -82,6 +51,9 @@ ModelLayerOptions::getConfig() const
 void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
+    _lighting.init    ( true );
+    _maskMinLevel.init( 0 );
+
     conf.get( "lighting",       _lighting );
     conf.get( "mask_min_level", _maskMinLevel );
 
@@ -90,13 +62,6 @@ ModelLayerOptions::fromConfig( const Config& conf )
 
     if ( conf.hasChild("mask") )
         mask() = MaskSourceOptions(conf.child("mask"));
-}
-
-void
-ModelLayerOptions::mergeConfig( const Config& conf )
-{
-    ConfigOptions::mergeConfig( conf );
-    fromConfig( conf );
 }
 
 //------------------------------------------------------------------------

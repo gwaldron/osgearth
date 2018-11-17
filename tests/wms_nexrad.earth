@@ -27,7 +27,7 @@ Weather (RADAR and IR) overlaid on the map.
     </image>
     
     <!-- NEXRAD 45 minute RADAR returns -->
-    <image name="nexrad45min" driver="wms">
+    <WMSImage name="nexrad45min">
         <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi</url>
         <format>png</format>
         <layers>nexrad-n0r</layers>
@@ -36,7 +36,7 @@ Weather (RADAR and IR) overlaid on the map.
         <transparent>true</transparent>
         <cache_policy usage="no_cache"/>
         <altitude>20000</altitude>
-    </image>
+    </WMSImage>
     
     <!-- US State Boundaries -->
     <feature_model name="US States">

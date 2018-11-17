@@ -69,6 +69,9 @@ GroundCoverLayerOptions::getConfig() const
 void
 GroundCoverLayerOptions::fromConfig(const Config& conf)
 {
+    _lod.init(13u);
+    _castShadows.init(false);
+
     conf.get("land_cover_layer", _landCoverLayerName);
     conf.get("mask_layer", _maskLayerName);
     conf.get("lod", _lod);

@@ -20,26 +20,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
-#include <osgGA/GUIEventHandler>
-#include <osgGA/StateSetManipulator>
-#include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
-#include <osgEarth/MapNode>
-#include <osgEarth/ImageLayer>
+#include <osg/ArgumentParser>
 #include <osgEarth/SimplexNoise>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
-#include <osgEarthSymbology/Color>
-#include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/wms/WMSOptions>
-#include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgDB/WriteFile>
 #include <osg/Image>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Util;
 
 int usage()
 {

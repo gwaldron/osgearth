@@ -27,15 +27,13 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgViewer/CompositeViewer>
-#include <osgEarthDrivers/gdal/GDALOptions>
-#include <osgEarth/ImageLayer>
+#include <osgEarth/GDAL>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Drivers;
 
 
 /**
@@ -47,9 +45,9 @@ MapNode* makeMiniMapNode( ) {
     mapOpt.profile() = ProfileOptions("plate-carre");
     Map* map = new Map( mapOpt );    
 
-    GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
-    map->addLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+    GDALImageLayer* basemap = new GDALImageLayer();
+    basemap->setURL("../data/world.tif");
+    map->addLayer(basemap);
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNodeOptions mapNodeOptions;

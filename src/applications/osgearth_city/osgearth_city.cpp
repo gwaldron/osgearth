@@ -26,6 +26,7 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/TMS>
 
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
@@ -33,7 +34,6 @@
 
 #include <osgEarthFeatures/FeatureModelLayer>
 
-#include <osgEarthDrivers/tms/TMSOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 #include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
@@ -110,10 +110,8 @@ main(int argc, char** argv)
 void addImagery(Map* map)
 {
     // add a TMS imagery layer:
-    TMSOptions imagery;
-    imagery.url() = IMAGERY_URL;
-    ImageLayer* layer = new ImageLayer(imagery);
-    layer->setName("ReadyMap imagery");
+    TMSImageLayer* layer = new TMSImageLayer();
+    layer->setURL(IMAGERY_URL);
     map->addLayer(layer);
 }
 
@@ -121,10 +119,8 @@ void addImagery(Map* map)
 void addElevation(Map* map)
 {
     // add a TMS elevation layer:
-    TMSOptions elevation;
-    elevation.url() = ELEVATION_URL;
-    ElevationLayer* layer = new ElevationLayer(elevation);
-    layer->setName("ReadyMap elevation");
+    TMSElevationLayer* layer = new TMSElevationLayer();
+    layer->setURL(ELEVATION_URL);
     map->addLayer(layer);
 }
 

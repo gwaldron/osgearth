@@ -29,29 +29,15 @@ namespace osgEarth { namespace Annotation
     /**
      * Configuration options for AnnotationLayer
      */
-    class AnnotationLayerOptions : public VisibleLayerOptions
+    class OSGEARTHANNO_EXPORT AnnotationLayerOptions : public VisibleLayerOptions
     {
     public:
-        AnnotationLayerOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
-            fromConfig(_conf);
-        }
+        META_LayerOptions(osgEarth, AnnotationLayerOptions, VisibleLayerOptions);
 
-    public:
-        virtual Config getConfig() const {
-            Config conf = VisibleLayerOptions::getConfig();
-            return conf;
-        }
+        virtual Config getConfig() const;
 
-    protected:
-
-        virtual void mergeConfig(const Config& conf) {
-            VisibleLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
-
-        void fromConfig(const Config& conf) {
-            //nop
-        }
+    private:
+        void fromConfig(const Config& conf);
     };
 
     /**

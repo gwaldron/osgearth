@@ -63,12 +63,12 @@ namespace osgEarth
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }
 
         //! Elevation interpolation method used by the map
-        ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
+        RasterInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
 
     private:
         osg::ref_ptr<const Profile> _profile;
         bool _isGeocentric, _isCube;
-        ElevationInterpolation _elevationInterpolation;
+        RasterInterpolation _elevationInterpolation;
     };
 }
 

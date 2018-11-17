@@ -59,15 +59,6 @@ REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 
 //---------------------------------------------------------------------------
 
-MGRSGraticuleOptions::MGRSGraticuleOptions(const ConfigOptions& conf) :
-VisibleLayerOptions(conf),
-_useDefaultStyles(true)
-{
-    _sqidURI.init(URI("../data/mgrs_sqid.bin", conf.referrer()));
-    _styleSheet = new StyleSheet();
-    fromConfig(_conf);
-}
-
 Config
 MGRSGraticuleOptions::getConfig() const
 {
@@ -81,6 +72,10 @@ MGRSGraticuleOptions::getConfig() const
 void
 MGRSGraticuleOptions::fromConfig(const Config& conf)
 {
+    _useDefaultStyles.init(true);
+    _sqidURI.init(URI("../data/mgrs_sqid.bin", conf.referrer()));
+    _styleSheet = new StyleSheet();
+
     conf.get("sqid_data", _sqidURI);
     conf.get("styles", _styleSheet);
     conf.get("use_default_styles", _useDefaultStyles);

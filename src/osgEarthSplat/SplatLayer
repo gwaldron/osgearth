@@ -44,11 +44,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT SplatLayerOptions : public VisibleLayerOptions
     {
     public:
-        SplatLayerOptions(const ConfigOptions& co = ConfigOptions()) :
-            VisibleLayerOptions(co)
-        {
-            fromConfig(_conf);
-        }
+        META_LayerOptions(osgEarth, SplatLayerOptions, VisibleLayerOptions);
 
         //! Required layer containing land cover data
         optional<std::string>& landCoverLayer() { return _landCoverLayerName; }
@@ -60,14 +56,9 @@ namespace osgEarth { namespace Splat
 
     public:
         virtual Config getConfig() const;
-    protected:
-        virtual void mergeConfig(const Config& conf) {
-            VisibleLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
-        void fromConfig(const Config& conf);
 
     private:
+        void fromConfig(const Config& conf);
         optional<std::string> _landCoverLayerName;
         std::vector<ZoneOptions> _zones;
     };

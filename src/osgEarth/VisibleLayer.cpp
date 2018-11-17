@@ -26,31 +26,6 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-VisibleLayerOptions::VisibleLayerOptions() :
-LayerOptions()
-{
-    setDefaults();
-    fromConfig( _conf ); 
-}
-
-VisibleLayerOptions::VisibleLayerOptions(const ConfigOptions& co) :
-LayerOptions(co)
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-void
-VisibleLayerOptions::setDefaults()
-{
-    _visible.init( true );
-    _opacity.init( 1.0f );
-    _minRange.init( 0.0 );
-    _maxRange.init( FLT_MAX );
-    _attenuationRange.init(0.0f);
-    _blend.init( BLEND_INTERPOLATE );
-}
-
 Config
 VisibleLayerOptions::getConfig() const
 {
@@ -68,6 +43,13 @@ VisibleLayerOptions::getConfig() const
 void
 VisibleLayerOptions::fromConfig(const Config& conf)
 {
+    _visible.init( true );
+    _opacity.init( 1.0f );
+    _minRange.init( 0.0 );
+    _maxRange.init( FLT_MAX );
+    _attenuationRange.init(0.0f);
+    _blend.init( BLEND_INTERPOLATE );
+
     conf.get( "visible", _visible );
     conf.get( "opacity", _opacity);
     conf.get( "min_range", _minRange );
@@ -75,13 +57,6 @@ VisibleLayerOptions::fromConfig(const Config& conf)
     conf.get( "attenuation_range", _attenuationRange );
     conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
-}
-
-void
-VisibleLayerOptions::mergeConfig(const Config& conf)
-{
-    LayerOptions::mergeConfig(conf);
-    fromConfig(conf);
 }
 
 //........................................................................

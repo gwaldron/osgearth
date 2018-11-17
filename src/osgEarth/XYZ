@@ -1,0 +1,249 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_XYZ_H
+#define OSGEARTH_XYZ_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/URI>
+#include <OpenThreads/Atomic>
+
+/**
+ * XYZ layers. These are general purpose tiled layers that conform
+ * to a X/Y/Z prototype where Z is the tiling level and X/Y are the
+ * tile offsets on that level.
+ */
+
+//! XYZ namespace contains support classes used to the Layers
+namespace osgEarth { namespace XYZ
+{
+    /**
+     * Underlying XYZ driver that does the actual I/O
+     */
+    class OSGEARTH_EXPORT Driver
+    {
+    public:
+        Status open(
+            const URI& uri,
+            osg::ref_ptr<const Profile>& profile,
+            const std::string& format,
+            DataExtentList& out_dataExtents,
+            const osgDB::Options* readOptions);
+
+        ReadResult read(
+            const URI& uri,
+            const TileKey& key, 
+            bool invertY,
+            ProgressCallback* progress,
+            const osgDB::Options* readOptions) const;
+
+    protected:
+        std::string _format;
+        std::string _template;
+        std::string _rotateChoices;
+        std::string _rotateString;
+        std::string::size_type _rotateStart, _rotateEnd;
+        mutable OpenThreads::Atomic _rotate_iter;
+    };
+} }
+
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT XYZImageLayerOptions : public ImageLayerOptions
+    {
+    public:
+        META_LayerOptions(osgEarth, XYZImageLayerOptions, ImageLayerOptions);
+
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
+
+        optional<bool>& invertY() { return _invertY; }
+        const optional<bool>& invertY() const { return _invertY; }
+
+        optional<std::string>& format() { return _format; }
+        const optional<std::string>& format() const { return _format; }
+
+    public:
+        static Config getMetadata();
+        virtual Config getConfig() const;
+
+    private:
+        void fromConfig(const Config& conf);
+        optional<URI>         _url;
+        optional<std::string> _format;
+        optional<bool>        _invertY;
+    };
+
+    class OSGEARTH_EXPORT XYZElevationLayerOptions : public ElevationLayerOptions
+    {
+    public:
+        META_LayerOptions(osgEarth, XYZElevationLayerOptions, ElevationLayerOptions);
+
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
+
+        optional<bool>& invertY() { return _invertY; }
+        const optional<bool>& invertY() const { return _invertY; }
+
+        optional<std::string>& format() { return _format; }
+        const optional<std::string>& format() const { return _format; }
+
+        optional<std::string>& elevationEncoding() { return _elevationEncoding; }
+        const optional<std::string>& elevationEncoding() const { return _elevationEncoding; }
+        
+    public:
+        static Config getMetadata();
+        virtual Config getConfig() const;
+
+    private:
+        void fromConfig(const Config& conf);
+
+    private:
+        optional<URI>         _url;
+        optional<std::string> _format;
+        optional<bool>        _invertY;
+        optional<std::string> _elevationEncoding;
+    };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZImageLayerOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZElevationLayerOptions);
+
+
+namespace osgEarth
+{
+    /**
+     * Image layer connected to a generic, raw tile service and accesible
+     * via a URL template.
+     *
+     * The template pattern will vary depending on the structure of the data source.
+     * Here is an example URL:
+     *
+     *    http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png
+     *
+     * {z} is the level of detail. {x} and {y} are the tile indices at that
+     * level of detail. The [] delimiters indicate a URL "rotation"; for each
+     * subsequent request, one and only one of the characters inside the []
+     * will be used.
+     *
+     * XYZ accesses a "raw" data source and reads no metadata. Thus you must
+     * expressly provide a geospatial Profile by calling setProfile() on the
+     * layer before opening it or adding it to the Map. For example, for the
+     * pattern above you might want a spherical mercator profile:
+     *
+     *    layer->setProfile( Profile::create("spherical-mercator") );
+     */
+    class OSGEARTH_EXPORT XYZImageLayer : public ImageLayer
+    {
+    public:
+        META_Layer(
+            osgEarth, 
+            XYZImageLayer,
+            XYZImageLayerOptions,
+            ImageLayer,
+            xyzimage);
+
+    public:
+        //! Base URL for requests
+        void setURL(const URI& value) { options().url() = value; }
+        const URI& getURL() const { return options().url().get(); }
+
+        //! Whether to flip the Y axis for tile indexing
+        void setInvertY(bool value) { options().invertY() = value; }
+        bool getInvertY() const { return options().invertY().get(); }
+
+        //! Data format to request from the service
+        void setFormat(const std::string& value) { options().format() = value; }
+        const std::string& getFormat() const { return options().format().get(); }
+
+    public: // Layer
+        
+        //! Establishes a connection to the TMS repository
+        virtual const Status& open();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~XYZImageLayer() { }
+
+    private:
+        XYZ::Driver _driver;
+    };
+
+
+    /**
+     * Elevation layer connected to a TMS (Tile Map Service) facility
+     */
+    class OSGEARTH_EXPORT XYZElevationLayer : public ElevationLayer
+    {
+    public:
+        META_Layer(
+            osgEarth, 
+            XYZElevationLayer, 
+            XYZElevationLayerOptions, 
+            ElevationLayer, 
+            xyzelevation);
+        
+        //! Base URL for requests
+        void setURL(const URI& value) { options().url() = value; }
+        const URI& getURL() const { return options().url().get(); }
+
+        //! Whether to flip the Y axis for tile indexing
+        void setInvertY(bool value) { options().invertY() = value; }
+        bool getInvertY() const { return options().invertY().get(); }
+
+        //! Data format to request from the service
+        void setFormat(const std::string& value) { options().format() = value; }
+        const std::string& getFormat() const { return options().format().get(); }
+
+    public: // Layer
+        
+        //! Establishes a connection to the TMS repository
+        virtual const Status& open();
+
+        //! Creates a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~XYZElevationLayer() { }
+
+    private:
+        osg::ref_ptr<XYZImageLayer> _imageLayer;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_TMS_H

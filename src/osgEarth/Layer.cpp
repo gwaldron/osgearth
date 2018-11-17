@@ -1,4 +1,3 @@
-
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2018 Pelican Mapping
@@ -31,25 +30,6 @@ using namespace osgEarth;
 
 //.................................................................
 
-LayerOptions::LayerOptions() :
-ConfigOptions()
-{
-    fromConfig(_conf);
-}
-
-LayerOptions::LayerOptions(const ConfigOptions& co) :
-ConfigOptions(co)
-{
-    fromConfig(_conf);
-}
-
-void
-LayerOptions::setDefaults()
-{
-    _enabled.init(true);
-    _terrainPatch.init(false);
-}
-
 Config LayerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
@@ -67,7 +47,9 @@ Config LayerOptions::getConfig() const
 
 void LayerOptions::fromConfig(const Config& conf)
 {
-    setDefaults();
+    // defaults:
+    _enabled.init(true);
+    _terrainPatch.init(false);
 
     conf.get("name", _name);
     conf.get("enabled", _enabled);
@@ -89,12 +71,6 @@ void LayerOptions::fromConfig(const Config& conf)
 
     conf.get("terrain", _terrainPatch);
     conf.get("patch", _terrainPatch);
-}
-
-void LayerOptions::mergeConfig(const Config& conf)
-{
-    ConfigOptions::mergeConfig(conf);
-    fromConfig(_conf);
 }
 
 //.................................................................
@@ -216,6 +192,19 @@ Layer::setEnabled(bool value)
         options().enabled() = value;
         fireCallback(&LayerCallback::onEnabledChanged);
     }
+}
+
+const Status&
+Layer::setStatus(const Status& status) const
+{
+    _status = status;
+    return _status;
+}
+
+const Status&
+Layer::setStatus(const Status::Code& code, const std::string& message) const
+{
+    return setStatus(Status(code, message));
 }
 
 void

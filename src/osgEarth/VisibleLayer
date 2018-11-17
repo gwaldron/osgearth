@@ -16,19 +16,19 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTH_VISIBLE_LAYER_H
-#define OSGEARTH_VISIBLE_LAYER_H 1
+#define OSGEARTH_VISIBLE_LAYER_H
 
 #include <osgEarth/Layer>
 
 namespace osgEarth
 {
-    /**
-     * Serializable configuration options for a VisibleLayer.
-     */
+    //! Serializable configuration options for a VisibleLayer.
     class OSGEARTH_EXPORT VisibleLayerOptions : public LayerOptions
     {
+    public:
+        META_LayerOptions(osgEarth, VisibleLayerOptions, LayerOptions);
+
     public:
         enum Blend {
             BLEND_INTERPOLATE,
@@ -36,12 +36,6 @@ namespace osgEarth
         };
 
     public:
-        VisibleLayerOptions();
-        VisibleLayerOptions(const ConfigOptions& options);
-
-        /** dtor */
-        virtual ~VisibleLayerOptions() { }
-
         /** Whether the layer is initially visible. */
         optional<bool>& visible() { return _visible; }
         const optional<bool>& visible() const { return _visible; }
@@ -68,11 +62,10 @@ namespace osgEarth
 
     public:
         virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+
+    private:  
         void fromConfig(const Config& conf);
 
-    private:
-        void setDefaults();       
         optional<bool> _visible;
         optional<float> _opacity;
         optional<float> _minRange;
@@ -91,13 +84,11 @@ namespace osgEarth
     };
 
 
-    /**
-     * Base class for a layer supporting visibility control.
-     */
+    //! Base class for a layer supporting visibility and opacity controls.
     class OSGEARTH_EXPORT VisibleLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions, Layer, visible_layer);
+        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions, Layer, visiblelayer);
 
     protected:
         virtual ~VisibleLayer();

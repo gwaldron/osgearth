@@ -27,7 +27,7 @@ using namespace osgEarth;
 
 #define LC "[LandCoverLayer] "
 
-REGISTER_OSGEARTH_LAYER(land_cover, LandCoverLayer);
+REGISTER_OSGEARTH_LAYER(landcover, LandCoverLayer);
 
 namespace
 {
@@ -414,17 +414,12 @@ namespace
 #undef  LC
 #define LC "[LandCoverLayerOptions] "
 
-LandCoverLayerOptions::LandCoverLayerOptions(const ConfigOptions& options) :
-ImageLayerOptions(options),
-_noiseLOD(12u),
-_warp(0.0f)
-{
-    fromConfig(_conf);
-}
-
 void
 LandCoverLayerOptions::fromConfig(const Config& conf)
 {
+    _noiseLOD.init(12u);
+    _warp.init(0.0f);
+
     conf.get("warp", _warp);
     conf.get("noise_lod", _noiseLOD);
 
@@ -498,7 +493,7 @@ LandCoverLayer::createTileSource()
 }
 
 GeoImage
-LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     if (true) // warping enabled
     {

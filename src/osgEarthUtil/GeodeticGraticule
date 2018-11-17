@@ -38,6 +38,8 @@ namespace osgEarth { namespace Util
     class GeodeticGraticuleOptions : public VisibleLayerOptions
     {
     public:
+        META_LayerOptions(osgEarth, GeodeticGraticuleOptions, VisibleLayerOptions);
+
         //! Grid line color
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
@@ -74,25 +76,9 @@ namespace osgEarth { namespace Util
         const optional<bool>& edgeLabelsVisible() const { return _edgeLabelsVisible; }
 
     public:
-        GeodeticGraticuleOptions(const ConfigOptions& opt =ConfigOptions()) : VisibleLayerOptions( opt )
-        {
-            _lineWidth.init(2.0f);
-            _color.init(Color(Color::Yellow, 0.5f));
-            _gridLines.init(10);
-            _gridLinesVisible.init(true);
-            _gridLabelsVisible.init(true);
-            _edgeLabelsVisible.init(true);
-            _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
-            Style labelStyle;
-            TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
-            t->fill()->color().set(1,1,1,1);
-            _gridLabelStyle.init(labelStyle);
-            _edgeLabelStyle.init(labelStyle);
-            fromConfig( _conf );
-        }
 
-    public:
-        virtual Config getConfig() const {
+        virtual Config getConfig() const
+        {
             Config conf = VisibleLayerOptions::getConfig();
             conf.set("line_width", _lineWidth);
             conf.set("color", _color);
@@ -106,13 +92,23 @@ namespace osgEarth { namespace Util
             return conf;
         }
 
-    protected:
-        virtual void mergeConfig( const Config& conf ) {
-            VisibleLayerOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
+    private:
 
-        void fromConfig( const Config& conf ) {
+        void fromConfig( const Config& conf )
+        {
+            _lineWidth.init(2.0f);
+            _color.init(Color(Color::Yellow, 0.5f));
+            _gridLines.init(10);
+            _gridLinesVisible.init(true);
+            _gridLabelsVisible.init(true);
+            _edgeLabelsVisible.init(true);
+            _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
+            Style labelStyle;
+            TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
+            t->fill()->color().set(1,1,1,1);
+            _gridLabelStyle.init(labelStyle);
+            _edgeLabelStyle.init(labelStyle);
+
             conf.get("line_width", _lineWidth);
             conf.get("color", _color);
             conf.get("grid_lines", _gridLines);

@@ -96,8 +96,8 @@ namespace osgEarth
          /**
          * The interpolation method to use when sampling heightfields.
          */
-        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
-        const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
+        optional<RasterInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
+        const optional<RasterInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
     
     public:
         Config getConfig() const;
@@ -115,7 +115,7 @@ namespace osgEarth
         optional<CacheOptions>           _cacheOptions;
         optional<CachePolicy>            _cachePolicy;
         optional<CoordinateSystemType>   _cstype;
-        optional<ElevationInterpolation> _elevationInterpolation;
+        optional<RasterInterpolation> _elevationInterpolation;
     };
 }
 

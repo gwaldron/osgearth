@@ -98,14 +98,15 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
         if (imageLayer)
         {
+            TextureWindow window;
             osg::Texture* tex = 0L;
-            osg::Matrixf textureMatrix;
 
             if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveData(key))
             {
                 if (imageLayer->useCreateTexture())
                 {
-                    tex = imageLayer->createTexture( key, progress, textureMatrix );
+                    window = imageLayer->createTexture( key, progress );
+                    tex = window.getTexture();
                 }
 
                 else
@@ -140,7 +141,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                 layerModel->setImageLayer(imageLayer);
 
                 layerModel->setTexture(tex);
-                layerModel->setMatrix(new osg::RefMatrixf(textureMatrix));
+                layerModel->setMatrix(new osg::RefMatrixf(window.getMatrix()));
 
                 model->colorLayers().push_back(layerModel);
 
@@ -227,7 +228,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     if (!filter.empty() && !filter.elevation().isSetTo(true))
         return;
 
-    const osgEarth::ElevationInterpolation& interp =
+    const osgEarth::RasterInterpolation& interp =
         map->getMapOptions().elevationInterpolation().get();
 
     // Request a heightfield from the map.
@@ -298,7 +299,7 @@ bool
 TerrainTileModelFactory::getOrCreateHeightField(const Map*                      map,
                                                 const TileKey&                  key,
                                                 ElevationSamplePolicy           samplePolicy,
-                                                ElevationInterpolation          interpolation,
+                                                RasterInterpolation          interpolation,
                                                 unsigned                        border,
                                                 osg::ref_ptr<osg::HeightField>& out_hf,
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,

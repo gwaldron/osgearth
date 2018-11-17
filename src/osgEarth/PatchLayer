@@ -27,10 +27,14 @@
 namespace osgEarth
 {
     //! Options that govern a PatchLayer
-    class /*header only*/ PatchLayerOptions : public VisibleLayerOptions
+    class OSGEARTH_EXPORT PatchLayerOptions : public VisibleLayerOptions
     {
     public:
-        PatchLayerOptions(const ConfigOptions& co = ConfigOptions()) : VisibleLayerOptions(co) { }
+        META_LayerOptions(osgEarth, PatchLayerOptions, VisibleLayerOptions);
+
+        virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config& conf);
     };
 
     /**

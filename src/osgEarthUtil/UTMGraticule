@@ -40,11 +40,7 @@ namespace osgEarth { namespace Util
     class UTMGraticuleOptions : public VisibleLayerOptions
     {
     public:
-        UTMGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
-            fromConfig(_conf);
-        }
-        
-    public:
+        META_LayerOptions(osgEarth, UTMGraticuleOptions, VisibleLayerOptions);
 
         /** Style for grid zone designator geometry and text */
         optional<Style>& gzdStyle() { return _gzdStyle; }
@@ -55,26 +51,23 @@ namespace osgEarth { namespace Util
         const optional<float>& textScale() const { return _textScale; }
 
     public:
-        virtual Config getConfig() const {
+        virtual Config getConfig() const
+        {
             Config conf = VisibleLayerOptions::getConfig();
             conf.set("gzd_style", _gzdStyle);
             conf.set("text_scale", _textScale);
             return conf;
         }
 
-        virtual void fromConfig(const Config& conf) {
+    private:
+        void fromConfig(const Config& conf)
+        {
             conf.get("gzd_style", _gzdStyle);
             conf.get("text_scale", _textScale);
         }
 
-    protected:
         optional<Style> _gzdStyle;
         optional<float> _textScale;
-
-        void mergeConfig(const Config& conf) {
-            VisibleLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
     };
 
 

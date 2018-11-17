@@ -28,16 +28,16 @@
 #include <osgEarth/ModelLayer>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/CompositeTileSource>
+#include <osgEarth/TMS>
+#include <osgEarth/WMS>
+#include <osgEarth/GDAL>
+#include <osgEarth/XYZ>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/AutoScaleCallback>
 
-#include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/wms/WMSOptions>
-#include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/osg/OSGOptions>
-#include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/debug/DebugOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
@@ -75,22 +75,23 @@ public:
         if (image.valid())
             _tex = new osg::Texture2D(image.get());
 
-        // Establish a profile for the layer:
+        // Establish a geospatial profile for the layer:
         setProfile(Profile::create("global-geodetic"));
 
-        // Direct the layer to call createTexture:
+        // Tell the layer to call createTexture:
         setUseCreateTexture();
 
         // Restrict the data extents of this layer to LOD 0 (in this case)
         dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, 0));
     }
 
-    osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)
+    TextureWindow
+    createTexture(const TileKey& key, ProgressCallback* progress) const
     {
         // Set the texture matrix corresponding to the tile key:
+        osg::Matrixf textureMatrix;
         key.getExtent().createScaleBias(getProfile()->getExtent(), textureMatrix);
-
-        return _tex.get();
+        return TextureWindow(_tex.get(), textureMatrix);
     }
 };
 
@@ -108,22 +109,21 @@ main(int argc, char** argv)
     Map* map = new Map();
 
     // add a TMS imagery layer:
-    TMSOptions imagery;
-    imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/7/";
-    map->addLayer( new ImageLayer(imagery) );
+    TMSImageLayer* imagery = new TMSImageLayer();
+    imagery->setURL("http://readymap.org/readymap/tiles/1.0.0/7/");
+    map->addLayer( imagery );
 
     // add a TMS elevation layer:
-    TMSOptions elevation;
-    elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/116/";
-    map->addLayer( new ElevationLayer(elevation) );
+    TMSElevationLayer* elevation = new TMSElevationLayer();
+    elevation->setURL("http://readymap.org/readymap/tiles/1.0.0/116/");
+    map->addLayer( elevation );
 
     // add a semi-transparent XYZ layer:
-    XYZOptions xyz;
-    xyz.url() = "http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png";
-    xyz.profile()->namedProfile() = "spherical-mercator";
-    ImageLayer* imageLayer = new ImageLayer(xyz);
-    imageLayer->setOpacity(0.5f);
-    map->addLayer(imageLayer);
+    XYZImageLayer* osm = new XYZImageLayer();
+    osm->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
+    osm->setProfile(Profile::create("spherical-mercator"));
+    osm->setOpacity(0.5f);
+    map->addLayer(osm);
 
     // a custom layer that displays a user texture:
     MyTextureLayer* texLayer = new MyTextureLayer("../data/grid2.png");
@@ -131,39 +131,39 @@ main(int argc, char** argv)
     map->addLayer(texLayer);  
     
     // add a local GeoTIFF inset layer:
-    GDALOptions gdal;
-    gdal.url() = "../data/boston-inset.tif";
-    map->addLayer(new ImageLayer(gdal));
+    GDALImageLayer* boston = new GDALImageLayer();
+    boston->setURL("../data/boston-inset.tif");
+    map->addLayer(boston);
 
     // add a WMS radar layer with transparency, and disable caching since
     // this layer updates on the server periodically.
-    WMSOptions wms;
-    wms.url() = "http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi";
-    wms.format() = "png";
-    wms.layers() = "nexrad-n0r";
-    wms.srs() = "EPSG:4326";
-    wms.transparent() = true;
-    ImageLayerOptions wmsLayerOptions("WMS NEXRAD", wms);
-    wmsLayerOptions.cachePolicy() = CachePolicy::NO_CACHE;
-    map->addLayer(new ImageLayer(wmsLayerOptions));
+    WMSImageLayer* wms = new WMSImageLayer();
+    wms->setURL("http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi");
+    wms->setFormat("png");
+    wms->setLayers("nexrad-n0r");
+    wms->setSRS("EPSG:4326");
+    wms->setTransparent(true);
+    wms->options().cachePolicy() = CachePolicy::NO_CACHE;
+    map->addLayer(wms);
 
-    // add a local simple image as a layer using the OSG driver:
-    OSGOptions osg;
-    osg.url() = "../data/osgearth.gif";
-    osg.profile()->srsString() = "wgs84";
-    osg.profile()->bounds()->set(-90.0, 10.0, -80.0, 15.0);
-    map->addLayer(new ImageLayer(osg));
+    // Add a local simple image as a layer. You can use the GDAL driver for this
+    // but you have to set a geospatial Profile so osgEarth knows where to render it
+    // on the map:
+    GDALImageLayer* gif = new GDALImageLayer();
+    gif->setURL( "../data/osgearth.gif" );
+    gif->setProfile( Profile::create("WGS84", -90.0, 10.0, -80.0, 15.0) );
+    map->addLayer(gif);
 
     // create a composite image layer that combines two other sources:
-    GDALOptions c1;
-    c1.url() = "../data/boston-inset-wgs84.tif";
+    GDALImageLayer* comp1 = new GDALImageLayer();
+    comp1->setURL("../data/boston-inset-wgs84.tif");    
 
-    GDALOptions c2;
-    c2.url() = "../data/nyc-inset-wgs84.tif";
+    GDALImageLayer* comp2 = new GDALImageLayer();
+    comp2->setURL("../data/nyc-inset-wgs84.tif");
 
     CompositeTileSourceOptions composite;
-    composite.add(ImageLayerOptions(c1));
-    composite.add(ImageLayerOptions(c2));
+    composite.add(ImageLayerOptions(comp1->options()));
+    composite.add(ImageLayerOptions(comp2->options()));
     map->addLayer(new ImageLayer(composite));
 
     // mask layer

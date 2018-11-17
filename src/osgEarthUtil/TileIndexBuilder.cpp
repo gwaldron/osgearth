@@ -23,14 +23,12 @@
 #include <osgEarthUtil/TileIndexBuilder>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
-#include <osgEarth/ImageLayer>
-#include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarth/GDAL>
 #include <osgDB/FileUtils>
 
 using namespace osgDB;
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Features;
 using namespace std;
 
@@ -63,25 +61,19 @@ void TileIndexBuilder::build(const std::string& indexFilename, const osgEarth::S
     {   
         std::string filename = _expandedFilenames[ i ];        
 
-        GDALOptions opt;
-        opt.url() = filename;
-        
-        osg::ref_ptr< ImageLayer > layer = new ImageLayer( ImageLayerOptions("", opt) );        
+        GDALImageLayer* layer = new GDALImageLayer();
+        layer->setURL(filename);
 
         bool ok = false;
                 
-        if ( layer.valid() )        
-        {            
-            osg::ref_ptr< TileSource > source = layer->getTileSource();
-            if (source.valid())
+        if ( layer->open().isOK() )
+        {
+            for (DataExtentList::const_iterator itr = layer->getDataExtents().begin(); itr != layer->getDataExtents().end(); ++itr)
             {
-                for (DataExtentList::iterator itr = source->getDataExtents().begin(); itr != source->getDataExtents().end(); ++itr)
-                {
-                    // We want the filename as it is relative to the index file                
-                    std::string relative = getPathRelative( indexDir, filename );                
-                    index->add( relative, *itr);    
-                    ok = true;
-                }                
+                // We want the filename as it is relative to the index file                
+                std::string relative = getPathRelative(indexDir, filename);
+                index->add(relative, *itr);
+                ok = true;
             }
         }        
 

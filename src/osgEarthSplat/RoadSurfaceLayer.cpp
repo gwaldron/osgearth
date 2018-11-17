@@ -246,7 +246,7 @@ void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, Filt
 }
 
 GeoImage
-RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())    
     {

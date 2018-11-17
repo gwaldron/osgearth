@@ -43,13 +43,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT GroundCoverLayerOptions : public PatchLayerOptions
     {
     public:
-        GroundCoverLayerOptions(const ConfigOptions& co = ConfigOptions()) :
-            PatchLayerOptions(co),
-            _lod(13u),
-            _castShadows(false)
-        {
-            fromConfig(_conf);
-        }
+        META_LayerOptions(osgEarth, GroundCoverLayerOptions, PatchLayerOptions);
 
         //! Required layer containing land cover data
         optional<std::string>& landCoverLayer() { return _landCoverLayerName; }
@@ -73,14 +67,10 @@ namespace osgEarth { namespace Splat
 
     public:
         virtual Config getConfig() const;
-    protected:
-        virtual void mergeConfig(const Config& conf) {
-            VisibleLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
-        void fromConfig(const Config& conf);
 
     private:
+        void fromConfig(const Config& conf);
+
         optional<std::string> _landCoverLayerName;
         optional<std::string> _maskLayerName;
         ZoneOptionsVector _zones;
@@ -94,7 +84,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public PatchLayer
     {
     public:
-        META_Layer(osgEarthSplat, GroundCoverLayer, GroundCoverLayerOptions, PatchLayer, splat_groundcover);
+        META_Layer(osgEarth, GroundCoverLayer, GroundCoverLayerOptions, PatchLayer, splat_groundcover);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);

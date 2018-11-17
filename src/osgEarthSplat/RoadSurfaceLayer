@@ -38,13 +38,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayerOptions : public ImageLayerOptions    
     {
     public:
-        RoadSurfaceLayerOptions(const ConfigOptions& options = ConfigOptions())
-            : ImageLayerOptions(options)
-        {
-            fromConfig(_conf);
-        }
-
-    public:
+        META_LayerOptions(osgEarth, RoadSurfaceLayerOptions, ImageLayerOptions);
 
         //! Inline feature specification
         optional<FeatureSourceOptions>& features() { return _featureSourceOptions; }
@@ -71,12 +65,6 @@ namespace osgEarth { namespace Splat
             conf.set("buffer_width", _bufferWidth);
             conf.set("styles", _styles);
             return conf;
-        }
-
-    protected:
-        void mergeConfig( const Config& conf ) {
-            ImageLayerOptions::mergeConfig( conf );
-            fromConfig( conf );
         }
 
     private:
@@ -118,7 +106,7 @@ namespace osgEarth { namespace Splat
         virtual const Status& open();
 
         // Creates an image for a tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress);
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
     protected: // Layer
 

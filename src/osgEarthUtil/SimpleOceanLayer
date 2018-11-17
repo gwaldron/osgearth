@@ -40,6 +40,8 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public VisibleLayerOptions
     {
     public:
+        META_LayerOptions(osgEarth, SimpleOceanLayerOptions, VisibleLayerOptions);
+
         /** Color of the ocean surface */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
@@ -66,24 +68,9 @@ namespace osgEarth { namespace Util
         const optional<unsigned>& textureLOD() const { return _textureLOD; }
 
     public:
-        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : VisibleLayerOptions(op) {
-            _color.init(Color("#1D2C4FFF"));
-            _maxAltitude.init(1500000.f);
-            _useBathymetry.init(true);
-            _textureLOD.init(13u);
-            mergeConfig(_conf);
-        }
 
-        void mergeConfig(const Config& conf) {
-            conf.get("color", _color);
-            conf.get("max_altitude", _maxAltitude);
-            conf.get("mask_layer", _maskLayer);
-            conf.get("use_bathymetry", _useBathymetry);
-            conf.get("texture", _textureURI);
-            conf.get("texture_lod", _textureLOD);
-        }
-
-        Config getConfig() const {
+        virtual Config getConfig() const
+        {
             Config conf = VisibleLayerOptions::getConfig();
             conf.set("color", _color);
             conf.set("max_altitude", _maxAltitude);
@@ -95,6 +82,22 @@ namespace osgEarth { namespace Util
         }
 
     private:
+
+        void fromConfig(const Config& conf)
+        {
+            _color.init(Color("#1D2C4FFF"));
+            _maxAltitude.init(1500000.f);
+            _useBathymetry.init(true);
+            _textureLOD.init(13u);
+
+            conf.get("color", _color);
+            conf.get("max_altitude", _maxAltitude);
+            conf.get("mask_layer", _maskLayer);
+            conf.get("use_bathymetry", _useBathymetry);
+            conf.get("texture", _textureURI);
+            conf.get("texture_lod", _textureLOD);
+        }
+
         optional<Color> _color;
         optional<float> _maxAltitude;
         optional<std::string> _maskLayer;

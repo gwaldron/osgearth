@@ -2486,7 +2486,7 @@ bool
 GeoHeightField::getElevation(const SpatialReference* inputSRS, 
                              double                  x, 
                              double                  y, 
-                             ElevationInterpolation  interp,
+                             RasterInterpolation  interp,
                              const SpatialReference* outputSRS,
                              float&                  out_elevation) const
 {
@@ -2550,7 +2550,7 @@ bool
 GeoHeightField::getElevationAndNormal(const SpatialReference* inputSRS,
                                       double                  x,
                                       double                  y,
-                                      ElevationInterpolation  interp,
+                                      RasterInterpolation  interp,
                                       const SpatialReference* outputSRS,
                                       float&                  out_elevation,
                                       osg::Vec3f&             out_normal) const
@@ -2632,7 +2632,7 @@ GeoHeightField::getElevationAndNormal(const SpatialReference* inputSRS,
 }
 
 GeoHeightField
-GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, ElevationInterpolation interpolation) const
+GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, RasterInterpolation interpolation) const
 {
     double div = destEx.width()/_extent.width();
     if ( div >= 1.0f )

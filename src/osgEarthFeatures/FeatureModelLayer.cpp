@@ -27,9 +27,19 @@ using namespace osgEarth::Symbology;
 
 #define OE_TEST OE_NULL
 
-REGISTER_OSGEARTH_LAYER(feature_model, FeatureModelLayer);
+REGISTER_OSGEARTH_LAYER(FeatureModel, FeatureModelLayer);
+
+REGISTER_OSGEARTH_LAYER(feature_model, FeatureModelLayer); // backwards compatibility
 
 //...........................................................................
+
+FeatureModelLayerOptions::FeatureModelLayerOptions() :
+VisibleLayerOptions(),
+FeatureModelOptions(),
+GeometryCompilerOptions()
+{
+    fromConfig(_conf);
+}
 
 FeatureModelLayerOptions::FeatureModelLayerOptions(const ConfigOptions& options) :
 VisibleLayerOptions(options),

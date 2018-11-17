@@ -38,8 +38,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MGRSGraticuleOptions : public VisibleLayerOptions
     {
     public:
-        //! Construct an MGRS options structure
-        MGRSGraticuleOptions(const ConfigOptions& conf =ConfigOptions());
+        META_LayerOptions(osgEarth, MGRSGraticuleOptions, VisibleLayerOptions);
 
         //! Location of the SQID feature data
         //! This is a prebuilt binary file that you should distribute 
@@ -66,12 +65,7 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const;
 
-    protected:
-        virtual void mergeConfig(const Config& conf) {
-            VisibleLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
-
+    private:
         void fromConfig(const Config& conf);
 
         optional<URI> _sqidURI;

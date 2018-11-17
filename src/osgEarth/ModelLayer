@@ -40,16 +40,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelLayerOptions : public VisibleLayerOptions
     {
     public:        
-        //! Construct a new, empty options structure
-        ModelLayerOptions();
-
-        //! Construct or deserialize new model layer options.
-        ModelLayerOptions(const ConfigOptions& options);
-
-        //! Construct or deserialize new model layer options.
-        ModelLayerOptions(
-            const std::string& name, 
-            const ModelSourceOptions& driverOptions);
+        META_LayerOptions(osgEarth, ModelLayerOptions, VisibleLayerOptions);
 
         //! Options for the underlying model source driver.
         optional<ModelSourceOptions>& driver() { return _driver; }
@@ -72,11 +63,9 @@ namespace osgEarth
 
     public:
         virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
 
     private:
         void fromConfig( const Config& conf );
-        void setDefaults();
 
         optional<ModelSourceOptions> _driver;
         optional<bool>               _lighting;

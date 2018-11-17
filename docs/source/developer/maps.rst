@@ -38,11 +38,10 @@ You can add layers to the map at any time::
     
     #include <osgEarth/Map>
     #include <osgEarth/MapNode>
-    #include <osgEarthDrivers/tms/TMSOptions>
-    #include <osgEarthDrivers/gdal/GDALOptions>
+    #include <osgEarth/TMS>
+    #include <osgEarth/GDAL>
 
     using namespace osgEarth;
-    using namespace osgEarth::Drivers;
     ...
 
     // Create a Map and set it to Geocentric to display a globe
@@ -50,18 +49,18 @@ You can add layers to the map at any time::
 
     // Add an imagery layer (blue marble from a TMS source)
     {
-        TMSOptions tms;
-        tms.url() = "http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite/";
-        ImageLayer* layer = new ImageLayer( "NASA", tms );
-        map->addImageLayer( layer );
+        TMSImageLayer* layer = new TMSImageLayer();
+        layer->setName("ReadyMap");
+        layer->setURL("http://readymap.org/readymap/tiles/1.0.0/7/");
+        map->addLayer(layer);
     }
 
     // Add an elevationlayer (SRTM from a local GeoTiff file)
     {
-        GDALOptions gdal;
-        gdal.url() = "c:/data/srtm.tif";
-        ElevationLayer* layer = new ElevationLayer( "SRTM", gdal );
-        map->addElevationLayer( layer );
+        GDALElevationLayer* layer = new GDALElevationLayer();
+        layer->setName("SRTM");
+        layer->setURL("c:/data/srtm.tif");
+        map->addLayer( layer );
     }
 
     // Create a MapNode to render this map:
@@ -90,14 +89,12 @@ Use the static ``get`` function::
 Once you have a reference to the ``MapNode``, you can get to the map::
 
     // Add an OpenStreetMap image source
-    TMSOptions driverOpt;
-    driverOpt.url() = "http://tile.openstreetmap.org/";
-    driverOpt.tmsType() = "google";
+    TMSImageLayer* osmLayer = new TMSImageLayer();
+    osmLayer->setName("OSM");
+    osmLayer->setURI("http://tile.openstreetmap.org/");
+    osmLayer->options().tmsType() = "google";
+    osmLayer->options().profile() = ProfileOptions("global-mercator");
 
-    ImageLayerOptions layerOpt( "OSM", driverOpt );
-    layerOpt.profile() = ProfileOptions( "global-mercator" );
-
-    ImageLayer* osmLayer = new ImageLayer( layerOpt );
     mapNode->getMap()->addImageLayer( osmLayer );
 
     

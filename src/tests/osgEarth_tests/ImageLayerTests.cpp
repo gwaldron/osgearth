@@ -24,22 +24,21 @@
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Registry>
-
-#include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarth/GDAL>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 
-TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
-
-    GDALOptions opt;
-    opt.url() = "../data/world.tif";
-    osg::ref_ptr< ImageLayer > layer = new ImageLayer( ImageLayerOptions("world", opt) );
+TEST_CASE( "ImageLayers can be created from TileSourceOptions" )
+{
+    GDALImageLayer* layer = new GDALImageLayer();
+    layer->setName("World");
+    layer->setURL("../data/world.tif");
 
     Status status = layer->open();
     REQUIRE( status.isOK() );
 
-    SECTION("Profiles are correct") {
+    SECTION("Profiles are correct")
+    {
         const Profile* profile = layer->getProfile();
         REQUIRE(profile != NULL);
 
@@ -48,7 +47,8 @@ TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
         //REQUIRE(profile->isHorizEquivalentTo(globalGeodetic));
     }
 
-    SECTION("Images are read correctly") {
+    SECTION("Images are read correctly")
+    {
         TileKey key(0,0,0,layer->getProfile());
         GeoImage image = layer->createImage( key );
         REQUIRE(image.valid());
@@ -58,18 +58,16 @@ TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
     }
 }
 
-TEST_CASE("Attribution works") {
-
+TEST_CASE("Attribution works")
+{
     std::string attribution = "Attribution test";
-    GDALOptions gdalOpt;
-    gdalOpt.url() = "../data/world.tif";
 
-    ImageLayerOptions imageOpts;
-    imageOpts.driver() = gdalOpt;
-    imageOpts.attribution() = attribution;
+    GDALImageLayer* layer = new GDALImageLayer();
+    layer->setURL("../data/world.tif");
+    layer->setAttribution(attribution);
 
-    osg::ref_ptr< ImageLayer > layer = new ImageLayer(imageOpts);
     Status status = layer->open();
+
     REQUIRE(status.isOK());
     REQUIRE(layer->getAttribution() == attribution);
 }

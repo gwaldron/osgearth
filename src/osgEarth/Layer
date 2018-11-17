@@ -16,9 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTH_LAYER_H
-#define OSGEARTH_LAYER_H 1
+#define OSGEARTH_LAYER_H
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
@@ -37,6 +36,66 @@ namespace osgDB {
     class Options;
 }
 
+//! Macro to use when defining a LayerOptions class
+#define META_LayerOptions(LIBRARY, MYCLASS, SUPERCLASS) \
+    protected: \
+        virtual void mergeConfig(const Config& conf) { \
+            SUPERCLASS ::mergeConfig(conf); \
+            fromConfig(conf); \
+        } \
+    public: \
+        OE_COMMENT("Construct empty layer options") \
+        MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
+        \
+        OE_COMMENT("Construct layer options from serialized data") \
+        MYCLASS (const ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
+
+
+//! Macro to use when defining a Layer class
+#define META_Layer(LIBRARY, MYCLASS, OPTIONS, SUPERCLASS, SLUG) \
+    private: \
+        OPTIONS * _options; \
+        OPTIONS   _optionsConcrete; \
+        MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
+    protected: \
+        OE_COMMENT("Construct a new layer with default options") \
+        MYCLASS (OPTIONS* optr) : SUPERCLASS (optr? optr: &_optionsConcrete), _options(optr ? optr : &_optionsConcrete) { } \
+    public: \
+        META_Object(LIBRARY, MYCLASS); \
+        \
+        OE_COMMENT("Construct a new layer with default options") \
+        MYCLASS () : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete) { init(); } \
+        \
+        OE_COMMENT("Construct a new layer with user-defined options") \
+        MYCLASS (const OPTIONS& o) : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete), _optionsConcrete(o) { init(); } \
+        \
+        OE_COMMENT("Mutable options for this layer") \
+        OPTIONS& options() { return *_options; } \
+        \
+        OE_COMMENT("Immutable options for this layer") \
+        const OPTIONS& options() const { return *_options; } \
+        \
+        OE_COMMENT("Configuration key for this layer (e.g. for earth files)") \
+        virtual const char* getConfigKey() const { return #SLUG ; }
+
+
+//! Macro to use when defining a Layer class
+#define META_Layer_Abstract(LIBRARY, MYCLASS, OPTIONS, SUPERCLASS) \
+    private: \
+        OPTIONS * _options; \
+        MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
+    protected: \
+        OE_COMMENT("Construct a new layer with default options") \
+        MYCLASS (OPTIONS* optr) : SUPERCLASS (optr), _options(optr) { } \
+        MYCLASS () : SUPERCLASS () { } \
+    public: \
+        OE_COMMENT("Mutable options for this layer") \
+        OPTIONS& options() { return *_options; } \
+        \
+        OE_COMMENT("Immutable options for this layer") \
+        const OPTIONS& options() const { return *_options; } \
+
+
 namespace osgEarth
 {
     class GeoExtent;
@@ -44,10 +103,12 @@ namespace osgEarth
     class TerrainResources;
     class TileKey;
 
-
     //! Base serializable options class for configuring a Layer.
     class OSGEARTH_EXPORT LayerOptions : public ConfigOptions
     {
+    public:
+        META_LayerOptions(osgEarth, LayerOptions, ConfigOptions);
+
     public:
         //! Name of the layer
         optional<std::string>& name() { return _name; }
@@ -90,15 +151,10 @@ namespace osgEarth
         const optional<std::string>& attribution() const { return _attribution; }
 
     public:
-        LayerOptions();
-        LayerOptions(const ConfigOptions& configOptions);
-
         virtual Config getConfig() const;
-        virtual void mergeConfig(const Config& conf);
 
-    protected:
+    private:
         void fromConfig(const Config& conf);
-        void setDefaults();
 
         optional<std::string> _name;
         optional<bool> _enabled;
@@ -157,12 +213,13 @@ namespace osgEarth
         //! osgDB read options for this Layer.
         const osgDB::Options* getReadOptions() const;
 
-        //! Open a layer and return the status.
+        //! Open a layer.
+        //! MAKE SURE you call superclass init() if you override this!
         //! This is where you will connect to back-end data sources if
         //! appropriate. When added to a map, init() is called before open()
         //! and addedToMap() is called after open() if it succeeds.
         //! The usage idiom is for the implementation to call setStatus,
-        //! and for open() to then return getStatus().
+        //! then return getStatus().
         virtual const Status& open();
 
         //! Close this layer.
@@ -302,15 +359,14 @@ namespace osgEarth
         virtual ~Layer();
 
         //! post-ctor initialization, chain to subclasses.
+        //! MAKE SURE you call the superclass init() if you override this!
         virtual void init();
 
         //! Sets the status for this layer - internal
-        const Status& setStatus(const Status& status) { _status = status; return _status; }
+        const Status& setStatus(const Status& status) const;
         
         //! Sets the status for this layer with a message - internal
-        const Status& setStatus(const Status::Code& statusCode, const std::string& message) { 
-            return setStatus(Status(statusCode, message));
-        }
+        const Status& setStatus(const Status::Code& statusCode, const std::string& message) const;
 
         //! invoke layer callbacks
         void fireCallback(LayerCallback::MethodPtr);
@@ -319,7 +375,7 @@ namespace osgEarth
         UID _uid;
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
-        Status _status;
+        mutable Status _status;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
 
@@ -344,36 +400,6 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;
-    
-
-
-    // Macro to use when defining a Layer class
-
-#define META_Layer(LIBRARY, MYCLASS, OPTIONS, SUPERCLASS, SLUG) \
-    private: \
-        OPTIONS * _options; \
-        OPTIONS   _optionsConcrete; \
-        MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
-    protected: \
-        OE_COMMENT("Construct a new layer with default options") \
-        MYCLASS (OPTIONS* optr) : SUPERCLASS (optr? optr: &_optionsConcrete), _options(optr ? optr : &_optionsConcrete) { } \
-    public: \
-        META_Object(LIBRARY, MYCLASS); \
-        \
-        OE_COMMENT("Construct a new layer with default options") \
-        MYCLASS () : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete) { init(); } \
-        \
-        OE_COMMENT("Construct a new layer with user-defined options") \
-        MYCLASS (const OPTIONS& o) : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete), _optionsConcrete(o) { init(); } \
-        \
-        OE_COMMENT("Mutable options for this layer") \
-        OPTIONS& options() { return *_options; } \
-        \
-        OE_COMMENT("Immutable options for this layer") \
-        const OPTIONS& options() const { return *_options; } \
-        \
-        OE_COMMENT("Configuration key for this layer (e.g. for earth files)") \
-        virtual const char* getConfigKey() const { return #SLUG ; }
 
 
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \
@@ -386,4 +412,4 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-#endif // OSGEARTH_IMAGE_TERRAIN_LAYER_H
+#endif // OSGEARTH_LAYER_H

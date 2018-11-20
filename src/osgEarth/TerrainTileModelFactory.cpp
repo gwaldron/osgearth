@@ -573,11 +573,14 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
 
         if (cacheBin)
         {
+           osg::CVMarkerSeries objectCreation("SubloadTask");
            {
+              osg::CVSpan creationSpan(objectCreation, 4, "oe::save HF");
               cacheBin->write(hfCacheKey, out_hf.get(), 0L);
            }
            {
               ImageUtils::activateMipMaps(out_normalMap);
+              osg::CVSpan creationSpan(objectCreation, 4, "oe::save normal map");
               cacheBin->write(normalCacheKey, out_normalMap.get(), 0L);
            }
         }

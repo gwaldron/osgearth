@@ -22,6 +22,7 @@
 #include <osgEarth/Random>
 #include <osgEarth/SimplexNoise>
 #include <osg/Texture2D>
+#include <osg/ConcurrencyViewerMacros>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -32,6 +33,9 @@ using namespace osgEarth::Splat;
 osg::Texture*
 NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
+   osg::CVMarkerSeries objectCreation("Main Thread");
+   osg::CVSpan span(objectCreation, 3, "NoiseTextureFactory");
+
     chans = osg::clampBetween(chans, 1u, 4u);
 
     GLenum type = chans >= 2u ? GL_RGBA : GL_LUMINANCE;

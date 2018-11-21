@@ -24,25 +24,10 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-MaskLayerOptions::MaskLayerOptions(const ConfigOptions& options) :
-LayerOptions(options),
-_minLevel( 0 )
-{
-    setDefaults();
-    fromConfig( _conf ); 
-}
-
-void
-MaskLayerOptions::setDefaults()
-{
-    _minLevel.init( 0 );
-}
-
 Config
 MaskLayerOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
-    conf.key() = "mask";
     conf.set( "min_level", _minLevel );
     return conf;
 }
@@ -50,12 +35,6 @@ MaskLayerOptions::getConfig() const
 void
 MaskLayerOptions::fromConfig( const Config& conf )
 {
+    _minLevel.init( 0 );
     conf.get( "min_level", _minLevel );
-}
-
-void
-MaskLayerOptions::mergeConfig( const Config& conf )
-{
-    ConfigOptions::mergeConfig( conf );
-    fromConfig( conf );
 }

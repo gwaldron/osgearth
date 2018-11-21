@@ -1,0 +1,167 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_COMPOSITE_H
+#define OSGEARTH_COMPOSITE_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+
+/**
+ * Composite layers. Multiple layers grouped into a single layer.
+ */
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT CompositeImageLayerOptions : public ImageLayerOptions
+    {
+    public:
+        META_LayerOptions(osgEarth, CompositeImageLayerOptions, ImageLayerOptions);
+
+        typedef std::vector<ConfigOptions> Layers;
+
+        //! Layers to composite
+        Layers& layers() { return _layers; }
+        const Layers& layers() const { return _layers; }
+
+    public:
+        virtual Config getConfig() const;
+
+    private:
+        void fromConfig(const Config& conf);
+
+        Layers _layers;
+    };
+
+
+    /**
+     * Composite Image Layer combines multiple image layers into one.
+     */
+    class OSGEARTH_EXPORT CompositeImageLayer : public ImageLayer
+    {
+    public:
+        META_Layer(
+            osgEarth,
+            CompositeImageLayer,
+            CompositeImageLayerOptions,
+            ImageLayer,
+            CompositeImage);
+
+    public:
+
+        //! Adds a layer to the composite.
+        void addLayer(ImageLayer* layer);
+
+    public: // Layer
+        
+        //! Opens all composited layers and only returns OK if all layers
+        //! open succesfully
+        virtual const Status& open();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~CompositeImageLayer() { }
+
+    private:
+
+        ImageLayerVector _layers;
+        bool _open;
+    };
+
+
+
+    class OSGEARTH_EXPORT CompositeElevationLayerOptions : public ElevationLayerOptions
+    {
+    public:
+        META_LayerOptions(osgEarth, CompositeElevationLayerOptions, ElevationLayerOptions);
+
+        typedef std::vector<ConfigOptions> Layers;
+
+        //! Layers to composite - ElevationLayers only!
+        Layers& layers() { return _layers; }
+        const Layers& layers() const { return _layers; }
+
+    public:
+        virtual Config getConfig() const;
+
+    private:
+        void fromConfig(const Config& conf);
+
+        Layers _layers;
+    };
+
+
+    /**
+     * Elevation layer that composites one or more other ElevationLayers.
+     */
+    class OSGEARTH_EXPORT CompositeElevationLayer : public ElevationLayer
+    {
+    public:
+        META_Layer(
+            osgEarth, 
+            CompositeElevationLayer, 
+            CompositeElevationLayerOptions, 
+            ElevationLayer, 
+            CompositeElevation);
+
+    public:
+
+        //! Adds a layer to the composite.
+        void addLayer(ElevationLayer* layer);
+
+    public: // Layer
+        
+        //! Opens all composited layers and only returns OK if all layers
+        //! open succesfully
+        virtual const Status& open();
+
+        //! Creates a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~CompositeElevationLayer() { }
+
+    private:
+
+        ElevationLayerVector _layers;
+        bool _open;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeImageLayerOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeElevationLayerOptions);
+
+#endif // OSGEARTH_COMPOSITE_H

@@ -54,6 +54,7 @@ SET(LIB_PUBLIC_HEADERS
     LabelSource
     MVT
     OgrUtils
+    OGRFeatureSource
     PolygonizeLines
     ResampleFilter
     ScaleFilter
@@ -98,6 +99,7 @@ SET(TARGET_SRC
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
+    OGRFeatureSource.cpp
     PolygonizeLines.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp

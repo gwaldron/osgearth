@@ -621,7 +621,7 @@ namespace osgEarth
             TMSImageLayer,
             TMSImageLayerOptions,
             TMSImageLayerBase,
-            tmsimage);
+            TMSImage);
 
     public:
         //! Base URL for TMS requests
@@ -671,7 +671,7 @@ namespace osgEarth
             TMSElevationLayer, 
             TMSElevationLayerOptions, 
             TMSElevationLayerBase, 
-            tmselevation);
+            TMSElevation);
 
         //! Base URL for TMS requests
         void setURL(const URI& value) { options().url() = value; }

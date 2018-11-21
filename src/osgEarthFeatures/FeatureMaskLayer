@@ -34,11 +34,10 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureMaskLayerOptions : public MaskLayerOptions
     {
     public:
-        FeatureMaskLayerOptions(const ConfigOptions& options =ConfigOptions());
+        META_LayerOptions(osgEarth, FeatureMaskLayerOptions, MaskLayerOptions);
 
-        /** dtor */
-        virtual ~FeatureMaskLayerOptions() { }
         
+    public:
         /** Map layer containing the feature data */
         optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
         const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
@@ -49,11 +48,9 @@ namespace osgEarth { namespace Features
 
     public:
         virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
 
     private:
         void fromConfig( const Config& conf );
-
         optional<std::string> _featureSourceLayer;
         optional<FeatureSourceOptions> _featureSource;
     };
@@ -65,7 +62,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureMaskLayer : public MaskLayer
     {
     public:
-        META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions, MaskLayer, feature_mask);
+        META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions, MaskLayer, FeatureMask);
 
         /** The feature source layer from which to get boundary features */
         void setFeatureSourceLayer(FeatureSourceLayer* layer);

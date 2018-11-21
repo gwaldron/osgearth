@@ -39,8 +39,12 @@
 // text inlining macro
 #define OE_MULTILINE(...) #__VA_ARGS__
 
-// expandable comment for macros
+// expandable comment for macros (only works in MSVC)
+#ifdef _MSC_VER
 #define OE_COMMENT(STR) / ## ** #STR * ## /
+#else
+#define OE_COMMENT(STR)
+#endif
 
 /** osgEarth core */
 namespace osgEarth

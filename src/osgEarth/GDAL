@@ -225,7 +225,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, GDALImageLayer, GDALImageLayerOptions, ImageLayer, gdalimage);
+        META_Layer(osgEarth, GDALImageLayer, GDALImageLayerOptions, ImageLayer, GDALImage);
 
         //! Base URL for TMS requests
         void setURL(const URI& value) { options().url() = value; }
@@ -290,7 +290,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT GDALElevationLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, GDALElevationLayer, GDALElevationLayerOptions, ElevationLayer, gdalelevation);
+        META_Layer(osgEarth, GDALElevationLayer, GDALElevationLayerOptions, ElevationLayer, GDALElevation);
         
         //! Base URL for TMS requests
         void setURL(const URI& value) { options().url() = value; }

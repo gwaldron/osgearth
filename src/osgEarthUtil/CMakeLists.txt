@@ -20,6 +20,7 @@ SET(HEADERS_ROOT
     ContourMap
     ClampCallback
     ClusterNode
+    DebugImageLayer
     EarthManipulator
     Ephemeris
     ExampleResources
@@ -108,6 +109,7 @@ SET(SOURCES_ROOT
     ClusterNode.cpp
     Controls.cpp
     ContourMap.cpp
+    DebugImageLayer.cpp
     EarthManipulator.cpp
     Ephemeris.cpp
     ExampleResources.cpp

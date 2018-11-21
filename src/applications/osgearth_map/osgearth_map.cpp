@@ -24,21 +24,19 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/GeoTransform>
-#include <osgEarth/CompositeTileSource>
+
 #include <osgEarth/TMS>
 #include <osgEarth/WMS>
 #include <osgEarth/GDAL>
 #include <osgEarth/XYZ>
+#include <osgEarth/Composite>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/AutoScaleCallback>
 
-#include <osgEarthDrivers/osg/OSGOptions>
-#include <osgEarthDrivers/debug/DebugOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <osgEarthFeatures/FeatureMaskLayer>
@@ -95,6 +93,15 @@ public:
     }
 };
 
+void
+checkErrors(const Layer* layer)
+{
+    if (layer->getStatus().isError())
+    {
+        OE_WARN << "Layer " << layer->getName() << " : " << layer->getStatus().message() << std::endl;
+    }
+}
+
 /**
  * How to create a simple osgEarth map and display it.
  */
@@ -131,9 +138,9 @@ main(int argc, char** argv)
     map->addLayer(texLayer);  
     
     // add a local GeoTIFF inset layer:
-    GDALImageLayer* boston = new GDALImageLayer();
-    boston->setURL("../data/boston-inset.tif");
-    map->addLayer(boston);
+    //GDALImageLayer* boston = new GDALImageLayer();
+    //boston->setURL("../data/boston-inset.tif");
+    //map->addLayer(boston);
 
     // add a WMS radar layer with transparency, and disable caching since
     // this layer updates on the server periodically.
@@ -146,25 +153,33 @@ main(int argc, char** argv)
     wms->options().cachePolicy() = CachePolicy::NO_CACHE;
     map->addLayer(wms);
 
-    // Add a local simple image as a layer. You can use the GDAL driver for this
-    // but you have to set a geospatial Profile so osgEarth knows where to render it
-    // on the map:
+    // Add a local simple image as a layer. You can use the GDAL driver for this,
+    // but since a GIF has no spatial reference information, you have to assign a
+    // geospatial Profile so that osgEarth knows where to render it on the map.
     GDALImageLayer* gif = new GDALImageLayer();
     gif->setURL( "../data/osgearth.gif" );
     gif->setProfile( Profile::create("WGS84", -90.0, 10.0, -80.0, 15.0) );
     map->addLayer(gif);
 
-    // create a composite image layer that combines two other sources:
+    // Add a composite image layer that combines two other sources:
     GDALImageLayer* comp1 = new GDALImageLayer();
-    comp1->setURL("../data/boston-inset-wgs84.tif");    
-
+    comp1->setURL("../data/boston-inset-wgs84.tif");
     GDALImageLayer* comp2 = new GDALImageLayer();
     comp2->setURL("../data/nyc-inset-wgs84.tif");
+    CompositeImageLayer* compImage = new CompositeImageLayer();
+    compImage->addLayer(comp1);
+    compImage->addLayer(comp2);
+    map->addLayer(compImage);
 
-    CompositeTileSourceOptions composite;
-    composite.add(ImageLayerOptions(comp1->options()));
-    composite.add(ImageLayerOptions(comp2->options()));
-    map->addLayer(new ImageLayer(composite));
+    // Add a composite elevation layer tha tcombines two other sources:
+    GDALElevationLayer* elev1 = new GDALElevationLayer();
+    elev1->setURL("../data/terrain/mt_fuji_90m.tif");
+    GDALElevationLayer* elev2 = new GDALElevationLayer();
+    elev2->setURL("../data/terrain/mt_everest_90m.tif");
+    CompositeElevationLayer* compElev = new CompositeElevationLayer();
+    compElev->addLayer(elev1);
+    compElev->addLayer(elev2);
+    map->addLayer(compElev);
 
     // mask layer
     OGRFeatureOptions maskOptions;
@@ -176,9 +191,14 @@ main(int argc, char** argv)
     maskOptions.geometry()->push_back(osg::Vec3d(-114.0506, 37.0004, 0));
     maskOptions.geometry()->push_back(osg::Vec3d(-114.0417, 41.9937, 0));
     maskOptions.profile() = ProfileOptions("global-geodetic");
-    FeatureMaskLayerOptions maskLayerOptions;
-    maskLayerOptions.featureSource() = maskOptions;
-    map->addLayer(new FeatureMaskLayer(maskLayerOptions));
+
+    osg::ref_ptr<FeatureSource> features = FeatureSourceFactory::create(maskOptions);
+    if (features->open().isOK())
+    {
+        FeatureMaskLayer* maskLayer = new FeatureMaskLayer();
+        maskLayer->setFeatureSource(features.get());
+        map->addLayer(maskLayer);
+    }
 
     // put a model on the map atop Pike's Peak, Colorado, USA
     osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("cow.osgt.(0,0,3).trans.osgearth_shadergen");

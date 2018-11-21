@@ -159,7 +159,7 @@ namespace osgEarth
             XYZImageLayer,
             XYZImageLayerOptions,
             ImageLayer,
-            xyzimage);
+            XYZImage);
 
     public:
         //! Base URL for requests
@@ -208,7 +208,7 @@ namespace osgEarth
             XYZElevationLayer, 
             XYZElevationLayerOptions, 
             ElevationLayer, 
-            xyzelevation);
+            XYZElevation);
         
         //! Base URL for requests
         void setURL(const URI& value) { options().url() = value; }

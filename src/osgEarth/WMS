@@ -415,7 +415,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT WMSImageLayer : public ImageLayer, public SequenceControl
     {
     public:
-        META_Layer(osgEarth, WMSImageLayer, WMSImageLayerOptions, ImageLayer, tmsimage);
+        META_Layer(osgEarth, WMSImageLayer, WMSImageLayerOptions, ImageLayer, WMSImage);
 
         //! Base URL for service requests
         void setURL(const URI& value) { options().url() = value; }

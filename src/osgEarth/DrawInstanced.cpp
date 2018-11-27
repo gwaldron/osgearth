@@ -26,6 +26,7 @@
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/TextureBuffer>
+#include <osgUtil/Optimizer>
 
 #define LC "[DrawInstanced] "
 
@@ -40,6 +41,24 @@ using namespace osgEarth::DrawInstanced;
 //#define USE_INSTANCE_LODS
 
 //----------------------------------------------------------------------
+
+namespace osgEarth { namespace DrawInstanced
+{
+    class MakeTransformsStatic : public osg::NodeVisitor
+    {
+    public:
+        MakeTransformsStatic() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) 
+        {
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Transform& node)
+        {
+            node.setDataVariance(osg::Object::STATIC);
+            traverse(node);
+        }
+    };
+}}
 
 namespace
 {
@@ -303,6 +322,8 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     // we make more tbos
     int matrixSize = 4 * 4 * sizeof(float); // 4 vec4's.
     int maxTBOInstancesSize = maxTBOSize / matrixSize;
+        
+    osgUtil::Optimizer optimizer;
 
     // For each model:
     for( ModelInstanceMap::iterator i = models.begin(); i != models.end(); ++i )
@@ -396,6 +417,12 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 		posTBO->setImage(image);
         posTBO->setInternalFormat( GL_RGBA32F_ARB );
         posTBO->setUnRefImageDataAfterApply( true );
+
+        // Flatten any transforms in the node graph:
+        MakeTransformsStatic makeStatic;
+        node->accept(makeStatic);
+        osgUtil::Optimizer::FlattenStaticTransformsDuplicatingSharedSubgraphsVisitor flatten;
+        node->accept(flatten);
 
         // Convert the node's primitive sets to use "draw-instanced" rendering; at the
         // same time, assign our computed bounding box as the static bounds for all

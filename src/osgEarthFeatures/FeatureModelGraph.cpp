@@ -1001,7 +1001,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         // set up for feature indexing if appropriate:
         FeatureSourceIndexNode* index = 0L;
 
-        FeatureSource* featureSource = _session->getFeatureSource();
+        FeatureLayer* featureSource = _session->getFeatureSource();
 
         if (featureSource)
         {
@@ -1057,8 +1057,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
             if ( _session->styles()->selectors().size() == 0 )
             {
                 // attempt to glean the style from the feature source name:
-                defaultStyle = *_session->styles()->getStyle( 
-                    *_session->getFeatureSource()->getFeatureSourceOptions().name() );
+                defaultStyle = *_session->styles()->getStyle(_session->getFeatureSource()->getName());
             }
 
             osg::Node* node = build(defaultStyle, query, extent, index, readOptions, progress.get());
@@ -1138,7 +1137,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
-    FeatureSource* source = _session->getFeatureSource();
+    FeatureLayer* source = _session->getFeatureSource();
 
     // case: each feature has an embedded style.
     if ( source->hasEmbeddedStyles() )
@@ -1566,21 +1565,21 @@ FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
-    {
-        if (!_pendingUpdate && 
-             (_dirty ||
-              _session->getFeatureSource()->outOfSyncWith(_featureSourceRev) ||
-              (_modelSource.valid() && _modelSource->outOfSyncWith(_modelSourceRev))))
-        {
-            OE_TEST << LC << "out of sync - requesting update" << std::endl;
+    //if ( nv.getVisitorType() == nv.EVENT_VISITOR )
+    //{
+    //    if (!_pendingUpdate && 
+    //         (_dirty ||
+    //          _session->getFeatureSource()->outOfSyncWith(_featureSourceRev) ||
+    //          (_modelSource.valid() && _modelSource->outOfSyncWith(_modelSourceRev))))
+    //    {
+    //        OE_TEST << LC << "out of sync - requesting update" << std::endl;
 
-            _pendingUpdate = true;
-            ADJUST_UPDATE_TRAV_COUNT( this, +1 );
-        }
-    }
-
-    else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    //        _pendingUpdate = true;
+    //        ADJUST_UPDATE_TRAV_COUNT( this, +1 );
+    //    }
+    //}
+    //else
+     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         if ( _pendingUpdate )
         {
@@ -1686,9 +1685,10 @@ FeatureModelGraph::redraw()
 
     addChild( node );
 
-    _session->getFeatureSource()->sync( _featureSourceRev );
-    if ( _modelSource.valid() )
-        _modelSource->sync( _modelSourceRev );
+    //_session->getFeatureSource()->sync( _featureSourceRev );
+
+    //if ( _modelSource.valid() )
+    //    _modelSource->sync( _modelSourceRev );
 
     _dirty = false;
 }

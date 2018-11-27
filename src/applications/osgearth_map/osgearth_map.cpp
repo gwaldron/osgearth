@@ -40,6 +40,7 @@
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <osgEarthFeatures/FeatureMaskLayer>
+#include <osgEarthFeatures/OGRFeatureLayer>
 
 #include <osg/PositionAttitudeTransform>
 #include <osgDB/WriteFile>
@@ -182,6 +183,26 @@ main(int argc, char** argv)
     map->addLayer(compElev);
 
     // mask layer
+    Polygon* maskGeom = new Polygon();
+    maskGeom->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
+    maskGeom->push_back(osg::Vec3d(-111.0467, 40.9979, 0));
+    maskGeom->push_back(osg::Vec3d(-109.0501, 41.0007, 0));
+    maskGeom->push_back(osg::Vec3d(-109.0452, 36.9991, 0));
+    maskGeom->push_back(osg::Vec3d(-114.0506, 37.0004, 0));
+    maskGeom->push_back(osg::Vec3d(-114.0417, 41.9937, 0));
+
+    OGRFeatureLayer* maskFeatures = new OGRFeatureLayer();
+    maskFeatures->setGeometry(maskGeom);
+    maskFeatures->setProfile(Profile::create("global-geodetic"));
+
+    if (maskFeatures->open().isOK())
+    {
+        FeatureMaskLayer* maskLayer = new FeatureMaskLayer();
+        maskLayer->setFeatureSource(maskFeatures);
+        map->addLayer(maskLayer);
+    }
+
+#if 0
     OGRFeatureOptions maskOptions;
     maskOptions.geometry() = new Polygon();
     maskOptions.geometry()->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
@@ -199,6 +220,7 @@ main(int argc, char** argv)
         maskLayer->setFeatureSource(features.get());
         map->addLayer(maskLayer);
     }
+#endif
 
     // put a model on the map atop Pike's Peak, Colorado, USA
     osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("cow.osgt.(0,0,3).trans.osgearth_shadergen");

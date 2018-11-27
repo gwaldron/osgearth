@@ -21,7 +21,7 @@
 #define OSGEARTHFEATURES_FEATURE_MODEL_SOURCE_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureLayer>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthFeatures/GeometryCompiler>
@@ -41,8 +41,8 @@ namespace osgEarth { namespace Features
     public: //properties
 
         /** Embedded feature source configuration. */
-        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
-        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
+        //optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        //const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
         osg::ref_ptr<StyleSheet>& styles() { return _styles; }
         const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
@@ -99,7 +99,7 @@ namespace osgEarth { namespace Features
         Config getConfig() const;
 
     protected:
-        optional<FeatureSourceOptions>      _featureSource;
+        //optional<FeatureSourceOptions>      _featureSource;
         optional<FeatureDisplayLayout>      _layout;
         optional<StringExpression>          _featureNameExpr;
         optional<bool>                      _lit;
@@ -122,13 +122,13 @@ namespace osgEarth { namespace Features
     {
     public: //properties
 
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        optional<FeatureLayerOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureLayerOptions>& featureOptions() const { return _featureOptions; }
 
-    public:
-        /** A live feature source instance to use. Note, this does not serialize. */
-        osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
-        const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
+    //public:
+    //    /** A live feature source instance to use. Note, this does not serialize. */
+    //    osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
+    //    const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
 
     public:
         FeatureModelSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
@@ -146,8 +146,7 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        optional<FeatureSourceOptions> _featureOptions;
-        osg::ref_ptr<FeatureSource>    _featureSource;
+        optional<FeatureLayerOptions> _featureOptions;
     };
 
 
@@ -238,10 +237,10 @@ namespace osgEarth { namespace Features
     public: // properties:
 
         /** Sets a feature source. */
-        void setFeatureSource( FeatureSource* source );
+        void setFeatureSource( FeatureLayer* source );
 
         /** The underlying feature source. */
-        FeatureSource* getFeatureSource() { return _features.get(); }
+        FeatureLayer* getFeatureSource() { return _features.get(); }
 
         /** The options with which this source was created */
         virtual const FeatureModelSourceOptions& getFeatureModelOptions() const { return _options; }
@@ -260,7 +259,7 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-        osg::ref_ptr<FeatureSource>        _features;
+        osg::ref_ptr<FeatureLayer>         _features;
         osg::observer_ptr<const Map>       _map;
         const FeatureModelSourceOptions    _options;
         osg::ref_ptr<FeatureNodeFactory>   _factory;

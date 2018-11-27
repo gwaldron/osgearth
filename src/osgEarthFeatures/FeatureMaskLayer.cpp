@@ -33,78 +33,47 @@ REGISTER_OSGEARTH_LAYER(featuremask, FeatureMaskLayer);
 void
 FeatureMaskLayerOptions::fromConfig(const Config& conf)
 {
-    conf.get("feature_source", _featureSourceLayer);
-    conf.get("features", _featureSource);
+    conf.get("feature_source", _featureLayer);
 }
 
 Config
 FeatureMaskLayerOptions::getConfig() const
 {
     Config conf = MaskLayerOptions::getConfig();
-    conf.set("feature_source", _featureSourceLayer);
-    conf.set("features", _featureSource);
+    conf.set("feature_source", _featureLayer);
     return conf;
 }
 
 //........................................................................
 
-FeatureMaskLayer::~FeatureMaskLayer()
-{
-    //nop
-}
-
 void
-FeatureMaskLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
+FeatureMaskLayer::setFeatureSource(FeatureLayer* layer)
 {
     if (layer && layer->getStatus().isError())
     {
-        setStatus(Status::Error(Status::ResourceUnavailable, "Feature source layer is unavailable; check for error"));
+        setStatus(Status::Error(Status::ResourceUnavailable, "Feature layer is unavailable; check for error"));
         return;
     }
 
     if (layer)
         OE_INFO << LC << "Feature source layer is \"" << layer->getName() << "\"\n";
 
-    setFeatureSource(layer ? layer->getFeatureSource() : 0L);
-}
-
-void
-FeatureMaskLayer::setFeatureSource(FeatureSource* source)
-{
-    if (_featureSource != source)
-    {
-        if (source)
-            OE_INFO << LC << "Setting feature source \"" << source->getName() << "\"\n";
-
-        _featureSource = source;
-
-        if (source && source->getStatus().isError())
-        {
-            setStatus(source->getStatus());
-            return;
-        }
-
-        create();
-    }
+    _featureSource = layer;
 }
 
 const Status&
 FeatureMaskLayer::open()
 {
-    if (options().featureSource().isSet())
+    if (_featureSource.valid())
     {
-        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
-        if (fs)
-        {
-            fs->setReadOptions(getReadOptions());
-            fs->open();
-            setFeatureSource(fs);
-        }
-        else
-        {
-            setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
-        }
+        _featureSource->setReadOptions(getReadOptions());
+        _featureSource->open();
     }
+    else
+    {
+        setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
+    }
+
     return MaskLayer::open();
 }
 
@@ -142,15 +111,15 @@ FeatureMaskLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
 
-    if (options().featureSourceLayer().isSet())
+    if (options().featureLayer().isSet())
     {
-        _featureSourceLayerListener.clear();
+        _featureLayerListener.clear();
 
-        _featureSourceLayerListener.listen(
+        _featureLayerListener.listen(
             map,
-            options().featureSourceLayer().get(),
+            options().featureLayer().get(),
             this,
-            &FeatureMaskLayer::setFeatureSourceLayer);
+            &FeatureMaskLayer::setFeatureSource);
     }
 
     create();
@@ -159,7 +128,7 @@ FeatureMaskLayer::addedToMap(const Map* map)
 void
 FeatureMaskLayer::removedFromMap(const Map* map)
 {
-    _featureSourceLayerListener.clear();
+    _featureLayerListener.clear();
 }
 
 void

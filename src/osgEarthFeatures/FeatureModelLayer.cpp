@@ -51,7 +51,7 @@ GeometryCompilerOptions(options)
         
 void FeatureModelLayerOptions::fromConfig(const Config& conf)
 {
-    conf.get("feature_source", _featureSourceLayer);
+    conf.get("feature_source", _featureLayer);
 }
 
 Config
@@ -61,7 +61,7 @@ FeatureModelLayerOptions::getConfig() const
     conf.merge(FeatureModelOptions::getConfig());
     conf.merge(GeometryCompilerOptions::getConfig());
 
-    conf.set("feature_source", _featureSourceLayer);
+    conf.set("feature_source", _featureLayer);
     return conf;
 }
 
@@ -114,24 +114,16 @@ void FeatureModelLayer::dirty()
 }
 
 void
-FeatureModelLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
+FeatureModelLayer::setFeatureSource(FeatureLayer* source)
 {
-    if (layer && layer->getStatus().isError())
+    if (source && source->getStatus().isError())
     {
         setStatus(Status::Error(Status::ResourceUnavailable, "Feature source layer is unavailable; check for error"));
         return;
     }
 
-    if (layer)
-        OE_INFO << LC << "Feature source layer is \"" << layer->getName() << "\"\n";
-
-    setFeatureSource(layer ? layer->getFeatureSource() : 0L);
-}
-
-void
-FeatureModelLayer::setFeatureSource(FeatureSource* source)
-{
-    OE_TEST << LC << "setFeatureSource" << std::endl;
+    if (source)
+        OE_INFO << LC << "Feature source layer is \"" << source->getName() << "\"\n";
 
     if (_featureSource != source)
     {
@@ -148,6 +140,12 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 
         dirty();
     }
+}
+
+void
+FeatureModelLayer::setStyleSheet(StyleSheet* value)
+{
+    options().styles() = value;
 }
 
 void
@@ -173,20 +171,28 @@ FeatureModelLayer::open()
 {
     OE_TEST << LC << "open" << std::endl;
 
-    if (options().featureSource().isSet())
-    {
-        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
-        if (fs)
-        {
-            fs->setReadOptions(getReadOptions());
-            fs->open();
-            setFeatureSource(fs);
-        }
-        else
-        {
-            setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
-        }
-    }
+    //if (options().featureLayer().isSet())
+    //{
+    //    osg::ref_ptr<Layer> layer = Layer::create(options().featureLayer().get());
+    //    if (layer.valid())
+    //    {
+    //        FeatureLayer* flayer = dynamic_cast<FeatureLayer*>(layer.get());
+    //        if (flayer)
+    //        {
+    //            flayer->setReadOptions(getReadOptions());
+    //            flayer->open();
+    //            setFeatureSource(flayer);
+    //        }
+    //        else
+    //        {
+    //            setStatus(Status(Status::ConfigurationError, "Feature source is not a feature layer"));
+    //        }
+    //    }
+    //    else
+    //    {
+    //        setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
+    //    }
+    //}
     return VisibleLayer::open();
 }
 
@@ -213,13 +219,13 @@ FeatureModelLayer::addedToMap(const Map* map)
         0L,  // feature source - will set later
         getReadOptions());
 
-    if (options().featureSourceLayer().isSet())
+    if (options().featureLayer().isSet())
     {
-        _featureSourceLayerListener.listen(
+        _featureLayerListener.listen(
             map,
-            options().featureSourceLayer().get(),
+            options().featureLayer().get(),
             this,
-            &FeatureModelLayer::setFeatureSourceLayer);
+            &FeatureModelLayer::setFeatureSource);
     }
     else
     {
@@ -231,7 +237,7 @@ FeatureModelLayer::addedToMap(const Map* map)
 void
 FeatureModelLayer::removedFromMap(const Map* map)
 {
-    _featureSourceLayerListener.clear();
+    _featureLayerListener.clear();
     
     if (_root.valid())
     {

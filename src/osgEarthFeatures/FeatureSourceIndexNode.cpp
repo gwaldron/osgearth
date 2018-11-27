@@ -328,8 +328,8 @@ namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNodeCla
 #undef  LC
 #define LC "[FeatureSourceIndex] "
 
-FeatureSourceIndex::FeatureSourceIndex(FeatureSource* featureSource, 
-                                       ObjectIndex*   index,
+FeatureSourceIndex::FeatureSourceIndex(FeatureLayer* featureSource, 
+                                       ObjectIndex*  index,
                                        const FeatureSourceIndexOptions& options) :
 _featureSource  ( featureSource ), 
 _masterIndex    ( index ),

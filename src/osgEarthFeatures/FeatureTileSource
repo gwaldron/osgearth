@@ -21,7 +21,7 @@
 #define OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureLayer>
 #include <osgEarthSymbology/StyleSheet>
 #include <osgEarth/TileSource>
 #include <osgEarth/Map>
@@ -37,8 +37,8 @@ namespace osgEarth { namespace Features
     {
     public: // serializable properties
 
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        //optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        //const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
         osg::ref_ptr<StyleSheet>& styles() { return _styles; }
         const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
@@ -49,8 +49,8 @@ namespace osgEarth { namespace Features
 
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
-        osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
-        const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
+        //osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
+        //const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
 
         FeatureTileSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
 
@@ -62,10 +62,10 @@ namespace osgEarth { namespace Features
     protected:
         virtual void mergeConfig( const Config& conf );
 
-        optional<FeatureSourceOptions> _featureOptions;
+        //optional<FeatureSourceOptions> _featureOptions;
         osg::ref_ptr<StyleSheet>       _styles;
         optional<Geometry::Type>       _geomTypeOverride;
-        osg::ref_ptr<FeatureSource>    _featureSource;
+        //osg::ref_ptr<FeatureSource>    _featureSource;
 
     private:
         void fromConfig( const Config& conf );
@@ -95,12 +95,12 @@ namespace osgEarth { namespace Features
     public: // properties:
 
         /** The underlying feature source. */
-        FeatureSource* getFeatureSource() { return _features.get(); }
+        FeatureLayer* getFeatureSource() { return _features.get(); }
 
         /** Sets the source from which to read feature data. It is only legal to call this method
             before this TileSource has been initialized by the map engine. Afterwards it will have
             no effect. */
-        void setFeatureSource( FeatureSource* source );
+        void setFeatureSource( FeatureLayer* source );
 
     protected:
 
@@ -182,9 +182,8 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureTileSource() { }
 
-        osg::ref_ptr<FeatureSource> _features;
+        osg::ref_ptr<FeatureLayer> _features;
         const FeatureTileSourceOptions _options;
-        //osg::ref_ptr<const FeatureTileSourceOptions> _options;
         osg::ref_ptr<const osgEarth::Map> _map;
         bool _initialized;
         osg::ref_ptr<Session> _session;

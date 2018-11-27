@@ -56,7 +56,7 @@ _nodeCaching(false)
 void
 FeatureModelOptions::fromConfig(const Config& conf)
 {
-    conf.get("features", _featureSource);
+    //conf.get("features", _featureSource);
 
     conf.get( "styles",           _styles );
     conf.get( "layout",           _layout );
@@ -87,7 +87,7 @@ Config
 FeatureModelOptions::getConfig() const
 {
     Config conf;
-    conf.set("features", _featureSource);
+    //conf.set("features", _featureSource);
 
     conf.set( "styles",           _styles );
     conf.set( "layout",           _layout );
@@ -119,8 +119,8 @@ FeatureModelOptions()
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    conf.get( "features", _featureOptions );
-    _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
+    //conf.get( "features", _featureOptions );
+    //_featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
     
     conf.get( "styles",           _styles );
     conf.get( "layout",           _layout );
@@ -143,12 +143,12 @@ FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
 
-    conf.set( "features", _featureOptions );    
-    if (_featureSource.valid())
-    {
-        conf.setNonSerializable("feature_source", _featureSource.get());
-    }
-    conf.set("feature_source", _featureSourceLayer);
+    //conf.set( "features", _featureOptions );    
+    //if (_featureSource.valid())
+    //{
+    //    conf.setNonSerializable("feature_source", _featureSource.get());
+    //}
+    //conf.set("feature_source", _featureSourceLayer);
 
     conf.set( "styles",           _styles );
     conf.set( "layout",           _layout );
@@ -178,7 +178,7 @@ _options   ( options )
 }
 
 void
-FeatureModelSource::setFeatureSource( FeatureSource* source )
+FeatureModelSource::setFeatureSource( FeatureLayer* source )
 {
     if ( !_features.valid() )
     {
@@ -197,15 +197,15 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
         setReadOptions(readOptions);
     
     // the data source from which to pull features:
-    if ( _options.featureSource().valid() )
-    {
-        _features = _options.featureSource().get();
-    }
+    //if ( _options.featureSource().valid() )
+    //{
+    //    _features = _options.featureSource().get();
+    //}
 
-    else if ( _options.featureOptions().isSet() )
-    {
-        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
-    }
+    //else if ( _options.featureOptions().isSet() )
+    //{
+    //    _features = FeatureSourceFactory::create( _options.featureOptions().value() );
+    //}
 
     if (!_features.valid())
         return Status::Error(Status::ServiceUnavailable, "Failed to create a feature driver");

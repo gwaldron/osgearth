@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSourceLayer>
+#include <osgEarthFeatures/FeatureLayer>
 
 #include <osgEarth/MaskLayer>
 #include <osgEarth/LayerListener>
@@ -35,24 +36,16 @@ namespace osgEarth { namespace Features
     {
     public:
         META_LayerOptions(osgEarth, FeatureMaskLayerOptions, MaskLayerOptions);
-
         
-    public:
-        /** Map layer containing the feature data */
-        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
-        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
-
-        /** Embedded feature data definition */
-        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
-        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
+        /** Name of the map layer containing the feature data */
+        optional<std::string>& featureLayer() { return _featureLayer; }
 
     public:
         virtual Config getConfig() const;
 
     private:
         void fromConfig( const Config& conf );
-        optional<std::string> _featureSourceLayer;
-        optional<FeatureSourceOptions> _featureSource;
+        optional<std::string> _featureLayer;
     };
 
 
@@ -64,11 +57,8 @@ namespace osgEarth { namespace Features
     public:
         META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions, MaskLayer, FeatureMask);
 
-        /** The feature source layer from which to get boundary features */
-        void setFeatureSourceLayer(FeatureSourceLayer* layer);
-
-        /** The feature source from which to get boundary features */
-        void setFeatureSource(FeatureSource* source);
+        //! Source of the masking feature(s)
+        void setFeatureSource(FeatureLayer* features);
 
     public: // MaskLayer
 
@@ -94,15 +84,15 @@ namespace osgEarth { namespace Features
     protected:
 
         /** dtor */
-        virtual ~FeatureMaskLayer();
+        virtual ~FeatureMaskLayer() { }
 
     private:
 
-        LayerListener<FeatureMaskLayer, FeatureSourceLayer> _featureSourceLayerListener;
+        LayerListener<FeatureMaskLayer, FeatureLayer> _featureLayerListener;
 
         void create();
 
-        osg::ref_ptr<FeatureSource> _featureSource;
+        osg::ref_ptr<FeatureLayer> _featureSource;
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         OpenThreads::Mutex _boundaryMutex;
     };

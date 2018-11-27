@@ -46,7 +46,7 @@ FeatureTileSourceOptions::getConfig() const
 {
     Config conf = TileSourceOptions::getConfig();
 
-    conf.set( "features", _featureOptions );
+    //conf.set( "features", _featureOptions );
     conf.set( "styles", _styles );
 
     if ( _geomTypeOverride.isSet() ) {
@@ -71,7 +71,7 @@ FeatureTileSourceOptions::mergeConfig( const Config& conf )
 void
 FeatureTileSourceOptions::fromConfig( const Config& conf )
 {
-    conf.get( "features", _featureOptions );
+    //conf.get( "features", _featureOptions );
 
     conf.get( "styles", _styles );
     
@@ -91,19 +91,19 @@ TileSource  ( options ),
 _options    ( options.getConfig() ),
 _initialized( false )
 {
-    if ( _options.featureSource().valid() )
-    {
-        _features = _options.featureSource().get();
-    }
+    //if ( _options.featureSource().valid() )
+    //{
+    //    _features = _options.featureSource().get();
+    //}
 
-    else if ( _options.featureOptions().isSet() )
-    {
-        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
-        if ( !_features.valid() )
-        {
-            OE_WARN << LC << "Failed to create FeatureSource from options" << std::endl;
-        }
-    }
+    //else if ( _options.featureOptions().isSet() )
+    //{
+    //    _features = FeatureSourceFactory::create( _options.featureOptions().value() );
+    //    if ( !_features.valid() )
+    //    {
+    //        OE_WARN << LC << "Failed to create FeatureSource from options" << std::endl;
+    //    }
+    //}
 }
 
 Status 
@@ -118,7 +118,9 @@ FeatureTileSource::initialize(const osgDB::Options* readOptions)
         return Status::Error(Status::ServiceUnavailable, "No feature source");
 
     // attempt to open the feature source:
-    const Status& sourceStatus = _features->open(readOptions);
+    _features->setReadOptions(readOptions);
+
+    const Status& sourceStatus = _features->open();
     if (sourceStatus.isError())
         return sourceStatus;
 
@@ -147,7 +149,7 @@ FeatureTileSource::initialize(const osgDB::Options* readOptions)
 }
 
 void
-FeatureTileSource::setFeatureSource( FeatureSource* source )
+FeatureTileSource::setFeatureSource( FeatureLayer* source )
 {
     if ( !_initialized )
     {

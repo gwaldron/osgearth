@@ -52,7 +52,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions, Layer, feature_source);
+        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions, Layer, FeatureSource);
 
         //! The underlying feature source.
         //! open() must be called before getFeatureSource becomes available
@@ -66,8 +66,7 @@ namespace osgEarth { namespace Features
 
     protected:
         osg::ref_ptr<FeatureSource> _featureSource;
-    };
-
+    };    
 
 } } // namespace osgEarth::Features
 

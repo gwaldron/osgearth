@@ -20,7 +20,7 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureLayer>
 
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarthSymbology/StyleSheet>
@@ -61,7 +61,7 @@ _styles(styles)
     init();
 }
 
-Session::Session(const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions) :
+Session::Session(const Map* map, StyleSheet* styles, FeatureLayer* source, const osgDB::Options* dbOptions) :
 osg::Object(),
 _map(map),
 _mapInfo(map),
@@ -187,12 +187,12 @@ Session::getScriptEngine() const
 }
 
 void
-Session::setFeatureSource(FeatureSource* fs)
+Session::setFeatureSource(FeatureLayer* fs)
 {
     _featureSource = fs;
 }
 
-FeatureSource*
+FeatureLayer*
 Session::getFeatureSource() const 
 { 
     return _featureSource.get(); 

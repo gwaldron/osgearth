@@ -9,14 +9,11 @@ OSG geometry out of it.
     	
     <xi:include href="readymap_imagery.xml"/>
     
-    <OGRFeatureSource name="States-Data">
+    <OGRFeatures name="US-Data">
         <url>../data/usa.shp</url>
-    </OGRFeatureSource>
+    </OGRFeatures>
     
-    <FeatureModel name="US States">
-        <features driver="ogr" name="states">
-            <url>../data/usa.shp</url>
-        </features>
+    <FeatureModel name="US States" features="US-Data">
         <styles>
             <style type="text/css">
                 states {

@@ -524,5 +524,18 @@ namespace osgEarth
     };
 }
 
-#endif // OSGEARTH_CONFIG_H
+//! Macro to use when defining a COnfigOptions class
+#define META_ConfigOptions(LIBRARY, MYCLASS, SUPERCLASS) \
+    protected: \
+        virtual void mergeConfig(const Config& conf) { \
+            SUPERCLASS ::mergeConfig(conf); \
+            fromConfig(conf); \
+        } \
+    public: \
+        OE_COMMENT("Construct empty layer options") \
+        MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
+        \
+        OE_COMMENT("Construct layer options from serialized data") \
+        MYCLASS (const ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
 
+#endif // OSGEARTH_CONFIG_H

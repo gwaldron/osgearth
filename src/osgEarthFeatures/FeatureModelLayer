@@ -21,7 +21,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureSourceLayer>
+#include <osgEarthFeatures/FeatureLayer>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/Session>
@@ -52,8 +52,8 @@ namespace osgEarth { namespace Features
         FeatureModelLayerOptions(const ConfigOptions& options);
         
         /** Name of the feature source layer to use for flattening. */
-        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
-        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
+        optional<std::string>& featureLayer() { return _featureLayer; }
+        const optional<std::string>& featureLayer() const { return _featureLayer; }
 
     public: // LayerOptions
         virtual Config getConfig() const;
@@ -63,7 +63,7 @@ namespace osgEarth { namespace Features
         
     private:
         void fromConfig(const Config& conf);
-        optional<std::string> _featureSourceLayer;
+        optional<std::string> _featureLayer;
     };
 
 
@@ -73,7 +73,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions, VisibleLayer, featuremodel);
+        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions, VisibleLayer, FeatureModel);
 
         //! Options used to initialize this layer.
         const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
@@ -81,11 +81,11 @@ namespace osgEarth { namespace Features
         //! Sets the options to initilize the layer
         void setFeatureModelLayerOptions(const FeatureModelLayerOptions& options);
 
-        //! Feature source layer from which to get a feature source. Use this OR setFeatureSource
-        void setFeatureSourceLayer(FeatureSourceLayer* layer);
-        
-        //! The feature source from which to read geometry. Use this OR setFeatureLayer
-        void setFeatureSource(FeatureSource* fs);
+        //! The feature source from which to read geometry.
+        void setFeatureSource(FeatureLayer* layer);
+
+        //! Stylesheet to apply to the features
+        void setStyleSheet(StyleSheet* value);
 
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();
@@ -132,10 +132,11 @@ namespace osgEarth { namespace Features
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
     private:
-        osg::ref_ptr<FeatureSource> _featureSource;
-        LayerListener<FeatureModelLayer, FeatureSourceLayer> _featureSourceLayerListener;
+        osg::ref_ptr<FeatureLayer> _featureSource;
+        LayerListener<FeatureModelLayer, FeatureLayer> _featureLayerListener;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
+        osg::ref_ptr<StyleSheet> _styleSheet;
         bool _graphDirty;
         osg::ref_ptr<CreateFeatureNodeFactoryCallback> _createFactoryCallback;
         

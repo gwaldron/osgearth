@@ -33,6 +33,7 @@
 #include <osgEarthUtil/EarthManipulator>
 
 #include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/OGRFeatureLayer>
 #include <osgEarthFeatures/FeatureModelLayer>
 
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
@@ -86,12 +87,12 @@ int main(int argc, char** argv)
     basemap->setURL("../data/world.tif");
     map->addLayer(basemap);
     
-    // Next we add a feature layer. 
-    OGRFeatureOptions featureData;
+    // Next we add a layer to provide the feature data. 
+    OGRFeatureLayer* features = new OGRFeatureLayer();
+    features->setName("vector-data");
     if ( !useMem )
     {
-        // Configures the feature driver to load the vectors from a shapefile:
-        featureData.url() = "../data/world.shp";
+        features->setURL("../data/world.shp");
     }
     else
     {
@@ -101,14 +102,9 @@ int main(int argc, char** argv)
         line->push_back( osg::Vec3d(-120, 20, 0) );
         line->push_back( osg::Vec3d(-120, 60, 0) );
         line->push_back( osg::Vec3d(-60, 60, 0) );
-        featureData.geometry() = line;
+        features->setGeometry(line);
     }
-
-    // Make a feature source layer and add it to the Map:
-    FeatureSourceLayerOptions ogrLayer;
-    ogrLayer.name() = "vector-data";
-    ogrLayer.featureSource() = featureData;
-    map->addLayer(new FeatureSourceLayer(ogrLayer));
+    map->addLayer(features);
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -140,23 +136,26 @@ int main(int argc, char** argv)
     
     if (useRaster)
     {
-        AGGLiteOptions rasterOptions;
-        rasterOptions.featureOptions() = featureData;
-        rasterOptions.styles() = new StyleSheet();
-        rasterOptions.styles()->addStyle( style );
-        map->addLayer(new ImageLayer(rasterOptions) );
+        //TODO
+        //AGGLiteOptions rasterOptions;
+        //rasterOptions.featureOptions() = featureData;
+        //rasterOptions.styles() = new StyleSheet();
+        //rasterOptions.styles()->addStyle( style );
+        //map->addLayer(new ImageLayer(rasterOptions) );
     }
 
     else //if (useGeom)
     {
-        FeatureModelLayerOptions fml;
-        fml.name() = "My Features";
-        fml.featureSourceLayer() = "vector-data";
-        fml.styles() = new StyleSheet();
-        fml.styles()->addStyle(style);
-        fml.enableLighting() = false;
+        FeatureModelLayer* layer = new FeatureModelLayer();
+        layer->setFeatureSource(features);
 
-        map->addLayer(new FeatureModelLayer(fml));
+        StyleSheet* styleSheet = new StyleSheet();
+        styleSheet->addStyle(style);
+        layer->setStyleSheet(styleSheet);
+
+        //fml.enableLighting() = false;
+
+        map->addLayer(layer);
     }   
 
     if ( useLabels && !useRaster )
@@ -177,10 +176,9 @@ int main(int argc, char** argv)
         // and configure a model layer:
         FeatureModelLayerOptions fml;
         fml.name() = "Labels";
-        fml.featureSourceLayer() = "vector-data";
+        fml.featureLayer() = "vector-data";
         fml.styles() = new StyleSheet();
         fml.styles()->addStyle( labelStyle );
-
         map->addLayer(new FeatureModelLayer(fml));
     }
 

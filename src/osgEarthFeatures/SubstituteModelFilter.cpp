@@ -215,11 +215,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         scaleMatrix = osg::Matrix::scale( scaleVec );
         
-        osg::Matrixd rotationMatrix;
+        osg::Matrixd headingRotation;
         if ( modelSymbol && modelSymbol->heading().isSet() )
         {
             float heading = input->eval(headingEx, &context);
-            rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+            headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
         }
 
 		// how that we have a marker source, create a node for it
@@ -302,7 +302,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     if ( modelSymbol && modelSymbol->heading().isSet() )
                     {
                         float heading = input->eval(headingEx, &context);
-                        rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+                        headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
                     }
 
                     osg::Vec3d point = (*geom)[i];
@@ -311,13 +311,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
                         // could take a shortcut and just use the current extent's local2world matrix for this,
                         // but if the tile is big enough the up vectors won't be quite right.
-                        osg::Matrixd rotation;
-                        ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, targetSRS, rotation );
-                        mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate( point ) * _world2local;
+                        osg::Matrixd upRotation;
+                        ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, targetSRS, upRotation );
+                        mat = scaleMatrix * headingRotation * upRotation * osg::Matrixd::translate( point ) * _world2local;
                     }
                     else
                     {
-                        mat = scaleMatrix * rotationMatrix * osg::Matrixd::translate( point ) * _world2local;
+                        mat = scaleMatrix * headingRotation * osg::Matrixd::translate( point ) * _world2local;
                     }
 
                     osg::MatrixTransform* xform = new osg::MatrixTransform();

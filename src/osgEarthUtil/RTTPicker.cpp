@@ -303,7 +303,7 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     float v = (mouseY - (float)vp->y())/(float)vp->height();
 
     // check the bounds:
-    if ( u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f )
+    if ( u < 0.0f || u >= 1.0f || v < 0.0f || v >= 1.0f )
         return false;
 
     // install the RTT pick camera under this view's camera if it's not already:

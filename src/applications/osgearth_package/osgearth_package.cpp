@@ -33,11 +33,9 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/TMS>
 
-#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/OGRFeatureSource>
 
 #include <osgEarthUtil/TMSPackager>
-
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <iostream>
 #include <sstream>
@@ -45,7 +43,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_package] "
 
@@ -166,22 +163,19 @@ makeTMS( osg::ArgumentParser& args )
     while (args.read("--index", index))
     {
         //Open the feature source
-        OGRFeatureOptions featureOpt;
-        featureOpt.url() = index;
-
-        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-        Status s = features->open();
-        if (s.isError())
-            return usage(s.message());
-
-        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
-        while (cursor.valid() && cursor->hasMore())
+        osg::ref_ptr<OGRFeatureSource> features = new OGRFeatureSource();
+        features->setURL(index);
+        if (features->open().isOK())
         {
-            osg::ref_ptr< Feature > feature = cursor->nextFeature();
-            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
-            GeoExtent ext( feature->getSRS(), featureBounds );
-            ext = ext.transform( mapNode->getMapSRS() );
-            bounds.push_back( ext.bounds() );
+            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(Query::ALL, 0L);
+            while (cursor.valid() && cursor->hasMore())
+            {
+                osg::ref_ptr< Feature > feature = cursor->nextFeature();
+                osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+                GeoExtent ext( feature->getSRS(), featureBounds );
+                ext = ext.transform( mapNode->getMapSRS() );
+                bounds.push_back( ext.bounds() );
+            }
         }
     }
 

@@ -149,7 +149,7 @@ FeatureTileSource::initialize(const osgDB::Options* readOptions)
 }
 
 void
-FeatureTileSource::setFeatureSource( FeatureLayer* source )
+FeatureTileSource::setFeatureSource( FeatureSource* source )
 {
     if ( !_initialized )
     {

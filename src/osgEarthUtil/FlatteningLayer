@@ -25,7 +25,6 @@
 #include <osgEarth/ElevationPool>
 #include <osgEarth/LayerListener>
 #include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthSymbology/StyleSheet>
 #include <osgDB/FileNameUtils>
@@ -42,23 +41,11 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FlatteningLayerOptions : public ElevationLayerOptions
     {
     public:
-        // constructor
-        FlatteningLayerOptions(const ConfigOptions& co = ConfigOptions()) :
-            ElevationLayerOptions(co)
-        {
-            _fill.init(false);
-            _lineWidth.init(40);
-            _bufferWidth.init(40);
-            mergeConfig(_conf);
-        }
+        META_LayerOptions(osgEarth, FlatteningLayerOptions, ElevationLayerOptions);
         
         /** Name of the feature source layer to use for flattening. */
-        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
-        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
-
-        /** Features that will drive the flattening process. */
-        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
-        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
+        optional<std::string>& featureSource() { return _featureSource; }
+        const optional<std::string>& featureSource() const { return _featureSource; }
 
         /** For line features, the width around the line to flatten. */
         optional<NumericExpression>& lineWidth() { return _lineWidth; }
@@ -77,79 +64,11 @@ namespace osgEarth { namespace Util
         StyleSheet::ScriptDef* getScript() const { return _script.get(); }
 
     public:
-        Config getConfig() const
-        {
-            Config conf = ElevationLayerOptions::getConfig();
-            conf.set("features",  _featureSource);
-            conf.set("feature_source", _featureSourceLayer);
-            conf.set("line_width", _lineWidth);
-            conf.set("buffer_width", _bufferWidth);
-            conf.set("fill", _fill);
-
-            if ( _script.valid() )
-            {
-                Config scriptConf("script");
-
-                if ( !_script->name.empty() )
-                    scriptConf.set( "name", _script->name );
-                if ( !_script->language.empty() )
-                    scriptConf.set( "language", _script->language );
-                if ( _script->uri.isSet() )
-                    scriptConf.set( "url", _script->uri->base() );
-                if ( !_script->profile.empty() )
-                    scriptConf.set( "profile", _script->profile );
-                else if ( !_script->code.empty() )
-                    scriptConf.value() = _script->code;
-
-                conf.add( scriptConf );
-            }
-
-            return conf;
-        }
-
-    protected:
-        void mergeConfig( const Config& conf )
-        {
-            URIContext uriContext = URIContext( conf.referrer() );
-
-            conf.get("features",  _featureSource);
-            conf.get("feature_source", _featureSourceLayer);
-            conf.get("line_width", _lineWidth);
-            conf.get("buffer_width", _bufferWidth);
-            conf.get("fill", _fill);
-
-            // TODO:  Separate out ScriptDef from Stylesheet and include it as a standalone class, along with this loading code.
-            ConfigSet scripts = conf.children( "script" );
-            for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
-            {
-                _script = new StyleSheet::ScriptDef();
-
-                // load the code from a URI if there is one:
-                if ( i->hasValue("url") )
-                {
-                    _script->uri = URI( i->value("url"), uriContext );
-                    OE_INFO << "Loading script from \"" << _script->uri->full() << std::endl;
-                    _script->code = _script->uri->getString();
-                }
-                else
-                {
-                    _script->code = i->value();
-                }
-
-                // name is optional and unused at the moment
-                _script->name = i->value("name");
-
-                std::string lang = i->value("language");
-                _script->language = lang.empty() ? "javascript" : lang;
-
-                std::string profile = i->value("profile");
-                _script->profile = profile;
-            }
-        }
+        Config getConfig() const;
         
     private:
-        optional<FeatureSourceOptions>  _featureSource;
-        optional<std::string> _featureSourceLayer;
+        void fromConfig(const Config&);
+        optional<std::string> _featureSource;
         optional<NumericExpression> _lineWidth;
         optional<NumericExpression> _bufferWidth;
         optional<bool> _fill;
@@ -164,13 +83,10 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions, ElevationLayer, flattened_elevation);
+        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions, ElevationLayer, flattenedelevation);
 
-        // Feature source layer to get a FeatureSource from
-        void setFeatureSourceLayer(FeatureSourceLayer* layer);    
-        
-        // the feature source from which to read flattening geometry
-        void setFeatureSource(FeatureSource* fs);
+        // Feature source layer to get features from
+        void setFeatureSource(FeatureSource* layer);
 
     public: // ElevationLayer
 
@@ -181,11 +97,15 @@ namespace osgEarth { namespace Util
 
     protected: // ElevationLayer
 
-        virtual void createImplementation(
-            const TileKey& key,
-            osg::ref_ptr<osg::HeightField>& hf,
-            osg::ref_ptr<NormalMap>& normalMap,
-            ProgressCallback* progres);
+        //virtual void createImplementation(
+        //    const TileKey& key,
+        //    osg::ref_ptr<osg::HeightField>& hf,
+        //    osg::ref_ptr<NormalMap>& normalMap,
+        //    ProgressCallback* progres);
+
+        virtual GeoHeightField createHeightFieldImplementation(
+            const TileKey& key, 
+            ProgressCallback* progress) const;
 
         //! called by the map when this layer is added
         virtual void addedToMap(const class Map*);
@@ -200,13 +120,11 @@ namespace osgEarth { namespace Util
     private:
 
         osg::ref_ptr<ElevationPool> _pool;
-        osg::ref_ptr<FeatureSource> _featureSource;
         osg::ref_ptr<ScriptEngine> _scriptEngine;
-        LayerListener<FlatteningLayer, FeatureSourceLayer> _featureLayerListener;
+        osg::ref_ptr<FeatureSource> _features;
+        LayerListener<FlatteningLayer, FeatureSource> _featureLayerListener;
         osg::observer_ptr< const Map > _map;
     };
-
-    REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);
 
 } } // namespace osgEarth::Util
 

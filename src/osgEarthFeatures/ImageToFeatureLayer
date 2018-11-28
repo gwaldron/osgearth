@@ -20,7 +20,7 @@
 #ifndef OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H
 #define OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H 1
 
-#include <osgEarthFeatures/FeatureSourceLayer>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/LayerListener>
 
 namespace osgEarth {
@@ -30,15 +30,10 @@ namespace osgEarth {
 namespace osgEarth { namespace Features
 {
     /** Options structure for serialization of the FeatureSourceLayer */
-    class ImageToFeatureLayerOptions : public FeatureSourceLayerOptions
+    class ImageToFeatureSourceOptions : public FeatureSourceOptions
     {
     public:
-        ImageToFeatureLayerOptions(const ConfigOptions& co = ConfigOptions()) : FeatureSourceLayerOptions(co),
-            _level(0u),
-            _attribute("value")
-        {
-            fromConfig(_conf);
-        }
+        META_LayerOptions(osgEarth, ImageToFeatureSourceOptions, FeatureSourceOptions);
 
         //! Name of the image layer to convert to feature data
         optional<std::string>& imageLayer() { return _imageLayerName; }
@@ -53,26 +48,10 @@ namespace osgEarth { namespace Features
         const optional<std::string>& attribute() const { return _attribute; }
 
     public:
-        Config getConfig() const {
-            Config conf = FeatureSourceLayerOptions::getConfig();
-            conf.set("image", _imageLayerName);
-            conf.set("level", _level);
-            conf.set("attribute", _attribute);
-            return conf;
-        }
-
-        void fromConfig(const Config& conf) {
-            conf.get("image", _imageLayerName);
-            conf.get("level", _level);
-            conf.get("attribute", _attribute);
-        }
-
-        virtual void mergeConfig( const Config& conf ) {
-            FeatureSourceLayerOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
+        virtual Config getConfig() const;
 
     private:
+        void fromConfig(const Config& conf);
         optional<std::string> _imageLayerName;
         optional<unsigned> _level;
         optional<std::string> _attribute;
@@ -83,17 +62,25 @@ namespace osgEarth { namespace Features
      * A FeatureSourceLayer that extracts features from raster data in
      * an image layer.
      */
-    class OSGEARTHFEATURES_EXPORT ImageToFeatureLayer : public FeatureSourceLayer
+    class OSGEARTHFEATURES_EXPORT ImageToFeatureSource : public FeatureSource
     {
     public:
-        META_Layer(osgEarth, ImageToFeatureLayer, ImageToFeatureLayerOptions, FeatureSourceLayer, image_to_feature);
+        META_Layer(osgEarth, ImageToFeatureSource, ImageToFeatureSourceOptions, FeatureSource, imagetofeature);
 
         //! Image layer to use to convert raster data to features
         void setImageLayer(ImageLayer* layer);
 
+    public: // FeatureLayer
+        
+        virtual FeatureCursor* createFeatureCursor(
+            const Symbology::Query& query,
+            ProgressCallback* progress);
+
     public: // Layer
 
         virtual void init();
+
+        virtual const Status& open();
 
         virtual void addedToMap(const Map*);
 
@@ -101,7 +88,8 @@ namespace osgEarth { namespace Features
 
     protected:
         
-        LayerListener<ImageToFeatureLayer, ImageLayer> _imageLayerListener;
+        LayerListener<ImageToFeatureSource, ImageLayer> _imageLayerListener;
+        osg::observer_ptr<ImageLayer> _layer;
     };
 
 } } // namespace osgEarth::Features

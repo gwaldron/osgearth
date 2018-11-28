@@ -37,16 +37,14 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/FileUtils>
 
-#include <osgEarthFeatures/FeatureCursor>
-
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarthFeatures/OGRFeatureSource>
 
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
+using namespace osgEarth::Features;
 
 #define LC "[osgearth_cache] "
 
@@ -57,8 +55,7 @@ int usage( const std::string& msg );
 int message( const std::string& msg );
 
 
-int
-    main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     osg::ArgumentParser args(&argc,argv);
 
@@ -72,8 +69,7 @@ int
     return usage("");
 }
 
-int
-    usage( const std::string& msg )
+int usage( const std::string& msg )
 {
     if ( !msg.empty() )
     {
@@ -112,8 +108,7 @@ int message( const std::string& msg )
     return 0;
 }
 
-int
-seed( osg::ArgumentParser& args )
+int seed( osg::ArgumentParser& args )
 {    
     osgDB::Registry::instance()->getReaderWriterForExtension("png");
     osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
@@ -174,15 +169,11 @@ seed( osg::ArgumentParser& args )
     while (args.read("--index", index))
     {        
         //Open the feature source
-        OGRFeatureOptions featureOpt;
-        featureOpt.url() = index;        
-
-        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-        Status status = features->open();
-
-        if (status.isOK())
+        osg::ref_ptr<OGRFeatureSource> features = new OGRFeatureSource();
+        features->setURL(index);
+        if (features->open().isOK())
         {
-            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
+            osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(Query(), 0L);
             while (cursor.valid() && cursor->hasMore())
             {
                 osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -194,7 +185,7 @@ seed( osg::ArgumentParser& args )
         }
         else
         {
-            OE_WARN << status.message() << "\n";
+            OE_WARN << features->getStatus().message() << "\n";
         }
     }
 

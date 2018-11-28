@@ -33,7 +33,7 @@ namespace osgEarth {
         class StyleSheet;
     }
     namespace Features {
-        class FeatureLayer;
+        class FeatureSource;
         class ScriptEngine;
     }
 }
@@ -65,7 +65,7 @@ namespace osgEarth { namespace Features
         Session(const Map* map, StyleSheet* styles);
         
         //! New session
-        Session(const Map* map, StyleSheet* styles, FeatureLayer* source, const osgDB::Options* dbOptions);
+        Session(const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions);
 
         virtual ~Session();
 
@@ -92,10 +92,10 @@ namespace osgEarth { namespace Features
          * Set the feature source to draw upon in this Session. 
          * Do no call this after the Session is already in use.
          */
-        void setFeatureSource(FeatureLayer*);
+        void setFeatureSource(FeatureSource*);
         
         /** Gets the current feature source */
-        FeatureLayer* getFeatureSource() const;
+        FeatureSource* getFeatureSource() const;
 
         /** The I/O options for operations within this session */
         const osgDB::Options* getDBOptions() const;
@@ -127,7 +127,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<StyleSheet>           _styles;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<ScriptEngine>         _styleScriptEngine;
-        osg::ref_ptr<FeatureLayer>         _featureSource;
+        osg::ref_ptr<FeatureSource>        _featureSource;
         osg::ref_ptr<StateSetCache>        _stateSetCache;
         osg::ref_ptr<ResourceCache>        _resourceCache;
         std::string                        _name;

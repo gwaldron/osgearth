@@ -55,17 +55,13 @@ SET(HEADERS_ROOT
     TerrainProfile
     TileIndex
     TileIndexBuilder
-    TFS
     TFSPackager
-    TMS
     TMSBackFiller
     TMSPackager
     TopologyGraph
     UTMGraticule
     UTMLabelingEngine
     ViewFitter
-    WFS
-    WMS
 )
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
@@ -139,17 +135,13 @@ SET(SOURCES_ROOT
     TerrainProfile.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp
-    TFS.cpp
     TFSPackager.cpp
-    TMS.cpp
     TMSBackFiller.cpp
     TMSPackager.cpp
     TopologyGraph.cpp
     UTMGraticule.cpp
     UTMLabelingEngine.cpp
     ViewFitter.cpp
-    WFS.cpp
-    WMS.cpp
     ${SHADERS_CPP}
 )
 

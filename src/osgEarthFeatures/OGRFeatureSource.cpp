@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/OGRFeatureLayer>
+#include <osgEarthFeatures/OGRFeatureSource>
 #include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarthFeatures/FeatureCursor>
@@ -29,12 +29,12 @@
 #include <ogr_api.h>
 #include <queue>
 
-#define LC "[OGRFeatureLayer] "
+#define LC "[OGRFeatureSource] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-REGISTER_OSGEARTH_LAYER(ogrfeatures, OGRFeatureLayer);
+REGISTER_OSGEARTH_LAYER(ogrfeatures, OGRFeatureSource);
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
@@ -92,7 +92,7 @@ namespace osgEarth { namespace Features
         OGRFeatureCursor(
             OGRLayerH                 dsHandle,
             OGRLayerH                 layerHandle,
-            const FeatureLayer*       source,
+            const FeatureSource*       source,
             const FeatureProfile*     profile,
             const Symbology::Query&   query,
             const FeatureFilterChain* filters,
@@ -114,7 +114,7 @@ namespace osgEarth { namespace Features
         Symbology::Query                    _query;
         unsigned                            _chunkSize;
         OGRFeatureH                         _nextHandleToQueue;
-        osg::ref_ptr<const FeatureLayer>    _source;
+        osg::ref_ptr<const FeatureSource>    _source;
         osg::ref_ptr<const FeatureProfile>  _profile;
         std::queue< osg::ref_ptr<Feature> > _queue;
         osg::ref_ptr<Feature>               _lastFeatureReturned;
@@ -130,7 +130,7 @@ namespace osgEarth { namespace Features
 
 OGRFeatureCursor::OGRFeatureCursor(OGRDataSourceH              dsHandle,
                                    OGRLayerH                   layerHandle,
-                                   const FeatureLayer*         source,
+                                   const FeatureSource*         source,
                                    const FeatureProfile*       profile,
                                    const Symbology::Query&     query,
                                    const FeatureFilterChain*   filters,
@@ -374,9 +374,9 @@ OGRFeatureCursor::readChunk()
 //........................................................................
 
 Config
-OGRFeatureLayerOptions::getConfig() const
+OGRFeatureSourceOptions::getConfig() const
 {
-    Config conf = FeatureLayerOptions::getConfig();
+    Config conf = FeatureSourceOptions::getConfig();
     conf.set("url", _url);
     conf.set("connection", _connection);
     conf.set("ogr_driver", _ogrDriver);
@@ -390,7 +390,7 @@ OGRFeatureLayerOptions::getConfig() const
 }
 
 void
-OGRFeatureLayerOptions::fromConfig(const Config& conf)
+OGRFeatureSourceOptions::fromConfig(const Config& conf)
 {
     conf.get("url", _url);
     conf.get("connection", _connection);
@@ -407,7 +407,7 @@ OGRFeatureLayerOptions::fromConfig(const Config& conf)
 
 
 void
-OGRFeatureLayer::init()
+OGRFeatureSource::init()
 {
     Layer::init();
     _dsHandle = 0L;
@@ -420,9 +420,9 @@ OGRFeatureLayer::init()
 }
 
 void
-OGRFeatureLayer::close()
+OGRFeatureSource::close()
 {
-    FeatureLayer::close();
+    FeatureSource::close();
 
     OGR_SCOPED_LOCK;
 
@@ -451,13 +451,13 @@ OGRFeatureLayer::close()
     init();
 }
 
-OGRFeatureLayer::~OGRFeatureLayer()
+OGRFeatureSource::~OGRFeatureSource()
 {
     close();
 }
 
 const Status&
-OGRFeatureLayer::open()
+OGRFeatureSource::open()
 {
     // Data source at a URL?
     if (options().url().isSet())
@@ -682,11 +682,11 @@ OGRFeatureLayer::open()
             Status::Error(Status::ResourceUnavailable, "Failed to establish a valid feature profile"));
     }
 
-    return getStatus();
+    return FeatureSource::open();
 }
 
 FeatureCursor*
-OGRFeatureLayer::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
+OGRFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
 {
     if (_geometry.valid())
     {
@@ -747,7 +747,7 @@ OGRFeatureLayer::createFeatureCursor(const Symbology::Query& query, ProgressCall
 }
 
 bool
-OGRFeatureLayer::deleteFeature(FeatureID fid)
+OGRFeatureSource::deleteFeature(FeatureID fid)
 {
     if (_writable && _layerHandle)
     {
@@ -762,19 +762,19 @@ OGRFeatureLayer::deleteFeature(FeatureID fid)
 }
 
 int
-OGRFeatureLayer::getFeatureCount() const
+OGRFeatureSource::getFeatureCount() const
 {
     return _featureCount;
 }
 
 bool
-OGRFeatureLayer::supportsGetFeature() const
+OGRFeatureSource::supportsGetFeature() const
 {
     return true;
 }
 
 Feature*
-OGRFeatureLayer::getFeature(FeatureID fid)
+OGRFeatureSource::getFeature(FeatureID fid)
 {
     Feature* result = NULL;
 
@@ -792,19 +792,19 @@ OGRFeatureLayer::getFeature(FeatureID fid)
 }
 
 bool
-OGRFeatureLayer::isWritable() const
+OGRFeatureSource::isWritable() const
 {
     return _writable;
 }
 
 const FeatureSchema&
-OGRFeatureLayer::getSchema() const
+OGRFeatureSource::getSchema() const
 {
     return _schema;
 }
 
 bool
-OGRFeatureLayer::insertFeature(Feature* feature)
+OGRFeatureSource::insertFeature(Feature* feature)
 {
     OGR_SCOPED_LOCK;
     OGRFeatureH feature_handle = OGR_F_Create(OGR_L_GetLayerDefn(_layerHandle));
@@ -874,7 +874,7 @@ OGRFeatureLayer::insertFeature(Feature* feature)
 }
 
 osgEarth::Symbology::Geometry::Type
-OGRFeatureLayer::getGeometryType() const
+OGRFeatureSource::getGeometryType() const
 {
     return _geometryType;
 }
@@ -882,14 +882,14 @@ OGRFeatureLayer::getGeometryType() const
 
 // parses an explicit WKT geometry string into a Geometry.
 Symbology::Geometry*
-OGRFeatureLayer::parseGeometry(const Config& geomConf)
+OGRFeatureSource::parseGeometry(const Config& geomConf)
 {
     return GeometryUtils::geometryFromWKT(geomConf.value());
 }
 
 // read the WKT geometry from a URL, then parse into a Geometry.
 Symbology::Geometry*
-OGRFeatureLayer::parseGeometryUrl(const std::string& geomUrl, const osgDB::Options* dbOptions)
+OGRFeatureSource::parseGeometryUrl(const std::string& geomUrl, const osgDB::Options* dbOptions)
 {
     ReadResult r = URI(geomUrl).readString(dbOptions);
     if (r.succeeded())
@@ -901,7 +901,7 @@ OGRFeatureLayer::parseGeometryUrl(const std::string& geomUrl, const osgDB::Optio
 }
 
 void
-OGRFeatureLayer::initSchema()
+OGRFeatureSource::initSchema()
 {
     OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn(_layerHandle);
     for (int i = 0; i < OGR_FD_GetFieldCount(layerDef); i++)

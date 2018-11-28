@@ -21,7 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarthFeatures/FeatureCursor>
 
-#define LC "[ImageToFeatureLayer] " << getName() << ": "
+#define LC "[ImageToFeatureSource] " << getName() << ": "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -30,209 +30,173 @@ using namespace osgEarth::Symbology;
 
 namespace osgEarth {
     namespace Features {
-        REGISTER_OSGEARTH_LAYER(image_to_feature, ImageToFeatureLayer);
+        REGISTER_OSGEARTH_LAYER(imagetofeature, ImageToFeatureSource);
+        REGISTER_OSGEARTH_LAYER(image_to_feature, ImageToFeatureSource);
     }
 }
 
-namespace
-{
-    // feature source driver to turn raster data into polygons
-    class ImageToFeatureDriver : public FeatureSource
-    {
-    public:
-        osg::observer_ptr<ImageLayer> _layer;
+//.........................................................
 
-        ImageToFeatureDriver(const ImageToFeatureLayerOptions& options) :
-            FeatureSource(options),
-            _options(options)
-        {
-            //nop
-        }
-
-        FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
-        {
-            TileKey key = *query.tileKey();
-
-            osg::ref_ptr<ImageLayer> layer;
-            if (_layer.lock(layer))
-            {
-                GeoImage image = layer->createImage(key, progress);
-
-                FeatureList features;
-
-                if (image.valid())
-                {
-                    double pixWidth = key.getExtent().width() / (double)image.getImage()->s();
-                    double pixHeight = key.getExtent().height() / (double)image.getImage()->t();
-                    ImageUtils::PixelReader reader(image.getImage());
-
-                    for (unsigned int r = 0; r < (unsigned)image.getImage()->t(); r++)
-                    {
-                        double y = key.getExtent().yMin() + (double)r * pixHeight;
-
-                        double minX = 0;
-                        double maxX = 0;
-                        float value = 0.0;
-
-                        for (unsigned int c = 0; c < (unsigned)image.getImage()->s(); c++)
-                        {
-                            double x = key.getExtent().xMin() + (double)c * pixWidth;
-
-                            osg::Vec4f color = reader(c, r);
-
-                            // Starting a new row.  Initialize the values.
-                            if (c == 0)
-                            {
-                                minX = x;
-                                maxX = x + pixWidth;
-                                value = color.r();
-                            }
-                            // Ending a row, finish the polygon.
-                            else if (c == image.getImage()->s() - 1)
-                            {
-                                // Increment the maxX to finish the row.
-                                maxX = x + pixWidth;
-                                Polygon* poly = new Polygon();
-                                poly->push_back(minX, y);
-                                poly->push_back(maxX, y);
-                                poly->push_back(maxX, y + pixHeight);
-                                poly->push_back(minX, y + pixHeight);
-                                Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
-                                feature->set(_options.attribute().get(), value);
-                                features.push_back(feature);
-                                minX = x;
-                                maxX = x + pixWidth;
-                                value = color.r();
-                            }
-                            // The value is different, so complete the polygon and start a new one.
-                            else if (color.r() != value)
-                            {
-                                Polygon* poly = new Polygon();
-                                poly->push_back(minX, y);
-                                poly->push_back(maxX, y);
-                                poly->push_back(maxX, y + pixHeight);
-                                poly->push_back(minX, y + pixHeight);
-                                Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
-                                feature->set(_options.attribute().get(), value);
-                                features.push_back(feature);
-                                minX = x;
-                                maxX = x + pixWidth;
-                                value = color.r();
-                            }
-                            // The value is the same as the previous value, continue the polygon by increasing the maxX.
-                            else if (color.r() == value)
-                            {
-                                maxX = x + pixWidth;
-                            }
-                        }
-
-
-                    }
-
-                    if (!features.empty())
-                    {
-                        //OE_NOTICE << LC << "Returning " << features.size() << " features" << std::endl;
-                        return new FeatureListCursor(features);
-                    }
-                }
-            }
-            return 0;
-        }
-
-        virtual bool supportsGetFeature() const
-        {
-            return false;
-        }
-
-        virtual Feature* getFeature(FeatureID fid)
-        {
-            return 0;
-        }
-
-        virtual bool isWritable() const
-        {
-            return false;
-        }
-
-        virtual const FeatureSchema& getSchema() const
-        {
-            //TODO:  Populate the schema from the DescribeFeatureType call
-            return _schema;
-        }
-
-        virtual osgEarth::Symbology::Geometry::Type getGeometryType() const
-        {
-            return Geometry::TYPE_UNKNOWN;
-        }
-
-    protected:
-
-        //override
-        Status initialize(const osgDB::Options* readOptions)
-        {
-            _readOptions = Registry::cloneOrCreateOptions(readOptions);
-
-            // Establish the feature profile.
-            const Profile* wgs84 = Registry::instance()->getGlobalGeodeticProfile();
-            GeoExtent extent(wgs84->getSRS(), -180, -90, 180, 90);
-
-            FeatureProfile* profile = new FeatureProfile(extent);
-            profile->setProfile(Profile::create("wgs84", extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), "", 1, 1));
-            profile->setFirstLevel(_options.level().get());
-            profile->setMaxLevel(_options.level().get());
-            profile->setTiled(true);
-
-            setFeatureProfile(profile);
-            return Status::OK();
-        }
-
-
-    private:
-        const ImageToFeatureLayerOptions& _options;
-        FeatureSchema _schema;
-        osg::ref_ptr<osgDB::Options> _readOptions;
-    };
+Config
+ImageToFeatureSourceOptions::getConfig() const {
+    Config conf = FeatureSourceOptions::getConfig();
+    conf.set("image", _imageLayerName);
+    conf.set("level", _level);
+    conf.set("attribute", _attribute);
+    return conf;
 }
 
+void
+ImageToFeatureSourceOptions::fromConfig(const Config& conf)
+{
+    level().init(0u);
+    attribute().init("value");
+
+    conf.get("image", _imageLayerName);
+    conf.get("level", _level);
+    conf.get("attribute", _attribute);
+}
 
 //.........................................................
 
 void
-ImageToFeatureLayer::init()
+ImageToFeatureSource::init()
 {
-    FeatureSourceLayer::init();    
-    setFeatureSource(new ImageToFeatureDriver(options()));
+    FeatureSource::init();
 }
 
 void
-ImageToFeatureLayer::setImageLayer(ImageLayer* layer)
+ImageToFeatureSource::setImageLayer(ImageLayer* layer)
 {
-    ImageToFeatureDriver* driver = dynamic_cast<ImageToFeatureDriver*>(getFeatureSource());
-    if (driver)
-    {
-        driver->_layer = layer;
-    }
+    _layer = layer;
+}
+
+const Status&
+ImageToFeatureSource::open()
+{           
+    // Establish the feature profile.
+    osg::ref_ptr<const Profile> globalGeodetic = Profile::create("global-geodetic");
+
+    const GeoExtent& extent = globalGeodetic->getExtent();
+    FeatureProfile* profile = new FeatureProfile(extent);
+    profile->setProfile(Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1));
+    profile->setFirstLevel(options().level().get());
+    profile->setMaxLevel(options().level().get());
+    profile->setTiled(true);
+
+    setFeatureProfile(profile);
+    return FeatureSource::open();
 }
 
 void
-ImageToFeatureLayer::addedToMap(const Map* map)
+ImageToFeatureSource::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap" << std::endl;
 
-    if (options().imageLayer().isSet())
+    if (_layer.valid() == false && options().imageLayer().isSet())
     {
         _imageLayerListener.listen(
             map,
             options().imageLayer().get(),
             this,
-            &ImageToFeatureLayer::setImageLayer);
+            &ImageToFeatureSource::setImageLayer);
     }
 
-    FeatureSourceLayer::addedToMap(map);
+    FeatureSource::addedToMap(map);
 }
 
 void
-ImageToFeatureLayer::removedFromMap(const Map* map)
+ImageToFeatureSource::removedFromMap(const Map* map)
 {
-    FeatureSourceLayer::removedFromMap(map);
+    FeatureSource::removedFromMap(map);
+}
+
+FeatureCursor*
+ImageToFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
+{
+    TileKey key = *query.tileKey();
+
+    if (_layer.valid())
+    {
+        GeoImage image = _layer->createImage(key, progress);
+
+        FeatureList features;
+
+        if (image.valid())
+        {
+            double pixWidth = key.getExtent().width() / (double)image.getImage()->s();
+            double pixHeight = key.getExtent().height() / (double)image.getImage()->t();
+            ImageUtils::PixelReader reader(image.getImage());
+
+            for (unsigned int r = 0; r < (unsigned)image.getImage()->t(); r++)
+            {
+                double y = key.getExtent().yMin() + (double)r * pixHeight;
+
+                double minX = 0;
+                double maxX = 0;
+                float value = 0.0;
+
+                for (unsigned int c = 0; c < (unsigned)image.getImage()->s(); c++)
+                {
+                    double x = key.getExtent().xMin() + (double)c * pixWidth;
+
+                    osg::Vec4f color = reader(c, r);
+
+                    // Starting a new row.  Initialize the values.
+                    if (c == 0)
+                    {
+                        minX = x;
+                        maxX = x + pixWidth;
+                        value = color.r();
+                    }
+                    // Ending a row, finish the polygon.
+                    else if (c == image.getImage()->s() - 1)
+                    {
+                        // Increment the maxX to finish the row.
+                        maxX = x + pixWidth;
+                        Polygon* poly = new Polygon();
+                        poly->push_back(minX, y);
+                        poly->push_back(maxX, y);
+                        poly->push_back(maxX, y + pixHeight);
+                        poly->push_back(minX, y + pixHeight);
+                        Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
+                        feature->set(options().attribute().get(), value);
+                        features.push_back(feature);
+                        minX = x;
+                        maxX = x + pixWidth;
+                        value = color.r();
+                    }
+                    // The value is different, so complete the polygon and start a new one.
+                    else if (color.r() != value)
+                    {
+                        Polygon* poly = new Polygon();
+                        poly->push_back(minX, y);
+                        poly->push_back(maxX, y);
+                        poly->push_back(maxX, y + pixHeight);
+                        poly->push_back(minX, y + pixHeight);
+                        Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
+                        feature->set(options().attribute().get(), value);
+                        features.push_back(feature);
+                        minX = x;
+                        maxX = x + pixWidth;
+                        value = color.r();
+                    }
+                    // The value is the same as the previous value, continue the polygon by increasing the maxX.
+                    else if (color.r() == value)
+                    {
+                        maxX = x + pixWidth;
+                    }
+                }
+
+
+            }
+
+            if (!features.empty())
+            {
+                //OE_NOTICE << LC << "Returning " << features.size() << " features" << std::endl;
+                return new FeatureListCursor(features);
+            }
+        }
+    }
+    return 0;
 }

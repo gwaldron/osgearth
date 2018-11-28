@@ -7,16 +7,16 @@ with depth testing off and a horizon clip plane. This is one
 way to mitigate z-fighting issues.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
+<map name="Clip plane demo">
 
-    <image name="world" driver="gdal">
+    <GDALImage name="world">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
 
-    <feature_model name="boundaries">
-        <features name="world" driver="ogr">
+    <FeatureModel name="boundaries">
+        <OGRFeatures name="world">
             <url>../data/world.shp</url>
-        </features>        
+        </OGRFeatures>        
         <styles>
             <style type="text/css">
                 states {
@@ -27,6 +27,6 @@ way to mitigate z-fighting issues.
                 }                    
             </style>
         </styles>        
-    </feature_model>
+    </FeatureModel>
 
 </map>

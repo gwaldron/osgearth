@@ -1001,7 +1001,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         // set up for feature indexing if appropriate:
         FeatureSourceIndexNode* index = 0L;
 
-        FeatureLayer* featureSource = _session->getFeatureSource();
+        FeatureSource* featureSource = _session->getFeatureSource();
 
         if (featureSource)
         {
@@ -1137,7 +1137,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
-    FeatureLayer* source = _session->getFeatureSource();
+    FeatureSource* source = _session->getFeatureSource();
 
     // case: each feature has an embedded style.
     if ( source->hasEmbeddedStyles() )

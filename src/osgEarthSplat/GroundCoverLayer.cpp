@@ -25,8 +25,6 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shadowing>
 #include <osgEarth/ClampableNode>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
@@ -41,6 +39,7 @@
 using namespace osgEarth::Splat;
 
 namespace osgEarth { namespace Splat {
+    REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
     REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 } }
 

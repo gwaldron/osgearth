@@ -26,15 +26,12 @@
 #include <osgEarthUtil/TileIndex>
 
 #include <osgEarthFeatures/OgrUtils>
-#include <osgEarthFeatures/FeatureCursor>
-
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarthFeatures/OGRFeatureSource>
 
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Features;
 using namespace std;
 
@@ -58,22 +55,15 @@ TileIndex::load(const std::string& filename)
     }
 
     //Load up an index file
-    OGRFeatureOptions featureOpt;
-    featureOpt.url() = filename;        
-    featureOpt.buildSpatialIndex() = true;
-    featureOpt.openWrite() = true;
+    osg::ref_ptr<OGRFeatureSource> features = new OGRFeatureSource();
+    features->setURL(filename);
+    features->setBuildSpatialIndex(true);
+    features->setOpenWrite(true);
 
-    osg::ref_ptr< FeatureSource> features = FeatureSourceFactory::create( featureOpt );        
-    if (!features.valid())
+    if (features->open().isError())
     {
         OE_NOTICE << "Can't load " << filename << std::endl;
         return 0;
-    }
-    Status s = features->open();
-    if (s.isError())
-    {
-        OE_WARN << s.message();
-        return 0L;
     }
 
     TileIndex* index = new TileIndex();

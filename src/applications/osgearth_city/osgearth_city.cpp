@@ -33,9 +33,8 @@
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
 #include <osgEarthFeatures/FeatureModelLayer>
-#include <osgEarthFeatures/OGRFeatureLayer>
+#include <osgEarthFeatures/OGRFeatureSource>
 
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 #include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 
@@ -129,7 +128,7 @@ void addElevation(Map* map)
 void addBuildings(Map* map)
 {
     // create a feature source to load the building footprint shapefile.
-    OGRFeatureLayer* data = new OGRFeatureLayer();
+    OGRFeatureSource* data = new OGRFeatureSource();
     data->setName("buildings");
     data->setURL(BUILDINGS_URL);
     data->options().buildSpatialIndex() = true;
@@ -200,7 +199,7 @@ void addBuildings(Map* map)
 void addStreets(Map* map)
 {
     // create a feature source to load the street shapefile.
-    OGRFeatureLayer* data = new OGRFeatureLayer();
+    OGRFeatureSource* data = new OGRFeatureSource();
     data->setURL(STREETS_URL);
     data->options().buildSpatialIndex() = true;
 
@@ -252,7 +251,7 @@ void addStreets(Map* map)
 void addParks(Map* map)
 {
     // create a feature source to load the shapefile.
-    OGRFeatureLayer* data = new OGRFeatureLayer();
+    OGRFeatureSource* data = new OGRFeatureSource();
     data->setURL(PARKS_URL);
     data->options().buildSpatialIndex() = true;
 

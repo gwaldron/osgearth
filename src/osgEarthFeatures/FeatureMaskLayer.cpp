@@ -33,21 +33,21 @@ REGISTER_OSGEARTH_LAYER(featuremask, FeatureMaskLayer);
 void
 FeatureMaskLayerOptions::fromConfig(const Config& conf)
 {
-    conf.get("feature_source", _featureLayer);
+    conf.get("feature_source", _featureSource);
 }
 
 Config
 FeatureMaskLayerOptions::getConfig() const
 {
     Config conf = MaskLayerOptions::getConfig();
-    conf.set("feature_source", _featureLayer);
+    conf.set("feature_source", _featureSource);
     return conf;
 }
 
 //........................................................................
 
 void
-FeatureMaskLayer::setFeatureSource(FeatureLayer* layer)
+FeatureMaskLayer::setFeatureSource(FeatureSource* layer)
 {
     if (layer && layer->getStatus().isError())
     {
@@ -111,13 +111,13 @@ FeatureMaskLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
 
-    if (options().featureLayer().isSet())
+    if (options().featureSource().isSet())
     {
         _featureLayerListener.clear();
 
         _featureLayerListener.listen(
             map,
-            options().featureLayer().get(),
+            options().featureSource().get(),
             this,
             &FeatureMaskLayer::setFeatureSource);
     }

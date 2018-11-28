@@ -16,10 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_FEATURES_OGRFEATURELAYER
-#define OSGEARTH_FEATURES_OGRFEATURELAYER
+#ifndef OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER
+#define OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER
 
-#include <osgEarthFeatures/FeatureLayer>
+#include <osgEarthFeatures/FeatureSource>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -30,10 +30,10 @@ using namespace osgEarth::Features;
  */
 namespace osgEarth { namespace Features
 {
-    class OSGEARTHFEATURES_EXPORT OGRFeatureLayerOptions : public FeatureLayerOptions
+    class OSGEARTHFEATURES_EXPORT OGRFeatureSourceOptions : public FeatureSourceOptions
     {
     public:
-        META_LayerOptions(osgEarth, OGRFeatureLayerOptions, FeatureLayerOptions);
+        META_LayerOptions(osgEarth, OGRFeatureSourceOptions, FeatureSourceOptions);
 
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
@@ -83,10 +83,10 @@ namespace osgEarth { namespace Features
     /**
      * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
      */
-    class OSGEARTHFEATURES_EXPORT OGRFeatureLayer : public FeatureLayer
+    class OSGEARTHFEATURES_EXPORT OGRFeatureSource : public FeatureSource
     {   
     public:
-        META_Layer(osgEarth, OGRFeatureLayer, OGRFeatureLayerOptions, FeatureLayer, OGRFeatures);
+        META_Layer(osgEarth, OGRFeatureSource, OGRFeatureSourceOptions, FeatureSource, ogrfeatures);
 
     public:
 
@@ -94,11 +94,13 @@ namespace osgEarth { namespace Features
 
         void setConnection(const std::string& value) { options().connection() = value; }
 
-        //todo...
+        void setBuildSpatialIndex(bool value) { options().buildSpatialIndex() = value; }
 
         void setGeometry(Symbology::Geometry* geom) { _geometry = geom; }
 
         void setProfile(const Profile* profile) { _profile = profile; }
+
+        void setOGRDriver(const std::string& value) { options().ogrDriver() = value; }
 
     public: // Layer
 
@@ -110,7 +112,7 @@ namespace osgEarth { namespace Features
 
         virtual void init();
 
-    public: // FeatureLayer
+    public: // FeatureSource
 
         virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress);        
 
@@ -132,7 +134,7 @@ namespace osgEarth { namespace Features
 
     protected:
 
-        virtual ~OGRFeatureLayer();
+        virtual ~OGRFeatureSource();
 
         // parses an explicit WKT geometry string into a Geometry.
         Symbology::Geometry* parseGeometry( const Config& geomConf );
@@ -160,6 +162,6 @@ namespace osgEarth { namespace Features
 
 } } // namespace osgEarth::Features
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::OGRFeatureLayerOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::OGRFeatureSourceOptions);
 
-#endif
+#endif // OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER

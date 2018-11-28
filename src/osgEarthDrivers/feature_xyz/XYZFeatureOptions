@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #ifndef OSGEARTH_DRIVER_XYZ_FEATURE_SOURCE_OPTIONS
 #define OSGEARTH_DRIVER_XYZ_FEATURE_SOURCE_OPTIONS 1
 
@@ -97,4 +98,5 @@ namespace osgEarth { namespace Drivers
 } } // namespace osgEarth::Drivers
 
 #endif // OSGEARTH_DRIVER_TFS_FEATURE_SOURCE_OPTIONS
+#endif
 

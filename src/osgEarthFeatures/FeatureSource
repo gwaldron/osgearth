@@ -17,45 +17,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_FEATURE_SOURCE_H
-#define OSGEARTHFEATURES_FEATURE_SOURCE_H 1
+#ifndef OSGEARTH_FEATURES_FEATURE_SOURCE_H
+#define OSGEARTH_FEATURES_FEATURE_SOURCE_H 1
 
-#include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
-
-#include <osgEarthSymbology/Geometry>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthSymbology/Query>
-#include <osgEarthSymbology/Style>
-
-#include <osgEarth/Profile>
-#include <osgEarth/GeoData>
-#include <osgEarth/Cache>
-#include <osgEarth/CachePolicy>
-#include <osgEarth/URI>
-#include <osgEarth/Revisioning>
-
-#include <osgDB/ReaderWriter>
-#include <OpenThreads/Mutex>
-#include <list>
+#include <osgEarth/Layer>
 
 namespace osgEarth { namespace Features
-{   
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
-    class FeatureCursor;
-    class FeatureFilterChain;
-
+{
     /**
-     * Configuration options for creating a FeatureSource.
+     * Serialization data for a FeatureSource
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceOptions : public DriverConfigOptions
+    class OSGEARTHFEATURES_EXPORT FeatureSourceOptions : public LayerOptions
     {
-    public: // properties
-
-        /** Name of this feature source. */
-        optional<std::string>& name() { return _name; }
-        const optional<std::string>& name() const { return _name; }
+    public:
+        META_LayerOptions(osgEarth, FeatureSourceOptions, LayerOptions);
 
         /** Set of FeatureFilter options. */
         std::vector<ConfigOptions>& filters() { return _filterOptions; }
@@ -78,18 +56,10 @@ namespace osgEarth { namespace Features
         const optional<std::string>& fidAttribute() const { return _fidAttribute; }
 
     public:
-        FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
-        virtual ~FeatureSourceOptions();
         virtual Config getConfig() const;
 
-    protected:
-        virtual void mergeConfig( const Config& conf ) {
-            DriverConfigOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
-
     private:
-        void fromConfig( const Config& conf );
+        void fromConfig(const Config& conf);
 
         std::vector<ConfigOptions> _filterOptions;
         optional<std::string>      _name;
@@ -101,44 +71,29 @@ namespace osgEarth { namespace Features
     };
 
     /**
-     * A FeatureSource is a pluggable object that generates Features, and 
-     * optionally, styling information to go along with them.
+     * Layer that provides raw feature data.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSource : public osg::Object, public Revisioned
+    class OSGEARTHFEATURES_EXPORT FeatureSource : public Layer
     {
-    public:      
-        //! Constructs a new feature source
-        FeatureSource();
-        
-        //! Constructs a new feature source with preset options
-        FeatureSource(const ConfigOptions& options);
-        
-        //! Apply the read options
-        void setReadOptions(const osgDB::Options* readOptions);
+    public:
+        META_Layer_Abstract(osgEarth, FeatureSource, FeatureSourceOptions, Layer);
 
-        //! Opens the feature source and returns an initial status.
-        const Status& open();
+        //! Open the source in a writable mode, if supported
+        void setOpenWrite(bool value) { options().openWrite() = value; }
 
-        //! Opens the feature source and returns an initial status.
-        //! Same as calling setReadOptions followed by open()
-        const Status& open(const osgDB::Options* readOptions);
+        //! Set the geo-interpolation method to use if applicable
+        void setGeoInterpolation(GeoInterpolation value) { options().geoInterp() = value; }
 
-        /**
-         * Status of the feature source
-         */
-        const Status& getStatus() const { return _status; }
+        //! Set the name of the attribute containing the feature ID
+        void setFIDAttribute(const std::string& value) { options().fidAttribute() = value; }
 
-        /**
-         * Gets a reference to the metadata that describes features that you can
-         * get from this FeatureSource. A valid feature profile indiciates that the
-         * feature source successfully initialized.
-         */
-        const FeatureProfile* getFeatureProfile() const { return _featureProfile.get(); }
+    public: // Layer
 
-        /**
-         * Gets the options that were passed into this object's CTOR.
-         */
-        const FeatureSourceOptions& getFeatureSourceOptions() const { return _options; }
+        virtual void init();
+
+        virtual const Status& open();
+
+    public:
 
         /**
          * Creates a cursor that iterates over all the features corresponding to the
@@ -146,9 +101,32 @@ namespace osgEarth { namespace Features
          *
          * Caller takes ownership of the returned object.
          */
-        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress) =0;
+        virtual FeatureCursor* createFeatureCursor(
+            const Symbology::Query& query,
+            ProgressCallback*       progress) =0;
 
-        FeatureCursor* createFeatureCursor(ProgressCallback* progress);
+        /**
+         * Creates a cursor that iterates over all the features corresponding to the
+         * specified query.
+         *
+         * Caller takes ownership of the returned object.
+         */
+        FeatureCursor* createFeatureCursor(ProgressCallback* progress) {
+            return createFeatureCursor(Query(), progress);
+        }
+
+        /**
+         * Gets a reference to the metadata that describes features that you can
+         * get from this FeatureSource. A valid feature profile indiciates that the
+         * feature source successfully initialized.
+         */
+        const FeatureProfile* getFeatureProfile() const;
+
+        /**
+         * Sets the feature profile for this source.
+         * This is required. Usually the subclass should call this from open().
+         */
+        void setFeatureProfile(const FeatureProfile* profile);
 
         /**
          * Whether this FeatureSource supports inserting and deleting features
@@ -200,9 +178,19 @@ namespace osgEarth { namespace Features
          *      The Geometry type of the FeatureSource
          */
         virtual Geometry::Type getGeometryType() const { return Geometry::TYPE_UNKNOWN; }
-
-
-    public: // blacklisting.
+        
+        /**
+         *Returns true if this source creates features with embedded style information.
+         * By default, this is false (features are not expected to carry their own
+         * style definitions).
+         */
+        virtual bool hasEmbeddedStyles() const { return false; }
+        
+        /**
+         * Accesses the list of feature filters that will transform features
+         * before they are returned in a feature cursor.
+         */
+        const FeatureFilterChain* getFilters() const;
 
         /**
          * Adds a feature ID to the blacklist.
@@ -223,111 +211,30 @@ namespace osgEarth { namespace Features
          * Checks the blacklist for a feature ID.
          */
         bool isBlacklisted( FeatureID fid ) const; 
-
-        /**
-         * Sets the feature profile for this source.
-         * This is required. Usually the subclass should call this from initialize().
-         */
-        void setFeatureProfile(const FeatureProfile* profile);
-
-
-    public: // Styling
-
-        /**
-         * Returns true if this source creates features with embedded style information.
-         * By default, this is false (features are not expected to carry their own
-         * style definitions).
-         */
-        virtual bool hasEmbeddedStyles() const {
-            return false; }
+        
+        //! dirty (??)
+        virtual void dirty() { }
 
     public:
 
-        /**
-         * Accesses the list of feature filters that will transform features
-         * before they are returned in a feature cursor.
-         */
-        const FeatureFilterChain* getFilters() const;
+        //! Creates a features source from a serialized definition
+        static FeatureSource* create(const ConfigOptions&);
 
-    public: 
-
-        // META_Object specialization:
-        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
-        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
-        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const FeatureSource*>(obj)!=NULL; }
-        virtual const char* className() const { return "FeatureSource"; }
-        virtual const char* libraryName() const { return "osgEarthFeatures"; }
-
-        /**
-         * Dirties the feature profile
-         */
-        void dirtyFeatureProfile() { _featureProfile = 0;}
-        
     protected:
-        
-        /**
-         * Initialize the FeatureSource.
-         * If you override this function, please call this base implementation from within.
-         */
-        virtual Status initialize(const osgDB::Options* readOptions) =0;
-
-        /**
-         * DTOR is protected to prevent this object from being allocated on the stack.
-         */
-        virtual ~FeatureSource();
-
-        /** Access the raw DB options that came in */
-        const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
-
-        /** The URI context (for resolving relative paths) */
-        const URIContext& uriContext() const { return _uriContext; }
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+        URIContext                         _uriContext;
+        mutable Threading::ReadWriteMutex  _blacklistMutex;
+        std::set<FeatureID>                _blacklist;        
+        osg::ref_ptr<FeatureFilterChain>   _filters;
 
         /** Convenience function to apply the filters to a FeatureList */
         void applyFilters(FeatureList& features, const GeoExtent& extent) const;
 
-        /** Subclass can call this if the status changes */
-        void setStatus(const Status& value) { _status = value; }
-
-    private:
-        const FeatureSourceOptions         _options;
-        osg::ref_ptr<const FeatureProfile> _featureProfile;
-        Threading::Mutex                   _createMutex;
-
-        osg::ref_ptr<const osgDB::Options> _readOptions;
-        URIContext                         _uriContext;
-
-        Threading::ReadWriteMutex          _blacklistMutex;
-        std::set<FeatureID>                _blacklist;
-        
-        osg::ref_ptr<FeatureFilterChain>   _filters;
-
-        Status                             _status;
-
-        friend class FeatureSourceFactory;
+        virtual ~FeatureSource() { }
     };
 
-    //--------------------------------------------------------------------
-
-    class OSGEARTHFEATURES_EXPORT FeatureSourceDriver : public osgDB::ReaderWriter
-    {
-    public:
-        virtual const FeatureSourceOptions& getFeatureSourceOptions( const osgDB::ReaderWriter::Options* rwopt ) const;
-    };
-
-    //--------------------------------------------------------------------
-
-    /**
-     * Factory class that will instantiate a FeatureSource corresponding to a driver name.
-     */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceFactory
-    {
-	public:
-        static FeatureSource* create( const FeatureSourceOptions& options );
-    };
-
-} }  // namespace osgEarth::Features
+} } // namespace osgEarth::Features
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSourceOptions);
 
-#endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
-
+#endif // OSGEARTH_FEATURES_FEATURE_SOURCE_H

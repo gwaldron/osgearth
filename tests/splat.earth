@@ -4,13 +4,7 @@
 -->
 
 <map>
-    <options>
-        <terrain driver="rex"/>
-    </options>
-    
-    <elevation name="readymap_elevation" driver="tms" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
 
     <!-- Pre-load the splatting nodekit -->
     <libraries>osgEarthSplat</libraries>
@@ -19,7 +13,7 @@
     <xi:include href="../data/land_cover_dictionary.xml"/>
     
     <!-- Land cover layer defines world wide classes -->
-    <land_cover name="LandCover" max_data_level="15">
+    <LandCover name="LandCover" max_data_level="15">
         <cache_policy usage="no_cache"/>
         <coverages>
             <coverage name="ESA GLOBCOVER" driver="gdal">
@@ -29,10 +23,10 @@
                 <warp>0.05</warp>
             </coverage>
         </coverages>
-    </land_cover>
+    </LandCover>
         
     <!-- Procedural terrain imagery from land cover data -->
-    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
+    <SplatImage name="Splat Imagery" land_cover_layer="LandCover">
         <zones>
             <zone name="default">
                 <surface>
@@ -40,10 +34,10 @@
                 </surface>
             </zone>
         </zones>
-    </splat_imagery>
+    </SplatImage>
     
     <!-- GPU trees from land cover data -->
-    <splat_groundcover name="Trees" land_cover_layer="LandCover">
+    <GroundCover name="Trees" land_cover_layer="LandCover">
         <lod>13</lod>
         <cast_shadows>true</cast_shadows>
         <zones>
@@ -64,10 +58,10 @@
                 </groundcover>
             </zone>
         </zones>
-    </splat_groundcover>
+    </GroundCover>
 
     <!-- GPU grass from land cover data -->
-    <splat_groundcover name="Grass" land_cover_layer="LandCover">
+    <GroundCover name="Grass" land_cover_layer="LandCover">
         <lod>19</lod>
         <cast_shadows>false</cast_shadows>
         <zones>
@@ -85,8 +79,7 @@
                 </groundcover>
             </zone>
         </zones>
-    </splat_groundcover>
-
+    </GroundCover>
     
     <xi:include href="viewpoints.xml"/>
 </map>

@@ -20,18 +20,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/TFSPackager>
-
 #include <osgEarth/FileUtils>
-
-#include <osgEarthFeatures/FeatureCursor>
-
+#include <osgEarthFeatures/TFS>
 #include <osgDB/FileUtils>
 
 #define LC "[TFSPackager] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 /******************************************************************************************/
@@ -387,14 +383,14 @@ TFSPackager::package( FeatureSource* features, const std::string& destination, c
     root->accept( &write );
 
     //Write out the meta doc
-    TFSLayer layer;
+    TFS::Layer layer;
     layer.setTitle( layername );
     layer.setAbstract( description );
     layer.setFirstLevel( _firstLevel );
     layer.setMaxLevel( highestLevel );
     layer.setExtent( profile->getExtent() );
     layer.setSRS( _srs.get() );
-    TFSReaderWriter::write( layer, osgDB::concatPaths( destination, "tfs.xml"));
+    TFS::ReaderWriter::write( layer, osgDB::concatPaths( destination, "tfs.xml"));
 
 }
 

@@ -29,7 +29,7 @@
 #include <osgEarth/MapNode>
 
 // include for WFS feature driver:
-#include <osgEarthDrivers/feature_wfs/WFSFeatureOptions>
+#include <osgEarthFeatures/WFS>
 
 // include for feature geometry model renderer:
 #include <osgEarthAnnotation/FeatureNode>
@@ -86,14 +86,16 @@ main(int argc, char** argv)
             return usage(argv[0]);
 
         // Create the WFS driver:
-        osgEarth::Drivers::WFSFeatureOptions wfs;
-        wfs.url()          = osgEarth::URI("http://demo.mapserver.org/cgi-bin/wfs"); 
-        wfs.typeName()     = "cities"; 
-        wfs.outputFormat() = "gml2";     // JSON or GML
+        WFSFeatureSource* wfs = new WFSFeatureSource();
+        wfs->options().url() = osgEarth::URI("http://demo.mapserver.org/cgi-bin/wfs");
+        wfs->options().typeName() = "cities";
+        wfs->options().outputFormat() = "gml2";
 
-        // Create the feature source from the options
-        osg::ref_ptr< FeatureSource > featureSource = FeatureSourceFactory::create(wfs);
-        Status s = featureSource->open();
+        if (wfs->open().isError())
+        {
+            OE_WARN << wfs->getStatus().message() << std::endl;
+            return -1;
+        }
 
         // Set the query with the bounds if one was specified.
         Query query;
@@ -103,7 +105,7 @@ main(int argc, char** argv)
         }
 
         // Get the features
-        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(query, 0L);
+        osg::ref_ptr< FeatureCursor > cursor = wfs->createFeatureCursor(query, 0L);
         FeatureList features;
         cursor->fill(features);
         OE_NOTICE << "Got " << features.size() << " features" << std::endl;

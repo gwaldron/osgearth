@@ -21,6 +21,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+Query Query::ALL;
+
 Query::Query( const Config& conf )
 {
     mergeConfig( conf );

@@ -29,15 +29,9 @@
 #include <osgEarth/LayerListener>
 #include <osgEarth/LandCoverLayer>
 
-namespace osgEarth { namespace Features {
-    class FeatureSource;
-    class FeatureSourceLayer;
-} }
-
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     //! Serializable configuration for a GroundCoverLayer.
     class OSGEARTHSPLAT_EXPORT GroundCoverLayerOptions : public PatchLayerOptions
@@ -84,7 +78,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public PatchLayer
     {
     public:
-        META_Layer(osgEarth, GroundCoverLayer, GroundCoverLayerOptions, PatchLayer, splat_groundcover);
+        META_Layer(osgEarth, GroundCoverLayer, GroundCoverLayerOptions, PatchLayer, groundcover);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);

@@ -51,7 +51,8 @@ GeometryCompilerOptions(options)
         
 void FeatureModelLayerOptions::fromConfig(const Config& conf)
 {
-    conf.get("feature_source", _featureLayer);
+    conf.get("features", _featureSource);
+    conf.get("feature_source", _featureSource);
 }
 
 Config
@@ -61,7 +62,8 @@ FeatureModelLayerOptions::getConfig() const
     conf.merge(FeatureModelOptions::getConfig());
     conf.merge(GeometryCompilerOptions::getConfig());
 
-    conf.set("feature_source", _featureLayer);
+    conf.set("feature_source", _featureSource);
+
     return conf;
 }
 
@@ -114,7 +116,7 @@ void FeatureModelLayer::dirty()
 }
 
 void
-FeatureModelLayer::setFeatureSource(FeatureLayer* source)
+FeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
     if (source && source->getStatus().isError())
     {
@@ -125,12 +127,12 @@ FeatureModelLayer::setFeatureSource(FeatureLayer* source)
     if (source)
         OE_INFO << LC << "Feature source layer is \"" << source->getName() << "\"\n";
 
-    if (_featureSource != source)
+    if (_features.get() != source)
     {
         if (source)
             OE_INFO << LC << "Setting feature source \"" << source->getName() << "\"\n";
 
-        _featureSource = source;
+        _features = source;
 
         if (source && source->getStatus().isError())
         {
@@ -201,8 +203,8 @@ FeatureModelLayer::getExtent() const
 {
     static GeoExtent s_invalid;
 
-    return _featureSource.valid() && _featureSource->getFeatureProfile() ?
-        _featureSource->getFeatureProfile()->getExtent() :
+    return _features.valid() && _features->getFeatureProfile() ?
+        _features->getFeatureProfile()->getExtent() :
         s_invalid;
 }
 
@@ -219,11 +221,11 @@ FeatureModelLayer::addedToMap(const Map* map)
         0L,  // feature source - will set later
         getReadOptions());
 
-    if (options().featureLayer().isSet())
+    if (options().featureSource().isSet())
     {
         _featureLayerListener.listen(
             map,
-            options().featureLayer().get(),
+            options().featureSource().get(),
             this,
             &FeatureModelLayer::setFeatureSource);
     }
@@ -254,10 +256,10 @@ FeatureModelLayer::create()
 
     if (_graphDirty)
     {
-        if (_featureSource.valid() && _session.valid())
+        if (_features.valid() && _session.valid())
         {
             // connect the session to the features:
-            _session->setFeatureSource(_featureSource.get());
+            _session->setFeatureSource(_features.get());
 
             // the factory builds nodes for the model graph:
             FeatureNodeFactory* nodeFactory = createFeatureNodeFactory();

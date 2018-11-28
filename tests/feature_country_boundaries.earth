@@ -1,23 +1,14 @@
-<!--
-osgEarth Sample
--->
-
 <map name="Worldwide Line Vectors">
 
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-
-    <elevation name="readymap_elevation" driver="tms" vdatum="egm96">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
             
-    <feature_source name="world-data" driver="ogr">
+    <OGRFeatures name="world-data">
         <url>../data/world.shp</url>
         <convert type="line"/>
-    </feature_source>
+    </OGRFeatures>
     
-    <feature_model name="world_boundaries" feature_source="world-data">
+    <FeatureModel name="Country boundaries" feature_source="world-data">
         
         <layout tile_size="500000" crop_features="true" paged="true">
             <level max_range="1e10"/>
@@ -36,6 +27,6 @@ osgEarth Sample
             </style>
         </styles>
         
-    </feature_model>
+    </FeatureModel>
   
 </map>

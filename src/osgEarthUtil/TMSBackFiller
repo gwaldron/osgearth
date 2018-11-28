@@ -24,12 +24,11 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Profile>
-
-#include <osgEarthUtil/TMS>
+#include <osgEarth/TMS>
 
 namespace osgEarth { namespace Util
 {
-    using namespace osgEarth::Util::TMS;
+    using namespace osgEarth;
 
     /**
      * Post processing utility for disk based TMS (Tile Map Service) repositories that takes data from a given level and "backfills" lower
@@ -82,7 +81,7 @@ namespace osgEarth { namespace Util
 
         void writeTile( const TileKey& key, osg::Image* image );
         
-        osg::ref_ptr< TileMap > _tileMap;
+        osg::ref_ptr< TMS::TileMap > _tileMap;
 
         unsigned int _minLevel;
         unsigned int _maxLevel;

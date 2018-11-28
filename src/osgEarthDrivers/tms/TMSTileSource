@@ -26,12 +26,11 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/TMS>
+#include <osgEarth/TMS>
 
 #include <osg/Notify>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 
 namespace osgEarth { namespace Drivers { namespace TileMapService

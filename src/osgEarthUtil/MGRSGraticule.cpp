@@ -21,6 +21,7 @@
 
 #include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarthFeatures/TessellateOperator>
+#include <osgEarthFeatures/OGRFeatureSource>
 
 #include <osgEarthAnnotation/FeatureNode>
 
@@ -32,9 +33,6 @@
 #include <osgEarth/Text>
 
 #include <osg/Depth>
-//#include <osgDB/WriteFile>
-
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 
 #define LC "[MGRSGraticule] "
@@ -107,16 +105,15 @@ namespace
     //! Generates the binary SQID file.
     void writeSQIDfile(const URI& uri)
     {
-        osgEarth::Drivers::OGRFeatureOptions sqid_ogr;
-        sqid_ogr.url() = "H:/data/nga/mgrs/MGRS_100kmSQ_ID/WGS84/ALL_SQID.shp";
-        sqid_ogr.buildSpatialIndex() = false;
+        osg::ref_ptr<OGRFeatureSource> sqid_fs = new OGRFeatureSource();
+        sqid_fs->setURL("H:/data/nga/mgrs/MGRS_100kmSQ_ID/WGS84/ALL_SQID.shp");
+        sqid_fs->setBuildSpatialIndex(false);
 
-        osg::ref_ptr<FeatureSource> sqid_fs = FeatureSourceFactory::create(sqid_ogr);
-        if (sqid_fs.valid() && sqid_fs->open().isOK())
+        if (sqid_fs->open().isOK())
         {
             // Read source data into an array:
             FeatureList sqids;
-            osg::ref_ptr<FeatureCursor> sqid_cursor = sqid_fs->createFeatureCursor(0L);
+            osg::ref_ptr<FeatureCursor> sqid_cursor = sqid_fs->createFeatureCursor(Query::ALL,0L);
             if (sqid_cursor.valid() && sqid_cursor->hasMore())
                 sqid_cursor->fill(sqids);
 

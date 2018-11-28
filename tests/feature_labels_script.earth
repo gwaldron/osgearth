@@ -3,23 +3,27 @@ osgEarth Sample
 This shows how to label point features with an attribute (with some extra zing).
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
+<map name="Demo: edit feature attribute with a script">
         
-    <image name="world" driver="gdal">
+    <GDALImage name="World imagery">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <feature_model name="cities">
-        <features name="cities" driver="ogr">
-            <url>../data/world.shp</url>
-        </features>
-
+    <OGRFeatures name="city-data">
+        <url>../data/world.shp</url>
+    </OGRFeatures>
+    
+    <FeatureModel name="City names" feature_source="city-data">
         <styles>
 		    <script profile="full">
+              <![CDATA[
 			    function addSomeExcitement() {
-				    feature.properties.name = '***' + feature.properties.cntry_name + '!!!';
+				    feature.properties.name = 
+                        '< ' + feature.properties.cntry_name + 
+                        ' (' + feature.id + ')';
 					feature.save();
 				}
+              ]]>
 			</script>
 			
             <style type="text/css">              
@@ -38,7 +42,7 @@ This shows how to label point features with an attribute (with some extra zing).
                 }     
             </style>
         </styles>        
-    </feature_model>
+    </FeatureModel>
     
     <screen_space_layout>
         <out_animation_time>  0.0  </out_animation_time>

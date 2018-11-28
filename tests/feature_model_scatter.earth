@@ -8,7 +8,7 @@ that polygon as a specific density (instances/sqkm). Scattered placement
 is randomized, but it is randomized exactly the same way each time.
 -->
 
-<map name="Model Scattering Demo" type="geocentric" version="2">
+<map name="Demo: Model Scattering">
           
     <OGRFeatures name="trees-data">
         <url>../data/parks.shp</url>

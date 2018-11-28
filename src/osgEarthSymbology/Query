@@ -40,6 +40,8 @@ namespace osgEarth { namespace Symbology
 
         virtual ~Query() { }
 
+        static Query ALL;
+
     public: // properties
 
         /** Sets the geospatial extent bounding this query. */

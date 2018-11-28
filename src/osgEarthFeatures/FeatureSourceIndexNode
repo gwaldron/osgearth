@@ -23,7 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureIndex>
-#include <osgEarthFeatures/FeatureLayer>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/ObjectIndex>
 #include <osg/Config>
 #include <osg/Group>
@@ -75,12 +75,12 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceIndex : public FeatureIndex
     {
     public:
-        FeatureSourceIndex(FeatureLayer* source,
+        FeatureSourceIndex(FeatureSource* source,
                            ObjectIndex*   masterIndex,
                            const FeatureSourceIndexOptions& options);
 
         /** FeatureSource behind this index */
-        FeatureLayer* getFeatureSource() { return _featureSource.get(); }
+        FeatureSource* getFeatureSource() { return _featureSource.get(); }
 
     public: // FeatureIndex
 
@@ -127,7 +127,7 @@ namespace osgEarth { namespace Features
         virtual ~FeatureSourceIndex();
 
     private:
-        osg::ref_ptr<FeatureLayer>  _featureSource;
+        osg::ref_ptr<FeatureSource> _featureSource;
         osg::ref_ptr<ObjectIndex>   _masterIndex;
         FeatureSourceIndexOptions   _options;        
         bool                        _embed;

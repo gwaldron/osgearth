@@ -22,11 +22,11 @@
 #include "TMSTileSource"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/TMS>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::TileMapService;
 
 #define LC "[TMSTileSource] "

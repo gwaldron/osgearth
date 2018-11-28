@@ -29,13 +29,13 @@ config.json was:
     "include_tags": []
 }
 -->
-<map type="geocentric" version="2">
+<Map>
 
-    <feature_model name="osm">
+    <MVTFeatures name="honolulu-data">
+        <url>../data/honolulu.mbtiles</url>
+    </MVTFeatures>
 
-        <features name="osm" driver="mapnikvectortiles">
-            <url>../data/honolulu.mbtiles</url>
-        </features>
+    <FeatureModel name="OSM" feature_source="honolulu-data">
 
         <instancing>true</instancing>
 
@@ -195,16 +195,14 @@ config.json was:
             </script>
 
         </styles>
-    </feature_model>
+    </FeatureModel>
 
     <image name="esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
         <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
     </image>
 
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
 
     <viewpoints>
       <viewpoint>
@@ -218,4 +216,4 @@ config.json was:
       </viewpoint>
     </viewpoints>
 
-</map>
+</Map>

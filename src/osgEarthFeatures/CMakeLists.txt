@@ -8,6 +8,10 @@ IF (GEOS_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_GEOS)
 ENDIF(GEOS_FOUND)
 
+IF (SQLITE3_FOUND)
+    ADD_DEFINITIONS(-DOSGEARTH_HAVE_SQLITE3)
+ENDIF(SQLITE3_FOUND)
+
 SET(LIB_NAME osgEarthFeatures)
 
 set(TARGET_GLSL
@@ -45,7 +49,6 @@ SET(LIB_PUBLIC_HEADERS
     FeatureModelSource
     FeatureSource
     FeatureSourceIndexNode
-    FeatureSourceLayer
     FeatureTileSource
     Filter
     FilterContext
@@ -55,7 +58,7 @@ SET(LIB_PUBLIC_HEADERS
     LabelSource
     MVT
     OgrUtils
-    OGRFeatureLayer
+    OGRFeatureSource
     PolygonizeLines
     ResampleFilter
     ScaleFilter
@@ -68,8 +71,10 @@ SET(LIB_PUBLIC_HEADERS
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
+    TFS
     TransformFilter
-    VirtualFeatureSource
+    XYZ
+    WFS
 )
 
 SET(TARGET_SRC
@@ -91,7 +96,6 @@ SET(TARGET_SRC
     FeatureModelSource.cpp
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp
-    FeatureSourceLayer.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
@@ -101,7 +105,7 @@ SET(TARGET_SRC
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
-    OGRFeatureLayer.cpp
+    OGRFeatureSource.cpp
     PolygonizeLines.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
@@ -110,10 +114,12 @@ SET(TARGET_SRC
     ScriptEngine.cpp
     ScriptFilter.cpp
     SubstituteModelFilter.cpp
-    TessellateOperator.cpp
+    TessellateOperator.cpp    
     TextSymbolizer.cpp
+    TFS.cpp
     TransformFilter.cpp
-    VirtualFeatureSource.cpp 
+    XYZ.cpp
+    WFS.cpp
     ${SHADERS_CPP}
 )
 
@@ -169,6 +175,10 @@ SET(LINK_VARS
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   list(APPEND LINK_VARS Protobuf_LIBRARIES)
 ENDIF()
+
+IF (SQLITE3_FOUND)
+  list(APPEND LINK_VARS SQLITE3_LIBRARY)
+ENDIF(SQLITE3_FOUND)
 
 LINK_WITH_VARIABLES(${LIB_NAME} ${LINK_VARS})
 

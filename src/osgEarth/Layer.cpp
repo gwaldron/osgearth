@@ -251,6 +251,13 @@ Layer::open()
     return _status;
 }
 
+const Status&
+Layer::open(const osgDB::Options* readOptions)
+{
+    setReadOptions(readOptions);
+    return open();
+}
+
 void
 Layer::close()
 {

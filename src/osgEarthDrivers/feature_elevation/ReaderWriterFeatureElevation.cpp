@@ -81,14 +81,16 @@ public:
         }
     
         // create the driver:
-        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
+        _features = FeatureSource::create( _options.featureOptions().value() );
         if ( !_features.valid() )
         {
-            return Status::Error(Status::ServiceUnavailable, "Cannot find feature driver \"" + _options.featureOptions()->getDriver() + "\"");
+            return Status::Error(Status::ServiceUnavailable, "Cannot locate feature source");
         }
 
         // open the feature source:
-        const Status& fstatus = _features->open(readOptions);
+        _features->setReadOptions(readOptions);
+
+        const Status& fstatus = _features->open();
         if (fstatus.isError())
         {
             return fstatus;

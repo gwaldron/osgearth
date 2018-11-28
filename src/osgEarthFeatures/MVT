@@ -22,19 +22,91 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
 
+#ifdef OSGEARTH_HAVE_MVT
+
+namespace osgEarth { namespace Features { namespace MVT 
+{
+    //! Reads features from an MVT stream for the specified tile.
+    extern OSGEARTHFEATURES_EXPORT bool readTile(
+        std::istream&  in,
+        const TileKey& key,
+        FeatureList&   features);
+
+} } } // osgEarth::Features::MVT
+
+
+#ifdef OSGEARTH_HAVE_SQLITE3
+
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
 
     /**
-     * Utility class for reading features from mapnik vector tiles.
+     * Layer that provides features from a Mapnik Vector Tiles repository.
      */
-    class OSGEARTHFEATURES_EXPORT MVT
+    class OSGEARTHFEATURES_EXPORT MVTFeatureSourceOptions : public FeatureSourceOptions
     {
     public:
-        static bool read(std::istream& in, const TileKey& key, FeatureList& features);
+        META_LayerOptions(osgEarth, MVTFeatureSourceOptions, FeatureSourceOptions);
+
+        //! Location of the MVT resource
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
+        
+    public:
+        virtual Config getConfig() const;
+
+    private:
+        void fromConfig(const Config& conf);
+        
+        optional<URI> _url;
+    };
+
+    /**
+     * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
+     */
+    class OSGEARTHFEATURES_EXPORT MVTFeatureSource : public FeatureSource
+    {   
+    public:
+        META_Layer(osgEarth, MVTFeatureSource, MVTFeatureSourceOptions, FeatureSource, mvtfeatures);
+
+    public:
+
+    public: // Layer
+
+        virtual const Status& open();
+
+    protected:
+
+        virtual void init();
+
+    public: // FeatureLayer
+
+        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress);        
+        
+        virtual const FeatureSchema& getSchema() const { return _schema; }
+
+    protected:
+
+        virtual ~MVTFeatureSource() { }
+
+    private:
+        FeatureSchema _schema;
+        osg::ref_ptr<osgDB::BaseCompressor> _compressor;
+        void* _database;
+        //sqlite3* _database;
+        unsigned _minLevel;
+        unsigned _maxLevel;
+
+        const FeatureProfile* createFeatureProfile();
+        void computeLevels();
+        bool getMetaData(const std::string& key, std::string& value);
     };
 } }
+
+#endif // OSGEARTH_HAVE_SQLITE3
+
+#endif // OSGEARTH_HAVE_MVT
 
 #endif // OSGEARTH_FEATURES_MVT
 

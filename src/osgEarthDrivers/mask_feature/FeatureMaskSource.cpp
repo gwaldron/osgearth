@@ -53,7 +53,7 @@ public:
         }
         else if ( _options.featureOptions().isSet() )
         {
-            _features = FeatureSourceFactory::create( _options.featureOptions().value() );
+            _features = FeatureSource::create( _options.featureOptions().value() );
             if ( !_features.valid() )
             {
                 OE_WARN << "FeatureModelSource - no valid feature source provided" << std::endl;
@@ -71,7 +71,8 @@ public:
         if (!_features.valid())
             return Status::Error(LC, "No feature source available");
 
-        const Status& fstatus = _features->open(readOptions);
+        _features->setReadOptions(readOptions);
+        const Status& fstatus = _features->open();
         if (fstatus.isError())
             return fstatus;
 

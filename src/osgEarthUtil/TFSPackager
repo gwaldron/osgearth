@@ -16,22 +16,18 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTHFEATURES_TFS_PACKAGER_H
 #define OSGEARTHFEATURES_TFS_PACKAGER_H 1
 
-#include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
+#include <osgEarthUtil/Common>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/CropFilter>
-#include <osgEarthUtil/TFS>
 
 
-namespace osgEarth { namespace Util {
+namespace osgEarth { namespace Util 
+{
     using namespace osgEarth;    
     using namespace osgEarth::Features;
-    using namespace osgEarth::Symbology;
-
     /**
      * Utility that grids up feature data into a tiled json format.
      */

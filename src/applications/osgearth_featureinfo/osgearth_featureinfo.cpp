@@ -21,13 +21,10 @@
 */
 
 #include <osg/Notify>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-
+#include <osgEarthFeatures/OGRFeatureSource>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/FeatureCursor>
 
 using namespace osgEarth::Features;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 
 std::string attributeTypeToString( AttributeType type )
@@ -160,14 +157,13 @@ int main(int argc, char** argv)
 
 
     //Open the feature source
-    OGRFeatureOptions featureOpt;
-    featureOpt.url() = filename;
-    featureOpt.openWrite() = write;
+    osg::ref_ptr<OGRFeatureSource> features = new OGRFeatureSource();
+    features->setURL(filename);
 
-    osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-    Status s = features->open();
-    if (s.isError())
-        return usage(s.message());
+    if (features->open().isError())
+    {
+        return usage(features->getStatus().message());
+    }
 
     //Delete any features if requested
     if (toDelete.size() > 0)

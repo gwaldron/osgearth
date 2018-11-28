@@ -37,16 +37,13 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/AutoScaleCallback>
 
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-
 #include <osgEarthFeatures/FeatureMaskLayer>
-#include <osgEarthFeatures/OGRFeatureLayer>
+#include <osgEarthFeatures/OGRFeatureSource>
 
 #include <osg/PositionAttitudeTransform>
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 
@@ -191,7 +188,7 @@ main(int argc, char** argv)
     maskGeom->push_back(osg::Vec3d(-114.0506, 37.0004, 0));
     maskGeom->push_back(osg::Vec3d(-114.0417, 41.9937, 0));
 
-    OGRFeatureLayer* maskFeatures = new OGRFeatureLayer();
+    OGRFeatureSource* maskFeatures = new OGRFeatureSource();
     maskFeatures->setGeometry(maskGeom);
     maskFeatures->setProfile(Profile::create("global-geodetic"));
 

@@ -21,7 +21,7 @@
 */
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/TMS>
+#include <osgEarth/TMS>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -31,7 +31,6 @@
 #include "TMSTileSource"
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 #define LC "[TMS driver] "
 

@@ -29,16 +29,9 @@
 #include <osgEarth/LayerListener>
 #include <osgEarth/LandCoverLayer>
 
-namespace osgEarth {
-    namespace Features {
-        class FeatureSource;
-        class FeatureSourceLayer;
-    }
-}
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
     
     //! Options to configure a splat layer.
     class OSGEARTHSPLAT_EXPORT SplatLayerOptions : public VisibleLayerOptions
@@ -69,7 +62,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions, VisibleLayer, splat_imagery);
+        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions, VisibleLayer, splatimage);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);

@@ -1,36 +1,29 @@
 <!--
 osgEarth Sample
-
 Demonstrates how to select a style name using javascript.
 -->
 
-<map name="Feature Overlay Demo" type="geocentric" version="2">
-    
-    <options>
-        <lighting>false</lighting>
-        <overlay_blending>false</overlay_blending>
-    </options>
+<map name="Demo: scripted style selector">
 
-    <image name="world" driver="gdal">
+    <GDALImage name="world">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <model name="countries" driver="feature_geom">
-                          
-        <features name="states" driver="ogr">
-            <url>../data/world.shp</url>
-            <filters>
-                <buffer distance="-0.05"/>
-            </filters>
-        </features>
-        
+    <OGRFeatures name="country-data">
+        <url>../data/world.shp</url>
+        <filters>
+            <buffer distance="-0.05"/>
+        </filters>
+    </OGRFeatures>
+    
+    <FeatureModel name="countries" feature_source="country-data">        
         <styles>        
             <style type="text/css">
-                p1 { fill: #ffff8066; altitude-clamping: terrain-drape; }
-                p2 { fill: #80ffff66; altitude-clamping: terrain-drape; }
-                p3 { fill: #ff80ff66; altitude-clamping: terrain-drape; }
-                p4 { fill: #ff808066; altitude-clamping: terrain-drape; }
-                p5 { fill: #80ff8066; altitude-clamping: terrain-drape; }
+                p1 { fill: #ffff80; altitude-clamping: terrain-drape; }
+                p2 { fill: #80ffff; altitude-clamping: terrain-drape; }
+                p3 { fill: #ff80ff; altitude-clamping: terrain-drape; }
+                p4 { fill: #ff8080; altitude-clamping: terrain-drape; }
+                p5 { fill: #80ff80; altitude-clamping: terrain-drape; }
             </style>
             
             <script language="javascript">
@@ -48,7 +41,7 @@ Demonstrates how to select a style name using javascript.
             </script>
             
             <selector class_expr="getStyleClass()"/>
-        </styles>
-        
-    </model>
+        </styles>        
+    </FeatureModel>
+    
 </map>

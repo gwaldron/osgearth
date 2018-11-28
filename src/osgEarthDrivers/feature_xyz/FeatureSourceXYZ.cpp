@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#if 0
 #include "XYZFeatureOptions"
 
 #include <osgEarth/Registry>
@@ -409,3 +410,4 @@ public:
 
 REGISTER_OSGPLUGIN(osgearth_feature_xyz, XYZFeatureSourceFactory)
 
+#endif

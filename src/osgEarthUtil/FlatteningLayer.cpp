@@ -26,6 +26,9 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+REGISTER_OSGEARTH_LAYER(flattenedelevation, FlatteningLayer);
+REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);
+
 #define LC "[FlatteningLayer] "
 
 #define OE_TEST OE_DEBUG
@@ -614,47 +617,99 @@ namespace
 
 //........................................................................
 
+Config
+FlatteningLayerOptions::getConfig() const
+{
+    Config conf = ElevationLayerOptions::getConfig();
+    conf.set("feature_source", _featureSource);
+    conf.set("line_width", _lineWidth);
+    conf.set("buffer_width", _bufferWidth);
+    conf.set("fill", _fill);
+
+    if (_script.valid())
+    {
+        Config scriptConf("script");
+
+        if (!_script->name.empty())
+            scriptConf.set("name", _script->name);
+        if (!_script->language.empty())
+            scriptConf.set("language", _script->language);
+        if (_script->uri.isSet())
+            scriptConf.set("url", _script->uri->base());
+        if (!_script->profile.empty())
+            scriptConf.set("profile", _script->profile);
+        else if (!_script->code.empty())
+            scriptConf.value() = _script->code;
+
+        conf.add(scriptConf);
+    }
+
+    return conf;
+}
+
+void
+FlatteningLayerOptions::fromConfig(const Config& conf)
+{
+    fill().init(false);
+    lineWidth().init(40);
+    bufferWidth().init(40);
+    URIContext uriContext = URIContext(conf.referrer());
+
+    conf.get("feature_source", _featureSource);
+    conf.get("line_width", _lineWidth);
+    conf.get("buffer_width", _bufferWidth);
+    conf.get("fill", _fill);
+
+    // TODO:  Separate out ScriptDef from Stylesheet and include it as a standalone class, along with this loading code.
+    ConfigSet scripts = conf.children("script");
+    for (ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i)
+    {
+        _script = new StyleSheet::ScriptDef();
+
+        // load the code from a URI if there is one:
+        if (i->hasValue("url"))
+        {
+            _script->uri = URI(i->value("url"), uriContext);
+            OE_INFO << "Loading script from \"" << _script->uri->full() << std::endl;
+            _script->code = _script->uri->getString();
+        }
+        else
+        {
+            _script->code = i->value();
+        }
+
+        // name is optional and unused at the moment
+        _script->name = i->value("name");
+
+        std::string lang = i->value("language");
+        _script->language = lang.empty() ? "javascript" : lang;
+
+        std::string profile = i->value("profile");
+        _script->profile = profile;
+    }
+}
+
+//........................................................................
+
 void
 FlatteningLayer::init()
 {
+    ElevationLayer::init();
+
     setTileSourceExpected(false);
 
     // Experiment with this and see what will work.
     _pool = new ElevationPool();
     _pool->setTileSize(257u);
-
-    ElevationLayer::init();
 }
 
 const Status&
 FlatteningLayer::open()
 {
     // ensure the caller named a feature source:
-    if (!options().featureSource().isSet() &&
-        !options().featureSourceLayer().isSet())
+    if (_features.valid() == 0L && !options().featureSource().isSet())
     {
         return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
-    }
-
-    // If the feature source is inline, open it now.
-    if (options().featureSource().isSet())
-    {
-        // Create the feature source instance:
-        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
-        if (!fs)
-        {
-            return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source as defined"));
-        }
-
-        // Open it:
-        setStatus(fs->open(getReadOptions()));
-        if (getStatus().isError())
-            return getStatus();
-        
-        setFeatureSource(fs);
-
-        if (getStatus().isError())
-            return getStatus();
     }
     
     const Profile* profile = getProfile();
@@ -667,41 +722,15 @@ FlatteningLayer::open()
     return ElevationLayer::open();
 }
 
-void
-FlatteningLayer::setFeatureSource(FeatureSource* fs)
-{
-    if (fs)
-    {
-        _featureSource = fs;
-        if (_featureSource)
-        {
-            if (!_featureSource->getFeatureProfile())
-            {
-                setStatus(Status::Error(Status::ConfigurationError, "No feature profile (is the source open?)"));
-                _featureSource = 0L;
-                return;
-            }
-        }
-    }
-}
-
 FlatteningLayer::~FlatteningLayer()
 {
     _featureLayerListener.clear();
 }
 
 void
-FlatteningLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
+FlatteningLayer::setFeatureSource(FeatureSource* layer)
 {
-    if (layer)
-    {
-        if (layer->getStatus().isOK())
-            setFeatureSource(layer->getFeatureSource());
-    }
-    else
-    {
-        setFeatureSource(0L);
-    }
+    _features = layer;
 }
 
 void
@@ -710,15 +739,14 @@ FlatteningLayer::addedToMap(const Map* map)
     // Initialize the elevation pool with our map:
     OE_INFO << LC << "Attaching elevation pool to map\n";
     _pool->setMap( map );
-
         
     // Listen for our feature source layer to arrive, if there is one.
-    if (options().featureSourceLayer().isSet())
+    if (_features.valid() == false && options().featureSource().isSet())
     {
         _featureLayerListener.listen(
             map,
-            options().featureSourceLayer().get(), 
-            this, &FlatteningLayer::setFeatureSourceLayer);
+            options().featureSource().get(), 
+            this, &FlatteningLayer::setFeatureSource);
     }
         
     // Collect all elevation layers preceding this one and use them for flattening.
@@ -745,44 +773,49 @@ FlatteningLayer::removedFromMap(const Map* map)
     _featureLayerListener.clear();
 }
 
-void
-FlatteningLayer::createImplementation(const TileKey& key,
-                                      osg::ref_ptr<osg::HeightField>& hf,
-                                      osg::ref_ptr<NormalMap>& normalMap,
-                                      ProgressCallback* progress)
+GeoHeightField
+FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())    
     {
-        return;
+        return GeoHeightField::INVALID;
     }
     
-    if (!_featureSource.valid())
+    if (!_features.valid())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
-        return;
+        return GeoHeightField::INVALID;
     }
 
-    const FeatureProfile* featureProfile = _featureSource->getFeatureProfile();
+    if (_features->getStatus().isError())
+    {
+        setStatus(_features->getStatus());
+        return GeoHeightField::INVALID;
+    }
+
+    const FeatureProfile* featureProfile = _features->getFeatureProfile();
     if (!featureProfile)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
-        return;
+        return GeoHeightField::INVALID;
     }
 
     const SpatialReference* featureSRS = featureProfile->getSRS();
     if (!featureSRS)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile has no SRS"));
-        return;
+        return GeoHeightField::INVALID;
     }
 
     if (_pool->getElevationLayers().empty())
     {
         OE_WARN << LC << "Internal error - Pool layer set is empty\n";
-        return;
+        return GeoHeightField::INVALID;
     }
 
     OE_START_TIMER(create);
+    
+    osg::ref_ptr<osg::HeightField> hf;
 
     // If the feature source has a tiling profile, we are going to have to map the incoming
     // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
@@ -853,7 +886,7 @@ FlatteningLayer::createImplementation(const TileKey& key,
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query, progress);
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
             while (cursor.valid() && cursor->hasMore())
             {
                 Feature* feature = cursor->nextFeature();
@@ -901,7 +934,7 @@ FlatteningLayer::createImplementation(const TileKey& key,
         query.bounds() = queryExtent.bounds();
 
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query, progress);
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
         while (cursor.valid() && cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();
@@ -968,4 +1001,6 @@ FlatteningLayer::createImplementation(const TileKey& key,
         
         integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
     }
+
+    return GeoHeightField(hf.get(), key.getExtent());
 }

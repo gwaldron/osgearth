@@ -24,7 +24,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Containers>
-#include <osgEarthUtil/WMS>
+#include <osgEarth/WMS>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -43,7 +43,6 @@
 #define LC "[WMS] "
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
 
 //#define SUPPORT_JPL_TILESERVICE
@@ -116,7 +115,7 @@ public:
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, dbOptions );
+        osg::ref_ptr<WMS::Capabilities> capabilities = WMS::CapabilitiesReader::read( capUrl, dbOptions );
         if ( !capabilities.valid() )
         {
             return Status::Error( Status::ResourceUnavailable, "Unable to read WMS GetCapabilities." );
@@ -189,7 +188,7 @@ public:
             for (StringVector::const_iterator itr = tized.begin(); itr != tized.end(); ++itr)
             {
                 std::string layerName = *itr;
-                WMSLayer* layer = capabilities->getLayerByName(layerName);
+                WMS::Layer* layer = capabilities->getLayerByName(layerName);
                 if (layer)
                 {
                     // Get the lat/lon extents

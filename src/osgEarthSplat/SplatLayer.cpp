@@ -23,8 +23,6 @@
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
@@ -40,6 +38,8 @@
 using namespace osgEarth::Splat;
 
 namespace osgEarth { namespace Splat {
+    REGISTER_OSGEARTH_LAYER(splat, SplatLayer);
+    REGISTER_OSGEARTH_LAYER(splatimage, SplatLayer);
     REGISTER_OSGEARTH_LAYER(splat_imagery, SplatLayer);
 } }
 

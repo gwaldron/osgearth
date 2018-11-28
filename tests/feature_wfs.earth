@@ -3,19 +3,19 @@ osgEarth Sample
 Demonstrates how to read feature data from a WFS server
 -->
 
-<map name="WFS Feature Demo" type="geocentric" version="2">
+<map name="Demo: WFS Feature source">
         
-    <image name="World image" driver="gdal">
+    <GDALImage name="World imagery">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <model name="States" driver="feature_geom">
-        <features name="states" driver="wfs">
-            <url>http://demo.boundlessgeo.com/geoserver/wfs</url>           
-            <typename>topp:states</typename>
-            <outputformat>json</outputformat>
-        </features>
-                  
+    <WFSFeatures name="states">
+        <url>http://demo.boundlessgeo.com/geoserver/wfs</url>           
+        <typename>topp:states</typename>
+        <outputformat>json</outputformat>
+    </WFSFeatures>
+    
+    <FeatureModel name="States" feature_source="states">
         <styles>        
             <style type="text/css">
                 states {
@@ -26,20 +26,17 @@ Demonstrates how to read feature data from a WFS server
                 }                       
             </style>
         </styles>
-    </model>
+    </FeatureModel>
     
-    <model name="Labels" driver="feature_geom">
-        <features name="states" driver="wfs">
-            <url>http://demo.boundlessgeo.com/geoserver/wfs</url>           
-            <typename>topp:states</typename>
-            <outputformat>json</outputformat>
-        </features>
+    <FeatureModel name="Labels" feature_source="states">
         <styles>
             <style type="text/css">              
                 names {
-                    text-content: feature.properties.STATE_NAME;
+                    text-content: feature.properties.state_name;
+                    text-align: center-center;
+                    text-halo: #1f1f1f;
                 }     
             </style>
         </styles>
-    </model>
+    </FeatureModel>
 </map>

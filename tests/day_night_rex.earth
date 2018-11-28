@@ -6,15 +6,9 @@
 -->
 <map name="Day/Night Transition">
     
-    <options>
-        <terrain driver="rex"/>
-    </options>
-    
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 
-    <image name="EarthAtNight" driver="tms">
+    <TMSImage name="EarthAtNight">
         <url>http://readymap.org/readymap/tiles/1.0.0/26/</url>
         <shader>
           <![CDATA[
@@ -54,7 +48,7 @@
             }
           ]]>
         </shader>
-    </image>      
+    </TMSImage>      
 
     <sky driver="simple" hours="14.0" ambient="0.2"/>
     

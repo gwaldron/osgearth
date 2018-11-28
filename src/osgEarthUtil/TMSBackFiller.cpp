@@ -48,7 +48,7 @@ void TMSBackFiller::process( const std::string& tms, osgDB::Options* options )
     _options = options;
 
     //Read the tilemap
-    _tileMap = TileMapReaderWriter::read( fullPath, 0 );
+    _tileMap = TMS::TileMapReaderWriter::read( fullPath, 0 );
     if (_tileMap)
     {                        
         //The max level is where we are going to read data from, so we need to start one level up.

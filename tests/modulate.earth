@@ -1,7 +1,7 @@
 <!--
 osgEarth Sample - Image Layer Modulation Blending
 -->
-<map name="readymap.org">
+<map name="Modulate">
 
     <xi:include href="readymap_imagery.xml"/>
 

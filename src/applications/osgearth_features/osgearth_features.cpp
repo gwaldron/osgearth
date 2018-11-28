@@ -33,10 +33,9 @@
 #include <osgEarthUtil/EarthManipulator>
 
 #include <osgEarthSymbology/Style>
-#include <osgEarthFeatures/OGRFeatureLayer>
+#include <osgEarthFeatures/OGRFeatureSource>
 #include <osgEarthFeatures/FeatureModelLayer>
 
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 
 using namespace osgEarth;
@@ -88,7 +87,7 @@ int main(int argc, char** argv)
     map->addLayer(basemap);
     
     // Next we add a layer to provide the feature data. 
-    OGRFeatureLayer* features = new OGRFeatureLayer();
+    OGRFeatureSource* features = new OGRFeatureSource();
     features->setName("vector-data");
     if ( !useMem )
     {
@@ -173,13 +172,15 @@ int main(int argc, char** argv)
         text->fill()->color() = Color::White;
         text->halo()->color() = Color::DarkGray;
 
+        StyleSheet* sheet = new StyleSheet();
+        sheet->addStyle(labelStyle);
+
         // and configure a model layer:
-        FeatureModelLayerOptions fml;
-        fml.name() = "Labels";
-        fml.featureLayer() = "vector-data";
-        fml.styles() = new StyleSheet();
-        fml.styles()->addStyle( labelStyle );
-        map->addLayer(new FeatureModelLayer(fml));
+        FeatureModelLayer* fml = new FeatureModelLayer();
+        fml->setName("Labels");
+        fml->setFeatureSource(features);
+        fml->setStyleSheet(sheet);
+        map->addLayer(fml);
     }
 
     // That's it, the map is ready; now create a MapNode to render the Map:

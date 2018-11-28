@@ -1,11 +1,10 @@
 <!--
-osgEarth Sample
-
+osgEarth Sample -
 Basic example of how to read feature data from a shapefile and build
 OSG geometry out of it.
 -->
 
-<map name="Feature Geometry Demo">
+<map name="Simple Shapefile">
     	
     <xi:include href="readymap_imagery.xml"/>
     

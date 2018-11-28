@@ -118,10 +118,7 @@ FeatureModelOptions()
 
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
-{
-    //conf.get( "features", _featureOptions );
-    //_featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
-    
+{    
     conf.get( "styles",           _styles );
     conf.get( "layout",           _layout );
     conf.get( "fading",           _fading );
@@ -142,13 +139,6 @@ Config
 FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
-
-    //conf.set( "features", _featureOptions );    
-    //if (_featureSource.valid())
-    //{
-    //    conf.setNonSerializable("feature_source", _featureSource.get());
-    //}
-    //conf.set("feature_source", _featureSourceLayer);
 
     conf.set( "styles",           _styles );
     conf.set( "layout",           _layout );
@@ -178,7 +168,7 @@ _options   ( options )
 }
 
 void
-FeatureModelSource::setFeatureSource( FeatureLayer* source )
+FeatureModelSource::setFeatureSource( FeatureSource* source )
 {
     if ( !_features.valid() )
     {

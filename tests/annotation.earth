@@ -1,7 +1,7 @@
 <!--
 osgEarth Sample - Annotations
 -->
-<map name="readymap.org" type="geocentric" version="2">
+<map name="Annotations Demo">
 
     <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>
@@ -12,7 +12,7 @@ osgEarth Sample - Annotations
                    heading="35.27" pitch="-35" />
     </viewpoints>
 
-    <annotations name="Annotations Group A">
+    <Annotations name="Annotations Group A">
 
         <label text="Label">
             <position lat="34" long="-120" />
@@ -97,9 +97,9 @@ osgEarth Sample - Annotations
             </style>
         </ellipse>
         <label text="HAT Ellipse" lat="40" long="-100.0"/>
-    </annotations>
+    </Annotations>
 
-    <annotations name="Annotations Group B">
+    <Annotations name="Annotations Group B">
 
         <ellipse name="ellipse extruded">
             <position lat="32" long="-100.0"/>
@@ -219,5 +219,5 @@ osgEarth Sample - Annotations
             </style>
         </label>
 
-    </annotations>
+    </Annotations>
 </map>

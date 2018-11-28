@@ -21,7 +21,6 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureLayer>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/Session>
@@ -52,8 +51,8 @@ namespace osgEarth { namespace Features
         FeatureModelLayerOptions(const ConfigOptions& options);
         
         /** Name of the feature source layer to use for flattening. */
-        optional<std::string>& featureLayer() { return _featureLayer; }
-        const optional<std::string>& featureLayer() const { return _featureLayer; }
+        optional<std::string>& featureSource() { return _featureSource; }
+        const optional<std::string>& featureSource() const { return _featureSource; }
 
     public: // LayerOptions
         virtual Config getConfig() const;
@@ -63,7 +62,7 @@ namespace osgEarth { namespace Features
         
     private:
         void fromConfig(const Config& conf);
-        optional<std::string> _featureLayer;
+        optional<std::string> _featureSource;
     };
 
 
@@ -82,7 +81,7 @@ namespace osgEarth { namespace Features
         void setFeatureModelLayerOptions(const FeatureModelLayerOptions& options);
 
         //! The feature source from which to read geometry.
-        void setFeatureSource(FeatureLayer* layer);
+        void setFeatureSource(FeatureSource* layer);
 
         //! Stylesheet to apply to the features
         void setStyleSheet(StyleSheet* value);
@@ -132,8 +131,8 @@ namespace osgEarth { namespace Features
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
     private:
-        osg::ref_ptr<FeatureLayer> _featureSource;
-        LayerListener<FeatureModelLayer, FeatureLayer> _featureLayerListener;
+        osg::ref_ptr<FeatureSource> _features;
+        LayerListener<FeatureModelLayer, FeatureSource> _featureLayerListener;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
         osg::ref_ptr<StyleSheet> _styleSheet;

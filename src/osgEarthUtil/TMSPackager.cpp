@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/TMSPackager>
-#include <osgEarthUtil/TMS>
+#include <osgEarth/TMS>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageLayer>

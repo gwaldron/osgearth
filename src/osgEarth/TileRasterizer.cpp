@@ -64,7 +64,7 @@ TileRasterizer::TileRasterizer() :
 osg::Camera()
 {
     // active an update traversal.
-    setNumChildrenRequiringUpdateTraversal(1);
+    ADJUST_EVENT_TRAV_COUNT(this, +1);
     setCullingActive(false);
 
     // set up the RTT camera.
@@ -193,7 +193,7 @@ TileRasterizer::accept(osg::NodeVisitor& nv)
 void
 TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.EVENT_VISITOR)
     {
         Threading::ScopedMutexLock lock(_mutex);
 

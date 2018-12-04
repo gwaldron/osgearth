@@ -1,4 +1,4 @@
-<map>
+<Map name="USGS National Map">
     <xi:include href="readymap_imagery.xml"/>    
     <xi:include href="readymap_elevation.xml"/>    
     
@@ -12,4 +12,4 @@
     </WMSImage>
     
     <xi:include href="viewpoints.xml"/>
-</map>
+</Map>

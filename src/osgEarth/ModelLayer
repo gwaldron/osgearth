@@ -23,13 +23,11 @@
 #include <osgEarth/Common>
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/Cache>
-#include <osgEarth/Config>
 #include <osgEarth/ModelSource>
 #include <osgEarth/MaskSource>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/Containers>
+#include <osgEarth/URI>
 #include <osg/Node>
-#include <osg/Array>
 #include <vector>
 
 namespace osgEarth
@@ -42,9 +40,29 @@ namespace osgEarth
     public:        
         META_LayerOptions(osgEarth, ModelLayerOptions, VisibleLayerOptions);
 
-        //! Options for the underlying model source driver.
-        optional<ModelSourceOptions>& driver() { return _driver; }
-        const optional<ModelSourceOptions>& driver() const { return _driver; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
+
+        optional<float>& lodScale() { return _lod_scale; }
+        const optional<float>& lodScale() const { return _lod_scale; }
+
+        optional<GeoPoint>& location() { return _location; }
+        const optional<GeoPoint>& location() const { return _location; }
+
+        optional<osg::Vec3>& orientation() { return _orientation;}
+        const optional<osg::Vec3>& orientation() const { return _orientation;}
+
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+        
+        optional<float>& loadingPriorityScale() { return _loadingPriorityScale; }
+        const optional<float>& loadingPriorityScale() const { return _loadingPriorityScale; }
+
+        optional<float>& loadingPriorityOffset() { return _loadingPriorityOffset; }
+        const optional<float>& loadingPriorityOffset() const { return _loadingPriorityOffset; }
+
+        optional<bool>& paged() { return _paged; }
+        const optional<bool>& paged() const { return _paged; }
 
         //! Whether to enable OpenGL lighting on the model node.
         optional<bool>& lightingEnabled() { return _lighting; }
@@ -60,6 +78,10 @@ namespace osgEarth
         optional<unsigned>& maskMinLevel() { return _maskMinLevel; }
         const optional<unsigned>& maskMinLevel() const { return _maskMinLevel; }
 
+        //! @deprecated Options for the underlying model source driver
+        optional<ModelSourceOptions>& driver() { return _driver; }
+        const optional<ModelSourceOptions>& driver() const { return _driver; }
+
 
     public:
         virtual Config getConfig() const;
@@ -67,12 +89,20 @@ namespace osgEarth
     private:
         void fromConfig( const Config& conf );
 
-        optional<ModelSourceOptions> _driver;
-        optional<bool>               _lighting;
+        optional<URI> _url;
+        optional<float> _lod_scale;
+        optional<GeoPoint> _location;
+        optional<osg::Vec3> _orientation;
+        optional<ShaderPolicy> _shaderPolicy;
+        optional<float> _loadingPriorityScale;
+        optional<float> _loadingPriorityOffset;
+        optional<bool> _paged;
+
+        optional<bool> _lighting;
         optional<MaskSourceOptions>  _maskOptions;
-        optional<unsigned>           _maskMinLevel;
-        optional<CachePolicy>        _cachePolicy;
-        optional<std::string>        _cacheId;
+        optional<unsigned> _maskMinLevel;
+        
+        optional<ModelSourceOptions> _driver;
     };
 
     struct ModelLayerCallback : public VisibleLayerCallback
@@ -91,9 +121,49 @@ namespace osgEarth
         META_Layer(osgEarth, ModelLayer, ModelLayerOptions, VisibleLayer, model);
 
     public:
-
-        //! Sets the node to add to the map's scene graph (optional)
+        //! Sets the node to add to the map's scene graph. Set this OR setURL
+        //! Call this OR setURL, but not both.
         void setNode(osg::Node* node);
+
+        //! URL from which to load the model to use in this layer.
+        //! Call this OR setNode, but not both. Call before opening the layer.
+        inline void setURL(const URI& url);
+
+        //! LOD scale for the scene graph in this model layer.
+        //! Call before opening the layer.
+        inline void setLODScale(float value);
+
+        //! Whether the model loaded by setURL() should be paged in versus
+        //! loaded immediately. Only applicable when using setURL.
+        //! Call before opening the layer.
+        inline void setPaged(bool value);
+
+        //! Sets the location at which to position the model.
+        //! Call before opening the layer.
+        inline void setLocation(const GeoPoint& value);
+
+        //! Sets the orientation (HPR) of the model in degrees
+        //! Call before opening the layer.
+        inline void setOrientation(const osg::Vec3& value);
+
+        //! Minimum terrain LOD at which to apply the mask.
+        //! Call before opening the layer.
+        inline void setMaskMinLevel(unsigned value);
+        inline unsigned getMaskMinLevel() const;
+
+        //! Whether lighting should affect the model graph
+        void setLightingEnabled( bool value );
+        bool isLightingEnabled() const;
+
+    public:
+        
+        //! Boundary geometry for the mask (if one exists)
+        virtual osg::Vec3dArray* getOrCreateMaskBoundary(
+            float                   heightScale,
+            const SpatialReference* srs,
+            ProgressCallback*       progress);
+
+    public: // deprecated
 
         //! @deprecated - subclass ModelLayer instead of using ModelSource plugins
         //! Access the underlying model source.
@@ -102,21 +172,6 @@ namespace osgEarth
         //! @deprecated - subclass ModelLayer and override getOrCreateMaskBoundary
         //! Underlying mask source, if one exists.
         MaskSource* getMaskSource() const { return _maskSource.get(); }
-
-        //! Minimum terrain LOD at which to apply the mask.
-        unsigned getMaskMinLevel() const { return options().maskMinLevel().get(); }
-        
-        //! Boundary geometry for the mask (if one exists)
-        virtual osg::Vec3dArray* getOrCreateMaskBoundary(
-            float                   heightScale,
-            const SpatialReference* srs,
-            ProgressCallback*       progress);
-
-    public: // properties
-
-        /** whether to apply lighting to the model layer's root node */
-        void setLightingEnabled( bool value );
-        bool isLightingEnabled() const;
 
     public: // Layer
 
@@ -157,6 +212,15 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;
+
+    // inlines
+    void ModelLayer::setURL(const URI& value) { options().url() = value; }
+    void ModelLayer::setLODScale(float value) { options().lodScale() = value; }
+    void ModelLayer::setPaged(bool value) { options().paged() = value; }
+    void ModelLayer::setLocation(const GeoPoint& value) { options().location() = value; }
+    void ModelLayer::setOrientation(const osg::Vec3& value) { options().orientation() = value; }
+    void ModelLayer::setMaskMinLevel(unsigned value) { options().maskMinLevel() = value; }
+    unsigned ModelLayer::getMaskMinLevel() const { return options().maskMinLevel().get(); }
 }
 
 #endif // OSGEARTH_MODEL_LAYER_H

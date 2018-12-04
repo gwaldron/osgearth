@@ -67,6 +67,9 @@ Map::ctor()
     // Set the object name.
     osg::Object::setName("osgEarth.Map");
 
+    if (_mapOptions.name().isSet())
+        osg::Object::setName(_mapOptions.name().get());
+
     // Generate a UID.
     _uid = Registry::instance()->createUID();
 
@@ -113,7 +116,7 @@ Map::ctor()
     _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     // encode this map in the read options.
-    OptionsData<const Map>::set(_readOptions.get(), "osgEarth.Map", this);
+    //OptionsData<const Map>::set(_readOptions.get(), "osgEarth.Map", this);
 
     // set up a callback that the Map will use to detect Layer visibility changes
     _visibleLayerCB = new VisibleLayerCB(this);

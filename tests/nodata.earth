@@ -4,17 +4,14 @@ Demonstrates the use of a file with nodata.  The white circle is a GeoTiff which
 -->
 
 <map version="2">
-    <image driver="gdal" name="world-tiff" cache_enabled="false">
+
+    <GDALImage name="world-tiff">
         <url>../data/world.tif</url>
-        <caching_policy usage="no_cache"/>
-    </image>
+    </GDALImage>
 
-    <image driver="gdal" name="nodata-tiff" cache_enabled="false">
+    <GDALImage name="nodata-tiff">
         <url>../data/nodata.tif</url>
-        <caching_policy usage="no_cache"/>
-    </image>
-
-    <options lighting="false"/>
+    </GDALImage>
 
     <viewpoints>
         <viewpoint name="NoData" heading="0.0" height="0" lat="5.0" long="15.0" pitch="-75" range="1000000"/>

@@ -1,0 +1,196 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#include <osgEarth/TileCache>
+#include <osgEarth/Registry>
+#include <osgEarth/FileUtils>
+#include <osgEarth/XmlUtils>
+#include <osgEarth/ImageToHeightFieldConverter>
+#include <osgDB/FileUtils>
+
+using namespace osgEarth;
+using namespace osgEarth::TileCache;
+
+#undef LC
+#define LC "[TileCache] "
+
+//........................................................................
+
+namespace osgEarth { namespace TileCache
+{
+    std::string toString(double value, int precision = 7)
+    {
+        std::stringstream out;
+        out << std::fixed << std::setprecision(precision) << value;
+	    std::string outStr;
+	    outStr = out.str();
+        return outStr;
+    }
+} }
+
+//........................................................................
+
+
+Status
+TileCache::Driver::open(const URI& uri, const osgDB::Options* readOptions)
+{
+    // URI is mandatory.
+    if (uri.empty())
+    {
+        return Status::Error( Status::ConfigurationError, "TMS driver requires a valid \"url\" property" );
+    }
+
+    return STATUS_OK;
+}
+
+osgEarth::ReadResult
+TileCache::Driver::read(const URI& uri,
+                        const TileKey& key,
+                        const std::string& layer,
+                        const std::string& format,
+                        ProgressCallback* progress,
+                        const osgDB::Options* readOptions) const
+{    
+    unsigned int level, tile_x, tile_y;
+    level = key.getLevelOfDetail();
+    key.getTileXY(tile_x, tile_y);
+
+    unsigned int numCols, numRows;
+    key.getProfile()->getNumTiles(level, numCols, numRows);
+
+    // need to invert the y-tile index
+    tile_y = numRows - tile_y - 1;
+
+    char buf[2048];
+    sprintf(buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
+        uri.full().c_str(),
+        layer.c_str(),
+        level,
+        (tile_x / 1000000),
+        (tile_x / 1000) % 1000,
+        (tile_x % 1000),
+        (tile_y / 1000000),
+        (tile_y / 1000) % 1000,
+        (tile_y % 1000),
+        format.c_str());
+
+
+    std::string path(buf);
+    return URI(path).readImage(readOptions, progress).releaseImage();
+}
+//........................................................................
+
+REGISTER_OSGEARTH_LAYER(tilecacheimage, TileCacheImageLayer);
+
+void
+TileCacheImageLayer::init()
+{
+    ImageLayer::init();
+    setTileSourceExpected(false);
+}
+
+const Status&
+TileCacheImageLayer::open()
+{
+    if (ImageLayer::open().isOK())
+    {
+        if (!getProfile())
+            setProfile(Profile::create("global-geodetic"));
+
+        setStatus(_driver.open(
+            options().url().get(),
+            getReadOptions()));
+    }
+    return getStatus();
+}
+
+GeoImage
+TileCacheImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    ReadResult r = _driver.read(
+        options().url().get(),
+        key,
+        options().layer().get(),
+        options().format().get(),
+        progress,
+        getReadOptions());
+
+    osg::ref_ptr<osg::Image> image = r.getImage();
+    if (image.valid())
+    {
+        if (options().coverage() == true)
+        {
+            image->setInternalTextureFormat(GL_R16F);
+            ImageUtils::markAsUnNormalized(image.get(), true);
+        }
+
+        return GeoImage(image.get(), key.getExtent());
+    }
+    else
+    {
+        // NOP....silent fail....more detail later if there's a real problem
+    }
+
+    return GeoImage::INVALID;
+}
+
+//........................................................................
+
+REGISTER_OSGEARTH_LAYER(tilecacheelevation, TileCacheElevationLayer);
+
+void
+TileCacheElevationLayer::init()
+{
+    ElevationLayer::init();
+    setTileSourceExpected(false);
+}
+
+const Status&
+TileCacheElevationLayer::open()
+{
+    if (ElevationLayer::open().isOK())
+    {
+        // Create an image layer under the hood. TMS fetch is the same for image and
+        // elevation; we just convert the resulting image to a heightfield
+        _imageLayer = new TileCacheImageLayer(options());
+
+        // Initialize and open the image layer
+        _imageLayer->setReadOptions(getReadOptions());
+        setStatus( _imageLayer->open() );
+
+        if (getStatus().isOK())
+        {
+            setProfile(_imageLayer->getProfile());            
+        }
+    }
+    return getStatus();
+}
+
+GeoHeightField
+TileCacheElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    // Make an image, then convert it to a heightfield
+    GeoImage image = _imageLayer->createImageImplementation(key, progress);
+    if (image.valid())
+    {
+        ImageToHeightFieldConverter conv;
+        osg::HeightField* hf = conv.convert( image.getImage() );
+        return GeoHeightField(hf, key.getExtent());
+    }
+    else return GeoHeightField::INVALID;
+}

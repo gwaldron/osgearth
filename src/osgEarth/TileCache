@@ -1,0 +1,221 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TILECACHE_H
+#define OSGEARTH_TILECACHE_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/URI>
+
+/**
+ * TileCache - an implementation of a WMS-C compliant server
+ * made available under the BSD license by MetaCarta.
+ * http://tilecache.org/
+ */
+
+//! TMS namespace contains TMS support classes used to the Layers
+namespace osgEarth { namespace TileCache
+{
+    /**
+     * Underlying TMS driver that does the actual TMS I/O
+     */
+    class OSGEARTH_EXPORT Driver
+    {
+    public:
+        Status open(
+            const URI& uri,
+            const osgDB::Options* readOptions);
+
+        ReadResult read(
+            const URI& uri,
+            const TileKey& key,
+            const std::string& layer,
+            const std::string& format,
+            ProgressCallback* progress,
+            const osgDB::Options* readOptions) const;
+    };
+
+    /**
+     * Base class that mixes in the options with a base Layer class.
+     */
+    template<typename BASE>
+    class OSGEARTH_EXPORT TileCacheLayerOptions : public BASE
+    {
+    public:
+        META_LayerOptions(osgEarth, TileCacheLayerOptions, BASE);
+        
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
+
+        optional<std::string>& layer() { return _layer; }
+        const optional<std::string>& layer() const { return _layer; }
+
+        optional<std::string>& format() { return _format; }
+        const optional<std::string>& format() const { return _format; }
+
+    public:
+        virtual inline Config getConfig() const;
+
+    private:
+        inline void fromConfig(const Config& conf);
+        optional<URI> _url;
+        optional<std::string> _layer;
+        optional<std::string> _format;
+    };
+} }
+
+//........................................................................
+
+namespace osgEarth
+{
+    /**
+     * Serialization options for a TMS image layer.
+     */
+    typedef TileCache::TileCacheLayerOptions<ImageLayerOptions> TileCacheImageLayerOptions;
+
+    /**
+     * Image layer connected to a TMS (Tile Map Service) facility
+     */
+    class OSGEARTH_EXPORT TileCacheImageLayer : public ImageLayer
+    {
+    public:
+        META_Layer(
+            osgEarth, 
+            TileCacheImageLayer,
+            TileCacheImageLayerOptions,
+            ImageLayer,
+            TileCacheImage);
+
+    public:
+        //! Base URL of TileCache endpoint
+        void setURL(const URI& value) { options().url() = value; }
+        const URI& getURL() const { return options().url().get(); }
+
+        //! Data format to request from the service
+        void setLayer(const std::string& value) { options().layer() = value; }
+        const std::string& getLayer() const { return options().layer().get(); }
+
+        //! Data format to request from the service
+        void setFormat(const std::string& value) { options().format() = value; }
+        const std::string& getFormat() const { return options().format().get(); }
+
+    public: // Layer
+        
+        //! Establishes a connection to the TMS repository
+        virtual const Status& open();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~TileCacheImageLayer() { }
+
+    private:
+        TileCache::Driver _driver;
+    };
+    
+
+    /**
+     * Serialization options for a TMS elevation layer.
+     */
+    typedef TileCache::TileCacheLayerOptions<ElevationLayerOptions> TileCacheElevationLayerOptions;
+
+    /**
+     * Elevation layer connected to a TMS (Tile Map Service) facility
+     */
+    class OSGEARTH_EXPORT TileCacheElevationLayer : public ElevationLayer
+    {
+    public:
+        META_Layer(
+            osgEarth, 
+            TileCacheElevationLayer, 
+            TileCacheElevationLayerOptions, 
+            ElevationLayer, 
+            TileCacheElevation);
+        
+        //! Base URL of TileCache endpoint
+        void setURL(const URI& value) { options().url() = value; }
+        const URI& getURL() const { return options().url().get(); }
+
+        //! Data format to request from the service
+        void setLayer(const std::string& value) { options().layer() = value; }
+        const std::string& getLayer() const { return options().layer().get(); }
+
+        //! Data format to request from the service
+        void setFormat(const std::string& value) { options().format() = value; }
+        const std::string& getFormat() const { return options().format().get(); }
+
+    public: // Layer
+        
+        //! Establishes a connection to the TMS repository
+        virtual const Status& open();
+
+        //! Creates a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~TileCacheElevationLayer() { }
+
+    private:
+        osg::ref_ptr<TileCacheImageLayer> _imageLayer;
+    };
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheImageLayerOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheElevationLayerOptions);
+
+// template inlines ......................................................
+
+namespace osgEarth
+{   
+    template<typename BASE>
+    void TileCache::TileCacheLayerOptions<BASE>::fromConfig(const Config& conf)
+    {
+        conf.get("url", _url);
+        conf.get("layer", _layer);
+        conf.get("format", _format);
+    }
+
+    template<typename BASE>
+    Config TileCache::TileCacheLayerOptions<BASE>::getConfig() const
+    {
+        osgEarth::Config conf = BASE::getConfig();
+        conf.set("url", _url);
+        conf.set("layer", _layer);
+        conf.set("format", _format);
+        return conf;
+    }
+}
+#endif // OSGEARTH_TMS_H

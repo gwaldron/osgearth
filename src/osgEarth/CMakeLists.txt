@@ -202,6 +202,7 @@ SET(LIB_PUBLIC_HEADERS
     TileRasterizer
     TileSource
     TileVisitor
+    TileCache
     TimeControl
     TraversalData
     ThreadingUtils
@@ -372,6 +373,7 @@ set(TARGET_SRC
     TileRasterizer.cpp
     TileVisitor.cpp
     TileSource.cpp
+    TileCache.cpp
     TimeControl.cpp
     TraversalData.cpp
     ThreadingUtils.cpp

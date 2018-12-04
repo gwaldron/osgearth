@@ -647,9 +647,13 @@ SimpleSkyNode::makeMoon()
     //TODO:  Embed this texture in code or provide a way to have a default resource directory for osgEarth.
     //       Right now just need to have this file somewhere in your OSG_FILE_PATH
     //stateSet->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-    osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile( "moon_1024x512.jpg" );
+    osg::ref_ptr<osg::Image> image = _options.moonImageURI()->getImage();
+    if (!image.valid())
+    {
+        OE_WARN << LC << "Failed to load moon texture from " << _options.moonImageURI()->full() << std::endl;
+    }
 
-    osg::Texture2D * texture = new osg::Texture2D( image );
+    osg::Texture2D* texture = new osg::Texture2D( image.get() );
     texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
     texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
     texture->setResizeNonPowerOfTwoHint(false);

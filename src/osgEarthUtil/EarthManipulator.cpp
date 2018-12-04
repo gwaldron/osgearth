@@ -2006,9 +2006,6 @@ EarthManipulator::serviceTask()
         double dt = _time_s_now - _task->_time_last_service;
         if ( dt > 0.0 )
         {
-            OE_INFO << "serviceTask: tn=" << _time_s_now << ", tls="<<_task->_time_last_service << ", dt=" << dt
-                << std::endl;
-
             // cap the DT so we don't exceed the expected delta.
             dt = osg::clampBelow( dt, _task->_duration_s );
 

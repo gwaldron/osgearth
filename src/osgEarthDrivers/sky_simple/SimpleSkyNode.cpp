@@ -575,8 +575,8 @@ SimpleSkyNode::makeSun()
     //sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); 
 
     const double zoomFactor = 80.0; // to account for the solare glare
-    const double sunRadius = 695700000.0;
-    sun->addDrawable(s_makeDiscGeometry(sunRadius * zoomFactor));
+    const double sunRadius = 695508000.0; // radius of the run in meters
+    sun->addDrawable(s_makeDiscGeometry(sunRadius*zoomFactor));
 
     osg::StateSet* set = sun->getOrCreateStateSet();
     set->setMode( GL_BLEND, 1 );
@@ -626,7 +626,7 @@ SimpleSkyNode::makeMoon()
 {
     osg::ref_ptr< osg::EllipsoidModel > em = new osg::EllipsoidModel( 1738140.0, 1735970.0 );   
     
-    osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator(), true );    
+    osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator()*_options.moonScale().get(), true );    
     osg::StateSet* stateSet = moonDrawable->getOrCreateStateSet();
 
     //TODO:  Embed this texture in code or provide a way to have a default resource directory for osgEarth.

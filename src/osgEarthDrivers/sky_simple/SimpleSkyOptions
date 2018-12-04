@@ -39,6 +39,7 @@ namespace osgEarth { namespace SimpleSky
           _daytimeAmbientBoost (5.0f),
           _allowWireframe      (false),
           _starSize            (14.0f),
+          _moonScale           (2.0f),
 		  _sunVisible(true),
           _moonVisible(true),
           _starsVisible(true),
@@ -94,6 +95,10 @@ namespace osgEarth { namespace SimpleSky
         optional<bool>& atmosphereVisible() { return _atmosphereVisible; }
         const optional<bool>& atmosphereVisible() const { return _atmosphereVisible; }
 
+        /** Scale factor for the moon to compensate for apparent/expected size. Default=2.0 */
+        optional<float>& moonScale() { return _moonScale; }
+        const optional<float>& moonScale() const { return _moonScale; }
+
     public:
         Config getConfig() const {
             Config conf = SkyOptions::getConfig();
@@ -107,6 +112,7 @@ namespace osgEarth { namespace SimpleSky
             conf.set("moon_visible", _moonVisible);
             conf.set("stars_visible", _starsVisible);
             conf.set("atmosphere_visible", _atmosphereVisible);
+            conf.set("moon_scale", _moonScale);
             return conf;
         }
 
@@ -128,6 +134,7 @@ namespace osgEarth { namespace SimpleSky
             conf.get("moon_visible", _moonVisible);
             conf.get("stars_visible", _starsVisible);
             conf.get("atmosphere_visible", _atmosphereVisible);
+            conf.get("moon_scale", _moonScale);
         }
 
         optional<bool>        _atmosphericLighting;
@@ -140,6 +147,7 @@ namespace osgEarth { namespace SimpleSky
         optional<bool>        _moonVisible;
         optional<bool>        _starsVisible;
         optional<bool>        _atmosphereVisible;
+        optional<float>       _moonScale;
     };
 
 } } // namespace osgEarth::SimpleSky

@@ -149,6 +149,7 @@ SET(LIB_PUBLIC_HEADERS
     MemCache
     MetaTile
     Metrics
+    MBTiles
     ModelLayer
     ModelSource
     NativeProgramAdapter
@@ -326,6 +327,7 @@ set(TARGET_SRC
     Memory.cpp
     MetaTile.cpp
     Metrics.cpp
+    MBTiles.cpp
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp
@@ -404,9 +406,15 @@ ADD_LIBRARY(
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${CURL_INCLUDE_DIR} ${OSG_INCLUDE_DIR} )
 
+# TinyXML support?
 IF (TINYXML_FOUND)
     INCLUDE_DIRECTORIES(${TINYXML_INCLUDE_DIR})
 ENDIF (TINYXML_FOUND)
+
+# MBTiles support?
+IF(SQLITE3_FOUND)
+    INCLUDE_DIRECTORIES(${SQLITE3_INCLUDE_DIR})
+ENDIF(SQLITE3_FOUND)
 
 IF (WIN32)
   LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} )
@@ -430,5 +438,10 @@ IF (TINYXML_FOUND)
     get_directory_property(output INCLUDE_DIRECTORIES)
     message(STATUS ${output})
 ENDIF (TINYXML_FOUND)
+
+# MBTiles links to sqlite3
+IF (SQLITE3_FOUND)
+    LINK_WITH_VARIABLES(${LIB_NAME} SQLITE3_LIBRARY)
+ENDIF(SQLITE3_FOUND)
 
 INCLUDE(ModuleInstall OPTIONAL)

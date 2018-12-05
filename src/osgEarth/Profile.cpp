@@ -251,7 +251,7 @@ Profile::create( const ProfileOptions& options )
     // Check for a "well known named" profile:
     if ( options.namedProfile().isSet() )
     {
-        result = Profile::createNamed(options.namedProfile().get());
+        result = Profile::create(options.namedProfile().get());
     }
 
     // Next check for a user-defined extents:
@@ -304,7 +304,7 @@ Profile::create( const ProfileOptions& options )
 }
 
 const Profile*
-Profile::createNamed(const std::string& name)
+Profile::create(const std::string& name)
 {
     // TODO: move the named profiles from Registry into here.
     if ( ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )

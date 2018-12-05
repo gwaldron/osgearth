@@ -1,0 +1,11 @@
+<!--
+osgEarth Sample - MB Tiles Imagery Database
+-->
+
+<Map name="Demo: MBTiles Database">
+
+    <MBTilesImage name="Countries of the World">
+        <filename>../data/world_countries.mbtiles</filename>
+    </MBTilesImage>
+
+</Map>

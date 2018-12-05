@@ -1,47 +1,25 @@
 <!--
-osgEarth Sample
-
-This demonstrates the "agglite" feature rasterizing driver. It "drapes" vector data by
-rasterizing it into image tiles.
+FeatureImage - Rasterizes feature data into an Image layer.
 -->
 
-<map name="Rasterization Example" type="geocentric" version="2">
-      
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-    
-    <image name="states" driver="agglite">
-	
-		<cache_policy usage="no_cache"/>
-    
-        <features name="states" driver="ogr">
-            <url>../data/usa.shp</url>
-            <ogr_driver>ESRI Shapefile</ogr_driver>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-        
+<Map name="Demo: Rasterization Example">
+
+    <xi:include href="readymap_imagery.xml"/>
+
+    <FeatureImage name="US States">
+        <features>data:us-states</features>
         <styles>            
             <style type="text/css">
                 default {
                     stroke:       #ffff00;
-					stroke-width: .5km;
+					stroke-width: 2km;
                 }            
             </style>              
-        </styles>
-        
-    </image>
-    
-    <image name="roads" driver="agglite" min_level="3">
-	
-		<cache_policy usage="no_cache"/>
-    
-        <features name="roads" driver="ogr">
-            <url>../data/istates_dissolve.shp</url>
-            <ogr_driver>ESRI Shapefile</ogr_driver>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-        
+        </styles>        
+    </FeatureImage>
+
+    <FeatureImage name="Interstate Highways" min_level="3">
+        <features>data:roads</features>        
         <styles>
             <style type="text/css">
                 default {
@@ -51,6 +29,18 @@ rasterizing it into image tiles.
                 }            
             </style>
         </styles>
-        
-    </image>
-</map>
+
+    </FeatureImage>
+
+
+    <OGRFeatures name="data:us-states">
+        <url>../data/usa.shp</url>
+        <build_spatial_index>true</build_spatial_index>
+    </OGRFeatures>
+
+    <OGRFeatures name="data:roads">
+        <url>../data/istates_dissolve.shp</url>
+        <build_spatial_index>true</build_spatial_index>
+    </OGRFeatures>
+    
+</Map>

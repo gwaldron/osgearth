@@ -27,20 +27,16 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/GDAL>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ModelLayer>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/OGRFeatureSource>
 #include <osgEarthFeatures/FeatureModelLayer>
-
-#include <osgEarthDrivers/agglite/AGGLiteOptions>
+#include <osgEarthFeatures/FeatureImageLayer>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
@@ -135,12 +131,12 @@ int main(int argc, char** argv)
     
     if (useRaster)
     {
-        //TODO
-        //AGGLiteOptions rasterOptions;
-        //rasterOptions.featureOptions() = featureData;
-        //rasterOptions.styles() = new StyleSheet();
-        //rasterOptions.styles()->addStyle( style );
-        //map->addLayer(new ImageLayer(rasterOptions) );
+        FeatureImageLayer* layer = new FeatureImageLayer();
+        layer->setFeatureSource(features);
+        StyleSheet* sheet = new StyleSheet();
+        sheet->addStyle(style);
+        layer->setStyleSheet(sheet);
+        map->addLayer(layer);
     }
 
     else //if (useGeom)

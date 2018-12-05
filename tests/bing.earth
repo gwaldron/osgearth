@@ -10,9 +10,9 @@ Mircosoft Bing Maps example.
 Supported imagery sets are Aerial, AerialWithLabels, and Road.
 -->
 
-<map>    
-    <image name="bing" driver="bing">
+<Map name="Demo: Bing API">
+    <BingImage name="Bing Imagery">
         <key>your-api-key-here</key>
         <imagery_set>AerialWithLabels</imagery_set>
-    </image>    
-</map>
+    </BingImage>
+</Map>

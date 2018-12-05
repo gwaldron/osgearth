@@ -68,6 +68,7 @@ configure_shaders(
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS
+    Bing
     Bounds
     Cache
     CacheEstimator
@@ -255,6 +256,7 @@ IF (OSGEARTH_EMBED_GIT_SHA)
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 set(TARGET_SRC
+    Bing.cpp
     Bounds.cpp
     Cache.cpp
     CacheBin.cpp

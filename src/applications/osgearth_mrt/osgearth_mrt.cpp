@@ -59,6 +59,7 @@ createMRTPass(App& app, osg::Node* sceneGraph)
     rtt->setCullingMode(rtt->getCullingMode() & ~osg::CullSettings::SMALL_FEATURE_CULLING); 
 
     static const char* vertSource =
+        "#version " GLSL_VERSION_STR "\n"
         "out float mrt_depth;\n"
         "void oe_mrt_vertex(inout vec4 vertexClip)\n"
         "{\n"
@@ -66,13 +67,17 @@ createMRTPass(App& app, osg::Node* sceneGraph)
         "}\n";
 
     static const char* fragSource =
+        "#version " GLSL_VERSION_STR "\n"
         "in float mrt_depth;\n"
         "in vec3 vp_Normal; \n"
+        "layout(location=0) out vec4 gcolor; \n"
+        "layout(location=1) out vec4 gnormal; \n"
+        "layout(location=2) out vec4 gdepth; \n"
         "void oe_mrt_fragment(inout vec4 color)\n"
         "{\n"
-        "    gl_FragData[0] = color; \n"
-        "    gl_FragData[1] = vec4((vp_Normal+1.0)/2.0,1.0);\n"
-        "    gl_FragData[2] = vec4(mrt_depth,mrt_depth,mrt_depth,1.0); \n"
+        "    gcolor = color; \n"
+        "    gnormal = vec4((vp_Normal+1.0)/2.0, 1.0); \n"
+        "    gdepth = vec4(mrt_depth, mrt_depth, mrt_depth, 1.0); \n"
         "}\n";
 
     VirtualProgram* vp = VirtualProgram::getOrCreate( rtt->getOrCreateStateSet() );
@@ -106,11 +111,14 @@ createFramebufferQuad(App& app)
     t->push_back(osg::Vec2(0,h));
     g->setTexCoordArray(0, t);
 
+    osg::DrawElementsUByte* i = new osg::DrawElementsUByte(GL_TRIANGLES);
+    i->addElement(0); i->addElement(1); i->addElement(3);
+    i->addElement(1); i->addElement(2); i->addElement(3);
+    g->addPrimitiveSet(i);
+
     osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL);
     c->push_back(osg::Vec4(1,1,1,1));
     g->setColorArray(c);
-
-    g->addPrimitiveSet(new osg::DrawArrays(GL_QUADS, 0, 4));
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( g );
@@ -126,6 +134,7 @@ createFramebufferPass(App& app)
     osg::StateSet* stateset = quad->getOrCreateStateSet();
 
     static const char* vertSource =
+        "#version " GLSL_VERSION_STR "\n"
         "out vec4 texcoord;\n"
         "void effect_vert(inout vec4 vertexView)\n"
         "{\n"
@@ -214,7 +223,7 @@ createRenderTargets(App& app, unsigned width, unsigned height)
 
     app.gdepth = new osg::TextureRectangle();
     app.gdepth->setTextureSize(width, height);
-    app.gdepth->setInternalFormat(GL_LUMINANCE);
+    app.gdepth->setInternalFormat(GL_R16F);
     app.gdepth->setFilter(osg::Texture2D::MIN_FILTER,osg::Texture2D::NEAREST);
     app.gdepth->setFilter(osg::Texture2D::MAG_FILTER,osg::Texture2D::NEAREST);
 }

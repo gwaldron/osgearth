@@ -10,5 +10,5 @@ out vec4 out_FragColor;
 void main( void ) 
 { 
     vec4 color = texture(moonTex, moon_TexCoord.st);
-    gl_FragColor = vec4(color.rgb*moon_Lighting, color.a);
+    out_FragColor = vec4(color.rgb*moon_Lighting, color.a);
 }

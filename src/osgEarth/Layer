@@ -95,6 +95,11 @@ namespace osgDB {
         OE_COMMENT("Immutable options for this layer") \
         const OPTIONS& options() const { return *_options; } \
 
+//! Templated inline property implementation macro
+#define OE_LAYER_PROPERTY_IMPL(CLASS, TYPE, FUNC, OPTION) \
+    void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
+    const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
+
 
 namespace osgEarth
 {

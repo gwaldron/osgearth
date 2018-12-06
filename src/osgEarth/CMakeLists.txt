@@ -68,6 +68,7 @@ configure_shaders(
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS
+    ArcGISServer
     Bing
     Bounds
     Cache
@@ -256,6 +257,7 @@ IF (OSGEARTH_EMBED_GIT_SHA)
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 set(TARGET_SRC
+    ArcGISServer.cpp
     Bing.cpp
     Bounds.cpp
     Cache.cpp

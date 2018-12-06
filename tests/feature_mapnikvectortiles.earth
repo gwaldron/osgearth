@@ -197,11 +197,7 @@ config.json was:
         </styles>
     </FeatureModel>
 
-    <image name="esri imagery" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
-        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
-    </image>
-
+    <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>
 
     <viewpoints>

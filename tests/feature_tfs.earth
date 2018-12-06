@@ -26,10 +26,7 @@ osgEarth Sample - TFS
         </styles>
     </FeatureModel>
 
-    <image name="esri imagery" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
-        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 
     <viewpoints>
         <viewpoint name="Mexico Buildings" height="0" lat="19.42" long="-99.163" pitch="-89" range="5000"/>

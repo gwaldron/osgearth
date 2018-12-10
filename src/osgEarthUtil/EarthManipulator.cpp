@@ -2871,7 +2871,6 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
     case ACTION_PAN_UP:
     case ACTION_PAN_DOWN:
         _task->set( TASK_PAN, dx, dy, duration, _time_s_now );
-        OE_WARN << "TASK_PAN: time_s_now = " << _time_s_now << std::endl;
         break;
 
     case ACTION_ROTATE:

@@ -37,6 +37,7 @@ _draw(true)
     setDataVariance(DYNAMIC);
     setUseDisplayList(false);
     setUseVertexBufferObjects(true);
+    _tiles.reserve(128);
 }
 
 LayerDrawable::~LayerDrawable()

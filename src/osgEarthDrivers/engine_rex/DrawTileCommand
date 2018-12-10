@@ -79,7 +79,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // is drawing a tile for the first LayerDrawable.
         int _layerOrder;
 
-
+        // Renders the tile.
         void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
 
         // Less than operator will ensure that tiles are sorted high-to-low LOD
@@ -108,7 +108,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * Ordered list of tile drawing commands.
      * List is faster than vector here (benchmarked)
      */
-    typedef std::list<DrawTileCommand> DrawTileCommands;
+    //typedef std::list<DrawTileCommand> DrawTileCommands;
+    typedef std::vector<DrawTileCommand> DrawTileCommands;
 
 } } } // namespace 
 

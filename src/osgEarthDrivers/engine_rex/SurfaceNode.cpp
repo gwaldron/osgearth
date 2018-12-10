@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Horizon>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/LineDrawable>
 
 #include <osg/CullStack>
 #include <osg/Geode>
@@ -45,57 +46,35 @@ using namespace osgEarth;
 
 namespace
 {    
-    osg::Group* makeBBox(const osg::BoundingBox& bbox, const TileKey& key)
-    {        
+    osg::Node* makeBBox(const osg::BoundingBox& bbox, const TileKey& key)
+    {
         osg::Group* geode = new osg::Group();
         std::string sizeStr = "(empty)";
         float zpos = 0.0f;
 
         if ( bbox.valid() )
         {
-            osg::Geometry* geom = new osg::Geometry();
-            geom->setName("bbox");
-        
-            osg::Vec3Array* v = new osg::Vec3Array();
-            for(int i=0; i<8; ++i)
-                v->push_back(bbox.corner(i));
-            geom->setVertexArray(v);
+            static const int index[24] = {
+                0,1, 1,3, 3,2, 2,0,
+                0,4, 1,5, 2,6, 3,7,
+                4,5, 5,7, 7,6, 6,4
+            };
 
-            osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_LINES);
-
-#if 1
-            // bottom:
-            de->push_back(0); de->push_back(1);
-            de->push_back(1); de->push_back(3);
-            de->push_back(3); de->push_back(2);
-            de->push_back(2); de->push_back(0);
-#endif
-#if 1
-            // top:
-            de->push_back(4); de->push_back(5);
-            de->push_back(5); de->push_back(7);
-            de->push_back(7); de->push_back(6);
-            de->push_back(6); de->push_back(4);
-#endif
-#if 0
-            // corners:
-            de->push_back(0); de->push_back(4);
-            de->push_back(1); de->push_back(5);
-            de->push_back(3); de->push_back(7);
-            de->push_back(2); de->push_back(6);
-#endif
-            geom->addPrimitiveSet(de);
-
-            osg::Vec4Array* c= new osg::Vec4Array(osg::Array::BIND_OVERALL);
-            c->push_back(osg::Vec4(1,0,0,1));
-            geom->setColorArray(c);
-
-            geode->addChild(geom);
-
+            LineDrawable* lines = new LineDrawable(GL_LINES);            
+            for(int i=0; i<24; i+=2)
+            {
+                lines->pushVertex(bbox.corner(index[i]));
+                lines->pushVertex(bbox.corner(index[i+1]));
+            }
+            lines->setColor(osg::Vec4(1,0,0,1));
+            lines->finish();
             sizeStr = Stringify() << key.str() << "\nmax="<<bbox.zMax()<<"\nmin="<<bbox.zMin()<<"\n";
             zpos = bbox.zMax();
+
+            geode->addChild(lines);
         }
 
+#if 0
         osgText::Text* textDrawable = new osgText::Text();
         textDrawable->setDataVariance(osg::Object::DYNAMIC);
         textDrawable->setText( sizeStr );
@@ -109,10 +88,11 @@ namespace
         textDrawable->setPosition(osg::Vec3(0,0,zpos));
         textDrawable->setAutoRotateToScreen(true);
         geode->addChild(textDrawable);
+#endif
 
-        geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
-        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0); // ok; ffp debugging code
-        geode->getOrCreateStateSet()->setRenderBinDetails(INT_MAX, "DepthSortedBin");
+        //geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
+        //geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0); // ok; ffp debugging code
+        //geode->getOrCreateStateSet()->setRenderBinDetails(INT_MAX, "DepthSortedBin");
 
         return geode;
     }
@@ -221,7 +201,7 @@ HorizonTileCuller::isVisible(const osg::Vec3d& from) const
 //..............................................................
 
 
-const bool SurfaceNode::_enableDebugNodes = ::getenv("OSGEARTH_MP_DEBUG") != 0L;
+const bool SurfaceNode::_enableDebugNodes = ::getenv("OSGEARTH_REX_DEBUG") != 0L;
 
 SurfaceNode::SurfaceNode(const TileKey&        tilekey,
                          const MapInfo&        mapinfo,
@@ -258,6 +238,12 @@ SurfaceNode::computeBound() const
         bs.expandBy(box.corner(i)*l2w);
 
     return bs;
+}
+
+void
+SurfaceNode::setLastFramePassedCull(unsigned fn)
+{
+    _lastFramePassedCull.exchange(fn);
 }
 
 void
@@ -377,17 +363,17 @@ void
 SurfaceNode::addDebugNode(const osg::BoundingBox& box)
 {
     _debugText = 0;
-    _debugGeode = makeBBox(box, _tileKey);
-    addChild( _debugGeode.get() );
+    _debugNode = makeBBox(box, _tileKey);
+    addChild( _debugNode.get() );
 }
 
 void
 SurfaceNode::removeDebugNode(void)
 {
     _debugText = 0;
-    if ( _debugGeode.valid() )
+    if ( _debugNode.valid() )
     {
-        removeChild( _debugGeode.get() );
+        removeChild( _debugNode.get() );
     }
 }
 

@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS 1
 
 #include <osgEarthUtil/Sky>
+#include <osgEarth/URI>
 
 namespace osgEarth { namespace SimpleSky
 {
@@ -39,6 +40,8 @@ namespace osgEarth { namespace SimpleSky
           _daytimeAmbientBoost (5.0f),
           _allowWireframe      (false),
           _starSize            (14.0f),
+          _moonScale           (2.0f),
+          _moonImageURI("moon_1024x512.jpg"),
 		  _sunVisible(true),
           _moonVisible(true),
           _starsVisible(true),
@@ -94,6 +97,14 @@ namespace osgEarth { namespace SimpleSky
         optional<bool>& atmosphereVisible() { return _atmosphereVisible; }
         const optional<bool>& atmosphereVisible() const { return _atmosphereVisible; }
 
+        /** Scale factor for the moon to compensate for apparent/expected size. Default=2.0 */
+        optional<float>& moonScale() { return _moonScale; }
+        const optional<float>& moonScale() const { return _moonScale; }
+
+        /** URI of texture to load for moon */
+        optional<URI>& moonImageURI() { return _moonImageURI; }
+        const optional<URI>& moonImageURI() const { return _moonImageURI; }
+
     public:
         Config getConfig() const {
             Config conf = SkyOptions::getConfig();
@@ -107,6 +118,8 @@ namespace osgEarth { namespace SimpleSky
             conf.set("moon_visible", _moonVisible);
             conf.set("stars_visible", _starsVisible);
             conf.set("atmosphere_visible", _atmosphereVisible);
+            conf.set("moon_scale", _moonScale);
+            conf.set("moon_image", _moonImageURI);
             return conf;
         }
 
@@ -128,6 +141,8 @@ namespace osgEarth { namespace SimpleSky
             conf.get("moon_visible", _moonVisible);
             conf.get("stars_visible", _starsVisible);
             conf.get("atmosphere_visible", _atmosphereVisible);
+            conf.get("moon_scale", _moonScale);
+            conf.get("moon_image", _moonImageURI);
         }
 
         optional<bool>        _atmosphericLighting;
@@ -140,6 +155,8 @@ namespace osgEarth { namespace SimpleSky
         optional<bool>        _moonVisible;
         optional<bool>        _starsVisible;
         optional<bool>        _atmosphereVisible;
+        optional<float>       _moonScale;
+        optional<URI>         _moonImageURI;
     };
 
 } } // namespace osgEarth::SimpleSky

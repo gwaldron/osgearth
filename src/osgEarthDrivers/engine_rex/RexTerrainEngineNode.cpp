@@ -47,6 +47,8 @@ using namespace osgEarth;
 
 #define DEFAULT_MAX_LOD 19u
 
+//#define PROFILE
+
 //------------------------------------------------------------------------
 
 namespace
@@ -631,10 +633,13 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 #endif
 
         // If we're using geometry pooling, optimize the drawable for shared state
-        // by sorting the draw commands
+        // by sorting the draw commands.
+        // TODO: benchmark this further to see whether it's worthwhile
         if (getEngineContext()->getGeometryPool()->isEnabled())
         {
-            culler._terrain.sortDrawCommands();
+            unsigned total = culler._terrain.sortDrawCommands();
+            //if (!culler._isSpy)
+            //    OE_INFO << LC << "Total tiles to draw = " << total << std::endl;
         }
 
         // The common stateset for the terrain group:

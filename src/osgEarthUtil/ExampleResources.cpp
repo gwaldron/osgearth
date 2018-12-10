@@ -731,6 +731,20 @@ namespace
         {
             DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
+
+            d = _sky->getDateTime();
+            OE_INFO << "DateTime = " << d.asRFC1123() << std::endl;
+        }
+    };
+
+    struct SkyDaysSlider : public ui::ControlEventHandler
+    {
+        SkyDaysSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyNode* _sky;
+        void onValueChanged(ui::Control* control, float value )
+        {
+            DateTime d = _sky->getDateTime();
+            _sky->setDateTime(DateTime(d.year(), d.month(), floor(value), d.hours()));
         }
     };
 
@@ -743,10 +757,10 @@ namespace
         ui::LabelControl* _label;
         void onValueChanged(ui::Control* control, float value )
         {
-            int m = osg::minimum((int)value, 11);
+            int m = 1 + osg::minimum((int)value, 11);
             DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime(d.year(), m, d.day(), d.hours()));
-            _label->setText(s_month[m]);
+            _label->setText(s_month[m-1]);
         }
     };
 
@@ -794,6 +808,13 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
         skyHoursSlider->setHorizFill( true, 250 );
         skyHoursSlider->addEventHandler( new SkyHoursSlider(sky) );
         grid->setControl(2, r, new ui::LabelControl(skyHoursSlider) );
+
+        r++;
+        grid->setControl( 0, r, new ui::LabelControl("Day: ", 16) );
+        ui::HSliderControl* skyDaySlider = grid->setControl(1, r, new ui::HSliderControl( 1, 31, dt.hours() ));
+        skyDaySlider->setHorizFill( true, 250 );
+        skyDaySlider->addEventHandler( new SkyDaysSlider(sky) );
+        grid->setControl(2, r, new ui::LabelControl(skyDaySlider) );
 
         ++r;
         grid->setControl( 0, r, new ui::LabelControl("Month: ", 16) );

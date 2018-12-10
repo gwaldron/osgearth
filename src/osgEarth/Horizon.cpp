@@ -467,11 +467,11 @@ HorizonNode::HorizonNode()
 void
 HorizonNode::traverse(osg::NodeVisitor& nv)
 {
-    bool isStealth = (VisitorData::isSet(nv, "osgEarth.Stealth"));
+    bool isSpy = (VisitorData::isSet(nv, "osgEarth.Spy"));
 
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        if (!isStealth)
+        if (!isSpy)
         {
             //Horizon* h = Horizon::get(nv);
             osg::ref_ptr<Horizon> h = new Horizon();

@@ -51,11 +51,6 @@ _options ( options ),
 _enabled ( true ),
 _debug   ( false )
 {
-    // sign up for the update traversal so we can prune unused pool objects.
-    setNumChildrenRequiringUpdateTraversal(1u);
-
-    //_tileSize = _options.tileSize().get();
-
     // activate debugging mode
     if ( getenv("OSGEARTH_DEBUG_REX_GEOMETRY_POOL") != 0L )
     {
@@ -506,19 +501,19 @@ void
 GeometryPool::setReleaser(ResourceReleaser* releaser)
 {
     if (_releaser.valid())
-        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        ADJUST_EVENT_TRAV_COUNT(this, -1);
 
     _releaser = releaser;
 
     if (_releaser.valid())
-        ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 
 void
 GeometryPool::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR && _releaser.valid() && _enabled)
+    if (nv.getVisitorType() == nv.EVENT_VISITOR && _releaser.valid() && _enabled)
     {
         // look for usused pool objects and push them to the resource releaser.
         ResourceReleaser::ObjectList objects;
@@ -534,7 +529,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
                     keys.push_back(i->first);
                     objects.push_back(i->second.get());
                     
-                    //OE_INFO << "Releasing: " << i->second.get() << std::endl;
+                    OE_DEBUG << "Releasing: " << i->second.get() << std::endl;
                 }
             }
             for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)
@@ -545,7 +540,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
                 _geometryMap.erase(*key);
             }
 
-            //OE_WARN << "Released " << keys.size() << ", pool = " << _geometryMap.size() << std::endl;
+            //OE_INFO << "Released " << keys.size() << ", pool = " << _geometryMap.size() << std::endl;
         }
 
         if (!objects.empty())

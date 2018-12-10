@@ -27,13 +27,18 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 #define LC "[TerrainRenderData] "
 
 
-void
+unsigned
 TerrainRenderData::sortDrawCommands()
 {
+    unsigned total = 0;
     for (LayerDrawableList::iterator i = _layerList.begin(); i != _layerList.end(); ++i)
     {
-        i->get()->_tiles.sort();
+        //TODO: review and benchmark list vs. vector vs. unsorted here.
+        DrawTileCommands& cmds = i->get()->_tiles;
+        std::sort(cmds.begin(), cmds.end());
+        total += i->get()->_tiles.size();
     }
+    return total;
 }
 
 void

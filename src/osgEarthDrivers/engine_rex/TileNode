@@ -140,7 +140,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
         double                             _lastTraversalTime;
-        OpenThreads::Atomic                _lastAcceptSurfaceFrame;
         unsigned                           _count;
         bool                               _childrenReady;
         unsigned int                       _minExpiryFrames;
@@ -168,9 +167,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool accept_cull(TerrainCuller*);
 
-        bool cull_stealth(TerrainCuller*);
+        bool cull_spy(TerrainCuller*);
 
-        bool accept_cull_stealth(TerrainCuller*);
+        bool accept_cull_spy(TerrainCuller*);
 
         bool shouldSubDivide(TerrainCuller*, const SelectionInfo&);
 

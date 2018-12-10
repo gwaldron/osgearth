@@ -379,16 +379,19 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
 }
 
 bool
-TileNode::cull_stealth(TerrainCuller* culler)
+TileNode::cull_spy(TerrainCuller* culler)
 {
     bool visible = false;
 
     EngineContext* context = culler->getEngineContext();
 
-    // Shows all culled tiles, good for testing culling
+    // Shows all culled tiles. All this does is traverse the terrain
+    // and add any tile that's been "legitimately" culled (i.e. culled
+    // by a non-spy traversal) in the last 2 frames. We use this
+    // trick to spy on another camera.
     unsigned frame = culler->getFrameStamp()->getFrameNumber();
 
-    if ( frame - _lastAcceptSurfaceFrame < 2u )
+    if ( frame - _surface->getLastFramePassedCull() < 2u)
     {
         _surface->accept( *culler );
     }
@@ -495,7 +498,6 @@ TileNode::cull(TerrainCuller* culler)
     if ( canAcceptSurface )
     {
         _surface->accept( *culler );
-        _lastAcceptSurfaceFrame.exchange( culler->getFrameStamp()->getFrameNumber() );
     }
 
     // If this tile is marked dirty, try loading data.
@@ -528,13 +530,13 @@ TileNode::accept_cull(TerrainCuller* culler)
 }
 
 bool
-TileNode::accept_cull_stealth(TerrainCuller* culler)
+TileNode::accept_cull_spy(TerrainCuller* culler)
 {
     bool visible = false;
     
     if (culler)
     {
-        visible = cull_stealth( culler );
+        visible = cull_spy( culler );
     }
 
     return visible;
@@ -550,9 +552,9 @@ TileNode::traverse(osg::NodeVisitor& nv)
         {
             TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
         
-            if (VisitorData::isSet(culler->getParent(), "osgEarth.Stealth"))
+            if (culler->_isSpy)
             {
-                accept_cull_stealth( culler );
+                accept_cull_spy( culler );
             }
             else
             {

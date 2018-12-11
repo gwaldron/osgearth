@@ -180,7 +180,8 @@ namespace osgEarth
         optional<bool>& castShadows() { return _castShadows; }
         const optional<bool>& castShadows() const { return _castShadows; }
 
-        /** Mode to use when calculating LOD switching distances */
+        /** Mode to use when calculating LOD switching distances.
+         *  Choices are DISTANCE_FROM_EYE_POINT (default) or PIXEL_SIZE_ON_SCREEN */
         optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
         const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
 

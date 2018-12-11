@@ -89,6 +89,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         GLuint* _meshIndices;
 
         ModifyBoundingBoxCallback* _bboxCB;
+        mutable float _bboxRadius;
 
     public:
         
@@ -113,6 +114,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Set the render model so we can properly calculate bounding boxes
         void setModifyBBoxCallback(ModifyBoundingBoxCallback* bboxCB) { _bboxCB = bboxCB; }
+
+        float getRadius() const { return _bboxRadius; }
 
     public: // osg::Drawable overrides
 

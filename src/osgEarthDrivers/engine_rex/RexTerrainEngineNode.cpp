@@ -258,8 +258,17 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // merge in the custom options:
     _terrainOptions.merge( myOptions );
 
+    _morphingSupported = true;
+    if (_terrainOptions.rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+    {
+        OE_INFO << LC << "Range mode = pixel size; pixel tile size = " << _terrainOptions.tilePixelSize().get() << std::endl;
+
+        // force morphing off for PSOS mode
+        _morphingSupported = false;
+    }
+
     // morphing imagery LODs requires we bind parent textures to their own unit.
-    if ( _terrainOptions.morphImagery() == true )
+    if (_terrainOptions.morphImagery() == true && _morphingSupported)
     {
         _requireParentTextures = true;
     }
@@ -268,11 +277,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     if (map->getSRS()->isProjected())
     {
         _terrainOptions.morphTerrain() = false;
-    }
-
-    if (_terrainOptions.rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
-    {
-        OE_INFO << LC << "Range mode = pixel size; pixel tile size = " << _terrainOptions.tilePixelSize().get() << std::endl;
     }
 
     // if the envvar for tile expiration is set, override the options setting
@@ -1452,18 +1456,21 @@ RexTerrainEngineNode::updateState()
         }
 
         // Morphing?
-        if (_terrainOptions.morphTerrain() == true ||
-            _terrainOptions.morphImagery() == true)
+        if (_morphingSupported)
         {
-            package.load(surfaceVP, package.MORPHING_VERT);
+            if (_terrainOptions.morphTerrain() == true ||
+                _terrainOptions.morphImagery() == true)
+            {
+                package.load(surfaceVP, package.MORPHING_VERT);
 
-            if (_terrainOptions.morphImagery() == true)
-            {
-                surfaceStateSet->setDefine("OE_TERRAIN_MORPH_IMAGERY");
-            }
-            if (_terrainOptions.morphTerrain() == true)
-            {
-                surfaceStateSet->setDefine("OE_TERRAIN_MORPH_GEOMETRY");
+                if (_terrainOptions.morphImagery() == true)
+                {
+                    surfaceStateSet->setDefine("OE_TERRAIN_MORPH_IMAGERY");
+                }
+                if (_terrainOptions.morphTerrain() == true)
+                {
+                    surfaceStateSet->setDefine("OE_TERRAIN_MORPH_GEOMETRY");
+                }
             }
         }
 

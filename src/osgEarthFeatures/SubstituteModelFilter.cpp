@@ -344,11 +344,11 @@ FilterContext&               context)
                   // but if the tile is big enough the up vectors won't be quite right.
                   osg::Matrixd rotation;
                   ECEF::transformAndGetRotationMatrix(point, context.profile()->getSRS(), point, targetSRS, rotation);
-                  mat = rotationMatrix * scaleMatrix * rotation * osg::Matrixd::translate(point);
+                  mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate(point);
                }
                else
                {
-                  mat = rotationMatrix * scaleMatrix *  osg::Matrixd::translate(point);
+                  mat = scaleMatrix * rotationMatrix *  osg::Matrixd::translate(point);
                }
 
                if (_filterUsage == FILTER_USAGE_NORMAL)

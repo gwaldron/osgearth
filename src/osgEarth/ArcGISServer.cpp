@@ -444,7 +444,7 @@ ArcGISServerImageLayer::open()
 {
     // Default cache policy to NO_CACHE for public services
     if (options().cachePolicy().isSet() == false &&
-        options().url()->full().substr("arcgisonline.com") != std::string::npos)
+        options().url()->full().find("arcgisonline.com") != std::string::npos)
     {
         options().cachePolicy() = CachePolicy::NO_CACHE;
     }

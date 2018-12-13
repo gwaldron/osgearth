@@ -53,6 +53,11 @@ namespace osgEarth { namespace Triton
         //! terrain has positive elevation
         void setHeightMapGenerator(TritonHeightMap* heightMap);
 
+        //! Gets the Triton Camera associated with an osg Camera
+        ::Triton::Camera* getTritonCam(const osg::Camera* cam) {
+            return _local.get(cam)._tritonCam;
+        }
+
     public: // osg::Drawable
 
         void drawImplementation(osg::RenderInfo& ri) const;

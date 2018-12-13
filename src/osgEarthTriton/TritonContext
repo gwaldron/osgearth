@@ -62,6 +62,8 @@ namespace osgEarth { namespace Triton
         void initialize(osg::RenderInfo& renderInfo);
 
         void update(double simTime);
+        
+        bool intersect(const osg::Vec3d& start, const osg::Vec3d& dir, float& out_height, osg::Vec3f& out_normal) const;
 
         ::Triton::Environment* getEnvironment() { return _environment; }
         Environment& getEnvironmentWrapper() const { return *_environmentWrapper; }

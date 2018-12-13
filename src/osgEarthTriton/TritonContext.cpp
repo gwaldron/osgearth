@@ -151,7 +151,8 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
 
                 _ocean = ::Triton::Ocean::Create(
                     _environment, 
-                    ::Triton::JONSWAP );
+                    ::Triton::JONSWAP,
+                    true );                 // enableHeightTests - activated GetHeight for intersections
             }
 
             if ( _ocean )
@@ -183,6 +184,17 @@ TritonContext::update(double simTime)
         // fmod requires b/c CUDA is limited to single-precision values
         _ocean->UpdateSimulation( fmod(simTime, 86400.0) );
     }
+}
+
+bool
+TritonContext::intersect(const osg::Vec3d& start, const osg::Vec3d& dir, float& out_height, osg::Vec3f& out_normal) const
+{
+    ::Triton::Vector3 p(start.ptr());
+    ::Triton::Vector3 d(dir.ptr());
+    ::Triton::Vector3 normal;
+    bool ok = _ocean->GetHeight(p, d, out_height, normal);
+    out_normal.set(normal.x, normal.y, normal.z);
+    return ok;
 }
 
 void

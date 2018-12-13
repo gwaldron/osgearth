@@ -25,6 +25,7 @@
 #include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
 #include <osgEarthTriton/TritonCallback>
+#include <osgEarthTriton/TritonIntersections>
 
 namespace osgEarth { namespace Triton
 {
@@ -141,6 +142,11 @@ namespace osgEarth { namespace Triton
         //! Maximum visibility altitude
         void setMaxAltitude(float alt);
         float getMaxAltitude() const;
+
+        //! Adds an intersection set.
+        //! Each frame, Triton will perform intersections against the ocean surface
+        //! (including the waves) and populate the set with the results.
+        void addIntersections(TritonIntersections*);
 
     public: // Layer
 

@@ -2007,9 +2007,6 @@ EarthManipulator::serviceTask()
         double dt = _time_s_now - _task->_time_last_service;
         if ( dt > 0.0 )
         {
-            OE_INFO << "serviceTask: tn=" << _time_s_now << ", tls="<<_task->_time_last_service << ", dt=" << dt
-                << std::endl;
-
             // cap the DT so we don't exceed the expected delta.
             dt = osg::clampBelow( dt, _task->_duration_s );
 
@@ -2875,7 +2872,6 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
     case ACTION_PAN_UP:
     case ACTION_PAN_DOWN:
         _task->set( TASK_PAN, dx, dy, duration, _time_s_now );
-        OE_WARN << "TASK_PAN: time_s_now = " << _time_s_now << std::endl;
         break;
 
     case ACTION_ROTATE:

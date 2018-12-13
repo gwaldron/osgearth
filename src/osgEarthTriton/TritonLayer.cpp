@@ -29,11 +29,13 @@
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/TerrainEngineNode>
 
+#include <osgUtil/CullVisitor>
+
 #define LC "[TritonLayer] "
 
 using namespace osgEarth::Triton;
 
-namespace
+namespace osgEarth { namespace Triton
 {
     class TritonLayerNode : public osg::Group
     {
@@ -57,11 +59,16 @@ namespace
             // objects in a valid graphics context.
             if (_TRITON.valid())
             {
+                // TODO: 2.10+ trying to delete the TRITON object crashes.
+#if 0
                 osg::ref_ptr<osgEarth::ResourceReleaser> releaser;
                 if (_releaser.lock(releaser))
                 {
                     releaser->push(_TRITON.get());
                 }
+#else
+                //_TRITON->releaseGLObjects(0L);
+#endif
             }
         }
 
@@ -161,7 +168,89 @@ namespace
                 // Tick Triton each frame:
                 if (_TRITON->ready())
                 {
+                    // Update the ocean simulation
                     _TRITON->update(nv.getFrameStamp()->getSimulationTime());
+                }
+            }
+
+            else if (nv.getVisitorType() == nv.CULL_VISITOR && _drawable && _TRITON.valid() && _TRITON->getOcean())
+            {
+                // Update any intersections.
+                // For now this is running in the CULL traversal, which is not ideal.
+                // However the Triton Ocean::GetHeight method requires a pointer to the Triton "camera"
+                // and under our framework this is only available in CULL or DRAW.
+                // Running the intersection in eithe CULL or DRAW will result in a frame
+                // incoherency w.r.t the Triton update() call that updates the ocean state.
+                ::Triton::Ocean* ocean = _TRITON->getOcean();
+
+                // Find the TritonCam associated with this osg Cam
+                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+                ::Triton::Camera* tritonCam = static_cast<TritonDrawable*>(_drawable)->getTritonCam(cv->getCurrentCamera());
+
+                osg::Vec3d eye = osg::Vec3d(0,0,0) * cv->getCurrentCamera()->getInverseViewMatrix();
+
+                for(std::vector<osg::ref_ptr<TritonIntersections> >::iterator i = _isect.begin();
+                    i != _isect.end();
+                    ++i)
+                {
+                    TritonIntersections* ir = i->get();
+
+                    // allocate enough space for the output:
+                    ir->_input.resize(ir->_input.size());
+                    ir->_normals.resize(ir->_input.size());
+
+                    osg::Matrix local2world;
+                    ir->_anchor.createLocalToWorld(local2world);
+
+                    // Make sure it's in range so as not to waste cycles:
+                    osg::Vec3d anchor = osg::Vec3d(0,0,0) * local2world;
+                    double m = ir->getMaxRange().as(Units::METERS);
+                    if ((eye-anchor).length2() > (m*m))
+                    {
+                        continue;
+                    }
+
+                    osg::Matrix world2local;
+                    world2local.invert(local2world);
+
+                    for(unsigned i=0; i<ir->_input.size(); ++i)
+                    {
+                        const osg::Vec3d& local = ir->_input[i];
+
+                        // transform the ray to world coordinates
+                        osg::Vec3d start = local * local2world;
+                        osg::Vec3d dir = osg::Matrix::transform3x3(local2world, osg::Vec3d(0,0,1));
+
+                        // intersect the ocean
+                        float& out_height = ir->_heights[i];
+                        ::Triton::Vector3 out_normalT;
+                            
+                        bool ok = ocean->GetHeight(
+                            ::Triton::Vector3(start.x(), start.y(), start.z()),
+                            ::Triton::Vector3(dir.x(), dir.y(), dir.z()),
+                            out_height,
+                            out_normalT,
+                            true,           // visualCorrelation
+                            true,           // includeWakes
+                            true,           // highResolution
+                            true,           // threadSafe,
+                            0L,             // intersectionPoint,
+                            true,           // autoFlip
+                            tritonCam);
+
+                        if (ok)
+                        {
+                            // populate the output data in local coordinates
+                            osg::Vec3d& normal = ir->_normals[i];
+                            normal.set(out_normalT.x, out_normalT.y, out_normalT.z);
+                            normal = osg::Matrix::transform3x3(normal, world2local);
+                        }
+                        else
+                        {
+                            // todo...what?
+                            OE_WARN << "GetHeight returned false dude" << std::endl;
+                        }
+                    }
                 }
             }
 
@@ -177,8 +266,10 @@ namespace
         osg::observer_ptr<osgEarth::Triton::TritonLayer> _tritonLayer;
         osg::ref_ptr<Callback> _callback;
         bool _needsMapNode;
+        std::vector<osg::ref_ptr<TritonIntersections> > _isect;
+
     };
-}
+} }
 
 //........................................................................
 
@@ -256,4 +347,11 @@ TritonLayer::removedFromMap(const osgEarth::Map* map)
         _layerListener.clear();
         setMaskLayer(0L);
     }
+}
+
+void
+TritonLayer::addIntersections(TritonIntersections* value)
+{
+    TritonLayerNode* node = static_cast<TritonLayerNode*>(_tritonNode.get());
+    node->_isect.push_back(value);
 }

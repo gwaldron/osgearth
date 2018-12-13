@@ -240,6 +240,12 @@ SurfaceNode::computeBound() const
     return bs;
 }
 
+float
+SurfaceNode::getPixelSizeOnScreen(osg::CullStack* cull) const
+{
+    return cull->clampedPixelSize(getMatrix().getTrans(), _drawable->getRadius()) / cull->getLODScale();
+}
+
 void
 SurfaceNode::setLastFramePassedCull(unsigned fn)
 {

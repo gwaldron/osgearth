@@ -346,19 +346,26 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
 
     EngineContext* context = culler->getEngineContext();
 
+    // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
+    // allowable on-screen tile size in pixels.
     if (context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
     {
-        float pixelSize = -1.0;
+        float tileSizeInPixels = -1.0;
+
         if (context->getEngine()->getComputeRangeCallback())
         {
-            pixelSize = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
+            tileSizeInPixels = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
         }    
-        if (pixelSize <= 0.0)
+
+        if (tileSizeInPixels <= 0.0)
         {
-            pixelSize = culler->clampedPixelSize(getBound());
+            tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
         }
-        return (pixelSize > context->getOptions().tilePixelSize().get() * 4);
+        
+        return (tileSizeInPixels > context->getOptions().tilePixelSize().get());
     }
+
+    // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
     else
     {
         if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)

@@ -20,6 +20,7 @@ SET(LIB_PUBLIC_HEADERS
     TritonCallback
     TritonLayer
     TritonHeightMap
+    TritonIntersections
 )
 
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
@@ -30,6 +31,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TritonAPIWrapper.cpp
     TritonLayer.cpp
     TritonHeightMap.cpp
+    TritonIntersections.cpp
 )
 
 INCLUDE_DIRECTORIES( 

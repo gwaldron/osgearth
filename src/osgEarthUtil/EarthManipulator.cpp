@@ -1216,7 +1216,7 @@ EarthManipulator::setLookAt(const osg::Vec3d& center,
     setDistance( range );
 
     _previousUp = getUpVector( _centerLocalToWorld );
-    _centerRotation = computeCenterRotation( center ); //getRotation( center ).getRotate().inverse();
+    _centerRotation = computeCenterRotation( center );
 
     _posOffset = posOffset;
 
@@ -1274,7 +1274,8 @@ EarthManipulator::clearViewpoint()
     _setVP1.unset();
 
     // Restore the matrix values in a neutral state.
-    resetLookAt();
+    recalculateCenterFromLookVector();
+    //resetLookAt();
 
     // Fire the callback to indicate a tethering break.
     if ( _tetherCallback.valid() && breakingTether )
@@ -2402,6 +2403,8 @@ EarthManipulator::setByLookAtRaw(const osg::Vec3d& eye,const osg::Vec3d& center,
     osg::Vec3d lv(center-eye);
     setDistance( lv.length() );
     setCenter( center );
+    _posOffset.set(0,0,0);
+    _viewOffset.set(0,0);
 
     osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
     _centerRotation = computeCenterRotation(_center); // getRotation(_center).getRotate().inverse();
@@ -2422,9 +2425,6 @@ EarthManipulator::recalculateCenterFromLookVector()
     if (intersected)
     {
         setByLookAtRaw(eye, target, up);
-        //GeoPoint p;
-        //p.fromWorld(getSRS(), target);
-        //OE_INFO << "center = " << p.x() << ", " << p.y() << ", " << p.alt() << "\n";
     }
 
     return intersected;

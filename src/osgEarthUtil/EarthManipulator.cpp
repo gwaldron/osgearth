@@ -544,7 +544,6 @@ EarthManipulator::ctor_init()
     _time_s_last_event = 0.0;
     _frameCount = 0;
     _findNodeTraversalMask = 0x01;
-    _time_s_last_frame = 0.0;
     _time_s_now = 0.0;
     _centerHeight = 0.0;
     _time_last_frame = 0.0;
@@ -712,8 +711,6 @@ EarthManipulator::reinitialize()
     _task = new Task();
     _last_action = ACTION_NULL;
     _srs = 0L;
-    //_setting_viewpoint = false;
-    _delta_t = 0.0;
     _pendingViewpoint.unset();
     _setVP0.unset();
     _setVP1.unset();
@@ -1218,7 +1215,7 @@ EarthManipulator::setLookAt(const osg::Vec3d& center,
     setDistance( range );
 
     _previousUp = getUpVector( _centerLocalToWorld );
-    _centerRotation = computeCenterRotation( center ); //getRotation( center ).getRotate().inverse();
+    _centerRotation = computeCenterRotation( center );
 
     _posOffset = posOffset;
 
@@ -1276,7 +1273,8 @@ EarthManipulator::clearViewpoint()
     _setVP1.unset();
 
     // Restore the matrix values in a neutral state.
-    resetLookAt();
+    recalculateCenterFromLookVector();
+    //resetLookAt();
 
     // Fire the callback to indicate a tethering break.
     if ( _tetherCallback.valid() && breakingTether )
@@ -1581,14 +1579,10 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     osg::View* view = aa.asView();
 
     //double time_s_now = osg::Timer::instance()->time_s();
-    double time_s_now = view->getFrameStamp()->getReferenceTime();
-
+    _time_s_now = view->getFrameStamp()->getReferenceTime();
+    
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        _time_s_last_frame = _time_s_now;
-        _time_s_now = time_s_now;
-        _delta_t = _time_s_now - _time_s_last_frame;
-
         if ( _node.valid() )
         {
             // Update the mapnode reference frame. This is the transformation
@@ -1630,7 +1624,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                     handleMovementAction(_last_action._type, _throw_dx, _throw_dy, aa.asView());
             }
 
-            aa.requestContinuousUpdate( isSettingViewpoint() || _thrown );
+            aa.requestContinuousUpdate( isSettingViewpoint() || _thrown || _pushed );
 
             if ( _continuous )
             {
@@ -1783,7 +1777,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                     _throw_dx = fabs(_dx) > 0.01 ? _dx : 0.0;
                     _throw_dy = fabs(_dy) > 0.01 ? _dy : 0.0;
 
-                    if (_settings->getThrowingEnabled() && ( time_s_now - _time_s_last_event < 0.05 ) && (_throw_dx != 0.0 || _throw_dy != 0.0))
+                    if (_settings->getThrowingEnabled() && ( _time_s_now - _time_s_last_event < 0.05 ) && (_throw_dx != 0.0 || _throw_dy != 0.0))
                     {
                         _thrown = true;
                         aa.requestRedraw();
@@ -1840,7 +1834,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                             aa.requestRedraw();
 
                         if ( _continuous && !wasContinuous )
-                            _last_continuous_action_time = time_s_now; //_time_s_now;
+                            _last_continuous_action_time = _time_s_now;
 
                         aa.requestContinuousUpdate(_continuous);
                         _thrown = false;
@@ -1887,7 +1881,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( handled && action._type != ACTION_NULL )
     {
         _last_action = action;
-        _time_s_last_event = time_s_now;
+        _time_s_last_event = _time_s_now;
     }
 
     return handled;
@@ -2013,9 +2007,6 @@ EarthManipulator::serviceTask()
         double dt = _time_s_now - _task->_time_last_service;
         if ( dt > 0.0 )
         {
-            //OE_INFO << "serviceTask: fr="<<_frame_count<<", dt=" << dt << ", clamped = " << osg::clampBelow(dt,_task->_duration_s)
-            //    << std::endl;
-
             // cap the DT so we don't exceed the expected delta.
             dt = osg::clampBelow( dt, _task->_duration_s );
 
@@ -2045,20 +2036,6 @@ EarthManipulator::serviceTask()
 
     // returns true if the task is still running.
     return _task.valid() && _task->_type != TASK_NONE;
-}
-
-bool
-EarthManipulator::isMouseMoving()
-{
-    if (_ga_t0.get()==NULL || _ga_t1.get()==NULL) return false;
-
-    static const float velocity = 0.1f;
-
-    float dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
-    float dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
-    float len = sqrtf(dx*dx+dy*dy);
-
-    return len > _delta_t * velocity;
 }
 
 bool
@@ -2425,6 +2402,8 @@ EarthManipulator::setByLookAtRaw(const osg::Vec3d& eye,const osg::Vec3d& center,
     osg::Vec3d lv(center-eye);
     setDistance( lv.length() );
     setCenter( center );
+    _posOffset.set(0,0,0);
+    _viewOffset.set(0,0);
 
     osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
     _centerRotation = computeCenterRotation(_center); // getRotation(_center).getRotate().inverse();
@@ -2445,9 +2424,6 @@ EarthManipulator::recalculateCenterFromLookVector()
     if (intersected)
     {
         setByLookAtRaw(eye, target, up);
-        //GeoPoint p;
-        //p.fromWorld(getSRS(), target);
-        //OE_INFO << "center = " << p.x() << ", " << p.y() << ", " << p.alt() << "\n";
     }
 
     return intersected;

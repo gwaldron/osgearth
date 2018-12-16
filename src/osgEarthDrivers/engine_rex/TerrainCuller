@@ -54,6 +54,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
         LayerExtentVector* _layerExtents;
+        bool _isSpy;
 
     public:
         /** A new terrain culler */
@@ -71,8 +72,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** The CullVIsitor that parents this culler. */
         osgUtil::CullVisitor& getParent() { return *_cv; }
 
+        bool isCulledToBBox(osg::Transform* node, const osg::BoundingBox& box);
+
     public: // osg::NodeVisitor
         void apply(osg::Node& node);
+        void apply(TileNode& node);
+        void apply(SurfaceNode& node);
         
         float getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const;
 

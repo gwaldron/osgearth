@@ -37,7 +37,8 @@ TileDrawable::TileDrawable(const TileKey& key,
 osg::Drawable( ),
 _key         ( key ),
 _geom        ( geometry ),
-_tileSize    ( tileSize )
+_tileSize    ( tileSize ),
+_bboxRadius  ( 1.0 )
 {   
     // a mesh to materialize the heightfield for functors
     _mesh = new osg::Vec3f[ tileSize*tileSize ];
@@ -162,6 +163,8 @@ TileDrawable::computeBoundingBox() const
     {
         (*_bboxCB)(_key, box);
     }
+
+    _bboxRadius = box.radius();
 
     return box;
 }

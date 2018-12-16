@@ -33,6 +33,7 @@
 #include <osg/Geode>
 #include <osgText/Text>
 #include <osgUtil/CullVisitor>
+#include <OpenThreads/Atomic>
 #include <vector>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
@@ -104,15 +105,23 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::BoundingSphere computeBound() const;
 
+        osg::Node* getDebugNode() const { return _debugNode.get(); }
+
+        void setLastFramePassedCull(unsigned fn);
+
+        unsigned getLastFramePassedCull() const { return _lastFramePassedCull; }
+
+        float getPixelSizeOnScreen(osg::CullStack* cull) const;
+
     protected:
         virtual ~SurfaceNode() { }
 
         TileKey                     _tileKey;
         osg::ref_ptr<TileDrawable>  _drawable;
-        osg::ref_ptr<osg::Group>    _debugGeode;
+        osg::ref_ptr<osg::Node>     _debugNode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
-        
+        OpenThreads::Atomic         _lastFramePassedCull;
         HorizonTileCuller           _horizonCuller;        
 
         typedef osg::Vec3 VectorPoints[8];

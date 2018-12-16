@@ -94,11 +94,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>& normalizeEdges() { return _normalizeEdges; }
         const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
 
-        /** Whether to morph terrain data between terrain tile LODs. */
+        /** Whether to morph terrain data between terrain tile LODs.
+         *  This feature is not available when rangeMode is PIXEL_SIZE_ON_SCREEN */
         optional<bool>& morphTerrain() { return _morphTerrain; }
         const optional<bool>& morphTerrain() const { return _morphTerrain; }
 
-        /** Whether to morph imagery between terrain tile LODs. */
+        /** Whether to morph imagery between terrain tile LODs.
+         *  This feature is not available when rangeMode is PIXEL_SIZE_ON_SCREEN */
         optional<bool>& morphImagery() { return _morphImagery; }
         const optional<bool>& morphImagery() const { return _morphImagery; }
 

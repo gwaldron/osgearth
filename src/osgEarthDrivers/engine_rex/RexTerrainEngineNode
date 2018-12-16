@@ -165,6 +165,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileRasterizer* _rasterizer;
         
         osg::ref_ptr<osg::Group> _terrain;
+        bool _morphingSupported;
 
         bool _renderModelUpdateRequired;
 

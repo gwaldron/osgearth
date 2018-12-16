@@ -213,7 +213,7 @@ void
 PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = osg::maximum(value, 0);
-    this->setNumChildrenRequiringUpdateTraversal( 1 );
+    ADJUST_EVENT_TRAV_COUNT(this, +1);
     OE_INFO << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
     
 }
@@ -308,7 +308,7 @@ void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
     // only called when _mergesPerFrame > 0
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         if ( nv.getFrameStamp() )
         {

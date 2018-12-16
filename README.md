@@ -1,8 +1,8 @@
 [![Build Status](https://travis-ci.org/gwaldron/osgearth.svg?branch=master)](https://travis-ci.org/gwaldron/osgearth)
 [![Coverity Status](https://scan.coverity.com/projects/9251/badge.svg)](https://scan.coverity.com/projects/gwaldron-osgearth)
 
-osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-Copyright 2015 Pelican Mapping
+osgEarth - Geospatial SDK for OpenSceneGraph
+Copyright 2018 Pelican Mapping
 
 http://osgearth.org
 

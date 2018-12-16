@@ -7,10 +7,15 @@
 uniform vec2 oe_LineDrawable_limits;
 flat out int oe_LineDrawable_draw;
 
-// change in view vertex over the course of the shader pipeline
-vec4 oe_LineDrawable_viewDelta;
+// Input attributes for adjacent points
+in vec3 oe_LineDrawable_prev;
+in vec3 oe_LineDrawable_next;
 
-void oe_LineDrawable_VS_VIEW(inout vec4 vertexView)
+// Shared stage globals
+vec4 oe_LineDrawable_prevView;
+vec4 oe_LineDrawable_nextView;
+
+void oe_LineDrawable_VS_VIEW(inout vec4 currView)
 {
     oe_LineDrawable_draw = 1;
     int first = int(oe_LineDrawable_limits[0]);
@@ -23,10 +28,33 @@ void oe_LineDrawable_VS_VIEW(inout vec4 vertexView)
         }
     }
 
-    // record the change in the view vertex so that we can apply the same
-    // delta to the prev and next vectors.
+    // Compute the change in the view vertex so that we can apply the same
+    // delta to the prev and next vectors. (An example would be if the verts
+    // were GPU-clamped or otherwise permuted in another shader component.)
     vec4 originalView = gl_ModelViewMatrix * gl_Vertex;
-    oe_LineDrawable_viewDelta = vertexView - originalView;
+    vec4 deltaView = currView - originalView;
+
+    // calculate prev/next points in post-transform view space:
+    oe_LineDrawable_prevView = gl_ModelViewMatrix * vec4(oe_LineDrawable_prev,1) + deltaView;
+    oe_LineDrawable_nextView = gl_ModelViewMatrix * vec4(oe_LineDrawable_next,1) + deltaView;
+
+    // clamp the current vertex to the near clip plane (or at least to Z=0)
+    // to prevent clip space coordinate freakouts!
+    if (currView.z > 0.0)
+    {
+        if (oe_LineDrawable_prevView != currView)
+        {
+            vec3 v = currView.xyz-oe_LineDrawable_prevView.xyz;
+            float r = -oe_LineDrawable_prevView.z / v.z;
+            currView.xyz = oe_LineDrawable_prevView.xyz + v*r;
+        }
+        else
+        {
+            vec3 v = oe_LineDrawable_nextView.xyz-currView.xyz;
+            float r = currView.z / -v.z;
+            currView.xyz += v*r;
+        }
+    }
 }
 
 
@@ -53,8 +81,9 @@ in vec3 oe_LineDrawable_next;
 flat out int oe_LineDrawable_draw;
 flat out vec2 oe_LineDrawable_rv;
 
-// Change in main vertex (calculated in oe_LineDrawable_VS_VIEW)
-vec4 oe_LineDrawable_viewDelta;
+// Shared stage globals
+vec4 oe_LineDrawable_prevView;
+vec4 oe_LineDrawable_nextView;
 
 #ifdef OE_LINE_SMOOTH
 out float oe_LineDrawable_lateral;
@@ -62,35 +91,29 @@ out float oe_LineDrawable_lateral;
 float oe_LineDrawable_lateral;
 #endif
 
+out vec4 ccc;
+
 void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 {
     if (oe_LineDrawable_draw == 0)
         return;
 
-    // compute the prev and next points in clip space.
-    // we apply the "view detla" to account for any other shaders that 
-    // might have altered the main vertex up to this point.
-    vec4 prevView = gl_ModelViewMatrix * vec4(oe_LineDrawable_prev, 1.0);
-    prevView += oe_LineDrawable_viewDelta;
-    vec4 prevClip = gl_ProjectionMatrix * prevView;
+    // Transform the prev and next points in clip space.
+    vec4 prevClip = gl_ProjectionMatrix * oe_LineDrawable_prevView;
+    vec4 nextClip = gl_ProjectionMatrix * oe_LineDrawable_nextView;
 
-    vec4 nextView = gl_ModelViewMatrix * vec4(oe_LineDrawable_next, 1.0);
-    nextView += oe_LineDrawable_viewDelta;
-    vec4 nextClip = gl_ProjectionMatrix * nextView;
-
-    // transform into pixel space
-    vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_ViewportSize;
+    // Transform all points into pixel space
     vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_ViewportSize;
+    vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_ViewportSize;
     vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
 
 #ifdef OE_LINE_SMOOTH
-    float thickness = floor(oe_GL_LineWidth + 1.0); //1.5);
+    float thickness = floor(oe_GL_LineWidth + 1.0);
 #else
     float thickness = max(0.5, floor(oe_GL_LineWidth));
 #endif
 
     float len = thickness;
-
     int code = (gl_VertexID+2) & 3; // gl_VertexID % 4
     bool isStart = code <= 1;
     bool isRight = code==0 || code==2;
@@ -154,11 +177,12 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 
     // and convert to unit space:
     vec2 extrudeUnit = extrudePixel / oe_ViewportSize;
-
-    // and from that make a clip-coord offset vector
+        
+    // calculate the offset in clip space and apply it.
     vec2 offset = extrudeUnit * oe_LineDrawable_lateral * currClip.w;
     currClip.xy += offset;
 
+    // prepare for stippling:
     if (oe_GL_LineStipplePattern != 0xffff)
     {
         // Line creation is done. Now, calculate a rotation angle

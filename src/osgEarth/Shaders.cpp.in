@@ -6,6 +6,10 @@ namespace osgEarth
 {
     Shaders::Shaders()
     {
+        // Cascade Draping
+        CascadeDraping = "CascadeDraping.glsl";
+        _sources[CascadeDraping] = "@CascadeDraping.glsl@";
+
         // Clip Plane
         ClipPlane = "ClipPlane.glsl";
         _sources[ClipPlane] = "@ClipPlane.glsl@";

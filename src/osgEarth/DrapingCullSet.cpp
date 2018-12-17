@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2018 Pelican Mapping
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -89,8 +89,9 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
             // If there's an active (non-identity matrix), apply it
             if ( entry->_matrix.valid() )
             {
-                entry->_matrix->postMult( *cv->getModelViewMatrix() );
-                cv->pushModelViewMatrix( entry->_matrix.get(), osg::Transform::RELATIVE_RF );
+                osg::ref_ptr<osg::RefMatrix> m = osg::clone(entry->_matrix.get());
+                m->postMult( *cv->getModelViewMatrix() );
+                cv->pushModelViewMatrix( m.get(), osg::Transform::RELATIVE_RF );
             }
 
             // After pushing the matrix, we can perform the culling bounds test.

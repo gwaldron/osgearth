@@ -58,7 +58,7 @@ namespace
         {
             if ( ea.getEventType() == ea.FRAME )
             {
-                osg::Node* dump = _mapNode->getOverlayDecorator()->getDump();
+                osg::Node* dump = _mapNode->getDrapingDump();
                 if ( !dump )
                 {
                     _mapNode->getOverlayDecorator()->requestDump();
@@ -116,6 +116,7 @@ main(int argc, char** argv)
     unsigned b = 50;
 
     osgViewer::View* mainView = new osgViewer::View();
+    mainView->getCamera()->setName("dump");
     mainView->getCamera()->setNearFarRatio(0.00002);
     EarthManipulator* em = new EarthManipulator();
     em->getSettings()->setMinMaxPitch(-90, 0);

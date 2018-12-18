@@ -59,6 +59,13 @@ namespace osgEarth
         //! Whether to mipmap projected textures (default=false)
         void setUseMipMaps(bool value);
 
+        //! Whether to use projection matrix fitting
+        void setUseProjectionFitting(bool value);
+        bool getUseProjectionFitting() const { return _useProjectionFitting; }
+
+        //! Sets the minimum n/f ratio for projection fitting
+        void setMinimumNearFarRatio(double value);
+
         //! Debugging method (used by osgearth_overlayviewer to visualize cascades)
         osg::Node* getDump();
 
@@ -125,6 +132,8 @@ namespace osgEarth
         osg::ref_ptr<const SpatialReference> _srs;
         bool _constrainMaxYToFrustum;
         bool _constrainRttBoxToDrapingSetBounds;
+        bool _useProjectionFitting;
+        double _minNearFarRatio;
 
         // tracks drapable objects in the scene graph
         mutable DrapingManager _manager;

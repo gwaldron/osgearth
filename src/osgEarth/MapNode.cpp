@@ -812,3 +812,9 @@ MapNode::getDrapingDump()
         _cascadeDrapingDecorator ? _cascadeDrapingDecorator->getDump() :
         _overlayDecorator->getDump();
 }
+
+CascadeDrapingDecorator*
+MapNode::getCascadeDrapingDecorator() const
+{
+    return _cascadeDrapingDecorator;
+}

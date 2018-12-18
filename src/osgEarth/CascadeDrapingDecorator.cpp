@@ -46,6 +46,8 @@
 
 using namespace osgEarth;
 
+
+
 // Whether to intersect the ellipsoid versus the horizon plane when
 // building cascade bounding boxes. This will result in closer cascades
 // but less resolution at distance
@@ -54,8 +56,117 @@ using namespace osgEarth;
 // Enable this to generate an "--activity" readout of all cascade information
 //#define DEBUG_CASCADES
 
+// Enable this to do a terrain intersection before configuring the first cascade
+#define USE_TERRAIN_INTERSECTION
+
 // TODO ITEMS:
 // - Address the dangling CameraLocal when a view disappears
+
+
+namespace
+{
+    struct Line2d
+    {
+        bool intersectRaysXY(
+            const osg::Vec3d& p0, const osg::Vec3d& d0,
+            const osg::Vec3d& p1, const osg::Vec3d& d1,
+            osg::Vec3d& out_p,
+            double&     out_u,
+            double&     out_v) const
+        {
+            static const double epsilon = 0.001;
+
+            double det = d0.y()*d1.x() - d0.x()*d1.y();
+            if ( osg::equivalent(det, 0.0, epsilon) )
+                return false; // parallel
+
+            out_u = (d1.x()*(p1.y()-p0.y())+d1.y()*(p0.x()-p1.x()))/det;
+            out_v = (d0.x()*(p1.y()-p0.y())+d0.y()*(p0.x()-p1.x()))/det;
+            out_p = p0 + d0*out_u;
+            return true;
+        }
+
+        osg::Vec3d _a, _b;
+
+        Line2d(const osg::Vec3d& p0, const osg::Vec3d& p1) : _a(p0), _b(p1) { }
+
+        Line2d(const osg::Vec4d& p0, const osg::Vec4d& p1)
+            : _a(p0.x()/p0.w(), p0.y()/p0.w(), p0.x()/p0.w()), _b(p1.x()/p1.w(), p1.y()/p1.w(), p1.z()/p1.w()) { }
+
+        bool intersect(const Line2d& rhs, osg::Vec4d& out) const {
+            double u, v;
+            osg::Vec3d temp;
+            bool ok = intersectRaysXY(_a, (_b-_a), rhs._a, (rhs._b-rhs._a), temp, u, v);
+            out.set( temp.x(), temp.y(), temp.z(), 1.0 );
+            return ok;
+        }
+        bool intersect(const Line2d& rhs, osg::Vec3d& out) const {
+            double u, v;
+            return intersectRaysXY(_a, (_b-_a), rhs._a, (rhs._b-rhs._a), out, u, v);
+        }
+    };
+
+    void fitProjectionMatrix(osg::Matrix& proj, double nfratio)
+    {
+        // construct the polygon, which winds counter-clockwise from upper-right to lower-right.a
+        osg::Vec4d t0(+1.0, 1.0, 0.0, 1.0);
+        osg::Vec4d t1(-1.0, 1.0, 0.0, 1.0);
+        osg::Vec4d t2(-nfratio, -1.0, 0.0, 1.0);
+        osg::Vec4d t3(+nfratio, -1.0, 0.0, 1.0);
+
+        // Next warp our polygon t0,t1,t2,t3 into a clip-space square
+        // through a series of matrix operations.
+        osg::Vec4d u, v;
+        osg::Matrix M;
+
+        // translate the center of the near plane to the origin
+        u = (t2 + t3) * 0.5;
+        osg::Matrix T1;
+        T1.makeTranslate(-u.x(), -u.y(), 0.0);
+        M = T1;
+
+        // find the intersection of the side lines t0,t3 and t1,t2
+        // and translate that point is at the origin:
+        osg::Vec4d i;
+        Line2d(t0, t3).intersect(Line2d(t1, t2), i);
+        u = i*M;
+        osg::Matrix T2;
+        T2.makeTranslate(-u.x(), -u.y(), 0.0);
+        M = T2*M;
+
+        // scale the near corners to [-1,1] and [1,1] respectively:
+        u = t3*M; // ...not t2.
+        osg::Matrix S1;
+        S1.makeScale(1 / u.x(), 1 / u.y(), 1.0);
+        M = M*S1;
+
+        // project onto the Y plane and translate the whole thing
+        // back down to the origin at the same time.
+        const osg::Matrix N(
+            1, 0, 0, 0,
+            0, 1, 0, 1,
+            0, 0, 1, 0,
+            0, -1, 0, 0);
+        M = M*N;
+
+        // scale it back to unit size:
+        u = t0*M;
+        v = t3*M;
+        osg::Matrix S3;
+        S3.makeScale(1.0, 2.0 / (u.y() / u.w() - v.y() / v.w()), 1.0);
+        M = M*S3;
+
+        // finally, translate it to it lines up with the clip space boundaries.
+        osg::Matrix T4;
+        T4.makeTranslate(0.0, -1.0, 0.0);
+        M = M*T4;
+
+        // apply the result to the projection matrix.
+        proj.postMult(M);
+    }
+}
+
+
 
 CascadeDrapingDecorator::CascadeDrapingDecorator(const SpatialReference* srs, TerrainResources* resources) :
 _unit(-1),
@@ -68,7 +179,9 @@ _debug(false),
 _srs(srs),
 _resources(resources),
 _constrainMaxYToFrustum(false),
-_constrainRttBoxToDrapingSetBounds(true)
+_constrainRttBoxToDrapingSetBounds(true),
+_useProjectionFitting(true),
+_minNearFarRatio(0.25)
 {
     if (::getenv("OSGEARTH_DRAPING_DEBUG"))
         _debug = true;
@@ -102,6 +215,10 @@ _constrainRttBoxToDrapingSetBounds(true)
     c = ::getenv("OSGEARTH_DRAPING_CONSTRAIN_TO_FRUSTUM");
     if (c)
         _constrainMaxYToFrustum = atoi(c)?true:false;
+
+    c = ::getenv("OSGEARTH_DRAPING_USE_PROJECTION_FITTING");
+    if (c)
+        _useProjectionFitting = atoi(c)?true:false;
 }
 
 void
@@ -126,6 +243,18 @@ void
 CascadeDrapingDecorator::setUseMipMaps(bool value)
 {
     _mipmapping = value;
+}
+
+void
+CascadeDrapingDecorator::setUseProjectionFitting(bool value)
+{
+    _useProjectionFitting = value;
+}
+
+void
+CascadeDrapingDecorator::setMinimumNearFarRatio(double value)
+{
+    _minNearFarRatio = value;
 }
 
 void
@@ -733,8 +862,9 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // from the camera to the visible horizon projected onto the horizon plane.
     // This the largest possible extent we will need for RTT.
     osg::BoundingBoxd rttBox;
-
-    const osg::EllipsoidModel& ellipsoid = *decorator._srs->getEllipsoid();
+    
+    osg::EllipsoidModel fakeEM;
+    const osg::EllipsoidModel* ellipsoid = decorator._srs->getEllipsoid();
 
     if (decorator._srs->isGeographic())
     {
@@ -752,8 +882,30 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
         horizonPlane.set(osg::Vec3d(0,0,1), dp);
     }
 
+#if 0
+    // intersect the terrain and build a custom horizon plane.
+    osg::Vec3d camFar = osg::Vec3d(0, 0, 1) * iCamMVP;
+    osg::Vec3d isect;
+    if (intersectTerrain(decorator, camEye, camFar, isect))
+    {
+        //double diff = isect.length() - dp;
+        //if (diff > 0.0)
+        {
+            fakeEM.setRadiusEquator(isect.length());
+            fakeEM.setRadiusPolar(isect.length());
+            osg::ref_ptr<Horizon> horizon = new Horizon(fakeEM);
+            horizon->setEye(camEye);
+            horizon->getPlane(horizonPlane);
+            dh = horizon->getDistanceToVisibleHorizon();
+            dp = horizonPlane.distance(camEye);
+            ellipsoid = &fakeEM;
+        }
+    }
+#endif
+
     // project visible horizon distance into the horizon plane:
     double m = sqrt(dh*dh - dp*dp);
+    m = osg::minimum(m, decorator._maxHorizonDistance);
     rttBox.set(-m, -m, 0, m, m, 0);
 
     // Create a view matrix that looks straight down at the horizon plane form the eyepoint.
@@ -764,6 +916,8 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     osg::Vec3d rttUp = rttLook ^ camLeft;
     rttView.makeLookAt(camEye, camEye + rttLook, rttUp);
 
+    bool colinear = (rttLook * camLook) > 0.99999;
+
     osg::Matrix iRttView;
     iRttView.invert(rttView);
 
@@ -772,7 +926,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // Constraining the the far clip gives a tigher bounds, but can result in 
     // "resolution jumps" as the camera moves around and the far clip plane
     // jumps around.
-    constrainRttBoxToFrustum(iCamMVP, rttView, ellipsoid, decorator._constrainMaxYToFrustum, rttBox);
+    constrainRttBoxToFrustum(iCamMVP, rttView, *ellipsoid, decorator._constrainMaxYToFrustum, rttBox);
 
     // further constrain the max extent based on the bounds of the draped geometry
     if (decorator._constrainRttBoxToDrapingSetBounds)
@@ -790,7 +944,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // highest resolution cascade).
     _cascades[0]._minClipY = -1.0;
     _cascades[0]._maxClipY = 1.0;
-    _cascades[0].computeProjection(rttView, iCamMVP, ellipsoid, horizonPlane, dp, rttBox); //rttBox.yMin(), rttBox);
+    _cascades[0].computeProjection(rttView, iCamMVP, *ellipsoid, horizonPlane, dp, rttBox);
 
     // Next compute the extent, in pixels, of the full RTT. If it's larger than our
     // texture cascade size, we may need multiple cascases.
@@ -806,6 +960,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
         // so we can increase the resolution of the near cascade if necessary.
         optional<double> firstYMax(rttBox.yMax());
 
+#ifdef USE_TERRAIN_INTERSECTIONS
         if (rttBox.yMin() >= 0.0)
         {
             osg::Vec3d camFar = osg::Vec3d(0,0,1) * iCamMVP;
@@ -818,6 +973,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
                 firstYMax = ymax;
             }
         }
+#endif
 
 #ifdef DEBUG_CASCADES
         std::stringstream buf;
@@ -889,14 +1045,27 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
             // Calculate the X extents of the cascade (widest necessary to accommodate).            
             osg::Vec3d point(0.0, cascade._box.yMax(), -dp); // Point in RTT view space at yMax on the horizon plane
             osg::Vec3d camClip = point * iRttView * camMVP;  // Xform into camera's clip space
-            double camClipY = camClip.y();
+
             osg::Vec3d P;
-            intersectRayWithPlane(camEye, osg::Vec3d(+1,camClipY,+1)*iCamMVP, horizonPlane, P);
+            intersectRayWithPlane(camEye, osg::Vec3d(+1,camClip.y(),+1)*iCamMVP, horizonPlane, P);
             cascade._box.xMax() = (P * rttView).x();
             cascade._box.xMin() = -cascade._box.xMax();
 
             // Finally assemble the projection matrix.
             cascade.makeProj(dp);
+
+            if (decorator._useProjectionFitting && !colinear)
+            {
+                // now intersect with near plane:
+                point.set(0.0, cascade._box.yMin(), -dp);
+                camClip = point * iRttView * camMVP;
+                intersectRayWithPlane(camEye, osg::Vec3d(+1,camClip.y(),-1)*iCamMVP, horizonPlane, P);
+                double nfRatio = (P*rttView).x() / cascade._box.xMax();
+                if (_numCascades == 0)
+                    nfRatio = osg::maximum(nfRatio, decorator._minNearFarRatio);
+                fitProjectionMatrix(cascade._rttProj, nfRatio);
+            }
+
             
 #ifdef DEBUG_CASCADES
             buf << "\n  Texels: " << texels

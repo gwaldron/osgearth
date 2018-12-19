@@ -1497,6 +1497,7 @@ bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
                                              unsigned int numx, unsigned int numy ) const
 {
     std::vector<osg::Vec3d> points;
+    points.reserve(numx*numy);
 
     const double dx = (in_xmax - in_xmin) / (numx - 1);
     const double dy = (in_ymax - in_ymin) / (numy - 1);
@@ -1514,13 +1515,15 @@ bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
             points.push_back(osg::Vec3d(dest_x, dest_y, 0));
             //x[pixel] = dest_x;
             //y[pixel] = dest_y;
-            pixel++;     
+            ++pixel;
         }
     }
 
     if ( transform( points, to_srs ) )
     {
-        for( unsigned i=0; i<points.size(); ++i )
+        const unsigned int numPoints = points.size();
+
+        for( unsigned i=0; i<numPoints; ++i )
         {
             x[i] = points[i].x();
             y[i] = points[i].y();

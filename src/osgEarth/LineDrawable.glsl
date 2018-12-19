@@ -39,8 +39,8 @@ void oe_LineDrawable_VS_VIEW(inout vec4 currView)
     oe_LineDrawable_nextView = gl_ModelViewMatrix * vec4(oe_LineDrawable_next,1) + deltaView;
 
     // clamp the current vertex to the near clip plane (or at least to Z=0)
-    // to prevent clip space coordinate freakouts!
-    if (currView.z > 0.0)
+    // to prevent clip space coordinate freakouts! (only in perspective camera)
+    if (currView.z > 0.0 && gl_ProjectionMatrix[3][3] == 0.0)
     {
         if (oe_LineDrawable_prevView != currView)
         {

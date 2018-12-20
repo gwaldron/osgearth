@@ -68,6 +68,7 @@ PlaceNode::PlaceNode() :
 GeoPositionNode()
 {
     construct();
+    compile();
 }
 
 PlaceNode::PlaceNode(const std::string& text,
@@ -547,7 +548,8 @@ PlaceNode::setConfig(const Config& conf)
 Config
 PlaceNode::getConfig() const
 {
-    Config conf( "place" );
+    Config conf = GeoPositionNode::getConfig();
+    conf.key() = "place";
     conf.set( "text",   _text );
     conf.set( "style",  _style );
     if ( _image.valid() ) {

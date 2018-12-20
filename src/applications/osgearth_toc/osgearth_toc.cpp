@@ -23,10 +23,13 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/ElevationPool>
+#include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/ViewFitter>
+#include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/AnnotationLayer>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -35,6 +38,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Annotation;
 
 void createControlPanel(Container*);
 void updateControlPanel();
@@ -125,6 +129,48 @@ struct DumpElevation : public osgGA::GUIEventHandler
     MapNode* _mapNode;
 };
 
+struct DumpLabel : public osgGA::GUIEventHandler
+{
+    DumpLabel(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c), _layer(0L) { }
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
+        {
+            osg::Vec3d world;
+            _mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world);
+
+            GeoPoint coords;
+            coords.fromWorld(s_activeMap->getSRS(), world);
+
+            if (!_layer)
+            {
+                _layer = new AnnotationLayer();
+                _layer->setName("User-created Labels");
+                _mapNode->getMap()->addLayer(_layer);
+            }
+
+            LabelNode* label = new LabelNode();
+            label->setText("Label");
+            label->setPosition(coords);
+
+            Style style;
+            TextSymbol* symbol = style.getOrCreate<TextSymbol>();
+            symbol->alignment() = symbol->ALIGN_CENTER_CENTER;
+            label->setStyle(style);
+
+            _layer->addChild(label);
+
+            osg::ref_ptr<XmlDocument> xml = new XmlDocument(label->getConfig());
+            xml->store(std::cout);
+        }
+        return false;
+    }
+    char _c;
+    MapNode* _mapNode;
+    AnnotationLayer* _layer;
+};
+
 //------------------------------------------------------------------------
 
 int
@@ -170,6 +216,8 @@ main( int argc, char** argv )
     viewer.addUpdateOperation( new UpdateOperation() );
 
     viewer.addEventHandler(new DumpElevation(mapNode, 'E'));
+
+    viewer.addEventHandler(new DumpLabel(mapNode, 'L'));
 
     viewer.run();
 }

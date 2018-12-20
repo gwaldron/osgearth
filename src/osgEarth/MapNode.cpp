@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/MapNode>
+#include <osgEarth/CascadeDrapingDecorator>
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/DrapingTechnique>
@@ -322,35 +323,49 @@ MapNode::init()
     _overlayDecorator = new OverlayDecorator();
     _terrainEngineContainer->addChild(_overlayDecorator);
 
-    // install the Draping technique for overlays:
-    DrapingTechnique* draping = new DrapingTechnique();
-
-    const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
-
-    if ( _mapNodeOptions.overlayBlending().isSet() )
-        draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-    if ( envOverlayTextureSize )
-        draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
-    else if ( _mapNodeOptions.overlayTextureSize().isSet() )
-        draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
-    if ( _mapNodeOptions.overlayMipMapping().isSet() )
-        draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
-        draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
-    if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
-        draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
-
-    draping->reestablish( _terrainEngine );
-    _overlayDecorator->addTechnique( draping );
-    _drapingManager = &draping->getDrapingManager();
-
     // install the Clamping technique for overlays:
     ClampingTechnique* clamping = new ClampingTechnique();
     _overlayDecorator->addTechnique(clamping);
     _clampingManager = &clamping->getClampingManager();
 
+    bool envUseCascadedDraping = (::getenv("OSGEARTH_USE_CASCADE_DRAPING") != 0L);
+    if (envUseCascadedDraping || _mapNodeOptions.useCascadeDraping() == true)
+    {
+        _cascadeDrapingDecorator = new CascadeDrapingDecorator(getMapSRS(), _terrainEngine->getResources());
+        _overlayDecorator->addChild(_cascadeDrapingDecorator);
+        _drapingManager = &_cascadeDrapingDecorator->getDrapingManager();
+        _cascadeDrapingDecorator->addChild(_terrainEngine);
+    }
+
+    else
+    {
+        // simple draping - faster but less accurate
+
+        DrapingTechnique* draping = new DrapingTechnique();
+
+        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
+        if ( _mapNodeOptions.overlayBlending().isSet() )
+            draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+        if ( envOverlayTextureSize )
+            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
+        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
+            draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+        if ( _mapNodeOptions.overlayMipMapping().isSet() )
+            draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+        if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+            draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+        if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
+            draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
+
+        draping->reestablish( _terrainEngine );
+        _overlayDecorator->addTechnique( draping );
+        _drapingManager = &draping->getDrapingManager();
+
+        _overlayDecorator->addChild(_terrainEngine);
+    }
+
     _overlayDecorator->setTerrainEngine(_terrainEngine);
-    _overlayDecorator->addChild(_terrainEngine);
 
     // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
     _layerNodes = new StickyGroup();
@@ -785,4 +800,18 @@ ClampingManager*
 MapNode::getClampingManager()
 {
     return _clampingManager;
+}
+
+osg::Node*
+MapNode::getDrapingDump()
+{
+    return
+        _cascadeDrapingDecorator ? _cascadeDrapingDecorator->getDump() :
+        _overlayDecorator->getDump();
+}
+
+CascadeDrapingDecorator*
+MapNode::getCascadeDrapingDecorator() const
+{
+    return _cascadeDrapingDecorator;
 }

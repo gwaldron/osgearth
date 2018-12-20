@@ -26,6 +26,8 @@ namespace osgEarth { namespace Annotation
 {
     using namespace osgEarth;
 
+    class AnnotationNode;
+
     /**
      * Configuration options for AnnotationLayer
      */
@@ -50,6 +52,9 @@ namespace osgEarth { namespace Annotation
     {
     public:
         META_Layer(osgEarthAnnotation, AnnotationLayer, AnnotationLayerOptions, VisibleLayer, annotations);
+
+        //! Adds an annotation to the layer
+        void addChild(AnnotationNode*);
 
         //! Gets the group to which you can add annotations
         osg::Group* getGroup() const;

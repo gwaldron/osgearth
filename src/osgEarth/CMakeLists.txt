@@ -38,6 +38,7 @@ ENDIF(WIN32)
 SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
+    CascadeDraping.glsl
     ClipPlane.glsl
     DepthOffset.vert.glsl
     Draping.vert.glsl
@@ -78,6 +79,7 @@ SET(LIB_PUBLIC_HEADERS
     CacheSeed
     Capabilities
     CesiumIon
+    CascadeDrapingDecorator
     Clamping
     ClampableNode
     ClampingTechnique
@@ -267,6 +269,7 @@ set(TARGET_SRC
     CacheSeed.cpp
     Capabilities.cpp
     CesiumIon.cpp
+    CascadeDrapingDecorator.cpp
     Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp

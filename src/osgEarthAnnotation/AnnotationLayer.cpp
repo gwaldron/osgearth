@@ -63,6 +63,12 @@ AnnotationLayer::getGroup() const
 }
 
 void
+AnnotationLayer::addChild(AnnotationNode* node)
+{
+    _root->addChild(node);
+}
+
+void
 AnnotationLayer::deserialize()
 {
     // reset:

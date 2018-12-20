@@ -80,6 +80,11 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
 
         extent.expandToInclude(p.x(), p.y());
     }
+
+    if (extent.area() == 0.0)
+    {
+        extent.expand(0.001, 0.001);
+    }
     
     double eyeDist;
     double fovy_deg, ar;

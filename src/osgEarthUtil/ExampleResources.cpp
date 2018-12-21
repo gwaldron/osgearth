@@ -33,7 +33,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/GLUtils>
-
+#include <osgEarth/CullingUtils>
 
 #include <osgEarthDrivers/kml/KML>
 
@@ -351,6 +351,15 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     if ( !views.empty() )
     {
         parse( mapNode.get(), args, views.front(), root, userContainer );
+        
+        float lodscale;
+        if (args.read("--lodscale", lodscale))
+        {
+            LODScaleGroup* g = new LODScaleGroup();
+            g->setLODScaleFactor(osg::maximum(lodscale, 0.0001f));
+            osgEarth::insertGroup(g, mapNode->getParent(0));
+            OE_NOTICE << "LOD Scale set to: " << lodscale << std::endl;
+        }
     }
 
     // configures each view with some stock goodies

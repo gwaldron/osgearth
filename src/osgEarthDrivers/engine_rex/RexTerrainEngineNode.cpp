@@ -1438,11 +1438,13 @@ RexTerrainEngineNode::updateState()
         }
 
         // Normal mapping shaders:
-        if (this->normalTexturesRequired())
+        //if (this->normalTexturesRequired())
         {
             package.load(surfaceVP, package.NORMAL_MAP_VERT);
             package.load(surfaceVP, package.NORMAL_MAP_FRAG);
-            surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
+
+            if (this->normalTexturesRequired())
+                surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
         }
 
         if (_terrainOptions.enableBlending() == true)

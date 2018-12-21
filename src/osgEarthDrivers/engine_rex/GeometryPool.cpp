@@ -172,11 +172,13 @@ namespace
     texCoords->push_back( (*texCoords)[INDEX] ); \
     texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_MARKER_SKIRT); \
     if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] ); \
+    if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] ); \
     verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
     texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_MARKER_SKIRT); \
     if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
+    if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] - ((*neighborNormals)[INDEX])*(HEIGHT) ); \
 }
 
 #define addSkirtTriangles(INDEX0, INDEX1) \
@@ -260,6 +262,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     geom->setNormalArray( normals.get() );
     
     osg::ref_ptr<osg::Vec3Array> neighbors = 0L;
+    osg::ref_ptr<osg::Vec3Array> neighborNormals = 0L;
     if ( _options.morphTerrain() == true )
     {
         // neighbor positions (for morphing)
@@ -268,6 +271,12 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         neighbors->setVertexBufferObject(vbo.get());
         neighbors->reserve( numVerts );
         geom->setNeighborArray(neighbors.get());
+        
+        neighborNormals = new osg::Vec3Array();
+        neighborNormals->setVertexBufferObject(vbo.get());
+        neighborNormals->reserve( numVerts );
+        neighborNormals->setBinding(neighborNormals->BIND_PER_VERTEX);
+        geom->setNeighborNormalArray( neighborNormals.get() );
     }
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
@@ -327,8 +336,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             // neighbor:
             if ( neighbors )
             {
-                osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                const osg::Vec3& modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
                 neighbors->push_back(modelNeighborLTP);
+            }
+
+            if ( neighborNormals )
+            {
+                const osg::Vec3& modelNeighborNormalLTP = (*normals)[normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                neighborNormals->push_back(modelNeighborNormalLTP);
             }
         }
     }
@@ -605,6 +620,7 @@ SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copy
     _normalArray(rhs._normalArray),
     _texcoordArray(rhs._texcoordArray),
     _neighborArray(rhs._neighborArray),
+    _neighborNormalArray(rhs._neighborNormalArray),
     _drawElements(rhs._drawElements),
     _maskElements(rhs._maskElements)
 {
@@ -640,7 +656,7 @@ osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& r
     unsigned texUnits = 0;
     if (_neighborArray.valid())
     {
-        texUnits = 2;
+        texUnits = 3;
     }
     else if (_texcoordArray.valid())
     {
@@ -718,6 +734,9 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
         if (_neighborArray.valid() && _neighborArray->getBinding()==osg::Array::BIND_PER_VERTEX)
             vas->setTexCoordArray(state, 1, _neighborArray.get());
 
+        if (_neighborNormalArray.valid() && _neighborNormalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+            vas->setTexCoordArray(state, 2, _neighborNormalArray.get());
+
         vas->applyDisablingOfVertexAttributes(state);
     }
     else
@@ -737,6 +756,9 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
         if (_neighborArray.valid())
             state.setTexCoordPointer(1, _neighborArray.get());
+
+        if (_neighborNormalArray.valid())
+            state.setTexCoordPointer(2, _neighborNormalArray.get());
 
         state.applyDisablingOfVertexAttributes();
     }
@@ -796,6 +818,7 @@ void SharedGeometry::accept(osg::Drawable::AttributeFunctor& af)
     afav.applyArray(NORMALS, _normalArray.get());
     afav.applyArray(TEXTURE_COORDS_0,_texcoordArray.get());
     afav.applyArray(TEXTURE_COORDS_1,_neighborArray.get());
+    afav.applyArray(TEXTURE_COORDS_2,_neighborNormalArray.get());
 }
 
 void SharedGeometry::accept(osg::Drawable::ConstAttributeFunctor& af) const
@@ -806,6 +829,7 @@ void SharedGeometry::accept(osg::Drawable::ConstAttributeFunctor& af) const
     afav.applyArray(NORMALS, _normalArray.get());
     afav.applyArray(TEXTURE_COORDS_0,_texcoordArray.get());
     afav.applyArray(TEXTURE_COORDS_1,_neighborArray.get());
+    afav.applyArray(TEXTURE_COORDS_2,_neighborNormalArray.get());
 }
 
 void SharedGeometry::accept(osg::PrimitiveFunctor& pf) const

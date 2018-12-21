@@ -11,7 +11,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
 
 // stage
-vec3 vp_Normal; // up vector
+vec3 vp_Normal;
 
 vec4 oe_layer_tilec;
 
@@ -35,21 +35,6 @@ float oe_terrain_getElevation(in vec2 uv);
 #define VERTEX_MARKER_PATCH    4
 #define VERTEX_MARKER_BOUNDARY 8
 #define VERTEX_MARKER_SKIRT    16
-
-
-// Morphs a vertex using a neighbor.
-void oe_rex_MorphVertex(inout vec3 position, inout vec2 uv, in vec3 neighborPosition)
-{
-   float halfSize        = (0.5*oe_tile_size)-0.5;
-   float twoOverHalfSize = 2.0/(oe_tile_size-1.0);
-   
-   vec2 fractionalPart = fract(uv * halfSize) * twoOverHalfSize;
-   uv = clamp(uv - (fractionalPart * oe_rex_morphFactor), 0.0, 1.0);
-   //uv = clamp(uv, 0, 1);
-
-   vec3 morphVector = neighborPosition.xyz - position.xyz;
-   position.xyz = position.xyz + morphVector*oe_rex_morphFactor;
-}
 
 
 // Compute a morphing factor based on model-space inputs:
@@ -88,8 +73,21 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 
 #ifdef OE_TERRAIN_MORPH_GEOMETRY
-        vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
-        oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
+        vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;        
+        vec3 neighborNormal = gl_MultiTexCoord2.xyz;
+        
+        float halfSize        = (0.5*oe_tile_size)-0.5;
+        float twoOverHalfSize = 2.0/(oe_tile_size-1.0);   
+        vec2 fractionalPart = fract(oe_layer_tilec.st * halfSize) * twoOverHalfSize;
+        oe_layer_tilec.st = clamp(oe_layer_tilec.st - (fractionalPart * oe_rex_morphFactor), 0.0, 1.0);
+
+        // morph the vertex:
+        vec3 morphVector = neighborVertexModel.xyz - vertexModel.xyz;
+        vertexModel.xyz = vertexModel.xyz + morphVector*oe_rex_morphFactor;
+
+        // morph the normal:
+        morphVector = neighborNormal - vp_Normal;
+        vp_Normal = normalize(vp_Normal + morphVector*oe_rex_morphFactor);
 #endif
     }
     else

@@ -50,7 +50,7 @@ using namespace osgEarth::Features;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
-REGISTER_OSGEARTH_LAYER(tfsfeatures, TFSFeatureSource);
+REGISTER_OSGEARTH_LAYER(TFSFeatures, TFSFeatureSource);
 
 //........................................................................
 

@@ -50,9 +50,13 @@ namespace osgEarth { namespace Features
         FeatureModelLayerOptions();
         FeatureModelLayerOptions(const ConfigOptions& options);
         
-        /** Name of the feature source layer to use for flattening. */
-        optional<std::string>& featureSource() { return _featureSource; }
-        const optional<std::string>& featureSource() const { return _featureSource; }
+        //! Name of the feature source layer
+        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
+        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
+
+        //! Embedded feature source
+        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
     public: // LayerOptions
         virtual Config getConfig() const;
@@ -62,7 +66,8 @@ namespace osgEarth { namespace Features
         
     private:
         void fromConfig(const Config& conf);
-        optional<std::string> _featureSource;
+        optional<std::string> _featureSourceLayer;
+        optional<FeatureSourceOptions> _featureSource;
     };
 
 

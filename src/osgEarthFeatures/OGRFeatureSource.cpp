@@ -34,7 +34,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-REGISTER_OSGEARTH_LAYER(ogrfeatures, OGRFeatureSource);
+REGISTER_OSGEARTH_LAYER(OGRFeatures, OGRFeatureSource);
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 

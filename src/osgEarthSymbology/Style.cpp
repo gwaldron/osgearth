@@ -220,7 +220,9 @@ Config
 Style::getConfig( bool keepOrigType ) const
 {
     Config conf( "style" );
-    conf.set("name", _name);
+
+    if (!_name.empty())
+        conf.set("name", _name);
 
     conf.set( "url", _uri );
     

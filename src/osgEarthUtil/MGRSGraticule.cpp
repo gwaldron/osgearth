@@ -43,6 +43,7 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Annotation;
 
+REGISTER_OSGEARTH_LAYER(mgrsgraticule, MGRSGraticule);
 REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 
 #ifndef GL_CLIP_DISTANCE0

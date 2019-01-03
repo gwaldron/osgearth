@@ -294,6 +294,7 @@ namespace
 
 /*******/
 
+REGISTER_OSGEARTH_LAYER(garsgraticule, GARSGraticule);
 REGISTER_OSGEARTH_LAYER(gars_graticule, GARSGraticule);
 
 void

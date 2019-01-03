@@ -138,7 +138,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT GeodeticGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, GeodeticGraticule, GeodeticGraticuleOptions, VisibleLayer, geodetic_graticule);
+        META_Layer(osgEarthUtil, GeodeticGraticule, GeodeticGraticuleOptions, VisibleLayer, GeodeticGraticule);
 
         //! Rebuild the graticule after changing options.
         void dirty();

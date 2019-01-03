@@ -83,7 +83,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MGRSGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions, VisibleLayer, mgrs_graticule);
+        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions, VisibleLayer, MGRSGraticule);
 
         /**
          * If you change any of the options, call this to refresh the display

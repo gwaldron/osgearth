@@ -27,6 +27,7 @@ using namespace osgEarth::Util;
 
 #define OE_TEST OE_DEBUG
 
+REGISTER_OSGEARTH_LAYER(fractalelevation, FractalElevationLayer);
 REGISTER_OSGEARTH_LAYER(fractal_elevation, FractalElevationLayer);
 
 //............................................................................

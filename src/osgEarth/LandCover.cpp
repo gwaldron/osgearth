@@ -70,6 +70,7 @@ LandCoverClass::getConfig() const
 #undef  LC
 #define LC "[LandCoverDictionary] "
 
+REGISTER_OSGEARTH_LAYER(landcoverdictionary, LandCoverDictionary);
 REGISTER_OSGEARTH_LAYER(land_cover_dictionary, LandCoverDictionary);
 
 void

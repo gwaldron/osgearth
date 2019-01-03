@@ -43,7 +43,6 @@ SET(HEADERS_ROOT
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
-    MultiElevationLayer
     RadialLineOfSight
     RTTPicker
     Shaders
@@ -125,7 +124,6 @@ SET(SOURCES_ROOT
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
-    MultiElevationLayer.cpp
     RadialLineOfSight.cpp
     RTTPicker.cpp
     Shadowing.cpp

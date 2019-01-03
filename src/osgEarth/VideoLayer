@@ -55,7 +55,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT VideoLayer : public osgEarth::ImageLayer
     {
     public:
-        META_Layer(osgEarth, VideoLayer, VideoLayerOptions, ImageLayer, video);
+        META_Layer(osgEarth, VideoLayer, VideoLayerOptions, ImageLayer, Video);
 
         //! Access the texture 
         osg::Texture2D* getTexture() const { return _texture.get(); }

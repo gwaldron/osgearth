@@ -106,7 +106,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverDictionary : public Layer
     {
     public:
-        META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions, Layer, land_cover_dictionary);
+        META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions, Layer, LandCoverDictionary);
 
         //! Add a class.
         void addClass(const std::string& name, int value =INT_MAX);
@@ -214,7 +214,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverCoverageLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, LandCoverCoverageLayer, LandCoverCoverageLayerOptions, ImageLayer, coverage);
+        META_Layer(osgEarth, LandCoverCoverageLayer, LandCoverCoverageLayerOptions, ImageLayer, Coverage);
 
         //! Code mappings.
         LandCoverValueMappingVector& getMappings() { return options().mappings(); }

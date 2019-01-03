@@ -96,7 +96,7 @@ namespace osgEarth { namespace Features
                                                       public FeatureImageRenderer
     {
     public:
-        META_Layer(osgEarth, FeatureImageLayer, FeatureImageLayerOptions, osgEarth::ImageLayer, featureimage);
+        META_Layer(osgEarth, FeatureImageLayer, FeatureImageLayerOptions, osgEarth::ImageLayer, FeatureImage);
 
 
         //! Sets the feature source to get road data from; call either this

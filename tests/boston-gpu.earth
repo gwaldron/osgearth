@@ -141,6 +141,7 @@ to extruded buildings.
                    model-density:          3000;
 				   model-heading:          Math.random() * 360.0;
                    altitude-clamping:      terrain;
+				   render-transparent:     true;
 				   render-min-alpha:       0.15;
                 }
             </style>

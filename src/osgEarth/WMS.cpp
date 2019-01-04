@@ -265,6 +265,13 @@ WMS::CapabilitiesReader::readLayers(XmlElement* e, WMS::Layer* parentLayer, WMS:
                 maxY = as<double>(e_gbb->getSubElementText(ATTR_NORTHLAT), 0);
                 layer->setLatLonExtents(minX, minY, maxX, maxY);
             }
+            else if (parentLayer)
+            {
+                // inherit from parent if not specified locally
+                double minX, minY, maxX, maxY;
+                parentLayer->getLatLonExtents(minX, minY, maxX, maxY);
+                layer->setLatLonExtents(minX, minY, maxX, maxY);
+            }
         }
 
         e_bb = e_layer->getSubElement(ELEM_BOUNDINGBOX);

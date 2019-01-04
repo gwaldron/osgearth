@@ -21,7 +21,8 @@
 using namespace osgEarth;
 
 PatchLayer::PatchLayer() :
-VisibleLayer()
+VisibleLayer(),
+_options(NULL)
 {
     init();
 }

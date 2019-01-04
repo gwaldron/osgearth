@@ -45,7 +45,8 @@ using namespace osgEarth::Symbology;
 
 PlaceNode::PlaceNode() :
 _labelRotationRad ( 0. ),
-_followFixedCourse( false )
+_followFixedCourse( false ),
+_geode(NULL)
 {
     //nop
 }

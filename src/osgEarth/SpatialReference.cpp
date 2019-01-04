@@ -450,13 +450,22 @@ _ellipsoidId(0u)
 }
 
 SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
-osg::Referenced( true ),
-_initialized   ( false ),
-_handle        ( handle ),
-_owns_handle   ( ownsHandle ),
-_is_ltp        ( false ),
-_is_plate_carre( false ),
-_is_ecef       ( false )
+osg::Referenced ( true ),
+_initialized    ( false ),
+_handle         ( handle ),
+_owns_handle    ( ownsHandle ),
+_is_geographic  ( false ),
+_is_ecef        ( false ),
+_is_mercator    ( false ),
+_is_north_polar ( false ), 
+_is_south_polar ( false ),
+_is_cube        ( false ),
+_is_contiguous  ( false ),
+_is_user_defined( false ),
+_is_ltp         ( false ),
+_is_plate_carre ( false ),
+_is_spherical_mercator( false ),
+_ellipsoidId(0u)
 {
     //nop
 }

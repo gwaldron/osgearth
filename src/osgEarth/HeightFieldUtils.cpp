@@ -66,10 +66,10 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
     case INTERP_BILINEAR:
     {
         //OE_INFO << "getHeightAtPixel: (" << c << ", " << r << ")" << std::endl;
-        int rowMin = osg::maximum((int)floor(r), 0);
-        int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(hf->getNumRows() - 1)), 0);
-        int colMin = osg::maximum((int)floor(c), 0);
-        int colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(hf->getNumColumns() - 1)), 0);
+        int rowMin = std::max((int)floor(r), 0);
+        int rowMax = std::max(std::min((int)ceil(r), (int)(hf->getNumRows() - 1)), 0);
+        int colMin = std::max((int)floor(c), 0);
+        int colMax = std::max(std::min((int)ceil(c), (int)(hf->getNumColumns() - 1)), 0);
 
         if (rowMin > rowMax) rowMin = rowMax;
         if (colMin > colMax) colMin = colMax;
@@ -87,19 +87,22 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
         //OE_INFO << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
 
+        const bool colSame = colMax == colMin;
+        const bool rowSame = rowMax == rowMin;
+
         //Check for exact value
-        if ((colMax == colMin) && (rowMax == rowMin))
+        if (colSame && rowSame)
         {
             //OE_NOTICE << "Exact value" << std::endl;
             result = hf->getHeight((int)c, (int)r);
         }
-        else if (colMax == colMin)
+        else if (colSame)
         {
             //OE_NOTICE << "Vertically" << std::endl;
             //Linear interpolate vertically
             result = ((double)rowMax - r) * llHeight + (r - (double)rowMin) * ulHeight;
         }
-        else if (rowMax == rowMin)
+        else if (rowSame)
         {
             //OE_NOTICE << "Horizontally" << std::endl;
             //Linear interpolate horizontally
@@ -109,9 +112,13 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         {
             //OE_NOTICE << "Bilinear" << std::endl;
             //Bilinear interpolate
-            double r1 = ((double)colMax - c) * (double)llHeight + (c - (double)colMin) * (double)lrHeight;
-            double r2 = ((double)colMax - c) * (double)ulHeight + (c - (double)colMin) * (double)urHeight;
-            result = ((double)rowMax - r) * (double)r1 + (r - (double)rowMin) * (double)r2;
+            const double colMaxDiff = (double)colMax - c;
+            const double colMinDiff = c - (double)colMin;
+            const double rowMaxDiff = (double)rowMax - r;
+            const double rowMinDiff = r - (double)rowMin;
+            const double r1 = colMaxDiff * llHeight + colMinDiff * lrHeight;
+            const double r2 = colMaxDiff * ulHeight + colMinDiff * urHeight;
+            result = rowMaxDiff * r1 + rowMinDiff * r2;
         }
         break;
     }

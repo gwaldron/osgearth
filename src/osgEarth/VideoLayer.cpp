@@ -75,7 +75,8 @@ VideoLayerOptions::mergeConfig( const Config& conf )
 }
 
 
-VideoLayer::VideoLayer()
+VideoLayer::VideoLayer() :
+    _options(NULL)
 {
     init();
 }

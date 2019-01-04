@@ -132,7 +132,7 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
 }
 
 CachePolicy
-LandUseTileSource::getCachePolicyHint() const
+LandUseTileSource::getCachePolicyHint(const Profile* targetProfile) const
 {
     return CachePolicy::NO_CACHE;
 }

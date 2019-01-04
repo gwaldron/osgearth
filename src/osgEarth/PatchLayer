@@ -55,7 +55,7 @@ namespace osgEarth
             osg::Texture*  elevationTexture;
             osg::Texture*  normalTexture;
             osg::Texture*  coverageTexture;
-            DrawContext() : range(0.0f), colorTexture(0), elevationTexture(0), normalTexture(0), coverageTexture(0) { }
+            DrawContext() : range(0.0f), colorTexture(0), elevationTexture(0), normalTexture(0), coverageTexture(0), key(0) { }
         };
 
         /**

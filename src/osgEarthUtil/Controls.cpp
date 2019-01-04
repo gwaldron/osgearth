@@ -1011,7 +1011,8 @@ LabelControl(text)
 ImageControl::ImageControl( osg::Image* image ) :
 _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
-_opacity      ( 1.0f )
+_opacity      ( 1.0f ),
+_geom         ( NULL )
 {
     setImage( image );
 }

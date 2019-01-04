@@ -51,7 +51,7 @@ namespace
         ResourceReleaser::ObjectList _toRelease;
 
         ExpirationCollector(TileNodeRegistry* live)
-            : _live(live), _count(0)
+            : _live(live), _count(0), _releaser(NULL)
         {
             // set up to traverse the entire subgraph, ignoring node masks.
             setTraversalMode( TRAVERSE_ALL_CHILDREN );

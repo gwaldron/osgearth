@@ -92,7 +92,7 @@ namespace
 		unsigned* codeTable;
 		unsigned loads;
 
-		ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f), loads(0) { }
+		ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f), loads(0), codeTable(NULL) { }
 
 		~ILayer() { if (read) delete read; }
 
@@ -188,7 +188,7 @@ namespace
 
 		osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
 
-		CachePolicy getCachePolicyHint() const {
+		virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const {
 			return CachePolicy::NO_CACHE;
 		}
 

@@ -316,7 +316,8 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 //........................................................................
 
 ElevationEnvelope::ElevationEnvelope() :
-_pool(0L)
+_pool(0L),
+_lod(0)
 {
     //nop
 }

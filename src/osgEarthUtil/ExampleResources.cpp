@@ -811,7 +811,7 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
 
         r++;
         grid->setControl( 0, r, new ui::LabelControl("Day: ", 16) );
-        ui::HSliderControl* skyDaySlider = grid->setControl(1, r, new ui::HSliderControl( 1, 31, dt.hours() ));
+        ui::HSliderControl* skyDaySlider = grid->setControl(1, r, new ui::HSliderControl( 1, 31, dt.day() ));
         skyDaySlider->setHorizFill( true, 250 );
         skyDaySlider->addEventHandler( new SkyDaysSlider(sky) );
         grid->setControl(2, r, new ui::LabelControl(skyDaySlider) );

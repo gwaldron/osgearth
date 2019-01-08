@@ -30,47 +30,49 @@ using namespace osgEarth;
 
 //.................................................................
 
-Config LayerOptions::getConfig() const
+Config
+Layer::Options::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
-    conf.set("name", _name);
-    conf.set("enabled", _enabled);
-    conf.set("cacheid", _cacheId);
-    if (_cachePolicy.isSet() && !_cachePolicy->empty())
-        conf.set("cache_policy", _cachePolicy);
-    conf.set("shader_define", _shaderDefine);
-    conf.set("shader", _shader);
-    conf.set("attribution", _attribution);
-    conf.set("terrain", _terrainPatch);
+    conf.set("name", name());
+    conf.set("enabled", enabled());
+    conf.set("cacheid", cacheId());
+    if (cachePolicy().isSet() && !cachePolicy()->empty())
+        conf.set("cache_policy", cachePolicy());
+    conf.set("shader_define", shaderDefine());
+    conf.set("shader", shader());
+    conf.set("attribution", attribution());
+    conf.set("terrain", terrainPatch());
     return conf;
 }
 
-void LayerOptions::fromConfig(const Config& conf)
+void
+Layer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     _enabled.init(true);
     _terrainPatch.init(false);
 
-    conf.get("name", _name);
-    conf.get("enabled", _enabled);
-    conf.get("cache_id", _cacheId); // compat
-    conf.get("cacheid", _cacheId);
-    conf.get("attribution", _attribution);
-    conf.get("cache_policy", _cachePolicy);
+    conf.get("name", name());
+    conf.get("enabled", enabled());
+    conf.get("cache_id", cacheId()); // compat
+    conf.get("cacheid", cacheId());
+    conf.get("attribution", attribution());
+    conf.get("cache_policy", cachePolicy());
 
     // legacy support:
-    if (!_cachePolicy.isSet())
+    if (!cachePolicy().isSet())
     {
         if ( conf.value<bool>( "cache_only", false ) == true )
             _cachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
         if ( conf.value<bool>( "cache_enabled", true ) == false )
             _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
     }
-    conf.get("shader_define", _shaderDefine);
-    conf.get("shader", _shader);
+    conf.get("shader_define", shaderDefine());
+    conf.get("shader", shader());
 
-    conf.get("terrain", _terrainPatch);
-    conf.get("patch", _terrainPatch);
+    conf.get("terrain", terrainPatch());
+    conf.get("patch", terrainPatch());
 }
 
 //.................................................................
@@ -83,6 +85,9 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 
 //.................................................................
 
+OE_LAYER_PROPERTY_IMPL(Layer, CachePolicy, CachePolicy, cachePolicy);
+
+
 Layer::Layer() :
 _options(&_optionsConcrete)
 {
@@ -93,7 +98,7 @@ _options(&_optionsConcrete)
     init();
 }
 
-Layer::Layer(LayerOptions* optionsPtr) :
+Layer::Layer(Layer::Options* optionsPtr) :
 _options(optionsPtr? optionsPtr : &_optionsConcrete)
 {
     _uid = osgEarth::Registry::instance()->createUID();
@@ -152,6 +157,12 @@ const osgDB::Options*
 Layer::getReadOptions() const
 {
     return _readOptions.get();
+}
+
+void
+Layer::setCacheID(const std::string& value)
+{
+    options().cacheId() = value;
 }
 
 std::string

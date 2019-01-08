@@ -26,6 +26,8 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include <osgEarth/MapNode>
+#include <osgEarth/GLUtils>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/MGRSFormatter>
@@ -73,6 +75,9 @@ main(int argc, char** argv)
 
     // install our manipulator:
     viewer.setCameraManipulator( new EarthManipulator() );
+
+    // initialize the top level state
+    GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());
 
     // root scene graph:
     osg::Group* root = new osg::Group();

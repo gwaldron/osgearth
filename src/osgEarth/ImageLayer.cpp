@@ -32,20 +32,16 @@ using namespace OpenThreads;
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
-namespace osgEarth {
-    REGISTER_OSGEARTH_LAYER(image, ImageLayer);
-}
-
 //------------------------------------------------------------------------
 
 void
-ImageLayerOptions::fromConfig(const Config& conf)
+ImageLayer::Options::fromConfig(const Config& conf)
 {
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _featherPixels.init( false );
     _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
-    _texcomp.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
+    _textureCompression.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
     _shared.init( false );
     _coverage.init( false );  
     _reprojectedTileSize.init( 256 );  
@@ -63,8 +59,8 @@ ImageLayerOptions::fromConfig(const Config& conf)
 
     if ( conf.hasChild("color_filters") )
     {
-        _colorFilters.clear();
-        ColorFilterRegistry::instance()->readChain( conf.child("color_filters"), _colorFilters );
+        _colorFilters->clear();
+        ColorFilterRegistry::instance()->readChain( conf.child("color_filters"), _colorFilters.mutable_value() );
     }
 
     conf.get("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
@@ -80,9 +76,9 @@ ImageLayerOptions::fromConfig(const Config& conf)
     conf.get("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.get("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.get("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.get("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
-    conf.get("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
+    conf.get("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
+    conf.get("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
+    conf.get("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
     // uniform names
@@ -91,9 +87,9 @@ ImageLayerOptions::fromConfig(const Config& conf)
 }
 
 Config
-ImageLayerOptions::getConfig() const
+ImageLayer::Options::getConfig() const
 {
-    Config conf = TerrainLayerOptions::getConfig();
+    Config conf = TerrainLayer::Options::getConfig();
 
     conf.set( "nodata_image",   _noDataImageFilename );
     conf.set( "shared",         _shared );
@@ -106,10 +102,10 @@ ImageLayerOptions::getConfig() const
     if (_transparentColor.isSet())
         conf.set("transparent_color", colorToString( _transparentColor.value()));
 
-    if ( _colorFilters.size() > 0 )
+    if ( _colorFilters->size() > 0 )
     {
         Config filtersConf("color_filters");
-        if ( ColorFilterRegistry::instance()->writeChain( _colorFilters, filtersConf ) )
+        if ( ColorFilterRegistry::instance()->writeChain( _colorFilters.get(), filtersConf ) )
         {
             conf.set( filtersConf );
         }
@@ -128,10 +124,10 @@ ImageLayerOptions::getConfig() const
     conf.set("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.set("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.set("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.set("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
-    conf.set("texture_compression", "on",   _texcomp, (osg::Texture::InternalFormatMode)~0);
-    conf.set("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
+    conf.set("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
+    conf.set("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
+    conf.set("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
+    conf.set("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
     // uniform names
@@ -152,7 +148,7 @@ namespace
             _processor.process( image );
         }
 
-        ImageLayerTileProcessor _processor;
+        ImageLayer::TileProcessor _processor;
     };
     
     struct ApplyChromaKey
@@ -168,13 +164,13 @@ namespace
 
 //------------------------------------------------------------------------
 
-ImageLayerTileProcessor::ImageLayerTileProcessor(const ImageLayerOptions& options)
+ImageLayer::TileProcessor::TileProcessor()
 {
-    init( options, 0L, false );
+    init(ImageLayer::Options(), 0L, false );
 }
 
 void
-ImageLayerTileProcessor::init(const ImageLayerOptions& options,
+ImageLayer::TileProcessor::init(const ImageLayer::Options& options,
                               const osgDB::Options*    dbOptions, 
                               bool                     layerInTargetProfile )
 {
@@ -198,7 +194,7 @@ ImageLayerTileProcessor::init(const ImageLayerOptions& options,
 }
 
 void
-ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
+ImageLayer::TileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 {
     if ( !image.valid() )
         return;
@@ -241,6 +237,11 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 }
 
 //------------------------------------------------------------------------
+
+REGISTER_OSGEARTH_LAYER(image, ImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Shared, shared);
+OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
 
 const Status&
 ImageLayer::open()
@@ -307,6 +308,12 @@ ImageLayer::setAltitude(const Distance& value)
     }
 }
 
+const Distance&
+ImageLayer::getAltitude() const
+{
+    return options().altitude().get();
+}
+
 void
 ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
 {
@@ -324,29 +331,17 @@ ImageLayer::setUseCreateTexture()
     setTileSourceExpected(false);
 }
 
-bool
-ImageLayer::isShared() const
-{
-    return options().shared().get();
-}
-
-bool
-ImageLayer::isCoverage() const
-{
-    return options().coverage().get();
-}
-
 void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
-    options().colorFilters().push_back( filter );
+    options().colorFilters()->push_back( filter );
     fireCallback( &ImageLayerCallback::onColorFiltersChanged );
 }
 
 void
 ImageLayer::removeColorFilter( ColorFilter* filter )
 {
-    ColorFilterChain& filters = options().colorFilters();
+    ColorFilterChain& filters = options().colorFilters().mutable_value();
     ColorFilterChain::iterator i = std::find(filters.begin(), filters.end(), filter);
     if ( i != filters.end() )
     {
@@ -358,7 +353,7 @@ ImageLayer::removeColorFilter( ColorFilter* filter )
 const ColorFilterChain&
 ImageLayer::getColorFilters() const
 {
-    return options().colorFilters();
+    return options().colorFilters().get();
 }
 
 void

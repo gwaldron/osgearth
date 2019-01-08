@@ -74,7 +74,7 @@ REGISTER_OSGEARTH_LAYER(landcoverdictionary, LandCoverDictionary);
 REGISTER_OSGEARTH_LAYER(land_cover_dictionary, LandCoverDictionary);
 
 void
-LandCoverDictionaryOptions::fromConfig(const Config& conf)
+LandCoverDictionary::Options::fromConfig(const Config& conf)
 {
     const Config* classes = conf.child_ptr("classes");
     if (classes)
@@ -96,9 +96,9 @@ LandCoverDictionaryOptions::fromConfig(const Config& conf)
 }
 
 Config
-LandCoverDictionaryOptions::getConfig() const
+LandCoverDictionary::Options::getConfig() const
 {
-    Config conf = LayerOptions::getConfig();
+    Config conf = Layer::Options::getConfig();
 
     if (!classes().empty())
     {
@@ -119,12 +119,16 @@ LandCoverDictionaryOptions::getConfig() const
 }
 
 bool
-LandCoverDictionaryOptions::loadFromXML(const URI& uri)
+LandCoverDictionary::Options::loadFromXML(const URI& uri)
 {
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load(uri);
     if (xml.valid())
     {
-        _conf = xml->getConfig().child("land_cover_dictionary");
+        Config c = xml->getConfig();
+        if (c.hasChild("landcoverdictionary"))
+            _conf = c.child("landcoverdictionary");
+        else
+            _conf = c.child("land_cover_dictionary"); // back-compay
         fromConfig(_conf);
         return true;
     }
@@ -132,6 +136,12 @@ LandCoverDictionaryOptions::loadFromXML(const URI& uri)
     {
         return false;
     }
+}
+
+bool
+LandCoverDictionary::loadFromXML(const URI& uri)
+{
+    return options().loadFromXML(uri);
 }
 
 void
@@ -223,58 +233,59 @@ LandCoverValueMapping::getConfig() const
 #undef  LC
 #define LC "[LandCoverCoverageLayer] "
 
-LandCoverCoverageLayerOptions::LandCoverCoverageLayerOptions(const ConfigOptions& co) :
-ImageLayerOptions(co),
-_warp(0.0f)
-{
-    // By default, a CoverageLayer must disable all interpolation
-    // since the values contain actual data.
-    // (TODO: because of an architectural vestige, both the ImageLayerOptions
-    // and the TileSourceOptions have a "coverage" property -- so we must set
-    // them both. Someday fix this.)
-    coverage().init(true);
-    driver()->coverage().init(true);
-
-    fromConfig(_conf);
-}
-
 void
-LandCoverCoverageLayerOptions::fromConfig(const Config& conf)
+LandCoverCoverageLayer::Options::fromConfig(const Config& conf)
 {
-    ConfigSet mappings = conf.child("land_cover_mappings").children("mapping");
-    for (ConfigSet::const_iterator i = mappings.begin(); i != mappings.end(); ++i)
+    warp().init(0.0f);
+
+    ConfigSet mappingsConf = conf.child("land_cover_mappings").children("mapping");
+    for (ConfigSet::const_iterator i = mappingsConf.begin(); i != mappingsConf.end(); ++i)
     {
         osg::ref_ptr<LandCoverValueMapping> mapping = new LandCoverValueMapping(*i);
-        _valueMappings.push_back(mapping.get());
+        mappings().push_back(mapping.get());
     }
 
-    conf.get("warp", _warp);
+    conf.get("warp", warp());
+
+    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    {
+        osg::ref_ptr<Layer> temp = Layer::create(*i);
+        if (temp.valid())
+        {
+            layer() = ImageLayer::Options(*i);
+            break;
+        }
+    }
 }
 
 Config
-LandCoverCoverageLayerOptions::getConfig() const
+LandCoverCoverageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = Layer::Options::getConfig();
     conf.key() = "coverage";
     if (conf.hasChild("land_cover_mappings") == false)
     {   
-        Config mappings("land_cover_mappings");
-        conf.add(mappings); //.update(mappings);
-        for(LandCoverValueMappingVector::const_iterator i = _valueMappings.begin();
-            i != _valueMappings.end();
+        Config mappingConf("land_cover_mappings");
+        conf.add(mappingConf); //.update(mappings);
+        for(LandCoverValueMappingVector::const_iterator i = mappings().begin();
+            i != mappings().end();
             ++i)
         {
             LandCoverValueMapping* mapping = i->get();
             if (mapping)
-                mappings.add(mapping->getConfig());
+                mappingConf.add(mapping->getConfig());
         }
     }
-    conf.set("warp", _warp);
+    conf.set("warp", warp());
+
+    if (layer().isSet())
+        conf.set(layer()->getConfig());
+
     return conf;
 }
 
 bool
-LandCoverCoverageLayerOptions::loadMappingsFromXML(const URI& uri)
+LandCoverCoverageLayer::Options::loadMappingsFromXML(const URI& uri)
 {
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load(uri);
     if (xml.valid())
@@ -286,7 +297,40 @@ LandCoverCoverageLayerOptions::loadMappingsFromXML(const URI& uri)
 }
 
 void
-LandCoverCoverageLayerOptions::map(int value, const std::string& lcClass)
+LandCoverCoverageLayer::Options::map(int value, const std::string& lcClass)
 {
     mappings().push_back(new LandCoverValueMapping(value, lcClass));
+}
+
+//...................................................................
+
+OE_LAYER_PROPERTY_IMPL(LandCoverCoverageLayer, float, Warp, warp);
+
+const Status&
+LandCoverCoverageLayer::open()
+{
+    if (!_imageLayer.valid())
+    {
+        if (options().layer().isSet())
+        {
+            osg::ref_ptr<Layer> layer = Layer::create(options().layer().get());
+            _imageLayer = dynamic_cast<ImageLayer*>(layer.get());
+        }
+    }
+
+    if (_imageLayer.valid())
+    {
+        _imageLayer->setReadOptions(getReadOptions());
+        return _imageLayer->open();
+    }
+
+    return setStatus(Status::ConfigurationError, "No image layer");
+}
+
+void
+LandCoverCoverageLayer::setImageLayer(ImageLayer* value)
+{
+    _imageLayer = value;
+    if (_imageLayer.valid())
+        options().layer() = _imageLayer->getConfig();
 }

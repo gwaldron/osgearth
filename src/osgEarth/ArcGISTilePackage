@@ -28,58 +28,35 @@
  * Layers that access an ArcGIS Tile Package file (.tpk)
  * http://pro.arcgis.com/en/pro-app/help/sharing/overview/tile-package.htm
  */
-namespace osgEarth
+namespace osgEarth { namespace ArcGIS
 {
-    namespace ArcGISTilePackage
-    {
-        class OSGEARTH_EXPORT BundleReader
-        {
-        public:
-            BundleReader(const std::string& bundleFile, unsigned int bundleSize);
-
-            void init();
-
-            void readIndex(const std::string& filename, std::vector<int>& index);
-
-            osg::Image* readImage(const TileKey& key);
-
-            osg::Image* readImage(unsigned int index);
-
-        protected:
-            std::string _bundleFile;
-            std::string _indexFile;
-            unsigned int _bundleSize;
-
-            std::ifstream _in;
-
-            std::vector< int > _index;
-
-            unsigned int _lod;
-            unsigned int _rowOffset;
-            unsigned int _colOffset;
-        };
-    }
-
-    /**
-     * Serialization data for the ArcGIS image layer
-     */
-    class OSGEARTH_EXPORT ArcGISTilePackageImageLayerOptions : public ImageLayerOptions
+    class OSGEARTH_EXPORT BundleReader
     {
     public:
-        META_LayerOptions(osgEarth, ArcGISTilePackageImageLayerOptions, ImageLayerOptions);
-        
-        // Location of the tile package file
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
+        BundleReader(const std::string& bundleFile, unsigned int bundleSize);
 
-        virtual Config getConfig() const;
+        void init();
 
-    private:
-        void fromConfig(const Config& conf);
-        optional<URI>         _url;
+        void readIndex(const std::string& filename, std::vector<int>& index);
+
+        osg::Image* readImage(const TileKey& key);
+
+        osg::Image* readImage(unsigned int index);
+
+    protected:
+        std::string _bundleFile;
+        std::string _indexFile;
+        unsigned int _bundleSize;
+
+        std::ifstream _in;
+
+        std::vector< int > _index;
+
+        unsigned int _lod;
+        unsigned int _rowOffset;
+        unsigned int _colOffset;
     };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISTilePackageImageLayerOptions);
+} }
 
 
 namespace osgEarth
@@ -89,18 +66,24 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT ArcGISTilePackageImageLayer : public ImageLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(URI, url);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(
-            osgEarth, 
-            ArcGISTilePackageImageLayer,
-            ArcGISTilePackageImageLayerOptions,
-            ImageLayer,
-            ArcGISTilePackageImage);
+        META_Layer(osgEarth, ArcGISTilePackageImageLayer, Options, ImageLayer, ArcGISTilePackageImage);
 
     public:
         //! URL of the map service endpoint
-        inline void setURL(const URI& value);
-        inline const URI& getURL() const;
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
     public: // Layer
         
@@ -131,10 +114,8 @@ namespace osgEarth
         void readConf();
     };
 
-
-    // ... inline implementations ........................................
-    OE_LAYER_PROPERTY_IMPL(ArcGISTilePackageImageLayer, URI, URL, url);
-
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISTilePackageImageLayer::Options);
 
 #endif // OSGEARTH_ARCGIS_TILEPACKAGE_H

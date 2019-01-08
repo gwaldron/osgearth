@@ -28,120 +28,61 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osg/ClipPlane>
 
+namespace osgEarth { namespace Util { namespace Internal
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Annotation;
+    using namespace osgEarth::Symbology;
+
+} } }
+
+
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Annotation;
     using namespace osgEarth::Symbology;
 
-
-    class GeodeticGraticuleOptions : public VisibleLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, GeodeticGraticuleOptions, VisibleLayerOptions);
-
-        //! Grid line color
-        optional<Color>& color() { return _color; }
-        const optional<Color>& color() const { return _color; }
-
-        //! Style for grid labels
-        optional<Style>& gridLabelStyle() { return _gridLabelStyle; }
-        const optional<Style>& gridLabelStyle() const { return _gridLabelStyle; }
-
-        //! Style for edge labels
-        optional<Style>& edgeLabelStyle() { return _edgeLabelStyle; }
-        const optional<Style>& edgeLabelStyle() const { return _edgeLabelStyle; }
-
-        //! Grid line width in pixels
-        optional<float>& lineWidth() { return _lineWidth; }
-        const optional<float>& lineWidth() const { return _lineWidth; }
-
-        //! A target number of grid lines to view on screen at once.
-        optional<int>& gridLines() { return _gridLines; }
-        const optional<int>& gridLines() const { return _gridLines; }
-
-        /** Resolutions for the graticule separated by spaces
-         *  Resolutions are in degrees listed from lowest to highest resolution
-         *  For example:  10 5 2.5 1.25 */
-        optional<std::string>& resolutions() { return _resolutions; }
-        const optional<std::string>& resolutions() const { return _resolutions; }
-
-        optional<bool>& gridLinesVisible() { return _gridLinesVisible; }
-        const optional<bool>& gridLinesVisible() const { return _gridLinesVisible; }
-
-        optional<bool>& gridLabelsVisible() { return _gridLabelsVisible; }
-        const optional<bool>& gridLabelsVisible() const { return _gridLabelsVisible; }
-
-        optional<bool>& edgeLabelsVisible() { return _edgeLabelsVisible; }
-        const optional<bool>& edgeLabelsVisible() const { return _edgeLabelsVisible; }
-
-    public:
-
-        virtual Config getConfig() const
-        {
-            Config conf = VisibleLayerOptions::getConfig();
-            conf.set("line_width", _lineWidth);
-            conf.set("color", _color);
-            conf.set("grid_lines", _gridLines);
-            conf.set("resolutions", _resolutions);
-            conf.set("grid_lines_visible", _gridLinesVisible);
-            conf.set("grid_labels_visible", _gridLabelsVisible);
-            conf.set("edge_labels_visible", _edgeLabelsVisible);
-            conf.set("grid_label_style", _gridLabelStyle);
-            conf.set("edge_label_style", _edgeLabelStyle);
-            return conf;
-        }
-
-    private:
-
-        void fromConfig( const Config& conf )
-        {
-            _lineWidth.init(2.0f);
-            _color.init(Color(Color::Yellow, 0.5f));
-            _gridLines.init(10);
-            _gridLinesVisible.init(true);
-            _gridLabelsVisible.init(true);
-            _edgeLabelsVisible.init(true);
-            _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
-            Style labelStyle;
-            TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
-            t->fill()->color().set(1,1,1,1);
-            _gridLabelStyle.init(labelStyle);
-            _edgeLabelStyle.init(labelStyle);
-
-            conf.get("line_width", _lineWidth);
-            conf.get("color", _color);
-            conf.get("grid_lines", _gridLines);
-            conf.get("resolutions", _resolutions);
-            conf.get("grid_lines_visible", _gridLinesVisible);
-            conf.get("grid_labels_visible", _gridLabelsVisible);
-            conf.get("edge_labels_visible", _edgeLabelsVisible);
-            conf.get("grid_label_style", _gridLabelStyle);
-            conf.get("edge_label_style", _edgeLabelStyle);
-        }
-
-        optional<float>       _lineWidth;
-        optional<Color>       _color;
-        optional<int>         _gridLines;
-        optional<std::string> _resolutions;
-        optional<bool>        _gridLinesVisible;
-        optional<bool>        _gridLabelsVisible;
-        optional<bool>        _edgeLabelsVisible;
-        optional<Style>       _gridLabelStyle;
-        optional<Style>       _edgeLabelStyle;
-    };
-
-
     /**
      * Graticule that shows lat/long lines and automatically places labels.
      */
     class OSGEARTHUTIL_EXPORT GeodeticGraticule : public VisibleLayer
     {
+    public: // serialization        
+        class OSGEARTHUTIL_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(Color, color);
+            OE_OPTION(Style, gridLabelStyle);
+            OE_OPTION(Style, edgeLabelStyle);
+            OE_OPTION(float, lineWidth);
+            OE_OPTION(int, gridLines);
+            OE_OPTION(std::string, resolutions);
+            OE_OPTION(bool, gridLinesVisible);
+            OE_OPTION(bool, gridLabelsVisible);
+            OE_OPTION(bool, edgeLabelsVisible);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
     public:
-        META_Layer(osgEarthUtil, GeodeticGraticule, GeodeticGraticuleOptions, VisibleLayer, GeodeticGraticule);
+        META_Layer(osgEarthUtil, GeodeticGraticule, Options, VisibleLayer, GeodeticGraticule);
 
         //! Rebuild the graticule after changing options.
         void dirty();
+
+        //! Grid line color
+        void setColor(const Color& value);
+        const Color& getColor() const;
+
+        //! Grid line width in pixels
+        void setLineWidth(const float& value);
+        const float& getLineWidth() const;
+
+        //! A target number of grid lines to view on screen at once.
+        void setNumGridLines(const int& value);
+        const int& getNumGridLines() const;
 
         //! Get whether to show the grid lines
         bool getGridLinesVisible() const;

@@ -70,7 +70,7 @@ namespace osgEarth { namespace Util { namespace Debug
 //........................................................................
 
 Config
-DebugImageLayerOptions::getMetadata()
+DebugImageLayer::Options::getMetadata()
 {
     return Config::readJSON( OE_MULTILINE(
         { "name" : "Debug",
@@ -83,16 +83,16 @@ DebugImageLayerOptions::getMetadata()
 }
 
 Config
-DebugImageLayerOptions::getConfig() const
+DebugImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     conf.set("color", _colorCode);
     conf.set("invert_y", _invertY);
     return conf;
 }
 
 void
-DebugImageLayerOptions::fromConfig(const Config& conf)
+DebugImageLayer::Options::fromConfig(const Config& conf)
 {
     _colorCode.init("#000000");
     _invertY.init(false);

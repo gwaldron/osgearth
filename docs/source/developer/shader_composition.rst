@@ -329,7 +329,7 @@ You may not actually want to *draw* this layer, but you want to use it to modula
 another visible layer.
 
 You can do this using *shared image layers*. In the ``Map``, mark an image layer as
-*shared* (using ``ImageLayerOptions::shared()``) and the renderer will make it available
+*shared* (using ``ImageLayer::Options::shared()``) and the renderer will make it available
 to all the other layers in a secondary sampler.
 
     Please refer to ``osgearth_sharedlayer.cpp`` for a usage example!

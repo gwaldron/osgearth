@@ -31,9 +31,9 @@ using namespace osgEarth;
 //........................................................................
 
 Config
-BingImageLayerOptions::getConfig() const
+BingImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     conf.set("key", _apiKey);
     conf.set("imagery_set", _imagerySet);
     conf.set("imagery_metadata_api_url", _imageryMetadataURL);
@@ -41,7 +41,7 @@ BingImageLayerOptions::getConfig() const
 }
 
 void
-BingImageLayerOptions::fromConfig(const Config& conf)
+BingImageLayer::Options::fromConfig(const Config& conf)
 {
     _imagerySet.init("Aerial");
     _imageryMetadataURL.init("http://dev.virtualearth.net/REST/v1/Imagery/Metadata");
@@ -55,6 +55,10 @@ BingImageLayerOptions::fromConfig(const Config& conf)
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(bingimage, BingImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(BingImageLayer, std::string, APIKey, apiKey);
+OE_LAYER_PROPERTY_IMPL(BingImageLayer, std::string, ImagerySet, imagerySet);
+OE_LAYER_PROPERTY_IMPL(BingImageLayer, URI, ImageryMetadataURL, imageryMetadataURL);
 
 void
 BingImageLayer::init()

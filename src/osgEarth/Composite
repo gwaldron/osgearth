@@ -24,44 +24,25 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 
-/**
- * Composite layers. Multiple layers grouped into a single layer.
- */
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT CompositeImageLayerOptions : public ImageLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, CompositeImageLayerOptions, ImageLayerOptions);
-
-        typedef std::vector<ConfigOptions> Layers;
-
-        //! Layers to composite
-        Layers& layers() { return _layers; }
-        const Layers& layers() const { return _layers; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-
-        Layers _layers;
-    };
-
-
     /**
      * Composite Image Layer combines multiple image layers into one.
      */
     class OSGEARTH_EXPORT CompositeImageLayer : public ImageLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_VECTOR(ConfigOptions, layers);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(
-            osgEarth,
-            CompositeImageLayer,
-            CompositeImageLayerOptions,
-            ImageLayer,
-            CompositeImage);
+        META_Layer(osgEarth, CompositeImageLayer, Options, ImageLayer, CompositeImage);
 
     public:
 
@@ -94,40 +75,23 @@ namespace osgEarth
     };
 
 
-
-    class OSGEARTH_EXPORT CompositeElevationLayerOptions : public ElevationLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, CompositeElevationLayerOptions, ElevationLayerOptions);
-
-        typedef std::vector<ConfigOptions> Layers;
-
-        //! Layers to composite - ElevationLayers only!
-        Layers& layers() { return _layers; }
-        const Layers& layers() const { return _layers; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-
-        Layers _layers;
-    };
-
-
     /**
      * Elevation layer that composites one or more other ElevationLayers.
      */
     class OSGEARTH_EXPORT CompositeElevationLayer : public ElevationLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION_VECTOR(ConfigOptions, layers);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(
-            osgEarth, 
-            CompositeElevationLayer, 
-            CompositeElevationLayerOptions, 
-            ElevationLayer, 
-            CompositeElevation);
+        META_Layer(osgEarth, CompositeElevationLayer, Options, ElevationLayer, CompositeElevation);
 
     public:
 
@@ -161,7 +125,8 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeImageLayerOptions);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeElevationLayerOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeElevationLayer::Options);
+
 
 #endif // OSGEARTH_COMPOSITE_H

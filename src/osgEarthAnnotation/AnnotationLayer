@@ -29,20 +29,6 @@ namespace osgEarth { namespace Annotation
     class AnnotationNode;
 
     /**
-     * Configuration options for AnnotationLayer
-     */
-    class OSGEARTHANNO_EXPORT AnnotationLayerOptions : public VisibleLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, AnnotationLayerOptions, VisibleLayerOptions);
-
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-    };
-
-    /**
      * Layer that holds annotation nodes.
      *
      * Use with the options structure is intended for loading from an earth file.
@@ -50,8 +36,17 @@ namespace osgEarth { namespace Annotation
      */
     class OSGEARTHANNO_EXPORT AnnotationLayer : public VisibleLayer
     {
+    public: // serialization
+        class OSGEARTHANNO_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarthAnnotation, AnnotationLayer, AnnotationLayerOptions, VisibleLayer, annotations);
+        META_Layer(osgEarthAnnotation, AnnotationLayer, Options, VisibleLayer, Annotations);
 
         //! Adds an annotation to the layer
         void addChild(AnnotationNode*);

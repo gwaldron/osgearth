@@ -47,8 +47,8 @@ namespace osgEarth { namespace Splat
         /**
          * Images layer from which to read source coverage data.
          */
-        std::vector<ImageLayerOptions>& imageLayerOptionsVector() { return _imageLayerOptionsVec; }
-        const std::vector<ImageLayerOptions>& imageLayerOptionsVector() const { return _imageLayerOptionsVec; }
+        std::vector<ImageLayer::Options>& ImageLayerOptionsVector() { return _ImageLayerOptionsVec; }
+        const std::vector<ImageLayer::Options>& ImageLayerOptionsVector() const { return _ImageLayerOptionsVec; }
 
         /**
          * Amount by which to warp texture coordinates of coverage data.
@@ -80,11 +80,11 @@ namespace osgEarth { namespace Splat
             conf.set("bits",      _bits);
 
             // multiple
-            if ( _imageLayerOptionsVec.size() > 0 )
+            if ( _ImageLayerOptionsVec.size() > 0 )
             {
                 Config images("images");
-                for(std::vector<ImageLayerOptions>::const_iterator i = _imageLayerOptionsVec.begin();
-                    i != _imageLayerOptionsVec.end(); 
+                for(std::vector<ImageLayer::Options>::const_iterator i = _ImageLayerOptionsVec.begin();
+                    i != _ImageLayerOptionsVec.end(); 
                     ++i)
                 {
                     images.add( "image", i->getConfig() );
@@ -111,7 +111,7 @@ namespace osgEarth { namespace Splat
             ConfigSet layerConfs = conf.child("images").children("image");
             for(ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
             {
-                _imageLayerOptionsVec.push_back( ImageLayerOptions(*i) );
+                _ImageLayerOptionsVec.push_back( ImageLayer::Options(*i) );
             }
         }
         
@@ -119,7 +119,7 @@ namespace osgEarth { namespace Splat
         optional<float>                _warp;
         optional<unsigned>             _baseLOD;
         optional<unsigned>             _bits;
-        std::vector<ImageLayerOptions> _imageLayerOptionsVec;
+        std::vector<ImageLayer::Options> _ImageLayerOptionsVec;
     };
 
     /**

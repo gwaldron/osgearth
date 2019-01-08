@@ -39,10 +39,9 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Features::WFS;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
-
-REGISTER_OSGEARTH_LAYER(wfsfeatures, WFSFeatureSource);
 
 //........................................................................
 
@@ -200,13 +199,13 @@ WFS::CapabilitiesReader::read(std::istream &in)
 Config
 WFSFeatureSourceOptions::getConfig() const
 {
-    Config conf = FeatureSourceOptions::getConfig();
-    conf.set("url", _url);
-    conf.set("typename", _typename);
-    conf.set("outputformat", _outputFormat);
-    conf.set("maxfeatures", _maxFeatures);
-    conf.set("disable_tiling", _disableTiling);
-    conf.set("request_buffer", _buffer);
+    Config conf = FeatureSource::Options::getConfig();
+    conf.set("url", url());
+    conf.set("typename", typeName());
+    conf.set("outputformat", outputFormat());
+    conf.set("maxfeatures", maxFeatures());
+    conf.set("disable_tiling", disableTiling());
+    conf.set("request_buffer", buffer());
     return conf;
 }
 
@@ -217,16 +216,24 @@ WFSFeatureSourceOptions::fromConfig(const Config& conf)
     disableTiling().init(false);
     buffer().init(0.0);
 
-    conf.get("url", _url);
-    conf.get("geometry_profile", _geometryProfileConf);
-    conf.get("typename", _typename);
-    conf.get("outputformat", _outputFormat);
-    conf.get("maxfeatures", _maxFeatures);
-    conf.get("disable_tiling", _disableTiling);
-    conf.get("request_buffer", _buffer);
+    conf.get("url", url());
+    conf.get("typename", typeName());
+    conf.get("outputformat", outputFormat());
+    conf.get("maxfeatures", maxFeatures());
+    conf.get("disable_tiling", disableTiling());
+    conf.get("request_buffer", buffer());
 }
 
 //........................................................................
+
+REGISTER_OSGEARTH_LAYER(wfsfeatures, WFSFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(WFSFeatureSource, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(WFSFeatureSource, std::string, TypeName, typeName);
+OE_LAYER_PROPERTY_IMPL(WFSFeatureSource, unsigned, MaxFeatures, maxFeatures);
+OE_LAYER_PROPERTY_IMPL(WFSFeatureSource, std::string, OutputFormat, outputFormat);
+OE_LAYER_PROPERTY_IMPL(WFSFeatureSource, bool, DisableTiling, disableTiling);
+OE_LAYER_PROPERTY_IMPL(WFSFeatureSource, double, Buffer, buffer);
 
 void
 WFSFeatureSource::init()

@@ -111,9 +111,9 @@ CesiumIon::Driver::read(const URI& server,
 //........................................................................
 
 Config
-CesiumIonImageLayerOptions::getConfig() const
+CesiumIonImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
             conf.set("server", _server);
             conf.set("asset_id", _assetId);
             conf.set("format", _format);
@@ -122,7 +122,7 @@ CesiumIonImageLayerOptions::getConfig() const
 }
 
 void
-CesiumIonImageLayerOptions::fromConfig(const Config& conf)
+CesiumIonImageLayer::Options::fromConfig(const Config& conf)
 {
     _server.init("https://api.cesium.com/");
     _format.init("png");
@@ -134,14 +134,11 @@ CesiumIonImageLayerOptions::fromConfig(const Config& conf)
 }
 
 Config
-CesiumIonImageLayerOptions::getMetadata()
+CesiumIonImageLayer::Options::getMetadata()
 {
     return Config::readJSON( OE_MULTILINE(
         { "name" : "CesiumIon Service",
             "properties": [
-            { "name": "url",      "description": "Location of the TMS repository", "type": "string", "default": "" },
-            { "name": "invert_y", "description": "Set to true invert the Y index", "type": "bool", "default": "false" },
-            { "name": "format",   "description": "Image format to assume (e.g. jpeg, png)", "type": "string", "default": "" }
             ]
         }
     ) );
@@ -150,6 +147,11 @@ CesiumIonImageLayerOptions::getMetadata()
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(cesiumionimage, CesiumIonImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, URI, Server, server);
+OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, std::string, AssetId, assetId);
+OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, std::string, Token, token);
 
 void
 CesiumIonImageLayer::init()

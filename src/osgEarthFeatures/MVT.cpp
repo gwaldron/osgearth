@@ -36,6 +36,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Features::MVT;
 
 #define LC "[MVT] "
 
@@ -455,20 +456,23 @@ namespace osgEarth { namespace Features { namespace MVT
 Config
 MVTFeatureSourceOptions::getConfig() const
 {
-    Config conf = FeatureSourceOptions::getConfig();
-    conf.set("url", _url);
+    Config conf = FeatureSource::Options::getConfig();
+    conf.set("url", url());
     return conf;
 }
 
 void
 MVTFeatureSourceOptions::fromConfig(const Config& conf)
 {
-    conf.get("url", _url);
+    conf.get("url", url());
 }
 
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(mvtfeatures, MVTFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(MVTFeatureSource, URI, URL, url);
+
 
 const Status&
 MVTFeatureSource::open()

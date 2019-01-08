@@ -56,7 +56,7 @@ namespace osgEarth { namespace Features
     protected:
         virtual void mergeConfig( const Config& conf );
 
-        //optional<FeatureSourceOptions> _featureOptions;
+        //optional<FeatureSource::Options> _featureOptions;
         osg::ref_ptr<StyleSheet>       _styles;
         optional<Geometry::Type>       _geomTypeOverride;
         //osg::ref_ptr<FeatureSource>    _featureSource;

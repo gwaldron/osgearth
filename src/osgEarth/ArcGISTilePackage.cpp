@@ -22,7 +22,7 @@
 #include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::ArcGISTilePackage;
+using namespace osgEarth::ArcGIS;
 
 #undef LC
 #define LC "[ArcGISTilePackage] "
@@ -32,7 +32,7 @@ using namespace osgEarth::ArcGISTilePackage;
 #define INDEX_HEADER_SIZE 16
 #define INDEX_SIZE 5
 
-namespace osgEarth { namespace ArcGISTilePackage
+namespace osgEarth { namespace ArcGIS
 {
     unsigned int computeOffset(const std::vector<char>& buffer)
     {
@@ -79,7 +79,6 @@ namespace osgEarth { namespace ArcGISTilePackage
     }
 
 } }
-
 
 BundleReader::BundleReader(const std::string& bundleFile, unsigned int bundleSize) :
     _bundleFile(bundleFile),
@@ -164,15 +163,15 @@ osg::Image* BundleReader::readImage(unsigned int index)
 //........................................................................
 
 Config
-ArcGISTilePackageImageLayerOptions::getConfig() const
+ArcGISTilePackageImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     conf.set("url", _url);
     return conf;
 }
 
 void
-ArcGISTilePackageImageLayerOptions::fromConfig(const Config& conf)
+ArcGISTilePackageImageLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("url", _url);
 }
@@ -180,6 +179,8 @@ ArcGISTilePackageImageLayerOptions::fromConfig(const Config& conf)
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(arcgistilepackageimage, ArcGISTilePackageImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(ArcGISTilePackageImageLayer, URI, URL, url);
 
 void
 ArcGISTilePackageImageLayer::init()

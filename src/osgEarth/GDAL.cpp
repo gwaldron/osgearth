@@ -40,6 +40,7 @@
 #include <ogr_spatialref.h>
 
 using namespace osgEarth;
+using namespace osgEarth::GDAL;
 
 #undef LC
 #define LC "[GDAL] "
@@ -1629,6 +1630,19 @@ GDAL::GDALOptions::write(Config& conf) const
 
 REGISTER_OSGEARTH_LAYER(gdalimage, GDALImageLayer);
 
+OE_LAYER_PROPERTY_IMPL(GDALImageLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(GDALImageLayer, std::string, Connection, connection);
+OE_LAYER_PROPERTY_IMPL(GDALImageLayer, unsigned, SubDataSet, subDataSet);
+OE_LAYER_PROPERTY_IMPL(GDALImageLayer, ProfileOptions, WarpProfile, warpProfile);
+OE_LAYER_PROPERTY_IMPL(GDALImageLayer, RasterInterpolation, Interpolation, interpolation);
+
+void GDALImageLayer::setExternalDataset(GDAL::ExternalDataset* value) {
+    options().externalDataset() = value;
+}
+GDAL::ExternalDataset* GDALImageLayer::getExtenalDataset() const {
+    return options().externalDataset().get();
+}
+
 void
 GDALImageLayer::init()
 {
@@ -1696,6 +1710,19 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 //......................................................................
 
 REGISTER_OSGEARTH_LAYER(gdalelevation, GDALElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, std::string, Connection, connection);
+OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, unsigned, SubDataSet, subDataSet);
+OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, ProfileOptions, WarpProfile, warpProfile);
+OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, RasterInterpolation, Interpolation, interpolation);
+
+void GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value) {
+    options().externalDataset() = value;
+}
+GDAL::ExternalDataset* GDALElevationLayer::getExtenalDataset() const {
+    return options().externalDataset().get();
+}
 
 void
 GDALElevationLayer::init()

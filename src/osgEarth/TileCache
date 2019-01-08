@@ -61,24 +61,12 @@ namespace osgEarth { namespace TileCache
     {
     public:
         META_LayerOptions(osgEarth, TileCacheLayerOptions, BASE);
-        
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-
-        optional<std::string>& layer() { return _layer; }
-        const optional<std::string>& layer() const { return _layer; }
-
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }
-
-    public:
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, layer);
+        OE_OPTION(std::string, format);
         virtual inline Config getConfig() const;
-
     private:
         inline void fromConfig(const Config& conf);
-        optional<URI> _url;
-        optional<std::string> _layer;
-        optional<std::string> _format;
     };
 } }
 
@@ -87,35 +75,28 @@ namespace osgEarth { namespace TileCache
 namespace osgEarth
 {
     /**
-     * Serialization options for a TMS image layer.
-     */
-    typedef TileCache::TileCacheLayerOptions<ImageLayerOptions> TileCacheImageLayerOptions;
-
-    /**
      * Image layer connected to a TMS (Tile Map Service) facility
      */
     class OSGEARTH_EXPORT TileCacheImageLayer : public ImageLayer
     {
+    public: // serialization
+        typedef TileCache::TileCacheLayerOptions<ImageLayer::Options> Options;
+
     public:
-        META_Layer(
-            osgEarth, 
-            TileCacheImageLayer,
-            TileCacheImageLayerOptions,
-            ImageLayer,
-            TileCacheImage);
+        META_Layer(osgEarth, TileCacheImageLayer, Options, ImageLayer, TileCacheImage);
 
     public:
         //! Base URL of TileCache endpoint
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Data format to request from the service
-        void setLayer(const std::string& value) { options().layer() = value; }
-        const std::string& getLayer() const { return options().layer().get(); }
+        void setLayer(const std::string& value);
+        const std::string& getLayer() const;
 
         //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
 
     public: // Layer
         
@@ -138,37 +119,30 @@ namespace osgEarth
     private:
         TileCache::Driver _driver;
     };
-    
 
-    /**
-     * Serialization options for a TMS elevation layer.
-     */
-    typedef TileCache::TileCacheLayerOptions<ElevationLayerOptions> TileCacheElevationLayerOptions;
 
     /**
      * Elevation layer connected to a TMS (Tile Map Service) facility
      */
     class OSGEARTH_EXPORT TileCacheElevationLayer : public ElevationLayer
     {
+    public: // serialization
+        typedef TileCache::TileCacheLayerOptions<ElevationLayer::Options> Options;
+
     public:
-        META_Layer(
-            osgEarth, 
-            TileCacheElevationLayer, 
-            TileCacheElevationLayerOptions, 
-            ElevationLayer, 
-            TileCacheElevation);
+        META_Layer(osgEarth, TileCacheElevationLayer, Options, ElevationLayer, TileCacheElevation);
         
         //! Base URL of TileCache endpoint
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Data format to request from the service
-        void setLayer(const std::string& value) { options().layer() = value; }
-        const std::string& getLayer() const { return options().layer().get(); }
+        void setLayer(const std::string& value);
+        const std::string& getLayer() const;
 
         //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
 
     public: // Layer
         
@@ -193,8 +167,8 @@ namespace osgEarth
     };
 } // namespace osgEarth
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheImageLayerOptions);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheElevationLayerOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheElevationLayer::Options);
 
 // template inlines ......................................................
 
@@ -203,18 +177,18 @@ namespace osgEarth
     template<typename BASE>
     void TileCache::TileCacheLayerOptions<BASE>::fromConfig(const Config& conf)
     {
-        conf.get("url", _url);
-        conf.get("layer", _layer);
-        conf.get("format", _format);
+        conf.get("url", url());
+        conf.get("layer", layer());
+        conf.get("format", format());
     }
 
     template<typename BASE>
     Config TileCache::TileCacheLayerOptions<BASE>::getConfig() const
     {
         osgEarth::Config conf = BASE::getConfig();
-        conf.set("url", _url);
-        conf.set("layer", _layer);
-        conf.set("format", _format);
+        conf.set("url", url());
+        conf.set("layer", layer());
+        conf.set("format", format());
         return conf;
     }
 }

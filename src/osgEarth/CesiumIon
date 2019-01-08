@@ -58,69 +58,45 @@ namespace osgEarth { namespace CesiumIon
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT CesiumIonImageLayerOptions : public ImageLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, CesiumIonImageLayerOptions, ImageLayerOptions);
-        
-        optional<URI>& server() { return _server; }
-        const optional<URI>& server() const { return _server; }
-
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }
-
-        optional<std::string>& assetId() { return _assetId; }
-        const optional<std::string>& assetId() const { return _assetId; }
-
-        optional<std::string>& token() { return _token; }
-        const optional<std::string>& token() const { return _token; }
-
-    public:
-        static Config getMetadata();
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        optional<URI>         _server;
-        optional<std::string> _format;
-        optional<std::string> _assetId;
-        optional<std::string> _token;
-    };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CesiumIonImageLayerOptions);
-
-
-namespace osgEarth
-{
     /**
      * Image layer connectin to a Cesium ION server.
      */
     class OSGEARTH_EXPORT CesiumIonImageLayer : public ImageLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(URI, server);
+            OE_OPTION(std::string, format);
+            OE_OPTION(std::string, assetId);
+            OE_OPTION(std::string, token);
+            static Config getMetadata();
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(
-            osgEarth, 
-            CesiumIonImageLayer,
-            CesiumIonImageLayerOptions,
-            ImageLayer,
-            xyzimage);
+        META_Layer(osgEarth, CesiumIonImageLayer, Options, ImageLayer, XYZImage);
 
     public:
         //! Base URL for requests
-        void setServer(const URI& value) { options().server() = value; }
-        const URI& getServer() const { return options().server().get(); }
+        void setServer(const URI& value);
+        const URI& getServer() const;
 
         //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
 
         //! Asset identifier
-        void setAssetId(const std::string& value) { options().assetId() = value; }
-        const std::string& getAssetId() const { return options().assetId().get(); }
+        void setAssetId(const std::string& value);
+        const std::string& getAssetId() const;
 
         //! Auth token
-        void setToken(const std::string& value) { options().token() = value; }
-        const std::string& getToken() const { return options().token().get(); }
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
 
     public: // Layer
         
@@ -145,5 +121,7 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CesiumIonImageLayer::Options);
 
 #endif // OSGEARTH_CESIUMION_H

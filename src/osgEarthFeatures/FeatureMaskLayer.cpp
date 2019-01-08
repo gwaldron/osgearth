@@ -31,15 +31,15 @@ REGISTER_OSGEARTH_LAYER(featuremask, FeatureMaskLayer);
 //........................................................................
 
 void
-FeatureMaskLayerOptions::fromConfig(const Config& conf)
+FeatureMaskLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("feature_source", _featureSource);
 }
 
 Config
-FeatureMaskLayerOptions::getConfig() const
+FeatureMaskLayer::Options::getConfig() const
 {
-    Config conf = MaskLayerOptions::getConfig();
+    Config conf = MaskLayer::Options::getConfig();
     conf.set("feature_source", _featureSource);
     return conf;
 }

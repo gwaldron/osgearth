@@ -34,8 +34,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-REGISTER_OSGEARTH_LAYER(OGRFeatures, OGRFeatureSource);
-
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
 namespace osgEarth { namespace Features
@@ -374,15 +372,15 @@ OGRFeatureCursor::readChunk()
 //........................................................................
 
 Config
-OGRFeatureSourceOptions::getConfig() const
+OGRFeatureSource::Options::getConfig() const
 {
-    Config conf = FeatureSourceOptions::getConfig();
+    Config conf = FeatureSource::Options::getConfig();
     conf.set("url", _url);
     conf.set("connection", _connection);
     conf.set("ogr_driver", _ogrDriver);
     conf.set("build_spatial_index", _buildSpatialIndex);
     conf.set("force_rebuild_spatial_index", _forceRebuildSpatialIndex);
-    conf.set("geometry", _geometryConf);
+    conf.set("geometry", _geometryConfig);
     conf.set("geometry_url", _geometryUrl);
     conf.set("layer", _layer);
     conf.set("query", _query);
@@ -390,14 +388,14 @@ OGRFeatureSourceOptions::getConfig() const
 }
 
 void
-OGRFeatureSourceOptions::fromConfig(const Config& conf)
+OGRFeatureSource::Options::fromConfig(const Config& conf)
 {
     conf.get("url", _url);
     conf.get("connection", _connection);
     conf.get("ogr_driver", _ogrDriver);
     conf.get("build_spatial_index", _buildSpatialIndex);
     conf.get("force_rebuild_spatial_index", _forceRebuildSpatialIndex);
-    conf.get("geometry", _geometryConf);
+    conf.get("geometry", _geometryConfig);
     conf.get("geometry_url", _geometryUrl);
     conf.get("layer", _layer);
     conf.get("query", _query);
@@ -405,6 +403,15 @@ OGRFeatureSourceOptions::fromConfig(const Config& conf)
 
 //........................................................................
 
+REGISTER_OSGEARTH_LAYER(OGRFeatures, OGRFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, std::string, Connection, connection);
+OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, bool, BuildSpatialIndex, buildSpatialIndex);
+OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, std::string, OGRDriver, ogrDriver);
+OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, URI, GeometryURL, geometryUrl);
+OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, std::string, Layer, layer);
+OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, Query, Query, query);
 
 void
 OGRFeatureSource::init()
@@ -889,9 +896,9 @@ OGRFeatureSource::parseGeometry(const Config& geomConf)
 
 // read the WKT geometry from a URL, then parse into a Geometry.
 Symbology::Geometry*
-OGRFeatureSource::parseGeometryUrl(const std::string& geomUrl, const osgDB::Options* dbOptions)
+OGRFeatureSource::parseGeometryUrl(const URI& geomUrl, const osgDB::Options* dbOptions)
 {
-    ReadResult r = URI(geomUrl).readString(dbOptions);
+    ReadResult r = geomUrl.readString(dbOptions);
     if (r.succeeded())
     {
         Config conf("geometry", r.getString());

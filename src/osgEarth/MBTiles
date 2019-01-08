@@ -84,37 +84,13 @@ namespace osgEarth { namespace MBTiles
     {
     public:
         META_LayerOptions(osgEarth, MBTilesLayerOptions, BASE);  
-
-        //! Location of the MBTiles database
-        optional<URI>& url() { return _filename; }
-        const optional<URI>& url() const { return _filename; }
-
-        //! Format of the imagery in the MBTiles file (jpeg, png, etc)
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }
-
-        //! Whether to compress the data. This isn't necessary for formats that
-        //! are already compressed, like JPEG
-        optional<bool>& compress() { return _compress; }
-        const optional<bool>& compress() const { return _compress; }
-
-        //! Whether or not to automatically compute the valid levels of the MBTiles file.
-        //! By default this is true and will scan the table to determine the min/max.
-        //! This can take time when first loading the file so if you know the levels of your file
-        //! up front you can set this to false and just use the min_level max_level settings
-        //! of the tile source.
-        optional<bool>& computeLevels() { return _computeLevels; }
-        const optional<bool>& computeLevels() const { return _computeLevels; }
-
-    public:
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, format);
+        OE_OPTION(bool, compress);
+        OE_OPTION(bool, computeLevels);
         virtual inline Config getConfig() const;
-
     private:
         inline void fromConfig(const Config& conf);
-        optional<URI>         _filename;        
-        optional<std::string> _format;
-        optional<bool>        _computeLevels;
-        optional<bool>        _compress;
     };
 } }
 
@@ -123,44 +99,37 @@ namespace osgEarth { namespace MBTiles
 namespace osgEarth
 {
     /**
-     * Serialization options for a TMS image layer.
-     */
-    typedef MBTiles::MBTilesLayerOptions<ImageLayerOptions> MBTilesImageLayerOptions;
-
-    /**
      * Image layer connected to a TMS (Tile Map Service) facility
      */
     class OSGEARTH_EXPORT MBTilesImageLayer : public ImageLayer
     {
+    public: // serialization
+        typedef MBTiles::MBTilesLayerOptions<ImageLayer::Options> Options;
+
     public:
-        META_Layer(
-            osgEarth, 
-            MBTilesImageLayer,
-            MBTilesImageLayerOptions,
-            ImageLayer,
-            MBTilesImage);
+        META_Layer(osgEarth, MBTilesImageLayer, Options, ImageLayer, MBTilesImage);
 
     public:
         //! Base URL of TileCache endpoint
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
         
         //! Whether to compress the data. This isn't necessary for formats that
         //! are already compressed, like JPEG
-        void setCompress(bool value) { options().compress() = value; }
-        bool getCompress() const { return options().compress().get(); }
+        void setCompress(const bool& value);
+        const bool& getCompress() const;
         
         //! Whether or not to automatically compute the valid levels of the MBTiles file.
         //! By default this is true and will scan the table to determine the min/max.
         //! This can take time when first loading the file so if you know the levels of your file
         //! up front you can set this to false and just use the min_level max_level settings
         //! of the tile source.
-        void setComputeLevels(bool value) { options().computeLevels() = value; }
-        bool getComputeLevels() const { return options().computeLevels().get(); }
+        void setComputeLevels(const bool& value);
+        const bool& getComputeLevels() const;
 
     public: // Layer
         
@@ -199,46 +168,38 @@ namespace osgEarth
         bool createTables();
         void computeLevels();
     };
-    
-
-    /**
-     * Serialization options for a TMS elevation layer.
-     */
-    typedef MBTiles::MBTilesLayerOptions<ElevationLayerOptions> MBTilesElevationLayerOptions;
 
     /**
      * Elevation layer connected to a TMS (Tile Map Service) facility
      */
     class OSGEARTH_EXPORT MBTilesElevationLayer : public ElevationLayer
     {
+    public: // serialization
+        typedef MBTiles::MBTilesLayerOptions<ElevationLayer::Options> Options;
+
     public:
-        META_Layer(
-            osgEarth, 
-            MBTilesElevationLayer, 
-            MBTilesElevationLayerOptions, 
-            ElevationLayer, 
-            MBTilesElevation);
+        META_Layer(osgEarth, MBTilesElevationLayer, Options, ElevationLayer, MBTilesElevation);
 
         //! Base URL of TileCache endpoint
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
         
         //! Whether to compress the data. This isn't necessary for formats that
         //! are already compressed, like JPEG
-        void setCompress(bool value) { options().compress() = value; }
-        bool getCompress() const { return options().compress().get(); }
+        void setCompress(const bool& value);
+        const bool& getCompress() const;
         
         //! Whether or not to automatically compute the valid levels of the MBTiles file.
         //! By default this is true and will scan the table to determine the min/max.
         //! This can take time when first loading the file so if you know the levels of your file
         //! up front you can set this to false and just use the min_level max_level settings
         //! of the tile source.
-        void setComputeLevels(bool value) { options().computeLevels() = value; }
-        bool getComputeLevels() const { return options().computeLevels().get(); }
+        void setComputeLevels(const bool& value);
+        const bool& getComputeLevels() const;
 
     public: // Layer
         
@@ -263,8 +224,8 @@ namespace osgEarth
     };
 } // namespace osgEarth
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesImageLayerOptions);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesElevationLayerOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesElevationLayer::Options);
 
 // template inlines ......................................................
 
@@ -273,8 +234,8 @@ namespace osgEarth
     template<typename BASE>
     void MBTiles::MBTilesLayerOptions<BASE>::fromConfig(const Config& conf)
     {
-        conf.get("filename", _filename);
-        conf.get("url", _filename); // compat for consistency with other drivers
+        conf.get("filename", _url);
+        conf.get("url", _url); // compat for consistency with other drivers
         conf.get("format", _format);
         conf.get("compute_levels", _computeLevels);
         conf.get("compress", _compress);
@@ -284,7 +245,7 @@ namespace osgEarth
     Config MBTiles::MBTilesLayerOptions<BASE>::getConfig() const
     {
         osgEarth::Config conf = BASE::getConfig();
-        conf.set("filename", _filename);
+        conf.set("filename", _url);
         conf.set("format", _format);
         conf.set("compute_levels", _computeLevels);
         conf.set("compress", _compress);

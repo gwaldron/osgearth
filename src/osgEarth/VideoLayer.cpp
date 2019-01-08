@@ -22,25 +22,27 @@
 
 using namespace osgEarth;
 
-REGISTER_OSGEARTH_LAYER(video, VideoLayer);
-
 //.......................................................................
 
 Config
-VideoLayerOptions::getConfig() const
+VideoLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     conf.set("url", _url);
     return conf;
 }
 
 void
-VideoLayerOptions::fromConfig( const Config& conf )
+VideoLayer::Options::fromConfig( const Config& conf )
 {
     conf.get("url", _url );
 }
 
 //-------------------------------------------------------------
+
+REGISTER_OSGEARTH_LAYER(video, VideoLayer);
+
+OE_LAYER_PROPERTY_IMPL(VideoLayer, URI, URL, url);
 
 void
 VideoLayer::init()

@@ -27,33 +27,33 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 Config
-VisibleLayerOptions::getConfig() const
+VisibleLayer::Options::getConfig() const
 {
-    Config conf = LayerOptions::getConfig();
-    conf.set( "visible", _visible);
-    conf.set( "opacity", _opacity);
-    conf.set( "min_range", _minRange );
-    conf.set( "max_range", _maxRange );
-    conf.set( "attenuation_range", _attenuationRange );
+    Config conf = Layer::Options::getConfig();
+    conf.set( "visible", visible() );
+    conf.set( "opacity", opacity() );
+    conf.set( "min_range", minVisibleRange() );
+    conf.set( "max_range", maxVisibleRange() );
+    conf.set( "attenuation_range", attenuationRange() );
     conf.set( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.set( "blend", "modulate", _blend, BLEND_MODULATE );
     return conf;
 }
 
 void
-VisibleLayerOptions::fromConfig(const Config& conf)
+VisibleLayer::Options::fromConfig(const Config& conf)
 {
     _visible.init( true );
     _opacity.init( 1.0f );
-    _minRange.init( 0.0 );
-    _maxRange.init( FLT_MAX );
+    _minVisibleRange.init( 0.0 );
+    _maxVisibleRange.init( FLT_MAX );
     _attenuationRange.init(0.0f);
     _blend.init( BLEND_INTERPOLATE );
 
     conf.get( "visible", _visible );
     conf.get( "opacity", _opacity);
-    conf.get( "min_range", _minRange );
-    conf.get( "max_range", _maxRange );
+    conf.get( "min_range", _minVisibleRange );
+    conf.get( "max_range", _maxVisibleRange );
     conf.get( "attenuation_range", _attenuationRange );
     conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
@@ -197,7 +197,7 @@ VisibleLayer::initializeBlending()
 
         vp->setFunction("oe_VisibleLayer_initOpacity", opacityVS, ShaderComp::LOCATION_VERTEX_MODEL);
 
-        if (options().blend() == VisibleLayerOptions::BLEND_MODULATE)
+        if (options().blend() == BLEND_MODULATE)
         {
             vp->setFunction("oe_VisibleLayer_setOpacity", opacityModulateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
 
@@ -209,7 +209,7 @@ VisibleLayer::initializeBlending()
         {
             // In this case the fragment shader of the layer is responsible for
             // incorporating the final value of oe_layer_opacity.
-            if (options().blend().isSetTo(options().BLEND_INTERPOLATE))
+            if (options().blend().isSetTo(BLEND_INTERPOLATE))
             {
                 stateSet->setAttributeAndModes(
                     new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
@@ -323,7 +323,7 @@ VisibleLayer::fireCallback(VisibleLayerCallback::MethodPtr method)
 void
 VisibleLayer::installDefaultOpacityShader()
 {
-    if (options().blend() == options().BLEND_INTERPOLATE)
+    if (options().blend() == BLEND_INTERPOLATE)
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
         vp->setName("VisibleLayer");

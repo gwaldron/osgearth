@@ -125,68 +125,63 @@ namespace osgEarth { namespace Features { namespace WFS
         virtual ~CapabilitiesReader() { }
     };
 
+    // Internal Serialization data for a WFSFeatureSource
+    class OSGEARTHFEATURES_EXPORT WFSFeatureSourceOptions : public FeatureSource::Options
+    {
+    public:
+        META_LayerOptions(osgEarth, WFSFeatureSourceOptions, FeatureSource::Options);
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, typeName);
+        OE_OPTION(unsigned, maxFeatures);
+        OE_OPTION(std::string, outputFormat);
+        OE_OPTION(bool, disableTiling);
+        OE_OPTION(double, buffer);        
+        virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config& conf);
+    };
+
 }}} // osgEarth::Features::WFS
 
 
 namespace osgEarth { namespace Features
 {
     /**
-     * Serialization data for a WFSFeatureSource
-     */
-    class OSGEARTHFEATURES_EXPORT WFSFeatureSourceOptions : public FeatureSourceOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, WFSFeatureSourceOptions, FeatureSourceOptions);
-
-        //! Base URL of the WFS service (not including any WFS parameters)
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-
-        //! WFS typename parameter (see WFS spec)
-        optional<std::string>& typeName() { return _typename; }
-        const optional<std::string>& typeName() const { return _typename; }
-
-        //! Cap on the number of features that the WFS service will return on a single request
-        optional<unsigned int>& maxFeatures() { return _maxFeatures; }
-        const optional<unsigned int>& maxFeatures() const { return _maxFeatures;}
-
-        //! Response format to request (geojson, gml)
-        optional<std::string>& outputFormat() { return _outputFormat; }
-        const optional<std::string>& outputFormat() const { return _outputFormat; }
-
-        //! Explicitly disable a "TFS" tiled feature source queries
-        optional<bool>& disableTiling() { return _disableTiling; }
-        const optional<bool>& disableTiling() const { return _disableTiling;}
-
-        //! The number of map units to buffer bounding box requests with 
-        //! to ensure that enough data is returned.  This is useful when rendering buffered lines
-        //! using the AGGLite driver
-        optional<double>& buffer() { return _buffer;}
-        const optional<double>& buffer() const { return _buffer;}
-        
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        optional<URI>         _url;        
-        optional<std::string> _typename;
-        optional<Config>      _geometryProfileConf;
-        optional<std::string> _outputFormat;
-        optional<unsigned>    _maxFeatures;            
-        optional<bool>        _disableTiling;            
-        optional<double>      _buffer;     
-    };
-
-    /**
      * Feature Layer that accesses features from an OGC WFS endpoint
      */
     class OSGEARTHFEATURES_EXPORT WFSFeatureSource : public FeatureSource
-    {   
-    public:
-        META_Layer(osgEarth, WFSFeatureSource, WFSFeatureSourceOptions, FeatureSource, wfsfeatures);
+    {
+    public: // serialization
+        typedef WFS::WFSFeatureSourceOptions Options;
 
     public:
+        META_Layer(osgEarth, WFSFeatureSource, Options, FeatureSource, wfsfeatures);
+        
+        //! Base URL of the WFS service (not including any WFS parameters)
+        void setURL(const URI& value);
+        const URI& getURL() const;
+        
+        //! WFS typename parameter (see WFS spec)
+        void setTypeName(const std::string& value);
+        const std::string& getTypeName() const;
+        
+        //! Cap on the number of features that the WFS service will return on a single request
+        void setMaxFeatures(const unsigned& value);
+        const unsigned& getMaxFeatures() const;
+        
+        //! Response format to request (geojson, gml)
+        void setOutputFormat(const std::string& value);
+        const std::string& getOutputFormat() const;
+        
+        //! Explicitly disable a "TFS" tiled feature source queries
+        void setDisableTiling(const bool& value);
+        const bool& getDisableTiling() const;
+        
+        //! The number of map units to buffer bounding box requests with 
+        //! to ensure that enough data is returned.  This is useful when
+        //! rendering buffered lines using the FeatureImageLayer
+        void setBuffer(const double& value);
+        const double& getBuffer() const;
 
     public: // Layer
 
@@ -220,6 +215,6 @@ namespace osgEarth { namespace Features
 
 } } // namespace osgEarth::Features
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::WFSFeatureSourceOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::WFSFeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_WFS_FEATURESOURCE_LAYER

@@ -51,10 +51,14 @@ namespace
         return rw;
     }
 }
-
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(mbtilesimage, MBTilesImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, bool, Compress, compress);
+OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, bool, ComputeLevels, computeLevels);
 
 void
 MBTilesImageLayer::init()
@@ -555,6 +559,11 @@ MBTilesImageLayer::createTables()
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(mbtileselevation, MBTilesElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, Compress, compress);
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, ComputeLevels, computeLevels);
 
 void
 MBTilesElevationLayer::init()

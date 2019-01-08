@@ -31,38 +31,24 @@
 
 namespace osgEarth { namespace Splat
 {
-    using namespace osgEarth;
-    
-    //! Options to configure a splat layer.
-    class OSGEARTHSPLAT_EXPORT SplatLayerOptions : public VisibleLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, SplatLayerOptions, VisibleLayerOptions);
-
-        //! Required layer containing land cover data
-        optional<std::string>& landCoverLayer() { return _landCoverLayerName; }
-        const optional<std::string>& landCoverLayer() const { return _landCoverLayerName; }
-
-        //! Splatting zones (one required, more optional)
-        std::vector<ZoneOptions>& zones() { return _zones; }
-        const std::vector<ZoneOptions>& zones() const { return _zones; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        optional<std::string> _landCoverLayerName;
-        std::vector<ZoneOptions> _zones;
-    };
-
-
     //! Layer that renders geotypical textures on the terrain based on
     //! classification data ("texture splatting").
     class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions, VisibleLayer, splatimage);
+        class OSGEARTHSPLAT_EXPORT Options : public VisibleLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(std::string, landCoverLayer);
+            OE_OPTION_VECTOR(ZoneOptions, zones);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarthSplat, SplatLayer, Options, VisibleLayer, SplatImage);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);
@@ -71,8 +57,8 @@ namespace osgEarth { namespace Splat
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
 
         //! Splatting zones
-        Zones& zones() { return _zones; }
-        const Zones& zones() const { return _zones; }
+        Zones& getZones() { return _zones; }
+        const Zones& getZones() const { return _zones; }
 
     protected:
 

@@ -41,34 +41,6 @@ namespace osgEarth { namespace Features
     /**
      * Serializable options to configure a FeatureModelLayer
      */
-    class OSGEARTHFEATURES_EXPORT FeatureModelLayerOptions : public VisibleLayerOptions,
-                                                             public FeatureModelOptions,
-                                                             public GeometryCompilerOptions
-    {
-    public:
-        // constructors
-        FeatureModelLayerOptions();
-        FeatureModelLayerOptions(const ConfigOptions& options);
-        
-        //! Name of the feature source layer
-        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
-        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
-
-        //! Embedded feature source
-        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
-        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
-
-    public: // LayerOptions
-        virtual Config getConfig() const;
-
-    protected: // LayerOptions
-        virtual void mergeConfig(const Config& conf);
-        
-    private:
-        void fromConfig(const Config& conf);
-        optional<std::string> _featureSourceLayer;
-        optional<FeatureSourceOptions> _featureSource;
-    };
 
 
     /**
@@ -76,14 +48,32 @@ namespace osgEarth { namespace Features
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
     {
+    public: // serialization
+        class OSGEARTHFEATURES_EXPORT Options : public VisibleLayer::Options,
+                                                public FeatureModelOptions,
+                                                public GeometryCompilerOptions
+        {
+        public:
+            // constructors
+            Options();
+            Options(const ConfigOptions& options);
+            OE_OPTION(std::string, featureSourceLayer);
+            OE_OPTION(FeatureSource::Options, featureSource);
+            virtual Config getConfig() const;
+        protected: // LayerOptions
+            virtual void mergeConfig(const Config& conf);        
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions, VisibleLayer, FeatureModel);
+        META_Layer(osgEarth, FeatureModelLayer, Options, VisibleLayer, FeatureModel);
 
         //! Options used to initialize this layer.
-        const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
+        //const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
 
         //! Sets the options to initilize the layer
-        void setFeatureModelLayerOptions(const FeatureModelLayerOptions& options);
+        //void setFeatureModelLayerOptions(const FeatureModelLayerOptions& options);
 
         //! The feature source from which to read geometry.
         void setFeatureSource(FeatureSource* layer);
@@ -97,7 +87,7 @@ namespace osgEarth { namespace Features
     public:
         class CreateFeatureNodeFactoryCallback : public osg::Referenced {
         public:
-            virtual FeatureNodeFactory* createFeatureNodeFactory(const FeatureModelLayerOptions&) =0;
+            virtual FeatureNodeFactory* createFeatureNodeFactory(const Options&) =0;
         };
 
         //! Callback that will create a new FeatureNodeFactory for this layer to use

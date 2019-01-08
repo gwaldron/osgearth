@@ -7,15 +7,18 @@ to extruded buildings.
 
 <map name="Boston Demo">
     
-    <xi:include href="readymap_imagery.xml"/>
+    <TMSImage name="Imagery">
+        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+    </TMSImage>
+    
     <xi:include href="readymap_elevation.xml"/>
       
-    <FeatureModel name="buildings" max_range="20000">
+    <FeatureModel name="Buildings" max_range="20000">
          
-        <features name="buildings" driver="ogr">
+        <OGRFeatures name="buildings">
             <url>../data/boston_buildings_utm19.shp</url>
 			<resample min_length="2.5"/>
-        </features>
+        </OGRFeatures>
         
         <!--
          ! The "layout" element activates tiling and paging of the feature set. If you
@@ -63,7 +66,7 @@ to extruded buildings.
     </FeatureModel>
     
     
-    <FeatureModel name="Streets" feature_source="streets-data">        
+    <FeatureModel name="Streets" features="streets-data">        
         <layout crop_features="true" tile_size="1000">
             <level max_range="5000"/>
         </layout>        
@@ -81,7 +84,7 @@ to extruded buildings.
     </FeatureModel>
 	
 	
-	<FeatureModel name="streetlamps" feature_source="streets-data">
+	<FeatureModel name="streetlamps" features="streets-data">
         <layout tile_size="1000" crop_features="true">
             <level max_range="1000" style="default"/>
         </layout>
@@ -103,9 +106,9 @@ to extruded buildings.
     
     
     <FeatureModel name="Parks" enabled="true">
-        <features name="parks" driver="ogr">
+        <OGRFeatures name="parks">
             <url>../data/boston-parks.shp</url>
-        </features>        
+        </OGRFeatures>        
         
         <layout tile_size="1000">
             <level max_range="2000"/>
@@ -137,11 +140,11 @@ to extruded buildings.
     </viewpoints>
   
     
-    <feature_source name="streets-data" driver="ogr">
+    <OGRFeatures name="streets-data">
         <url>../data/boston-scl-utm19n-meters.shp</url>
         <filters>
             <resample min_length="25" max_length="25"/>
         </filters>
-    </feature_source>
+    </OGRFeatures>
     
 </map>

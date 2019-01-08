@@ -25,37 +25,28 @@
 #include <osg/Texture2D>
 
 namespace osgEarth
-{  
-    /**
-     * Initialization and serialization options for a video layer
-     */
-    class OSGEARTH_EXPORT VideoLayerOptions : public ImageLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, VideoLayerOptions, ImageLayerOptions);
-
-    public:
-        //! Location of video source
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-
-    public:
-        virtual Config getConfig() const;
-        
-    private:
-        void fromConfig( const Config& conf );
-
-        optional<URI> _url;
-    };
-
-
+{
     /**
      * A layer that displays a video texture on the earth.
      */
     class OSGEARTH_EXPORT VideoLayer : public osgEarth::ImageLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(URI, url);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
     public:
-        META_Layer(osgEarth, VideoLayer, VideoLayerOptions, ImageLayer, Video);
+        META_Layer(osgEarth, VideoLayer, Options, ImageLayer, Video);
+
+        //! Location of the source.
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Access the texture 
         osg::Texture2D* getTexture() const { return _texture.get(); }
@@ -73,5 +64,7 @@ namespace osgEarth
         osg::ref_ptr< osg::Texture2D > _texture;
     };
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::VideoLayer::Options);
 
 #endif // OSGEARTH_VIDEO_LAYER_H

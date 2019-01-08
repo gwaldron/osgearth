@@ -29,17 +29,15 @@ using namespace OpenThreads;
 //...................................................................
 
 Config
-FeatureSourceOptions::getConfig() const
+FeatureSource::Options::getConfig() const
 {
-    Config conf = LayerOptions::getConfig();
+    Config conf = Layer::Options::getConfig();
 
-    conf.set( "open_write",   _openWrite );
-    conf.set( "name",         _name );
-    conf.set( "profile",      _profile );
-    conf.set( "cache_policy", _cachePolicy );
-    conf.set( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.set( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.set( "fid_attribute", _fidAttribute );
+    conf.set( "open_write",   openWrite() );
+    conf.set( "profile",      profile() );
+    conf.set( "geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE );
+    conf.set( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
+    conf.set( "fid_attribute", fidAttribute() );
 
     if ( !_filterOptions.empty() )
     {
@@ -55,15 +53,13 @@ FeatureSourceOptions::getConfig() const
 }
 
 void
-FeatureSourceOptions::fromConfig(const Config& conf)
+FeatureSource::Options::fromConfig(const Config& conf)
 {
-    conf.get( "open_write",   _openWrite );
-    conf.get( "name",         _name );
-    conf.get( "profile",      _profile );
-    conf.get( "cache_policy", _cachePolicy );
-    conf.get( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.get( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.get( "fid_attribute", _fidAttribute );
+    conf.get( "open_write",   openWrite() );
+    conf.get( "profile",      profile() );
+    conf.get( "geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE );
+    conf.get( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
+    conf.get( "fid_attribute", fidAttribute() );
 
     // For backwards-compatibility (before adding the "filters" block)
     // TODO: Remove at some point in the distant future.
@@ -95,6 +91,10 @@ FeatureSource::create(const ConfigOptions& options)
 }
 
 //...................................................................
+
+OE_LAYER_PROPERTY_IMPL(FeatureSource, bool, OpenWrite, openWrite);
+OE_LAYER_PROPERTY_IMPL(FeatureSource, GeoInterpolation, GeoInterpolation, geoInterp);
+OE_LAYER_PROPERTY_IMPL(FeatureSource, std::string, FIDAttribute, fidAttribute);
 
 void
 FeatureSource::init()

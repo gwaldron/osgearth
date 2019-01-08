@@ -47,10 +47,9 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Features::TFS;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
-
-REGISTER_OSGEARTH_LAYER(TFSFeatures, TFSFeatureSource);
 
 //........................................................................
 
@@ -158,7 +157,7 @@ TFS::ReaderWriter::write(const TFS::Layer& layer, std::ostream& output)
 Config
 TFSFeatureSourceOptions::getConfig() const
 {
-    Config conf = FeatureSourceOptions::getConfig();
+    Config conf = FeatureSource::Options::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
@@ -180,6 +179,14 @@ TFSFeatureSourceOptions::fromConfig(const Config& conf)
 }
 
 //........................................................................
+
+REGISTER_OSGEARTH_LAYER(TFSFeatures, TFSFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, bool, InvertY, invertY);
+OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, int, MinLevel, minLevel);
+OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, int, MaxLevel, maxLevel);
 
 void
 TFSFeatureSource::init()

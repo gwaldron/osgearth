@@ -24,8 +24,8 @@
 #define LC "[ImageToFeatureSource] " << getName() << ": "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+using namespace osgEarth::Features;
 
 
 namespace osgEarth {
@@ -38,26 +38,29 @@ namespace osgEarth {
 //.........................................................
 
 Config
-ImageToFeatureSourceOptions::getConfig() const {
-    Config conf = FeatureSourceOptions::getConfig();
-    conf.set("image", _imageLayerName);
-    conf.set("level", _level);
-    conf.set("attribute", _attribute);
+ImageToFeatureSource::Options::getConfig() const {
+    Config conf = FeatureSource::Options::getConfig();
+    conf.set("image", imageLayer());
+    conf.set("level", level());
+    conf.set("attribute", attribute());
     return conf;
 }
 
 void
-ImageToFeatureSourceOptions::fromConfig(const Config& conf)
+ImageToFeatureSource::Options::fromConfig(const Config& conf)
 {
     level().init(0u);
     attribute().init("value");
 
-    conf.get("image", _imageLayerName);
-    conf.get("level", _level);
-    conf.get("attribute", _attribute);
+    conf.get("image", imageLayer());
+    conf.get("level", level());
+    conf.get("attribute", attribute());
 }
 
 //.........................................................
+
+OE_LAYER_PROPERTY_IMPL(ImageToFeatureSource, unsigned, Level, level);
+OE_LAYER_PROPERTY_IMPL(ImageToFeatureSource, std::string, Attribute, attribute);
 
 void
 ImageToFeatureSource::init()

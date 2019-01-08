@@ -29,9 +29,9 @@ using namespace OpenThreads;
 //------------------------------------------------------------------------
 
 Config
-TerrainLayerOptions::getConfig() const
+TerrainLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
+    Config conf = VisibleLayer::Options::getConfig();
 
     conf.set( "min_level", _minLevel );
     conf.set( "max_level", _maxLevel );
@@ -49,7 +49,7 @@ TerrainLayerOptions::getConfig() const
 }
 
 void
-TerrainLayerOptions::fromConfig(const Config& conf)
+TerrainLayer::Options::fromConfig(const Config& conf)
 {
     _minLevel.init( 0 );
     _maxLevel.init( 23 );
@@ -187,6 +187,13 @@ TerrainLayer::CacheBinMetadata::getConfig() const
 }
 
 //------------------------------------------------------------------------
+
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, unsigned, MinLevel, minLevel);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, double, MinResolution, minResolution);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, unsigned, MaxLevel, maxLevel);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, double, MaxResolution, maxResolution);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, unsigned, MaxDataLevel, maxDataLevel);
+
 
 TerrainLayer::~TerrainLayer()
 {
@@ -1118,10 +1125,22 @@ TerrainLayer::mayHaveData(const TileKey& key) const
     return key == getBestAvailableTileKey(key);
 }
 
+void
+TerrainLayer::setTileSize(const unsigned& value)
+{
+    options().tileSize() = value;
+}
+
 unsigned
 TerrainLayer::getTileSize() const
 {
     return getTileSource() ? getTileSource()->getPixelsPerTile() : options().tileSize().get();
+}
+
+void
+TerrainLayer::setNoDataValue(const float& value)
+{
+    options().noDataValue() = value;
 }
 
 float
@@ -1130,10 +1149,22 @@ TerrainLayer::getNoDataValue() const
     return getTileSource() ? getTileSource()->getNoDataValue() : options().noDataValue().get();
 }
 
+void
+TerrainLayer::setMinValidValue(const float& value)
+{
+    options().minValidValue() = value;
+}
+
 float
 TerrainLayer::getMinValidValue() const
 {
     return getTileSource() ? getTileSource()->getMinValidValue() : options().minValidValue().get();
+}
+
+void
+TerrainLayer::setMaxValidValue(const float& value)
+{
+    options().maxValidValue() = value;
 }
 
 float

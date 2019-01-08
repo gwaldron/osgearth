@@ -27,13 +27,13 @@ using namespace osgEarth;
 //........................................................................
 
 Config
-CompositeImageLayerOptions::getConfig() const
+CompositeImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     if (_layers.empty() == false)
     {
         Config layersConf("layers");
-        for( Layers::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
+        for( std::vector<ConfigOptions>::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
         {
             layersConf.add(i->getConfig());
         }
@@ -43,7 +43,7 @@ CompositeImageLayerOptions::getConfig() const
 }
 
 void
-CompositeImageLayerOptions::fromConfig(const Config& conf)
+CompositeImageLayer::Options::fromConfig(const Config& conf)
 {
     const ConfigSet& layers = conf.child("layers").children();
     for( ConfigSet::const_iterator i = layers.begin(); i != layers.end(); ++i )
@@ -106,7 +106,7 @@ CompositeImageLayer::init()
 
 const Status&
 CompositeImageLayer::open()
-{
+{    
     _open = true;
 
     osg::ref_ptr<const Profile> profile;
@@ -123,7 +123,7 @@ CompositeImageLayer::open()
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
     {
-        for(CompositeImageLayerOptions::Layers::const_iterator i = options().layers().begin();
+        for(std::vector<ConfigOptions>::const_iterator i = options().layers().begin();
             i != options().layers().end();
             ++i)
         {
@@ -372,13 +372,13 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
 //........................................................................
 
 Config
-CompositeElevationLayerOptions::getConfig() const
+CompositeElevationLayer::Options::getConfig() const
 {
-    Config conf = ElevationLayerOptions::getConfig();
+    Config conf = ElevationLayer::Options::getConfig();
     if (_layers.empty() == false)
     {
         Config layersConf("layers");
-        for( Layers::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
+        for( std::vector<ConfigOptions>::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
         {
             layersConf.add(i->getConfig());
         }
@@ -388,7 +388,7 @@ CompositeElevationLayerOptions::getConfig() const
 }
 
 void
-CompositeElevationLayerOptions::fromConfig(const Config& conf)
+CompositeElevationLayer::Options::fromConfig(const Config& conf)
 {
     const ConfigSet& layers = conf.child("layers").children();
     for( ConfigSet::const_iterator i = layers.begin(); i != layers.end(); ++i )
@@ -464,7 +464,7 @@ CompositeElevationLayer::open()
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
     {
-        for(CompositeElevationLayerOptions::Layers::const_iterator i = options().layers().begin();
+        for(std::vector<ConfigOptions>::const_iterator i = options().layers().begin();
             i != options().layers().end();
             ++i)
         {

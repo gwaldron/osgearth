@@ -31,38 +31,26 @@ namespace osgEarth
     class Map;
 
     /**
-     * Serialization options for a MaskLayer.
-     */
-    class OSGEARTH_EXPORT MaskLayerOptions : public LayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, MaskLayerOptions, LayerOptions);
-
-        /** Minimum of detail for which this layer should apply. */
-        optional<unsigned>& minLevel() { return _minLevel; }
-        const optional<unsigned>& minLevel() const { return _minLevel; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig( const Config& conf );
-        void setDefaults();
-
-        optional<MaskSourceOptions> _driver;
-        optional<unsigned>          _minLevel;
-    };
-
-
-    /**
      * A MaskLayer is a specialized layer used to mask out a part of the terrain.
      * Typically you would use this if you had a pre-built 3D terrain model for
      * an inset area.
      */
     class OSGEARTH_EXPORT MaskLayer : public Layer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public Layer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, Layer::Options);
+            OE_OPTION(unsigned, minLevel);
+            OE_OPTION(MaskSourceOptions, driver);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
     public:
-        META_Layer_Abstract(osgEarth, MaskLayer, MaskLayerOptions, Layer);
+        META_Layer_Abstract(osgEarth, MaskLayer, Options, Layer);
 
         //! Minimum terrain LOD at which masking should occur
         void setMinLevel(unsigned value) { options().minLevel() = value; }
@@ -86,6 +74,8 @@ namespace osgEarth
 
     typedef std::vector< osg::ref_ptr<MaskLayer> > MaskLayerVector;
 }
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MaskLayer::Options);
 
 #endif // OSGEARTH_MASK_LAYER_H
 

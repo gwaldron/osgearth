@@ -32,6 +32,17 @@ namespace osgEarth { namespace Features { namespace MVT
         const TileKey& key,
         FeatureList&   features);
 
+    // Internal serialization options
+    class OSGEARTHFEATURES_EXPORT MVTFeatureSourceOptions : public FeatureSource::Options
+    {
+    public:
+        META_LayerOptions(osgEarth, MVTFeatureSourceOptions, FeatureSource::Options);
+        OE_OPTION(URI, url);
+        virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config& conf);
+    };
+
 } } } // osgEarth::Features::MVT
 
 
@@ -42,35 +53,19 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
 
     /**
-     * Layer that provides features from a Mapnik Vector Tiles repository.
-     */
-    class OSGEARTHFEATURES_EXPORT MVTFeatureSourceOptions : public FeatureSourceOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, MVTFeatureSourceOptions, FeatureSourceOptions);
-
-        //! Location of the MVT resource
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-        
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        
-        optional<URI> _url;
-    };
-
-    /**
      * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
      */
     class OSGEARTHFEATURES_EXPORT MVTFeatureSource : public FeatureSource
     {   
-    public:
-        META_Layer(osgEarth, MVTFeatureSource, MVTFeatureSourceOptions, FeatureSource, mvtfeatures);
+    public: // serialization
+        typedef MVT::MVTFeatureSourceOptions Options;
 
     public:
+        META_Layer(osgEarth, MVTFeatureSource, Options, FeatureSource, MVTFeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
     public: // Layer
 
@@ -94,7 +89,6 @@ namespace osgEarth { namespace Features
         FeatureSchema _schema;
         osg::ref_ptr<osgDB::BaseCompressor> _compressor;
         void* _database;
-        //sqlite3* _database;
         unsigned _minLevel;
         unsigned _maxLevel;
 
@@ -103,6 +97,8 @@ namespace osgEarth { namespace Features
         bool getMetaData(const std::string& key, std::string& value);
     };
 } }
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::MVTFeatureSource::Options);
 
 #endif // OSGEARTH_HAVE_SQLITE3
 

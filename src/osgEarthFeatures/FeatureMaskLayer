@@ -29,32 +29,23 @@
 namespace osgEarth { namespace Features
 {
     /**
-     * Configuration options for a FeatureMaskLayer.
-     */
-    class OSGEARTHFEATURES_EXPORT FeatureMaskLayerOptions : public MaskLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, FeatureMaskLayerOptions, MaskLayerOptions);
-        
-        /** Name of the map layer containing the feature data */
-        optional<std::string>& featureSource() { return _featureSource; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig( const Config& conf );
-        optional<std::string> _featureSource;
-    };
-
-
-    /**
      * MaskLayer whose boundary geometry comes from a feature source.
      */
     class OSGEARTHFEATURES_EXPORT FeatureMaskLayer : public MaskLayer
     {
+    public: // serialization
+        class OSGEARTHFEATURES_EXPORT Options : public MaskLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, MaskLayer::Options);
+            OE_OPTION(std::string, featureSource);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
     public:
-        META_Layer(osgEarth, FeatureMaskLayer, FeatureMaskLayerOptions, MaskLayer, FeatureMask);
+        META_Layer(osgEarth, FeatureMaskLayer, Options, MaskLayer, FeatureMask);
 
         //! Source of the masking feature(s)
         void setFeatureSource(FeatureSource* features);
@@ -97,6 +88,8 @@ namespace osgEarth { namespace Features
     };
 
 } } // namespace osgEarth::Features
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureMaskLayer::Options);
 
 #endif // OSGEARTH_FEATURE_MASK_LAYER_H
 

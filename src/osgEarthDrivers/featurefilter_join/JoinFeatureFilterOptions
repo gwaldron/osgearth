@@ -37,8 +37,8 @@ namespace osgEarth { namespace Drivers
         }
 
         /** Features to load and use as boundary geometries */
-        optional<FeatureSourceOptions>& features() { return _features; }
-        const optional<FeatureSourceOptions>& features() const { return _features; }
+        optional<FeatureSource::Options>& features() { return _features; }
+        const optional<FeatureSource::Options>& features() const { return _features; }
 
     public:
         Config getConfig() const {
@@ -59,7 +59,7 @@ namespace osgEarth { namespace Drivers
             conf.get( "features", _features );
         }
 
-        optional<FeatureSourceOptions> _features;
+        optional<FeatureSource::Options> _features;
     };
 
 } } // namespace osgEarth::Drivers

@@ -32,40 +32,28 @@ namespace osgEarth { namespace Symbology {
     class Geometry;
 } }
 
+
 namespace osgEarth { namespace Util
 {
-    /**
-     * Serialization options for the Debug layer
-     */
-    class OSGEARTHUTIL_EXPORT DebugImageLayerOptions : public ImageLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, DebugImageLayerOptions, ImageLayerOptions);
-
-        optional<std::string>& colorCode() { return _colorCode; }
-        const optional<std::string>& colorCode() const { return _colorCode; }
-
-        optional<bool>& invertY() { return _invertY; }
-        const optional<bool>& invertY() const { return _invertY; }
-
-    public:
-        virtual Config getConfig() const;
-        static Config getMetadata();
-
-    private:
-        void fromConfig( const Config& conf );        
-        optional<std::string> _colorCode;
-        optional<bool> _invertY;
-    };
-
-
     /**
      * Image layer displaying TileKey information
      */
     class OSGEARTHUTIL_EXPORT DebugImageLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, DebugImageLayer, DebugImageLayerOptions, ImageLayer, DebugImage);        
+        class OSGEARTHUTIL_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(std::string, colorCode);
+            OE_OPTION(bool, invertY);
+            virtual Config getConfig() const;
+            static Config getMetadata();
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, DebugImageLayer, Options, ImageLayer, DebugImage);        
 
     public: // Layer
 
@@ -89,7 +77,7 @@ namespace osgEarth { namespace Util
     };
 
 } } // namespace osgEarth:Util
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::DebugImageLayer::Options);
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::DebugImageLayerOptions);
 
 #endif // OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H

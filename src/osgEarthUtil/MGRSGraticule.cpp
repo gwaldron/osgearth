@@ -39,6 +39,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Internal;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Annotation;
@@ -59,25 +60,25 @@ REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 //---------------------------------------------------------------------------
 
 Config
-MGRSGraticuleOptions::getConfig() const
+MGRSGraticule::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
-    conf.set("sqid_data", _sqidURI);
+    Config conf = VisibleLayer::Options::getConfig();
+    conf.set("sqid_data", sqidData() );
+    conf.set("use_default_styles", useDefaultStyles() );
     conf.set("styles", _styleSheet);
-    conf.set("use_default_styles", _useDefaultStyles);
     return conf;
 }
 
 void
-MGRSGraticuleOptions::fromConfig(const Config& conf)
+MGRSGraticule::Options::fromConfig(const Config& conf)
 {
-    _useDefaultStyles.init(true);
-    _sqidURI.init(URI("../data/mgrs_sqid.bin", conf.referrer()));
+    useDefaultStyles().init(true);
+    sqidData().init(URI("../data/mgrs_sqid.bin", conf.referrer()));
     _styleSheet = new StyleSheet();
 
-    conf.get("sqid_data", _sqidURI);
+    conf.get("sqid_data", sqidData() );
+    conf.get("use_default_styles", useDefaultStyles() );
     conf.get("styles", _styleSheet);
-    conf.get("use_default_styles", _useDefaultStyles);
 }
 
 //---------------------------------------------------------------------------
@@ -287,6 +288,12 @@ namespace
 
 //---------------------------------------------------------------------------
 
+OE_LAYER_PROPERTY_IMPL(MGRSGraticule, URI, SQIDDataURL, sqidData);
+OE_LAYER_PROPERTY_IMPL(MGRSGraticule, bool, UseDefaultStyles, useDefaultStyles);
+void MGRSGraticule::setStyleSheet(StyleSheet* value) { options().styleSheet() = value; }
+StyleSheet* MGRSGraticule::getStyleSheet() { return options().styleSheet().get(); }
+
+
 void
 MGRSGraticule::dirty()
 {
@@ -376,10 +383,10 @@ namespace
         osg::ref_ptr<Feature> _feature;
         Style _style;
         bool _hasChild;
-        const MGRSGraticuleOptions* _options;
+        const MGRSGraticule::Options* _options;
     
         GeomCell(double size);
-        void setupData(Feature* feature, const MGRSGraticuleOptions* options);
+        void setupData(Feature* feature, const MGRSGraticule::Options* options);
         osg::Node* loadChild();
         bool hasChild() const;
         osg::BoundingSphere getChildBound() const;
@@ -392,7 +399,7 @@ namespace
     struct GeomGrid : public PagedNode
     {
         double _size;
-        const MGRSGraticuleOptions* _options;
+        const MGRSGraticule::Options* _options;
         osg::ref_ptr<Feature> _feature;
         Style _style;
         GeoExtent _extent;
@@ -406,7 +413,7 @@ namespace
             setAdditive(false);
         }
 
-        void setupData(Feature* feature, const MGRSGraticuleOptions* options)
+        void setupData(Feature* feature, const MGRSGraticule::Options* options)
         {
             _feature = feature;
             _options = options;
@@ -531,7 +538,7 @@ namespace
         setAdditive(true);
     }
 
-    void GeomCell::setupData(Feature* feature, const MGRSGraticuleOptions* options)
+    void GeomCell::setupData(Feature* feature, const MGRSGraticule::Options* options)
     {
         _feature = feature;
         _options = options;
@@ -583,7 +590,7 @@ namespace
     struct SQID100kmCell : public PagedNode
     {
         osg::ref_ptr<Feature> _feature;
-        const MGRSGraticuleOptions* _options;
+        const MGRSGraticule::Options* _options;
         Style _style;
 
         SQID100kmCell(const std::string& name)
@@ -594,7 +601,7 @@ namespace
             setAdditive(true);
         }
 
-        void setupData(Feature* feature, const MGRSGraticuleOptions* options)
+        void setupData(Feature* feature, const MGRSGraticule::Options* options)
         {
             _feature = feature;
             _options = options;
@@ -639,7 +646,7 @@ namespace
         osg::BoundingSphere _bs;
         FeatureList _sqidFeatures;
         Style _style;
-        const MGRSGraticuleOptions* _options;
+        const MGRSGraticule::Options* _options;
 
         SQID100kmGrid(const std::string& name, const osg::BoundingSphere& bs)
         {
@@ -650,7 +657,7 @@ namespace
             setRange(3200);
         }
 
-        void setupData(const FeatureList& sqidFeatures, const MGRSGraticuleOptions* options)
+        void setupData(const FeatureList& sqidFeatures, const MGRSGraticule::Options* options)
         {
             _sqidFeatures = sqidFeatures;
             _options = options;
@@ -700,7 +707,7 @@ namespace
     {
         Style _sqidStyle;
         FeatureList _sqidFeatures;
-        const MGRSGraticuleOptions* _options;
+        const MGRSGraticule::Options* _options;
 
         GZDGeom(const std::string& name)
         {
@@ -730,7 +737,7 @@ namespace
 
         void setupData(const Feature* gzdFeature,
                        const FeatureList& sqidFeatures, 
-                       const MGRSGraticuleOptions* options,
+                       const MGRSGraticule::Options* options,
                        const FeatureProfile* prof, 
                        const Map* map)
         {
@@ -819,7 +826,7 @@ namespace
 
     struct SQIDTextGrid : public osg::Group
     {
-        SQIDTextGrid(const std::string& name, FeatureList& features, const MGRSGraticuleOptions* options)
+        SQIDTextGrid(const std::string& name, FeatureList& features, const MGRSGraticule::Options* options)
         {
             setName(name);
 
@@ -891,7 +898,7 @@ namespace
 
     struct GZDText : public PagedNode
     {
-        const MGRSGraticuleOptions* _options;
+        const MGRSGraticule::Options* _options;
         FeatureList  _sqidFeatures;
         osg::BoundingSphere _bs;
 
@@ -920,7 +927,7 @@ namespace
             return _bs;
         }
 
-        void setupData(const Feature* gzdFeature, const FeatureList& sqidFeatures, const MGRSGraticuleOptions* options)
+        void setupData(const Feature* gzdFeature, const FeatureList& sqidFeatures, const MGRSGraticule::Options* options)
         {
             _options = options;
             setNode(buildGZD(gzdFeature));

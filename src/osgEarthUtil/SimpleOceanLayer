@@ -32,80 +32,8 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
     using namespace osgEarth::Symbology;
-
-    /**
-     * Serializable configuration options for the SimpleOceanLayer.
-     */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public VisibleLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, SimpleOceanLayerOptions, VisibleLayerOptions);
-
-        /** Color of the ocean surface */
-        optional<Color>& color() { return _color; }
-        const optional<Color>& color() const { return _color; }
-
-        /** Maximum altitude at which the ocean is visible */
-        optional<float>& maxAltitude() { return _maxAltitude; }
-        const optional<float>& maxAltitude() const { return _maxAltitude; }
-
-        /** Name of a Map Layer to use as an ocean mask. */
-        optional<std::string>& maskLayer() { return _maskLayer; }
-        const optional<std::string>& maskLayer() const { return _maskLayer; }
-
-        /** Whether to sample the terrain bathymetry and only draw the ocean
-        where it's negative (default = true) */
-        optional<bool>& useBathymetry() { return _useBathymetry; }
-        const optional<bool>& useBathymetry() const { return _useBathymetry; }
-
-        /** URI of surface texture to apply */
-        optional<URI>& texture() { return _textureURI; }
-        const optional<URI>& texture() const { return _textureURI; }
-
-        /** LOD at which to apply surface texture 1:1 (default = 13) */
-        optional<unsigned>& textureLOD() { return _textureLOD; }
-        const optional<unsigned>& textureLOD() const { return _textureLOD; }
-
-    public:
-
-        virtual Config getConfig() const
-        {
-            Config conf = VisibleLayerOptions::getConfig();
-            conf.set("color", _color);
-            conf.set("max_altitude", _maxAltitude);
-            conf.set("mask_layer", _maskLayer);
-            conf.set("use_bathymetry", _useBathymetry);
-            conf.set("texture", _textureURI);
-            conf.set("texture_lod", _textureLOD);
-            return conf;
-        }
-
-    private:
-
-        void fromConfig(const Config& conf)
-        {
-            _color.init(Color("#1D2C4FFF"));
-            _maxAltitude.init(1500000.f);
-            _useBathymetry.init(true);
-            _textureLOD.init(13u);
-
-            conf.get("color", _color);
-            conf.get("max_altitude", _maxAltitude);
-            conf.get("mask_layer", _maskLayer);
-            conf.get("use_bathymetry", _useBathymetry);
-            conf.get("texture", _textureURI);
-            conf.get("texture_lod", _textureLOD);
-        }
-
-        optional<Color> _color;
-        optional<float> _maxAltitude;
-        optional<std::string> _maskLayer;
-        optional<bool> _useBathymetry;
-        optional<URI> _textureURI;
-        optional<unsigned> _textureLOD;
-    };
-
 
     /**
      * A Rex map layer that renders a simple ocean surface.
@@ -113,26 +41,56 @@ namespace osgEarth { namespace Util
      */
     class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
     {
+    public: // serialization
+        class OSGEARTHUTIL_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(Color, color);
+            OE_OPTION(float, maxAltitude);
+            OE_OPTION(std::string, maskLayer);
+            OE_OPTION(bool, useBathymetry);
+            OE_OPTION(URI, textureURI);
+            OE_OPTION(unsigned, textureLOD);
+            OE_OPTION(float, seaLevel);
+            OE_OPTION_REFPTR(osg::Image, surfaceImage);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions, VisibleLayer, ocean);
+        META_Layer(osgEarth, SimpleOceanLayer, Options, VisibleLayer, ocean);
 
     public:
 
-        /** Ocean surface color (including transparency in the alpha channel) */
+        //! Ocean surface color (including transparency in the alpha channel)
         void setColor(const Color& color);
         const Color& getColor() const;
 
-        /** Maximum altitude at which the ocean layer is visible */
-        void setMaxAltitude(float altitude_m);
-        float getMaxAltitude() const;
+        //! Maximum altitude at which the ocean layer is visible
+        void setMaxAltitude(const float& altitude_m);
+        const float& getMaxAltitude() const;
 
-        /** Sets a masking layer, or pass NULL to clear the masking layer. Returns true upon success */
+        //! Sets a masking layer, or pass NULL to clear the masking layer
         void setMaskLayer(const ImageLayer* layer);
+        const ImageLayer* getMaskLayer() const;
 
-    public: // Ocean
-        
-        void setSeaLevel(float seaLevel);
-        float getSeaLevel() const;
+        //! Sea level (meters above the ellipsoid)
+        void setSeaLevel(const float& seaLevel);
+        const float& getSeaLevel() const;
+
+        //! Whether to sample the terrain bathymetry and only draw the ocean
+        //! where the elevation is negative (default = true)
+        void setUseBathymetry(const bool& value);
+        const bool& getUseBathymetry() const;
+
+        //! Surface texture to apply. Call this before adding to the map or 
+        //! opening the layer.
+        void setSurfaceImage(osg::Image* value);
+
+        //! LOD at which to apply surface texture 1:1 (default = 13)
+        void setSurfaceTextureLOD(const unsigned& value);
+        const unsigned& getSurfaceTextureLOD() const;
 
     public: // Layer
 
@@ -157,7 +115,7 @@ namespace osgEarth { namespace Util
 
         LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
 
-        float _seaLevel;
+        osg::observer_ptr<const ImageLayer> _maskLayer;
 
         TextureImageUnitReservation _texReservation;
     };

@@ -32,11 +32,11 @@ namespace osgEarth { namespace Triton
     /**
      * Serializable options for initializing the TritonLayer.
      */
-    class OSGEARTHTRITON_EXPORT TritonLayerOptions : public osgEarth::VisibleLayerOptions
+    class OSGEARTHTRITON_EXPORT TritonLayerOptions : public osgEarth::VisibleLayer::Options
     {
     public:
         TritonLayerOptions(const osgEarth::ConfigOptions& options = osgEarth::ConfigOptions()) :
-            osgEarth::VisibleLayerOptions( options )
+            osgEarth::VisibleLayer::Options( options )
         {
             _useHeightMap.init( true );
             _heightMapSize.init( 1024 );
@@ -83,7 +83,7 @@ namespace osgEarth { namespace Triton
 
     public:
         osgEarth::Config getConfig() const {
-            osgEarth::Config conf = osgEarth::VisibleLayerOptions::getConfig();
+            osgEarth::Config conf = osgEarth::VisibleLayer::Options::getConfig();
             conf.set("user", _user);
             conf.set("license_code", _licenseCode);
             conf.set("resource_path", _resourcePath);
@@ -97,7 +97,7 @@ namespace osgEarth { namespace Triton
 
     protected:
         void mergeConfig( const osgEarth::Config& conf ) {
-            osgEarth::VisibleLayerOptions::mergeConfig( conf );
+            osgEarth::VisibleLayer::Options::mergeConfig( conf );
             fromConfig( conf );
         }
 

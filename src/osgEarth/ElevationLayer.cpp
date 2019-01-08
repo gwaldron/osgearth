@@ -27,20 +27,16 @@ using namespace OpenThreads;
 
 #define LC "[ElevationLayer] \"" << getName() << "\" : "
 
-namespace osgEarth {
-    REGISTER_OSGEARTH_LAYER(elevation, osgEarth::ElevationLayer);
-}
-
 //#define ANALYZE
 
 //------------------------------------------------------------------------
 
 Config
-ElevationLayerOptions::getConfig() const
+ElevationLayer::Options::getConfig() const
 {
-    Config conf = TerrainLayerOptions::getConfig();
-    conf.set("vdatum", _vertDatum );
-    conf.set("offset", _offset);
+    Config conf = TerrainLayer::Options::getConfig();
+    conf.set("vdatum", verticalDatum() );
+    conf.set("offset", offset());
     conf.set("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.set("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
     conf.set("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
@@ -48,14 +44,14 @@ ElevationLayerOptions::getConfig() const
 }
 
 void
-ElevationLayerOptions::fromConfig( const Config& conf )
+ElevationLayer::Options::fromConfig( const Config& conf )
 {
     _offset.init( false );
     _noDataPolicy.init( NODATA_INTERPOLATE );
     
-    conf.get( "vdatum", _vertDatum );
-    conf.get( "vsrs", _vertDatum );    // back compat
-    conf.get("offset", _offset );
+    conf.get("vdatum", verticalDatum() );
+    conf.get("vsrs", verticalDatum() );    // back compat
+    conf.get("offset", offset() );
     conf.get("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.get("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
     conf.get("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
@@ -120,6 +116,12 @@ namespace
 }
 
 //------------------------------------------------------------------------
+
+REGISTER_OSGEARTH_LAYER(elevation, ElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(ElevationLayer, std::string, VerticalDatum, verticalDatum);
+OE_LAYER_PROPERTY_IMPL(ElevationLayer, bool, Offset, offset);
+OE_LAYER_PROPERTY_IMPL(ElevationLayer, ElevationNoDataPolicy, NoDataPolicy, noDataPolicy);
 
 void
 ElevationLayer::init()

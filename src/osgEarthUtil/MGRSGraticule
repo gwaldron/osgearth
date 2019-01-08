@@ -26,25 +26,48 @@
 #include <osg/ClipPlane>
 
 
+namespace osgEarth { namespace Util { namespace Internal
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+} } }
+
+
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
-
     /**
-     * Configuration options for the geodetic graticule.
+     * Implements a MGRS (Military Grid Reference System) map graticule. 
+     * 
+     * NOTE: So far, this only works for geocentric maps.
+     * TODO: Add projected support; add text label support
      */
-    class OSGEARTHUTIL_EXPORT MGRSGraticuleOptions : public VisibleLayerOptions
+    class OSGEARTHUTIL_EXPORT MGRSGraticule : public VisibleLayer
     {
-    public:
-        META_LayerOptions(osgEarth, MGRSGraticuleOptions, VisibleLayerOptions);
+    public: // internal serialization data
+        class OSGEARTHUTIL_EXPORT Options : public VisibleLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(URI, sqidData);
+            OE_OPTION(bool, useDefaultStyles);
+            OE_OPTION_REFPTR(StyleSheet, styleSheet);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
+    public:
+        META_Layer(osgEarthUtil, MGRSGraticule, Options, VisibleLayer, MGRSGraticule);
+        
         //! Location of the SQID feature data
         //! This is a prebuilt binary file that you should distribute 
         //! with the application - typically names "mgrs_sqid.bin"
-        optional<URI>& sqidData() { return _sqidURI; }
-        const optional<URI>& sqidData() const { return _sqidURI; }
+        void setSQIDDataURL(const URI& value);
+        const URI& getSQIDDataURL() const;
 
         //! Styles for each display level. Each level should be names in the
         //! following manner:
@@ -54,41 +77,17 @@ namespace osgEarth { namespace Util
         //! down to level 1).
         //! You can set only certain levels if you wish in order to override
         //! the defaults.
-        osg::ref_ptr<StyleSheet>& styleSheet() { return _styleSheet; }
-        const osg::ref_ptr<StyleSheet>& styleSheet() const { return _styleSheet; }
+        void setStyleSheet(StyleSheet* value);
+        StyleSheet* getStyleSheet();
+        const StyleSheet* getStyleSheet() const;
 
         //! Whether to apply default styles when you do not expressly
         //! set them for all levels. Defaults to true.
-        optional<bool>& useDefaultStyles() { return _useDefaultStyles; }
-        const optional<bool>& useDefaultStyles() const { return _useDefaultStyles; }
+        void setUseDefaultStyles(const bool& value);
+        const bool& getUseDefaultStyles() const;
 
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-
-        optional<URI> _sqidURI;
-        osg::ref_ptr<StyleSheet> _styleSheet;
-        optional<bool> _useDefaultStyles;
-    };
-
-
-    /**
-     * Implements a MGRS (Military Grid Reference System) map graticule. 
-     * 
-     * NOTE: So far, this only works for geocentric maps.
-     * TODO: Add projected support; add text label support
-     */
-    class OSGEARTHUTIL_EXPORT MGRSGraticule : public VisibleLayer
-    {
-    public:
-        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions, VisibleLayer, MGRSGraticule);
-
-        /**
-         * If you change any of the options, call this to refresh the display
-         * to refelct the new settings.
-         */
+        //! If you change any of the options, call this to refresh the display
+        //! to refelct the new settings.
         void dirty();
 
     public: // Layer

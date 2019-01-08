@@ -28,30 +28,6 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
     using namespace osgEarth::Features;
 
-    class OSGEARTHFEATURES_EXPORT FeatureImageLayerOptions : public ImageLayerOptions    
-    {
-    public:
-        META_LayerOptions(osgEarth, FeatureImageLayerOptions, ImageLayerOptions);
-
-        //! Name of feature source layer containing features
-        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
-        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
-
-        //! Styles for rendering the feature data
-        osg::ref_ptr<StyleSheet>& styles() { return _styles; }
-        const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
-
-        optional<double>& gamma() { return _gamma; }
-        const optional<double>& gamma() const { return _gamma; }
-
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig( const Config& conf );
-        optional<std::string> _featureSourceLayer;
-        osg::ref_ptr<StyleSheet> _styles;
-        optional<double> _gamma;
-    };
 
     class OSGEARTHFEATURES_EXPORT FeatureImageRenderer
     {
@@ -95,8 +71,20 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureImageLayer : public osgEarth::ImageLayer,
                                                       public FeatureImageRenderer
     {
+    public: // serialization
+        class OSGEARTHFEATURES_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(std::string, featureSourceLayer);
+            OE_OPTION(double, gamma);
+            OE_OPTION_REFPTR(StyleSheet, styles);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
     public:
-        META_Layer(osgEarth, FeatureImageLayer, FeatureImageLayerOptions, osgEarth::ImageLayer, FeatureImage);
+        META_Layer(osgEarth, FeatureImageLayer, Options, osgEarth::ImageLayer, FeatureImage);
 
 
         //! Sets the feature source to get road data from; call either this
@@ -171,5 +159,7 @@ namespace osgEarth { namespace Features
 
 
 } } // namespace osgEarth::Features
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureImageLayer::Options);
 
 #endif // OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER

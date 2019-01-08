@@ -65,7 +65,7 @@ TileCache::Driver::read(const URI& uri,
                         const std::string& format,
                         ProgressCallback* progress,
                         const osgDB::Options* readOptions) const
-{    
+{
     unsigned int level, tile_x, tile_y;
     level = key.getLevelOfDetail();
     key.getTileXY(tile_x, tile_y);
@@ -96,6 +96,10 @@ TileCache::Driver::read(const URI& uri,
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(tilecacheimage, TileCacheImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(TileCacheImageLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(TileCacheImageLayer, std::string, Layer, layer);
+OE_LAYER_PROPERTY_IMPL(TileCacheImageLayer, std::string, Format, format);
 
 void
 TileCacheImageLayer::init()
@@ -152,6 +156,10 @@ TileCacheImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(tilecacheelevation, TileCacheElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(TileCacheElevationLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(TileCacheElevationLayer, std::string, Layer, layer);
+OE_LAYER_PROPERTY_IMPL(TileCacheElevationLayer, std::string, Format, format);
 
 void
 TileCacheElevationLayer::init()

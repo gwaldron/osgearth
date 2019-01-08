@@ -404,28 +404,33 @@ ArcGISServer::MapService::getError() const
 
 
 Config
-ArcGISServerImageLayerOptions::getConfig() const
+ArcGISServerImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
-    conf.set("url", _url);
-    conf.set("token", _token);
-    conf.set("format", _format);
-    conf.set("layers", _layers);
+    Config conf = ImageLayer::Options::getConfig();
+    conf.set("url", url());
+    conf.set("token", token());
+    conf.set("format", format());
+    conf.set("layers", layers());
     return conf;
 }
 
 void
-ArcGISServerImageLayerOptions::fromConfig(const Config& conf)
+ArcGISServerImageLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("url", _url);
-    conf.get("token", _token);
-    conf.get("format", _format);
-    conf.get("layers", _layers);
+    conf.get("url", url());
+    conf.get("token", token());
+    conf.get("format", format());
+    conf.get("layers", layers());
 }
 
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(arcgisserverimage, ArcGISServerImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, std::string, Token, token);
+OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, std::string, Layers, layers);
 
 void
 ArcGISServerImageLayer::init()

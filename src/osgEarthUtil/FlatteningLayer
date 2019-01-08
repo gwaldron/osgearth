@@ -29,51 +29,12 @@
 #include <osgEarthSymbology/StyleSheet>
 #include <osgDB/FileNameUtils>
 
+
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
-
-    /**
-     * Serializable options to configure a FlatteningLayer.
-     */
-    class OSGEARTHUTIL_EXPORT FlatteningLayerOptions : public ElevationLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, FlatteningLayerOptions, ElevationLayerOptions);
-        
-        /** Name of the feature source layer to use for flattening. */
-        optional<std::string>& featureSource() { return _featureSource; }
-        const optional<std::string>& featureSource() const { return _featureSource; }
-
-        /** For line features, the width around the line to flatten. */
-        optional<NumericExpression>& lineWidth() { return _lineWidth; }
-        const optional<NumericExpression>& lineWidth() const { return _lineWidth; }
-
-        /** Width of the buffer between the flattened terrain and the natural terrain,
-            which will serve as a transition area. */
-        optional<NumericExpression>& bufferWidth() { return _bufferWidth; }
-        const optional<NumericExpression>& bufferWidth() const { return _bufferWidth; }
-
-        //! Whether to write all samples (default=false) with source elev instead of
-        //! writing NO_DATA_VALUE where no features exist
-        optional<bool>& fill() { return _fill; }
-        const optional<bool>& fill() const { return _fill; }
-
-        StyleSheet::ScriptDef* getScript() const { return _script.get(); }
-
-    public:
-        Config getConfig() const;
-        
-    private:
-        void fromConfig(const Config&);
-        optional<std::string> _featureSource;
-        optional<NumericExpression> _lineWidth;
-        optional<NumericExpression> _bufferWidth;
-        optional<bool> _fill;
-        osg::ref_ptr< StyleSheet::ScriptDef > _script;
-    };
 
     /**
      * Elevation layer that overlays modified elevation samples intended to
@@ -83,10 +44,40 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions, ElevationLayer, FlattenedElevation);
+        class OSGEARTHUTIL_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(std::string, featureSource);
+            OE_OPTION(NumericExpression, lineWidth);
+            OE_OPTION(NumericExpression, bufferWidth);
+            OE_OPTION(bool, fill);
+            StyleSheet::ScriptDef* getScript() const { return _script.get(); }
+            virtual Config getConfig() const;
+        
+        private:
+            void fromConfig(const Config&);
+            osg::ref_ptr< StyleSheet::ScriptDef > _script;
+        };
+        
+    public:
+        META_Layer(osgEarth, FlatteningLayer, Options, ElevationLayer, FlattenedElevation);
 
-        // Feature source layer to get features from
+        //! Feature source layer to get features from
         void setFeatureSource(FeatureSource* layer);
+
+        //! For line features, the width around the line to flatten
+        void setLineWidth(const NumericExpression& value);
+        const NumericExpression& getLineWidth() const;
+
+        //! Width of the buffer between the flattened terrain and the natural terrain,
+        //! which will serve as a transition area.
+        void setBufferWidth(const NumericExpression& value);
+        const NumericExpression& getBufferWidth() const;
+
+        //! Whether to write all samples (default=false) with source elev instead of
+        //! writing NO_DATA_VALUE where no features exist
+        void setFill(const bool& value);
+        const bool& getFill() const;
 
     public: // ElevationLayer
 
@@ -96,12 +87,6 @@ namespace osgEarth { namespace Util
         virtual const Status& open();
 
     protected: // ElevationLayer
-
-        //virtual void createImplementation(
-        //    const TileKey& key,
-        //    osg::ref_ptr<osg::HeightField>& hf,
-        //    osg::ref_ptr<NormalMap>& normalMap,
-        //    ProgressCallback* progres);
 
         virtual GeoHeightField createHeightFieldImplementation(
             const TileKey& key, 

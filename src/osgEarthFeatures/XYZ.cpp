@@ -31,14 +31,12 @@ using namespace osgEarth::Features;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
-REGISTER_OSGEARTH_LAYER(xyzfeatures, XYZFeatureSource);
-
 //........................................................................
 
 Config
-XYZFeatureSourceOptions::getConfig() const
+XYZFeatureSource::Options::getConfig() const
 {
-    Config conf = FeatureSourceOptions::getConfig();
+    Config conf = FeatureSource::Options::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
@@ -48,7 +46,7 @@ XYZFeatureSourceOptions::getConfig() const
 }
 
 void
-XYZFeatureSourceOptions::fromConfig(const Config& conf)
+XYZFeatureSource::Options::fromConfig(const Config& conf)
 {
     format().init("json");
 
@@ -60,6 +58,14 @@ XYZFeatureSourceOptions::fromConfig(const Config& conf)
 }
 
 //........................................................................
+
+REGISTER_OSGEARTH_LAYER(xyzfeatures, XYZFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, InvertY, invertY);
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MinLevel, minLevel);
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MaxLevel, maxLevel);
 
 const Status&
 XYZFeatureSource::open()

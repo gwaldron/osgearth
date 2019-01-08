@@ -27,14 +27,14 @@ REGISTER_OSGEARTH_LAYER(annotations, AnnotationLayer);
 //...................................................................
 
 Config
-AnnotationLayerOptions::getConfig() const
+AnnotationLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
+    Config conf = VisibleLayer::Options::getConfig();
     return conf;
 }
 
 void
-AnnotationLayerOptions::fromConfig(const Config& conf)
+AnnotationLayer::Options::fromConfig(const Config& conf)
 {
     // NOP
 }

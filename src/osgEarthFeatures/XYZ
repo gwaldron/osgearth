@@ -25,54 +25,49 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-/**
- * A FeatureSource that reads feature tiles from a parameterized "XYZ" source.
- */
 namespace osgEarth { namespace Features
 {
-    class OSGEARTHFEATURES_EXPORT XYZFeatureSourceOptions : public FeatureSourceOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, XYZFeatureSourceOptions, FeatureSourceOptions);
-
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-                
-        /** Data format extension of TFS data (json, gml) */
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }        
-
-        optional<bool>& invertY() { return _invertY; }
-        const optional<bool>& invertY() const { return _invertY; }
-
-        optional<int>& minLevel() { return _minLevel; }
-        const optional<int>& minLevel() const { return _minLevel; }
-
-        optional<int>& maxLevel() { return _maxLevel; }
-        const optional<int>& maxLevel() const { return _maxLevel; }
-        
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        
-        optional<URI>         _url;        
-        optional<std::string> _format;
-        optional<bool>        _invertY;
-        optional<int>         _minLevel;
-        optional<int>         _maxLevel;
-    };
-
     /**
-     * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
+     * FeatureSource that reads feature tiles from a parameterized "XYZ" source.
      */
     class OSGEARTHFEATURES_EXPORT XYZFeatureSource : public FeatureSource
-    {   
+    {
     public:
-        META_Layer(osgEarth, XYZFeatureSource, XYZFeatureSourceOptions, FeatureSource, xyzfeatures);
+        class OSGEARTHFEATURES_EXPORT Options : public FeatureSource::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(std::string, format);
+            OE_OPTION(bool, invertY);
+            OE_OPTION(int, minLevel);
+            OE_OPTION(int, maxLevel);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
+        META_Layer(osgEarth, XYZFeatureSource, Options, FeatureSource, xyzfeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Format of the geometry data (GeoJSON, GML)
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Whether to flip the Y coordinate for tile access
+        void setInvertY(const bool& value);
+        const bool& getInvertY() const;
+
+        //! Minimum level of detail to access
+        void setMinLevel(const int& value);
+        const int& getMinLevel() const;
+
+        //! Maximum level of detail to access
+        void setMaxLevel(const int& value);
+        const int& getMaxLevel() const;
 
     public: // Layer
 
@@ -108,7 +103,6 @@ namespace osgEarth { namespace Features
     };
 
 } } // namespace osgEarth::Features
-
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::XYZFeatureSourceOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::XYZFeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER

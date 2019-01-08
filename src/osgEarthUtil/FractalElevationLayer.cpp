@@ -68,20 +68,15 @@ namespace
 
 //............................................................................
 
-FractalElevationLayerOptions::FractalElevationLayerOptions(const ConfigOptions& co) :
-ElevationLayerOptions(co)
+void
+FractalElevationLayer::Options::fromConfig(const Config& conf)
 {
     _baseLOD.init(11u);
     _amplitude.init(5.0f);
     _frequency.init(64.0f);
     _persistence.init(0.5f);
     _lacunarity.init(2.0f);
-    fromConfig(_conf);
-}
 
-void
-FractalElevationLayerOptions::fromConfig(const Config& conf)
-{
     conf.get("base_lod", _baseLOD);
     conf.get("amplitude", _amplitude);
     conf.get("frequency", _frequency);
@@ -93,18 +88,18 @@ FractalElevationLayerOptions::fromConfig(const Config& conf)
     for (ConfigSet::const_iterator i = lcmap.begin(); i != lcmap.end(); ++i)
     {
         const Config& mapping = *i;
-        FractalElevationLayerLandCoverMapping m;
+        FractalElevationLayer::LandCoverMapping m;
         m.className = mapping.value("class");
         mapping.get("amplitude", m.amplitude);
         if (!m.className.empty() && m.amplitude.isSet())
-            _lcMap[m.className] = m;
+            landCoverMap().mutable_value()[m.className] = m;
     }
 }
 
 Config
-FractalElevationLayerOptions::getConfig() const
+FractalElevationLayer::Options::getConfig() const
 {
-    Config conf = ElevationLayerOptions::getConfig();
+    Config conf = ElevationLayer::Options::getConfig();
     conf.set("base_lod", _baseLOD);
     conf.set("amplitude", _amplitude);
     conf.set("frequency", _frequency);
@@ -112,10 +107,11 @@ FractalElevationLayerOptions::getConfig() const
     conf.set("lacunarity", _lacunarity);
     conf.set("noise_image", _noiseImageURI);
 
-    if (!_lcMap.empty())
+    if (!landCoverMap()->empty())
     {
         Config mappings("land_cover_mappings");
-        for (FractalElevationLayerLandCoverMap::const_iterator i = _lcMap.begin(); i != _lcMap.end(); ++i)
+        for(FractalElevationLayer::LandCoverMap::const_iterator i = landCoverMap()->begin(); 
+            i != landCoverMap()->end(); ++i)
         {
             Config mapping("mapping");
             mapping.set("class", i->first);
@@ -185,14 +181,14 @@ FractalElevationLayer::init()
     }
 
     // Print info about land cover mappings.
-    if (!options().landCoverMap().empty())
+    if (!options().landCoverMap()->empty())
     {
         OE_INFO << LC << "Land cover to amplitude mappings:\n";
-        for(FractalElevationLayerLandCoverMap::const_iterator i = options().landCoverMap().begin();
-            i != options().landCoverMap().end();
+        for(LandCoverMap::const_iterator i = options().landCoverMap()->begin();
+            i != options().landCoverMap()->end();
             ++i)
         {
-            const FractalElevationLayerLandCoverMapping& mapping = i->second;
+            const LandCoverMapping& mapping = i->second;
             OE_INFO << LC << "   " << i->second.className << " => " << i->second.amplitude.get() << "\n";
         }
     }
@@ -258,9 +254,9 @@ FractalElevationLayer::createImplementation(const TileKey& key,
         lcTile = lcLayer->createImage(key, progress);
     }
 
-    for (int s = 0; s < getTileSize(); ++s)
+    for (int s = 0; s < (int)getTileSize(); ++s)
     {
-        for (int t = 0; t < getTileSize(); ++t)
+        for (int t = 0; t < (int)getTileSize(); ++t)
         {
             double u = (double)s / (double)(getTileSize() - 1);
             double v = (double)t / (double)(getTileSize() - 1);
@@ -305,7 +301,7 @@ FractalElevationLayer::createImplementation(const TileKey& key,
                 const LandCoverClass* lcClass = lcLayer->getClassByUV(lcTile, u, v);
                 if (lcClass)
                 {
-                    const FractalElevationLayerLandCoverMapping* mapping = getMapping(lcClass);
+                    const LandCoverMapping* mapping = getMapping(lcClass);
                     if (mapping)
                     {
                         amp = mapping->amplitude.getOrUse(amp);
@@ -331,9 +327,9 @@ FractalElevationLayer::createImplementation(const TileKey& key,
         h_mean /= double(getTileSize()*getTileSize());
         double q_mean = 0.0;
 
-        for (int s = 0; s < getTileSize(); ++s)
+        for (int s = 0; s < (int)getTileSize(); ++s)
         {
-            for (int t = 0; t < getTileSize(); ++t)
+            for (int t = 0; t < (int)getTileSize(); ++t)
             {
                 double q = hf->getHeight(s, t) - h_mean;
                 q_mean += q*q;
@@ -351,10 +347,10 @@ FractalElevationLayer::createImplementation(const TileKey& key,
     out_normalMap = 0L;
 }
 
-const FractalElevationLayerLandCoverMapping*
+const FractalElevationLayer::LandCoverMapping*
 FractalElevationLayer::getMapping(const LandCoverClass* lcc) const
 {
     if (!lcc) return 0L;
-    FractalElevationLayerLandCoverMap::const_iterator i = options().landCoverMap().find(lcc->getName());
-    return i != options().landCoverMap().end() ? &(i->second) : 0L;
+    FractalElevationLayer::LandCoverMap::const_iterator i = options().landCoverMap()->find(lcc->getName());
+    return i != options().landCoverMap()->end() ? &(i->second) : 0L;
 }

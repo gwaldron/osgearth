@@ -29,7 +29,6 @@
 namespace osgEarth {
     class XmlElement;
     class WMSImageLayer;
-    class WMSImageLayerOptions;
 }
 
 /**
@@ -40,6 +39,8 @@ namespace osgEarth {
 //! WMS namespace contains WMS support classes used to the Layers
 namespace osgEarth { namespace WMS
 {
+    class WMSImageLayerOptions;
+
     /**
      * WMS style definition 
      */
@@ -321,89 +322,34 @@ namespace osgEarth { namespace WMS
         friend class WMSImageLayer;
     };
 
-} }  // namespace osgEarth::WMS
-
-
-namespace osgEarth
-{
     /**
      * Serialization options for a WMS image layer.
      */
-    class OSGEARTH_EXPORT WMSImageLayerOptions : public ImageLayerOptions
+    class OSGEARTH_EXPORT WMSImageLayerOptions : public ImageLayer::Options
     {
     public:
-        META_LayerOptions(osgEarth, WMSImageLayerOptions, ImageLayerOptions);
-
-        //! Base URL of the WMS service
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-
-        //! Separate URL for the WMS capabilities request (optional)
-        optional<URI>& capabilitiesUrl() { return _capabilitiesUrl; }
-        const optional<URI>& capabilitiesUrl() const { return _capabilitiesUrl; }
-
-        //! List of layer names to query (optional)
-        optional<std::string>& layers() { return _layers; }
-        const optional<std::string>& layers() const { return _layers; }
-
-        //! Name of WMS style to query (optional)
-        optional<std::string>& style() { return _style; }
-        const optional<std::string>& style() const { return _style; }
-
-        //! Format of image to return
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }
-
-        //! WMS format of image to query (optional)
-        optional<std::string>& wmsFormat() { return _wmsFormat; }
-        const optional<std::string>& wmsFormat() const { return _wmsFormat; }
-
-        //! WMS service version to request (default is 1.1.1)
-        optional<std::string>& wmsVersion() { return _wmsVersion; }
-        const optional<std::string>& wmsVersion() const { return _wmsVersion; }
-
-        //! SRS to request from the service
-        optional<std::string>& srs() { return _srs; }
-        const optional<std::string>& srs() const { return _srs; }
-
-        //! WMS CRS to request (optional)
-        optional<std::string>& crs() { return _crs; }
-        const optional<std::string>& crs() const { return _crs; }
-
-        //! Whether to set the WMS transparent flag (optional)
-        optional<bool>& transparent() { return _transparent; }
-        const optional<bool>& transparent() const { return _transparent; }
-
-        //! List of timestamps for WMS-T requests (optional, experimental)
-        optional<std::string>& times() { return _times; }
-        const optional<std::string>& times() const { return _times; }
-
-        //! Duration of each WMS-T frame (optional, experimental)
-        optional<double>& secondsPerFrame() { return _secondsPerFrame; }
-        const optional<double>& secondsPerFrame() const { return _secondsPerFrame; }
-
-    public:
+        META_LayerOptions(osgEarth, WMSImageLayerOptions, ImageLayer::Options);
+        OE_OPTION(URI, url);
+        OE_OPTION(URI, capabilitiesUrl);
+        OE_OPTION(std::string, layers);
+        OE_OPTION(std::string, style);
+        OE_OPTION(std::string, format);
+        OE_OPTION(std::string, wmsFormat);
+        OE_OPTION(std::string, wmsVersion);
+        OE_OPTION(std::string, srs);
+        OE_OPTION(std::string, crs);
+        OE_OPTION(bool, transparent);
+        OE_OPTION(std::string, times);
+        OE_OPTION(double, secondsPerFrame);
+        
         static Config getMetadata();
         virtual Config getConfig() const;
 
     private:
         void fromConfig( const Config& conf );
-
-        optional<URI>         _url;
-        optional<URI>         _capabilitiesUrl;
-        optional<std::string> _layers;
-        optional<std::string> _style;
-        optional<std::string> _format;
-        optional<std::string> _wmsFormat;
-        optional<std::string> _wmsVersion;
-        optional<std::string> _srs;
-        optional<std::string> _crs;
-        optional<bool>        _transparent;
-        optional<std::string> _times;
-        optional<double>      _secondsPerFrame;
     };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::WMSImageLayerOptions);
+
+} }  // namespace osgEarth::WMS
 
 
 namespace osgEarth
@@ -415,47 +361,50 @@ namespace osgEarth
     class OSGEARTH_EXPORT WMSImageLayer : public ImageLayer, public SequenceControl
     {
     public:
-        META_Layer(osgEarth, WMSImageLayer, WMSImageLayerOptions, ImageLayer, WMSImage);
+        typedef WMS::WMSImageLayerOptions Options;
+
+    public:
+        META_Layer(osgEarth, WMSImageLayer, Options, ImageLayer, WMSImage);
 
         //! Base URL for service requests
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Custom capabilibies URL (optional)
-        void setCapabilitiesURL(const URI& value) { options().capabilitiesUrl() = value; }
-        const URI& getCapabilitiesURL() const { return options().capabilitiesUrl().get(); }
+        void setCapabilitiesURL(const URI& value);
+        const URI& getCapabilitiesURL() const;
 
         //! Whitespace-separated list of layer names
-        void setLayers(const std::string& value) { options().layers() = value; }
-        const std::string& getLayers() const { return options().layers().get(); }
+        void setLayers(const std::string& value);
+        const std::string& getLayers() const;
 
         //! Name of WMS style to request be applied to the data
-        void setStyle(const std::string& value) { options().style() = value; }
-        const std::string& getStyle() const { return options().style().get(); }
+        void setStyle(const std::string& value);
+        const std::string& getStyle() const;
 
         //! Data format to request (e.g., mime type)
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
 
         //! Spatial reference to request
-        void setSRS(const std::string& value) { options().srs() = value; }
-        const std::string& getSRS() const { return options().srs().get(); }
+        void setSRS(const std::string& value);
+        const std::string& getSRS() const;
 
         //! CRS to request
-        void setCRS(const std::string& value) { options().crs() = value; }
-        const std::string& getCRS() const { return options().crs().get(); }
+        void setCRS(const std::string& value);
+        const std::string& getCRS() const;
 
         //! Whether to request a transparent background
-        void setTransparent(bool value) { options().transparent() = value; }
-        bool getTransparent() const { return options().transparent().get(); }
+        void setTransparent(const bool& value);
+        const bool& getTransparent() const;
 
         //! Comma-separated list of timestamps for experimental WMS-T support
-        void setTimes(const std::string& value) { options().times() = value; }
-        const std::string& getTimes() const { return options().times().get(); }
+        void setTimes(const std::string& value);
+        const std::string& getTimes() const;
 
         //! Duration of each WMS-T frame in seconds
-        void setSecondsPerFrame(double value) { options().secondsPerFrame() = value; }
-        double getSecondsPerFrame() const { return options().secondsPerFrame().get(); }
+        void setSecondsPerFrame(const double& value);
+        const double& getSecondsPerFrame() const;
         
 
     public: // Layer
@@ -493,5 +442,7 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::WMSImageLayer::Options);
 
 #endif // OSGEARTH_WMS_H

@@ -33,23 +33,23 @@ REGISTER_OSGEARTH_LAYER(feature_model, FeatureModelLayer); // backwards compatib
 
 //...........................................................................
 
-FeatureModelLayerOptions::FeatureModelLayerOptions() :
-VisibleLayerOptions(),
+FeatureModelLayer::Options::Options() :
+VisibleLayer::Options(),
 FeatureModelOptions(),
 GeometryCompilerOptions()
 {
     fromConfig(_conf);
 }
 
-FeatureModelLayerOptions::FeatureModelLayerOptions(const ConfigOptions& options) :
-VisibleLayerOptions(options),
+FeatureModelLayer::Options::Options(const ConfigOptions& options) :
+VisibleLayer::Options(options),
 FeatureModelOptions(options),
 GeometryCompilerOptions(options)
 {
     fromConfig(_conf);
 }
 
-void FeatureModelLayerOptions::fromConfig(const Config& conf)
+void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("features", _featureSourceLayer);
     conf.get("feature_source", _featureSourceLayer);
@@ -62,16 +62,16 @@ void FeatureModelLayerOptions::fromConfig(const Config& conf)
         osg::ref_ptr<FeatureSource> fs = FeatureSource::create(*i);
         if (fs.valid())
         {
-            _featureSource = FeatureSourceOptions(*i);
+            _featureSource = FeatureSource::Options(*i);
             break;
         }
     }
 }
 
 Config
-FeatureModelLayerOptions::getConfig() const
+FeatureModelLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
+    Config conf = VisibleLayer::Options::getConfig();
     conf.merge(FeatureModelOptions::getConfig());
     conf.merge(GeometryCompilerOptions::getConfig());
 
@@ -83,9 +83,9 @@ FeatureModelLayerOptions::getConfig() const
     return conf;
 }
 
-void FeatureModelLayerOptions::mergeConfig(const Config& conf)
+void FeatureModelLayer::Options::mergeConfig(const Config& conf)
 {
-    VisibleLayerOptions::mergeConfig(conf);
+    VisibleLayer::Options::mergeConfig(conf);
     fromConfig(conf);
 }
 
@@ -116,11 +116,11 @@ FeatureModelLayer::init()
     installDefaultOpacityShader();
 }
 
-void FeatureModelLayer::setFeatureModelLayerOptions(const FeatureModelLayerOptions& options)
-{
-    *_options = options;
-    dirty();
-}
+//void FeatureModelLayer::setFeatureModelLayerOptions(const FeatureModelLayerOptions& options)
+//{
+//    *_options = options;
+//    dirty();
+//}
 
 void FeatureModelLayer::dirty()
 {

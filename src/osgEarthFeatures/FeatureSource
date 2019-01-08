@@ -27,65 +27,48 @@
 
 namespace osgEarth { namespace Features
 {
-    /**
-     * Serialization data for a FeatureSource
-     */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceOptions : public LayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, FeatureSourceOptions, LayerOptions);
+} }
 
-        /** Set of FeatureFilter options. */
-        std::vector<ConfigOptions>& filters() { return _filterOptions; }
-        const std::vector<ConfigOptions>& filters() const { return _filterOptions; }
-
-        /** Opens the feature data for writing, if supported */
-        optional<bool>& openWrite() { return _openWrite; }
-        const optional<bool>& openWrite() const { return _openWrite; }
-
-        /** Explicitly overrides profile information contained in the actual data source. */
-        optional<ProfileOptions>& profile() { return _profile; }
-        const optional<ProfileOptions>& profile() const { return _profile; }
-        
-        /** Interpolation type to use for geodetic points */
-        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
-        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
-
-        /** The feature attribute to use as the fid for the features from this FeatureSource*/
-        optional<std::string>& fidAttribute() { return _fidAttribute; }
-        const optional<std::string>& fidAttribute() const { return _fidAttribute; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-
-        std::vector<ConfigOptions> _filterOptions;
-        optional<std::string>      _name;
-        optional< bool >           _openWrite;
-        optional<ProfileOptions>   _profile;
-        optional<CachePolicy>      _cachePolicy;
-        optional<GeoInterpolation> _geoInterp;
-        optional<std::string>      _fidAttribute;
-    };
-
+namespace osgEarth { namespace Features
+{
     /**
      * Layer that provides raw feature data.
      */
     class OSGEARTHFEATURES_EXPORT FeatureSource : public Layer
     {
+    public: // serialization
+        class OSGEARTHFEATURES_EXPORT Options : public Layer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, Layer::Options);
+            OE_OPTION(bool, openWrite);
+            OE_OPTION(ProfileOptions, profile);
+            OE_OPTION(GeoInterpolation, geoInterp);
+            OE_OPTION(std::string, fidAttribute);
+
+            std::vector<ConfigOptions>& filters() { return _filterOptions; }
+            const std::vector<ConfigOptions>& filters() const { return _filterOptions; }
+
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+            std::vector<ConfigOptions> _filterOptions;
+        };
+
     public:
-        META_Layer_Abstract(osgEarth, FeatureSource, FeatureSourceOptions, Layer);
+        META_Layer_Abstract(osgEarth, FeatureSource, Options, Layer);
 
         //! Open the source in a writable mode, if supported
-        void setOpenWrite(bool value) { options().openWrite() = value; }
+        void setOpenWrite(const bool& value);
+        const bool& getOpenWrite() const;
 
         //! Set the geo-interpolation method to use if applicable
-        void setGeoInterpolation(GeoInterpolation value) { options().geoInterp() = value; }
+        void setGeoInterpolation(const GeoInterpolation& value);
+        const GeoInterpolation& getGeoInterpolation() const;
 
         //! Set the name of the attribute containing the feature ID
-        void setFIDAttribute(const std::string& value) { options().fidAttribute() = value; }
+        void setFIDAttribute(const std::string& value);
+        const std::string& getFIDAttribute() const;
 
     public: // Layer
 
@@ -235,6 +218,6 @@ namespace osgEarth { namespace Features
 
 } } // namespace osgEarth::Features
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSourceOptions);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_FEATURE_SOURCE_H

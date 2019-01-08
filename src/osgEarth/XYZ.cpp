@@ -118,7 +118,7 @@ XYZ::Driver::read(const URI& uri,
 Config
 XYZImageLayerOptions::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
@@ -152,7 +152,7 @@ XYZImageLayerOptions::getMetadata()
 Config
 XYZElevationLayerOptions::getConfig() const
 {
-    Config conf = ElevationLayerOptions::getConfig();
+    Config conf = ElevationLayer::Options::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
@@ -187,6 +187,10 @@ XYZElevationLayerOptions::getMetadata()
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(xyzimage, XYZImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(XYZImageLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(XYZImageLayer, bool, InvertY, invertY);
+OE_LAYER_PROPERTY_IMPL(XYZImageLayer, std::string, Format, format);
 
 void
 XYZImageLayer::init()
@@ -249,6 +253,11 @@ XYZImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* p
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(xyzelevation, XYZElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, bool, InvertY, invertY);
+OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, std::string, ElevationEncoding, elevationEncoding);
 
 void
 XYZElevationLayer::init()

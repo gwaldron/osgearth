@@ -41,8 +41,8 @@ namespace osgEarth { namespace Drivers
         }
 
         /** Features to load and use as boundary geometries */
-        optional<FeatureSourceOptions>& features() { return _features; }
-        const optional<FeatureSourceOptions>& features() const { return _features; }
+        optional<FeatureSource::Options>& features() { return _features; }
+        const optional<FeatureSource::Options>& features() const { return _features; }
 
         /** If true (the default), accept features whose centroids are contained in the boundaries */
         optional<bool>& contains() { return _contains; }
@@ -69,7 +69,7 @@ namespace osgEarth { namespace Drivers
             conf.get( "contains", _contains );
         }
 
-        optional<FeatureSourceOptions> _features;
+        optional<FeatureSource::Options> _features;
         optional<bool>                 _contains;
     };
 

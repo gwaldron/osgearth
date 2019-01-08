@@ -39,25 +39,27 @@ REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
 //........................................................................
 
 Config
-RoadSurfaceLayerOptions::getConfig() const
+RoadSurfaceLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
-    conf.set("features", _featureSource);
-    conf.set("feature_source", _featureSource);
-    conf.set("buffer_width", _bufferWidth);
+    Config conf = ImageLayer::Options::getConfig();
+    conf.set("features", featureSource() );
+    conf.set("feature_source", featureSource() );
+    conf.set("buffer_width", featureBufferWidth() );
     conf.set("styles", _styles);
     return conf;
 }
 
 void
-RoadSurfaceLayerOptions::fromConfig(const Config& conf)
+RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("features", _featureSource);
-    conf.get("buffer_width", _bufferWidth);
+    conf.get("features", featureSource() );
+    conf.get("buffer_width", featureBufferWidth() );
     conf.get("styles", _styles);
 }
 
 //........................................................................
+
+OE_LAYER_PROPERTY_IMPL(RoadSurfaceLayer, Distance, FeatureBufferWidth, featureBufferWidth);
 
 void
 RoadSurfaceLayer::init()
@@ -135,6 +137,24 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
             setStatus(Status::Error(Status::ResourceUnavailable, "Features unavailable"));
         }
     }
+}
+
+FeatureSource*
+RoadSurfaceLayer::getFeatureSource() const
+{
+    return _features.get();
+}
+
+void
+RoadSurfaceLayer::setStyleSheet(StyleSheet* value)
+{
+    options().styles() = value;
+}
+
+StyleSheet*
+RoadSurfaceLayer::getStyleSheet()
+{
+    return options().styles().get();
 }
 
 namespace

@@ -60,7 +60,7 @@ namespace osgEarth { namespace GDAL
 
 
     /**
-     * GDAL-specific options
+     * GDAL-specific serialization options
      */
     class OSGEARTH_EXPORT GDALOptions
     {
@@ -68,44 +68,16 @@ namespace osgEarth { namespace GDAL
         void read(const Config& conf);
         void write(Config& conf) const;
 
-        //! Location of the data source
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, connection);
+        OE_OPTION(unsigned, subDataSet);
+        OE_OPTION(RasterInterpolation, interpolation);
+        OE_OPTION(ProfileOptions, warpProfile);
 
-        //! Database connection (e.g. PostGIS) string (alternative to uri)
-        optional<std::string>& connection() { return _connection; }
-        const optional<std::string>& connection() const { return _connection; }
-
-        //! Some GDAL-supported formats support sub-datasets; use this property
-        //! to specify such a data source
-        optional<unsigned>& subDataSet() { return _subDataSet;}
-        const optional<unsigned>& subDataSet() const { return _subDataSet;}
-
-        //! Interpolation method to use when resampling source data; options are
-        //! nearest, average, and bilinear
-        optional<RasterInterpolation>& interpolation() { return _interpolation; }
-        const optional<RasterInterpolation>& interpolation() const { return _interpolation; }
-
-        //! The "warp profile" is a way to tell the GDAL driver to keep the original SRS
-        //! and geotransform of the source data but use a Warped VRT to make the data 
-        //! appear to conform to the given profile.  This is useful for merging multiple
-        //! files that may be in different projections using the composite driver.
-        optional<ProfileOptions>& warpProfile() { return _warpProfile; }
-        const optional<ProfileOptions>& warpProfile() const { return _warpProfile; }
-
-        //! The "external dataset" is a way to provide your own GDAL dataset to the GDAL driver.
-        //! There are two fields :
-        //!  - dataset() : which stores your own GDAL dataset pointer
-        //!  - ownsDataset() : if set to true, the GDALTileSource "owns" the external dataset and closes it when deleted.
         osg::ref_ptr<GDAL::ExternalDataset>& externalDataset() { return _externalDataset; }
         const osg::ref_ptr<GDAL::ExternalDataset>& externalDataset() const { return _externalDataset; }
 
     protected:
-        optional<URI> _url;
-        optional<std::string> _connection;
-        optional<unsigned> _subDataSet;
-        optional<RasterInterpolation> _interpolation;
-        optional<ProfileOptions> _warpProfile;
         osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
     };
 
@@ -211,45 +183,43 @@ namespace osgEarth { namespace GDAL
 } }
 
 
-namespace osgEarth
-{
-    //! Serializable options for a GDALImageLayer.
-    typedef GDAL::GDALLayerOptions<ImageLayerOptions> GDALImageLayerOptions;
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALImageLayerOptions);
-
 
 namespace osgEarth
 {
-    //! Image layer connected to a TMS (Tile Map Service) facility
+    /**
+     * Image layer connected to a GDAL raster dataset
+     */
     class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, GDALImageLayer, GDALImageLayerOptions, ImageLayer, GDALImage);
+        typedef GDAL::GDALLayerOptions<ImageLayer::Options> Options;
+
+    public:
+        META_Layer(osgEarth, GDALImageLayer, Options, ImageLayer, GDALImage);
 
         //! Base URL for TMS requests
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Database connection for GDAL database queries (alternative to URL)
-        void setConnection(const std::string& value) { options().connection() = value; }
-        const std::string& getConnection() const { return options().connection().get(); }
+        void setConnection(const std::string& value);
+        const std::string& getConnection() const;
 
         //! GDAL sub-dataset index (optional)
-        void setSubDataSet(unsigned value) { options().subDataSet() = value; }
-        unsigned getSubDataSet() const { return options().subDataSet().get(); }
+        void setSubDataSet(const unsigned& value);
+        const unsigned& getSubDataSet() const;
 
         //! Forced profile for reprojection (still need this?)
-        void setWarpProfile(const ProfileOptions& value) { options().warpProfile() = value; }
-        const ProfileOptions& getWarpProfile() const { return options().warpProfile().get(); }
+        void setWarpProfile(const ProfileOptions& value);
+        const ProfileOptions& getWarpProfile() const;
 
         //! Interpolation method for resampling (default is bilinear)
-        void setInterpolation(const RasterInterpolation& value) { options().interpolation() = value; }
-        const RasterInterpolation& getInterpolation() const { return options().interpolation().get(); }
+        void setInterpolation(const RasterInterpolation& value);
+        const RasterInterpolation& getInterpolation() const;
 
         //! User-supplied external dataset
-        void setExternalDataset(GDAL::ExternalDataset* value) { options().externalDataset() = value; }
-        GDAL::ExternalDataset* getExtenalDataset() const { return options().externalDataset().get(); }
+        void setExternalDataset(GDAL::ExternalDataset* value);
+        GDAL::ExternalDataset* getExtenalDataset() const;
 
     public: // Layer
 
@@ -273,48 +243,40 @@ namespace osgEarth
     private:
         osg::ref_ptr<GDAL::Driver> _driver;
     };
-}
 
 
-namespace osgEarth
-{
-    //! Serializable options for a GDALElevationLayer.
-    typedef GDAL::GDALLayerOptions<ElevationLayerOptions> GDALElevationLayerOptions;
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALElevationLayerOptions);
-
-
-namespace osgEarth
-{
     //! Elevation layer connected to a GDAL facility
     class OSGEARTH_EXPORT GDALElevationLayer : public ElevationLayer
     {
+    public: // serialization
+        typedef GDAL::GDALLayerOptions<ElevationLayer::Options> Options;
+
     public:
-        META_Layer(osgEarth, GDALElevationLayer, GDALElevationLayerOptions, ElevationLayer, GDALElevation);
+        META_Layer(osgEarth, GDALElevationLayer, Options, ElevationLayer, GDALElevation);
         
         //! Base URL for TMS requests
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Database connection for GDAL database queries (alternative to URL)
-        void setConnection(const std::string& value) { options().connection() = value; }
-        const std::string& getConnection() const { return options().connection().get(); }
+        void setConnection(const std::string& value);
+        const std::string& getConnection() const;
 
         //! GDAL sub-dataset index (optional)
-        void setSubDataSet(unsigned value) { options().subDataSet() = value; }
-        unsigned getSubDataSet() const { return options().subDataSet().get(); }
+        void setSubDataSet(const unsigned& value);
+        const unsigned& getSubDataSet() const;
 
         //! Forced profile for reprojection (still need this?)
-        void setWarpProfile(const ProfileOptions& value) { options().warpProfile() = value; }
-        const ProfileOptions& getWarpProfile() const { return options().warpProfile().get(); }
+        void setWarpProfile(const ProfileOptions& value);
+        const ProfileOptions& getWarpProfile() const;
 
         //! Interpolation method for resampling (default is bilinear)
-        void setInterpolation(const RasterInterpolation& value) { options().interpolation() = value; }
-        const RasterInterpolation& getInterpolation() const { return options().interpolation().get(); }
+        void setInterpolation(const RasterInterpolation& value);
+        const RasterInterpolation& getInterpolation() const;
 
         //! User-supplied external dataset
-        void setExternalDataset(GDAL::ExternalDataset* value) { options().externalDataset() = value; }
-        GDAL::ExternalDataset* getExtenalDataset() const { return options().externalDataset().get(); }
+        void setExternalDataset(GDAL::ExternalDataset* value);
+        GDAL::ExternalDataset* getExtenalDataset() const;
 
     public: // Layer
 
@@ -340,5 +302,8 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALElevationLayer::Options);
 
 #endif // OSGEARTH_TMS_H

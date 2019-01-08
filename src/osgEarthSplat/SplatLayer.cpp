@@ -37,19 +37,17 @@
 
 using namespace osgEarth::Splat;
 
-namespace osgEarth { namespace Splat {
-    REGISTER_OSGEARTH_LAYER(splat, SplatLayer);
-    REGISTER_OSGEARTH_LAYER(splatimage, SplatLayer);
-    REGISTER_OSGEARTH_LAYER(splat_imagery, SplatLayer);
-} }
+REGISTER_OSGEARTH_LAYER(splat, SplatLayer);
+REGISTER_OSGEARTH_LAYER(splatimage, SplatLayer);
+REGISTER_OSGEARTH_LAYER(splat_imagery, SplatLayer);
 
 //........................................................................
 
 Config
-SplatLayerOptions::getConfig() const
+SplatLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
-    conf.set("land_cover_layer", _landCoverLayerName);
+    Config conf = VisibleLayer::Options::getConfig();
+    conf.set("land_cover_layer", landCoverLayer() );
 
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
@@ -63,9 +61,9 @@ SplatLayerOptions::getConfig() const
 }
 
 void
-SplatLayerOptions::fromConfig(const Config& conf)
+SplatLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("land_cover_layer", _landCoverLayerName);
+    conf.get("land_cover_layer", landCoverLayer() );
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {

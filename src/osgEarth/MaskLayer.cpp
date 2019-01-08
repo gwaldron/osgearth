@@ -25,15 +25,15 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 Config
-MaskLayerOptions::getConfig() const
+MaskLayer::Options::getConfig() const
 {
-    Config conf = LayerOptions::getConfig();
+    Config conf = Layer::Options::getConfig();
     conf.set( "min_level", _minLevel );
     return conf;
 }
 
 void
-MaskLayerOptions::fromConfig( const Config& conf )
+MaskLayer::Options::fromConfig( const Config& conf )
 {
     _minLevel.init( 0 );
     conf.get( "min_level", _minLevel );

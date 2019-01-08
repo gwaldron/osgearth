@@ -25,45 +25,6 @@
 
 namespace osgEarth
 {
-    /**
-     * Initialization and serialization options for an elevation layer.
-     */
-    class OSGEARTH_EXPORT ElevationLayerOptions : public TerrainLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, ElevationLayerOptions, TerrainLayerOptions);
-
-    public:
-        /**
-         * Gets the explicity vertical datum identifier that will override a vertical
-         * datum specified by the tile source.
-         */
-        optional<std::string>& verticalDatum() { return _vertDatum; }
-        const optional<std::string>& verticalDatum() const { return _vertDatum; }
-
-        optional<bool>& offset() { return _offset; }
-        const optional<bool>& offset() const { return _offset; }
-
-        /** Policy for dealing with NO_DATA values in elevation */
-        optional<ElevationNoDataPolicy>& noDataPolicy() { return _noDataPolicy; }
-        const optional<ElevationNoDataPolicy>& noDataPolicy() const { return _noDataPolicy; }
-
-    public:
-        virtual Config getConfig() const;
-        
-    private:
-        void fromConfig( const Config& conf );
-
-        optional<bool> _offset;
-        optional<ElevationNoDataPolicy> _noDataPolicy;
-        optional<std::string> _vertDatum;
-    };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationLayerOptions);
-    
-
-namespace osgEarth
-{
     struct ElevationLayerCallback : public TerrainLayerCallback
     {
         //EMPTY
@@ -76,14 +37,31 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
     public:
-        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions, TerrainLayer, elevation);        //!
+        class OSGEARTH_EXPORT Options : public TerrainLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, TerrainLayer::Options);
+            OE_OPTION(std::string, verticalDatum);
+            OE_OPTION(bool, offset);
+            OE_OPTION(ElevationNoDataPolicy, noDataPolicy);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, ElevationLayer, Options, TerrainLayer, elevation);
         
         //! Vertical data identifier (options)
-        void setVerticalDatum(const std::string& value) { options().verticalDatum() = value; }
-        const std::string& getVerticalDatum() const { return options().verticalDatum().get(); }
+        void setVerticalDatum(const std::string& value);
+        const std::string& getVerticalDatum() const;
 
         //! Whether this layer contains offsets instead of absolute elevation heights
-        void setOffset(bool value) { options().offset() = value; }
+        void setOffset(const bool& value);
+        const bool& getOffset() const;
+
+        //! Poly for handling "no-data" elevation values
+        void setNoDataPolicy(const ElevationNoDataPolicy& value);
+        const ElevationNoDataPolicy& getNoDataPolicy() const;
 
     public: // methods
         
@@ -175,5 +153,7 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationLayer::Options);
 
 #endif // OSGEARTH_ELEVATION_TERRAIN_LAYER_H

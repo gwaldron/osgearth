@@ -77,6 +77,21 @@ namespace osgEarth { namespace Features { namespace TFS
         static void write(const Layer& layer, std::ostream& output);
     };
 
+    // Internal serialization data for the TFS feature source
+    class OSGEARTHFEATURES_EXPORT TFSFeatureSourceOptions : public FeatureSource::Options
+    {
+    public:
+        META_LayerOptions(osgEarth, TFSFeatureSourceOptions, FeatureSource::Options);
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, format);
+        OE_OPTION(bool, invertY);
+        OE_OPTION(int, minLevel);
+        OE_OPTION(int, maxLevel);
+        virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config& conf);
+    };
+
 }}} // namespace osgEarth::Features::TFS
 
 
@@ -86,50 +101,35 @@ namespace osgEarth { namespace Features { namespace TFS
 namespace osgEarth { namespace Features
 {
     /**
-     * Serialization data for the TFS feature source
-     */
-    class OSGEARTHFEATURES_EXPORT TFSFeatureSourceOptions : public FeatureSourceOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, TFSFeatureSourceOptions, FeatureSourceOptions);
-
-        //! TFS endpoint location
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-                
-        //! Data format extension of TFS data (json, gml)
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }        
-
-        optional<bool>& invertY() { return _invertY; }
-        const optional<bool>& invertY() const { return _invertY; }
-
-        optional<int>& minLevel() { return _minLevel; }
-        const optional<int>& minLevel() const { return _minLevel; }
-
-        optional<int>& maxLevel() { return _maxLevel; }
-        const optional<int>& maxLevel() const { return _maxLevel; }
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        optional<URI>         _url;        
-        optional<std::string> _format;
-        optional<bool>        _invertY;
-        optional<int>         _minLevel;
-        optional<int>         _maxLevel;
-    };
-
-    /**
      * Feature Layer that accesses features from a TFS endpoint
      */
     class OSGEARTHFEATURES_EXPORT TFSFeatureSource : public FeatureSource
     {   
-    public:
-        META_Layer(osgEarth, TFSFeatureSource, TFSFeatureSourceOptions, FeatureSource, tfsfeatures);
+    public: // serialization
+        typedef TFS::TFSFeatureSourceOptions Options;
 
     public:
+        META_Layer(osgEarth, TFSFeatureSource, Options, FeatureSource, TFSFeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Format of the geometry data (GeoJSON, GML)
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Whether to flip the Y coordinate for tile access
+        void setInvertY(const bool& value);
+        const bool& getInvertY() const;
+
+        //! Minimum level of detail to access
+        void setMinLevel(const int& value);
+        const int& getMinLevel() const;
+
+        //! Maximum level of detail to access
+        void setMaxLevel(const int& value);
+        const int& getMaxLevel() const;
 
     public: // Layer
 
@@ -163,6 +163,7 @@ namespace osgEarth { namespace Features
 
 } } // namespace osgEarth::Features
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::TFSFeatureSourceOptions);
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::TFSFeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_TFS_FEATURESOURCE_LAYER

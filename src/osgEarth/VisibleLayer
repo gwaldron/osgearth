@@ -23,58 +23,15 @@
 
 namespace osgEarth
 {
-    //! Serializable configuration options for a VisibleLayer.
-    class OSGEARTH_EXPORT VisibleLayerOptions : public LayerOptions
+    enum ColorBlending
     {
-    public:
-        META_LayerOptions(osgEarth, VisibleLayerOptions, LayerOptions);
-
-    public:
-        enum Blend {
-            BLEND_INTERPOLATE,
-            BLEND_MODULATE
-        };
-
-    public:
-        /** Whether the layer is initially visible. */
-        optional<bool>& visible() { return _visible; }
-        const optional<bool>& visible() const { return _visible; }
-
-        /** Opacity of the visible layer [0..1] */
-        optional<float>& opacity() { return _opacity; }
-        const optional<float>& opacity() const { return _opacity; }
-        
-        //! The initial minimum camera range at which this layer is visible.
-        optional<float>& minVisibleRange() { return _minRange; }
-        const optional<float>& minVisibleRange() const { return _minRange; }
-
-        //! The initial maximum camera range at which this layer is visible.
-        optional<float>& maxVisibleRange() { return _maxRange; }
-        const optional<float>& maxVisibleRange() const { return _maxRange; }
-
-        //! Distance (m) over which to ramp min and max range blending
-        optional<float>& attenuationRange() { return _attenuationRange; }
-        const optional<float>& attenuationRange() const { return _attenuationRange; }
-
-        //! Blending function (default = interpolate)
-        optional<Blend>& blend() { return _blend; }
-        const optional<Blend>& blend() const { return _blend; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:  
-        void fromConfig(const Config& conf);
-
-        optional<bool> _visible;
-        optional<float> _opacity;
-        optional<float> _minRange;
-        optional<float> _maxRange;
-        optional<float> _attenuationRange;
-        optional<Blend> _blend;
+        BLEND_INTERPOLATE,
+        BLEND_MODULATE
     };
+}
 
-
+namespace osgEarth
+{
     struct VisibleLayerCallback : public LayerCallback
     {
         virtual void onVisibleChanged(class VisibleLayer* layer) { }
@@ -87,18 +44,33 @@ namespace osgEarth
     //! Base class for a layer supporting visibility and opacity controls.
     class OSGEARTH_EXPORT VisibleLayer : public Layer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public Layer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, Layer::Options);
+            OE_OPTION(bool, visible);
+            OE_OPTION(float, opacity);
+            OE_OPTION(float, minVisibleRange);
+            OE_OPTION(float, maxVisibleRange);
+            OE_OPTION(float, attenuationRange);
+            OE_OPTION(ColorBlending, blend);
+            virtual Config getConfig() const;
+        private:  
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions, Layer, visiblelayer);
+        META_Layer(osgEarth, VisibleLayer, Options, Layer, VisibleLayer);
 
     protected:
         virtual ~VisibleLayer();
 
     public:
-        /** Whether to draw this layer. */
+        //! Whether to draw this layer.
         virtual void setVisible(bool value);
         bool getVisible() const;
 
-        /** Opacity with which to draw this layer. */
+        //! Opacity with which to draw this layer
         virtual void setOpacity(float value);
         float getOpacity() const;
 

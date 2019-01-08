@@ -33,61 +33,38 @@
 namespace osgEarth
 {
     /**
-     * Serialization data for the Bing image layer
-     */
-    class OSGEARTH_EXPORT BingImageLayerOptions : public ImageLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, BingImageLayerOptions, ImageLayerOptions);
-        
-        optional<std::string>& apiKey() { return _apiKey; }
-        const optional<std::string>& apiKey() const { return _apiKey; }
-
-        optional<std::string>& imagerySet() { return _imagerySet; }
-        const optional<std::string>& imagerySet() const { return _imagerySet; }
-        
-        optional<URI>& imageryMetadataURL() { return _imageryMetadataURL; }
-        const optional<URI>& imageryMetadataURL() const { return _imageryMetadataURL; }
-
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        optional<std::string> _apiKey;
-        optional<std::string> _imagerySet;
-        optional<URI> _imageryMetadataURL;
-    };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::BingImageLayerOptions);
-
-
-namespace osgEarth
-{
-    /**
      * Image layer connected to a Microsoft Bing Maps API endpoint
      */
     class OSGEARTH_EXPORT BingImageLayer : public ImageLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(std::string, apiKey);
+            OE_OPTION(std::string, imagerySet);
+            OE_OPTION(URI, imageryMetadataURL);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(
-            osgEarth, 
-            BingImageLayer,
-            BingImageLayerOptions,
-            ImageLayer,
-            BingImage);
+        META_Layer(osgEarth, BingImageLayer, Options, ImageLayer, BingImage);
 
     public:
         //! User's API key
-        inline void setAPIKey(const std::string& value);
-        inline const std::string& getAPIKey() const;
+        void setAPIKey(const std::string& value);
+        const std::string& getAPIKey() const;
 
         //! Bing imagery set to access (default is Aerial)
-        inline void setImagerySet(const std::string& value);
-        inline const std::string& getImagerySet() const;
+        void setImagerySet(const std::string& value);
+        const std::string& getImagerySet() const;
 
         //! Metadata API endpoint
-        inline void setImageryMetadataURL(const URI& value);
-        inline const URI& getImageryMedataURL() const;
+        void setImageryMetadataURL(const URI& value);
+        const URI& getImageryMetadataURL() const;
 
     public: // Layer
         
@@ -120,18 +97,8 @@ namespace osgEarth
         std::string getDirectURI(const TileKey&) const;
     };
 
-
-    // ... template implementations ......................................
-
-    void BingImageLayer::setAPIKey(const std::string& value) { options().apiKey() = value; }
-    const std::string& BingImageLayer::getAPIKey() const { return options().apiKey().get(); }
-
-    void BingImageLayer::setImagerySet(const std::string& value) { options().imagerySet() = value; }
-    inline const std::string& BingImageLayer::getImagerySet() const { return options().imagerySet().get(); }
-
-    void BingImageLayer::setImageryMetadataURL(const URI& value) { options().imageryMetadataURL() = value; }
-    const URI& BingImageLayer::getImageryMedataURL() const { return options().imageryMetadataURL().get(); }
-
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::BingImageLayer::Options);
 
 #endif // OSGEARTH_TMS_H

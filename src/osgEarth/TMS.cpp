@@ -1030,43 +1030,6 @@ TMS::Driver::resolveWriter(const std::string& format)
 
 //........................................................................
 
-#if 0
-Config
-TMSImageLayerOptions::getMetadata()
-{
-    return Config::readJSON( OE_MULTILINE(
-        { "name" : "TMS (Tile Map Service)",
-            "properties": [
-            { "name": "url",      "description": "Location of the TMS repository", "type": "string", "default": "" },
-            { "name": "tms_type", "description": "Set to 'google' to invert the Y index", "type": "string", "default": "" },
-            { "name": "format",   "description": "Image format to assume (e.g. jpeg, png)", "type": "string", "default": "" }
-            ]
-        }
-    ) );
-}
-
-Config
-TMSImageLayerOptions::getConfig() const
-{
-    Config conf = ImageLayerOptions::getConfig();
-    conf.set("url", _url);
-    conf.set("tms_type", _tmsType);
-    conf.set("format", _format);
-    return conf;
-}
-
-void
-TMSImageLayerOptions::fromConfig(const Config& conf)
-{
-    conf.get("url", _url);
-    conf.get("format", _format);
-    conf.get("tms_type", _tmsType);
-}
-#endif
-
-//........................................................................
-
-
 Config
 TMS::TMSOptions::getMetadata()
 {
@@ -1101,17 +1064,21 @@ TMS::TMSOptions::write(Config& conf) const
 
 REGISTER_OSGEARTH_LAYER(tmsimage, TMSImageLayer);
 
+OE_LAYER_PROPERTY_IMPL(TMSImageLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(TMSImageLayer, std::string, TMSType, tmsType);
+OE_LAYER_PROPERTY_IMPL(TMSImageLayer, std::string, Format, format);
+
 void
 TMSImageLayer::init()
 {
-    TMSImageLayerBase::init();
+    ImageLayer::init();
     setTileSourceExpected(false);
 }
 
 const Status&
 TMSImageLayer::open()
 {
-    if (TMSImageLayerBase::open().isOK())
+    if (ImageLayer::open().isOK())
     {
         osg::ref_ptr<const Profile> profile = getProfile();
 
@@ -1162,18 +1129,22 @@ TMSImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* p
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(tmselevation, TMSElevationLayer);
+    
+OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, std::string, TMSType, tmsType);
+OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, std::string, Format, format);
 
 void
 TMSElevationLayer::init()
 {
-    TMSElevationLayerBase::init();
+    ElevationLayer::init();
     setTileSourceExpected(false);
 }
 
 const Status&
 TMSElevationLayer::open()
 {
-    if (TMSElevationLayerBase::open().isOK())
+    if (ElevationLayer::open().isOK())
     {
         // Create an image layer under the hood. TMS fetch is the same for image and
         // elevation; we just convert the resulting image to a heightfield

@@ -153,6 +153,8 @@ struct DumpLabel : public osgGA::GUIEventHandler
             Style style;
             TextSymbol* symbol = style.getOrCreate<TextSymbol>();
             symbol->alignment() = symbol->ALIGN_CENTER_CENTER;
+            symbol->size() = 24;
+            symbol->halo()->color().set(.1,.1,.1,1);
             label->setStyle(style);
 
             _layer->addChild(label);

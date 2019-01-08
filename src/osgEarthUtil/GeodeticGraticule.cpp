@@ -116,6 +116,57 @@ namespace
 #define COLOR_UNIFORM "oe_GeodeticGraticule_color"
 #define WIDTH_UNIFORM "oe_GeodeticGraticule_lineWidth"
 
+//...................................................................
+
+Config
+GeodeticGraticule::Options::getConfig() const
+{
+    Config conf = VisibleLayer::Options::getConfig();
+    conf.set("line_width", _lineWidth);
+    conf.set("color", _color);
+    conf.set("grid_lines", _gridLines);
+    conf.set("resolutions", _resolutions);
+    conf.set("grid_lines_visible", _gridLinesVisible);
+    conf.set("grid_labels_visible", _gridLabelsVisible);
+    conf.set("edge_labels_visible", _edgeLabelsVisible);
+    conf.set("grid_label_style", _gridLabelStyle);
+    conf.set("edge_label_style", _edgeLabelStyle);
+    return conf;
+}
+
+void
+GeodeticGraticule::Options::fromConfig(const Config& conf)
+{
+    _lineWidth.init(2.0f);
+    _color.init(Color(Color::Yellow, 0.5f));
+    _gridLines.init(10);
+    _gridLinesVisible.init(true);
+    _gridLabelsVisible.init(true);
+    _edgeLabelsVisible.init(true);
+    _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
+    Style labelStyle;
+    TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
+    t->fill()->color().set(1, 1, 1, 1);
+    _gridLabelStyle.init(labelStyle);
+    _edgeLabelStyle.init(labelStyle);
+
+    conf.get("line_width", _lineWidth);
+    conf.get("color", _color);
+    conf.get("grid_lines", _gridLines);
+    conf.get("resolutions", _resolutions);
+    conf.get("grid_lines_visible", _gridLinesVisible);
+    conf.get("grid_labels_visible", _gridLabelsVisible);
+    conf.get("edge_labels_visible", _edgeLabelsVisible);
+    conf.get("grid_label_style", _gridLabelStyle);
+    conf.get("edge_label_style", _edgeLabelStyle);
+}
+
+//...................................................................
+
+OE_LAYER_PROPERTY_IMPL(GeodeticGraticule, Color, Color, color);
+OE_LAYER_PROPERTY_IMPL(GeodeticGraticule, float, LineWidth, lineWidth);
+OE_LAYER_PROPERTY_IMPL(GeodeticGraticule, int, NumGridLines, gridLines);
+
 void
 GeodeticGraticule::dirty()
 {

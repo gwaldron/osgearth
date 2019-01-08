@@ -124,41 +124,7 @@ namespace osgEarth
             bool setError(const std::string&);
         };
     };
-
-    /**
-     * Serialization data for the ArcGIS image layer
-     */
-    class OSGEARTH_EXPORT ArcGISServerImageLayerOptions : public ImageLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, ArcGISServerImageLayerOptions, ImageLayerOptions);
-        
-        /** URL of the MapService */
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-
-        /** ArcGIS security token */
-        optional<std::string>& token() { return _token; }
-        const optional<std::string>& token() const { return _token; }
-
-        /** Override the image format read from the server metadata */
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }
-        
-        /** Override the layers read from the server metadata */
-        optional<std::string>& layers() { return _layers; }
-        const optional<std::string>& layers() const { return _layers; }
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        optional<URI>         _url;
-        optional<std::string> _token;
-        optional<std::string> _format;
-        optional<std::string> _layers;
-    };
 }
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISServerImageLayerOptions);
 
 
 namespace osgEarth
@@ -169,29 +135,39 @@ namespace osgEarth
     class OSGEARTH_EXPORT ArcGISServerImageLayer : public ImageLayer
     {
     public:
-        META_Layer(
-            osgEarth, 
-            ArcGISServerImageLayer,
-            ArcGISServerImageLayerOptions,
-            ImageLayer,
-            ArcGISServerImage);
+        // serialization data
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(std::string, token);
+            OE_OPTION(std::string, format);
+            OE_OPTION(std::string, layers);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, ArcGISServerImageLayer, Options, ImageLayer, ArcGISServerImage);
 
     public:
         //! URL of the map service endpoint
-        inline void setURL(const URI& value);
-        inline const URI& getURL() const;
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! API security token
-        inline void setToken(const std::string& value);
-        inline const std::string& getToken() const;
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
 
         //! Override the imagery format reported in the service's metadata 
-        inline void setFormat(const std::string& value);
-        inline const std::string& getFormat() const;
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
 
         //! Override the layer specification reported in the service's metadata 
-        inline void setLayers(const std::string& value);
-        inline const std::string& getLayers() const;
+        void setLayers(const std::string& value);
+        const std::string& getLayers() const;
 
     public: // Layer
         
@@ -223,13 +199,8 @@ namespace osgEarth
         ArcGISServer::MapService _map_service;
     };
 
-
-    // ... inline implementations ........................................
-    OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, URI, URL, url);
-    OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, std::string, Token, token);
-    OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, std::string, Format, format);
-    OE_LAYER_PROPERTY_IMPL(ArcGISServerImageLayer, std::string, Layers, layers);
-
 } // namespace osgEarth
 
-#endif // OSGEARTH_TMS_H
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISServerImageLayer::Options);
+
+#endif // OSGEARTH_ARCGISSERVER_H

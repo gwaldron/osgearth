@@ -156,24 +156,24 @@ namespace osgEarth { namespace Features { namespace FeatureImageLayerImpl
 //........................................................................
 
 Config
-FeatureImageLayerOptions::getConfig() const
+FeatureImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
-    conf.set("features", _featureSourceLayer);
+    Config conf = ImageLayer::Options::getConfig();
+    conf.set("features", featureSourceLayer());
+    conf.set("gamma", gamma());
     conf.set("styles", _styles);
-    conf.set("gamma", _gamma);
     return conf;
 }
 
 void
-FeatureImageLayerOptions::fromConfig(const Config& conf)
+FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
-    _gamma.init(1.3);
+    gamma().init(1.3);
     
-    conf.get("features", _featureSourceLayer);
-    conf.get("feature_source", _featureSourceLayer);
+    conf.get("features", featureSourceLayer());
+    conf.get("feature_source", featureSourceLayer());
+    conf.get("gamma", gamma());
     conf.get("styles", _styles);
-    conf.get("gamma", _gamma);
 }
 
 //........................................................................

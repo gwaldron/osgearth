@@ -31,8 +31,8 @@ namespace osgEarth { namespace Drivers
     class ColorRampOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:            
-        optional<ElevationLayerOptions>& elevationLayer() { return _elevationLayerOptions; }
-        const optional<ElevationLayerOptions>& elevationLayer() const { return _elevationLayerOptions; }
+        optional<ElevationLayer::Options>& elevationLayer() { return _elevationLayerOptions; }
+        const optional<ElevationLayer::Options>& elevationLayer() const { return _elevationLayerOptions; }
 
         optional<URI>& ramp() { return _ramp; }
         const optional<URI>& ramp() const { return _ramp; }
@@ -75,7 +75,7 @@ namespace osgEarth { namespace Drivers
 
       
         optional<URI> _ramp;
-        optional<ElevationLayerOptions> _elevationLayerOptions;
+        optional<ElevationLayer::Options> _elevationLayerOptions;
     };
 
 } } // namespace osgEarth::Drivers

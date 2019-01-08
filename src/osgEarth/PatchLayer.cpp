@@ -23,13 +23,13 @@ using namespace osgEarth;
 //............................................................................
 
 Config
-PatchLayerOptions::getConfig() const
+PatchLayer::Options::getConfig() const
 {
-    return VisibleLayerOptions::getConfig();
+    return VisibleLayer::Options::getConfig();
 }
 
 void
-PatchLayerOptions::fromConfig(const Config& conf)
+PatchLayer::Options::fromConfig(const Config& conf)
 {
     //NOP
 }
@@ -39,6 +39,6 @@ PatchLayerOptions::fromConfig(const Config& conf)
 void
 PatchLayer::init()
 {
-    Layer::init();    
+    VisibleLayer::init();    
     setRenderType(RENDERTYPE_TERRAIN_PATCH);
 }

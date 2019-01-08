@@ -30,19 +30,15 @@
 
 using namespace osgEarth;
 
-namespace osgEarth {
-    REGISTER_OSGEARTH_LAYER(model, ModelLayer);
-}
-
 //------------------------------------------------------------------------
 
 Config
-ModelLayerOptions::getConfig() const
+ModelLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
+    Config conf = VisibleLayer::Options::getConfig();
 
     conf.set("url", _url);
-    conf.set("lod_scale", _lod_scale);
+    conf.set("lod_scale", _lodScale);
     conf.set("location", _location);
     conf.set("orientation", _orientation);
     conf.set("loading_priority_scale", _loadingPriorityScale);
@@ -53,7 +49,7 @@ ModelLayerOptions::getConfig() const
     conf.set("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
     conf.set("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
 
-    conf.set( "lighting",       _lighting );
+    conf.set( "lighting",       _lightingEnabled );
     conf.set( "mask_min_level", _maskMinLevel );
 
     // Merge the MaskSource options
@@ -67,18 +63,18 @@ ModelLayerOptions::getConfig() const
 }
 
 void
-ModelLayerOptions::fromConfig( const Config& conf )
+ModelLayer::Options::fromConfig( const Config& conf )
 {
-    _lighting.init(true);
+    _lightingEnabled.init(true);
     _maskMinLevel.init(0);
-    _lod_scale.init(1.0f);
+    _lodScale.init(1.0f);
     _shaderPolicy.init(SHADERPOLICY_GENERATE);
     _loadingPriorityScale.init(1.0f);
     _loadingPriorityOffset.init(0.0f);
     _paged.init(false);
 
     conf.get("url", _url);
-    conf.get("lod_scale", _lod_scale);
+    conf.get("lod_scale", _lodScale);
     conf.get("location", _location);
     conf.get("orientation", _orientation);
     conf.get("loading_priority_scale", _loadingPriorityScale);
@@ -89,7 +85,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.get("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
     conf.get("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
 
-    conf.get( "lighting",       _lighting );
+    conf.get( "lighting",       _lightingEnabled );
     conf.get( "mask_min_level", _maskMinLevel );
 
     if ( conf.hasValue("driver") )
@@ -197,6 +193,15 @@ namespace
 }
 
 //........................................................................
+
+REGISTER_OSGEARTH_LAYER(model, ModelLayer);
+
+OE_LAYER_PROPERTY_IMPL(ModelLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(ModelLayer, float, LODScale, lodScale);
+OE_LAYER_PROPERTY_IMPL(ModelLayer, bool, Paged, paged);
+OE_LAYER_PROPERTY_IMPL(ModelLayer, GeoPoint, Location, location);
+OE_LAYER_PROPERTY_IMPL(ModelLayer, osg::Vec3, Orientation, orientation);
+OE_LAYER_PROPERTY_IMPL(ModelLayer, unsigned, MaskMinLevel, maskMinLevel);
 
 ModelLayer::~ModelLayer()
 {

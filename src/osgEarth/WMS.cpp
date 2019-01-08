@@ -343,7 +343,7 @@ WMS::CapabilitiesReader::read(std::istream &in)
 //........................................................................
 
 Config
-WMSImageLayerOptions::getMetadata()
+WMS::WMSImageLayerOptions::getMetadata()
 {
     return Config::readJSON( OE_MULTILINE(
         { "name" : "WMS (OGC Web Map Service)",
@@ -365,9 +365,9 @@ WMSImageLayerOptions::getMetadata()
 }
 
 Config
-WMSImageLayerOptions::getConfig() const
+WMS::WMSImageLayerOptions::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     conf.set("url", _url);
     conf.set("capabilities_url", _capabilitiesUrl);
     conf.set("layers", _layers);
@@ -384,7 +384,7 @@ WMSImageLayerOptions::getConfig() const
 }
 
 void
-WMSImageLayerOptions::fromConfig(const Config& conf)
+WMS::WMSImageLayerOptions::fromConfig(const Config& conf)
 {
     _wmsVersion.init("1.1.1");
     _transparent.init(true);
@@ -425,7 +425,7 @@ namespace osgEarth {  namespace WMS
 //........................................................................
 
 //! Construct the WMS driver
-WMS::Driver::Driver(const WMSImageLayerOptions& myOptions,
+WMS::Driver::Driver(const WMS::WMSImageLayerOptions& myOptions,
                     SequenceControl* sequence,
                     const osgDB::Options* readOptions)
 {
@@ -714,7 +714,7 @@ WMS::Driver::createURI(const TileKey& key) const
     return uri;
 }
  
-const WMSImageLayerOptions&
+const WMS::WMSImageLayerOptions&
 WMS::Driver::options() const
 {
     return *_options;
@@ -723,6 +723,18 @@ WMS::Driver::options() const
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(wmsimage, WMSImageLayer);
+
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, URI, CapabilitiesURL, capabilitiesUrl);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, Layers, layers);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, Style, style);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, SRS, srs);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, CRS, crs);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, bool, Transparent, transparent);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, Times, times);
+OE_LAYER_PROPERTY_IMPL(WMSImageLayer, double, SecondsPerFrame, secondsPerFrame);
+
 
 void
 WMSImageLayer::init()

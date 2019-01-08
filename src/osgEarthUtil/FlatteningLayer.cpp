@@ -618,9 +618,9 @@ namespace
 //........................................................................
 
 Config
-FlatteningLayerOptions::getConfig() const
+FlatteningLayer::Options::getConfig() const
 {
-    Config conf = ElevationLayerOptions::getConfig();
+    Config conf = ElevationLayer::Options::getConfig();
     conf.set("feature_source", _featureSource);
     conf.set("line_width", _lineWidth);
     conf.set("buffer_width", _bufferWidth);
@@ -648,7 +648,7 @@ FlatteningLayerOptions::getConfig() const
 }
 
 void
-FlatteningLayerOptions::fromConfig(const Config& conf)
+FlatteningLayer::Options::fromConfig(const Config& conf)
 {
     fill().init(false);
     lineWidth().init(40);
@@ -690,6 +690,10 @@ FlatteningLayerOptions::fromConfig(const Config& conf)
 }
 
 //........................................................................
+
+OE_LAYER_PROPERTY_IMPL(FlatteningLayer, NumericExpression, LineWidth, lineWidth);
+OE_LAYER_PROPERTY_IMPL(FlatteningLayer, NumericExpression, BufferWidth, bufferWidth);
+OE_LAYER_PROPERTY_IMPL(FlatteningLayer, bool, Fill, fill);
 
 void
 FlatteningLayer::init()

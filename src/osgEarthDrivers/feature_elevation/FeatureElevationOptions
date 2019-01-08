@@ -42,8 +42,8 @@ namespace osgEarth { namespace Drivers
         const optional<double>& offset() const { return _offset; }
 
         /** Feature source from which to read the feature data */
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        optional<FeatureSource::Options>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSource::Options>& featureOptions() const { return _featureOptions; }
 
     public: // ctors
 
@@ -83,7 +83,7 @@ namespace osgEarth { namespace Drivers
                 _featureOptions->merge( conf.child("features") );
         }
 
-        optional<FeatureSourceOptions>  _featureOptions;
+        optional<FeatureSource::Options>  _featureOptions;
         optional<std::string>           _attr;
         optional<double>                _offset;
     };

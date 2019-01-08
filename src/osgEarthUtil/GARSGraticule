@@ -23,38 +23,11 @@
 #include <osgEarthUtil/Common>
 #include <osgEarthSymbology/Style>
 
+
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-
-    /**
-     * Configuration options for the geodetic graticule.
-     */
-    class GARSGraticuleOptions : public VisibleLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, GARSGraticuleOptions, VisibleLayerOptions);
-        
-    public:
-        //! Style for grid zone designator geometry and text
-        optional<Style>& style() { return _style; }
-        const optional<Style>& style() const { return _style; }
-
-    public:
-        virtual Config getConfig() const {
-            Config conf = VisibleLayerOptions::getConfig();
-            conf.set("style", _style);
-            return conf;
-        }
-
-    private:
-        optional<Style> _style;
-
-        void fromConfig(const Config& conf) {
-            conf.get("style", _style);
-        }
-    };
 
     /**
      * GARS (Global Area Reference System) Graticuler map layer.
@@ -62,8 +35,22 @@ namespace osgEarth { namespace Util
      */
     class OSGEARTHUTIL_EXPORT GARSGraticule : public VisibleLayer
     {
+    public: // serialization
+        class OSGEARTHUTIL_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(Style, style);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions, VisibleLayer, GARSGraticule);
+        META_Layer(osgEarthUtil, GARSGraticule, Options, VisibleLayer, GARSGraticule);
+
+        //! Style for rendering the graticule
+        void setStyle(const Style& value);
+        const Style& getStyle() const;
 
         //! Call to refresh after setting an option
         void dirty();

@@ -29,46 +29,39 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Features
 {
-    /** Options structure for serialization of the FeatureSourceLayer */
-    class ImageToFeatureSourceOptions : public FeatureSourceOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, ImageToFeatureSourceOptions, FeatureSourceOptions);
-
-        //! Name of the image layer to convert to feature data
-        optional<std::string>& imageLayer() { return _imageLayerName; }
-        const optional<std::string>& imageLayer() const { return _imageLayerName; }
-
-        //! Level of detail from which to extract features
-        optional<unsigned>& level() { return _level; }
-        const optional<unsigned>& level() const { return _level; }
-
-        //! Attribute name to set with feature value (default is "value")
-        optional<std::string>& attribute() { return _attribute; }
-        const optional<std::string>& attribute() const { return _attribute; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig(const Config& conf);
-        optional<std::string> _imageLayerName;
-        optional<unsigned> _level;
-        optional<std::string> _attribute;
-    };
-
-
     /**
      * A FeatureSourceLayer that extracts features from raster data in
      * an image layer.
      */
     class OSGEARTHFEATURES_EXPORT ImageToFeatureSource : public FeatureSource
     {
+    public: // serialization
+        class OSGEARTHFEATURES_EXPORT Options : public FeatureSource::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION(std::string, imageLayer);
+            OE_OPTION(unsigned, level);
+            OE_OPTION(std::string, attribute);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarth, ImageToFeatureSource, ImageToFeatureSourceOptions, FeatureSource, imagetofeature);
+        META_Layer(osgEarth, ImageToFeatureSource, Options, FeatureSource, ImageToFeature);
 
         //! Image layer to use to convert raster data to features
         void setImageLayer(ImageLayer* layer);
+        ImageLayer* getImageLayer() const;
+
+        //! Level of detail at which to generation features
+        void setLevel(const unsigned& level);
+        const unsigned& getLevel() const;
+
+        //! Attribute in which to store information
+        void setAttribute(const std::string& value);
+        const std::string& getAttribute() const;
 
     public: // FeatureLayer
         
@@ -93,5 +86,7 @@ namespace osgEarth { namespace Features
     };
 
 } } // namespace osgEarth::Features
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::ImageToFeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H

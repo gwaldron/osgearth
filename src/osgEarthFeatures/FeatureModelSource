@@ -95,7 +95,7 @@ namespace osgEarth { namespace Features
         Config getConfig() const;
 
     protected:
-        //optional<FeatureSourceOptions>      _featureSource;
+        //optional<FeatureSource::Options>      _featureSource;
         optional<FeatureDisplayLayout>      _layout;
         optional<StringExpression>          _featureNameExpr;
         optional<bool>                      _lit;
@@ -117,8 +117,8 @@ namespace osgEarth { namespace Features
     {
     public: //properties
 
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        optional<FeatureSource::Options>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSource::Options>& featureOptions() const { return _featureOptions; }
 
     //public:
     //    /** A live feature source instance to use. Note, this does not serialize. */
@@ -141,7 +141,7 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        optional<FeatureSourceOptions> _featureOptions;
+        optional<FeatureSource::Options> _featureOptions;
     };
 
 

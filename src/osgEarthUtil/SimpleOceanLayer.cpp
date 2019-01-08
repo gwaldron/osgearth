@@ -33,10 +33,47 @@ using namespace osgEarth::Util;
 
 #define LC "[SimpleOceanLayer] "
 
+//...................................................................
+
+Config
+SimpleOceanLayer::Options::getConfig() const
+{
+    Config conf = VisibleLayer::Options::getConfig();
+    conf.set("color", _color);
+    conf.set("max_altitude", _maxAltitude);
+    conf.set("mask_layer", _maskLayer);
+    conf.set("use_bathymetry", _useBathymetry);
+    conf.set("texture", _textureURI);
+    conf.set("texture_lod", _textureLOD);
+    return conf;
+}
+
+void
+SimpleOceanLayer::Options::fromConfig(const Config& conf)
+{
+    _color.init(Color("#1D2C4FFF"));
+    _maxAltitude.init(1500000.f);
+    _useBathymetry.init(true);
+    _textureLOD.init(13u);
+
+    conf.get("color", _color);
+    conf.get("max_altitude", _maxAltitude);
+    conf.get("mask_layer", _maskLayer);
+    conf.get("use_bathymetry", _useBathymetry);
+    conf.get("texture", _textureURI);
+    conf.get("texture_lod", _textureLOD);
+}
+
+//...................................................................
+
 
 /** Register this layer so it can be used in an earth file */
 REGISTER_OSGEARTH_LAYER(ocean, SimpleOceanLayer);
 REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
+
+OE_LAYER_PROPERTY_IMPL(SimpleOceanLayer, bool, UseBathymetry, useBathymetry);
+OE_LAYER_PROPERTY_IMPL(SimpleOceanLayer, unsigned, SurfaceTextureLOD, textureLOD);
+
 
 void
 SimpleOceanLayer::init()
@@ -89,7 +126,7 @@ SimpleOceanLayer::init()
 void
 SimpleOceanLayer::setTerrainResources(TerrainResources* res)
 {
-    if (options().texture().isSet()) // texture
+    if (options().textureURI().isSet()) // texture
     {
         if (res->reserveTextureImageUnitForLayer(_texReservation, this) == false)
         {
@@ -97,14 +134,23 @@ SimpleOceanLayer::setTerrainResources(TerrainResources* res)
             return;
         }
 
-        ReadResult r = options().texture()->readImage(getReadOptions());
+        ReadResult r = options().textureURI()->readImage(getReadOptions());
         if (r.failed())
         {
             OE_WARN << LC << "Failed to load ocean texture: " << r.errorDetail() << std::endl;
             return;
         }
 
-        osg::Texture2D* tex = new osg::Texture2D(r.getImage());
+        setSurfaceImage(r.getImage());
+    }
+}
+
+void
+SimpleOceanLayer::setSurfaceImage(osg::Image* image)
+{
+    if (image)
+    {
+        osg::Texture2D* tex = new osg::Texture2D(image);
         tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
         tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
         tex->setWrap(tex->WRAP_S, tex->REPEAT);
@@ -116,7 +162,12 @@ SimpleOceanLayer::setTerrainResources(TerrainResources* res)
         ss->addUniform(new osg::Uniform("oe_ocean_tex", _texReservation.unit()));
 
         ss->setDefine("OE_OCEAN_TEXTURE_LOD", Stringify() << options().textureLOD().get());
-    }
+
+        if (image->getFileName().empty() == false)
+        {
+            options().textureURI() = image->getFileName();
+        }
+    }    
 }
 
 void
@@ -136,6 +187,9 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
             return;
         }
 
+        // Just to support getMaskLayer
+        _maskLayer = maskLayer;
+
         // activate the mask.
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setDefine("OE_OCEAN_MASK", maskLayer->shareTexUniformName().get());
@@ -152,6 +206,12 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
 
         OE_INFO << LC << "Uninstalled mask layer\n";
     }
+}
+
+const ImageLayer*
+SimpleOceanLayer::getMaskLayer() const
+{
+    return _maskLayer.get();
 }
 
 void
@@ -189,14 +249,14 @@ SimpleOceanLayer::getColor() const
 }
 
 void
-SimpleOceanLayer::setMaxAltitude(float alt)
+SimpleOceanLayer::setMaxAltitude(const float& value)
 {
-    options().maxAltitude() = alt;
+    options().maxAltitude() = value;
     getOrCreateStateSet()->getOrCreateUniform(
-        "ocean_maxAltitude", osg::Uniform::FLOAT)->set(alt);
+        "ocean_maxAltitude", osg::Uniform::FLOAT)->set(value);
 }
 
-float
+const float&
 SimpleOceanLayer::getMaxAltitude() const
 {
     return options().maxAltitude().get();
@@ -210,15 +270,15 @@ SimpleOceanLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& bo
 }
 
 void
-SimpleOceanLayer::setSeaLevel(float value)
+SimpleOceanLayer::setSeaLevel(const float& value)
 {
-    _seaLevel = value;
+    options().seaLevel() = value;
     getOrCreateStateSet()->getOrCreateUniform(
         "ocean_seaLevel", osg::Uniform::FLOAT)->set(value);
 }
 
-float
+const float&
 SimpleOceanLayer::getSeaLevel() const
 {
-    return _seaLevel;
+    return options().seaLevel().get();
 }

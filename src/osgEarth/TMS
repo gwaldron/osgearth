@@ -558,84 +558,29 @@ namespace osgEarth { namespace TMS
 namespace osgEarth
 {
     /**
-     * Serialization options for a TMS image layer.
-     */
-    typedef TMS::TMSLayerOptions<ImageLayerOptions> TMSImageLayerOptions;
-
-    /**
-     * Serialization options for a TMS elevation layer.
-     */
-    typedef TMS::TMSLayerOptions<ElevationLayerOptions> TMSElevationLayerOptions;
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TMSImageLayerOptions);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TMSElevationLayerOptions);
-
-
-namespace osgEarth
-{
-    // NOTE: Tried to make this a common base class for both TMSImageLayer
-    // and TMSElevationLayer, but it would only work if all methods here are
-    // declared to be "virtual". Otherwise an unresovlved reference occurs
-    // in the linker. Without knowing the reason, going to bypass this until
-    // we know whether it is safe.
-    template<typename BASE, typename OPT>
-    class OSGEARTH_EXPORT TMSLayer : public BASE
-    {
-    public:
-        META_Layer_Abstract(osgEarth, TMSLayer, OPT, BASE);
-
-    public:
-        //! Base URL for TMS requests
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
-
-        //! Options TMS "type"; only possible setting is "google" which will
-        //! invert the Y axis for tile indices
-        void setTMSType(const std::string& value) { options().tmsType() = value; }
-        const std::string& getTMSType() const { return options().tmsType().get(); }
-
-        //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
-
-    protected:
-        virtual ~TMSLayer() { }
-    };
-
-
-    typedef ImageLayer TMSImageLayerBase;
-    //typedef TMSLayer<ImageLayer,TMSImageLayerOptions> TMSImageLayerBase;
-
-    typedef ElevationLayer TMSElevationLayerBase;
-    //typedef TMSLayer<ElevationLayer,TMSElevationLayerOptions> TMSElevationLayerBase;
-
-
-    /**
      * Image layer connected to a TMS (Tile Map Service) facility
      */
-    class OSGEARTH_EXPORT TMSImageLayer : public TMSImageLayerBase
+    class OSGEARTH_EXPORT TMSImageLayer : public ImageLayer
     {
+    public: // serialization
+        typedef TMS::TMSLayerOptions<ImageLayer::Options> Options;
+
     public:
-        META_Layer(
-            osgEarth, 
-            TMSImageLayer,
-            TMSImageLayerOptions,
-            TMSImageLayerBase,
-            TMSImage);
+        META_Layer(osgEarth, TMSImageLayer, Options, ImageLayer, TMSImage);
 
     public:
         //! Base URL for TMS requests
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Options TMS "type"; only possible setting is "google" which will
         //! invert the Y axis for tile indices
-        void setTMSType(const std::string& value) { options().tmsType() = value; }
-        const std::string& getTMSType() const { return options().tmsType().get(); }
+        void setTMSType(const std::string& value);
+        const std::string& getTMSType() const;
 
         //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
 
     public: // Layer
         
@@ -663,28 +608,26 @@ namespace osgEarth
     /**
      * Elevation layer connected to a TMS (Tile Map Service) facility
      */
-    class OSGEARTH_EXPORT TMSElevationLayer : public TMSElevationLayerBase
+    class OSGEARTH_EXPORT TMSElevationLayer : public ElevationLayer
     {
+    public: // serialization
+        typedef TMS::TMSLayerOptions<ElevationLayer::Options> Options;
+
     public:
-        META_Layer(
-            osgEarth, 
-            TMSElevationLayer, 
-            TMSElevationLayerOptions, 
-            TMSElevationLayerBase, 
-            TMSElevation);
+        META_Layer(osgEarth, TMSElevationLayer, Options, ElevationLayer, TMSElevation);
 
         //! Base URL for TMS requests
-        void setURL(const URI& value) { options().url() = value; }
-        const URI& getURL() const { return options().url().get(); }
+        void setURL(const URI& value);
+        const URI& getURL() const;
 
         //! Options TMS "type"; only possible setting is "google" which will
         //! invert the Y axis for tile indices
-        void setTMSType(const std::string& value) { options().tmsType() = value; }
-        const std::string& getTMSType() const { return options().tmsType().get(); }
+        void setTMSType(const std::string& value);
+        const std::string& getTMSType() const;
 
         //! Data format to request from the service
-        void setFormat(const std::string& value) { options().format() = value; }
-        const std::string& getFormat() const { return options().format().get(); }
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
 
     public: // Layer
         
@@ -709,5 +652,8 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TMSImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TMSElevationLayer::Options);
 
 #endif // OSGEARTH_TMS_H

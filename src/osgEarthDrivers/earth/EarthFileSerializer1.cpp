@@ -98,7 +98,7 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     for( ConfigSet::const_iterator i = images.begin(); i != images.end(); i++ )
     {
         Config layerDriverConf = *i;        
-        ImageLayerOptions layerOpt( layerDriverConf );
+        ImageLayer::Options layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value("name");
         layerOpt.driver() = TileSourceOptions( layerDriverConf );
 

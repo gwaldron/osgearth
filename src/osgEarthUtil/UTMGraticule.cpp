@@ -31,6 +31,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Internal;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
@@ -44,7 +45,7 @@ REGISTER_OSGEARTH_LAYER(utm_graticule, UTMGraticule);
 //---------------------------------------------------------------------------
 
 void
-UTMData::rebuild(const Profile* profile)
+UTMGraticule::UTMData::rebuild(const Profile* profile)
 {
     // build the base Grid Zone Designator (GZD) loolup table. This is a table
     // that maps the GZD string to its extent.
@@ -89,7 +90,7 @@ UTMData::rebuild(const Profile* profile)
 }
 
 osg::Group*
-UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const Style& style, const FeatureProfile* featureProfile, const Map* map)
+UTMGraticule::UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const Style& style, const FeatureProfile* featureProfile, const Map* map)
 {
     osg::Group* group = new osg::Group();
 
@@ -184,7 +185,28 @@ UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const St
     return group;
 }
 
-//---------------------------------------------------------------------------
+//...................................................................
+
+Config
+UTMGraticule::Options::getConfig() const
+{
+    Config conf = VisibleLayer::Options::getConfig();
+    conf.set("gzd_style", gzdStyle() );
+    conf.set("text_scale", textScale() );
+    return conf;
+}
+
+void
+UTMGraticule::Options::fromConfig(const Config& conf)
+{
+    conf.get("gzd_style", gzdStyle() );
+    conf.get("text_scale", textScale() );
+}
+
+//...................................................................
+
+OE_LAYER_PROPERTY_IMPL(UTMGraticule, Style, GZDStyle, gzdStyle);
+OE_LAYER_PROPERTY_IMPL(UTMGraticule, float, TextScale, textScale);
 
 void
 UTMGraticule::dirty()

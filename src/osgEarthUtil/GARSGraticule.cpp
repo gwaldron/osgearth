@@ -292,10 +292,28 @@ namespace
     }
 }
 
-/*******/
+//........................................................................
+
+Config
+GARSGraticule::Options::getConfig() const
+{
+    Config conf = VisibleLayer::Options::getConfig();
+    conf.set("style", style());
+    return conf;
+}
+
+void
+GARSGraticule::Options::fromConfig(const Config& conf)
+{
+    conf.get("style", style());
+}
+
+//........................................................................
 
 REGISTER_OSGEARTH_LAYER(garsgraticule, GARSGraticule);
 REGISTER_OSGEARTH_LAYER(gars_graticule, GARSGraticule);
+
+OE_LAYER_PROPERTY_IMPL(GARSGraticule, Style, Style, style);
 
 void
 GARSGraticule::dirty()

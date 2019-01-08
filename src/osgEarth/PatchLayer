@@ -26,25 +26,23 @@
 
 namespace osgEarth
 {
-    //! Options that govern a PatchLayer
-    class OSGEARTH_EXPORT PatchLayerOptions : public VisibleLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, PatchLayerOptions, VisibleLayerOptions);
-
-        virtual Config getConfig() const;
-    private:
-        void fromConfig(const Config& conf);
-    };
-
     /**
      * PatchLayer is a layer that can render terrain tiles using either
      * a geometry shader patch (GL_PATCHES) or a custom draw callback.
      */
     class OSGEARTH_EXPORT PatchLayer : public VisibleLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarth, PatchLayer, PatchLayerOptions, VisibleLayer, patch);
+        META_Layer(osgEarth, PatchLayer, Options, VisibleLayer, Patch);
 
         struct TileData : public osg::Referenced
         {

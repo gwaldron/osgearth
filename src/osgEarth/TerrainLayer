@@ -36,101 +36,6 @@ namespace osgEarth
     class CacheBin;
     class MemCache;
 
-    /**
-     * Initialization (and serializable) options for a terrain layer.
-     */
-    class OSGEARTH_EXPORT TerrainLayerOptions : public VisibleLayerOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, TerrainLayerOptions, VisibleLayerOptions);
-
-    public:
-        /**
-         * Options for the underlyint tile source driver.
-         */
-        optional<TileSourceOptions>& driver() { return _driver; }
-        const optional<TileSourceOptions>& driver() const { return _driver; }
-
-        /**
-         * Gets or sets the minimum of detail for which this layer should generate data.
-         */
-        optional<unsigned>& minLevel() { return _minLevel; }
-        const optional<unsigned>& minLevel() const { return _minLevel; }
-
-        /**
-         * Gets or sets the minimum resolution for which this layer should generate data.
-         * The value is in units per pixel, using the base units of the layer's source data.
-         */
-        optional<double>& minResolution() { return _minResolution; }
-        const optional<double>& minResolution() const { return _minResolution; }
-
-        /**
-         * The maximum level of detail for which this layer should generate data.
-         * Data from this layer will not appear in map tiles above the maxLevel.
-         */
-        optional<unsigned>& maxLevel() { return _maxLevel; }
-        const optional<unsigned>& maxLevel() const { return _maxLevel; }
-
-        /**
-         * The maximum level resolution for which this layer should generate data.
-         * The value is in units per pixel, using the base units of the layer's source data.
-         */
-        optional<double>& maxResolution() { return _maxResolution; }
-        const optional<double>& maxResolution() const { return _maxResolution; }
-
-        /**
-         * The maximum level of detail for which this layer should generate new data.
-         * Data from this layer will be upsampled in map tiles above the maxDataLevel.
-         */
-        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
-        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
-
-        //! The hostname/port of a proxy server to use for HTTP communications on this layer
-        //! Default = no proxy.
-        optional<ProxySettings>& proxySettings() { return _proxySettings; }
-        const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
-
-        //! Number of samples in each dimension.
-        optional<unsigned>& tileSize() { return _tileSize; }
-        const optional<unsigned>& tileSize() const { return _tileSize; }
-
-        //! Value to treat as a "no data" marker.
-        optional<float>& noDataValue() { return _noDataValue; }
-        const optional<float>& noDataValue() const { return _noDataValue; }
-
-        //! Treat any value less than this as a "no data" marker.
-        optional<float>& minValidValue() { return _minValidValue; }
-        const optional<float>& minValidValue() const { return _minValidValue; }
-
-        //! Treat any value greater than this as a "no data" marker.
-        optional<float>& maxValidValue() { return _maxValidValue; }
-        const optional<float>& maxValidValue() const { return _maxValidValue; }
-
-        //! Express profile to use when the layer doesn't provide one
-        optional<ProfileOptions>& profile() { return _profile; }
-        const optional<ProfileOptions>& profile() const { return _profile; }
-
-    public:
-        virtual Config getConfig() const;
-
-    private:
-        void fromConfig( const Config& conf );
-
-        optional<TileSourceOptions> _driver;
-        optional<unsigned>          _minLevel;
-        optional<unsigned>          _maxLevel;
-        optional<double>            _minResolution;
-        optional<double>            _maxResolution;
-        optional<unsigned>          _maxDataLevel;
-        optional<unsigned>          _tileSize;
-        optional<ProxySettings>     _proxySettings;
-        optional<float>             _noDataValue;
-        optional<float>             _minValidValue;
-        optional<float>             _maxValidValue;
-        optional<ProfileOptions>    _profile;
-    };
-
-
     struct TerrainLayerCallback : public VisibleLayerCallback
     {
         typedef void(TerrainLayerCallback::*MethodPtr)(class TerrainLayer*);
@@ -141,43 +46,68 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(TileSourceOptions, driver);
+            OE_OPTION(unsigned, minLevel);
+            OE_OPTION(double, minResolution);
+            OE_OPTION(unsigned, maxLevel);
+            OE_OPTION(double, maxResolution);
+            OE_OPTION(unsigned, maxDataLevel);
+            OE_OPTION(ProxySettings, proxySettings);
+            OE_OPTION(unsigned, tileSize);
+            OE_OPTION(float, noDataValue);
+            OE_OPTION(float, minValidValue);
+            OE_OPTION(float, maxValidValue);
+            OE_OPTION(ProfileOptions, profile);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
     public:
-        META_Layer_Abstract(osgEarth, TerrainLayer, TerrainLayerOptions, VisibleLayer);
+        META_Layer_Abstract(osgEarth, TerrainLayer, Options, VisibleLayer);
 
         //! Minimum of detail for which this layer should generate data.
-        void setMinLevel(unsigned value) { options().minLevel() = value; }
-        unsigned getMinLevel() const { return options().minLevel().get(); }
+        void setMinLevel(const unsigned& value);
+        const unsigned& getMinLevel() const;
 
         //! Minimum resolution for which this layer should generate data.
-        void setMinResolution(double value) { options().minResolution() = value; }
-        double getMinResolution() const { return options().minResolution().get(); }
+        void setMinResolution(const double& value);
+        const double& getMinResolution() const;
 
         //! Maximum level of detail for which this layer should generate data.
         //! Data from this layer will not appear in map tiles above the maxLevel.
-        void setMaxLevel(unsigned value) { options().maxLevel() = value; }
-        unsigned getMaxLevel() const { return options().maxLevel().get(); }
+        void setMaxLevel(const unsigned& value);
+        const unsigned& getMaxLevel() const;
 
         //! Maximum level resolution for which this layer should generate data.
         //! The value is in units per pixel, using the base units of the layer's source data.
-        void setMaxResolution(double value) { options().maxResolution() = value; }
-        double getMaxResolution() const { return options().maxResolution().get(); }
+        void setMaxResolution(const double& value);
+        const double& getMaxResolution() const;
 
         //! Maximum level of detail for which this layer should generate new data.
         //! Data from this layer will be upsampled in map tiles above the maxDataLevel.
-        void setMaxDataLevel(unsigned value) { options().maxDataLevel() = value; }
-        unsigned getMaxDataLevel() const { return options().maxDataLevel().get(); }
+        void setMaxDataLevel(const unsigned& value);
+        const unsigned& getMaxDataLevel() const;
 
         //! Number of samples in each dimension.
-        void setTileSize(unsigned value) { options().tileSize() = value; }
+        void setTileSize(const unsigned& value);
+        virtual unsigned getTileSize() const;
 
         //! Value to treat as a "no data" marker.
-        void setNoDataValue(float value) { options().noDataValue() = value; }
+        void setNoDataValue(const float& value);
+        virtual float getNoDataValue() const;
 
         //! Treat any value less than this as a "no data" marker.
-        void setMinValidValue(float value) { options().minValidValue() = value; }
+        void setMinValidValue(const float& value);
+        virtual float getMinValidValue() const;
 
         //! Treat any value greater than this as a "no data" marker.
-        void setMaxValidValue(float value) { options().maxValidValue() = value; }
+        void setMaxValidValue(const float& value);
+        virtual float getMaxValidValue() const;
 
     protected:
         //! DTOR
@@ -210,12 +140,6 @@ namespace osgEarth
          * Gets the underlying TileSource engine that serves this map layer. Use with caution.
          */
         TileSource* getTileSource() const;
-
-        /**
-         * Gets the size (i.e. number of samples in each dimension) or the source
-         * data for this layer.
-         */
-        virtual unsigned getTileSize() const;
 
         /**
          * Whether the layer represents dynamic data, i.e. it generates data that requires
@@ -285,19 +209,6 @@ namespace osgEarth
          * Gets an extent that is the union of all the extents in getDataExtents().
          */
         const GeoExtent& getDataExtentsUnion() const;
-
-
-    public: // Data interpretation methods
-
-        //! Special value representing "no data" in a location
-        virtual float getNoDataValue() const;
-
-        //! Values less than this will be reinterpreted as "no data"
-        virtual float getMinValidValue() const;
-
-        //! Values greater than this will be reinterpreted as "no data"
-        virtual float getMaxValidValue() const;
-
 
     public: // Layer interface
 

@@ -32,8 +32,8 @@ namespace osgEarth { namespace Drivers
     {
     public:
         /** Feature source from which to read the feature data */
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        optional<FeatureSource::Options>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSource::Options>& featureOptions() const { return _featureOptions; }
 
         /** A live feature source instance to use. Note, this does not serialize. */
         osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
@@ -68,7 +68,7 @@ namespace osgEarth { namespace Drivers
                 _featureOptions->merge( conf.child("features") );
         }
         
-        optional<FeatureSourceOptions> _featureOptions;
+        optional<FeatureSource::Options> _featureOptions;
         osg::ref_ptr<FeatureSource> _featureSource;
     };
 

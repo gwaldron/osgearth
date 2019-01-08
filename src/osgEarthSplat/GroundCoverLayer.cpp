@@ -38,19 +38,17 @@
 
 using namespace osgEarth::Splat;
 
-namespace osgEarth { namespace Splat {
-    REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
-    REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
-} }
+REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
+REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 
 //........................................................................
 
 Config
-GroundCoverLayerOptions::getConfig() const
+GroundCoverLayer::Options::getConfig() const
 {
-    Config conf = PatchLayerOptions::getConfig();
-    conf.set("land_cover_layer", _landCoverLayerName);
-    conf.set("mask_layer", _maskLayerName);
+    Config conf = PatchLayer::Options::getConfig();
+    conf.set("land_cover_layer", _landCoverLayer);
+    conf.set("mask_layer", _maskLayer);
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
 
@@ -66,13 +64,13 @@ GroundCoverLayerOptions::getConfig() const
 }
 
 void
-GroundCoverLayerOptions::fromConfig(const Config& conf)
+GroundCoverLayer::Options::fromConfig(const Config& conf)
 {
     _lod.init(13u);
     _castShadows.init(false);
 
-    conf.get("land_cover_layer", _landCoverLayerName);
-    conf.get("mask_layer", _maskLayerName);
+    conf.get("land_cover_layer", _landCoverLayer);
+    conf.get("mask_layer", _maskLayer);
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
 
@@ -162,6 +160,9 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
 
 //........................................................................
 
+OE_LAYER_PROPERTY_IMPL(GroundCoverLayer, unsigned, LOD, lod);
+OE_LAYER_PROPERTY_IMPL(GroundCoverLayer, bool, CastShadows, castShadows);
+
 void
 GroundCoverLayer::init()
 {
@@ -197,6 +198,12 @@ GroundCoverLayer::setLandCoverDictionary(LandCoverDictionary* layer)
         buildStateSets();
 }
 
+const LandCoverDictionary*
+GroundCoverLayer::getLandCoverDictionary() const
+{
+    return _landCoverDict.get();
+}
+
 void
 GroundCoverLayer::setLandCoverLayer(LandCoverLayer* layer)
 {
@@ -205,6 +212,12 @@ GroundCoverLayer::setLandCoverLayer(LandCoverLayer* layer)
         OE_INFO << LC << "Land cover layer is \"" << layer->getName() << "\"\n";
         buildStateSets();
     }
+}
+
+const LandCoverLayer*
+GroundCoverLayer::getLandCoverLayer() const
+{
+    return _landCoverLayer.get();
 }
 
 void
@@ -218,10 +231,10 @@ GroundCoverLayer::setMaskLayer(ImageLayer* layer)
     }
 }
 
-unsigned
-GroundCoverLayer::getLOD() const
+const ImageLayer*
+GroundCoverLayer::getMaskLayer() const
 {
-    return options().lod().get();
+    return _maskLayer.get();
 }
 
 void

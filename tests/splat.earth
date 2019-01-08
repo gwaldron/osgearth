@@ -16,11 +16,13 @@
     <LandCover name="LandCover" max_data_level="15">
         <cache_policy usage="no_cache"/>
         <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <profile>global-geodetic</profile>
+            <coverage name="ESA GLOBCOVER">
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
                 <warp>0.05</warp>
+                <GDALImage name="ESA GLOBCOVER Tiff">
+                    <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                    <profile>global-geodetic</profile>
+                </GDALImage>
             </coverage>
         </coverages>
     </LandCover>

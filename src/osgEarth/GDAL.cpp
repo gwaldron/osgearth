@@ -439,8 +439,7 @@ namespace osgEarth { namespace GDAL
 } } // namespace osgEarth::GDAL
 
 
-GDAL::Driver::Driver(const GDALOptions& options) :
-_gdalOptions(options),
+GDAL::Driver::Driver() :
 _srcDS(NULL),
 _warpedDS(NULL),
 _maxDataLevel(30),
@@ -449,23 +448,28 @@ _linearUnits(1.0)
     //nop
 }
 
+void
+GDAL::Driver::setExternalDataset(GDAL::ExternalDataset* value)
+{
+    _externalDataset = value;
+}
+
 // Open the data source and prepare it for reading
 Status
-GDAL::Driver::open(unsigned tileSize,
+GDAL::Driver::open(const GDAL::GDALLayerOptions<ImageLayer::Options>& options,
+                   unsigned tileSize,
                    DataExtentList& layerDataExtents,
                    const osgDB::Options* readOptions)
 {
     GDAL_SCOPED_LOCK;
 
+    _gdalOptions = options; //GDALLayerOptions<ImageLayer::Options>(options);
+
     // Is a valid external GDAL dataset specified ?
     bool useExternalDataset = false;
-    osg::ref_ptr<GDAL::ExternalDataset> pExternalDataset = gdalOptions().externalDataset();
-    if (pExternalDataset != NULL)
+    if (_externalDataset.valid() && _externalDataset->dataset() != NULL)
     {
-        if (pExternalDataset->dataset() != NULL)
-        {
-            useExternalDataset = true;
-        }
+        useExternalDataset = true;
     }
 
     if (useExternalDataset == false &&
@@ -537,7 +541,7 @@ GDAL::Driver::open(unsigned tileSize,
     }
     else
     {
-        _srcDS = pExternalDataset->dataset();
+        _srcDS = _externalDataset->dataset();
     }
 
     //Get the "warp profile", which is the profile that this dataset should take on by creating a warping VRT.  This is
@@ -1050,7 +1054,7 @@ GDAL::Driver::createImage(const TileKey& key,
     if (_maxDataLevel.isSet() && key.getLevelOfDetail() > _maxDataLevel.get())
     {
         OE_DEBUG << LC << "Reached maximum data resolution key="
-            << key.getLevelOfDetail() << " max=" << _maxDataLevel << std::endl;
+            << key.getLevelOfDetail() << " max=" << _maxDataLevel.get() << std::endl;
         return NULL;
     }
 
@@ -1593,7 +1597,7 @@ GDAL::Driver::createHeightField(const TileKey& key,
 }
 
 //......................................................................
-
+#if 0
 void
 GDAL::GDALOptions::read(const Config& conf)
 {
@@ -1625,7 +1629,7 @@ GDAL::GDALOptions::write(Config& conf) const
     conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
     conf.setNonSerializable("GDALOptions::ExternalDataset", _externalDataset.get());
 }
-
+#endif
 //......................................................................
 
 REGISTER_OSGEARTH_LAYER(gdalimage, GDALImageLayer);
@@ -1635,13 +1639,6 @@ OE_LAYER_PROPERTY_IMPL(GDALImageLayer, std::string, Connection, connection);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, unsigned, SubDataSet, subDataSet);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, ProfileOptions, WarpProfile, warpProfile);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, RasterInterpolation, Interpolation, interpolation);
-
-void GDALImageLayer::setExternalDataset(GDAL::ExternalDataset* value) {
-    options().externalDataset() = value;
-}
-GDAL::ExternalDataset* GDALImageLayer::getExtenalDataset() const {
-    return options().externalDataset().get();
-}
 
 void
 GDALImageLayer::init()
@@ -1654,7 +1651,7 @@ GDALImageLayer::init()
 const Status&
 GDALImageLayer::open()
 {
-    _driver = new GDAL::Driver(options());
+    _driver = new GDAL::Driver();
     
     if (options().noDataValue().isSet())
         _driver->setNoDataValue( options().noDataValue().get() );
@@ -1669,8 +1666,9 @@ GDALImageLayer::open()
     {
         _driver->setOverrideProfile(getProfile());
     }
-
+    
     Status status = _driver->open(
+        options(),
         options().tileSize().get(),
         dataExtents(),
         getReadOptions());
@@ -1717,11 +1715,9 @@ OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, unsigned, SubDataSet, subDataSet);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, ProfileOptions, WarpProfile, warpProfile);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, RasterInterpolation, Interpolation, interpolation);
 
-void GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value) {
-    options().externalDataset() = value;
-}
-GDAL::ExternalDataset* GDALElevationLayer::getExtenalDataset() const {
-    return options().externalDataset().get();
+void GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
+{
+    _driver->setExternalDataset(value);
 }
 
 void
@@ -1734,7 +1730,7 @@ GDALElevationLayer::init()
 const Status&
 GDALElevationLayer::open()
 {    
-    _driver = new GDAL::Driver(options());
+    _driver = new GDAL::Driver();
     
     _driver->setNoDataValue( options().noDataValue().get() );
     _driver->setMinValidValue( options().minValidValue().get() );
@@ -1746,7 +1742,10 @@ GDALElevationLayer::open()
         _driver->setOverrideProfile(getProfile());
     }
 
+    GDALLayerOptions<ImageLayer::Options> gdalOptions(options().getConfig());
+
     Status status = _driver->open(
+        gdalOptions,
         options().tileSize().get(),
         dataExtents(),
         getReadOptions());

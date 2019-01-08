@@ -33,13 +33,13 @@ class GDALTileSource : public TileSource
 public:
     osg::ref_ptr<GDAL::Driver> _driver;
     TileSourceOptions _tileSourceOptions;
-    GDAL::GDALOptions _gdalOptions;
+    GDAL::GDALLayerOptions<ImageLayer::Options> _gdalOptions;
 
     GDALTileSource(const ConfigOptions& options) :
         TileSource(options),
-        _tileSourceOptions(options)
+        _tileSourceOptions(options),
+        _gdalOptions(options)
     {
-        _gdalOptions.read(options.getConfig());
     }
 
     virtual ~GDALTileSource()
@@ -49,7 +49,7 @@ public:
 
     Status initialize(const osgDB::Options* readOptions)
     {
-        _driver = new GDAL::Driver(_gdalOptions);
+        _driver = new GDAL::Driver();
 
         _driver->setNoDataValue(getNoDataValue());
         _driver->setMinValidValue(getMinValidValue());
@@ -69,6 +69,7 @@ public:
         }
 
         Status status = _driver->open(
+            _gdalOptions,
             getPixelsPerTile(),
             getDataExtents(),
             readOptions);

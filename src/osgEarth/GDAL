@@ -58,30 +58,6 @@ namespace osgEarth { namespace GDAL
         bool         _ownsDataset;
     };
 
-
-    /**
-     * GDAL-specific serialization options
-     */
-    class OSGEARTH_EXPORT GDALOptions
-    {
-    public:
-        void read(const Config& conf);
-        void write(Config& conf) const;
-
-        OE_OPTION(URI, url);
-        OE_OPTION(std::string, connection);
-        OE_OPTION(unsigned, subDataSet);
-        OE_OPTION(RasterInterpolation, interpolation);
-        OE_OPTION(ProfileOptions, warpProfile);
-
-        osg::ref_ptr<GDAL::ExternalDataset>& externalDataset() { return _externalDataset; }
-        const osg::ref_ptr<GDAL::ExternalDataset>& externalDataset() const { return _externalDataset; }
-
-    protected:
-        osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
-    };
-
-
     /**
      * Base class that mixes in the GDALOptions wither a base class.
      * This is a template so it can combine the GDAL-specific options with the layer options
@@ -89,23 +65,43 @@ namespace osgEarth { namespace GDAL
      * Dont' use this directly -- use GDALImageLayerOptions or GDALElevationLayerOptions.
      */
     template<typename BASE>
-    class OSGEARTH_EXPORT GDALLayerOptions : public BASE, public GDALOptions
+    class OSGEARTH_EXPORT GDALLayerOptions : public BASE
     {
     public:
         META_LayerOptions(osgEarth, GDALLayerOptions, BASE);
 
-    public:
-        virtual Config getConfig() const
-        {
-            Config conf = BASE::getConfig();
-            GDALOptions::write(conf);
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, connection);
+        OE_OPTION(unsigned, subDataSet);
+        OE_OPTION(RasterInterpolation, interpolation);
+        OE_OPTION(ProfileOptions, warpProfile);
+
+        virtual Config getConfig() const {
+            Config conf = BASE ::getConfig();
+            conf.set("url", _url);
+            conf.set("connection", _connection);
+            conf.set("subdataset", _subDataSet);
+            conf.set("warp_profile", _warpProfile);
+            conf.set("interpolation", "nearest", _interpolation, osgEarth::INTERP_NEAREST);
+            conf.set("interpolation", "average", _interpolation, osgEarth::INTERP_AVERAGE);
+            conf.set("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
+            conf.set("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
+            conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
             return conf;
         }
 
-    protected:
-        void fromConfig(const Config& conf)
-        {
-            GDALOptions::read(conf);
+    private:
+        void fromConfig(const Config& conf) {
+            _interpolation.init(INTERP_AVERAGE);
+            conf.get("url", _url);
+            conf.get("connection", _connection);
+            conf.get("subdataset", _subDataSet);
+            conf.get("warp_profile", _warpProfile);
+            conf.get("interpolation", "nearest", _interpolation, osgEarth::INTERP_NEAREST);
+            conf.get("interpolation", "average", _interpolation, osgEarth::INTERP_AVERAGE);
+            conf.get("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
+            conf.get("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
+            conf.get("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
         }
     };
 
@@ -119,7 +115,7 @@ namespace osgEarth { namespace GDAL
     {
     public:
         //! Constructs a new driver
-        Driver(const GDALOptions&);
+        Driver();
 
         //! Value to interpet as "no data"
         void setNoDataValue(float value) { _noDataValue = value; }
@@ -136,8 +132,12 @@ namespace osgEarth { namespace GDAL
         //! Express profile to use (instead of gleaning one from the data source)
         void setOverrideProfile(const Profile* value) { _profile = value; }
 
+        //! Assign an external GDAL dataset to use.
+        void setExternalDataset(ExternalDataset* value);
+
         //! Opens and initializes the connection to the dataset
         Status open(
+            const GDALLayerOptions<ImageLayer::Options>& options,
             unsigned tileSize,
             DataExtentList& out_dataExtents,
             const osgDB::Options* readOptions);
@@ -177,8 +177,9 @@ namespace osgEarth { namespace GDAL
         GeoExtent _extents;
         Bounds _bounds;
         osg::ref_ptr<const Profile> _profile;
-        const GDALOptions& _gdalOptions;
-        const GDALOptions& gdalOptions() const { return _gdalOptions; }
+        GDALLayerOptions<ImageLayer::Options> _gdalOptions;
+        const GDALLayerOptions<ImageLayer::Options>& gdalOptions() const { return _gdalOptions; }
+        osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
     };
 } }
 
@@ -219,7 +220,6 @@ namespace osgEarth
 
         //! User-supplied external dataset
         void setExternalDataset(GDAL::ExternalDataset* value);
-        GDAL::ExternalDataset* getExtenalDataset() const;
 
     public: // Layer
 

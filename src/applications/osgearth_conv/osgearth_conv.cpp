@@ -72,7 +72,10 @@ struct ImageLayerToTileSource : public TileHandler
         bool ok = false;
         GeoImage image = _source->createImage(key);
         if (image.valid())
+        {
+            //OE_INFO << "Read " << key.str() << ", image size = " << image.getImage()->s() << std::endl;
             ok = _dest->storeImage(key, image.getImage(), 0L);
+        }
 
         return ok;
     }
@@ -238,6 +241,13 @@ main(int argc, char** argv)
     {
         OE_WARN << LC << "Failed to open input" << std::endl;
         return -1;
+    }
+
+    // Assign a custom tile size to the input source, if possible:
+    unsigned tileSize = input->getPixelsPerTile();
+    if (args.read("--tile-size", tileSize))
+    {
+        input->setPixelsPerTile(tileSize);
     }
 
     Status inputStatus = input->open( input->MODE_READ, dbo.get() );

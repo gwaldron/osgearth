@@ -33,7 +33,7 @@ TileVisitor::TileVisitor():
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(5)
+_maxLevel(99)
 {
 }
 
@@ -43,7 +43,7 @@ _tileHandler( handler ),
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(5)
+_maxLevel(99)
 {
 }
 

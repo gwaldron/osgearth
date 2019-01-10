@@ -161,7 +161,7 @@ ElevationLayer::applyProfileOverrides()
     if ( getProfile() && options().verticalDatum().isSet() )
     {
         std::string vdatum = options().verticalDatum().get();
-        OE_INFO << "override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
+        OE_INFO << LC << "Override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
         if ( !ciEquals(getProfile()->getSRS()->getVertInitString(), vdatum) )
         {
             ProfileOptions po = getProfile()->toProfileOptions();

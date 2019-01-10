@@ -21,13 +21,12 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osg/LOD>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     /**
      * Options for configuring the Rex Engine driver.

@@ -95,30 +95,6 @@ namespace osgDB {
         OE_COMMENT("Immutable options for this layer") \
         const OPTIONS& options() const { return *_options; }
 
-//! LayerOptions optional property macro
-#define OE_OPTION(TYPE, NAME) \
-    private: \
-    optional< TYPE > _ ## NAME ; \
-    public: \
-    optional< TYPE >& NAME () { return _ ## NAME; } \
-    const optional< TYPE >& NAME () const { return _ ## NAME; }
-
-//! LayerOptions ref_ptr property macro
-#define OE_OPTION_REFPTR(TYPE, NAME) \
-    private: \
-    osg::ref_ptr< TYPE > _ ## NAME ; \
-    public: \
-    osg::ref_ptr< TYPE >& NAME () { return _ ## NAME; } \
-    const osg::ref_ptr< TYPE >& NAME () const { return _ ## NAME; }
-
-//! LayerOptions vector property macro
-#define OE_OPTION_VECTOR(TYPE, NAME) \
-    private: \
-    std::vector< TYPE > _ ## NAME ; \
-    public: \
-    std::vector< TYPE >& NAME () { return _ ## NAME; } \
-    const std::vector< TYPE >& NAME () const { return _ ## NAME; }
-
 //! Templated inline property implementation macro
 #define OE_LAYER_PROPERTY_IMPL(CLASS, TYPE, FUNC, OPTION) \
     void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\

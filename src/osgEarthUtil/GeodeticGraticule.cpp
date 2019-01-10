@@ -231,7 +231,7 @@ GeodeticGraticule::init()
 void
 GeodeticGraticule::addedToMap(const Map* map)
 {
-    if (map->isGeocentric())
+    if (map->getSRS()->isGeographic())
     {
         _mapSRS = map->getSRS();
         if (!_mapSRS.valid())

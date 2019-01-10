@@ -617,7 +617,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
     {
         // create a compiler for compiling tile models into geometry
         bool optimizeTriangleOrientation =
-            getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
+            getMap()->getElevationInterpolation() != INTERP_TRIANGULATE;
 
         MaskLayerVector maskLayers;
         _update_mapf->getLayers(maskLayers);
@@ -698,7 +698,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
 
     const MapInfo& mapInfo = _update_mapf->getMapInfo();
 
-    const osgEarth::RasterInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
+    const osgEarth::RasterInterpolation& interp = getMap()->getElevationInterpolation();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     int tileSize = _terrainOptions.tileSize().get();
@@ -736,7 +736,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
         GeoLocator::createForKey( sampleKey, mapInfo ),
         false );
 
-    bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
+    bool optimizeTriangleOrientation = getMap()->getElevationInterpolation() != INTERP_TRIANGULATE;
 
     MaskLayerVector maskLayers;
     _update_mapf->getLayers(maskLayers);

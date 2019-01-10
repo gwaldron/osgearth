@@ -233,8 +233,9 @@ TileModelFactory::buildElevation(const TileKey&    key,
 {     
     const MapInfo& mapInfo = frame.getMapInfo();
 
-    const osgEarth::RasterInterpolation& interp =
-        frame.getMapOptions().elevationInterpolation().get();
+    osg::ref_ptr<const Map> map = frame.lockMap();
+    osgEarth::RasterInterpolation interp = map.valid() ? map->getElevationInterpolation() : INTERP_BILINEAR;
+    map.release();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     // if necessary (fallback=true)
@@ -340,8 +341,9 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
 {   
     const MapInfo& mapInfo = frame.getMapInfo();
 
-    const osgEarth::RasterInterpolation& interp =
-        frame.getMapOptions().elevationInterpolation().get();
+    osg::ref_ptr<const Map> map = frame.lockMap();
+    osgEarth::RasterInterpolation interp = map.valid() ? map->getElevationInterpolation() : INTERP_BILINEAR;
+    map.release();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     // if necessary (fallback=true)

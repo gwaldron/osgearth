@@ -270,7 +270,7 @@ UTMGraticule::rebuild()
     _root->removeChildren( 0, _root->getNumChildren() );
 
     // requires a geocentric map
-    if ( !map->isGeocentric() )
+    if ( !map->getSRS()->isGeographic() )
     {
         OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
         return;

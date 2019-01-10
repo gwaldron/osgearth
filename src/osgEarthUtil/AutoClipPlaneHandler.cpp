@@ -172,7 +172,7 @@ _autoFarPlaneClamping( true )
     if ( mapNode )
     {
         osgEarth::Map* map = mapNode->getMap();
-        if ( mapNode->getMap()->isGeocentric() )
+        if ( mapNode->getMapSRS()->isGeographic() )
         {
             // Select the minimal radius..
             const osg::EllipsoidModel* em = map->getProfile()->getSRS()->getEllipsoid();

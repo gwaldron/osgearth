@@ -21,7 +21,7 @@
 */
 
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarth/ThreadingUtils>

@@ -477,7 +477,7 @@ _name(name)
     va_list args;
     va_start( args, argCount );
 
-    for (unsigned int i = 0; i < argCount; i++)
+    for (int i = 0; i < argCount; i++)
     {
         char* key = va_arg(args, char*);
         char* value = va_arg(args, char*);

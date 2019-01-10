@@ -39,21 +39,20 @@ using namespace osgEarth::Annotation;
 /**
  * Makes a simple projected MapNode that contains a basemap of the world
  */
-MapNode* makeMiniMapNode( ) {    
-    MapOptions mapOpt;
-    mapOpt.coordSysType() = MapOptions::CSTYPE_PROJECTED;  
-    mapOpt.profile() = ProfileOptions("plate-carre");
-    Map* map = new Map( mapOpt );    
+MapNode* makeMiniMapNode( )
+{
+    Map* map = new Map();
+    map->setProfile(Profile::create("plate-carre"));
 
     GDALImageLayer* basemap = new GDALImageLayer();
     basemap->setURL("../data/world.tif");
     map->addLayer(basemap);
 
     // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.enableLighting() = false;    
+    MapNode* mapNode = new MapNode(map);
+    mapNode->setEnableLighting(false);
 
-    return new MapNode( map, mapNodeOptions );
+    return mapNode;
 }
 
 osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)

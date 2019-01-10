@@ -390,18 +390,18 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     preloadExtensionLibs(conf.child("extensions"));
     preloadExtensionLibs(conf.child("external"));
 
-    MapOptions mapOptions( conf.child( "options" ) );
+    Map::Options mapOptions( conf.child( "options" ) );
 
-    // legacy: check for name/type in top-level attrs:
+    // Check for name/type in top-level attrs:
     if ( conf.hasValue( "name" ) || conf.hasValue( "type" ) )
     {
-        Config legacy;
-        if ( conf.hasValue("name") ) legacy.add( "name", conf.value("name") );
-        if ( conf.hasValue("type") ) legacy.add( "type", conf.value("type") );
-        mapOptions.mergeConfig( legacy );
+        Config temp;
+        if ( conf.hasValue("name") ) temp.set( "name", conf.value("name") );
+        if ( conf.hasValue("type") ) temp.set( "type", conf.value("type") );
+        mapOptions.merge(ConfigOptions(temp));
     }
 
-    osg::ref_ptr< Map > map = new Map( mapOptions );
+    osg::ref_ptr<Map> map = new Map(mapOptions);
 
     // Start a batch update of the map:
     map->beginUpdate();
@@ -470,7 +470,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     reportErrors(map.get());
 
     // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
-    MapNodeOptions mapNodeOptions( conf.child("options") );
+    MapNode::Options mapNodeOptions( conf.child("options") );
 
     // Create a map node.
     osg::ref_ptr<MapNode> mapNode = new MapNode( map.get(), mapNodeOptions );

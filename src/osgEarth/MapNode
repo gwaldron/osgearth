@@ -25,8 +25,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
-#include <osgEarth/MapNodeOptions>
 #include <osgEarth/Extension>
+#include <osgEarth/TerrainOptions>
 
 namespace osgEarth
 {
@@ -41,78 +41,75 @@ namespace osgEarth
     class CascadeDrapingDecorator;
 
     /**
-     * OSG Node that forms the root of an osgEarth map. This node is a "view" component
-     * that renders data from a "Map" data model.
+     * OSG Node that forms the root of an osgEarth map.
+     * This node is a "view" component that renders data from a "Map" data model.
      */
     class OSGEARTH_EXPORT MapNode : public osg::Group
     {
-    public:
-        /**
-         * Attempts to load a MapNode from a ".earth" file in the arguments list
-         */
-        static MapNode* load(
-            class osg::ArgumentParser& arguments);
+    public: // serialization data
+        class OSGEARTH_EXPORT Options : public ConfigOptions {
+        public:
+            META_ConfigOptions(osgEarth, Options, ConfigOptions);
+            OE_OPTION(ProxySettings, proxySettings);
+            OE_OPTION(bool, enableLighting);
+            OE_OPTION(bool, overlayBlending);
+            OE_OPTION(unsigned, overlayTextureSize);
+            OE_OPTION(bool, overlayMipMapping);
+            OE_OPTION(float, overlayResolutionRatio);
+            OE_OPTION(bool, useCascadeDraping);
+            OE_OPTION(bool, projected);
+            OE_OPTION(TerrainOptions, terrain);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
-        /**
-         * Attempts to load a MapNode from an ".earth" file, with a set of default
-         * map and terrain options.
-         */
+    public: // static loaders
+
+        //! Loads a MapNode form a ".earth" file in the arguemnts list
+        static MapNode* load(class osg::ArgumentParser& arguments);
+
+        //! Loads a MapNode from a ".earth" file in the arguments list
         static MapNode* load(
             class osg::ArgumentParser& arguments,
-            const MapNodeOptions&      defaultOptions);
+            const Options& options);
 
-    public:
-        /**
-         * Creates an empty map node.
-         */
+    public: // constructors
+
+        //! Creates an empty map node (with a default empty Map).
         MapNode();
 
-        /**
-         * Creates an empty map node.
-         * 
-         * @param options
-         *      Tile creation and rendering properties
-         */
-        MapNode( const MapNodeOptions& options );
+        //! Creates an empty map node with some intialization options
+        MapNode(const Options& options);
 
-        /**
-         * Creates a new map node.
-         *
-         * @param map
-         *      Map data that this map node will render.
-         */
-        MapNode( Map* map );
+        //! Creates a map node that will render the given Map.
+        MapNode(Map* map);
 
-        /**
-         * Creates a new map node.
-         *
-         * @param map
-         *      Map data that this map node will render.
-         * @param options
-         *      Tile creation and rendering properties
-         */
-        MapNode( Map* map, const MapNodeOptions& options );
+        //! Creates a map node that will render the given Map.
+        MapNode(Map* map, const Options& options);
 
     public:
 
-        virtual const char* libraryName() const { return "osgEarth"; }
-        virtual const char* className() const { return "MapNode"; }
+        //! Map that this MapNode is rendering.
+        //! You can only set the map before the mapnode is open.
+        void setMap(Map* map);
 
-        /**
-         * Gets the Map that this MapNode is rendering.
-         */
+        //! Map this node is rendering.
         Map* getMap();
         const Map* getMap() const;
 
-        /**
-         * Gets the spatial reference system of the underlying map.
-         * Convenience function.
-         */
+        //! Whether to allow lighting when present
+        void setEnableLighting(const bool& value);
+        const bool& getEnableLighting() const;
+
+        //! Access to the terrain-specific options API.
+        TerrainOptionsAPI& getTerrainOptions();
+        const TerrainOptionsAPI& getTerrainOptions() const;
+
+        //! Spatial Reference System of the underlying map.
         const SpatialReference* getMapSRS() const;
 
-        /**
-         * Gets an interface for querying the in-memory terrain scene graph directly.
-         */
+        //! API for for querying the in-memory terrain scene graph directly.
         Terrain* getTerrain();
         const Terrain* getTerrain() const;
 
@@ -149,12 +146,6 @@ namespace osgEarth
          * access this directly. Instead install a DrapeableNode in the scene graph.
          */
         OverlayDecorator* getOverlayDecorator() { return _overlayDecorator; }
-
-        /**
-         * Gets the engine properties associated with this node. The engine
-         * properties dictate how the map engine will create scene graph elements.
-         */
-        const MapNodeOptions& getMapNodeOptions() const;
 
         /**
          * Gets the underlying terrain engine that renders the terrain surface of the map.
@@ -206,24 +197,20 @@ namespace osgEarth
             return 0L;
         }
 
-        /**
-         * Opens all layers that are not already open.
-         */
+        //! Opens all layers that are not already open.
         void openMapLayers();
 
         //! Serializes the MapNode into a Config object
         Config getConfig() const;
 
+        //! Opens the map (installs a terrain engine and initializes all
+        //! the layers)
+        bool open();
 
-    public: // special purpose
+    public: // osg::Object
 
-        /**
-         * Constructs a mapnode, optionally specifying whether th intialize the
-         * data sources in the map. Typically you would only use this CTOR if you are
-         * strictly using the MapNode for serialization.
-         */
-        MapNode( Map* map, const MapNodeOptions& options, bool initMap );
-
+        virtual const char* libraryName() const { return "osgEarth"; }
+        virtual const char* className() const { return "MapNode"; }
 
     public: //override osg::Node
 
@@ -244,13 +231,12 @@ namespace osgEarth
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
         OverlayDecorator*  _overlayDecorator;
-        MapNodeOptions     _mapNodeOptions;
         Config             _externalConf;
         osg::Group*        _maskLayerNode;
         unsigned           _lastNumBlacklistedFilenames;
         TerrainEngineNode* _terrainEngine;
         bool               _terrainEngineInitialized;
-        osg::Group*        _terrainEngineContainer;
+        osg::Group*        _terrainGroup;
         ResourceReleaser*  _resourceReleaser;
         DrapingManager*    _drapingManager;
         ClampingManager*   _clampingManager;
@@ -259,6 +245,7 @@ namespace osgEarth
         std::vector< osg::ref_ptr<Extension> > _extensions;
 
         Revisioned _mapRevisionMonitor;
+        bool _isOpen;
 
     public: // MapCallback proxy
 
@@ -283,6 +270,13 @@ namespace osgEarth
         ClampingManager* getClampingManager();
         friend class ClampingTechnique;
         friend class ClampableNode;
+
+    private:
+        Options _optionsConcrete;
+        Options& options() { return _optionsConcrete; }
+        TerrainOptionsAPI _terrainOptionsAPI;
+    public:
+        const Options& options() const { return _optionsConcrete; }
     };
 
 } // namespace osgEarth

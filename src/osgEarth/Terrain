@@ -29,6 +29,7 @@
 namespace osgEarth
 {
     class Terrain;
+    class TerrainOptions;
     class SpatialReference;
 
     /**

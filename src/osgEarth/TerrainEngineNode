@@ -21,6 +21,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/Terrain>
+#include <osgEarth/TerrainOptions>
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/TerrainTileNode>
@@ -122,7 +123,7 @@ namespace osgEarth
                                               public TerrainEngineRequirements
     {
     public:
-        /** Gets the map that this engine is rendering. */
+        //! Map that this engine is rendering
         const Map* getMap() const { return _map.get(); }
 
         /** Gets the Terrain interface for interacting with the scene graph */
@@ -130,7 +131,7 @@ namespace osgEarth
         const Terrain* getTerrain() const { return _terrainInterface.get(); }
 
         /** Gets the property set in use by this map engine. */
-        virtual const TerrainOptions& getTerrainOptions() const =0;
+        //virtual const TerrainOptions& getTerrainOptions() const =0;
 
         /** Accesses the object that keeps track of GPU resources in use */
         TerrainResources* getResources() const;

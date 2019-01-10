@@ -34,7 +34,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Sky>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgViewer/Viewer>
 #include <iostream>

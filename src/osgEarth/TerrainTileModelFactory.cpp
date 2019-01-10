@@ -228,8 +228,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     if (!filter.empty() && !filter.elevation().isSetTo(true))
         return;
 
-    const osgEarth::RasterInterpolation& interp =
-        map->getMapOptions().elevationInterpolation().get();
+    const osgEarth::RasterInterpolation& interp = map->getElevationInterpolation();
 
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;

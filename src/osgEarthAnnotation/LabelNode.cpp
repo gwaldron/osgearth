@@ -24,7 +24,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/BboxDrawable>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>

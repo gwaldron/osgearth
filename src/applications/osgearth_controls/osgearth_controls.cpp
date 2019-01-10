@@ -30,9 +30,8 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util::Controls;
 
 

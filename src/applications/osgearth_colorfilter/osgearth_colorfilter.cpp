@@ -32,12 +32,11 @@
 #include <osgEarthUtil/HSLColorFilter>
 #include <osgEarthUtil/RGBColorFilter>
 #include <osgEarthUtil/ChromaKeyColorFilter>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
 
 
 Container*

@@ -16,14 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <algorithm>
 #include <osg/Vec4ub>
 #include <sstream>
 #include <iomanip>
 #include <ctype.h>
 
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 
 namespace
 {

@@ -489,7 +489,7 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
     geometry->setTexCoordArray(0, texcoords);    
 
     //Only run the MeshSubdivider on geocentric maps
-    if (getMapNode()->getMap()->isGeocentric())
+    if (getMapNode()->getMapSRS()->isGeographic())
     {
         MeshSubdivider ms(osg::Matrixd::inverse(transform->getMatrix()), transform->getMatrix());
         ms.run(*geometry, _geometryResolution.as(Units::RADIANS), GEOINTERP_RHUMB_LINE);

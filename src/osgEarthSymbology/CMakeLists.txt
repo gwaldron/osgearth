@@ -19,7 +19,6 @@ SET(LIB_PUBLIC_HEADERS
     BillboardResource
     BillboardSymbol
     Common
-    Color
     CoverageSymbol
     CssUtils
     Expression
@@ -63,7 +62,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     BBoxSymbol.cpp
     BillboardResource.cpp
     BillboardSymbol.cpp
-    Color.cpp
     CoverageSymbol.cpp
     CssUtils.cpp
     Expression.cpp

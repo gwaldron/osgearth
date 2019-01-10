@@ -538,4 +538,32 @@ namespace osgEarth
         OE_COMMENT("Construct layer options from serialized data") \
         MYCLASS (const ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
 
+//! optional property macro
+#define OE_OPTION(TYPE, NAME) \
+    private: \
+    optional< TYPE > _ ## NAME ; \
+    public: \
+    optional< TYPE >& NAME () { return _ ## NAME; } \
+    const optional< TYPE >& NAME () const { return _ ## NAME; }
+
+//! ref_ptr property macro
+#define OE_OPTION_REFPTR(TYPE, NAME) \
+    private: \
+    osg::ref_ptr< TYPE > _ ## NAME ; \
+    public: \
+    osg::ref_ptr< TYPE >& NAME () { return _ ## NAME; } \
+    const osg::ref_ptr< TYPE >& NAME () const { return _ ## NAME; }
+
+//! vector property macro
+#define OE_OPTION_VECTOR(TYPE, NAME) \
+    private: \
+    std::vector< TYPE > _ ## NAME ; \
+    public: \
+    std::vector< TYPE >& NAME () { return _ ## NAME; } \
+    const std::vector< TYPE >& NAME () const { return _ ## NAME; }
+
+#define OE_PROPERTY_IMPL(CLASS, TYPE, FUNC, OPTION) \
+    void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
+    const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
+
 #endif // OSGEARTH_CONFIG_H

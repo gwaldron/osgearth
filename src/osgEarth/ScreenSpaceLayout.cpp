@@ -23,7 +23,6 @@
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Extension>
-#include <osgEarthAnnotation/BboxDrawable>
 #include <osgText/Text>
 
 #define LC "[ScreenSpaceLayout] "
@@ -602,7 +601,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 DrawableInfo& info = local._memory[drawable];
 
                 bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
-                bool isBbox = dynamic_cast<const osgEarth::Annotation::BboxDrawable*>(drawable) != 0L;
+                bool isBbox = drawable && drawable->className()=="BboxDrawable";
                 bool fullyOut = true;
 
                 if (info._frame > 0u)

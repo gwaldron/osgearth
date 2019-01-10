@@ -20,7 +20,7 @@
 #define OSGEARTHSYMBOLOGY_STYLE_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osgEarthSymbology/Query>
 #include <osgEarthSymbology/IconSymbol>
 #include <osgEarthSymbology/PointSymbol>

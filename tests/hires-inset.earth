@@ -11,17 +11,17 @@ Look for hi-res insets over the cities of Boston and New York.
     
 	<!-- Low resolution worldwide image -->
     <GDALImage name="World">
-        <uri>../data/world.tif</uri>
+        <url>../data/world.tif</url>
     </GDALImage>
 
 	<!-- Higher resolution inset of Boston -->
     <GDALImage name="Boston">
-		<uri>../data/boston-inset-wgs84.tif</uri>
+		<url>../data/boston-inset-wgs84.tif</url>
 	</GDALImage>
 	
 	<!-- Higher resolution inset of New York City -->
     <GDALImage name="New York">
-		<uri>../data/nyc-inset-wgs84.tif</uri>
+		<url>../data/nyc-inset-wgs84.tif</url>
 	</GDALImage>
     
     <viewpoints>

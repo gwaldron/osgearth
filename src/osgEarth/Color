@@ -16,20 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHSYMBOLOGY_COLOR_H
-#define OSGEARTHSYMBOLOGY_COLOR_H 1
+#ifndef OSGEARTH_COLOR_H
+#define OSGEARTH_COLOR_H 1
 
-#include <osgEarthSymbology/Common>
+#include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osg/Vec4f>
 #include <string>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Pre-set colors (convenience class).
      */
-    struct OSGEARTHSYMBOLOGY_EXPORT Color : public osg::Vec4f
+    struct OSGEARTH_EXPORT Color : public osg::Vec4f
     {
         enum Format {
             RGBA,
@@ -109,15 +109,13 @@ namespace osgEarth { namespace Symbology
         static Color Brown;
     };
 
-} } // namespace osgEarth::Symbology
+} // namespace osgEarth
 
     
 //------------------------------------------------------------------------
 
 namespace osgEarth
 {
-    using namespace osgEarth::Symbology;
-
     // Config specializations for Color:
     template<> inline
     void Config::set<Color>( const std::string& key, const optional<Color>& opt ) {
@@ -139,4 +137,4 @@ namespace osgEarth
 }
 
 
-#endif // OSGEARTHSYMBOLOGY_COLOR_H
+#endif // OSGEARTH_COLOR_H

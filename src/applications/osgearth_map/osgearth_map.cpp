@@ -134,11 +134,6 @@ main(int argc, char** argv)
     MyTextureLayer* texLayer = new MyTextureLayer("../data/grid2.png");
     texLayer->setOpacity(0.5f);
     map->addLayer(texLayer);  
-    
-    // add a local GeoTIFF inset layer:
-    //GDALImageLayer* boston = new GDALImageLayer();
-    //boston->setURL("../data/boston-inset.tif");
-    //map->addLayer(boston);
 
     // add a WMS radar layer with transparency, and disable caching since
     // this layer updates on the server periodically.
@@ -198,26 +193,6 @@ main(int argc, char** argv)
         maskLayer->setFeatureSource(maskFeatures);
         map->addLayer(maskLayer);
     }
-
-#if 0
-    OGRFeatureOptions maskOptions;
-    maskOptions.geometry() = new Polygon();
-    maskOptions.geometry()->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
-    maskOptions.geometry()->push_back(osg::Vec3d(-111.0467, 40.9979, 0));
-    maskOptions.geometry()->push_back(osg::Vec3d(-109.0501, 41.0007, 0));
-    maskOptions.geometry()->push_back(osg::Vec3d(-109.0452, 36.9991, 0));
-    maskOptions.geometry()->push_back(osg::Vec3d(-114.0506, 37.0004, 0));
-    maskOptions.geometry()->push_back(osg::Vec3d(-114.0417, 41.9937, 0));
-    maskOptions.profile() = ProfileOptions("global-geodetic");
-
-    osg::ref_ptr<FeatureSource> features = FeatureSourceFactory::create(maskOptions);
-    if (features->open().isOK())
-    {
-        FeatureMaskLayer* maskLayer = new FeatureMaskLayer();
-        maskLayer->setFeatureSource(features.get());
-        map->addLayer(maskLayer);
-    }
-#endif
 
     // put a model on the map atop Pike's Peak, Colorado, USA
     osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("cow.osgt.(0,0,3).trans.osgearth_shadergen");

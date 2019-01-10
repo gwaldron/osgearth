@@ -84,6 +84,7 @@ SET(LIB_PUBLIC_HEADERS
     Clamping
     ClampableNode
     ClampingTechnique
+    Color
     ColorFilter
     Common
     Composite
@@ -146,8 +147,6 @@ SET(LIB_PUBLIC_HEADERS
     MapModelChange
     MapNode
     MapNodeObserver
-    MapNodeOptions
-    MapOptions
     MaskLayer
     MaskSource
     Memory
@@ -275,6 +274,7 @@ set(TARGET_SRC
     Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
+    Color.cpp
     ColorFilter.cpp
     Composite.cpp
     CompositeTileSource.cpp
@@ -328,8 +328,6 @@ set(TARGET_SRC
     MapFrame.cpp
     MapInfo.cpp
     MapNode.cpp
-    MapNodeOptions.cpp
-    MapOptions.cpp
     MaskLayer.cpp
     MaskSource.cpp
     MemCache.cpp

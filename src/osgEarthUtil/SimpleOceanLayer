@@ -24,7 +24,7 @@
 #include <osgEarth/LayerListener>
 #include <osgEarth/URI>
 #include <osgEarth/TerrainResources>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 
 namespace osgEarth {
     class ImageLayer;
@@ -33,7 +33,6 @@ namespace osgEarth {
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     /**
      * A Rex map layer that renders a simple ocean surface.

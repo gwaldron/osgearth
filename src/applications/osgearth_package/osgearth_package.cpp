@@ -457,7 +457,7 @@ makeTMS( osg::ArgumentParser& args )
     // Finally, write an earth file if requested:
     if( outMap.valid() )
     {
-        MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
+        ConfigOptions outNodeOptions(mapNode->getConfig());
         osg::ref_ptr<MapNode> outMapNode = new MapNode( outMap.get(), outNodeOptions );
         if( !osgDB::writeNodeFile( *outMapNode.get(), outEarthFile ) )
         {

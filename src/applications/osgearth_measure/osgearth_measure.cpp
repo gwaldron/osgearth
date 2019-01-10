@@ -36,7 +36,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 
 #include <osgEarthUtil/MeasureTool>
 

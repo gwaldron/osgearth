@@ -23,7 +23,7 @@
 #include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationSettings>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>

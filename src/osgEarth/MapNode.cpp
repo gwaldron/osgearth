@@ -164,7 +164,7 @@ MapNode::load(osg::ArgumentParser& args)
 }
 
 MapNode*
-MapNode::load(osg::ArgumentParser& args, const MapNodeOptions& defaults)
+MapNode::load(osg::ArgumentParser& args, const MapNode::Options& defaults)
 {
     for( int i=1; i<args.argc(); ++i )
     {
@@ -183,66 +183,97 @@ MapNode::load(osg::ArgumentParser& args, const MapNodeOptions& defaults)
     return 0L;
 }
 
-//---------------------------------------------------------------------------
+//....................................................................
+
+Config
+MapNode::Options::getConfig() const
+{
+    Config conf("options");
+    conf.set( "proxy",                    proxySettings() );
+    conf.set( "lighting",                 enableLighting() );
+    conf.set( "overlay_blending",         overlayBlending() );
+    conf.set( "overlay_texture_size",     overlayTextureSize() );
+    conf.set( "overlay_mipmapping",       overlayMipMapping() );
+    conf.set( "overlay_resolution_ratio", overlayResolutionRatio() );
+    conf.set( "cascade_draping",          useCascadeDraping() );
+    conf.set( "projected",                projected() );
+
+    if (terrain().isSet())
+        conf.set( "terrain", terrain()->getConfig() );
+
+    return conf;
+}
+
+void
+MapNode::Options::fromConfig(const Config& conf)
+{
+    proxySettings().init(ProxySettings());
+    enableLighting().init(true);
+    overlayBlending().init(true);
+    overlayMipMapping().init(false);
+    overlayTextureSize().init(4096);
+    overlayResolutionRatio().init(3.0f);
+    useCascadeDraping().init(false);
+    projected().init(false);
+    terrain().init(TerrainOptions());
+
+    conf.get( "proxy",                    proxySettings() );
+    conf.get( "lighting",                 enableLighting() );
+    conf.get( "overlay_blending",         overlayBlending() );
+    conf.get( "overlay_texture_size",     overlayTextureSize() );
+    conf.get( "overlay_mipmapping",       overlayMipMapping() );
+    conf.get( "overlay_resolution_ratio", overlayResolutionRatio() );
+    conf.get( "cascade_draping",          useCascadeDraping() );
+    conf.get( "projected",                projected() );
+
+    // backwards-compat:
+    optional<std::string> type;
+    if (conf.get("type", type)) {
+        if (type->compare("projected")==0 || type->compare("flat")==0) {
+            projected() = true;
+        }
+    }
+
+    if ( conf.hasChild( "terrain" ) )
+        terrain() = TerrainOptions( conf.child("terrain") );
+}
+
+//....................................................................
 
 MapNode::MapNode() :
 _map( new Map() ),
-_layerNodes(0L),
-_terrainEngine(0L)
+_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 {
     init();
 }
 
 MapNode::MapNode( Map* map ) :
 _map( map ),
-_layerNodes(0L),
-_terrainEngine(0L)
+_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 {
     init();
 }
 
-MapNode::MapNode( const MapNodeOptions& options ) :
+MapNode::MapNode(const MapNode::Options& options ) :
 _map( new Map() ),
-_mapNodeOptions( options ),
-_layerNodes(0L),
-_terrainEngine(0L)
+_optionsConcrete(options),
+_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 {
     init();
 }
 
-MapNode::MapNode( Map* map, const MapNodeOptions& options ) :
+MapNode::MapNode(Map* map, const MapNode::Options& options) :
 _map( map? map : new Map() ),
-_mapNodeOptions( options ),
-_layerNodes(0L),
-_terrainEngine(0L)
+_optionsConcrete(options),
+_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 {
     init();
 }
 
-MapNode::MapNode( Map* map, const MapNodeOptions& options, bool autoInit ) :
-_map( map? map : new Map() ),
-_mapNodeOptions( options ),
-_layerNodes(0L),
-_terrainEngine(0L)
-{
-    if ( autoInit )
-    {
-        init();
-    }
-}
-
-
+// Common CTOR method
 void
 MapNode::init()
 {
-    // Take a reference to this object so that it doesn't get inadvertently
-    // deleting during startup. It is possible that during startup, a driver
-    // will load that will take a reference to the MapNode (like in a
-    // ModelSource node operation) and we don't want that deleting the MapNode
-    // out from under us.
-    // This is paired by an unref_nodelete() at the end of this method.
-    this->ref();
-
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
@@ -250,20 +281,51 @@ MapNode::init()
     ShaderGenerator::setIgnoreHint(this, true);
 
     // initialize 0Ls
-    _terrainEngine          = 0L;
-    _terrainEngineContainer = 0L;
-    _overlayDecorator       = 0L;
+    _terrainEngine = 0L;
+    _terrainGroup = 0L;
+    _overlayDecorator = 0L;
+    _layerNodes = 0L;
+    _maskLayerNode = 0L;
+    _lastNumBlacklistedFilenames = 0;
+    _isOpen = false;
 
     setName( "osgEarth::MapNode" );
 
-    _maskLayerNode = 0L;
-    _lastNumBlacklistedFilenames = 0;
+    // Create and install a GL resource releaser that this node and extensions can use.
+    _resourceReleaser = new ResourceReleaser();
+    this->addChild(_resourceReleaser);
+
+    // Construct the container for the terrain engine, which also hold the options.
+    _terrainGroup = new StickyGroup();
+    this->addChild(_terrainGroup);
+
+    // a decorator for overlay models:
+    _overlayDecorator = new OverlayDecorator();
+    _terrainGroup->addChild(_overlayDecorator);
+
+    // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
+    _layerNodes = new StickyGroup();
+    _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
+    this->addChild( _layerNodes );
+}
+
+bool
+MapNode::open()
+{
+    _isOpen = true;
+
+    // Take a reference to this object so that it doesn't get inadvertently
+    // deleting during startup. It is possible that during startup, a driver
+    // will load that will take a reference to the MapNode and we don't want
+    // that deleting the MapNode out from under us.
+    // This is paired by an unref_nodelete() at the end of this method.
+    this->ref();
 
     // Set the global proxy settings
     // TODO: this should probably happen elsewhere, like in the registry?
-    if ( _mapNodeOptions.proxySettings().isSet() )
+    if ( options().proxySettings().isSet() )
     {
-        HTTPClient::setProxySettings( _mapNodeOptions.proxySettings().get() );
+        HTTPClient::setProxySettings( options().proxySettings().get() );
     }
 
     // establish global driver options. These are OSG reader-writer options that
@@ -282,46 +344,48 @@ MapNode::init()
             << std::endl;
     }
 
-    // Create and install a GL resource releaser that this node and extensions can use.
-    _resourceReleaser = new ResourceReleaser();
-    this->addChild(_resourceReleaser);
-
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
 
-    // load and attach the terrain engine, but don't initialize it until we need it
-    const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
-
-    _terrainEngine = TerrainEngineNodeFactory::create( terrainOptions );
+    // load and attach the terrain engine.
+    _terrainEngine = TerrainEngineNodeFactory::create(options().terrain().get());
     _terrainEngineInitialized = false;
 
+    // Callback listens for changes in the Map:
+    _mapCallback = new MapNodeMapCallbackProxy(this);
+    _map->addMapCallback( _mapCallback.get() );
+
+    // Invoke the callback manually to add all existing layers to this node:
+    _mapCallback->invokeOnLayerAdded(_map.get());
+    
+    // Now that layers exist, establish a map profile. This is guaranteed
+    // to result in a map profile being set.
+    if (!_map->getProfile())
+    {
+        _map->calculateProfile(options().projected().get());
+    }
+
+    // Give the terrain engine a map to render.
     if ( _terrainEngine )
     {
-        _terrainEngine->setMap( _map.get(), terrainOptions );
+        _terrainEngine->setMap(_map.get(), options().terrain().get());
     }
     else
     {
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
     }
 
-    // the engine needs a container so we can set lighting state on the container and
-    // not on the terrain engine itself. Makeing it a StickyGroup prevents the osgUtil
-    // Optimizer from collapsing it if it's empty
-    _terrainEngineContainer = new StickyGroup();
-    _terrainEngineContainer->setDataVariance( osg::Object::DYNAMIC );
-    this->addChild( _terrainEngineContainer );
-
     // initialize terrain-level lighting:
-    if ( terrainOptions.enableLighting().isSet() )
+    if ( options().terrain()->enableLighting().isSet() )
     {
         GLUtils::setLighting(
-            _terrainEngineContainer->getOrCreateStateSet(),
-            terrainOptions.enableLighting().value() ? 1 : 0 );
+            _terrainGroup->getOrCreateStateSet(),
+            options().terrain()->enableLighting().get() ? 1 : 0 );
     }
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    _terrainEngineContainer->addChild(_overlayDecorator);
+    _terrainGroup->addChild(_overlayDecorator);
 
     // install the Clamping technique for overlays:
     ClampingTechnique* clamping = new ClampingTechnique();
@@ -329,7 +393,7 @@ MapNode::init()
     _clampingManager = &clamping->getClampingManager();
 
     bool envUseCascadedDraping = (::getenv("OSGEARTH_USE_CASCADE_DRAPING") != 0L);
-    if (envUseCascadedDraping || _mapNodeOptions.useCascadeDraping() == true)
+    if (envUseCascadedDraping || options().useCascadeDraping() == true)
     {
         _cascadeDrapingDecorator = new CascadeDrapingDecorator(getMapSRS(), _terrainEngine->getResources());
         _overlayDecorator->addChild(_cascadeDrapingDecorator);
@@ -345,18 +409,23 @@ MapNode::init()
 
         const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
 
-        if ( _mapNodeOptions.overlayBlending().isSet() )
-            draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+        if ( options().overlayBlending().isSet() )
+            draping->setOverlayBlending( options().overlayBlending().get() );
+
         if ( envOverlayTextureSize )
             draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
-        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
-            draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
-        if ( _mapNodeOptions.overlayMipMapping().isSet() )
-            draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-        if ( _mapNodeOptions.overlayAttachStencil().isSet() )
-            draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
-        if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
-            draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
+
+        else if ( options().overlayTextureSize().isSet() )
+            draping->setTextureSize( options().overlayTextureSize().get() );
+
+        if ( options().overlayMipMapping().isSet() )
+            draping->setMipMapping( options().overlayMipMapping().get() );
+
+        //if ( options().overlayAttachStencil().isSet() )
+        //    draping->setAttachStencil( *options().overlayAttachStencil() );
+
+        if ( options().overlayResolutionRatio().isSet() )
+            draping->setResolutionRatio( options().overlayResolutionRatio().get() );
 
         draping->reestablish( _terrainEngine );
         _overlayDecorator->addTechnique( draping );
@@ -367,31 +436,16 @@ MapNode::init()
 
     _overlayDecorator->setTerrainEngine(_terrainEngine);
 
-    // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
-    _layerNodes = new StickyGroup();
-    _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
-    this->addChild( _layerNodes );
-
-    // Callback listens for changes in the Map:
-    _mapCallback = new MapNodeMapCallbackProxy(this);
-    _map->addMapCallback( _mapCallback.get() );
-
-    // Simulate adding all existing layers:
-    _mapCallback->invokeOnLayerAdded(_map.get());
-
-
     osg::StateSet* stateset = getOrCreateStateSet();
     stateset->setName("MapNode");
 
-    if ( _mapNodeOptions.enableLighting().isSet() )
+    if ( options().enableLighting().isSet() )
     {
-        GLUtils::setLighting(
-            stateset,
-            _mapNodeOptions.enableLighting().value() ? 1 : 0);
+        setEnableLighting(options().enableLighting().get());
     }
 
-    // Add in some global uniforms
-    if ( _map->isGeocentric() )
+    // A shader define indicating that this is a geocentric display
+    if ( _map->getSRS()->isGeographic() )
     {
         stateset->setDefine("OE_IS_GEOCENTRIC");
     }
@@ -419,6 +473,8 @@ MapNode::init()
 
     // remove the temporary reference.
     this->unref_nodelete();
+
+    return true;
 }
 
 MapNode::~MapNode()
@@ -438,15 +494,26 @@ MapNode::~MapNode()
         << (te.valid()? te.get()->referenceCount() : 0) << ", Map=" << _map->referenceCount() << ")\n";
 }
 
+void
+MapNode::setEnableLighting(const bool& value)
+{
+    options().enableLighting() = value;
+    
+    GLUtils::setLighting(
+        getOrCreateStateSet(),
+        options().enableLighting().value() ? 1 : 0);
+}
+
 Config
 MapNode::getConfig() const
 {
     Config mapConf("map");
-    mapConf.set("version", "2");
+    mapConf.set("version", "3");
 
     // the map and node options:
-    Config optionsConf = _map->getInitialMapOptions().getConfig();
-    optionsConf.merge( getMapNodeOptions().getConfig() );
+    const Map* cmap = _map.get();
+    Config optionsConf = cmap->options().getConfig();
+    optionsConf.merge( options().getConfig() );
     mapConf.add( "options", optionsConf );
 
     // the layers
@@ -516,6 +583,18 @@ const SpatialReference*
 MapNode::getMapSRS() const
 {
     return getMap()->getProfile()->getSRS();
+}
+
+TerrainOptionsAPI&
+MapNode::getTerrainOptions()
+{
+    return _terrainOptionsAPI;
+}
+
+const TerrainOptionsAPI&
+MapNode::getTerrainOptions() const
+{
+    return _terrainOptionsAPI;
 }
 
 Terrain*
@@ -611,13 +690,6 @@ MapNode::getLayerNode(Layer* layer) const
     return layer ? layer->getNode() : 0L;
 }
 
-
-const MapNodeOptions&
-MapNode::getMapNodeOptions() const
-{
-    return _mapNodeOptions;
-}
-
 MapNode*
 MapNode::findMapNode( osg::Node* graph, unsigned travmask )
 {
@@ -627,7 +699,7 @@ MapNode::findMapNode( osg::Node* graph, unsigned travmask )
 bool
 MapNode::isGeocentric() const
 {
-    return _map->isGeocentric();
+    return _map->getSRS()? _map->getSRS()->isGeographic() : true;
 }
 
 namespace
@@ -734,6 +806,17 @@ MapNode::openMapLayers()
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
+    // ensure the map node is open during the very first traversal of any kind
+    if ( !_isOpen )
+    {
+        static Threading::Mutex s_openMutex;
+        Threading::ScopedMutexLock lock(s_openMutex);
+        if (!_isOpen)
+        {
+            _isOpen = open();
+        }
+    }
+
     if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         unsigned int numBlacklist = Registry::instance()->getNumBlacklistedFilenames();

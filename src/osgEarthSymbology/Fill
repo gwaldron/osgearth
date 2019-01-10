@@ -21,7 +21,7 @@
 #define OSGEARTHSYMBOLOGY_FILL_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osgEarth/Config>
 
 

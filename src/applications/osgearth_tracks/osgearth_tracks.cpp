@@ -32,7 +32,7 @@
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/Controls>
 #include <osgEarthAnnotation/TrackNode>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>

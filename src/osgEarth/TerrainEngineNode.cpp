@@ -50,8 +50,7 @@ namespace osgEarth
     };
 }
 
-
-//------------------------------------------------------------------------
+//...................................................................
 
 
 TerrainEngineNode::ImageLayerController::ImageLayerController(TerrainEngineNode* engine) :
@@ -60,6 +59,7 @@ _engine( engine )
     //nop
 }
 
+//...................................................................
 
 void
 TerrainEngineNode::addEffect(TerrainEffect* effect)
@@ -184,6 +184,12 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
     if (!map) return;
 
+    if (!map->getProfile())
+    {
+        OE_WARN << "Illegal: Map profile is not set" << std::endl;
+        return;
+    }
+
     _map = map;
     
     // Create a terrain utility interface. This interface can be used
@@ -195,8 +201,10 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
     
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-    if ( !_map->isGeocentric() )
+    if ( _map->getSRS()->isProjected())
+    {
         this->setEllipsoidModel( NULL );
+    }
     
     // Install an object to manage texture image unit usage:
     _textureResourceTracker = new TerrainResources();
@@ -208,10 +216,10 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _map->addMapCallback( new TerrainEngineNodeCallbackProxy(this) );
 
     // Force a render bin if specified in the options
-    if ( options.binNumber().isSet() )
+    if ( options.renderBinNumber().isSet() )
     {
         osg::StateSet* set = getOrCreateStateSet();
-        set->setRenderBinDetails( options.binNumber().get(), "RenderBin" );
+        set->setRenderBinDetails( options.renderBinNumber().get(), "RenderBin" );
     }
    
     // This is the object that creates the data model for each terrain tile.

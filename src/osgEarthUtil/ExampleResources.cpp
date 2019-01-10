@@ -306,15 +306,6 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
 {
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
 
-    Config c;
-    c.add("elevation_smoothing", false);
-    TerrainOptions to(c);
-
-    MapNodeOptions defMNO;
-    defMNO.setTerrainOptions( to );
-
-    myReadOptions->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
-
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
@@ -609,7 +600,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Simple sky model:
     if (args.read("--sky"))
     {
-        std::string ext = mapNode->getMap()->isGeocentric() ? "sky_simple" : "sky_gl";
+        std::string ext = mapNode->getMapSRS()->isGeographic() ? "sky_simple" : "sky_gl";
         mapNode->addExtension(Extension::create(ext, ConfigOptions()) );
     }
 

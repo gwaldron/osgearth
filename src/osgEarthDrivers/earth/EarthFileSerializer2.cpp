@@ -469,7 +469,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // If any errors occurred, report them now.
     reportErrors(map.get());
 
-    // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
+    // Yes, Map::Options and MapNode::Options share the same Config node. Weird but true.
     MapNode::Options mapNodeOptions( conf.child("options") );
 
     // Create a map node.

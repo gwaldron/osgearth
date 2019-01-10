@@ -23,7 +23,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/Profile>
-#include <osgEarth/MapOptions>
 #include <osgEarth/MapCallback>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>

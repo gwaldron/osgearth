@@ -33,7 +33,7 @@ class GDALTileSource : public TileSource
 public:
     osg::ref_ptr<GDAL::Driver> _driver;
     TileSourceOptions _tileSourceOptions;
-    GDAL::GDALLayerOptions<ImageLayer::Options> _gdalOptions;
+    GDAL::Options _gdalOptions;
 
     GDALTileSource(const ConfigOptions& options) :
         TileSource(options),

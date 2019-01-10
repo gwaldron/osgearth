@@ -438,6 +438,7 @@ namespace osgEarth { namespace GDAL
     }
 } } // namespace osgEarth::GDAL
 
+//...................................................................
 
 GDAL::Driver::Driver() :
 _srcDS(NULL),
@@ -456,7 +457,7 @@ GDAL::Driver::setExternalDataset(GDAL::ExternalDataset* value)
 
 // Open the data source and prepare it for reading
 Status
-GDAL::Driver::open(const GDAL::GDALLayerOptions<ImageLayer::Options>& options,
+GDAL::Driver::open(const GDAL::Options& options,
                    unsigned tileSize,
                    DataExtentList& layerDataExtents,
                    const osgDB::Options* readOptions)
@@ -1596,13 +1597,17 @@ GDAL::Driver::createHeightField(const TileKey& key,
     return hf.release();
 }
 
-//......................................................................
-#if 0
+//...................................................................
+
+GDAL::Options::Options(const ConfigOptions& input)
+{
+    readFrom(input.getConfig());
+}
+
 void
-GDAL::GDALOptions::read(const Config& conf)
+GDAL::Options::readFrom(const Config& conf)
 {
     _interpolation.init(INTERP_AVERAGE);
-
     conf.get("url", _url);
     conf.get("connection", _connection);
     conf.get("subdataset", _subDataSet);
@@ -1612,11 +1617,10 @@ GDAL::GDALOptions::read(const Config& conf)
     conf.get("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
     conf.get("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.get("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
-    _externalDataset = conf.getNonSerializable<ExternalDataset>("GDALOptions::ExternalDataset");
 }
 
 void
-GDAL::GDALOptions::write(Config& conf) const
+GDAL::Options::writeTo(Config& conf) const
 {
     conf.set("url", _url);
     conf.set("connection", _connection);
@@ -1627,9 +1631,24 @@ GDAL::GDALOptions::write(Config& conf) const
     conf.set("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
     conf.set("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
-    conf.setNonSerializable("GDALOptions::ExternalDataset", _externalDataset.get());
 }
-#endif
+
+//......................................................................
+
+Config
+GDALImageLayer::Options::getConfig() const
+{
+    Config conf = ImageLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+GDALImageLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
 //......................................................................
 
 REGISTER_OSGEARTH_LAYER(gdalimage, GDALImageLayer);
@@ -1707,6 +1726,22 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 
 //......................................................................
 
+Config
+GDALElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+GDALElevationLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
+//......................................................................
+
 REGISTER_OSGEARTH_LAYER(gdalelevation, GDALElevationLayer);
 
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, URI, URL, url);
@@ -1742,10 +1777,11 @@ GDALElevationLayer::open()
         _driver->setOverrideProfile(getProfile());
     }
 
-    GDALLayerOptions<ImageLayer::Options> gdalOptions(options().getConfig());
+    //GDAL::Options gdalOptions;
+    //gdalOptions.readFrom(options().getConfig());
 
     Status status = _driver->open(
-        gdalOptions,
+        options(),
         options().tileSize().get(),
         dataExtents(),
         getReadOptions());

@@ -720,6 +720,27 @@ WMS::Driver::options() const
     return *_options;
 }
 
+const std::vector<SequenceFrameInfo>&
+WMS::Driver::getSequenceFrameInfo() const
+{
+    return _seqFrameInfoVec;
+}
+
+int
+WMS::Driver::getCurrentSequenceFrameIndex(const osg::FrameStamp* fs, double secondsPerFrame) const
+{
+    if (_seqFrameInfoVec.size() == 0)
+        return 0;
+
+    double len = secondsPerFrame * (double)_timesVec.size();
+    double t = fmod(fs->getSimulationTime(), len) / len;
+    return osg::clampBetween(
+        (int)(t * (double)_seqFrameInfoVec.size()),
+        (int)0,
+        (int)_seqFrameInfoVec.size() - 1);
+}
+
+
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(wmsimage, WMSImageLayer);
@@ -820,7 +841,7 @@ const std::vector<SequenceFrameInfo>&
 WMSImageLayer::getSequenceFrameInfo() const
 {
     WMS::Driver* driver = static_cast<WMS::Driver*>(_driver.get());
-    return driver->_seqFrameInfoVec;
+    return driver->getSequenceFrameInfo();
 }
 
 /** Index of current frame */
@@ -828,13 +849,5 @@ int
 WMSImageLayer::getCurrentSequenceFrameIndex(const osg::FrameStamp* fs) const
 {
     WMS::Driver* driver = static_cast<WMS::Driver*>(_driver.get());
-    if (driver->_seqFrameInfoVec.size() == 0)
-        return 0;
-
-    double len = options().secondsPerFrame().value() * (double)driver->_timesVec.size();
-    double t = fmod(fs->getSimulationTime(), len) / len;
-    return osg::clampBetween(
-        (int)(t * (double)driver->_seqFrameInfoVec.size()),
-        (int)0,
-        (int)driver->_seqFrameInfoVec.size() - 1);
+    return driver->getCurrentSequenceFrameIndex(fs, options().secondsPerFrame().get());
 }

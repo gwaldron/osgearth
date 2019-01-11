@@ -276,7 +276,6 @@ namespace osgEarth { namespace WMS
     class Driver : public osg::Referenced
     {
     public:
-
         //! Construct the WMS driver
 	    Driver(
             const WMSImageLayerOptions& myOptions,
@@ -293,6 +292,12 @@ namespace osgEarth { namespace WMS
 
         //! Whether the data is sequenced
         bool isSequenced() const;
+
+        //! Access the sequence frames
+        const std::vector<SequenceFrameInfo>& getSequenceFrameInfo() const;
+
+        //! Calculate the frame index based on the current time
+        int getCurrentSequenceFrameIndex(const osg::FrameStamp* fs, double secondsPerFrame) const;
         
     protected:
         osg::Image* fetchTileImage(
@@ -318,8 +323,6 @@ namespace osgEarth { namespace WMS
         bool                               _isPlaying;
         std::vector<SequenceFrameInfo>     _seqFrameInfoVec;
         mutable ThreadSafeObserverSet<osg::ImageSequence> _sequenceCache;
-
-        friend class WMSImageLayer;
     };
 
     /**

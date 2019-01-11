@@ -21,7 +21,7 @@
 
 #include "Common"
 #include "MaskGenerator"
-#include "RexTerrainEngineOptions"
+#include <osgEarth/TerrainOptions>
 #include <osgEarth/MapInfo>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
@@ -139,7 +139,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         /** Construct the geometry pool */
-        GeometryPool(const RexTerrainEngineOptions& options);
+        GeometryPool(const TerrainOptions& options);
 
         /** Sets an object to release unused GL resources */
         void setReleaser(ResourceReleaser* releaser);
@@ -215,8 +215,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         mutable Threading::Mutex       _geometryMapMutex;
         GeometryMap                    _geometryMap;
-        //unsigned                       _tileSize;
-        const RexTerrainEngineOptions& _options; 
+        const TerrainOptions&          _options; 
         osg::ref_ptr<ResourceReleaser> _releaser;
 
         mutable osg::ref_ptr<osg::Vec3Array> _sharedTexCoords;

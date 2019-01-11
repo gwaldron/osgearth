@@ -25,7 +25,6 @@
 #include "Unloader"
 #include "TileNode"
 #include "TileNodeRegistry"
-#include "RexTerrainEngineOptions"
 #include "RenderBindings"
 #include "TileDrawable"
 
@@ -60,7 +59,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             TileRasterizer*                     rasterizer,
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
-            const RexTerrainEngineOptions&      options,
+            const TerrainOptions&               options,
             const SelectionInfo&                selectionInfo,
             ModifyBoundingBoxCallback*          modifyBBoxCallback);
         
@@ -81,7 +80,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
-        const RexTerrainEngineOptions& getOptions() const { return _options; }
+        const TerrainOptions& getOptions() const { return _options; }
 
         ProgressCallback* progress() const { return _progress.get(); }
 
@@ -111,7 +110,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::observer_ptr<const Map>          _map;
         int                                   _mainThreadId;
         TileNodeRegistry*                     _liveTiles;
-        const RexTerrainEngineOptions&        _options;
+        const TerrainOptions&                 _options;
         const RenderBindings&                 _renderBindings;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;

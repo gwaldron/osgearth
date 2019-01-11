@@ -46,7 +46,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 //};
 
 
-GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
+GeometryPool::GeometryPool(const TerrainOptions& options) :
 _options ( options ),
 _enabled ( true ),
 _debug   ( false )

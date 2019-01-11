@@ -35,11 +35,7 @@
 #include <osgEarthFeatures/FeatureModelLayer>
 #include <osgEarthFeatures/OGRFeatureSource>
 
-#include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
-#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
-
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;

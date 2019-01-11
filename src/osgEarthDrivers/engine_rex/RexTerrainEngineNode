@@ -141,7 +141,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned int computeSampleSize(unsigned int levelOfDetail);
 
     private:
-        RexTerrainEngineOptions _terrainOptions;
+        TerrainOptions _terrainOptions;
 
         UID _uid;
         bool _batchUpdateInProgress;

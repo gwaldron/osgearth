@@ -53,7 +53,6 @@ SET(TARGET_H
     GeometryPool
     Shaders
     RexTerrainEngineNode
-    RexTerrainEngineOptions
     LayerDrawable
     LoadTileData
     MaskGenerator

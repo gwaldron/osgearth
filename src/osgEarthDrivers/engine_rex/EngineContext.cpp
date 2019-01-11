@@ -40,7 +40,7 @@ EngineContext::EngineContext(const Map*                     map,
                              TileRasterizer*                tileRasterizer,
                              TileNodeRegistry*              liveTiles,
                              const RenderBindings&          renderBindings,
-                             const RexTerrainEngineOptions& options,
+                             const TerrainOptions&          options,
                              const SelectionInfo&           selectionInfo,
                              ModifyBoundingBoxCallback*     bboxCB) :
 _map           ( map ),
@@ -57,7 +57,7 @@ _bboxCB        ( bboxCB ),
 _tick(0),
 _tilesLastCull(0)
 {
-    _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
+    _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
     _mainThreadId = Threading::getCurrentThreadId();
 }
 

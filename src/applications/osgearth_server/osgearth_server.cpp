@@ -420,7 +420,7 @@ public:
           unsigned int heightIndex = osg::clampBetween(z, 0u, LOD_COUNT -1u);
 
           // Multiply by the min_tile_range_factor to get close to what the correct distance would be for this tile.
-          double height = oe_LODRanges[heightIndex] * *_mapNode->getMapNodeOptions().getTerrainOptions().minTileRangeFactor();
+          double height = oe_LODRanges[heightIndex] * _mapNode->getTerrainOptions().getMinTileRangeFactor();
           osg::Vec3d center = key.getExtent().getCentroid();
           osg::Vec3d eye = center + osg::Vec3d(0,0,height);
           _viewer->getCamera()->setViewMatrixAsLookAt(eye, center, osg::Vec3d(0,1,0));

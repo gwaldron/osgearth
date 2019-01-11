@@ -51,7 +51,49 @@ namespace
         return rw;
     }
 }
-//........................................................................
+
+//...................................................................
+
+void
+MBTiles::Options::writeTo(Config& conf) const
+{
+    conf.set("filename", _url);
+    conf.set("format", _format);
+    conf.set("compute_levels", _computeLevels);
+    conf.set("compress", _compress);
+}
+
+void
+MBTiles::Options::readFrom(const Config& conf)
+{
+    format().init("png");
+    computeLevels().init(false);
+    compress().init(false);
+
+    conf.get("filename", _url);
+    conf.get("url", _url); // compat for consistency with other drivers
+    conf.get("format", _format);
+    conf.get("compute_levels", _computeLevels);
+    conf.get("compress", _compress);
+}
+
+//...................................................................
+
+Config
+MBTilesImageLayer::Options::getConfig() const
+{
+    Config conf = ImageLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+MBTilesImageLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
+//...................................................................
 
 REGISTER_OSGEARTH_LAYER(mbtilesimage, MBTilesImageLayer);
 
@@ -553,6 +595,22 @@ MBTilesImageLayer::createTables()
     // TODO: support "grids" and "grid_data" tables if necessary.
 
     return true;
+}
+
+//...................................................................
+
+Config
+MBTilesElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+MBTilesElevationLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
 }
 
 

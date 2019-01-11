@@ -501,56 +501,17 @@ namespace osgEarth { namespace TMS
     };
 
     /**
-     * Intermediate base class for all TMS options structures
+     * Serializable TMS options
      */
-    class OSGEARTH_EXPORT TMSOptions
+    class OSGEARTH_EXPORT Options
     {
     public:
-        //! Base URL of the TMS data source
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
-
-        //! Optional TMS type (e.g., "google")
-        optional<std::string>& tmsType() { return _tmsType; }
-        const optional<std::string>& tmsType() const { return _tmsType; }
-
-        //! Optional image format to request
-        optional<std::string>& format() { return _format; }
-        const optional<std::string>& format() const { return _format; }
-
-    public:
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, tmsType);
+        OE_OPTION(std::string, format);
         static Config getMetadata();
-        void read(const Config& conf);
-        void write(Config&) const;
-
-    private:
-        optional<URI> _url;
-        optional<std::string> _tmsType;
-        optional<std::string> _format;
-    };
-
-    /**
-     * Base class that mixes in the options with a base Layer class.
-     */
-    template<typename BASE>
-    class OSGEARTH_EXPORT TMSLayerOptions : public BASE, public TMSOptions
-    {
-    public:
-        META_LayerOptions(osgEarth, TMSLayerOptions, BASE);
-
-    public:
-        virtual Config getConfig() const
-        {
-            Config conf = BASE::getConfig();
-            TMSOptions::write(conf);
-            return conf;
-        }
-
-    protected:
-        void fromConfig(const Config& conf)
-        {
-            TMSOptions::read(conf);
-        }
+        void readFrom(const Config& conf);
+        void writeTo(Config&) const;
     };
 } }
 
@@ -563,7 +524,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT TMSImageLayer : public ImageLayer
     {
     public: // serialization
-        typedef TMS::TMSLayerOptions<ImageLayer::Options> Options;
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public TMS::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, TMSImageLayer, Options, ImageLayer, TMSImage);
@@ -611,7 +578,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT TMSElevationLayer : public ElevationLayer
     {
     public: // serialization
-        typedef TMS::TMSLayerOptions<ElevationLayer::Options> Options;
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public TMS::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, TMSElevationLayer, Options, ElevationLayer, TMSElevation);

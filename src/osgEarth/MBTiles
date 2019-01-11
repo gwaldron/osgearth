@@ -34,7 +34,21 @@
 namespace osgEarth { namespace MBTiles
 {
     /**
-     * Underlying driver that does the actual I/O
+     * MBTiles serialization data
+     */
+    class OSGEARTH_EXPORT Options
+    {
+    public:
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, format);
+        OE_OPTION(bool, compress);
+        OE_OPTION(bool, computeLevels);
+        void readFrom(const Config&);
+        void writeTo(Config&) const;
+    };
+
+    /**
+     * Underlying driver for reading/writing an MBTiles database
      */
     class OSGEARTH_EXPORT Driver
     {
@@ -75,23 +89,6 @@ namespace osgEarth { namespace MBTiles
         bool createTables();
         void computeLevelsNow();
     };
-
-    /**
-     * Base class that mixes in the options with a base Layer class.
-     */
-    template<typename BASE>
-    class OSGEARTH_EXPORT MBTilesLayerOptions : public BASE
-    {
-    public:
-        META_LayerOptions(osgEarth, MBTilesLayerOptions, BASE);  
-        OE_OPTION(URI, url);
-        OE_OPTION(std::string, format);
-        OE_OPTION(bool, compress);
-        OE_OPTION(bool, computeLevels);
-        virtual inline Config getConfig() const;
-    private:
-        inline void fromConfig(const Config& conf);
-    };
 } }
 
 //........................................................................
@@ -104,7 +101,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT MBTilesImageLayer : public ImageLayer
     {
     public: // serialization
-        typedef MBTiles::MBTilesLayerOptions<ImageLayer::Options> Options;
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public MBTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
 
     public:
         META_Layer(osgEarth, MBTilesImageLayer, Options, ImageLayer, MBTilesImage);
@@ -175,7 +178,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT MBTilesElevationLayer : public ElevationLayer
     {
     public: // serialization
-        typedef MBTiles::MBTilesLayerOptions<ElevationLayer::Options> Options;
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public MBTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
 
     public:
         META_Layer(osgEarth, MBTilesElevationLayer, Options, ElevationLayer, MBTilesElevation);
@@ -227,29 +236,4 @@ namespace osgEarth
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesElevationLayer::Options);
 
-// template inlines ......................................................
-
-namespace osgEarth
-{   
-    template<typename BASE>
-    void MBTiles::MBTilesLayerOptions<BASE>::fromConfig(const Config& conf)
-    {
-        conf.get("filename", _url);
-        conf.get("url", _url); // compat for consistency with other drivers
-        conf.get("format", _format);
-        conf.get("compute_levels", _computeLevels);
-        conf.get("compress", _compress);
-    }
-
-    template<typename BASE>
-    Config MBTiles::MBTilesLayerOptions<BASE>::getConfig() const
-    {
-        osgEarth::Config conf = BASE::getConfig();
-        conf.set("filename", _url);
-        conf.set("format", _format);
-        conf.set("compute_levels", _computeLevels);
-        conf.set("compress", _compress);
-        return conf;
-    }
-}
 #endif // OSGEARTH_MBTILES_H

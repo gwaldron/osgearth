@@ -1031,7 +1031,7 @@ TMS::Driver::resolveWriter(const std::string& format)
 //........................................................................
 
 Config
-TMS::TMSOptions::getMetadata()
+TMS::Options::getMetadata()
 {
     return Config::readJSON(OE_MULTILINE(
       { "name" : "TMS (Tile Map Service)",
@@ -1045,7 +1045,7 @@ TMS::TMSOptions::getMetadata()
 }
 
 void
-TMS::TMSOptions::read(const Config& conf)
+TMS::Options::readFrom(const Config& conf)
 {
     conf.get("url", _url);
     conf.get("format", _format);
@@ -1053,11 +1053,27 @@ TMS::TMSOptions::read(const Config& conf)
 }
 
 void
-TMS::TMSOptions::write(Config& conf) const
+TMS::Options::writeTo(Config& conf) const
 {
     conf.set("url", _url);
     conf.set("tms_type", _tmsType);
     conf.set("format", _format);
+}
+
+//........................................................................
+
+Config
+TMSImageLayer::Options::getConfig() const
+{
+    Config conf = ImageLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+TMSImageLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
 }
 
 //........................................................................
@@ -1125,6 +1141,23 @@ TMSImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* p
 
     return GeoImage::INVALID;
 }
+
+//........................................................................
+
+Config
+TMSElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+TMSElevationLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
 
 //........................................................................
 

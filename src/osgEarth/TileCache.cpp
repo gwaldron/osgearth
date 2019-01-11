@@ -43,6 +43,24 @@ namespace osgEarth { namespace TileCache
     }
 } }
 
+//...................................................................
+
+void
+TileCache::Options::writeTo(Config& conf) const
+{
+    conf.set("url", url());
+    conf.set("layer", layer());
+    conf.set("format", format());
+}
+
+void
+TileCache::Options::readFrom(const Config& conf)
+{
+    conf.get("url", url());
+    conf.get("layer", layer());
+    conf.get("format", format());
+}
+
 //........................................................................
 
 
@@ -93,6 +111,23 @@ TileCache::Driver::read(const URI& uri,
     std::string path(buf);
     return URI(path).readImage(readOptions, progress).releaseImage();
 }
+
+//...................................................................
+
+Config
+TileCacheImageLayer::Options::getConfig() const
+{
+    Config conf = ImageLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+TileCacheImageLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(tilecacheimage, TileCacheImageLayer);
@@ -152,6 +187,23 @@ TileCacheImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
 
     return GeoImage::INVALID;
 }
+
+//...................................................................
+
+Config
+TileCacheElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+TileCacheElevationLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
 
 //........................................................................
 

@@ -54,19 +54,16 @@ namespace osgEarth { namespace TileCache
     };
 
     /**
-     * Base class that mixes in the options with a base Layer class.
+     * Serialization TileCache shared options
      */
-    template<typename BASE>
-    class OSGEARTH_EXPORT TileCacheLayerOptions : public BASE
+    class OSGEARTH_EXPORT Options
     {
     public:
-        META_LayerOptions(osgEarth, TileCacheLayerOptions, BASE);
         OE_OPTION(URI, url);
         OE_OPTION(std::string, layer);
         OE_OPTION(std::string, format);
-        virtual inline Config getConfig() const;
-    private:
-        inline void fromConfig(const Config& conf);
+        void writeTo(Config& conf) const;
+        void readFrom(const Config& conf);
     };
 } }
 
@@ -80,7 +77,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileCacheImageLayer : public ImageLayer
     {
     public: // serialization
-        typedef TileCache::TileCacheLayerOptions<ImageLayer::Options> Options;
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public TileCache::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, TileCacheImageLayer, Options, ImageLayer, TileCacheImage);
@@ -127,7 +130,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileCacheElevationLayer : public ElevationLayer
     {
     public: // serialization
-        typedef TileCache::TileCacheLayerOptions<ElevationLayer::Options> Options;
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public TileCache::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, TileCacheElevationLayer, Options, ElevationLayer, TileCacheElevation);
@@ -170,26 +179,4 @@ namespace osgEarth
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileCacheElevationLayer::Options);
 
-// template inlines ......................................................
-
-namespace osgEarth
-{   
-    template<typename BASE>
-    void TileCache::TileCacheLayerOptions<BASE>::fromConfig(const Config& conf)
-    {
-        conf.get("url", url());
-        conf.get("layer", layer());
-        conf.get("format", format());
-    }
-
-    template<typename BASE>
-    Config TileCache::TileCacheLayerOptions<BASE>::getConfig() const
-    {
-        osgEarth::Config conf = BASE::getConfig();
-        conf.set("url", url());
-        conf.set("layer", layer());
-        conf.set("format", format());
-        return conf;
-    }
-}
 #endif // OSGEARTH_TMS_H

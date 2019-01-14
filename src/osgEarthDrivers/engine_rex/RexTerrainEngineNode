@@ -28,7 +28,6 @@
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/TileRasterizer>
 
-#include "RexTerrainEngineOptions"
 #include "EngineContext"
 #include "TileNodeRegistry"
 #include "RenderBindings"

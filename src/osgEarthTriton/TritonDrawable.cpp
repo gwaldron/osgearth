@@ -287,11 +287,14 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             if (depth)
                 writeDepth = depth->getWriteMask();
 
+            double simTime = renderInfo.getView()->getFrameStamp()->getSimulationTime();
+            simTime = fmod(simTime, 86400.0);
+
             _TRITON->getOcean()->Draw(
-                renderInfo.getView()->getFrameStamp()->getSimulationTime() + osgEarth::Random().next(),
+                simTime,
                 writeDepth, // depth writes
                 true, // draw water
-                false, // draw particles
+                true, // draw particles
                 NULL, // optional context
                 tritonCam);
 

@@ -21,8 +21,6 @@
 #define OSGEARTH_FEATURES_SESSION_H 1
 
 #include <osgEarthFeatures/Common>
-
-#include <osgEarth/MapInfo>
 #include <osgEarth/Map>
 #include <osgEarth/URI>
 
@@ -78,11 +76,11 @@ namespace osgEarth { namespace Features
         /** Underlying map. Check it for null before using! */
         osg::ref_ptr<const Map> getMap() const;
 
-        /** Map information */
-        const MapInfo& getMapInfo() const { return _mapInfo; }
+        const Profile* getMapProfile() const;
 
-        /** SRS of the map */
         const SpatialReference* getMapSRS() const;
+
+        bool isMapGeocentric() const;
 
         /** The style sheet governing this session. */
         void setStyles( StyleSheet* value );
@@ -123,7 +121,7 @@ namespace osgEarth { namespace Features
 
         URIContext                         _uriContext;         
         osg::observer_ptr<const Map>       _map;
-        MapInfo                            _mapInfo;
+        osg::ref_ptr<const Profile>        _mapProfile;
         osg::ref_ptr<StyleSheet>           _styles;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<ScriptEngine>         _styleScriptEngine;

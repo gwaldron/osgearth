@@ -38,16 +38,14 @@ using namespace osgEarth::Features;
 
 Session::Session() :
 osg::Object(),
-_map(0L),
-_mapInfo(0L)
+_map(0L)
 {
     init();
 }
 
 Session::Session(const Map* map) :
 osg::Object(),
-_map(map),
-_mapInfo(map)
+_map(map)
 {
     init();
 }
@@ -55,7 +53,6 @@ _mapInfo(map)
 Session::Session(const Map* map, StyleSheet* styles) :
 osg::Object(),
 _map(map),
-_mapInfo(map),
 _styles(styles)
 {
     init();
@@ -64,7 +61,6 @@ _styles(styles)
 Session::Session(const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions) :
 osg::Object(),
 _map(map),
-_mapInfo(map),
 _styles(styles),
 _featureSource(source),
 _dbOptions(dbOptions)
@@ -74,8 +70,7 @@ _dbOptions(dbOptions)
 
 Session::Session(const Session& rhs, const osg::CopyOp& op) :
 osg::Object(rhs, op),
-_map(rhs._map.get()),
-_mapInfo(rhs._mapInfo)
+_map(rhs._map.get())
 {
     //nop
 }
@@ -92,6 +87,16 @@ Session::init()
     _stateSetCache = new StateSetCache();
 
     _name = "Session (unnamed)";
+
+    if (_map.valid())
+    {
+        _mapProfile = _map->getProfile();
+    }
+
+    if (!_mapProfile.valid())
+    {
+        _mapProfile = Profile::create("global-geodetic");
+    }
 }
 
 Session::~Session()
@@ -134,10 +139,24 @@ Session::getMap() const
     return map;
 }
 
+const Profile*
+Session::getMapProfile() const
+{
+    return getMap()->getProfile();
+}
+
 const SpatialReference*
 Session::getMapSRS() const
 {
-    return _mapInfo.getSRS();
+    osg::ref_ptr<const Profile> profile = getMapProfile();
+    return profile.valid() ? profile->getSRS() : 0L;
+}
+
+bool
+Session::isMapGeocentric() const
+{
+    const SpatialReference* srs = getMapSRS();
+    return srs ? srs->isGeographic() : true;
 }
 
 StateSetCache*

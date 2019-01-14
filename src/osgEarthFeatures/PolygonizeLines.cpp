@@ -616,9 +616,9 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
     if ( cx.isGeoreferenced() )
     {
-        makeECEF   = cx.getSession()->getMapInfo().isGeocentric();
+        makeECEF   = cx.getSession()->isMapGeocentric();
         featureSRS = cx.extent()->getSRS();
-        mapSRS     = cx.getSession()->getMapInfo().getProfile()->getSRS();
+        mapSRS     = cx.getSession()->getMapSRS();
     }
 
     // The operator we'll use to make lines into polygons.

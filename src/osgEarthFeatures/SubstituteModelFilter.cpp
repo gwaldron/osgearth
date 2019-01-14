@@ -128,8 +128,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
                                FilterContext&               context )
 {
     // Establish SRS information:
-    bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
-    const SpatialReference* targetSRS = context.getSession()->getMapInfo().getSRS();
+    bool makeECEF = context.getSession()->isMapGeocentric();
+    const SpatialReference* targetSRS = context.getSession()->getMapSRS();
 
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
@@ -353,7 +353,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
 
         // activate horizon culling if we are in geocentric space
-        if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
+        if ( context.getSession() && context.getSession()->isMapGeocentric() )
         {
             // should this use clipping, or a horizon cull callback?
 

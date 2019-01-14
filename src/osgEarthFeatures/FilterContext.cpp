@@ -68,9 +68,9 @@ _shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
 
     if (!_extent->isValid() &&
         session && 
-        session->getMapInfo().getProfile() )
+        session->getMapProfile() )
     {
-        _extent = session->getMapInfo().getProfile()->getExtent();
+        _extent = session->getMapProfile()->getExtent();
     }
 
     // if the session is set, push its name as the first bc.

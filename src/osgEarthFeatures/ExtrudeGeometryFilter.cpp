@@ -219,7 +219,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
     {
        srs      = cx.extent()->getSRS();
        mapSRS   = cx.getSession()->getMapSRS();
-       makeECEF = cx.getSession()->getMapSRS()->isGeographic(); //->getMapInfo().isGeocentric();
+       makeECEF = cx.getSession()->isMapGeocentric();
     }
 
     // whether this is a closed polygon structure.

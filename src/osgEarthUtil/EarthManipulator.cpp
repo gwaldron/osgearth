@@ -736,6 +736,10 @@ EarthManipulator::established()
     if ( !_mapNode.valid() )
         return false;
 
+    // leave if the map's profile is not estabilshed yet
+    if (!_mapNode->getMapSRS())
+        return false;
+
     // resetablish the terrain callback on the map node:
     if ( _terrainCallback.valid() && _mapNode->getTerrain() )
     {

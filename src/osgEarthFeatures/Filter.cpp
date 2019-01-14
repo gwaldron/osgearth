@@ -169,7 +169,7 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context, const osg
 
                 extent.getSRS()->transform(
                     centroid,
-                    context.getSession()->getMapInfo().getProfile()->getSRS(),
+                    context.getSession()->getMapSRS(),
                     centroid );
 
                 out_w2l.makeTranslate( -centroid );

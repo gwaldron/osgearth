@@ -31,8 +31,6 @@
 
 namespace osgEarth
 {
-    class MapInfo;
-
     /**
      * Map is the main data model that the MapNode will render. It is a
      * container for all Layer objects (that contain the actual data) and

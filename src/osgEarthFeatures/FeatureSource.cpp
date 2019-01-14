@@ -61,6 +61,7 @@ FeatureSource::Options::fromConfig(const Config& conf)
     conf.get( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
     conf.get( "fid_attribute", fidAttribute() );
 
+#if 0
     // For backwards-compatibility (before adding the "filters" block)
     // TODO: Remove at some point in the distant future.
     const std::string bcstrings[3] = { "resample", "buffer", "convert" };
@@ -69,6 +70,7 @@ FeatureSource::Options::fromConfig(const Config& conf)
             _filterOptions.push_back( conf.child(bcstrings[i]) );
         }
     }
+#endif
 
     const Config& filters = conf.child("filters");
     for(ConfigSet::const_iterator i = filters.children().begin(); i != filters.children().end(); ++i)

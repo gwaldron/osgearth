@@ -294,7 +294,11 @@ FeatureModelGraph::ctor()
     }
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
-    const Profile* mapProfile = _session->getMapInfo().getProfile();
+    osg::ref_ptr<const Map> map = _session->getMap();
+    if (!map.valid())
+        return;
+
+    const Profile* mapProfile = map->getProfile();
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
 
     // Bail out if the feature profile is bad
@@ -532,7 +536,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
     corner.y() = workingExtent.yMin();
     corner.z() = 0;
 
-    if ( _session->getMapInfo().isGeocentric() )
+    if (_session->isMapGeocentric())
     {
         // Compute the bounding sphere by sampling points along the extent.
         int samples = 6;
@@ -1091,7 +1095,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         }
 
         // install a cluster culler.
-        if ( _session->getMapInfo().isGeocentric() && _options.clusterCulling() == true )
+        if ( _session->isMapGeocentric() && _options.clusterCulling() == true )
         {
             const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
             const GeoExtent& ccExtent = extent.isValid() ? extent : featureProfile->getExtent();
@@ -1667,7 +1671,7 @@ FeatureModelGraph::redraw()
         OE_INFO << LC << "Elevation LOD set to " << minRange << " => " << maxRange << std::endl;
 
         // todo: revisit this, make sure this is still right.
-        ElevationLOD *lod = new ElevationLOD(_session->getMapInfo().getSRS(), minRange, maxRange );
+        ElevationLOD *lod = new ElevationLOD(_session->getMapSRS(), minRange, maxRange );
         lod->addChild( node );
         node = lod;
     }

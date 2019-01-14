@@ -271,12 +271,14 @@ Map::getDataModelRevision() const
 void
 Map::setProfile(const Profile* value)
 {
+    bool notifyLayers = !_profile.valid();
+
     if (value)
     {
         _profile = value;
 
         // create a "proxy" profile to use when querying elevation layers with a vertical datum
-        if ( _profile->getSRS()->getVerticalDatum() != 0L )
+        if (_profile.valid() && _profile->getSRS()->getVerticalDatum() != 0L )
         {
             ProfileOptions po = _profile->toProfileOptions();
             po.vsrsString().unset();
@@ -285,6 +287,20 @@ Map::setProfile(const Profile* value)
         else
         {
             _profileNoVDatum = _profile;
+        }
+    }
+
+    // If we just set the profile, tell all our layers they are not added
+    // to a valid map.
+    if (_profile.valid() && notifyLayers)
+    {
+        for(LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        {
+            Layer* layer = i->get();
+            if (layer->getEnabled() && layer->getStatus().isOK())
+            {
+                layer->addedToMap(this);
+            }
         }
     }
 }
@@ -422,9 +438,6 @@ Map::addLayer(Layer* layer)
             newRevision = ++_dataModelRevision;
         }
 
-        // tell the layer it was just added.
-        //layer->addedToMap(this);
-
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
@@ -461,9 +474,6 @@ Map::insertLayer(Layer* layer, unsigned index)
 
             newRevision = ++_dataModelRevision;
         }
-
-        // tell the layer it was just added.
-        //layer->addedToMap(this);
 
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -630,8 +640,9 @@ Map::openLayer(Layer* layer)
     // Attempt to open the layer
     layer->open();
 
-    // If it opened OK, tell the layer it is being added to the map.
-    if (layer->getStatus().isOK())
+    // If it opened OK, and if the map's profile is set, 
+    // tell the layer it is being added to the map.
+    if (layer->getStatus().isOK() && getProfile() != 0L)
     {
         layer->addedToMap(this);
     }

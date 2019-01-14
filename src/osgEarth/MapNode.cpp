@@ -582,7 +582,9 @@ MapNode::getMap() const
 const SpatialReference*
 MapNode::getMapSRS() const
 {
-    return getMap()->getProfile()->getSRS();
+    return getMap() && getMap()->getProfile() ?
+        getMap()->getProfile()->getSRS() :
+        0L;
 }
 
 TerrainOptionsAPI&
@@ -806,14 +808,19 @@ MapNode::openMapLayers()
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
-    // ensure the map node is open during the very first traversal of any kind
+    // ensure the map node is open during the very first "rendering" traversal
     if ( !_isOpen )
     {
-        static Threading::Mutex s_openMutex;
-        Threading::ScopedMutexLock lock(s_openMutex);
-        if (!_isOpen)
+        if (nv.getVisitorType() == nv.EVENT_VISITOR ||
+            nv.getVisitorType() == nv.CULL_VISITOR ||
+            nv.getVisitorType() == nv.UPDATE_VISITOR)
         {
-            _isOpen = open();
+            static Threading::Mutex s_openMutex;
+            Threading::ScopedMutexLock lock(s_openMutex);
+            if (!_isOpen)
+            {
+                _isOpen = open();
+            }
         }
     }
 

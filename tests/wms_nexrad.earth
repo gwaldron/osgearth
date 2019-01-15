@@ -39,8 +39,10 @@ Weather (RADAR and IR) overlaid on the map.
     </WMSImage>
     
     <!-- US State Boundaries -->
-    <feature_model name="US States">
-        <features driver="ogr" url="../data/usa.shp"/>
+    <FeatureModel name="US States">
+        <OGRFeatures name="US-Data">
+			<url>../data/usa.shp</url>
+		</OGRFeatures>
         <style type="text/css">
             states {
                stroke: #7f7f7f; 
@@ -48,5 +50,5 @@ Weather (RADAR and IR) overlaid on the map.
                render-depth-offset: true;
             }                    
         </style>  
-    </feature_model>
+    </FeatureModel>
 </map>

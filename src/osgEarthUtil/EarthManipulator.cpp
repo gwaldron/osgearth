@@ -1991,7 +1991,9 @@ EarthManipulator::updateTether(double t)
             // Track all rotations
             else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
             {
-                _tetherRotation = L2W.getRotate() * _centerRotation.inverse();
+                osg::Quat finalTetherRotation;
+                finalTetherRotation = L2W.getRotate() * _centerRotation.inverse();
+                _tetherRotation.slerp(t, _tetherRotationVP0, finalTetherRotation);
             }
         }
 
@@ -2313,7 +2315,7 @@ EarthManipulator::updateCamera(osg::Camera& camera)
     double now = osg::Timer::instance()->time_s();
 
     // interpolation through a setViewpoint, if applicable
-    double t = 0.0;
+    double t = 1.0;
 
     // Update a viewpoint transition:
     if (isSettingViewpoint())

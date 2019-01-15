@@ -12,16 +12,18 @@ osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz
 
 <map name="Boston Demo" type="geocentric" version="2">
     
-    <image name="ReadyMap.org - Imagery" driver="tms">
+    <TMSImage name="Imagery">
         <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
-    </image>
+    </TMSImage>
+    
+    <xi:include href="readymap_elevation.xml"/>
       
-    <model name="buildings" driver="feature_geom">
-             
-        <features name="buildings" driver="ogr">
+    <FeatureModel name="Buildings" max_range="20000">
+         
+        <OGRFeatures name="buildings">
             <url>../data/boston_buildings_utm19.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
+			<resample min_length="2.5"/>
+        </OGRFeatures>
         
         <layout>
             <tile_size_factor>45</tile_size_factor>
@@ -69,7 +71,7 @@ osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz
         </styles>
 
         <lighting>true</lighting>        
-    </model>
+    </FeatureModel>
     
     
     <options>

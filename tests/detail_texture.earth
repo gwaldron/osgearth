@@ -8,14 +8,9 @@
 
 <map name="detail texturing" type="geocentric">
         
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    
+    <xi:include href="readymap_elevation.xml"/>
+    <xi:include href="readymap_imagery.xml"/>
+	
     <detail>
         <image>../data/noise3.png</image>
         <lod>21</lod>

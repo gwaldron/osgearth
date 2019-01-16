@@ -21,10 +21,10 @@ osgEarth Sample - Feature to elevation driver.
         <max_level>17</max_level>
         <!-- Specify a profile that matches the map's profile so no unnecssary reprojection and mosaicing occurs -->
         <profile>global-geodetic</profile>
-        <features name="flatten" driver="ogr">
+        <OGRFeatures name="flatten">
             <url>../data/flatten_mt_rainier.shp</url>
              <build_spatial_index>true</build_spatial_index>
-        </features>
+        </OGRFeatures>
     </elevation>
     
     <viewpoints>

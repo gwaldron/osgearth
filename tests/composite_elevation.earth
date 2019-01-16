@@ -10,7 +10,6 @@ lo-res heightfield underlay.
 
 <Map>
     <contour_map opacity="1"/>
-    
     <CompositeElevation>
         <layers>
             <GDALElevation name="Mt Fuji, Japan">

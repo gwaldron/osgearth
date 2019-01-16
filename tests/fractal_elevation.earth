@@ -18,9 +18,7 @@
         </coverages>
     </land_cover>
 
-    <elevation name="ReadyMap elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
 
     <fractal_elevation name="Fractal Offset" min_level="13" max_data_level="14" offset="true">
         <cache_policy usage="no_cache"/>
@@ -32,11 +30,9 @@
     </fractal_elevation>
 
     <!-- Satellite imagery -->
-    <image name="ReadyMap imagery" driver="tms" opacity="0.75" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 
-    <feature_model name="roads" min_level="12">
+    <FeatureModel name="roads" min_level="12">
         <feature_source>roads-data</feature_source>
         <styles>
             <style type="text/css">
@@ -47,7 +43,7 @@
                 }
             </style>
         </styles>
-    </feature_model>
+    </FeatureModel>
 
     <viewpoints>
 
@@ -84,7 +80,7 @@
 
     </viewpoints>
 
-    <feature_source name="roads-data" driver="tfs">
+    <TFSFeatures name="roads-data">
         <url>http://readymap.org/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
@@ -95,5 +91,5 @@
                 <![CDATA[ ("highway" in feature.properties); ]]>
             </script>
         </filters>
-    </feature_source>
+    </TFSFeatures>
 </map>

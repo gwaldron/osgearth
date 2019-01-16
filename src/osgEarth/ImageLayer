@@ -100,9 +100,6 @@ namespace osgEarth
 
     public:
 
-        //! Override: see TerrainLayer
-        virtual void setTargetProfileHint( const Profile* profile );
-
         //! @deprecated
         //! Adds a color filter to the filter chain
         void addColorFilter( ColorFilter* filter );
@@ -191,7 +188,6 @@ namespace osgEarth
         //! Modify the bbox if an altitude is set (for culling)
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
 
-
     protected: // Layer
             
         virtual void init();
@@ -251,7 +247,7 @@ namespace osgEarth
             ImageLayer::Options                _options;
             osg::Vec4f                         _chromaKey;
             osg::ref_ptr<osg::Image>           _noDataImage;
-            bool                               _layerInTargetProfile;
+            bool                               _mosaicingPossible;
         };
     };
 

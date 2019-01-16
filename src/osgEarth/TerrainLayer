@@ -156,14 +156,6 @@ namespace osgEarth
         virtual bool isCached(const TileKey& key) const;
 
         /**
-         * Gives the terrain layer a hint as to what the target profile of
-         * images will be. This is optional, but it may allow the layer to enable
-         * certain optimizations since it has more information as to how the
-         * data will be used.
-         */
-        virtual void setTargetProfileHint( const Profile* profile );
-
-        /**
          * Disable this layer, setting an error status.
          */
         void disable(const std::string& msg);
@@ -261,6 +253,12 @@ namespace osgEarth
         //! Extent of this layer's data.
         virtual const GeoExtent& getExtent() const;
 
+        //! Called by Map when added
+        virtual void addedToMap(const Map*);
+
+        //! Called by Map when removed
+        virtual void removedFromMap(const Map*);
+
     protected:
 
         //! Creates the driver the supplies the actual data.
@@ -285,10 +283,10 @@ namespace osgEarth
 
     protected:
 
-        osg::ref_ptr<const Profile>    _targetProfileHint;
+        optional<bool>                 _profileMatchesMapProfile;
         unsigned                       _tileSize;
         osg::ref_ptr<MemCache>         _memCache;
-        bool _openCalled;
+        bool                           _openCalled;
 
         // profile from tile source or cache, before any overrides applied
         mutable osg::ref_ptr<const Profile> _profileOriginal;
@@ -332,13 +330,13 @@ namespace osgEarth
         friend class Map;
         void storeProxySettings( osgDB::Options* );
 
-        // read the tile source's cache policy hint and apply as necessary
-        void refreshTileSourceCachePolicyHint(TileSource*);
-
         TileSource* createAndOpenTileSource();
 
         // Figure out the cache settings for this layer.
         void establishCacheSettings();
+
+        // Sets up a small data cache if necessary.
+        void setUpL2Cache(unsigned minSize =0u);
 
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */

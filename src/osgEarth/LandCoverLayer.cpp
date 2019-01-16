@@ -287,6 +287,8 @@ LandCoverLayer::open()
 void
 LandCoverLayer::addedToMap(const Map* map)
 {
+    ImageLayer::addedToMap(map);
+
     // Find a land cover dictionary if there is one.
     // There had better be one, or we are not going to get very far!
     // This is called after createTileSource, so the TileSource should exist at this point.

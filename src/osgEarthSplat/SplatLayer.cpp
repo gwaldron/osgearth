@@ -167,6 +167,8 @@ SplatLayer::setLandCoverLayer(LandCoverLayer* layer)
 void
 SplatLayer::addedToMap(const Map* map)
 {
+    VisibleLayer::addedToMap(map);
+
     if (!_landCoverDict.valid())
     {
         _landCoverDictListener.listen(map, this, &SplatLayer::setLandCoverDictionary);
@@ -190,7 +192,7 @@ SplatLayer::addedToMap(const Map* map)
 void
 SplatLayer::removedFromMap(const Map* map)
 {
-    //NOP
+    VisibleLayer::removedFromMap(map);
 }
 
 void

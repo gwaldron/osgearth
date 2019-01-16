@@ -205,6 +205,8 @@ FractalElevationLayer::open()
 void
 FractalElevationLayer::addedToMap(const Map* map)
 {
+    ElevationLayer::addedToMap(map);
+
     if (map)
     {
         _landCover = map->getLayer<LandCoverLayer>();
@@ -220,6 +222,8 @@ FractalElevationLayer::addedToMap(const Map* map)
 void
 FractalElevationLayer::removedFromMap(const Map* map)
 {
+    ElevationLayer::removedFromMap(map);
+
     _landCover = 0L;
     _landCoverDict = 0L;
 }

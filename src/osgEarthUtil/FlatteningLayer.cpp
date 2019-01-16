@@ -740,6 +740,8 @@ FlatteningLayer::setFeatureSource(FeatureSource* layer)
 void
 FlatteningLayer::addedToMap(const Map* map)
 {   
+    ElevationLayer::addedToMap(map);
+
     // Initialize the elevation pool with our map:
     OE_INFO << LC << "Attaching elevation pool to map\n";
     _pool->setMap( map );
@@ -774,6 +776,8 @@ FlatteningLayer::addedToMap(const Map* map)
 void
 FlatteningLayer::removedFromMap(const Map* map)
 {
+    ElevationLayer::removedFromMap(map);
+
     _featureLayerListener.clear();
 }
 

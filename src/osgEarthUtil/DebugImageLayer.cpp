@@ -117,6 +117,9 @@ DebugImageLayer::init()
     _geom->push_back(osg::Vec3(250, 250, 0));
     _geom->push_back(osg::Vec3(5, 250, 0));
     _font = Registry::instance()->getDefaultFont();
+
+    // disable caching for the debugging layer.
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 const Status&

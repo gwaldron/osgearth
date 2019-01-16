@@ -105,7 +105,6 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
         ImageLayer::Options ilo = _options.ImageLayerOptionsVector()[i];
         ilo.cachePolicy() = CachePolicy::NO_CACHE;
         ImageLayer* layer = new ImageLayer( ilo );
-        layer->setTargetProfileHint( profile );
         layer->setReadOptions(_dbOptions.get());
         layer->open();
         _imageLayers[i] = layer;

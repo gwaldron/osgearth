@@ -382,8 +382,8 @@ TerrainLayer::open()
         }
 
         OE_INFO << LC
-            << getProfile()->toString() << " "
-            << _cacheSettings->toString()
+            << (getProfile()? getProfile()->toString() : "[no profile]") << " "
+            << (_cacheSettings.valid()? _cacheSettings->toString() : "[no cache settings]")
             << std::endl;
 
         // Done!

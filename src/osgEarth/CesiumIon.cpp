@@ -163,24 +163,22 @@ CesiumIonImageLayer::init()
 const Status&
 CesiumIonImageLayer::open()
 {
-    if (ImageLayer::open().isOK())
+    osg::ref_ptr<const Profile> profile = getProfile();
+
+    setStatus(_driver.open(
+        options().server().get(),
+        options().format().get(),
+        options().assetId().get(),
+        options().token().get(),
+        profile,
+        getReadOptions()));
+
+    if (getStatus().isOK() && profile.get() != getProfile())
     {
-        osg::ref_ptr<const Profile> profile = getProfile();
-
-        setStatus(_driver.open(
-            options().server().get(),
-            options().format().get(),
-            options().assetId().get(),
-            options().token().get(),
-            profile,
-            getReadOptions()));
-
-        if (getStatus().isOK() && profile.get() != getProfile())
-        {
-            setProfile(profile.get());
-        }
+        setProfile(profile.get());
     }
-    return getStatus();
+
+    return ImageLayer::open();
 }
 
 GeoImage

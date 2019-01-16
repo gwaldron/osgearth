@@ -127,14 +127,12 @@ DebugImageLayer::open()
 {
     _color = osgEarth::htmlColorToVec4f(options().colorCode().get());
 
-    if (ImageLayer::open().isOK())
+    if (!getProfile())
     {
-        if (!getProfile())
-        {
-            setProfile( Profile::create("global-geodetic") );
-        }
+        setProfile( Profile::create("global-geodetic") );
     }
-    return getStatus();
+
+    return ImageLayer::open();
 }
 
 GeoImage

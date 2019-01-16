@@ -202,23 +202,21 @@ XYZImageLayer::init()
 const Status&
 XYZImageLayer::open()
 {
-    if (ImageLayer::open().isOK())
+    osg::ref_ptr<const Profile> profile = getProfile();
+
+    setStatus(_driver.open(
+        options().url().get(),
+        profile,
+        options().format().get(),
+        dataExtents(),
+        getReadOptions()));
+
+    if (getStatus().isOK() && profile.get() != getProfile())
     {
-        osg::ref_ptr<const Profile> profile = getProfile();
-
-        setStatus(_driver.open(
-            options().url().get(),
-            profile,
-            options().format().get(),
-            dataExtents(),
-            getReadOptions()));
-
-        if (getStatus().isOK() && profile.get() != getProfile())
-        {
-            setProfile(profile.get());
-        }
+        setProfile(profile.get());
     }
-    return getStatus();
+
+    return ImageLayer::open();
 }
 
 GeoImage
@@ -269,22 +267,20 @@ XYZElevationLayer::init()
 const Status&
 XYZElevationLayer::open()
 {
-    if (ElevationLayer::open().isOK())
+    // Create an image layer under the hood. TMS fetch is the same for image and
+    // elevation; we just convert the resulting image to a heightfield
+    _imageLayer = new XYZImageLayer(options());
+
+    // Initialize and open the image layer
+    _imageLayer->setReadOptions(getReadOptions());
+    setStatus( _imageLayer->open() );
+
+    if (getStatus().isOK())
     {
-        // Create an image layer under the hood. TMS fetch is the same for image and
-        // elevation; we just convert the resulting image to a heightfield
-        _imageLayer = new XYZImageLayer(options());
-
-        // Initialize and open the image layer
-        _imageLayer->setReadOptions(getReadOptions());
-        setStatus( _imageLayer->open() );
-
-        if (getStatus().isOK())
-        {
-            setProfile(_imageLayer->getProfile());            
-        }
+        setProfile(_imageLayer->getProfile());            
     }
-    return getStatus();
+
+    return ElevationLayer::open();
 }
 
 GeoHeightField

@@ -768,23 +768,21 @@ WMSImageLayer::init()
 const Status&
 WMSImageLayer::open()
 {
-    if (ImageLayer::open().isOK())
+    WMS::Driver* driver = new WMS::Driver(options(), this, getReadOptions());
+    _driver = driver;
+
+    osg::ref_ptr<const Profile> profile = getProfile();
+
+    Status status = driver->open(
+        profile,
+        dataExtents());
+
+    if (getStatus().isOK() && profile.get() != getProfile())
     {
-        WMS::Driver* driver = new WMS::Driver(options(), this, getReadOptions());
-        _driver = driver;
-
-        osg::ref_ptr<const Profile> profile = getProfile();
-
-        Status status = driver->open(
-            profile,
-            dataExtents());
-
-        if (getStatus().isOK() && profile.get() != getProfile())
-        {
-            setProfile(profile.get());
-        }
+        setProfile(profile.get());
     }
-    return getStatus();
+
+    return ImageLayer::open();
 }
 
 GeoImage

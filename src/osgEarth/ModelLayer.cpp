@@ -452,6 +452,8 @@ ModelLayer::getCacheID() const
 void
 ModelLayer::addedToMap(const Map* map)
 {
+    VisibleLayer::addedToMap(map);
+
     if (getStatus().isError())
         return;
 

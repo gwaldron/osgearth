@@ -93,6 +93,8 @@ RoadSurfaceLayer::open()
 void
 RoadSurfaceLayer::addedToMap(const Map* map)
 {
+    ImageLayer::addedToMap(map);
+
     // create a session for feature processing based in the Map,
     // but don't set the feature source yet.
     _session = new Session(map, options().styles().get(), 0L, getReadOptions());
@@ -115,6 +117,7 @@ RoadSurfaceLayer::addedToMap(const Map* map)
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
+    ImageLayer::removedFromMap(map);
     _session = 0L;
     _layerListener.clear();
 }

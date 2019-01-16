@@ -221,6 +221,7 @@ void
 FeatureModelLayer::addedToMap(const Map* map)
 {
     OE_TEST << LC << "addedToMap" << std::endl;
+    VisibleLayer::addedToMap(map);
 
     // Save a reference to the map since we'll need it to
     // create a new session object later.
@@ -251,6 +252,8 @@ FeatureModelLayer::addedToMap(const Map* map)
 void
 FeatureModelLayer::removedFromMap(const Map* map)
 {
+    VisibleLayer::removedFromMap(map);
+
     _featureLayerListener.clear();
     
     if (_root.valid())

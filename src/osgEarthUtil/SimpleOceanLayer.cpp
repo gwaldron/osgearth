@@ -217,6 +217,8 @@ SimpleOceanLayer::getMaskLayer() const
 void
 SimpleOceanLayer::addedToMap(const Map* map)
 {    
+    VisibleLayer::addedToMap(map);
+
     if (options().maskLayer().isSet())
     {
         // listen for the mask layer.
@@ -227,6 +229,8 @@ SimpleOceanLayer::addedToMap(const Map* map)
 void
 SimpleOceanLayer::removedFromMap(const Map* map)
 {
+    VisibleLayer::removedFromMap(map);
+
     if (options().maskLayer().isSet())
     {
         _layerListener.clear();

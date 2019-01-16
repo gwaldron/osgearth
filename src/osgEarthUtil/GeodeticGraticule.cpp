@@ -231,6 +231,8 @@ GeodeticGraticule::init()
 void
 GeodeticGraticule::addedToMap(const Map* map)
 {
+    VisibleLayer::addedToMap(map);
+
     if (map->getSRS()->isGeographic())
     {
         _mapSRS = map->getSRS();
@@ -248,6 +250,7 @@ GeodeticGraticule::addedToMap(const Map* map)
 void
 GeodeticGraticule::removedFromMap(const Map* map)
 {
+    VisibleLayer::removedFromMap(map);
     setMapNode(NULL);
     _mapSRS = NULL;
 }

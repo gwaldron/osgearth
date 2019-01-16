@@ -630,13 +630,6 @@ Map::openLayer(Layer* layer)
     // Pass along the Read Options (including the cache settings, etc.) to the layer:
     layer->setReadOptions(_readOptions.get());
 
-    // If this is a terrain layer, tell it about the Map profile.
-    TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-    if (terrainLayer && _profile.valid())
-    {
-        terrainLayer->setTargetProfileHint(_profile.get());
-    }
-
     // Attempt to open the layer
     layer->open();
 
@@ -787,17 +780,6 @@ Map::calculateProfile(bool makeProjected)
             profile = Profile::create( options().profile().value() );
         }
 
-        // Do the map options contain an override coordinate system type?
-        // If so, attempt to apply that next:
-        //if (options().coordSysType().isSetTo(MapOptions::CSTYPE_GEOCENTRIC))
-        //{
-        //    if (profile.valid() && profile->getSRS()->isProjected())
-        //    {
-        //        OE_WARN << LC << "Geocentric map type conflicts with the projected SRS profile; ignoring your profile\n";
-        //        profile = Registry::instance()->getGlobalGeodeticProfile();
-        //    }
-        //}
-
         // Do the map options ask for a projected map?
         if (makeProjected)
         {
@@ -842,15 +824,6 @@ Map::calculateProfile(bool makeProjected)
 
         // finally, fire an event if the profile has been set.
         OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
-    }
-
-    // Tell all the layers about the profile
-    for (TerrainLayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
-    {
-        if (i->get()->getEnabled())
-        {
-            i->get()->setTargetProfileHint(_profile.get());
-        }
     }
 }
 

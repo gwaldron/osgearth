@@ -358,13 +358,14 @@ GARSGraticule::init()
 void
 GARSGraticule::addedToMap(const Map* map)
 {
+    VisibleLayer::addedToMap(map);
     rebuild();
 }
 
 void
 GARSGraticule::removedFromMap(const Map* map)
 {
-    //nop
+    VisibleLayer::removedFromMap(map);
 }
 
 osg::Node*

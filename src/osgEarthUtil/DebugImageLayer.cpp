@@ -117,6 +117,9 @@ DebugImageLayer::init()
     _geom->push_back(osg::Vec3(250, 250, 0));
     _geom->push_back(osg::Vec3(5, 250, 0));
     _font = Registry::instance()->getDefaultFont();
+
+    // disable caching for the debugging layer.
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 const Status&
@@ -124,14 +127,12 @@ DebugImageLayer::open()
 {
     _color = osgEarth::htmlColorToVec4f(options().colorCode().get());
 
-    if (ImageLayer::open().isOK())
+    if (!getProfile())
     {
-        if (!getProfile())
-        {
-            setProfile( Profile::create("global-geodetic") );
-        }
+        setProfile( Profile::create("global-geodetic") );
     }
-    return getStatus();
+
+    return ImageLayer::open();
 }
 
 GeoImage

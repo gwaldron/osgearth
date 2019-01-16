@@ -171,11 +171,11 @@ ImageLayer::TileProcessor::TileProcessor()
 
 void
 ImageLayer::TileProcessor::init(const ImageLayer::Options& options,
-                              const osgDB::Options*    dbOptions, 
-                              bool                     layerInTargetProfile )
+                              const osgDB::Options*        dbOptions, 
+                              bool                         mosaicingPossible )
 {
     _options = options;
-    _layerInTargetProfile = layerInTargetProfile;
+    _mosaicingPossible = mosaicingPossible;
 
     //if ( _layerInTargetProfile )
     //    OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
@@ -213,7 +213,7 @@ ImageLayer::TileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
     // If this is a compressed image, uncompress it IF the image is not already in the
     // target profile...because if it's not in the target profile, we will have to do
     // some mosaicing...and we can't mosaic a compressed image.
-    if (!_layerInTargetProfile &&
+    if (_mosaicingPossible &&
         ImageUtils::isCompressed(image.get()) &&
         ImageUtils::canConvert(image.get(), GL_RGBA, GL_UNSIGNED_BYTE) )
     {
@@ -356,15 +356,6 @@ ImageLayer::getColorFilters() const
     return options().colorFilters().get();
 }
 
-void
-ImageLayer::setTargetProfileHint( const Profile* profile )
-{
-    TerrainLayer::setTargetProfileHint( profile );
-
-    // if we've already constructed the pre-cache operation, reinitialize it.
-    _preCacheOp = 0L;
-}
-
 TileSource::ImageOperation*
 ImageLayer::getOrCreatePreCacheOp() const
 {
@@ -373,13 +364,9 @@ ImageLayer::getOrCreatePreCacheOp() const
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_preCacheOp.valid() )
         {
-            bool layerInTargetProfile = 
-                _targetProfileHint.valid() &&
-                getProfile()               &&
-                _targetProfileHint->isEquivalentTo( getProfile() );
-
+            bool mosaicingPossible = _profileMatchesMapProfile.isSetTo(false);
             ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
-            op->_processor.init( options(), _readOptions.get(), layerInTargetProfile );
+            op->_processor.init( options(), _readOptions.get(), mosaicingPossible);
 
             _preCacheOp = op;
         }

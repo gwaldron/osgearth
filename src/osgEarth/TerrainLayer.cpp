@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TimeControl>
 #include <osgEarth/URI>
+#include <osgEarth/Map>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -207,6 +208,7 @@ TerrainLayer::init()
 
     _openCalled = false;
     _tileSourceExpected = true;
+    _profileMatchesMapProfile = true;
 
     // intiailize our read-options, which store caching and IO information.
     setReadOptions(0L);
@@ -224,6 +226,69 @@ TerrainLayer::init()
     }
 }
 
+void
+TerrainLayer::addedToMap(const Map* map)
+{
+    VisibleLayer::addedToMap(map);
+
+    unsigned l2CacheSize = 0u;
+
+    // If the profiles don't match, mosaicing will be likely so set up a 
+    // small L2 cache for this layer.
+    if (map &&
+        map->getProfile() &&
+        getProfile() &&
+        !map->getProfile()->getSRS()->isHorizEquivalentTo(getProfile()->getSRS()))
+    {
+        _profileMatchesMapProfile = false;
+        l2CacheSize = 16u;
+        OE_INFO << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
+    }
+
+    setUpL2Cache(l2CacheSize);
+}
+
+void
+TerrainLayer::removedFromMap(const Map* map)
+{
+    VisibleLayer::removedFromMap(map);
+    _profileMatchesMapProfile.unset();
+}
+
+void
+TerrainLayer::setUpL2Cache(unsigned minSize)
+{
+    // Check the layer hints
+    unsigned l2CacheSize = layerHints().L2CacheSize().getOrUse(minSize);
+
+    // Create an L2 mem cache that sits atop the main cache, if necessary.
+    // For now: use the same L2 cache size at the driver.
+    if (l2CacheSize == 0u && options().driver()->L2CacheSize().isSet())
+        l2CacheSize = options().driver()->L2CacheSize().get();
+
+    // See if it was overridden with an env var.
+    char const* l2env = ::getenv("OSGEARTH_L2_CACHE_SIZE");
+    if (l2env)
+    {
+        l2CacheSize = as<int>(std::string(l2env), 0);
+        OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
+    }
+
+    // Env cache-only mode also disables the L2 cache.
+    char const* noCacheEnv = ::getenv("OSGEARTH_MEMORY_PROFILE");
+    if (noCacheEnv)
+    {
+        l2CacheSize = 0;
+    }
+
+    // Initialize the l2 cache if it's size is > 0
+    if (l2CacheSize > 0)
+    {
+        _memCache = new MemCache(l2CacheSize);
+        OE_INFO << LC << "L2 cache size = " << l2CacheSize << std::endl;
+    }
+}
+
 const Status&
 TerrainLayer::open()
 {
@@ -233,34 +298,7 @@ TerrainLayer::open()
         if (VisibleLayer::open().isError())
             return getStatus();
 
-        // Create an L2 mem cache that sits atop the main cache, if necessary.
-        // For now: use the same L2 cache size at the driver.
-        int l2CacheSize = options().driver()->L2CacheSize().get();
-
-        // See if it was overridden with an env var.
-        char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
-        if ( l2env )
-        {
-            l2CacheSize = as<int>( std::string(l2env), 0 );
-            OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
-        }
-
-        // Env cache-only mode also disables the L2 cache.
-        char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
-        if ( noCacheEnv )
-        {
-            l2CacheSize = 0;
-        }
-
-        // Initialize the l2 cache if it's size is > 0
-        if ( l2CacheSize > 0 )
-        {
-            _memCache = new MemCache( l2CacheSize );
-        }
-
         // create the unique cache ID for the cache bin.
-        //std::string cacheId;
-
         if (options().cacheId().isSet() && !options().cacheId()->empty())
         {
             // user expliticy set a cacheId in the terrain layer options.
@@ -300,6 +338,8 @@ TerrainLayer::open()
         // Integrate a cache policy from this Layer's options:
         _cacheSettings->integrateCachePolicy(options().cachePolicy());
 
+        // If the layer hints are set, integrate that cache policy last.
+        _cacheSettings->integrateCachePolicy(layerHints().cachePolicy());
 
         // If you created the layer with a pre-created tile source, it will already by set.
         if (!_tileSource.valid())
@@ -341,7 +381,10 @@ TerrainLayer::open()
             }
         }
 
-        OE_INFO << LC << _cacheSettings->toString() << "\n";
+        OE_INFO << LC
+            << (getProfile()? getProfile()->toString() : "[no profile]") << " "
+            << (_cacheSettings.valid()? _cacheSettings->toString() : "[no cache settings]")
+            << std::endl;
 
         // Done!
         _openCalled = true;
@@ -372,30 +415,6 @@ CacheSettings*
 TerrainLayer::getCacheSettings() const
 {
     return _cacheSettings.get();
-}
-
-void
-TerrainLayer::setTargetProfileHint( const Profile* profile )
-{
-    _targetProfileHint = profile;
-
-    // Re-read the  cache policy hint since it may change due to the target profile change.
-    refreshTileSourceCachePolicyHint( getTileSource() );
-}
-
-void
-TerrainLayer::refreshTileSourceCachePolicyHint(TileSource* ts)
-{
-    if ( ts && getCacheSettings() && !options().cachePolicy().isSet() )
-    {
-        CachePolicy hint = ts->getCachePolicyHint( _targetProfileHint.get() );
-
-        if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
-        {
-            getCacheSettings()->cachePolicy() = hint;
-            OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
-        }
-    }
 }
 
 void
@@ -431,6 +450,9 @@ TerrainLayer::setProfile(const Profile* profile)
 bool
 TerrainLayer::isDynamic() const
 {
+    if (getHints().dynamic().isSetTo(true))
+        return true;
+
     TileSource* ts = getTileSource();
     return ts ? ts->isDynamic() : false;
 }
@@ -705,15 +727,9 @@ TerrainLayer::createAndOpenTileSource()
         // Now that the tile source exists, set up the cache.
         if (_cacheSettings->isCacheEnabled())
         {
-            // read the cache policy hint from the tile source unless user expressly set
-            // a policy in the initialization options. In other words, the hint takes
-            // ultimate priority (even over the Registry override) unless expressly
-            // overridden in the layer options!
-            refreshTileSourceCachePolicyHint( ts.get() );
-
             // Unless the user has already configured an expiration policy, use the "last modified"
             // timestamp of the TileSource to set a minimum valid cache entry timestamp.
-            const CachePolicy& cp = options().cachePolicy().get();
+            const CachePolicy& cp = _cacheSettings->cachePolicy().get();
 
             if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
             {
@@ -766,7 +782,6 @@ TerrainLayer::createAndOpenTileSource()
         {
             // create the final profile from any overrides:
             applyProfileOverrides();
-            OE_INFO << LC << "Profile=" << _profile->toString() << std::endl;
         }
     }
 

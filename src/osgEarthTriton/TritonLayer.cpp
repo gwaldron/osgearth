@@ -325,7 +325,9 @@ TritonLayer::setMaskLayer(const osgEarth::ImageLayer* maskLayer)
 
 void
 TritonLayer::addedToMap(const osgEarth::Map* map)
-{    
+{   
+    VisibleLayer::addedToMap(map);
+
     if (options().maskLayer().isSet())
     {
         // listen for the mask layer.
@@ -336,6 +338,8 @@ TritonLayer::addedToMap(const osgEarth::Map* map)
 void
 TritonLayer::removedFromMap(const osgEarth::Map* map)
 {
+    VisibleLayer::removedFromMap(map);
+
     if (options().maskLayer().isSet())
     {
         _layerListener.clear();

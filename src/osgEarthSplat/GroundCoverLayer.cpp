@@ -240,6 +240,8 @@ GroundCoverLayer::getMaskLayer() const
 void
 GroundCoverLayer::addedToMap(const Map* map)
 {
+    PatchLayer::addedToMap(map);
+
     if (!_landCoverDict.valid())
     {
         _landCoverDictListener.listen(map, this, &GroundCoverLayer::setLandCoverDictionary);
@@ -268,7 +270,7 @@ GroundCoverLayer::addedToMap(const Map* map)
 void
 GroundCoverLayer::removedFromMap(const Map* map)
 {
-    //NOP
+    PatchLayer::removedFromMap(map);
 }
 
 void

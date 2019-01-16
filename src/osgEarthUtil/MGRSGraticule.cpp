@@ -338,6 +338,7 @@ MGRSGraticule::init()
 void
 MGRSGraticule::addedToMap(const Map* map)
 {
+    VisibleLayer::addedToMap(map);
     _map = map;
     rebuild();
 }
@@ -345,6 +346,7 @@ MGRSGraticule::addedToMap(const Map* map)
 void
 MGRSGraticule::removedFromMap(const Map* map)
 {
+    VisibleLayer::removedFromMap(map);
     _map = 0L;
 }
 

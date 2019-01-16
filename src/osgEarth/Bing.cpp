@@ -71,6 +71,9 @@ BingImageLayer::init()
     
     if ( ::getenv("OSGEARTH_BING_DIRECT") )
         _debugDirect = true;
+
+    // disable caching by default due to TOS
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 BingImageLayer::~BingImageLayer()
@@ -84,12 +87,6 @@ BingImageLayer::open()
     if (!options().apiKey().isSet())
     {
         return setStatus(Status::ConfigurationError, "Bing API key is required");
-    }
-
-    // Default cache policy to NO_CACHE for TOS compliance
-    if (options().cachePolicy().isSet() == false)
-    {
-        options().cachePolicy() = CachePolicy::NO_CACHE;
     }
     
     // Bing maps profile is spherical mercator with 2x2 tiles are the root.

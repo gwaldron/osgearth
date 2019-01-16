@@ -108,9 +108,6 @@ namespace osgEarth
     class TerrainResources;
     class TileKey;
 
-    //! Internal serializable options class for configuring a Layer.
-
-
     //! Base class for layer property callbacks
     struct LayerCallback : public osg::Referenced
     {
@@ -156,6 +153,17 @@ namespace osgEarth
 
     public:
         META_Object(osgEarth, Layer);
+
+    public:
+        //! Hints that a layer can set to influence the operation of
+        //! the map engine
+        class Hints
+        {
+        public:
+            OE_OPTION(CachePolicy, cachePolicy);
+            OE_OPTION(unsigned, L2CacheSize);
+            OE_OPTION(bool, dynamic);
+        };
 
     public:
         //! Constructs a map layer
@@ -227,6 +235,9 @@ namespace osgEarth
 
         //! Callbacks that one can use to detect scene graph changes
         SceneGraphCallbacks* getSceneGraphCallbacks() const;
+
+        //! Hints that a subclass can set to influence the engine
+        const Hints& getHints() const;
 
     public:
 
@@ -343,6 +354,9 @@ namespace osgEarth
         //! invoke layer callbacks
         void fireCallback(LayerCallback::MethodPtr);
 
+        //! mutable layer hints for the subclas to optionally access
+        Hints& layerHints();
+
     private:
         UID _uid;
         osg::ref_ptr<osg::StateSet> _stateSet;
@@ -350,6 +364,7 @@ namespace osgEarth
         mutable Status _status;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
+        Hints _hints;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;

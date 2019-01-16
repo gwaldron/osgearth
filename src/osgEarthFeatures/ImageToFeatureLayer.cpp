@@ -95,6 +95,7 @@ void
 ImageToFeatureSource::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap" << std::endl;
+    FeatureSource::addedToMap(map);
 
     if (_layer.valid() == false && options().imageLayer().isSet())
     {
@@ -104,8 +105,6 @@ ImageToFeatureSource::addedToMap(const Map* map)
             this,
             &ImageToFeatureSource::setImageLayer);
     }
-
-    FeatureSource::addedToMap(map);
 }
 
 void

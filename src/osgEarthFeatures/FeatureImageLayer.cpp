@@ -205,6 +205,8 @@ FeatureImageLayer::open()
 void
 FeatureImageLayer::addedToMap(const Map* map)
 {
+    ImageLayer::addedToMap(map);
+
     _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
 
     if (_features.valid())
@@ -230,6 +232,7 @@ FeatureImageLayer::addedToMap(const Map* map)
 void
 FeatureImageLayer::removedFromMap(const Map* map)
 {
+    ImageLayer::removedFromMap(map);
     _layerListener.clear();
 }
 

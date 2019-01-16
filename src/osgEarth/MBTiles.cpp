@@ -116,227 +116,225 @@ MBTilesImageLayer::init()
 const Status&
 MBTilesImageLayer::open()
 {
-    if (ImageLayer::open().isOK())
-    {
-        bool readWrite = false; // TODO // options().openForWriting() == true;
+    bool readWrite = false; // TODO // options().openForWriting() == true;
 
-        std::string fullFilename = options().url()->full();
-        if (!osgDB::fileExists(fullFilename))
+    std::string fullFilename = options().url()->full();
+    if (!osgDB::fileExists(fullFilename))
+    {
+        fullFilename = osgDB::findDataFile(fullFilename, getReadOptions());
+        if (fullFilename.empty())
+            fullFilename = options().url()->full();
+    }
+
+    bool isNewDatabase = readWrite && !osgDB::fileExists(fullFilename);
+
+    if (isNewDatabase)
+    {
+        // For a NEW database, the profile MUST be set prior to initialization.
+        if (getProfile() == 0L)
         {
-            fullFilename = osgDB::findDataFile(fullFilename, getReadOptions());
-            if (fullFilename.empty())
-                fullFilename = options().url()->full();
+            return setStatus(Status::ConfigurationError, 
+                "Cannot create database; required Profile is missing");
         }
 
-        bool isNewDatabase = readWrite && !osgDB::fileExists(fullFilename);
-
-        if (isNewDatabase)
+        // For a NEW database the format is required.
+        if (options().format().isSet())
         {
-            // For a NEW database, the profile MUST be set prior to initialization.
-            if (getProfile() == 0L)
+            _tileFormat = options().format().value();
+            _rw = getReaderWriter(_tileFormat);
+            if (!_rw.valid())
             {
-                return setStatus(Status::ConfigurationError, 
-                    "Cannot create database; required Profile is missing");
+                return setStatus(Status::ServiceUnavailable, 
+                    "No plugin to load format \"" + _tileFormat + "\"");
+            }
+        }
+        else
+        {
+            return setStatus(Status::ConfigurationError,
+                "Cannot create database; required format is missing");
+        }
+
+        OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
+    }
+
+    // Try to open (or create) the database. We use SQLITE_OPEN_NOMUTEX to do
+    // our own mutexing.
+    int flags = readWrite
+        ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX)
+        : (SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX);
+
+    sqlite3* database = (sqlite3*)_database;
+    sqlite3** dbptr = (sqlite3**)&_database;
+    int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, flags, 0L);
+    if (rc != 0)
+    {
+        return setStatus(Status::ResourceUnavailable, Stringify()
+            << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(database));
+    }
+
+    // New database setup:
+    if (isNewDatabase)
+    {
+        // create necessary db tables:
+        createTables();
+
+        // write profile to metadata:
+        std::string profileJSON = getProfile()->toProfileOptions().getConfig().toJSON(false);
+        putMetaData("profile", profileJSON);
+
+        // write format to metadata:
+        putMetaData("format", _tileFormat);
+
+        // compression?
+        if (options().compress().isSetTo(true))
+        {
+            _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
+            if (_compressor.valid())
+            {
+                putMetaData("compression", "zlib");
+                OE_INFO << LC << "Data will be compressed (zlib)" << std::endl;
+            }
+        }
+
+        // If we have some data extents at this point, write the bounds to the metadata.
+        if (getDataExtents().size() > 0)
+        {
+            // Get the union of all the extents
+            GeoExtent e(getDataExtents()[0]);
+            for (unsigned int i = 1; i < getDataExtents().size(); i++)
+            {
+                e.expandToInclude(getDataExtents()[i]);
             }
 
-            // For a NEW database the format is required.
+            // Convert the bounds to wgs84
+            GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
+            std::stringstream boundsStr;
+            boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
+            putMetaData("bounds", boundsStr.str());
+        }
+    }
+
+    // If the database pre-existed, read in the information from the metadata.
+    else // !isNewDatabase
+    {
+        if (options().computeLevels() == true)
+        {
+            computeLevels();
+        }
+
+        std::string profileStr;
+        getMetaData("profile", profileStr);
+
+        // The data format (e.g., png, jpg, etc.). Any format passed in
+        // in the options is superseded by the one in the database metadata.
+        std::string metaDataFormat;
+        getMetaData("format", metaDataFormat);
+        if (!metaDataFormat.empty())
+            _tileFormat = metaDataFormat;
+
+        // Try to get it from the options.
+        if (_tileFormat.empty())
+        {
             if (options().format().isSet())
             {
                 _tileFormat = options().format().value();
-                _rw = getReaderWriter(_tileFormat);
-                if (!_rw.valid())
-                {
-                    return setStatus(Status::ServiceUnavailable, 
-                        "No plugin to load format \"" + _tileFormat + "\"");
-                }
             }
+        }
+
+        // By this point, we require a valid tile format.
+        if (_tileFormat.empty())
+        {
+            return setStatus(Status::ConfigurationError, "Required format not in metadata, nor specified in the options.");
+        }
+
+        // check for compression.
+        std::string compression;
+        getMetaData("compression", compression);
+        if (!compression.empty())
+        {
+            _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor(compression);
+            if (!_compressor.valid())
+                return setStatus(Status::ServiceUnavailable, "Cannot find compressor \"" + compression + "\"");
             else
-            {
-                return setStatus(Status::ConfigurationError,
-                    "Cannot create database; required format is missing");
-            }
-
-            OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
+                OE_INFO << LC << "Data is compressed (" << compression << ")" << std::endl;
         }
 
-        // Try to open (or create) the database. We use SQLITE_OPEN_NOMUTEX to do
-        // our own mutexing.
-        int flags = readWrite
-            ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX)
-            : (SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX);
-
-        sqlite3* database = (sqlite3*)_database;
-        sqlite3** dbptr = (sqlite3**)&_database;
-        int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, flags, 0L);
-        if (rc != 0)
+        // Set the profile
+        const Profile* profile = getProfile();
+        if (!profile)
         {
-            return setStatus(Status::ResourceUnavailable, Stringify()
-                << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(database));
-        }
-
-        // New database setup:
-        if (isNewDatabase)
-        {
-            // create necessary db tables:
-            createTables();
-
-            // write profile to metadata:
-            std::string profileJSON = getProfile()->toProfileOptions().getConfig().toJSON(false);
-            putMetaData("profile", profileJSON);
-
-            // write format to metadata:
-            putMetaData("format", _tileFormat);
-
-            // compression?
-            if (options().compress().isSetTo(true))
+            if (!profileStr.empty())
             {
-                _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
-                if (_compressor.valid())
-                {
-                    putMetaData("compression", "zlib");
-                    OE_INFO << LC << "Data will be compressed (zlib)" << std::endl;
-                }
-            }
+                // try to parse it as a JSON config
+                Config pconf;
+                pconf.fromJSON(profileStr);
+                profile = Profile::create(ProfileOptions(pconf));
 
-            // If we have some data extents at this point, write the bounds to the metadata.
-            if (getDataExtents().size() > 0)
-            {
-                // Get the union of all the extents
-                GeoExtent e(getDataExtents()[0]);
-                for (unsigned int i = 1; i < getDataExtents().size(); i++)
-                {
-                    e.expandToInclude(getDataExtents()[i]);
-                }
-
-                // Convert the bounds to wgs84
-                GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
-                std::stringstream boundsStr;
-                boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
-                putMetaData("bounds", boundsStr.str());
-            }
-        }
-
-        // If the database pre-existed, read in the information from the metadata.
-        else // !isNewDatabase
-        {
-            if (options().computeLevels() == true)
-            {
-                computeLevels();
-            }
-
-            std::string profileStr;
-            getMetaData("profile", profileStr);
-
-            // The data format (e.g., png, jpg, etc.). Any format passed in
-            // in the options is superseded by the one in the database metadata.
-            std::string metaDataFormat;
-            getMetaData("format", metaDataFormat);
-            if (!metaDataFormat.empty())
-                _tileFormat = metaDataFormat;
-
-            // Try to get it from the options.
-            if (_tileFormat.empty())
-            {
-                if (options().format().isSet())
-                {
-                    _tileFormat = options().format().value();
-                }
-            }
-
-            // By this point, we require a valid tile format.
-            if (_tileFormat.empty())
-            {
-                return setStatus(Status::ConfigurationError, "Required format not in metadata, nor specified in the options.");
-            }
-
-            // check for compression.
-            std::string compression;
-            getMetaData("compression", compression);
-            if (!compression.empty())
-            {
-                _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor(compression);
-                if (!_compressor.valid())
-                    return setStatus(Status::ServiceUnavailable, "Cannot find compressor \"" + compression + "\"");
-                else
-                    OE_INFO << LC << "Data is compressed (" << compression << ")" << std::endl;
-            }
-
-            // Set the profile
-            const Profile* profile = getProfile();
-            if (!profile)
-            {
-                if (!profileStr.empty())
-                {
-                    // try to parse it as a JSON config
-                    Config pconf;
-                    pconf.fromJSON(profileStr);
-                    profile = Profile::create(ProfileOptions(pconf));
-
-                    // if that didn't work, try parsing it directly
-                    if (!profile)
-                    {
-                        profile = Profile::create(profileStr);
-                    }
-                }
-
+                // if that didn't work, try parsing it directly
                 if (!profile)
                 {
-                    OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
-                    profile = Profile::create("spherical-mercator");
-                }
-
-                setProfile(profile);
-                OE_INFO << LC << "Profile = " << profile->toString() << std::endl;
-            }
-
-            // Check for bounds and populate DataExtents.
-            std::string boundsStr;
-            if (getMetaData("bounds", boundsStr))
-            {
-                std::vector<std::string> tokens;
-                StringTokenizer(",").tokenize(boundsStr, tokens);
-                if (tokens.size() == 4)
-                {
-                    double minLon = osgEarth::as<double>(tokens[0], 0.0);
-                    double minLat = osgEarth::as<double>(tokens[1], 0.0);
-                    double maxLon = osgEarth::as<double>(tokens[2], 0.0);
-                    double maxLat = osgEarth::as<double>(tokens[3], 0.0);
-
-                    GeoExtent extent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
-                    if (extent.isValid())
-                    {
-                        // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
-                        // since we don't really handle DataExtents with minLevels > 0 just yet.
-                        dataExtents().push_back(DataExtent(extent, 0, _maxLevel));
-                        OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
-                    }
-                    else
-                    {
-                        OE_WARN << LC << "MBTiles has invalid bounds " << extent.toString() << std::endl;
-                    }
+                    profile = Profile::create(profileStr);
                 }
             }
-            else
+
+            if (!profile)
             {
-                // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
-                // since we don't really handle DataExtents with minLevels > 0 just yet.
-                this->dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, _maxLevel));
+                OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
+                profile = Profile::create("spherical-mercator");
             }
+
+            setProfile(profile);
+            OE_INFO << LC << "Profile = " << profile->toString() << std::endl;
         }
 
-        // do we require RGB? for jpeg?
-        _forceRGB =
-            osgEarth::endsWith(_tileFormat, "jpg", false) ||
-            osgEarth::endsWith(_tileFormat, "jpeg", false);
+        // Check for bounds and populate DataExtents.
+        std::string boundsStr;
+        if (getMetaData("bounds", boundsStr))
+        {
+            std::vector<std::string> tokens;
+            StringTokenizer(",").tokenize(boundsStr, tokens);
+            if (tokens.size() == 4)
+            {
+                double minLon = osgEarth::as<double>(tokens[0], 0.0);
+                double minLat = osgEarth::as<double>(tokens[1], 0.0);
+                double maxLon = osgEarth::as<double>(tokens[2], 0.0);
+                double maxLat = osgEarth::as<double>(tokens[3], 0.0);
 
-        // make an empty image.
-        int size = 256;
-        _emptyImage = new osg::Image();
-        _emptyImage->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-        unsigned char *data = _emptyImage->data(0, 0);
-        memset(data, 0, 4 * size * size);
+                GeoExtent extent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
+                if (extent.isValid())
+                {
+                    // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
+                    // since we don't really handle DataExtents with minLevels > 0 just yet.
+                    dataExtents().push_back(DataExtent(extent, 0, _maxLevel));
+                    OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
+                }
+                else
+                {
+                    OE_WARN << LC << "MBTiles has invalid bounds " << extent.toString() << std::endl;
+                }
+            }
+        }
+        else
+        {
+            // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
+            // since we don't really handle DataExtents with minLevels > 0 just yet.
+            this->dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, _maxLevel));
+        }
     }
-    return getStatus();
+
+    // do we require RGB? for jpeg?
+    _forceRGB =
+        osgEarth::endsWith(_tileFormat, "jpg", false) ||
+        osgEarth::endsWith(_tileFormat, "jpeg", false);
+
+    // make an empty image.
+    int size = 256;
+    _emptyImage = new osg::Image();
+    _emptyImage->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    unsigned char *data = _emptyImage->data(0, 0);
+    memset(data, 0, 4 * size * size);
+    
+    return ImageLayer::open();
 }
 
 GeoImage
@@ -633,22 +631,20 @@ MBTilesElevationLayer::init()
 const Status&
 MBTilesElevationLayer::open()
 {
-    if (ElevationLayer::open().isOK())
+    // Create an image layer under the hood. TMS fetch is the same for image and
+    // elevation; we just convert the resulting image to a heightfield
+    _imageLayer = new MBTilesImageLayer(options());
+
+    // Initialize and open the image layer
+    _imageLayer->setReadOptions(getReadOptions());
+    setStatus( _imageLayer->open() );
+
+    if (getStatus().isOK())
     {
-        // Create an image layer under the hood. TMS fetch is the same for image and
-        // elevation; we just convert the resulting image to a heightfield
-        _imageLayer = new MBTilesImageLayer(options());
-
-        // Initialize and open the image layer
-        _imageLayer->setReadOptions(getReadOptions());
-        setStatus( _imageLayer->open() );
-
-        if (getStatus().isOK())
-        {
-            setProfile(_imageLayer->getProfile());            
-        }
+        setProfile(_imageLayer->getProfile());            
     }
-    return getStatus();
+
+    return ElevationLayer::open();
 }
 
 GeoHeightField

@@ -465,3 +465,15 @@ Layer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
 {
     //NOP
 }
+
+const Layer::Hints&
+Layer::getHints() const
+{
+    return _hints;
+}
+
+Layer::Hints&
+Layer::layerHints()
+{
+    return _hints;
+}

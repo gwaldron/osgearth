@@ -240,6 +240,7 @@ UTMGraticule::init()
 void
 UTMGraticule::addedToMap(const Map* map)
 {
+    VisibleLayer::addedToMap(map);
     _map = map;
     rebuild();
 }
@@ -247,6 +248,7 @@ UTMGraticule::addedToMap(const Map* map)
 void
 UTMGraticule::removedFromMap(const Map* map)
 {
+    VisibleLayer::removedFromMap(map);
     _map = 0L;
 }
 

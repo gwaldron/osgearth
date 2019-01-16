@@ -110,6 +110,7 @@ void
 FeatureMaskLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
+    MaskLayer::addedToMap(map);
 
     if (options().featureSource().isSet())
     {
@@ -128,6 +129,7 @@ FeatureMaskLayer::addedToMap(const Map* map)
 void
 FeatureMaskLayer::removedFromMap(const Map* map)
 {
+    MaskLayer::removedFromMap(map);
     _featureLayerListener.clear();
 }
 

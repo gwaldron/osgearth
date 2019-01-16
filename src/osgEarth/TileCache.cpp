@@ -146,16 +146,14 @@ TileCacheImageLayer::init()
 const Status&
 TileCacheImageLayer::open()
 {
-    if (ImageLayer::open().isOK())
-    {
-        if (!getProfile())
-            setProfile(Profile::create("global-geodetic"));
+    if (!getProfile())
+        setProfile(Profile::create("global-geodetic"));
 
-        setStatus(_driver.open(
-            options().url().get(),
-            getReadOptions()));
-    }
-    return getStatus();
+    setStatus(_driver.open(
+        options().url().get(),
+        getReadOptions()));
+
+    return ImageLayer::open();
 }
 
 GeoImage
@@ -223,22 +221,20 @@ TileCacheElevationLayer::init()
 const Status&
 TileCacheElevationLayer::open()
 {
-    if (ElevationLayer::open().isOK())
+    // Create an image layer under the hood. TMS fetch is the same for image and
+    // elevation; we just convert the resulting image to a heightfield
+    _imageLayer = new TileCacheImageLayer(options());
+
+    // Initialize and open the image layer
+    _imageLayer->setReadOptions(getReadOptions());
+    setStatus( _imageLayer->open() );
+
+    if (getStatus().isOK())
     {
-        // Create an image layer under the hood. TMS fetch is the same for image and
-        // elevation; we just convert the resulting image to a heightfield
-        _imageLayer = new TileCacheImageLayer(options());
-
-        // Initialize and open the image layer
-        _imageLayer->setReadOptions(getReadOptions());
-        setStatus( _imageLayer->open() );
-
-        if (getStatus().isOK())
-        {
-            setProfile(_imageLayer->getProfile());            
-        }
+        setProfile(_imageLayer->getProfile());            
     }
-    return getStatus();
+
+    return ElevationLayer::open();
 }
 
 GeoHeightField

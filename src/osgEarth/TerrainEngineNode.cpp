@@ -194,7 +194,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     
     // Create a terrain utility interface. This interface can be used
     // to query the in-memory terrain graph, subscribe to tile events, etc.
-    _terrainInterface = new Terrain( this, map->getProfile(), options );
+    _terrainInterface = new Terrain( this, map->getProfile() );
 
     // Set up the CSN values. We support this because some manipulators look for it,
     // but osgEarth itself doesn't use it.
@@ -219,7 +219,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     if ( options.renderBinNumber().isSet() )
     {
         osg::StateSet* set = getOrCreateStateSet();
-        set->setRenderBinDetails( options.renderBinNumber().get(), "RenderBin" );
+        set->setRenderBinDetails(options.renderBinNumber().get(), "RenderBin" );
     }
    
     // This is the object that creates the data model for each terrain tile.
@@ -429,4 +429,3 @@ TerrainEngineNodeFactory::create(const TerrainOptions& options )
 
     return node.release();
 }
-

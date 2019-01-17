@@ -154,7 +154,8 @@ _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),
 _renderModelUpdateRequired( false ),
-_rasterizer(0L)
+_rasterizer(0L),
+_morphTerrainSupported(true)
 {
     // Necessary for pager object data
     this->setName("osgEarth.RexTerrainEngineNode");
@@ -239,32 +240,33 @@ RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 }
 
 void
-RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
+RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 {
     if (!map) return;
 
     _map = map;
 
     // Invoke the base class first:
-    TerrainEngineNode::setMap(map, options);
+    TerrainEngineNode::setMap(map, inOptions);
 
     // A callback for overriding bounding boxes for tiles
     _modifyBBoxCallback = new ModifyBoundingBoxCallback(map);
 
     // merge in the custom options:
-    _terrainOptions.merge( options );
+    _terrainOptions = &inOptions;
+    //_terrainOptions.merge( options );
 
     _morphingSupported = true;
-    if (_terrainOptions.rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+    if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
     {
-        OE_INFO << LC << "Range mode = pixel size; pixel tile size = " << _terrainOptions.tilePixelSize().get() << std::endl;
+        OE_INFO << LC << "Range mode = pixel size; pixel tile size = " << options().tilePixelSize().get() << std::endl;
 
         // force morphing off for PSOS mode
         _morphingSupported = false;
     }
 
     // morphing imagery LODs requires we bind parent textures to their own unit.
-    if (_terrainOptions.morphImagery() == true && _morphingSupported)
+    if (options().morphImagery() == true && _morphingSupported)
     {
         _requireParentTextures = true;
     }
@@ -272,15 +274,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // Terrain morphing doesn't work in projected maps:
     if (map->getSRS()->isProjected())
     {
-        _terrainOptions.morphTerrain() = false;
-    }
-
-    // if the envvar for tile expiration is set, override the options setting
-    const char* val = ::getenv("OSGEARTH_EXPIRATION_THRESHOLD");
-    if ( val )
-    {
-        _terrainOptions.expirationThreshold() = as<unsigned>(val, _terrainOptions.expirationThreshold().get());
-        OE_INFO << LC << "Expiration threshold set by env var = " << _terrainOptions.expirationThreshold().get() << "\n";
+        _morphTerrainSupported = false;
     }
 
     // Check for normals debugging.
@@ -290,7 +284,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         if (getStateSet()) getStateSet()->removeDefine("OE_DEBUG_NORMALS");
 
     // check for normal map generation (required for lighting).
-    if ( _terrainOptions.normalMaps() == true )
+    if (options().normalMaps() == true )
     {
         this->_requireNormalTextures = true;
     }
@@ -304,21 +298,21 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
     _liveTiles->setMapRevision(map->getDataModelRevision());
-    _liveTiles->setNotifyNeighbors(_terrainOptions.normalizeEdges() == true);
+    _liveTiles->setNotifyNeighbors(options().normalizeEdges() == true);
 
     // A resource releaser that will call releaseGLObjects() on expired objects.
     _releaser = new ResourceReleaser();
     this->addChild(_releaser.get());
 
     // A shared geometry pool.
-    _geometryPool = new GeometryPool( _terrainOptions );
+    _geometryPool = new GeometryPool(options());
     _geometryPool->setReleaser( _releaser.get());
     this->addChild( _geometryPool.get() );
 
     // Make a tile loader
     PagerLoader* loader = new PagerLoader( this );
-    loader->setNumLODs(_terrainOptions.maxLOD().getOrUse(DEFAULT_MAX_LOD));
-    loader->setMergesPerFrame( _terrainOptions.mergesPerFrame().get() );
+    loader->setNumLODs(options().maxLOD().getOrUse(DEFAULT_MAX_LOD));
+    loader->setMergesPerFrame(options().mergesPerFrame().get() );
 
 #if 0
     for (std::vector<TerrainOptions::LODOptions>::const_iterator i = _terrainOptions.lods().begin(); i != _terrainOptions.lods().end(); ++i) {
@@ -332,9 +326,18 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _loader = loader;
     this->addChild( _loader.get() );
 
+    // if the envvar for tile expiration is set, override the options setting
+    unsigned expirationThreshold = options().expirationThreshold().get();
+    const char* val = ::getenv("OSGEARTH_EXPIRATION_THRESHOLD");
+    if (val)
+    {
+        expirationThreshold = as<unsigned>(val, options().expirationThreshold().get());
+        OE_INFO << LC << "Expiration threshold set by env var = " << options().expirationThreshold().get() << "\n";
+    }
+
     // Make a tile unloader
     _unloader = new UnloaderGroup( _liveTiles.get() );
-    _unloader->setThreshold( _terrainOptions.expirationThreshold().get() );
+    _unloader->setThreshold(expirationThreshold);
     _unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
 
@@ -368,18 +371,18 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         _rasterizer,
         _liveTiles.get(),
         _renderBindings,
-        _terrainOptions,
+        options(),
         _selectionInfo,
         _modifyBBoxCallback.get());
 
     // Calculate the LOD morphing parameters:
-    unsigned maxLOD = _terrainOptions.maxLOD().getOrUse(DEFAULT_MAX_LOD);
+    unsigned maxLOD = options().maxLOD().getOrUse(DEFAULT_MAX_LOD);
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
-        osg::minimum( _terrainOptions.maxLOD().get(), maxLOD ),
+        osg::minimum(options().maxLOD().get(), maxLOD ),
         map->getProfile(),
-        _terrainOptions.minTileRangeFactor().get() );
+        options().minTileRangeFactor().get() );
 
     // set up the initial graph
     refresh();
@@ -515,7 +518,7 @@ RexTerrainEngineNode::dirtyTerrain()
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector<TileKey> keys;
-    getMap()->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
+    getMap()->getProfile()->getAllKeysAtLOD(options().firstLOD().get(), keys );
 
     // create a root node for each root tile key.
     OE_DEBUG << LC << "Creating " << keys.size() << " root keys." << std::endl;
@@ -528,13 +531,13 @@ RexTerrainEngineNode::dirtyTerrain()
     {
         TileNode* tileNode = new TileNode();
 
-        if (_terrainOptions.minExpiryFrames().isSet())
+        if (options().minExpiryFrames().isSet())
         {
-            tileNode->setMinimumExpirationFrames(_terrainOptions.minExpiryFrames().get());
+            tileNode->setMinimumExpirationFrames(options().minExpiryFrames().get());
         }
-        if (_terrainOptions.minExpiryTime().isSet())
+        if (options().minExpiryTime().isSet())
         {
-            tileNode->setMinimumExpirationTime(_terrainOptions.minExpiryTime().get());
+            tileNode->setMinimumExpirationTime(options().minExpiryTime().get());
         }
 
         // Next, build the surface geometry for the node.
@@ -789,8 +792,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 unsigned int
 RexTerrainEngineNode::computeSampleSize(unsigned int levelOfDetail)
 {
-    unsigned maxLevel = osg::minimum( *_terrainOptions.maxLOD(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
-    unsigned int meshSize = *_terrainOptions.tileSize();
+    unsigned maxLevel = osg::minimum(options().maxLOD().get(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
+    unsigned int meshSize = options().tileSize().get();
 
     unsigned int sampleSize = meshSize;
     int level = maxLevel; // make sure it's signed for the loop below to work
@@ -876,7 +879,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     }
 
     // Dimension of each tile in vertices
-    unsigned tileSize = getEngineContext()->getOptions().tileSize().get();
+    unsigned tileSize = getEngineContext()->options().tileSize().get();
 
     optional<bool> hasMasks(false);
 
@@ -1402,7 +1405,7 @@ RexTerrainEngineNode::updateState()
             osg::StateAttribute::ON);
 
         // install patch param if we are tessellation on the GPU.
-        if (_terrainOptions.gpuTessellation() == true)
+        if (options().gpuTessellation() == true)
         {
 #ifdef HAVE_PATCH_PARAMETER
             terrainStateSet->setAttributeAndModes(new osg::PatchParameter(3));
@@ -1415,7 +1418,7 @@ RexTerrainEngineNode::updateState()
         terrainVP->setName("Rex Terrain");
         package.load(terrainVP, package.ENGINE_VERT_MODEL);
 
-        surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
+        surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", options().color().get()));
 
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_altitude", (float)0.0f));
 
@@ -1446,12 +1449,12 @@ RexTerrainEngineNode::updateState()
                 surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
         }
 
-        if (_terrainOptions.enableBlending() == true)
+        if (options().enableBlending() == true)
         {
             surfaceStateSet->setDefine("OE_TERRAIN_BLEND_IMAGERY");
         } 
 
-        if (_terrainOptions.compressNormalMaps() == true)
+        if (options().compressNormalMaps() == true)
         {
             surfaceStateSet->setDefine("OE_COMPRESSED_NORMAL_MAP");
         }
@@ -1459,24 +1462,24 @@ RexTerrainEngineNode::updateState()
         // Morphing?
         if (_morphingSupported)
         {
-            if (_terrainOptions.morphTerrain() == true ||
-                _terrainOptions.morphImagery() == true)
+            if ((options().morphTerrain() == true && _morphTerrainSupported == true) ||
+                options().morphImagery() == true)
             {
                 package.load(surfaceVP, package.MORPHING_VERT);
 
-                if (_terrainOptions.morphImagery() == true)
-                {
-                    surfaceStateSet->setDefine("OE_TERRAIN_MORPH_IMAGERY");
-                }
-                if (_terrainOptions.morphTerrain() == true)
+                if ((options().morphTerrain() == true && _morphTerrainSupported == true))
                 {
                     surfaceStateSet->setDefine("OE_TERRAIN_MORPH_GEOMETRY");
+                }
+                if (options().morphImagery() == true)
+                {
+                    surfaceStateSet->setDefine("OE_TERRAIN_MORPH_IMAGERY");
                 }
             }
         }
 
         // Shadowing?
-        if (_terrainOptions.castShadows() == true)
+        if (options().castShadows() == true)
         {
             surfaceStateSet->setDefine("OE_TERRAIN_CAST_SHADOWS");
         }
@@ -1573,7 +1576,7 @@ RexTerrainEngineNode::updateState()
         terrainStateSet->addUniform( new osg::Uniform("oe_layer_order", (int)0) );
 
         // uniform that conveys the tile vertex dimensions
-        terrainStateSet->addUniform(new osg::Uniform("oe_tile_size", (float)_terrainOptions.tileSize().get()));
+        terrainStateSet->addUniform(new osg::Uniform("oe_tile_size", (float)options().tileSize().get()));
 
         // special object ID that denotes the terrain surface.
         surfaceStateSet->addUniform( new osg::Uniform(

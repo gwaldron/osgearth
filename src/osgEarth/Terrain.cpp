@@ -61,10 +61,9 @@ void Terrain::OnTileAddedOperation::operator()(osg::Object*)
 
 //---------------------------------------------------------------------------
 
-Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, const TerrainOptions& terrainOptions ) :
+Terrain::Terrain(osg::Node* graph, const Profile* mapProfile) :
 _graph         ( graph ),
-_profile       ( mapProfile ),
-_terrainOptions( terrainOptions )
+_profile       ( mapProfile )
 {
     _updateQueue = new osg::OperationQueue();
 }

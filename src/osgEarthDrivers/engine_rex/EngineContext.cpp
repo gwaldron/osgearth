@@ -192,5 +192,5 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
 bool
 EngineContext::maxLiveTilesExceeded() const
 {
-    return _liveTiles->size() > _options.expirationThreshold().get();
+    return _liveTiles->size() > getUnloader()->getThreshold();
 }

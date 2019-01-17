@@ -42,6 +42,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         virtual void unloadChildren(const std::vector<TileKey>& keys) =0;
+
+        virtual unsigned getThreshold() const =0;
     };
 
     /**
@@ -53,7 +55,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         UnloaderGroup(TileNodeRegistry* tiles);
 
         /** Sets the key count at which unloading will begin */
-        void setThreshold(int t) { _threshold = t; }
+        void setThreshold(unsigned t) { _threshold = t; }
+        unsigned getThreshold() const { return _threshold; }
 
         /** Service that will release GL objects on unloaded nodes. */
         void setReleaser(ResourceReleaser* releaser) { _releaser = releaser; }
@@ -66,7 +69,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void traverse(osg::NodeVisitor& nv);
 
     protected:
-        int                            _threshold;
+        unsigned                       _threshold;
         std::set<TileKey>              _parentKeys;
         TileNodeRegistry*              _tiles;
         osg::ref_ptr<ResourceReleaser> _releaser;

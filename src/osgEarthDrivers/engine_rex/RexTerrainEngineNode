@@ -80,9 +80,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //! Unique identifier of this engine instance
         UID getUID() const { return _uid; }
 
-        //! Terrain options object
-        const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
-
     public: // osg::Node
 
         void traverse(osg::NodeVisitor& nv);
@@ -140,12 +137,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned int computeSampleSize(unsigned int levelOfDetail);
 
     private:
-        TerrainOptions _terrainOptions;
+        const TerrainOptions* _terrainOptions;
+        const TerrainOptions& options() const { return *_terrainOptions; }
 
         UID _uid;
         bool _batchUpdateInProgress;
         bool _refreshRequired;
         bool _stateUpdateRequired;
+        bool _morphTerrainSupported;
 
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
         LayerExtentVector _cachedLayerExtents; 

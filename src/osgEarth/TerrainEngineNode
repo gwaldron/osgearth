@@ -130,9 +130,6 @@ namespace osgEarth
         Terrain* getTerrain() { return _terrainInterface.get(); }
         const Terrain* getTerrain() const { return _terrainInterface.get(); }
 
-        /** Gets the property set in use by this map engine. */
-        //virtual const TerrainOptions& getTerrainOptions() const =0;
-
         /** Accesses the object that keeps track of GPU resources in use */
         TerrainResources* getResources() const;
 
@@ -234,6 +231,7 @@ namespace osgEarth
         friend class MapNode;
         friend class TerrainEngineNodeFactory;
 
+        //! Assigns a map to render
         virtual void setMap(const Map* map, const TerrainOptions& options);
 
         // signals that a redraw is needed because something changed.
@@ -361,7 +359,7 @@ namespace osgEarth
     class TerrainEngineNodeFactory
     {
     public:
-        static TerrainEngineNode* create(const TerrainOptions& options );
+        static TerrainEngineNode* create(const TerrainOptions& options);
     };
 
 } // namespace osgEarth

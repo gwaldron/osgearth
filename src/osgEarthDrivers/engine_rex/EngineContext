@@ -80,7 +80,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
-        const TerrainOptions& getOptions() const { return _options; }
+        const TerrainOptions& options() const { return _options; }
 
         ProgressCallback* progress() const { return _progress.get(); }
 

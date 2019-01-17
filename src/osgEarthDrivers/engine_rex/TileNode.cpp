@@ -439,10 +439,14 @@ TileNode::cull(TerrainCuller* culler)
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
     
-    // Don't create children in progressive mode until content is in place
-    if ( _dirty && context->getOptions().progressive() == true )
+    // Don't load data in progressive mode until the parent is up to date
+    if (context->getOptions().progressive() == true)
     {
-        canCreateChildren = false;
+        TileNode* parent = getParentTile();
+        if ( parent && parent->isDirty() )
+        {
+            canLoadData = false;
+        }
     }
     
     // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision

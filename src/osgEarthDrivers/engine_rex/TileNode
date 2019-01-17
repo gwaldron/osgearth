@@ -119,6 +119,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::set<UID>& newLayers() { return _newLayers; }
 
         void refreshSharedSamplers(const RenderBindings& bindings);
+
+        bool isDirty() const { return _dirty; }
         
     public: // osg::Node
 

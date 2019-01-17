@@ -13,9 +13,9 @@ Note:  There are tons of NoData areas in the sample terrain files, so expect see
     </options>
 
     <!--Load a simple base image of the world-->
-    <image name="world" driver="gdal">
+    <GDALImage name="world">
         <url>..\data\world.tif</url>
-    </image>
+    </GDALImage>
 
     <!--Load a folder full of terrain data as an elevation source-->
     <elevation name="terrain" driver="gdal">

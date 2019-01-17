@@ -7,13 +7,11 @@ osgEarth Sample - Shows an elevation-derived normal map.
         <terrain normal_maps="true"/>
     </options>
     
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <TMSImage name="Imagery">
+        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+    </TMSImage>
+    
+    <xi:include href="readymap_elevation.xml"/>
     
     <sky driver="gl"/>
     

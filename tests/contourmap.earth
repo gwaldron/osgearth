@@ -4,9 +4,7 @@
  
 <map>
 
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
 
     <contour_map/>
 </map>

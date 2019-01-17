@@ -6,14 +6,14 @@ to a polygon mask.
 
 <map name="Feature Geometry Demo" type="geocentric" version="2">
             
-    <image driver="gdal">
+    <GDALImage>
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <model driver="feature_geom" comment="Outline of France">
-        <features driver="ogr">
+    <FeatureModel comment="Outline of France">
+        <OGRFeatures>
             <url>../data/france.shp</url>
-        </features>
+        </OGRFeatures>
         <styles>
             <style>
                 stroke: #ffff00;
@@ -21,10 +21,10 @@ to a polygon mask.
                 render-depth-offset: true;
             </style>
         </styles>
-    </model>
+    </FeatureModel>
     
-    <model name="Cities in France" driver="feature_geom">
-        <features name="cities" driver="ogr">
+    <FeatureModel name="Cities in France">
+        <OGRFeatures name="cities">
             <url>../data/cities.gpkg</url>
             <filters>
                 <intersect>
@@ -34,14 +34,14 @@ to a polygon mask.
                         Exact:    true=use exact geometry; false=use bounding boxes only
                     </comment>
                     
-                    <features driver="ogr">
+                    <OGRFeatures>
                         <url>../data/france.shp</url>
-                    </features>
+                    </OGRFeatures>
                     <contains>true</contains>
                     
                 </intersect>
             </filters>
-        </features>
+        </OGRFeatures>
 
         <styles>
             <style type="text/css">              
@@ -53,6 +53,6 @@ to a polygon mask.
                 }     
             </style>
         </styles>
-    </model>
+    </FeatureModel>
   
 </map>

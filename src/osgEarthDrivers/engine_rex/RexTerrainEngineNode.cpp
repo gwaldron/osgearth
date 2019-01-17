@@ -626,6 +626,15 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         // Assemble the terrain drawables:
         _terrain->accept(culler);
 
+        // If we're using geometry pooling, optimize the drawable for shared state
+        // by sorting the draw commands.
+        // TODO: benchmark this further to see whether it's worthwhile
+        unsigned totalTiles = 0L;
+        if (getEngineContext()->getGeometryPool()->isEnabled())
+        {
+            totalTiles = culler._terrain.sortDrawCommands();
+        }
+
 #ifdef PROFILE
         osg::Timer_t s2 = osg::Timer::instance()->tick();
         double delta = osg::Timer::instance()->delta_m(s1, s2);
@@ -634,20 +643,11 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         if (times.size() == 60)
         {
             Registry::instance()->startActivity("CULL(ms)", Stringify()<<(times_total/times.size()));
+            Registry::instance()->startActivity("Tiles:", Stringify()<<totalTiles);
             times.clear();
             times_total = 0;
         }
 #endif
-
-        // If we're using geometry pooling, optimize the drawable for shared state
-        // by sorting the draw commands.
-        // TODO: benchmark this further to see whether it's worthwhile
-        if (getEngineContext()->getGeometryPool()->isEnabled())
-        {
-            unsigned total = culler._terrain.sortDrawCommands();
-            //if (!culler._isSpy)
-            //    OE_INFO << LC << "Total tiles to draw = " << total << std::endl;
-        }
 
         // The common stateset for the terrain group:
         cv->pushStateSet(_terrain->getOrCreateStateSet());

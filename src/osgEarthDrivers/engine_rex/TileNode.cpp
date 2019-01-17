@@ -345,30 +345,30 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     unsigned currLOD = _key.getLOD();
 
     EngineContext* context = culler->getEngineContext();
-
-    // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
-    // allowable on-screen tile size in pixels.
-    if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+    
+    if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
     {
-        float tileSizeInPixels = -1.0;
-
-        if (context->getEngine()->getComputeRangeCallback())
+        // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
+        // allowable on-screen tile size in pixels.
+        if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
         {
-            tileSizeInPixels = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
-        }    
+            float tileSizeInPixels = -1.0;
 
-        if (tileSizeInPixels <= 0.0)
-        {
-            tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
-        }
+            if (context->getEngine()->getComputeRangeCallback())
+            {
+                tileSizeInPixels = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
+            }    
+
+            if (tileSizeInPixels <= 0.0)
+            {
+                tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
+            }
         
-        return (tileSizeInPixels > options().tilePixelSize().get());
-    }
+            return (tileSizeInPixels > options().tilePixelSize().get());
+        }
 
-    // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
-    else
-    {
-        if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
+        // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
+        else
         {
             float range = selectionInfo.getLOD(currLOD+1)._visibilityRange;
 #if 1

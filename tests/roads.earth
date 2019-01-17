@@ -18,26 +18,24 @@ http://readymap.org
         </terrain>
     </options>
 
-    <image name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
+    <TMSImage name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    </TMSImage>
 
     <image name="Tilekeys" driver="debug">
     </image>
 
-    <road_surface name="road-surface" min_level="14" max_level="18">
+    <road_surface name="road-surface" min_level="14" max_level="18" shared="true" cacheid="road_surface">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <feature_source>roads-data</feature_source>
-        <styles>
-            <style type="text/css">
-                default {
-                   stroke: #ffffff;
-                   stroke-width: 65m;
-                   stroke-image: "../data/road.png";
-                }
-            </style>
-        </styles>
+        <style type="text/css">
+            default {
+               stroke: #ffffff;
+               stroke-width: 65m;
+               stroke-image: "../data/road.png";
+            }                    
+        </style>
     </road_surface>
 
     <feature_model name="Road verts">
@@ -56,7 +54,7 @@ http://readymap.org
         </styles>
     </feature_model>
 
-    <feature_model name="Road skeleton" visible="false">
+    <feature_model name="Road skeleton" visible="true">
         <feature_source>roads-data</feature_source>
         <styles>
             <style type="text/css">
@@ -71,7 +69,7 @@ http://readymap.org
         </styles>
     </feature_model>
 
-    <feature_source name="roads-data" driver="tfs">
+    <TFSFeatures name="roads-data">
         <url>http://readymap.org/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
@@ -82,7 +80,7 @@ http://readymap.org
               <![CDATA[ ("highway" in feature.properties); ]]>
             </script>
         </filters>
-    </feature_source>
+    </TFSFeatures>
 
     <viewpoints>
         <viewpoint name="45 Lat">

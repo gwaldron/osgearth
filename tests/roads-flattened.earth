@@ -5,9 +5,7 @@
         </terrain>
     </options>
 
-    <elevation name="ReadyMap Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
 
     <fractal_elevation name="Fractal" min_level="8" offset="true">
         <noise_image>../data/seamless-noise-1.png</noise_image>

@@ -4,9 +4,9 @@ Demonstrates the use a a MaskLayer to cut out an area of the globe.
 -->
 
 <map version="2">
-    <image driver="gdal" name="world-tiff">
+    <GDALImage name="world-tiff">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
 
     <OGRFeatures name="data:mask">
         <geometry>

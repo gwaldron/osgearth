@@ -13,9 +13,7 @@ http://readymap.org
 -->
 <map name="readymap.org" type="geocentric">    
             
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
     
     <xi:include href="viewpoints.xml"/>
     

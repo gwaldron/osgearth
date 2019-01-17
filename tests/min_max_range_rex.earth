@@ -11,13 +11,13 @@ a street map. Zoom in further and see it transition back to aerial.
         <terrain driver="rex"/>
     </options>
  
-    <image driver="gdal" name="world-tiff" cache_enabled="false">
+    <GDALImage name="world-tiff" cache_enabled="false">
         <url>../data/world.tif</url>
         <cache_policy usage="no_cache"/>
-    </image>
+    </GDALImage>
     
-    <image name="readymap_imagery" driver="tms" max_range="1e7" min_range="1e6">
+    <TMSImage name="readymap_imagery" max_range="1e7" min_range="1e6">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    </TMSImage>
     
 </map>

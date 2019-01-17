@@ -10,10 +10,10 @@ Plate Carre (y=lat, x=lon) by applying the <profile> tag.
         <lighting>false</lighting>
     </options>
     
-    <image name="osm_mapnik" driver="xyz">
+    <XYZImage name="osm_mapnik">
         <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="none"/>
-    </image>
+    </XYZImage>
     
 </map>

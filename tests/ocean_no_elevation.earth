@@ -17,14 +17,10 @@ http://readymap.org
         <terrain driver="rex"/>
     </options>
     
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
         
     <!--
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
     -->
     
     <simple_ocean>      
@@ -35,11 +31,11 @@ http://readymap.org
         <shader_define>IS_OCEAN</shader_define>
     </simple_ocean>
     
-    <image name="ocean_mask" visible="false" shared="true" driver="tms">
+    <TMSImage name="ocean_mask" visible="false" shared="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
         <shared_sampler>ocean_mask</shared_sampler>
         <shared_matrix>ocean_mask_matrix</shared_matrix>
-    </image>
+    </TMSImage>
     
     <terrainshader>
         <code><![CDATA[

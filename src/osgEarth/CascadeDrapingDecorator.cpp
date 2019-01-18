@@ -496,7 +496,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
     unsigned textureHeight;
 
     unsigned multiSamples;
-    osg::Texture::FilterMode minifyFilter;
+    osg::Texture::FilterMode minifyFilter, magnifyFilter;
     osg::Vec4 clearColor;
     bool mipmapping = decorator._mipmapping;
 
@@ -509,6 +509,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
         _maxCascades = 2u; // limit to one cascade when picking
         multiSamples = 0u; // no antialiasing allowed
         minifyFilter = osg::Texture::NEAREST; // no texture filtering allowed
+        magnifyFilter = osg::Texture::NEAREST;
         clearColor.set(0,0,0,0);
         mipmapping = false;
     }
@@ -519,6 +520,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
         _maxCascades = decorator._maxCascades;
         multiSamples = decorator._multisamples;
         minifyFilter = mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR;
+        magnifyFilter = osg::Texture::LINEAR;
         clearColor.set(1,1,1,0);
     }
 
@@ -530,7 +532,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
     tex->setSourceType(GL_UNSIGNED_BYTE);
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setFilter(tex->MIN_FILTER, minifyFilter);
-    tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+    tex->setFilter(tex->MAG_FILTER, magnifyFilter);
     tex->setWrap(tex->WRAP_S, tex->CLAMP_TO_EDGE);
     tex->setWrap(tex->WRAP_T, tex->CLAMP_TO_EDGE);
     tex->setMaxAnisotropy(4.0f);

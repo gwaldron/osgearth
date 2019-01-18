@@ -4,22 +4,17 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
 -->
 <map name="readymap.org" type="geocentric" version="2">
 
-    <image name="readymap_imagery" driver="tms" visible="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_imagery.xml"/>   
+    <xi:include href="readymap_elevation.xml"/>
 
     <!-- Triton masking layer. By default Triton will look at the elevation of
          the terrain and will draw water where the elevation is less than zero.
          But this will cause land below sea level to get water as well. You can
          use a mask like this to prevent that from happening. -->
          
-    <image name="ocean_mask" driver="tms" shared="true" visible="false">
+    <TMSImage name="ocean_mask" shared="true" visible="false">
         <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
-    </image>
+    </TMSImage>
 
     <triton>
         <user> my_user_name </user>

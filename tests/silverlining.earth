@@ -4,13 +4,8 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
 -->
 <map name="readymap.org" type="geocentric" version="2">
     
-    <image name="readymap_imagery" driver="tms" visible="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_imagery.xml"/>   
+    <xi:include href="readymap_elevation.xml"/>
 
     <sky driver="silverlining">
         <user>user</user>

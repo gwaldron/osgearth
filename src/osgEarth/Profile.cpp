@@ -76,7 +76,9 @@ ProfileOptions::fromConfig( const Config& conf )
     }
 
     conf.get( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+    conf.get( "tx", _numTilesWideAtLod0 );
     conf.get( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+    conf.get( "ty", _numTilesHighAtLod0 );
 }
 
 Config

@@ -958,8 +958,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         result = mosaicedImage.reproject( 
             key.getProfile()->getSRS(),
             &key.getExtent(), 
-            options().reprojectedTileSize().get(),
-            options().reprojectedTileSize().get(),
+            getTileSize(), getTileSize(),
             options().driver()->bilinearReprojection().get());
     }
 

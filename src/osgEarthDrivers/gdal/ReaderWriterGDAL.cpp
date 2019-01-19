@@ -1170,6 +1170,7 @@ public:
         double maxResolution = osg::minimum(resolutionX, resolutionY);
 
         OE_INFO << LC << INDENT << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+        OE_INFO << LC << INDENT << "Tile size = " << getPixelsPerTile() << std::endl;
 
         if (_options.maxDataLevelOverride().isSet())
         {

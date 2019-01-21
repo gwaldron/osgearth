@@ -266,15 +266,13 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
             if (psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_ROTATION_PARAM1] != 0 ||
                 psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_ROTATION_PARAM2] != 0)
             {
-                fprintf( stderr, "GDAL Driver does not support rotated geo transforms. Skipping %s\n",
-                             dsFileName);
+                OE_WARN << LC << "GDAL Driver does not support rotated geo transforms. Skipping " << dsFileName << std::endl;
                 GDALClose(hDS);
                 continue;
             }
             if (psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_NS_RES] >= 0)
             {
-                fprintf( stderr, "GDAL Driver does not support positive NS resolution. Skipping %s\n",
-                             dsFileName);
+                OE_WARN << LC << "GDAL Driver does not support positive NS resolution. Skipping " << dsFileName << std::endl;
                 GDALClose(hDS);
                 continue;
             }
@@ -325,19 +323,19 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                     (proj == NULL && projectionRef != NULL) ||
                     (proj != NULL && projectionRef != NULL && EQUAL(proj, projectionRef) == FALSE))
                 {
-                    fprintf( stderr, "gdalbuildvrt does not support heterogeneous projection. Skipping %s\n",dsFileName);
+                    OE_WARN << LC << "gdalbuildvrt does not support heterogeneous projections. Skipping " << dsFileName << std::endl;
                     GDALClose(hDS);
                     continue;
                 }
                 int _nBands = GDALGetRasterCount(hDS);
                 if (nBands != _nBands)
                 {
-                    fprintf( stderr, "gdalbuildvrt does not support heterogeneous band numbers. Skipping %s\n",
-                             dsFileName);
+                    OE_WARN << LC << "gdalbuildvrt does not support heterogeneous band numbers. Skipping " << dsFileName << std::endl;
                     GDALClose(hDS);
+                    hDS = NULL;
                     continue;
                 }
-                for(j=0;j<nBands;j++)
+                for(j=0;j<nBands && hDS != NULL;j++)
                 {
                     GDALRasterBandH hRasterBand = GDALGetRasterBand( hDS, j+1 );
                     if (bandProperties[j].colorInterpretation != GDALGetRasterColorInterpretation(hRasterBand) ||
@@ -346,6 +344,7 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                         fprintf( stderr, "gdalbuildvrt does not support heterogeneous band characteristics. Skipping %s\n",
                              dsFileName);
                         GDALClose(hDS);
+                        hDS = NULL;
                     }
                     if (bandProperties[j].colorTable)
                     {
@@ -356,13 +355,15 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                             fprintf( stderr, "gdalbuildvrt does not support heterogeneous band characteristics. Skipping %s\n",
                              dsFileName);
                             GDALClose(hDS);
+                            hDS = NULL;
                             break;
                         }
                         /* We should check that the palette are the same too ! */
                     }
                 }
-                if (j != nBands)
+                if (j != nBands || hDS == NULL)
                     continue;
+
                 if (product_minX < minX) minX = product_minX;
                 if (product_minY < minY) minY = product_minY;
                 if (product_maxX > maxX) maxX = product_maxX;
@@ -394,10 +395,14 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                 }
             }
 
-            psDatasetProperties[i].isFileOK = 1;
-            nCount ++;
-            bFirst = FALSE;
-            GDALClose(hDS);
+            if (hDS != NULL)
+            {
+                psDatasetProperties[i].isFileOK = 1;
+                nCount ++;
+                bFirst = FALSE;
+                GDALClose(hDS);
+                hDS = NULL;
+            }
         }
         else
         {

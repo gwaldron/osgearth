@@ -1539,7 +1539,8 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
             osg::StateSet* ss = node->getOrCreateStateSet();
             ss->setRenderBinDetails(
                 ss->getBinNumber(),
-                render->renderBin().get() );
+                render->renderBin().get(),
+                osg::StateSet::PROTECTED_RENDERBIN_DETAILS);
         }
 
         if ( render->order().isSet() )
@@ -1547,13 +1548,17 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
             osg::StateSet* ss = node->getOrCreateStateSet();
             ss->setRenderBinDetails(
                 (int)render->order()->eval(),
-                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName() );
+                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName(),
+                osg::StateSet::PROTECTED_RENDERBIN_DETAILS );
         }
 
         if ( render->transparent() == true )
         {
             osg::StateSet* ss = node->getOrCreateStateSet();
-            ss->setRenderingHint( ss->TRANSPARENT_BIN );
+            ss->setRenderBinDetails(
+                10,
+                "DepthSortedBin",
+                osg::StateSet::PROTECTED_RENDERBIN_DETAILS);
         }
         
         if (render->decal() == true)

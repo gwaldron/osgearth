@@ -41,7 +41,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public: // Loader::Request
 
         /** Fetches the data for the tile node. */
-        void invoke();
+        void invoke(ProgressCallback*);
 
         /** Applies the fetched data to the tile node (scene-graph safe) */
         void apply(const osg::FrameStamp*);

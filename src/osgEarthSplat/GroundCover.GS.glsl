@@ -81,7 +81,7 @@ out vec4 vp_Color;
 out vec3 vp_Normal;
 
 // Up vector for clamping.
-in vec3 oe_UpVectorView;
+//in vec3 oe_UpVectorView;
 
 // SDK import
 float oe_terrain_getElevation(in vec2);
@@ -196,7 +196,7 @@ oe_GroundCover_geom()
     
     // Transform to view space.
     vec4 center_view = gl_ModelViewMatrix * center;
-    vec3 up_view     = oe_UpVectorView;
+    vec3 up_view     = gl_NormalMatrix * vp_Normal; //oe_UpVectorView;
     
     // Clamp the center point to the elevation.
     oe_GroundCover_clamp(center_view, up_view, tileUV);

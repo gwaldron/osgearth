@@ -856,8 +856,6 @@ namespace osgEarth { namespace Util
 
         void updateSetViewpoint();
 
-        void updateHandCam( const osg::Timer_t& now );
-
         bool isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const;
 
         void applyOptionsToDeltas( const Action& action, double& dx, double& dy );

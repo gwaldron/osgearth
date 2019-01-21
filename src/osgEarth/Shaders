@@ -31,6 +31,7 @@ namespace osgEarth
     public:
         Shaders();
 
+        std::string CascadeDraping;
         std::string ClipPlane;
         std::string DepthOffsetVertex;
         std::string DrapingVertex, DrapingFragment;

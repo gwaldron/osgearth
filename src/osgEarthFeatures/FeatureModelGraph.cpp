@@ -268,6 +268,8 @@ FeatureModelGraph::ctor()
     
     OE_TEST << LC << "ctor" << std::endl;
 
+    _nodeCachingImageCache = new osgDB::ObjectCache();
+
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
 
@@ -906,8 +908,15 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
     if (cacheBin && policy->isCacheReadable())
     {
         ++_cacheReads;
-        
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,3)
+        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
+        localOptions->setObjectCache(_nodeCachingImageCache.get());
+        localOptions->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+        ReadResult rr = cacheBin->readObject(cacheKey, localOptions.get());
+#else
         ReadResult rr = cacheBin->readObject(cacheKey, readOptions);
+#endif
 
         if (policy.isSet() && policy->isExpired(rr.lastModifiedTime()))
         {
@@ -925,6 +934,13 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
             if (group.valid() && _featureIndex.valid())
             {
                 FeatureSourceIndexNode::reconstitute(group.get(), _featureIndex.get());
+            }
+
+            // Share state between this newly loaded object and the rest of the session.
+            // This will prevent duplicated textures, etc. across cached tiles
+            if (_session->getStateSetCache())
+            {
+                _session->getStateSetCache()->optimize(group.get());
             }
         }
         else if (rr.code() == ReadResult::RESULT_NOT_FOUND)
@@ -1523,7 +1539,8 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
             osg::StateSet* ss = node->getOrCreateStateSet();
             ss->setRenderBinDetails(
                 ss->getBinNumber(),
-                render->renderBin().get() );
+                render->renderBin().get(),
+                osg::StateSet::PROTECTED_RENDERBIN_DETAILS);
         }
 
         if ( render->order().isSet() )
@@ -1531,13 +1548,17 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
             osg::StateSet* ss = node->getOrCreateStateSet();
             ss->setRenderBinDetails(
                 (int)render->order()->eval(),
-                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName() );
+                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName(),
+                osg::StateSet::PROTECTED_RENDERBIN_DETAILS );
         }
 
         if ( render->transparent() == true )
         {
             osg::StateSet* ss = node->getOrCreateStateSet();
-            ss->setRenderingHint( ss->TRANSPARENT_BIN );
+            ss->setRenderBinDetails(
+                10,
+                "DepthSortedBin",
+                osg::StateSet::PROTECTED_RENDERBIN_DETAILS);
         }
         
         if (render->decal() == true)

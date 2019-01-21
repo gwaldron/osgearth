@@ -45,7 +45,7 @@ namespace osgEarth { namespace Triton
             _callback(callback),
             _needsMapNode(true)
         {
-            // Triton requires a constant update traversal.
+            // To detect the map node:
             ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
             // Disable bounds culling
@@ -156,14 +156,8 @@ namespace osgEarth { namespace Triton
                     {
                         setMapNode(mapNode);
                         _needsMapNode = false;
+                        ADJUST_UPDATE_TRAV_COUNT(this, -1);
                     }
-                }
-
-                // Tick Triton each frame:
-                if (_TRITON->ready())
-                {
-                    // Update the ocean simulation
-                    _TRITON->update(nv.getFrameStamp()->getSimulationTime());
                 }
             }
 

@@ -380,6 +380,7 @@ ImageLayer::setAltitude(const Distance& value)
         getOrCreateStateSet()->removeUniform("oe_terrain_altitude");
         stateSet->removeMode(GL_CULL_FACE);
     }
+    fireCallback( &ImageLayerCallback::onAltitudeChanged );
 }
 
 void
@@ -957,8 +958,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         result = mosaicedImage.reproject( 
             key.getProfile()->getSRS(),
             &key.getExtent(), 
-            options().reprojectedTileSize().get(),
-            options().reprojectedTileSize().get(),
+            getTileSize(), getTileSize(),
             options().driver()->bilinearReprojection().get());
     }
 

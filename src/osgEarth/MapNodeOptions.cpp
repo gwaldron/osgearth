@@ -37,7 +37,8 @@ _overlayMipMapping     ( false ),
 _overlayTextureSize    ( 4096 ),
 _terrainOptions        ( 0L ),
 _overlayAttachStencil  ( false ),
-_overlayResolutionRatio( 3.0f )
+_overlayResolutionRatio( 3.0f ),
+_useCascadeDraping     ( false )
 {
     mergeConfig( conf );
 }
@@ -50,7 +51,8 @@ _overlayTextureSize    ( 4096 ),
 _overlayMipMapping     ( false ),
 _overlayAttachStencil  ( false ),
 _overlayResolutionRatio( 3.0f ),
-_terrainOptions        ( 0L )
+_terrainOptions        ( 0L ),
+_useCascadeDraping     ( false )
 {
     setTerrainOptions( to );
 }
@@ -63,7 +65,8 @@ _overlayTextureSize    ( 4096 ),
 _overlayMipMapping     ( false ),
 _overlayAttachStencil  ( false ),
 _overlayResolutionRatio( 3.0f ),
-_terrainOptions        ( 0L )
+_terrainOptions        ( 0L ),
+_useCascadeDraping     ( false )
 {
     mergeConfig( rhs.getConfig() );
 }
@@ -93,6 +96,7 @@ MapNodeOptions::getConfig() const
     conf.set( "overlay_mipmapping",       _overlayMipMapping );
     conf.set( "overlay_attach_stencil",   _overlayAttachStencil );
     conf.set( "overlay_resolution_ratio", _overlayResolutionRatio );
+    conf.set( "cascade_draping",          _useCascadeDraping );
 
     return conf;
 }
@@ -110,6 +114,7 @@ MapNodeOptions::mergeConfig( const Config& conf )
     conf.get( "overlay_mipmapping",       _overlayMipMapping );
     conf.get( "overlay_attach_stencil",   _overlayAttachStencil );
     conf.get( "overlay_resolution_ratio", _overlayResolutionRatio );
+    conf.get( "cascade_draping",          _useCascadeDraping );
 
     if ( conf.hasChild( "terrain" ) )
     {

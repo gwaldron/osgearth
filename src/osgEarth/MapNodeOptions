@@ -98,6 +98,11 @@ namespace osgEarth
         optional<float>& overlayResolutionRatio() { return _overlayResolutionRatio; }
         const optional<float>& overlayResolutionRatio() const { return _overlayResolutionRatio; }
 
+        //! Whether to use the cascaded draping module, which is more accurate but
+        //! uses more system resources.
+        optional<bool>& useCascadeDraping() { return _useCascadeDraping; }
+        const optional<bool>& useCascadeDraping() const { return _useCascadeDraping; }
+
         /**
          * Options to conigure the terrain engine (the component that renders the
          * terrain surface).
@@ -121,6 +126,7 @@ namespace osgEarth
         optional<bool>     _overlayMipMapping;
         optional<bool>     _overlayAttachStencil;
         optional<float>    _overlayResolutionRatio;
+        optional<bool> _useCascadeDraping;
 
         optional<Config> _terrainOptionsConf;
         TerrainOptions* _terrainOptions;

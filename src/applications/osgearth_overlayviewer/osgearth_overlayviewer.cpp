@@ -30,8 +30,10 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
+#include <osgEarth/CascadeDrapingDecorator>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthUtil/ViewFitter>
 
 #define LC "[viewer] "
 
@@ -39,18 +41,92 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 
+namespace ui = osgEarth::Util::Controls;
+
 //------------------------------------------------------------------------
 
 namespace
 {
+    struct App
+    {
+        MapNode* _mapNode;
+        ui::CheckBoxControl* _fitting;
+        ui::HSliderControl* _minNearFarRatio;
+        ui::ButtonControl* _centerView;
+        osg::ref_ptr<osg::Node> _dumpNode;
+        osg::Camera* _overlayCam;
+        EarthManipulator* _manip;
+
+        void toggleFitting()
+        {
+            CascadeDrapingDecorator* cdd = _mapNode->getCascadeDrapingDecorator();
+            if (cdd) cdd->setUseProjectionFitting(_fitting->getValue());
+        }
+
+        void setMinNearFarRatio()
+        {
+            CascadeDrapingDecorator* cdd = _mapNode->getCascadeDrapingDecorator();
+            if (cdd) cdd->setMinimumNearFarRatio(_minNearFarRatio->getValue());
+        }
+
+        void findFrusta()
+        {
+            if (_dumpNode.valid())
+            {
+                ViewFitter fitter(_mapNode->getMapSRS(), _overlayCam);
+                const osg::BoundingSphere& bs = _dumpNode->getBound();
+                GeoPoint center;
+                center.fromWorld(_mapNode->getMapSRS(), bs.center());
+                std::vector<GeoPoint> points;
+                points.push_back(center);
+                fitter.setBuffer(bs.radius()*0.85);
+                Viewpoint vp;
+                if (fitter.createViewpoint(points, vp))
+                {
+                    vp.heading() = 45, vp.pitch() = -45;
+                    _manip->setViewpoint(vp, 1.0);
+                }
+            }
+        }
+    };
+
+    OE_UI_HANDLER(toggleFitting);
+    OE_UI_HANDLER(setMinNearFarRatio);
+    OE_UI_HANDLER(findFrusta);
+
+    ui::Control* makeUI(App& app)
+    {
+        bool usingCascade = app._mapNode->getCascadeDrapingDecorator() != 0L;
+
+        ui::Grid* grid = new ui::Grid();
+        int r = 0;
+
+        if (usingCascade)
+        {
+            grid->setControl(0, r, new ui::LabelControl("Projection fitting"));
+            grid->setControl(1, r, app._fitting = new ui::CheckBoxControl(true, new toggleFitting(app)));
+            ++r;
+
+            grid->setControl(0, r, new ui::LabelControl("Cascade #1 Min NF Ratio"));
+            grid->setControl(1, r, app._minNearFarRatio = new ui::HSliderControl(0.0, 1.0, 0.2, new setMinNearFarRatio(app)));
+            app._minNearFarRatio->setHorizFill(true, 250.0f);
+            ++r;
+        }
+
+        grid->setControl(0, r, app._centerView = new ui::ButtonControl("Sync view", new findFrusta(app)));
+        ++r;
+
+        return grid;
+    }
+
     // it's not used by osgEarth, but you can copy this code into a viewer app and
     // use it to visualize the various polyhedra created by the overlay decorator.
     // see the end of OverlayDecorator::cull for the dump types.
     struct PHDumper : public osgGA::GUIEventHandler
     {
-        MapNode*    _mapNode;
+        App& _app;
         osg::Group* _parent;
-        PHDumper(MapNode* mapNode, osg::Group* parent) : _mapNode(mapNode), _parent(parent)
+        PHDumper(App& app, osg::Group* parent) : _app(app), _parent(parent)
         {
         }
 
@@ -58,10 +134,10 @@ namespace
         {
             if ( ea.getEventType() == ea.FRAME )
             {
-                osg::Node* dump = _mapNode->getOverlayDecorator()->getDump();
-                if ( !dump )
+                _app._dumpNode = _app._mapNode->getDrapingDump();
+                if ( !_app._dumpNode.valid() )
                 {
-                    _mapNode->getOverlayDecorator()->requestDump();
+                    _app._mapNode->getOverlayDecorator()->requestDump();
                     aa.requestRedraw();
                 }
                 else
@@ -79,13 +155,13 @@ namespace
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
                     g0ss->setAttributeAndModes(new osg::LineStipple(1, 0x000F), 1);
 #endif
-                    g0->addChild( dump );
+                    g0->addChild( _app._dumpNode.get() );
 
                     osg::Group* g1 = new osg::Group();
                     g->addChild( g1 );
                     osg::StateSet* g1ss = g1->getOrCreateStateSet();
                     g1ss->setMode(GL_DEPTH_TEST, osg::StateAttribute::OVERRIDE | 1);
-                    g1->addChild( dump );
+                    g1->addChild( _app._dumpNode.get() );
 
                     _parent->removeChildren(1, _parent->getNumChildren()-1);
                     _parent->addChild( g );
@@ -105,6 +181,8 @@ main(int argc, char** argv)
 
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel( osgViewer::CompositeViewer::SingleThreaded );
+    
+    App app;
 
     // query the screen size.
     osg::GraphicsContext::ScreenIdentifier si;
@@ -116,6 +194,7 @@ main(int argc, char** argv)
     unsigned b = 50;
 
     osgViewer::View* mainView = new osgViewer::View();
+    mainView->getCamera()->setName("dump");
     mainView->getCamera()->setNearFarRatio(0.00002);
     EarthManipulator* em = new EarthManipulator();
     em->getSettings()->setMinMaxPitch(-90, 0);
@@ -125,7 +204,7 @@ main(int argc, char** argv)
 
     osgViewer::View* overlayView = new osgViewer::View();
     overlayView->getCamera()->setNearFarRatio(0.00002);
-    overlayView->setCameraManipulator( new EarthManipulator() );
+    overlayView->setCameraManipulator( app._manip = new EarthManipulator() );
     
     overlayView->setUpViewInWindow( (width/2), b, (width/2)-b*2, (height-b*4) );
     overlayView->addEventHandler(new osgGA::StateSetManipulator(overlayView->getCamera()->getOrCreateStateSet()));
@@ -143,10 +222,14 @@ main(int argc, char** argv)
     {
         mainView->setSceneData( node );
 
+        app._mapNode = MapNode::get(node);
+        app._overlayCam = overlayView->getCamera();
+        ui::ControlCanvas::get(mainView)->addControl(makeUI(app));
+
         osg::Group* group = new osg::Group();
-        group->addChild( MapNode::get(node) );
+        group->addChild(app._mapNode);
         overlayView->setSceneData( group );       
-        overlayView->addEventHandler( new PHDumper(MapNode::get(node), group) );
+        overlayView->addEventHandler( new PHDumper(app, group) );
 
         return viewer.run();
     }

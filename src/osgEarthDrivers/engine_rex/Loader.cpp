@@ -55,6 +55,41 @@ Loader::Request::addToChangeSet(osg::Node* node)
     }
 }
 
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * Custom progress callback that checks for both request 
+     * timeout (via request::isIdle) and OSG database pager
+     * shutdown (via getDone)
+     */
+    struct RequestProgressCallback : public ProgressCallback
+    {
+        osgDB::DatabasePager::DatabaseThread* _thread;
+        Loader::Request* _request;
+
+        RequestProgressCallback(Loader::Request* req) :
+            _request(req)
+        {
+            // if this is a pager thread, get a handle on it:
+            _thread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
+                OpenThreads::Thread::CurrentThread());
+        }
+
+        virtual bool isCanceled()
+        {
+            // was the request canceled?
+            if (_canceled == false && _request->isIdle())
+                _canceled = true;
+
+            // was the pager shut down?
+            if (_thread != 0L && _thread->getDone())
+                _canceled = true;
+
+            return ProgressCallback::isCanceled();
+        }
+    };
+} } }
+
 //...............................................
 
 #undef  LC
@@ -75,7 +110,7 @@ SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& n
         r->setState(Request::RUNNING);
 
         //OE_INFO << LC << "Request invoke : UID = " << request->getUID() << "\n";
-        request->invoke();
+        request->invoke(0L);
         
         //OE_INFO << LC << "Request apply : UID = " << request->getUID() << "\n";
         if (r->isRunning())
@@ -253,7 +288,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
         request->lock();
         {
             request->setState(Request::RUNNING);
-
+            
             // remember the last tick at which this request was submitted
             request->_lastTick = osg::Timer::instance()->tick();
 
@@ -471,7 +506,8 @@ PagerLoader::invokeAndRelease(UID requestUID)
         if ( REPORT_ACTIVITY )
             Registry::instance()->startActivity( request->getName() );
 
-        request->invoke();
+        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request);
+        request->invoke(prog.get());
     }
 
     else
@@ -495,7 +531,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
         PagerLoaderAgent()
         {
-            //nop
+            // nop
         }
 
         virtual const char* className() const
@@ -521,7 +557,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 osg::ref_ptr<PagerLoader> loader;
                 if (OptionsData<PagerLoader>::lock(dboptions, "osgEarth.PagerLoader", loader))
                 {
-                    osg::ref_ptr<Loader::Request> req = loader->invokeAndRelease( requestUID );
+                    osg::ref_ptr<Loader::Request> req = loader->invokeAndRelease(requestUID);
 
                     // make sure the request is still running (not canceled)
                     if (req.valid() && req->isRunning())

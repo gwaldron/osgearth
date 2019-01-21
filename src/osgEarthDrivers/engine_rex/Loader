@@ -24,6 +24,7 @@
 #include <osgEarth/IOTypes>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
+#include <osgEarth/Progress>
 
 #include <osg/ref_ptr>
 #include <osg/Group>
@@ -62,7 +63,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const TileKey& getTileKey() const { return _key; }
 
             /** Invoke the operation - not safe to alter the graph */
-            virtual void invoke() { }
+            virtual void invoke(ProgressCallback*) { }
 
             /** Apply the results of the invoke operation - runs safely in update stage */
             virtual void apply(const osg::FrameStamp*) { }

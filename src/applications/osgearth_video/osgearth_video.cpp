@@ -50,6 +50,9 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
+    // initialize a viewer:
+    osgViewer::Viewer viewer(arguments);
+
     // create the empty map.
     Map* map = new Map();
 
@@ -79,9 +82,7 @@ main(int argc, char** argv)
 
     // make the map scene graph:
     MapNode* node = new MapNode( map );
-
-    // initialize a viewer:
-    osgViewer::Viewer viewer(arguments);
+    
     viewer.setCameraManipulator( new EarthManipulator );
     viewer.setSceneData( node );
 

@@ -62,6 +62,7 @@ namespace osgEarth
         //virtual void onOpacityChanged(class ImageLayer* layer) { }
         virtual void onVisibleRangeChanged(class ImageLayer* layer) { }
         virtual void onColorFiltersChanged(class ImageLayer* layer) { }
+        virtual void onAltitudeChanged(class ImageLayer* layer) { }
 
         typedef void (ImageLayerCallback::*MethodPtr)(class ImageLayer* layer);
     };

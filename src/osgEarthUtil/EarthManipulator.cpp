@@ -499,16 +499,16 @@ EarthManipulator::Settings::setMinMaxPitch( double min_pitch, double max_pitch )
 void
 EarthManipulator::Settings::setMaxOffset(double max_x_offset, double max_y_offset)
 {
-    _max_x_offset = max_x_offset;
-    _max_y_offset = max_y_offset;
+    _max_x_offset = osg::clampAbove(max_x_offset, 0.0);
+    _max_y_offset = osg::clampAbove(max_y_offset, 0.0);
     dirty();
 }
 
 void
 EarthManipulator::Settings::setMinMaxDistance( double min_distance, double max_distance)
 {
-    _min_distance = min_distance;
-    _max_distance = max_distance;
+    _min_distance = osg::clampAbove(min_distance, 1.0);
+    _max_distance = osg::clampAbove(max_distance, 1.0);
     dirty();
 }
 
@@ -1996,7 +1996,9 @@ EarthManipulator::updateTether(double t)
             // Track all rotations
             else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
             {
-                _tetherRotation = L2W.getRotate() * _centerRotation.inverse();
+                osg::Quat finalTetherRotation;
+                finalTetherRotation = L2W.getRotate() * _centerRotation.inverse();
+                _tetherRotation.slerp(t, _tetherRotationVP0, finalTetherRotation);
             }
         }
 
@@ -2318,7 +2320,7 @@ EarthManipulator::updateCamera(osg::Camera& camera)
     double now = osg::Timer::instance()->time_s();
 
     // interpolation through a setViewpoint, if applicable
-    double t = 0.0;
+    double t = 1.0;
 
     // Update a viewpoint transition:
     if (isSettingViewpoint())

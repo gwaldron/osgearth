@@ -733,7 +733,6 @@ namespace
             _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
 
             d = _sky->getDateTime();
-            OE_INFO << "DateTime = " << d.asRFC1123() << std::endl;
         }
     };
 

@@ -38,23 +38,9 @@ _enableCancel(true)
     _engine = context->getEngine();
 }
 
-namespace
-{
-    struct MyProgress : public ProgressCallback {
-        LoadTileData* _req;
-        MyProgress(LoadTileData* req) : _req(req) {}
-        bool isCanceled() {
-            if (_canceled == false && _req->isIdle())
-                _canceled = true;
-            return ProgressCallback::isCanceled();
-        }
-    };
-}
-
-
 // invoke runs in the background pager thread.
 void
-LoadTileData::invoke()
+LoadTileData::invoke(ProgressCallback* progress)
 {
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
@@ -68,19 +54,12 @@ LoadTileData::invoke()
     if (!_map.lock(map))
         return;
 
-    // Only use our custom progress callback is cancelation is enabled.
-    osg::ref_ptr<ProgressCallback> progress;
-    if (_enableCancel)
-        progress = new MyProgress(this);
-    else
-        progress = new ProgressCallback();
-
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
         tilenode->getKey(),
         _filter,
-        progress.get());
+        _enableCancel? progress : 0L);
 
     // if the operation was canceled, set the request to idle and delete the tile model.
     if (progress && progress->isCanceled())

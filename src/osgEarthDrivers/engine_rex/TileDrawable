@@ -32,30 +32,13 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class EngineContext;
+
     struct ModifyBoundingBoxCallback : public osg::Referenced
     {
-        ModifyBoundingBoxCallback(const Map* map) : _map(map) { }
-
-        mutable Threading::Mutex _mutex;
-        osg::observer_ptr< const Map > _map;
-
-        void operator()(const TileKey& key, osg::BoundingBox& bbox) const
-        {
-            osg::ref_ptr<const Map> map;
-            if (_map.lock(map))
-            {
-                LayerVector layers;
-                map->getLayers(layers);
-
-                for (LayerVector::const_iterator layer = layers.begin(); layer != layers.end(); ++layer)
-                {
-                    if (layer->valid())
-                    {
-                        layer->get()->modifyTileBoundingBox(key, bbox);
-                    }
-                }
-            }
-        }
+        ModifyBoundingBoxCallback(EngineContext* engine);
+        void operator()(const TileKey& key, osg::BoundingBox& bbox);
+        EngineContext* _engine;
     };
 
     /**
@@ -88,6 +71,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Vec3f* _mesh;
         GLuint* _meshIndices;
 
+        osg::BoundingBox _bboxOffsets;
         ModifyBoundingBoxCallback* _bboxCB;
         mutable float _bboxRadius;
 

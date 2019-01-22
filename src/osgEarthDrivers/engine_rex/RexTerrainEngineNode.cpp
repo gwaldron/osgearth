@@ -252,9 +252,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     TerrainOptions myOptions = options;
     myOptions.enableMercatorFastPath() = false;
 
-    // A callback for overriding bounding boxes for tiles
-    _modifyBBoxCallback = new ModifyBoundingBoxCallback(map);
-
     // merge in the custom options:
     _terrainOptions.merge( myOptions );
 
@@ -370,8 +367,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         _liveTiles.get(),
         _renderBindings,
         _terrainOptions,
-        _selectionInfo,
-        _modifyBBoxCallback.get());
+        _selectionInfo);
 
     // Calculate the LOD morphing parameters:
     unsigned maxLOD = _terrainOptions.maxLOD().getOrUse(DEFAULT_MAX_LOD);

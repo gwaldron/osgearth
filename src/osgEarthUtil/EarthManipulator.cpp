@@ -507,8 +507,8 @@ EarthManipulator::Settings::setMaxOffset(double max_x_offset, double max_y_offse
 void
 EarthManipulator::Settings::setMinMaxDistance( double min_distance, double max_distance)
 {
-    _min_distance = osg::clampAbove(min_distance, 1.0);
-    _max_distance = osg::clampAbove(max_distance, 1.0);
+    _min_distance = min_distance;
+    _max_distance = max_distance;
     dirty();
 }
 
@@ -1295,16 +1295,15 @@ void EarthManipulator::collisionDetect()
     {
         return;
     }
-
     // The camera has changed, so make sure we aren't under the ground.
 
     osg::Vec3d eye = getWorldMatrix().getTrans();
     osg::CoordinateFrame eyeCoordFrame;
-    createLocalCoordFrame( eye, eyeCoordFrame );
+    createLocalCoordFrame(eye, eyeCoordFrame);
     osg::Vec3d eyeUp = getUpVector(eyeCoordFrame);
 
     // Try to intersect the terrain with a vector going straight up and down.
-    double r = osg::minimum( _srs->getEllipsoid()->getRadiusEquator(), _srs->getEllipsoid()->getRadiusPolar() );
+    double r = osg::minimum(_srs->getEllipsoid()->getRadiusEquator(), _srs->getEllipsoid()->getRadiusPolar());
     osg::Vec3d ip, normal;
 
     if (intersect(eye + eyeUp * r, eye - eyeUp * r, ip, normal))
@@ -1316,16 +1315,20 @@ void EarthManipulator::collisionDetect()
         osg::Vec3d v1 = eye - (ip + eyeUp * eps);
         v1.normalize();
 
+        // save rotation so we can restore it later - the setraw method
+        // may alter it and we don't want that.
+        osg::Quat rotation = _rotation;
+
         //osg::Vec3d adjVector = normal;
         osg::Vec3d adjVector = eyeUp;
-        if (v0 * v1 <= 0 )
+        if (v0 * v1 <= 0)
         {
             setByLookAtRaw(ip + adjVector * eps, _center, eyeUp);
+            _rotation = rotation;
         }
 
         //OE_INFO << "hit at " << ip.x() << ", " << ip.y() << ", " << ip.z() << "\n";
     }
-
 }
 
 

@@ -157,6 +157,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      
         EngineContext* getEngineContext() const { return _engineContext.get(); }
         osg::ref_ptr< EngineContext > _engineContext;
+        friend class EngineContext;
 
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
@@ -175,8 +176,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::ref_ptr<osg::StateSet> _surfaceStateSet;
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
-
-        osg::ref_ptr<ModifyBoundingBoxCallback> _modifyBBoxCallback;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -41,8 +41,7 @@ EngineContext::EngineContext(const Map*                     map,
                              TileNodeRegistry*              liveTiles,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options,
-                             const SelectionInfo&           selectionInfo,
-                             ModifyBoundingBoxCallback*     bboxCB) :
+                             const SelectionInfo&           selectionInfo) :
 _map           ( map ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
@@ -53,12 +52,12 @@ _liveTiles     ( liveTiles ),
 _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo ),
-_bboxCB        ( bboxCB ),
 _tick(0),
 _tilesLastCull(0)
 {
     _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
     _mainThreadId = Threading::getCurrentThreadId();
+    _bboxCB = new ModifyBoundingBoxCallback(this);
 }
 
 osg::ref_ptr<const Map>

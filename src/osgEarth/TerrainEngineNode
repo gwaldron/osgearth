@@ -29,9 +29,11 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/TileKey>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
+#include <osg/BoundingBox>
 #include <osgUtil/RenderBin>
 #include <set>
 
@@ -176,7 +178,15 @@ namespace osgEarth
         // Request that the terrain tiles be rebuilt.
         virtual void dirtyTerrain();
 
+    public:
+        class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
+        {
+        public:
+            virtual void modifyBoundingBox(const TileKey& key, osg::BoundingBox& box) const =0;
+        };
 
+        void addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
+        void removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
 
     public: // TerrainEngine
 
@@ -334,11 +344,17 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<CreateTileModelCallback> > CreateTileModelCallbacks;
         CreateTileModelCallbacks _createTileModelCallbacks;
         mutable Threading::ReadWriteMutex _createTileModelCallbacksMutex;
+        
+        typedef std::vector<osg::ref_ptr<ModifyTileBoundingBoxCallback> > ModifyTileBoundingBoxCallbacks;
+        ModifyTileBoundingBoxCallbacks _modifyTileBoundingBoxCallbacks;
 
         osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
 
         osg::ref_ptr<ComputeRangeCallback> _computeRangeCallback;
 
+    public:
+
+        void fireModifyTileBoundingBoxCallbacks(const TileKey& key, osg::BoundingBox& box);
 
     public:
 

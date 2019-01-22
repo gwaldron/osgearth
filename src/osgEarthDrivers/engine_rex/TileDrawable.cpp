@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TileDrawable"
+#include "EngineContext"
 
 #include <osg/Version>
 #include <iterator>
@@ -30,6 +31,35 @@ using namespace osgEarth;
 
 #define LC "[TileDrawable] "
 
+//........................................................................
+
+ModifyBoundingBoxCallback::ModifyBoundingBoxCallback(EngineContext* engine) : 
+_engine(engine)
+{ 
+    //nop
+}
+
+void
+ModifyBoundingBoxCallback::operator()(const TileKey& key, osg::BoundingBox& bbox)
+{
+    _engine->getEngine()->fireModifyTileBoundingBoxCallbacks(key, bbox);
+
+    osg::ref_ptr<const Map> map = _engine->getMap();
+    if (map.valid())
+    {
+        LayerVector layers;
+        map->getLayers(layers);
+
+        for (LayerVector::const_iterator layer = layers.begin(); layer != layers.end(); ++layer)
+        {
+            if (layer->valid())
+            {
+                layer->get()->modifyTileBoundingBox(key, bbox);
+            }
+        }
+    }
+}
+//........................................................................
 
 TileDrawable::TileDrawable(const TileKey& key,
                            SharedGeometry* geometry,
@@ -154,11 +184,13 @@ TileDrawable::computeBoundingBox() const
 {
     osg::BoundingBox box;
 
+    // core bbox created from the mesh:
     for(unsigned i=0; i<_tileSize*_tileSize; ++i)
     {
         box.expandBy(_mesh[i]);
     }
 
+    // finally see if any of the layers request a bbox change:
     if (_bboxCB)
     {
         (*_bboxCB)(_key, box);

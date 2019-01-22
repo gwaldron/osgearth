@@ -60,8 +60,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
             const TerrainOptions&               options,
-            const SelectionInfo&                selectionInfo,
-            ModifyBoundingBoxCallback*          modifyBBoxCallback);
+            const SelectionInfo&                selectionInfo);
         
         Loader* getLoader() const { return _loader; }
 

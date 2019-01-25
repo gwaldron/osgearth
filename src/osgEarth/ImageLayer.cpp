@@ -773,16 +773,19 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
             }
         }
 
-        if ( mosaic.getImages().empty() || retry )
+        // Fail is: a) we got no data and the LOD is greater than zero; or
+        // b) the operation was canceled mid-stream.
+        if ( (mosaic.getImages().empty() && key.getLOD() > 0) || retry)
         {
-            // if we didn't get any data, fail.
+            // if we didn't get any data at LOD>0, fail.
             OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
             return GeoImage::INVALID;
         }
 
-        // We got at least one good tile, so go through the bad ones and try to fall back on
-        // lower resolution data to fill in the gaps. The entire mosaic must be populated or
-        // this qualifies as a bad tile.
+        // We got at least one good tile, OR we got nothing but since the LOD==0 we have to
+        // fall back on a lower resolution.
+        // So now we go through the failed keys and try to fall back on lower resolution data
+        // to fill in the gaps. The entire mosaic must be populated or this qualifies as a bad tile.
         for(std::vector<TileKey>::iterator k = failedKeys.begin(); k != failedKeys.end(); ++k)
         {
             GeoImage image;

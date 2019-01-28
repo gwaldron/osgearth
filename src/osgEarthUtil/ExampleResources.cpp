@@ -609,6 +609,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Simple sky model:
     if (args.read("--sky"))
     {
+        mapNode->open(); // necessary to resolve the SRS on the next line
         std::string ext = mapNode->getMapSRS()->isGeographic() ? "sky_simple" : "sky_gl";
         mapNode->addExtension(Extension::create(ext, ConfigOptions()) );
     }
@@ -616,7 +617,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Simple ocean model:
     if (args.read("--ocean"))
     {
-        //mapNode->addExtension(Extension::create("ocean_simple", ConfigOptions()));
         SimpleOceanLayer* layer = new SimpleOceanLayer();
         mapNode->getMap()->addLayer(layer);
         Control* ui = OceanControlFactory::create(layer);

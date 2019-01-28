@@ -312,6 +312,9 @@ MapNode::init()
 bool
 MapNode::open()
 {
+    if (_isOpen)
+        return _isOpen;
+
     _isOpen = true;
 
     // Take a reference to this object so that it doesn't get inadvertently

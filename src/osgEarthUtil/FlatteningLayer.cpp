@@ -639,7 +639,7 @@ FlatteningLayer::Options::getConfig() const
         if (!_script->profile.empty())
             scriptConf.set("profile", _script->profile);
         else if (!_script->code.empty())
-            scriptConf.value() = _script->code;
+            scriptConf.setValue(_script->code);
 
         conf.add(scriptConf);
     }

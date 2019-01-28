@@ -175,7 +175,7 @@ ImageOverlay::getConfig() const
     g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
 
     Config geomConf("geometry");
-    geomConf.value() = GeometryUtils::geometryToWKT( g.get() );
+    geomConf.setValue(GeometryUtils::geometryToWKT( g.get() ));
     conf.add( geomConf );
 
     //Save the filter settings

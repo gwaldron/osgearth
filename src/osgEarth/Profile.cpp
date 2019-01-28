@@ -87,7 +87,7 @@ ProfileOptions::getConfig() const
     Config conf( "profile" );
     if ( _namedProfile.isSet() )
     {
-        conf.value() = _namedProfile.value();
+        conf.setValue(_namedProfile.value());
     }
     else
     {

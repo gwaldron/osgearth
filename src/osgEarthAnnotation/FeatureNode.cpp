@@ -438,7 +438,7 @@ FeatureNode::getConfig() const
         conf.set("name", getName());
 
         Config geomConf("geometry");
-        geomConf.value() = GeometryUtils::geometryToWKT( feature->getGeometry() );
+        geomConf.setValue(GeometryUtils::geometryToWKT( feature->getGeometry() ));
         conf.add(geomConf);
 
         std::string srs = feature->getSRS() ? feature->getSRS()->getHorizInitString() : "";

@@ -275,7 +275,7 @@ XmlElement::getConfig(const std::string& referrer) const
 				conf.add( static_cast<const XmlElement*>(n)->getConfig(referrer) );
 		}
 
-		conf.value() = getText();
+		conf.setValue(getText());
 		//else 
 		//    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
 		return conf;

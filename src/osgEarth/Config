@@ -43,17 +43,27 @@ namespace osgEarth
     {
     public:
         Config()
-            : _isLocation(false) { }
+            : _isLocation(false), _isNumber(false) { }
 
         Config( const std::string& key )
-            : _key(key), _isLocation(false) { }
+            : _key(key), _isLocation(false), _isNumber(false) { }
 
-        Config( const std::string& key, const std::string& value ) 
-            : _key( key ), _defaultValue( value ), _isLocation(false) { }
+        template<typename T>
+        explicit Config(const std::string& key, const T& value)
+            : _key(key), _isLocation(false), _isNumber(false)
+        {
+            setValue(value);
+        }
 
-        /** Copy ctor */
+        explicit Config(const std::string& key, const Config& value)
+            : _key(key), _isLocation(false), _isNumber(false)
+        {
+            add(value);
+        }
+
+        // Copy CTOR
         Config( const Config& rhs ) 
-            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
+            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _isNumber(rhs._isNumber), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
 
         virtual ~Config();
 
@@ -109,7 +119,12 @@ namespace osgEarth
 
         /** The value corresponding to the key */
         const std::string& value() const { return _defaultValue; }
-        std::string& value() { return _defaultValue; }
+
+        /** Main setValue method - see specializations inline below */
+        template<typename T>
+        void setValue(const T& value) {
+            _defaultValue = Stringify() << value;
+        }
 
         /** Child objects. */
         ConfigSet& children() { return _children; }
@@ -144,7 +159,6 @@ namespace osgEarth
         }
 
         /** First child with the given key */
-        //Config child( const std::string& key ) const;
         const Config& child( const std::string& key ) const;
 
         /** Pointer to the first child with the given key, or NULL if none exist */
@@ -162,11 +176,10 @@ namespace osgEarth
         Config* find( const std::string& key, bool checkThis =true );
         const Config* find( const std::string& key, bool checkThis =true) const;
 
-
         /** Add a value as a child */
         template<typename T>
         void add( const std::string& key, const T& value ) {
-            _children.push_back( Config(key, Stringify() << value) );
+            _children.push_back(Config(key, value));
             _children.back().setReferrer( _referrer );
         }
 
@@ -194,8 +207,7 @@ namespace osgEarth
         void set( const std::string& key, const optional<T>& opt ) {
             remove(key);
             if ( opt.isSet() ) {
-                Config conf(key, Stringify()<<opt.get());
-                set( conf );
+                set(Config(key, opt.get()));
             }
         }
         
@@ -224,9 +236,10 @@ namespace osgEarth
             add( conf );
         }
 
+        /** Sets a key value pair child */
         template<typename T>
         void set( const std::string& key, const T& value ) {
-            set(Config(key, Stringify()<<value));
+            set(Config(key, value));
         }
 
         /** Whether this object has the key OR has a child with the key */
@@ -242,6 +255,12 @@ namespace osgEarth
             return r;
         }
 
+        /** Default value transformed to another type */
+        template<typename T>
+        T valueAs(const T& fallback) const {
+            return osgEarth::as<T>(_defaultValue, fallback);
+        }
+
         /** Value cast to a particular primitive type (with fallback in case casting fails) */
         template<typename T>
         T value( const std::string& key, T fallback ) const {
@@ -249,11 +268,6 @@ namespace osgEarth
             if ( hasChild( key ) )
                 r = child(key).value();
             return osgEarth::as<T>( r, fallback );
-        }
-
-        /** Value case to a boolean */
-        bool boolValue( bool fallback ) const {
-            return osgEarth::as<bool>( _defaultValue, fallback );
         }
 
         /** Populates the output value iff the Config exists. */
@@ -315,10 +329,12 @@ namespace osgEarth
         /** support for conveying non-serializable objects in a Config (in memory only) */
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > RefMap;
         
+        //! @deprecated
         void setNonSerializable( const std::string& key, osg::Referenced* obj ) {
             _refMap[key] = obj;
         }
 
+        //! @deprecated
         template<typename X>
         X* getNonSerializable( const std::string& key ) const {
             RefMap::const_iterator i = _refMap.find(key);
@@ -328,12 +344,16 @@ namespace osgEarth
         // remove everything from (this) that also appears in rhs (diff)
         Config operator - ( const Config& rhs ) const;
 
+        //! Whether the encoded value is actual a number
+        bool isNumber() const { return _isNumber; }
+
     protected:
         std::string _key;
         std::string _defaultValue;
         ConfigSet   _children;   
         std::string _referrer;
         bool        _isLocation;
+        bool        _isNumber;
         std::string _externalRef;
         RefMap      _refMap;
     };
@@ -368,6 +388,49 @@ namespace osgEarth
             return false;
     }
 
+    // SPECIALIZATIONS - setValue
+
+    template<> inline void Config::setValue<std::string>(const std::string& value) {
+        _defaultValue = value;
+        _isNumber = false;
+    }
+    template<> inline void Config::setValue<bool>(const bool& value) {
+        _defaultValue = value==true? "true" : "false";
+        _isNumber = false;
+    }
+    template<> inline void Config::setValue<short>(const short& value) {
+        _defaultValue = Stringify() << value;
+        _isNumber = true;
+    }
+    template<> inline void Config::setValue<unsigned short>(const unsigned short& value) {
+        _defaultValue = Stringify() << value;
+        _isNumber = true;
+    }
+    template<> inline void Config::setValue<int>(const int& value) {
+        _defaultValue = Stringify() << value;
+        _isNumber = true;
+    }
+    template<> inline void Config::setValue<unsigned int>(const unsigned int& value) {
+        _defaultValue = Stringify() << value;
+        _isNumber = true;
+    }
+    template<> inline void Config::setValue<long>(const long& value) {
+        _defaultValue = Stringify() << value;
+        _isNumber = true;
+    }
+    template<> inline void Config::setValue<unsigned long>(const unsigned long& value) {
+        _defaultValue = Stringify() << value;
+        _isNumber = true;
+    }
+    template<> inline void Config::setValue<float>(const float& value) {
+        _defaultValue = Stringify() << std::setprecision(8) << value;
+        _isNumber = true;
+    }
+    template<> inline void Config::setValue<double>(const double& value) {
+        _defaultValue = Stringify() << std::setprecision(16) << value;
+        _isNumber = true;
+    }
+
     // SPECIALIZATION - std::string
 
     template<> inline
@@ -380,30 +443,6 @@ namespace osgEarth
     void Config::set<std::string>( const std::string& key, const std::string& value ) {
         remove(key);
         add( Config(key, value) );
-    }
-
-    // SPECIALATIONS - float
-
-    template<> inline
-    void Config::add<float>( const std::string& key, const float& value ) {
-        add( key, Stringify() << std::setprecision(8) << value );
-    }
-
-    template<> inline
-    void Config::set<float>( const std::string& key, const float& value ) {
-        set( key, Stringify() << std::setprecision(8) << value );
-    }
-
-    // SPECIALIZATION - double
-
-    template<> inline
-    void Config::add<double>( const std::string& key, const double& value ) {
-        add( key, Stringify() << std::setprecision(16) << value );
-    }
-
-    template<> inline
-    void Config::set<double>( const std::string& key, const double& value ) {
-        set( key, Stringify() << std::setprecision(16) << value );
     }
 
     // Use this macro to "activate" any object with a getConfig/ctor(const Config&) pair

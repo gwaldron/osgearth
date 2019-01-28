@@ -70,7 +70,7 @@ namespace
     {
         if ( rhs.value() != lhs.value() )
         {
-            lhs.value() = rhs.value();
+            lhs.setValue(rhs.value());
         }
 
         for(ConfigSet::const_iterator rhsChild = rhs.children().begin(); rhsChild != rhs.children().end(); ++rhsChild)

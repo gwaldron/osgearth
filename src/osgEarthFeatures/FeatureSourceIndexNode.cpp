@@ -32,21 +32,17 @@ namespace
 {
     // nifty template to iterate over a map's keys
     template<typename T>
-    struct KeyIter : public T::iterator
+    struct KeyIter : public std::iterator<std::input_iterator_tag, typename T::value_type>
     {
-        KeyIter() : T::iterator() { }
-        KeyIter(typename T::iterator i) : T::iterator(i) { }
-        typename T::key_type* operator->() { return (typename T::key_type* const)&(T::iterator::operator->()->first); }
-        typename T::key_type operator*() { return T::iterator::operator*().first; }
-    };
+		typename T::const_iterator it;
+        KeyIter(typename T::const_iterator i) : it(i) { }
+		KeyIter &operator++() {	++it; return *this;	}
+		KeyIter operator++(int) { KeyIter t = *this; ++*this; return t; }
 
-    template<typename T>
-    struct ConstKeyIter : public T::const_iterator
-    {
-        ConstKeyIter() : T::const_iterator() { }
-        ConstKeyIter(typename T::const_iterator i) : T::const_iterator(i) { }
-        typename T::key_type* operator->() { return (typename T::key_type* const)&(T::const_iterator::operator->()->first); }
-        typename T::key_type operator*() { return T::const_iterator::operator*().first; }
+		typename T::key_type const *operator->() const { return &(it->first); }
+		typename T::key_type const &operator*() const {	return it->first; }
+		friend bool operator==(KeyIter const &a, KeyIter const &b) { return a.it == b.it; }
+		friend bool operator!=(KeyIter const &a, KeyIter const &b) { return a.it != b.it; }
     };
 }
 
@@ -99,7 +95,7 @@ FeatureSourceIndexNode::~FeatureSourceIndexNode()
     {
         // must copy and clear the original list first to dereference the RefIDPair instances.
         std::set<FeatureID> fidsToRemove;
-        fidsToRemove.insert( KeyIter<FIDMap>(_fids.begin()), KeyIter<FIDMap>(_fids.end()) );
+        fidsToRemove.insert(KeyIter<FIDMap>(_fids.begin()), KeyIter<FIDMap>(_fids.end()));
         _fids.clear();
 
         OE_DEBUG << LC << "Removing " << fidsToRemove.size() << " fids\n";
@@ -137,9 +133,9 @@ FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
 bool
 FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
 {
-    ConstKeyIter<FIDMap> start( _fids.begin() );
-    ConstKeyIter<FIDMap> end  ( _fids.end() );
-    for(ConstKeyIter<FIDMap> i = start; i != end; ++i )
+    KeyIter<FIDMap> start( _fids.begin() );
+    KeyIter<FIDMap> end  ( _fids.end() );
+    for(KeyIter<FIDMap> i = start; i != end; ++i )
     {
         output.push_back( *i );
     }

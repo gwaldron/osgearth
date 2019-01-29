@@ -87,7 +87,7 @@ namespace
             bool hasDataInExtent = _layer->mayHaveData(_key);
             
             // fetch the image from the layer.
-            if (hasDataInExtent && _layer->isKeyInLegalRange(_key))
+            if ((hasDataInExtent && _layer->isKeyInLegalRange(_key)) || isRootKey)
             {
                 if ( useMercatorFastPath )
                 {

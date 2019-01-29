@@ -65,7 +65,6 @@ main(int argc, char** argv)
     if ( node )
     {
         MapNode* mapNode = MapNode::get(node);
-        mapNode->open();
 
         const SpatialReference* srs = mapNode->getMapSRS()->getGeographicSRS();
         GeoPoint point(srs, -77.0, 34.5);

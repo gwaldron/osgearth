@@ -45,7 +45,7 @@ namespace osgEarth
         Config()
             : _isLocation(false), _isNumber(false) { }
 
-        Config( const std::string& key )
+        Config(const std::string& key)
             : _key(key), _isLocation(false), _isNumber(false) { }
 
         template<typename T>
@@ -62,7 +62,7 @@ namespace osgEarth
         }
 
         // Copy CTOR
-        Config( const Config& rhs ) 
+        Config(const Config& rhs)
             : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _isNumber(rhs._isNumber), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
 
         virtual ~Config();
@@ -72,35 +72,35 @@ namespace osgEarth
          * For example, if the value is a filename "file.txt" and the referrer is "C:/temp/a.earth",
          * then the full path of the file is "C:/temp/file.txt".
          *
-         * Calling this sets a referrer on this object and its children. 
+         * Calling this sets a referrer on this object and its children.
          */
-        void setReferrer( const std::string& value );
+        void setReferrer(const std::string& value);
 
         /** Access this object's "relative-to" location. */
         const std::string& referrer() const { return _referrer; }
 
         /** Referrer associated with a key */
-        const std::string referrer( const std::string& key ) const {
+        const std::string referrer(const std::string& key) const {
             return child(key).referrer();
         }
 
         /** Sets whether this Config's value represents a location, i.e. a URI, filename, or
             other string that can be relocated to be relative to a different referrer. */
         void setIsLocation(bool tf) { _isLocation = tf; }
-        bool isLocation() const     { return _isLocation; }
+        bool isLocation() const { return _isLocation; }
 
         /** Hint that this Config came from an externally referenced resource. */
-        const std::string& externalRef() const { return _externalRef;}
+        const std::string& externalRef() const { return _externalRef; }
         void setExternalRef(const std::string& externalRef) { _externalRef = externalRef; }
 
         /** Populate this object from an XML input stream. */
-        bool fromXML( std::istream& in );
+        bool fromXML(std::istream& in);
 
         /** Encode this object as JSON. */
-        std::string toJSON( bool pretty =false ) const;
+        std::string toJSON(bool pretty = false) const;
 
         /** Populate this object from a JSON string. */
-        bool fromJSON( const std::string& json );
+        bool fromJSON(const std::string& json);
         static Config readJSON(const std::string& json);
 
         /** True if this object contains no data. */
@@ -131,126 +131,126 @@ namespace osgEarth
         const ConfigSet& children() const { return _children; }
 
         /** A collection of all the children of this object with a particular key */
-        const ConfigSet children( const std::string& key ) const {
+        const ConfigSet children(const std::string& key) const {
             ConfigSet r;
-            for(ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
-                if ( i->key() == key )
-                    r.push_back( *i );
+            for (ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++) {
+                if (i->key() == key)
+                    r.push_back(*i);
             }
             return r;
         }
 
         /** Whether this object has a child with a given key */
-        bool hasChild( const std::string& key ) const {
-            for(ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ )
-                if ( i->key() == key )
+        bool hasChild(const std::string& key) const {
+            for (ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++)
+                if (i->key() == key)
                     return true;
             return false;
         }
 
         /** Removes all children with the given key */
-        void remove( const std::string& key ) {
-            for(ConfigSet::iterator i = _children.begin(); i != _children.end(); ) {
-                if ( i->key() == key )
-                    i = _children.erase( i );
+        void remove(const std::string& key) {
+            for (ConfigSet::iterator i = _children.begin(); i != _children.end(); ) {
+                if (i->key() == key)
+                    i = _children.erase(i);
                 else
                     ++i;
             }
         }
 
         /** First child with the given key */
-        const Config& child( const std::string& key ) const;
+        const Config& child(const std::string& key) const;
 
         /** Pointer to the first child with the given key, or NULL if none exist */
-        const Config* child_ptr( const std::string& key ) const;
+        const Config* child_ptr(const std::string& key) const;
 
         /** Mutable pointer to the first child with the given key, or NULL if none exist */
-        Config* mutable_child( const std::string& key );
+        Config* mutable_child(const std::string& key);
 
         /** Merge the contents of another Config object into this object.. danger, read the code
             before you use this */
-        void merge( const Config& rhs );
+        void merge(const Config& rhs);
 
         /** Locate (recursively) the first descendant object with this key, optionally checking
             the current object as well */
-        Config* find( const std::string& key, bool checkThis =true );
-        const Config* find( const std::string& key, bool checkThis =true) const;
+        Config* find(const std::string& key, bool checkThis = true);
+        const Config* find(const std::string& key, bool checkThis = true) const;
 
         /** Add a value as a child */
         template<typename T>
-        void add( const std::string& key, const T& value ) {
+        void add(const std::string& key, const T& value) {
             _children.push_back(Config(key, value));
-            _children.back().setReferrer( _referrer );
+            _children.back().setReferrer(_referrer);
         }
 
         /** Add a Config as a child */
-        void add( const Config& conf ) {
-            _children.push_back( conf );
-            _children.back().setReferrer( _referrer );
+        void add(const Config& conf) {
+            _children.push_back(conf);
+            _children.back().setReferrer(_referrer);
         }
 
         /** Add a config as a child, assigning it a key */
-        void add( const std::string& key, const Config& conf ) {
+        void add(const std::string& key, const Config& conf) {
             Config temp = conf;
             temp.key() = key;
-            add( temp );
+            add(temp);
         }
 
         /** Add a set of config objects as children. */
-        void add( const ConfigSet& set ) {
-            for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
-                add( *i );
+        void add(const ConfigSet& set) {
+            for (ConfigSet::const_iterator i = set.begin(); i != set.end(); i++)
+                add(*i);
         }
-        
+
         /** Adds or replaces an optional value as a child, but only if it is set */
         template<typename T>
-        void set( const std::string& key, const optional<T>& opt ) {
+        void set(const std::string& key, const optional<T>& opt) {
             remove(key);
-            if ( opt.isSet() ) {
+            if (opt.isSet()) {
                 set(Config(key, opt.get()));
             }
         }
-        
+
         template<typename T>
-        void set( const std::string& key, const osg::ref_ptr<T>& obj ) {
+        void set(const std::string& key, const osg::ref_ptr<T>& obj) {
             remove(key);
-            if ( obj.valid() ) {
+            if (obj.valid()) {
                 Config conf = obj->getConfig();
                 conf.key() = key;
-                set( conf );
+                set(conf);
             }
         }
 
         // If target is set to targetValue, set key to val.
         template<typename X, typename Y>
-        void set( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
+        void set(const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue) {
             if (target.isSetTo(targetValue)) {
                 remove(key);
-                set( key, val );
+                set(key, val);
             }
         }
 
         /** Adds or replaces a config as a child. */
-        void set( const Config& conf ) {
+        void set(const Config& conf) {
             remove(conf.key());
-            add( conf );
+            add(conf);
         }
 
         /** Sets a key value pair child */
         template<typename T>
-        void set( const std::string& key, const T& value ) {
+        void set(const std::string& key, const T& value) {
             set(Config(key, value));
         }
 
         /** Whether this object has the key OR has a child with the key */
-        bool hasValue( const std::string& key ) const {
+        bool hasValue(const std::string& key) const {
             return !value(key).empty();
         }
 
         /** The value of this object (if the key matches) or a matching child object */
-        const std::string value( const std::string& key ) const {
+        const std::string value(const std::string& key) const {
             std::string r = trim(child(key).value());
-            if ( r.empty() && _key == key )
+            if (r.empty() && _key == key)
                 r = _defaultValue;
             return r;
         }
@@ -263,63 +263,63 @@ namespace osgEarth
 
         /** Value cast to a particular primitive type (with fallback in case casting fails) */
         template<typename T>
-        T value( const std::string& key, T fallback ) const {
+        T value(const std::string& key, T fallback) const {
             std::string r;
-            if ( hasChild( key ) )
+            if (hasChild(key))
                 r = child(key).value();
-            return osgEarth::as<T>( r, fallback );
+            return osgEarth::as<T>(r, fallback);
         }
 
         /** Populates the output value iff the Config exists. */
         template<typename T>
-        bool get( const std::string& key, optional<T>& output ) const {
+        bool get(const std::string& key, optional<T>& output) const {
             std::string r;
-            if ( hasChild(key) )
+            if (hasChild(key))
                 r = child(key).value();
-            if ( !r.empty() ) {
-                output = osgEarth::as<T>( r, output.defaultValue() );
-                return true;
-            } 
-            else
-                return false;
-        }
-        
-        /** Populates the output referenced value iff the Config exists. */
-        template<typename T>
-        bool get( const std::string& key, osg::ref_ptr<T>& output ) const {
-            if ( hasChild( key ) ) {
-                output = new T( child(key) );
+            if (!r.empty()) {
+                output = osgEarth::as<T>(r, output.defaultValue());
                 return true;
             }
             else
                 return false;
         }
-        
+
+        /** Populates the output referenced value iff the Config exists. */
+        template<typename T>
+        bool get(const std::string& key, osg::ref_ptr<T>& output) const {
+            if (hasChild(key)) {
+                output = new T(child(key));
+                return true;
+            }
+            else
+                return false;
+        }
+
         /** Populates the output enumerable pair iff the Config exists. */
         template<typename X, typename Y>
-        bool get( const std::string& key, const std::string& val, optional<X>& target, const Y& targetValue ) const {
-            if ( hasValue( key ) && value( key ) == val ) {
+        bool get(const std::string& key, const std::string& val, optional<X>& target, const Y& targetValue) const {
+            if (hasValue(key) && value(key) == val) {
                 target = targetValue;
                 return true;
             }
-            else 
+            else
                 return false;
         }
-        
+
         /** Populates the output enumerable pair iff the Config exists. */
         template<typename X, typename Y>
-        bool get( const std::string& key, const std::string& val, X& target, const Y& targetValue ) const {
-            if ( hasValue(key) && value(key) == val ) {
+        bool get(const std::string& key, const std::string& val, X& target, const Y& targetValue) const {
+            if (hasValue(key) && value(key) == val) {
                 target = targetValue;
                 return true;
             }
             return false;
         }
-        
+
         /** Populates the ouptut value iff the Config exists. */
         template<typename T>
-        bool get( const std::string& key, T& output ) const {
-            if ( hasValue(key) ) {
+        bool get(const std::string& key, T& output) const {
+            if (hasValue(key)) {
                 output = value<T>(key, output);
                 return true;
             }
@@ -328,21 +328,21 @@ namespace osgEarth
 
         /** support for conveying non-serializable objects in a Config (in memory only) */
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > RefMap;
-        
+
         //! @deprecated
-        void setNonSerializable( const std::string& key, osg::Referenced* obj ) {
+        void setNonSerializable(const std::string& key, osg::Referenced* obj) {
             _refMap[key] = obj;
         }
 
         //! @deprecated
         template<typename X>
-        X* getNonSerializable( const std::string& key ) const {
+        X* getNonSerializable(const std::string& key) const {
             RefMap::const_iterator i = _refMap.find(key);
-            return i == _refMap.end() ? 0 : dynamic_cast<X*>( i->second.get() );
+            return i == _refMap.end() ? 0 : dynamic_cast<X*>(i->second.get());
         }
 
         // remove everything from (this) that also appears in rhs (diff)
-        Config operator - ( const Config& rhs ) const;
+        Config operator - (const Config& rhs) const;
 
         //! Whether the encoded value is actual a number
         bool isNumber() const { return _isNumber; }
@@ -350,7 +350,7 @@ namespace osgEarth
     protected:
         std::string _key;
         std::string _defaultValue;
-        ConfigSet   _children;   
+        ConfigSet   _children;
         std::string _referrer;
         bool        _isLocation;
         bool        _isNumber;
@@ -361,26 +361,26 @@ namespace osgEarth
     // SPECIALIZATION - Config
 
     template<> inline
-    void Config::set<Config>( const std::string& key, const Config& conf ) {
+        void Config::set<Config>(const std::string& key, const Config& conf) {
         remove(key);
         Config temp = conf;
         temp.key() = key;
-        add( temp );
+        add(temp);
     }
 
     template<> inline
-    void Config::set<Config>( const std::string& key, const optional<Config>& opt ) {
+        void Config::set<Config>(const std::string& key, const optional<Config>& opt) {
         remove(key);
-        if ( opt.isSet() ) {
+        if (opt.isSet()) {
             Config conf = opt.value();
             conf.key() = key;
-            add( conf );
+            add(conf);
         }
     }
 
     template<> inline
-    bool Config::get<Config>( const std::string& key, optional<Config>& output ) const {
-        if ( hasChild( key ) ) {
+        bool Config::get<Config>(const std::string& key, optional<Config>& output) const {
+        if (hasChild(key)) {
             output = child(key);
             return true;
         }
@@ -395,7 +395,7 @@ namespace osgEarth
         _isNumber = false;
     }
     template<> inline void Config::setValue<bool>(const bool& value) {
-        _defaultValue = value==true? "true" : "false";
+        _defaultValue = value == true ? "true" : "false";
         _isNumber = false;
     }
     template<> inline void Config::setValue<short>(const short& value) {
@@ -434,15 +434,15 @@ namespace osgEarth
     // SPECIALIZATION - std::string
 
     template<> inline
-    void Config::add<std::string>( const std::string& key, const std::string& value ) {
-        _children.push_back( Config( key, value ) );
-        _children.back().setReferrer( _referrer );
+        void Config::add<std::string>(const std::string& key, const std::string& value) {
+        _children.push_back(Config(key, value));
+        _children.back().setReferrer(_referrer);
     }
 
     template<> inline
-    void Config::set<std::string>( const std::string& key, const std::string& value ) {
+        void Config::set<std::string>(const std::string& key, const std::string& value) {
         remove(key);
-        add( Config(key, value) );
+        add(Config(key, value));
     }
 
     // Use this macro to "activate" any object with a getConfig/ctor(const Config&) pair
@@ -491,26 +491,26 @@ namespace osgEarth
     class OSGEARTH_EXPORT ConfigOptions
     {
     public:
-        ConfigOptions( const Config& conf =Config() )
-            : _conf( conf ) { }
-        ConfigOptions( const ConfigOptions& rhs )
-            : _conf( rhs.getConfig() ) { } //rhs._conf ) { }
+        ConfigOptions(const Config& conf = Config())
+            : _conf(conf) { }
+        ConfigOptions(const ConfigOptions& rhs)
+            : _conf(rhs.getConfig()) { } //rhs._conf ) { }
 
         virtual ~ConfigOptions();
-        
+
         const std::string& referrer() const { return _conf.referrer(); }
 
-        ConfigOptions& operator = ( const ConfigOptions& rhs ) {
-            if ( this != &rhs ) {
+        ConfigOptions& operator = (const ConfigOptions& rhs) {
+            if (this != &rhs) {
                 _conf = rhs.getConfig();
-                mergeConfig( _conf );
+                mergeConfig(_conf);
             }
             return *this;
         }
 
-        void merge( const ConfigOptions& rhs ) {
-            _conf.merge( rhs._conf );
-            mergeConfig( rhs.getConfig() );
+        void merge(const ConfigOptions& rhs) {
+            _conf.merge(rhs._conf);
+            mergeConfig(rhs.getConfig());
         }
 
         virtual Config getConfig() const;
@@ -518,7 +518,7 @@ namespace osgEarth
         bool empty() const { return _conf.empty(); }
 
     protected:
-        virtual void mergeConfig( const Config& conf ) { }
+        virtual void mergeConfig(const Config& conf) { }
 
         Config _conf;
     };
@@ -529,14 +529,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT DriverConfigOptions : public ConfigOptions
     {
     public:
-        DriverConfigOptions( const ConfigOptions& rhs =ConfigOptions() )
-            : ConfigOptions( rhs ) { fromConfig( _conf ); }
+        DriverConfigOptions(const ConfigOptions& rhs = ConfigOptions())
+            : ConfigOptions(rhs) {
+            fromConfig(_conf);
+        }
 
         /** dtor */
         virtual ~DriverConfigOptions();
 
         /** Gets or sets the name of the driver to load */
-        void setDriver( const std::string& value ) { _driver = value; }
+        void setDriver(const std::string& value) { _driver = value; }
         const std::string& getDriver() const { return _driver; }
 
     public:
@@ -546,15 +548,15 @@ namespace osgEarth
             return conf;
         }
 
-        virtual void mergeConfig( const Config& conf ) {
+        virtual void mergeConfig(const Config& conf) {
             ConfigOptions::mergeConfig(conf);
             fromConfig(conf);
         }
 
     public:
-        void fromConfig( const Config& conf ) {
-            _driver = conf.value( "driver" );
-            if ( _driver.empty() && conf.hasValue("type") )
+        void fromConfig(const Config& conf) {
+            _driver = conf.value("driver");
+            if (_driver.empty() && conf.hasValue("type"))
                 _driver = conf.value("type");
         }
 
@@ -563,5 +565,46 @@ namespace osgEarth
     };
 }
 
-#endif // OSGEARTH_CONFIG_H
+//! Macro to use when defining a COnfigOptions class
+#define META_ConfigOptions(LIBRARY, MYCLASS, SUPERCLASS) \
+    protected: \
+        virtual void mergeConfig(const Config& conf) { \
+            SUPERCLASS ::mergeConfig(conf); \
+            fromConfig(conf); \
+        } \
+    public: \
+        OE_COMMENT("Construct empty layer options") \
+        MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
+        \
+        OE_COMMENT("Construct layer options from serialized data") \
+        MYCLASS (const ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
 
+//! optional property macro
+#define OE_OPTION(TYPE, NAME) \
+    private: \
+    optional< TYPE > _ ## NAME ; \
+    public: \
+    optional< TYPE >& NAME () { return _ ## NAME; } \
+    const optional< TYPE >& NAME () const { return _ ## NAME; }
+
+//! ref_ptr property macro
+#define OE_OPTION_REFPTR(TYPE, NAME) \
+    private: \
+    osg::ref_ptr< TYPE > _ ## NAME ; \
+    public: \
+    osg::ref_ptr< TYPE >& NAME () { return _ ## NAME; } \
+    const osg::ref_ptr< TYPE >& NAME () const { return _ ## NAME; }
+
+//! vector property macro
+#define OE_OPTION_VECTOR(TYPE, NAME) \
+    private: \
+    std::vector< TYPE > _ ## NAME ; \
+    public: \
+    std::vector< TYPE >& NAME () { return _ ## NAME; } \
+    const std::vector< TYPE >& NAME () const { return _ ## NAME; }
+
+#define OE_PROPERTY_IMPL(CLASS, TYPE, FUNC, OPTION) \
+    void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
+    const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
+
+#endif // OSGEARTH_CONFIG_H

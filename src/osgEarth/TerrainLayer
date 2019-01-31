@@ -192,6 +192,12 @@ namespace osgEarth
         virtual bool isKeyInLegalRange(const TileKey& key) const;
 
         /**
+         * Same as isKeyInLegalRange, but ignores the "maxDataLevel" setting
+         * since that does NOT affect visibility of a tile.
+         */
+        virtual bool isKeyInVisualRange(const TileKey& key) const;
+
+        /**
          * Data Extents reported for this layer are copied into output.
          * Returns true on success, false is there are no extents to report.
          */

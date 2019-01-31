@@ -907,6 +907,55 @@ TerrainLayer::isKeyInLegalRange(const TileKey& key) const
 }
 
 bool
+TerrainLayer::isKeyInVisualRange(const TileKey& key) const
+{
+    if (!key.valid())
+    {
+        return false;
+    }
+
+    // We must use the equivalent lod b/c the input key can be in any profile.
+    unsigned localLOD = getProfile() ?
+        getProfile()->getEquivalentLOD(key.getProfile(), key.getLOD()) :
+        key.getLOD();
+
+
+    // First check the key against the min/max level limits, it they are set.
+    if ((options().maxLevel().isSet() && localLOD > options().maxLevel().value()) ||
+        (options().minLevel().isSet() && localLOD < options().minLevel().value()))
+    {
+        return false;
+    }
+
+    // Next, check against resolution limits (based on the source tile size).
+    if (options().minResolution().isSet() || options().maxResolution().isSet())
+    {
+        const Profile* profile = getProfile();
+        if (profile)
+        {
+            // calculate the resolution in the layer's profile, which can
+            // be different that the key's profile.
+            double resKey = key.getExtent().width() / (double)getTileSize();
+            double resLayer = key.getProfile()->getSRS()->transformUnits(resKey, profile->getSRS());
+
+            if (options().maxResolution().isSet() &&
+                options().maxResolution().value() > resLayer)
+            {
+                return false;
+            }
+
+            if (options().minResolution().isSet() &&
+                options().minResolution().value() < resLayer)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool
 TerrainLayer::isCached(const TileKey& key) const
 {
     // first consult the policy:

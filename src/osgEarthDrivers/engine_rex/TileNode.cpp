@@ -998,7 +998,8 @@ TileNode::passInLegalRange(const RenderingPass& pass) const
 {
     return 
         pass.terrainLayer() == 0L ||
-        pass.terrainLayer()->isKeyInLegalRange(getKey());
+        pass.terrainLayer()->isKeyInVisualRange(getKey());
+        //pass.terrainLayer()->isKeyInLegalRange(getKey());
 }
 
 void

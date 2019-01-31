@@ -27,23 +27,66 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TDTiles>
+#include <osgEarth/Random>
+#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <iostream>
 
 #define LC "[3dtiles test] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Features;
+using namespace osgEarth::Annotation;
+using namespace osgEarth::Symbology;
+using namespace osgEarth::Drivers;
 
 int
-usage(const char* name)
+usage(const std::string& message)
 {
     OE_NOTICE 
-        << "\nUsage: " << name << " file.earth" << std::endl
-        << MapNodeHelper().usage() << std::endl;
+        << "\n" << message
+        << "\nUsage: osgearth_3dtiles file.earth"
+        << "\n     --tileset [filename]"
+        << std::endl;
+        //<< MapNodeHelper().usage() << std::endl;
 
     return 0;
 }
 
+struct MyCustomTileHandler : public TDTiles::ContentHandler
+{
+    mutable Random _random;
+
+    osg::ref_ptr<osg::Node> createNode(TDTiles::Tile* tile, const osgDB::Options* readOptions) const
+    {
+        OE_INFO << "SAY HELLO to tile " << tile->content()->uri()->base() << std::endl;
+        osg::ref_ptr<osg::Node> node = new osg::Node(); // empty for now
+        
+        OGRFeatureOptions ogr;
+        ogr.url() = tile->content()->uri().get();
+        osg::ref_ptr<FeatureSource> fs = FeatureSourceFactory::create(ogr);
+        if (fs.valid() && fs->open().isOK())
+        {
+            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(0L);
+            FeatureList features;
+            cursor->fill(features);
+            if (!features.empty())
+            {
+                Style style;
+                float r = _random.next(), g = _random.next(), b = _random.next();
+                style.getOrCreate<PolygonSymbol>()->fill()->color().set(r,g,b,1);
+                style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+                node = new FeatureNode(features, style);
+            }
+        }
+
+        return node;
+    }
+};
 
 int
 main(int argc, char** argv)
@@ -52,12 +95,25 @@ main(int argc, char** argv)
 
     // help?
     if ( arguments.read("--help") )
-        return usage(argv[0]);
+        return usage("Help!");
+
+    std::string tilesetLocation;
+    if (!arguments.read("--tileset", tilesetLocation))
+        return usage("Missing required --tileset");
+
+    // load the tile set:
+    URI tilesetURI(tilesetLocation);
+    ReadResult rr = tilesetURI.readString();
+    if (rr.failed())
+        return usage(Stringify()<<"Error loading tileset: " <<rr.errorDetail());
+
+    TDTiles::Tileset* tileset = TDTiles::Tileset::create(rr.getString(), tilesetLocation);
+    if (!tileset)
+        return usage("Bad tileset");
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -66,24 +122,7 @@ main(int argc, char** argv)
     {
         MapNode* mapNode = MapNode::get(node);
 
-        const SpatialReference* srs = mapNode->getMapSRS()->getGeographicSRS();
-        GeoPoint point(srs, -77.0, 34.5);
-        osg::Matrix matrix;
-        point.createLocalToWorld(matrix);
-        
-        TDTiles::Tile* tile = new TDTiles::Tile();
-        tile->transform() = matrix;
-        tile->content()->uri() = URI("../data/red_flag.osg.1000.scale");
-        tile->geometricError() = 2000.0; // i.e., diameter of the node
-
-        TDTiles::Tileset* tileset = new TDTiles::Tileset();
-        tileset->root() = tile;
-
-        OE_NOTICE << std::endl
-            << tileset->getConfig().toJSON(true)
-            << std::endl;
-
-        TDTilesetGroup* root = new TDTilesetGroup();
+        TDTilesetGroup* root = new TDTilesetGroup(new MyCustomTileHandler());
         root->setTileset(tileset);
         root->setReadOptions(mapNode->getMap()->getReadOptions());
         mapNode->addChild(root);

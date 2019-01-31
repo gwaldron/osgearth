@@ -32,6 +32,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <list>
+#include <gdal_priv.h>
 #include <ogr_api.h>
 #include <cpl_error.h>
 
@@ -106,6 +107,88 @@ public:
             OGRReleaseDataSource( _dsHandle );
             _dsHandle = 0L;
         }
+    }
+
+    const Status& create(const FeatureProfile* profile,
+                          const FeatureSchema& schema,
+                          const Geometry::Type& geometryType,
+                          const osgDB::Options* dbOptions)
+    {
+        setFeatureProfile(profile);
+        _schema = schema;
+
+        // Data source at a URL?
+        if (_options.url().isSet())
+        {
+            _source = _options.url()->full();
+
+            // ..inside a zip file?
+            if (osgEarth::endsWith(_source, ".zip", false) || _source.find(".zip/") != std::string::npos)
+            {
+                _source = Stringify() << "/vsizip/" << _source;
+            }
+        }
+        // ..or database connection?
+        else if (_options.connection().isSet())
+        {
+            _source = _options.connection().value();
+        }
+
+        // ..or inline geometry?
+        _geometry =
+            _options.geometry().valid() ? _options.geometry().get() :
+            _options.geometryConfig().isSet() ? parseGeometry(*_options.geometryConfig()) :
+            _options.geometryUrl().isSet() ? parseGeometryUrl(*_options.geometryUrl(), dbOptions) :
+            0L;
+
+        // If nothing was set, we're done
+        if (_source.empty() && !_geometry.valid())
+        {
+            return Status::Error(Status::ConfigurationError, "No URL, connection, or inline geometry provided");
+        }
+
+        std::string driverName = _options.ogrDriver().value();
+        if (driverName.empty())
+            driverName = "ESRI Shapefile";
+
+        _ogrDriverHandle = OGRGetDriverByName(driverName.c_str());
+
+        _dsHandle = OGR_Dr_CreateDataSource(_ogrDriverHandle, _source.c_str(), NULL);
+
+        if (!_dsHandle)
+        {
+            std::string msg = CPLGetLastErrorMsg();
+            setStatus(Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to create \"" << _source << "\" ... " << msg));
+            return getStatus();
+        }
+        
+        OGRwkbGeometryType ogrGeomType = OgrUtils::getOGRGeometryType(geometryType);
+
+        OGRSpatialReferenceH ogrSRS = profile->getSRS()->getHandle();
+
+        _layerHandle = OGR_DS_CreateLayer(_dsHandle, "", ogrSRS, ogrGeomType, NULL);
+
+        if (!_layerHandle)
+        {
+            setStatus(Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to create layer \"" << _options.layer().get() << "\" from \"" << _source << "\""));
+            return getStatus();
+        }
+
+        for(FeatureSchema::const_iterator i = _schema.begin(); i != _schema.end(); ++i)
+        {
+            OGRFieldType type =
+                i->second == ATTRTYPE_DOUBLE ? OFTReal :
+                i->second == ATTRTYPE_INT ? OFTInteger :
+                OFTString;
+            OGRFieldDefnH fdef = OGR_Fld_Create(i->first.c_str(), type);
+            OGR_L_CreateField(_layerHandle, fdef, TRUE);
+        }
+
+        _featureCount = 0;
+
+        _geometryType = geometryType;
+
+        return getStatus();
     }
 
     //override
@@ -187,16 +270,28 @@ public:
             int openMode = _options.openWrite().isSet() && _options.openWrite().value() ? 1 : 0;
 
             _dsHandle = OGROpenShared( _source.c_str(), openMode, &_ogrDriverHandle );
+
             if ( !_dsHandle )
-                return Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open \"" << _source << "\"");
+            {
+                std::string msg = CPLGetLastErrorMsg();
+                return Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open \"" << _source << "\" ... " << msg);
+            }
 
             if (openMode == 1)
+            {
                 _writable = true;
+            }
                 
             // Open a specific layer within the data source, if applicable:
-            _layerHandle = openLayer(_dsHandle, _options.layer().value());
-            if ( !_layerHandle )
+            if (!_layerHandle)
+            {
+                _layerHandle = openLayer(_dsHandle, _options.layer().value());
+            }
+
+            if (!_layerHandle)
+            {
                 return Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open layer \"" << _options.layer().get() << "\" from \"" << _source << "\"");
+            }
 
 
             // if the user provided a profile, use that:

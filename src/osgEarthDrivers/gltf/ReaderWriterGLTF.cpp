@@ -395,7 +395,6 @@ public:
 
     osg::Node* createNode(const tinygltf::Model &model, const tinygltf::Node& node) const
     {
-        OSG_NOTICE << "Creating node" << std::endl;
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setName(node.name);
         if (node.matrix.size() == 16)
@@ -445,7 +444,9 @@ public:
 
     osg::Node* makeNodeFromModel(const tinygltf::Model &model) const
     {
-        osg::Group* group = new osg::Group;
+        // Rotate y-up to z-up
+        osg::MatrixTransform* transform = new osg::MatrixTransform;
+        transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
 
         for (unsigned int i = 0; i < model.scenes.size(); i++)
         {         
@@ -455,12 +456,12 @@ public:
                 osg::Node* node = createNode(model, model.nodes[scene.nodes[j]]);
                 if (node)
                 {
-                    group->addChild(node);
+                    transform->addChild(node);
                 }
             }
         }
 
-        return group;
+        return transform;
     }
 
     struct b3dmheader
@@ -492,8 +493,9 @@ public:
         std::stringstream buf(data);
         b3dmheader header;
         buf.read(reinterpret_cast<char*>(&header), sizeof(b3dmheader));
-        OSG_NOTICE << "Read header" << std::endl;
         bytesRead += sizeof(b3dmheader);
+
+        osg::Vec3d rtc_center;
 
         if (header.featureTableJSONByteLength > 0)
         {
@@ -501,6 +503,16 @@ public:
             featureTableJson.resize(header.featureTableJSONByteLength);
             buf.read(reinterpret_cast<char*>(&featureTableJson[0]), header.featureTableJSONByteLength);
             OSG_NOTICE << "Read featureTableJson " << featureTableJson << std::endl;
+
+            json ftJson = json::parse(featureTableJson);
+            if (ftJson.find("RTC_CENTER") != ftJson.end()) {
+                json RTC_CENTER = ftJson["RTC_CENTER"];
+                rtc_center.x() = RTC_CENTER[0];
+                rtc_center.y() = RTC_CENTER[1];
+                rtc_center.z() = RTC_CENTER[2];
+            }
+            OSG_NOTICE << "Read rtc_center " << rtc_center.x() << ", " << rtc_center.y() << ", " << rtc_center.z() << std::endl;
+
             bytesRead += header.featureTableJSONByteLength;
         }
 
@@ -540,10 +552,23 @@ public:
         std::string err;
         std::string warn;
         loader.LoadBinaryFromMemory(&model, &err, &warn, reinterpret_cast<unsigned char*>(&gltfData[0]), sz);
-        return makeNodeFromModel(model);
+
+
+        osg::MatrixTransform *mt = new osg::MatrixTransform;
+
+        osg::Node* modelNode = makeNodeFromModel(model);
+        if (rtc_center.x() == 0.0 && rtc_center.y() == 0.0 && rtc_center.z() == 0.0)
+        {
+            return modelNode;
+        }
+        else
+        {
+            osg::MatrixTransform* mt = new osg::MatrixTransform;
+            mt->setMatrix(osg::Matrix::translate(rtc_center));
+            mt->addChild(modelNode);
+            return mt;
+        }
     }
-
-
 
     virtual ReadResult readObject(const std::string& fileName, const Options* opt) const
     {

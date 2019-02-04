@@ -56,7 +56,7 @@ usage(const std::string& message)
     return 0;
 }
 
-struct MyCustomTileHandler : public TDTiles::ContentHandler
+struct MyFeatureHandler : public TDTiles::ContentHandler
 {
     mutable Random _random;
 
@@ -101,6 +101,8 @@ main(int argc, char** argv)
     if (!arguments.read("--tileset", tilesetLocation))
         return usage("Missing required --tileset");
 
+    bool readFeatures = arguments.read("--features");
+
     // load the tile set:
     URI tilesetURI(tilesetLocation);
     ReadResult rr = tilesetURI.readString();
@@ -122,7 +124,12 @@ main(int argc, char** argv)
     {
         MapNode* mapNode = MapNode::get(node);
 
-        TDTilesetGroup* root = new TDTilesetGroup(new MyCustomTileHandler());
+        TDTilesetGroup* root;
+        if (readFeatures)
+            root = new TDTilesetGroup(new MyFeatureHandler());
+        else
+            root = new TDTilesetGroup();
+
         root->setTileset(tileset);
         root->setReadOptions(mapNode->getMap()->getReadOptions());
         mapNode->addChild(root);

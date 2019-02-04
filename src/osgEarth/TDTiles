@@ -155,7 +155,7 @@ namespace osgEarth { namespace TDTiles
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT TDTilesetGroup : public osg::LOD
+    class OSGEARTH_EXPORT TDTilesetGroup : public osg::Group
     {
     public:
         META_Node(osgEarth, TDTilesetGroup);

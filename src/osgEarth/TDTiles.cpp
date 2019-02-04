@@ -82,6 +82,8 @@ namespace osgEarth { namespace TDTiles
                         float effectiveSizeInPixels = sizeInPixels / _handler->getMaxScreenSpaceError();
                         float effectiveMetersPerPixel = effectiveSizeInPixels > 0.0? sizeInMeters / effectiveSizeInPixels : 0.0f;
 
+                        OE_DEBUG << "MPP=" << effectiveMetersPerPixel << ", maxMPP=" << maxMetersPerPixel << std::endl;
+
                         if (effectiveMetersPerPixel < maxMetersPerPixel)
                         {
                             if (i < _children.size())
@@ -328,9 +330,22 @@ TDTiles::Tile::fromJSON(const Json::Value& value, const URIContext& uc)
     if (value.isMember("geometricError"))
         geometricError() = value.get("geometricError", 0.0).asDouble();
     if (value.isMember("refine"))
-        refine() = value["refine"].asString() == "add" ? REFINE_ADD : REFINE_REPLACE;
+        refine() = osgEarth::ciEquals(value["refine"].asString(), "add") ? REFINE_ADD : REFINE_REPLACE;
     if (value.isMember("content"))
         content() = TileContent(value["content"], uc);
+    if (value.isMember("transform"))
+    {
+        const Json::Value& digits = value["transform"];
+        double c[16];
+        if (digits.isArray() && digits.size() == 16)
+        {
+            unsigned k=0;
+            for(Json::Value::const_iterator i = digits.begin(); i != digits.end(); ++i)
+                c[k++] = (*i).asDouble();
+            transform() = osg::Matrix(c);
+        }
+    }
+
     if (value.isMember("children"))
     {
         const Json::Value& a = value["children"];
@@ -573,14 +588,14 @@ TDTiles::ContentHandler::getMaxScreenSpaceError() const
 
 TDTilesetGroup::TDTilesetGroup()
 {
-    setRangeMode(PIXEL_SIZE_ON_SCREEN);
+    //setRangeMode(PIXEL_SIZE_ON_SCREEN);
     _handler = new TDTiles::ContentHandler();
 }
 
 TDTilesetGroup::TDTilesetGroup(TDTiles::ContentHandler* handler) :
     _handler(handler)
 {
-    setRangeMode(PIXEL_SIZE_ON_SCREEN);
+    //setRangeMode(PIXEL_SIZE_ON_SCREEN);
     if (!_handler.valid())
         _handler = new TDTiles::ContentHandler();
 }
@@ -610,8 +625,10 @@ TDTilesetGroup::setTileset(TDTiles::Tileset* tileset)
     {
         // create the root tile node and defer loading of its content:
         TDTiles::TileNode* tileNode = new TDTiles::TileNode(_tileset->root().get(), _handler.get(), _readOptions.get(), false);
+        TDTiles::GeometricErrorPagedLOD* plod = new TDTiles::GeometricErrorPagedLOD(_handler.get());
+        addChild(plod);        
         float maxMetersPerPixel = _tileset->geometricError().getOrUse(FLT_MAX);
-        addChild(tileNode, 0.0f, maxMetersPerPixel);
+        plod->addChild(tileNode, 0.0f, maxMetersPerPixel);
     }
 }
 

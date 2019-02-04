@@ -24,6 +24,7 @@
 #include <osgEarth/Notify>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthUtil/Controls>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TDTiles>
@@ -42,6 +43,32 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
+namespace ui = osgEarth::Util::Controls;
+
+struct App
+{
+    ui::HSliderControl* _sse;
+    TDTiles::ContentHandler* _handler;
+    void changeSSE()
+    {
+        _handler->setMaxScreenSpaceError(_sse->getValue());
+    }
+};
+
+OE_UI_HANDLER(changeSSE);
+
+ui::Control* makeUI(App& app)
+{
+    ui::Grid* container = new ui::Grid();
+
+    int r=0;
+    container->setControl(0, r, new ui::LabelControl("SSE"));
+    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, 50.0f, 1.0f, new changeSSE(app)));
+    app._sse->setHorizFill(true, 300.0f);
+    container->setControl(2, r, new ui::LabelControl(app._sse));
+
+    return container;
+}
 
 int
 usage(const std::string& message)
@@ -129,6 +156,10 @@ main(int argc, char** argv)
             root = new TDTilesetGroup(new MyFeatureHandler());
         else
             root = new TDTilesetGroup();
+
+        App app;
+        app._handler = root->getContentHandler();
+        ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
         root->setTileset(tileset);
         root->setReadOptions(mapNode->getMap()->getReadOptions());

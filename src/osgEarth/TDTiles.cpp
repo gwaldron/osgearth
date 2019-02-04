@@ -82,7 +82,7 @@ namespace osgEarth { namespace TDTiles
                         float effectiveSizeInPixels = sizeInPixels / _handler->getMaxScreenSpaceError();
                         float effectiveMetersPerPixel = effectiveSizeInPixels > 0.0? sizeInMeters / effectiveSizeInPixels : 0.0f;
 
-                        OE_DEBUG << "MPP=" << effectiveMetersPerPixel << ", maxMPP=" << maxMetersPerPixel << std::endl;
+                        OE_DEBUG << getName() << ": px=" << sizeInPixels << ", eMPP=" << effectiveMetersPerPixel << ", maxMPP=" << maxMetersPerPixel << ", SSE=" << _handler->getMaxScreenSpaceError() << std::endl;
 
                         if (effectiveMetersPerPixel < maxMetersPerPixel)
                         {
@@ -474,7 +474,7 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
     osg::ref_ptr<osg::Node> content = readContent();
     if (content.valid())
     {
-        plod->setName(_tile->content()->uri()->full());
+        plod->setName(_tile->content()->uri()->base());
         plod->addChild(content, 0.0f, FLT_MAX);
         plod->setNumChildrenThatCannotBeExpired(1u);
     }
@@ -588,16 +588,16 @@ TDTiles::ContentHandler::getMaxScreenSpaceError() const
 
 TDTilesetGroup::TDTilesetGroup()
 {
-    //setRangeMode(PIXEL_SIZE_ON_SCREEN);
     _handler = new TDTiles::ContentHandler();
 }
 
 TDTilesetGroup::TDTilesetGroup(TDTiles::ContentHandler* handler) :
     _handler(handler)
 {
-    //setRangeMode(PIXEL_SIZE_ON_SCREEN);
     if (!_handler.valid())
+    {
         _handler = new TDTiles::ContentHandler();
+    }
 }
 
 void
@@ -628,6 +628,7 @@ TDTilesetGroup::setTileset(TDTiles::Tileset* tileset)
         TDTiles::GeometricErrorPagedLOD* plod = new TDTiles::GeometricErrorPagedLOD(_handler.get());
         addChild(plod);        
         float maxMetersPerPixel = _tileset->geometricError().getOrUse(FLT_MAX);
+        plod->setName("Tileset");
         plod->addChild(tileNode, 0.0f, maxMetersPerPixel);
     }
 }

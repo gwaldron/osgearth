@@ -62,7 +62,7 @@ namespace osgEarth { namespace TDTiles
         void fromJSON(const Json::Value&);
         Json::Value getJSON() const;
 
-        osg::BoundingSphere asWorldBoundingSphere() const;
+        osg::BoundingSphere asBoundingSphere() const;
     };
 
     class OSGEARTH_EXPORT TileContent

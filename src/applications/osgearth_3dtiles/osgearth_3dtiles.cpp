@@ -25,6 +25,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/ViewFitter>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TDTiles>
@@ -49,23 +50,52 @@ struct App
 {
     ui::HSliderControl* _sse;
     TDTiles::ContentHandler* _handler;
+    EarthManipulator* _manip;
+    osg::ref_ptr<TDTilesetGroup> _tileset;
+    osgViewer::View* _view;
+
     void changeSSE()
     {
         _handler->setMaxScreenSpaceError(_sse->getValue());
     }
+
+    void zoomToData()
+    {
+        if (_tileset->getBound().valid())
+        {
+            const osg::BoundingSphere& bs = _tileset->getBound();
+
+            const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+
+            std::vector<GeoPoint> points;
+            points.push_back(GeoPoint());
+            points.back().fromWorld(wgs84, bs.center());
+
+            Viewpoint vp;
+            ViewFitter fit(wgs84, _view->getCamera());
+            fit.setBuffer(bs.radius()*2.0);
+            fit.createViewpoint(points, vp);
+
+            _manip->setViewpoint(vp);
+        }
+    }
 };
 
 OE_UI_HANDLER(changeSSE);
+OE_UI_HANDLER(zoomToData);
 
 ui::Control* makeUI(App& app)
 {
     ui::Grid* container = new ui::Grid();
 
     int r=0;
-    container->setControl(0, r, new ui::LabelControl("SSE"));
-    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, 50.0f, 1.0f, new changeSSE(app)));
+    container->setControl(0, r, new ui::LabelControl("Screen-space error (px)"));
+    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, 100.0f, 1.0f, new changeSSE(app)));
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
+
+    ++r;
+    container->setControl(0, r, new ui::ButtonControl("Zoom to data", new zoomToData(app)));
 
     return container;
 }
@@ -140,9 +170,13 @@ main(int argc, char** argv)
     if (!tileset)
         return usage("Bad tileset");
 
+    App app;
+
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+    app._view = &viewer;
+
+    viewer.setCameraManipulator( app._manip = new EarthManipulator(arguments) );
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -151,19 +185,17 @@ main(int argc, char** argv)
     {
         MapNode* mapNode = MapNode::get(node);
 
-        TDTilesetGroup* root;
         if (readFeatures)
-            root = new TDTilesetGroup(new MyFeatureHandler());
+            app._tileset = new TDTilesetGroup(new MyFeatureHandler());
         else
-            root = new TDTilesetGroup();
+            app._tileset = new TDTilesetGroup();
 
-        App app;
-        app._handler = root->getContentHandler();
+        app._handler = app._tileset->getContentHandler();
         ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
-        root->setTileset(tileset);
-        root->setReadOptions(mapNode->getMap()->getReadOptions());
-        mapNode->addChild(root);
+        app._tileset->setTileset(tileset);
+        app._tileset->setReadOptions(mapNode->getMap()->getReadOptions());
+        mapNode->addChild(app._tileset.get());
 
         viewer.setSceneData( node );
         return viewer.run();

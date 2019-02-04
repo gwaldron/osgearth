@@ -262,7 +262,7 @@ TDTiles::BoundingVolume::getJSON() const
 }
 
 osg::BoundingSphere
-TDTiles::BoundingVolume::asWorldBoundingSphere() const
+TDTiles::BoundingVolume::asBoundingSphere() const
 {
     const SpatialReference* epsg4979 = SpatialReference::get("epsg:4979");
     if (!epsg4979)
@@ -288,7 +288,7 @@ TDTiles::BoundingVolume::asWorldBoundingSphere() const
     else if (box().isSet())
     {
         //TODO
-        OE_WARN << "TDTiles::BoundingVolume::asWorldBoundingSphere() const NYI for 'box' type" << std::endl;
+        OE_WARN << "TDTiles::BoundingVolume::asBoundingSphere() const NYI for 'box' type" << std::endl;
     }
 
     return osg::BoundingSphere();
@@ -444,18 +444,25 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
     _handler(handler),
     _readOptions(readOptions)
 {
-    // install a bounding volume:
-    osg::BoundingSphere bs;
-    if (tile->boundingVolume().isSet())
-    {
-        bs = tile->boundingVolume()->asWorldBoundingSphere();
-        setInitialBound(bs);
-    }
-
     // the transform to localize this tile:
     if (tile->transform().isSet())
     {
         setMatrix(tile->transform().get());
+    }
+
+    // install a bounding volume:
+    osg::BoundingSphere bs;
+    if (tile->boundingVolume().isSet())
+    {
+        bs = tile->boundingVolume()->asBoundingSphere();
+
+        // if both a transform and a region are set, assume the radius is
+        // fine but the center point should be localized to the transform. -gw
+        // (just guessing)
+        if (tile->transform().isSet() && tile->boundingVolume()->region().isSet())
+        {
+            bs.center().set(0,0,0);
+        }
     }
 
     osg::PagedLOD* plod = new GeometricErrorPagedLOD(_handler.get()); //osg::PagedLOD();
@@ -464,7 +471,6 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         plod->setCenter(bs.center());
         plod->setRadius(bs.radius());
     }
-    plod->setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
 
     osg::ref_ptr<osgDB::Options> newOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
     OptionsData<TDTiles::TileNode>::set(newOptions.get(), TAG_TILENODE, this);

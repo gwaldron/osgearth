@@ -40,6 +40,18 @@ using namespace osgEarth;
  */
 namespace osgEarth { namespace TDTiles
 {
+    enum RefinePolicy
+    {
+        REFINE_REPLACE,
+        REFINE_ADD
+    };
+
+    struct LoadContext
+    {
+        URIContext _uc;
+        RefinePolicy _defaultRefine;
+    };
+
     class OSGEARTH_EXPORT Asset
     {
         OE_OPTION(std::string, version);
@@ -71,15 +83,9 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION(URI, uri);
 
         TileContent() { }
-        TileContent(const Json::Value& value, const URIContext& uc) { fromJSON(value, uc); }
-        void fromJSON(const Json::Value&, const URIContext&);
+        TileContent(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext&);
         Json::Value getJSON() const;
-    };
-
-    enum RefinePolicy
-    {
-        REFINE_REPLACE,
-        REFINE_ADD
     };
 
     class OSGEARTH_EXPORT Tile : public osg::Referenced
@@ -94,8 +100,8 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION_VECTOR(osg::ref_ptr<Tile>, children);
 
         Tile() { }
-        Tile(const Json::Value& value, const URIContext& uc) { fromJSON(value, uc); }
-        void fromJSON(const Json::Value&, const URIContext& uc);
+        Tile(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext& uc);
         Json::Value getJSON() const;
     };
 
@@ -109,8 +115,8 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION_REFPTR(Tile, root);
 
         Tileset() { }
-        Tileset(const Json::Value& value, const URIContext& uc) { fromJSON(value, uc); }
-        void fromJSON(const Json::Value&, const URIContext& uc);
+        Tileset(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext& uc);
         Json::Value getJSON() const;
 
         static Tileset* create(const std::string& tilesetJSON, const URIContext& uc);

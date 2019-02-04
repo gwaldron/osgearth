@@ -90,7 +90,7 @@ ui::Control* makeUI(App& app)
 
     int r=0;
     container->setControl(0, r, new ui::LabelControl("Screen-space error (px)"));
-    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, 100.0f, 1.0f, new changeSSE(app)));
+    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, 10.0f, 1.0f, new changeSSE(app)));
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
 

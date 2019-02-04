@@ -75,7 +75,7 @@ namespace osgEarth { namespace TDTiles
                     bool needToLoadChild = false;
                     for (unsigned int i = 0; i < _rangeList.size(); ++i)
                     {
-                        float minMetersPerPixel = _rangeList[i].first;
+                        //float minMetersPerPixel = _rangeList[i].first;
                         float maxMetersPerPixel = _rangeList[i].second;
 
                         // adjust sizeInPixels for the current SSE:
@@ -238,7 +238,22 @@ TDTiles::BoundingVolume::fromJSON(const Json::Value& value)
     }
     if (value.isMember("box"))
     {
-        OE_WARN << "3dTiled box not implemented" << std::endl;
+        const Json::Value& a = value["box"];
+        if (a.isArray() && a.size() == 12)
+        {
+            Json::Value::const_iterator i = a.begin();
+            osg::Vec3 center((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
+            osg::Vec3 xvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
+            osg::Vec3 yvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
+            osg::Vec3 zvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
+            box()->expandBy(center+xvec);
+            box()->expandBy(center-xvec);
+            box()->expandBy(center+yvec);
+            box()->expandBy(center-yvec);
+            box()->expandBy(center+zvec);
+            box()->expandBy(center-zvec);
+        }
+        else OE_WARN << "Invalid box array" << std::endl;
     }
 }
 
@@ -287,8 +302,7 @@ TDTiles::BoundingVolume::asBoundingSphere() const
 
     else if (box().isSet())
     {
-        //TODO
-        OE_WARN << "TDTiles::BoundingVolume::asBoundingSphere() const NYI for 'box' type" << std::endl;
+        return osg::BoundingSphere(box()->center(), box()->radius());
     }
 
     return osg::BoundingSphere();
@@ -297,14 +311,14 @@ TDTiles::BoundingVolume::asBoundingSphere() const
 //........................................................................
 
 void
-TDTiles::TileContent::fromJSON(const Json::Value& value, const URIContext& uc)
+TDTiles::TileContent::fromJSON(const Json::Value& value, LoadContext& lc)
 {
     if (value.isMember("boundingVolume"))
         boundingVolume() = BoundingVolume(value.get("boundingVolume", Json::nullValue));
     if (value.isMember("uri"))
-        uri() = URI(value.get("uri", "").asString(), uc);
+        uri() = URI(value.get("uri", "").asString(), lc._uc);
     if (value.isMember("url"))
-        uri() = URI(value.get("url", "").asString(), uc);
+        uri() = URI(value.get("url", "").asString(), lc._uc);
 }
 
 Json::Value
@@ -321,7 +335,7 @@ TDTiles::TileContent::getJSON() const
 //........................................................................
 
 void
-TDTiles::Tile::fromJSON(const Json::Value& value, const URIContext& uc)
+TDTiles::Tile::fromJSON(const Json::Value& value, LoadContext& uc)
 {
     if (value.isMember("boundingVolume"))
         boundingVolume() = value["boundingVolume"];
@@ -329,10 +343,19 @@ TDTiles::Tile::fromJSON(const Json::Value& value, const URIContext& uc)
         viewerRequestVolume() = value["viewerRequestVolume"];
     if (value.isMember("geometricError"))
         geometricError() = value.get("geometricError", 0.0).asDouble();
-    if (value.isMember("refine"))
-        refine() = osgEarth::ciEquals(value["refine"].asString(), "add") ? REFINE_ADD : REFINE_REPLACE;
     if (value.isMember("content"))
         content() = TileContent(value["content"], uc);
+
+    if (value.isMember("refine"))
+    {
+        refine() = osgEarth::ciEquals(value["refine"].asString(), "add") ? REFINE_ADD : REFINE_REPLACE;
+        uc._defaultRefine = refine().get();
+    }
+    else
+    {
+        refine() = uc._defaultRefine;
+    }
+
     if (value.isMember("transform"))
     {
         const Json::Value& digits = value["transform"];
@@ -396,7 +419,7 @@ TDTiles::Tile::getJSON() const
 //........................................................................
 
 void
-TDTiles::Tileset::fromJSON(const Json::Value& value, const URIContext& uc)
+TDTiles::Tileset::fromJSON(const Json::Value& value, LoadContext& uc)
 {
     if (value.isMember("asset"))
         asset() = Asset(value.get("asset", Json::nullValue));
@@ -431,7 +454,11 @@ TDTiles::Tileset::create(const std::string& json, const URIContext& uc)
     if (!reader.parse(json, root, false))
         return NULL;
 
-    return new TDTiles::Tileset(root, uc);
+    LoadContext lc;
+    lc._uc = uc;
+    lc._defaultRefine = REFINE_REPLACE;
+
+    return new TDTiles::Tileset(root, lc);
 }
 
 //........................................................................
@@ -465,7 +492,7 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         }
     }
 
-    osg::PagedLOD* plod = new GeometricErrorPagedLOD(_handler.get()); //osg::PagedLOD();
+    GeometricErrorPagedLOD* plod = new GeometricErrorPagedLOD(_handler.get()); //osg::PagedLOD();
     if (bs.valid())
     {
         plod->setCenter(bs.center());
@@ -495,15 +522,9 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         unsigned childrenIndex = plod->getNumChildren();
 
         // Load the children when the geometric error exceeds that of this tile.
-        //plod->setRange(childrenIndex, handler->getMaxScreenSpaceError(), FLT_MAX);
         plod->setFileName(childrenIndex, PSEUDOLOADER_TILE_CHILDREN_EXT);
         plod->setRange(childrenIndex, 0.0f, geometricError);
-
-        // TEST THIS for REPLACE MODE:
-        if (content.valid() && tile->refine() == REFINE_REPLACE)
-        {
-            plod->setRange(0, geometricError, FLT_MAX);
-        }
+        plod->_refine = tile->refine().get();
     }
 }
 

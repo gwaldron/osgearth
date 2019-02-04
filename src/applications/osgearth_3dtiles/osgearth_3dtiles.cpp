@@ -63,7 +63,7 @@ struct MyCustomTileHandler : public TDTiles::ContentHandler
     osg::ref_ptr<osg::Node> createNode(TDTiles::Tile* tile, const osgDB::Options* readOptions) const
     {
         OE_INFO << "SAY HELLO to tile " << tile->content()->uri()->base() << std::endl;
-        osg::ref_ptr<osg::Node> node = new osg::Node(); // empty for now
+        osg::ref_ptr<osg::Node> node;
         
         OGRFeatureOptions ogr;
         ogr.url() = tile->content()->uri().get();

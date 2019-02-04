@@ -151,6 +151,17 @@ FeatureSource::open()
     return _status;
 }
 
+const Status&
+FeatureSource::create(
+    const FeatureProfile* profile,
+    const FeatureSchema& schema,
+    const Geometry::Type& geometryType,
+    const osgDB::Options* readOptions)
+{
+    _status = Status::Error(Status::ResourceUnavailable, "Driver does not support create");
+    return _status;
+}
+
 void
 FeatureSource::setFeatureProfile(const FeatureProfile* fp)
 {

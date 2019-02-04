@@ -430,7 +430,7 @@ namespace osgEarth
         if ( hasChild(key) ) {
             const Config& uriconf = child(key);
             if (!uriconf.value().empty()) {
-                output = URI(uriconf.value(), referrer());
+                output = URI(uriconf.value(), uriconf.referrer());
                 output->mergeConfig(uriconf);
                 return true;
             }

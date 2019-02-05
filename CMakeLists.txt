@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
 
 if(COMMAND cmake_policy)
     # Works around warnings libraries linked against that don't
@@ -223,6 +223,10 @@ SET(CMAKE_RELWITHDEBINFO_POSTFIX "rd" CACHE STRING "add a postfix, usually empty
 SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a postfix, usually empty on windows")
 
 INCLUDE(OsgEarthMacroUtils)
+
+# Detect C++11 compiler support and set a variable.
+INCLUDE(CXX11)
+check_for_cxx11_compiler(CXX11_AVAILABLE)
 
 DETECT_OSG_VERSION()
 

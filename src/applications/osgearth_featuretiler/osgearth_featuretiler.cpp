@@ -99,17 +99,17 @@ split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& e
         FeatureID fid;
     };
 
-    struct {
+    struct SortByX {
         bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
             return lhs.x < rhs.x;
         }
-    } sortByX;
+    };
 
-    struct {
+    struct SortByY {
         bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
             return lhs.y < rhs.y;
         }
-    } sortByY;
+    };
 
     std::vector<FeatureData> data;
     int count = env.input->getFeatureCount();
@@ -167,6 +167,7 @@ split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& e
     {
         if (isWide)
         {
+            SortByX sortByX;
             std::sort(data.begin(), data.end(), sortByX);
             median = ((data.size() & 0x1) == 0) ?
                 0.5 * (data[data.size() / 2].x + data[data.size() / 2].x) :
@@ -175,6 +176,7 @@ split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& e
         }
         else
         {
+            SortByY sortByY;
             std::sort(data.begin(), data.end(), sortByY);
             median = ((data.size() & 0x1) == 0) ?
                 0.5 * (data[data.size() / 2].y + data[data.size() / 2].y) :

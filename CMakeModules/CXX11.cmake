@@ -21,13 +21,20 @@
 
 # Adapted from:
 # https://github.com/nathan-osman/CXX11-CMake-Macros
-
+#
+# Pass: 
+#   msvc 14+
+#   g++ 4.9.0+
+#   clang 3.4+
+#
+# Earlier versions of these compilers might support C++11 but the purposes
+# of osgEarth we are using these minimum requirements.
 
 macro(check_for_cxx11_compiler _VAR)
     set(${_VAR})
     if((MSVC AND NOT ${MSVC_VERSION} VERSION_LESS 1900) OR
-       (CMAKE_COMPILER_IS_GNUCXX AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8.1) OR
-       (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.3))
+       (CMAKE_COMPILER_IS_GNUCXX AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.9.0) OR
+       (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4))
         set(${_VAR} 1)
         
         message(STATUS "Checking for C++11 compiler - available")

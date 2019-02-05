@@ -19,9 +19,10 @@
 #include <osgEarth/TDTiles>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
-#include <osg/PagedLOD>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
+#include <osg/PagedLOD>
+#include <osg/Version>
 
 using namespace osgEarth;
 
@@ -65,7 +66,12 @@ namespace osgEarth { namespace TDTiles
                 break;
             case(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
             {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
                 osg::CullStack* cullStack = nv.asCullStack();
+#else
+                osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
+#endif
+
                 if (cullStack && cullStack->getLODScale() > 0)
                 {
                     float sizeInMeters = getBound().radius() * 2.0;

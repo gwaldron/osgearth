@@ -57,6 +57,26 @@ struct Env
     unsigned counter;
 };
 
+struct FeatureData
+{
+    double x, y;
+    FeatureID fid;
+};
+
+struct SortByX
+{
+    bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
+        return lhs.x < rhs.x;
+    }
+};
+
+struct SortByY
+{
+    bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
+        return lhs.y < rhs.y;
+    }
+};
+
 int
 split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& env)
 {
@@ -100,23 +120,6 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
             return usage(outputStatus.message().c_str());
     }
 
-    struct FeatureData {
-        double x, y;
-        FeatureID fid;
-    };
-
-    struct {
-        bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
-            return lhs.x < rhs.x;
-        }
-    } sortByX;
-
-    struct {
-        bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
-            return lhs.y < rhs.y;
-        }
-    } sortByY;
-
     std::vector<FeatureData> data;
     int count = input->getFeatureCount();
     if (count > 0)
@@ -153,6 +156,7 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
 
     if (isWide)
     {
+        SortByX sortByX;
         std::sort(data.begin(), data.end(), sortByX);
         median = ((data.size() & 0x1) == 0) ?
             0.5 * (data[data.size() / 2].x + data[data.size() / 2].x) :
@@ -161,6 +165,7 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
     }
     else
     {
+        SortByY sortByY;
         std::sort(data.begin(), data.end(), sortByY);
         median = ((data.size() & 0x1) == 0) ?
             0.5 * (data[data.size() / 2].y + data[data.size() / 2].y) :
@@ -286,7 +291,7 @@ main(int argc, char** argv)
     TDTiles::Asset asset;
     tileset->asset()->version() = "1.0";
 
-    std::ofstream out(outFile);
+    std::ofstream out(outFile.c_str());
     Json::Value tilesetJSON = tileset->getJSON();
     Json::StyledStreamWriter writer;
     writer.write(out, tilesetJSON);

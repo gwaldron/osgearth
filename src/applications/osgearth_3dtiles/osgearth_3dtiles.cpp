@@ -53,6 +53,8 @@ struct App
     EarthManipulator* _manip;
     osg::ref_ptr<TDTilesetGroup> _tileset;
     osgViewer::View* _view;
+    float _maxSSE;
+    bool _randomColors;
 
     void changeSSE()
     {
@@ -90,7 +92,7 @@ ui::Control* makeUI(App& app)
 
     int r=0;
     container->setControl(0, r, new ui::LabelControl("Screen-space error (px)"));
-    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, 10.0f, 1.0f, new changeSSE(app)));
+    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, app._maxSSE, 1.0f, new changeSSE(app)));
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
 
@@ -106,39 +108,62 @@ usage(const std::string& message)
     OE_NOTICE 
         << "\n" << message
         << "\nUsage: osgearth_3dtiles file.earth"
-        << "\n     --tileset [filename]"
+        << "\n     --tileset [filename]      ; 3dtiles tileset JSON file to load"
+        << "\n     --maxsse [n]              ; maximum screen space error in pixels for UI"
+        << "\n     --features                ; treat the 3dtiles content as feature data"
+        << "\n     --random-colors           ; randomly color feature tiles (instead of one color)"
         << std::endl;
         //<< MapNodeHelper().usage() << std::endl;
 
     return 0;
 }
 
-struct MyFeatureHandler : public TDTiles::ContentHandler
+/**
+ * Custom TDTiles ContentHandler that reads feature data from a URL
+ * and renders a simple osg::Node from it.
+ */
+struct FeatureRenderer : public TDTiles::ContentHandler
 {
+    App& _app;
     mutable Random _random;
+
+    FeatureRenderer(App& app) : _app(app) { }
 
     osg::ref_ptr<osg::Node> createNode(TDTiles::Tile* tile, const osgDB::Options* readOptions) const
     {
-        OE_INFO << "SAY HELLO to tile " << tile->content()->uri()->base() << std::endl;
         osg::ref_ptr<osg::Node> node;
-        
-        OGRFeatureOptions ogr;
-        ogr.url() = tile->content()->uri().get();
-        osg::ref_ptr<FeatureSource> fs = FeatureSourceFactory::create(ogr);
-        if (fs.valid() && fs->open().isOK())
+
+        if (tile->content().isSet() && tile->content()->uri().isSet())
         {
-            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(0L);
-            FeatureList features;
-            cursor->fill(features);
-            if (!features.empty())
+            OE_INFO << "Rendering feature tile: " << tile->content()->uri()->base() << std::endl;
+        
+            OGRFeatureOptions ogr;
+            ogr.url() = tile->content()->uri().get();
+            osg::ref_ptr<FeatureSource> fs = FeatureSourceFactory::create(ogr);
+            if (fs.valid() && fs->open().isOK())
             {
-                Style style;
-                float r = _random.next(), g = _random.next(), b = _random.next();
-                style.getOrCreate<PolygonSymbol>()->fill()->color().set(r,g,b,1);
-                style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-                style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-                node = new FeatureNode(features, style);
+                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(0L);
+                FeatureList features;
+                cursor->fill(features);
+                if (!features.empty())
+                {
+                    Style style;
+                    osg::Vec4 color;
+                    if (_app._randomColors)
+                        color.set(_random.next(), _random.next(), _random.next(), 1.0f);
+                    else
+                        color.set(1.0, 0.6, 0.0, 1.0);
+
+                    style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
+                    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                    style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+                    node = new FeatureNode(features, style);
+                }
             }
+        }
+        else
+        {
+            //nop - skip tile with no content
         }
 
         return node;
@@ -148,6 +173,8 @@ struct MyFeatureHandler : public TDTiles::ContentHandler
 int
 main(int argc, char** argv)
 {
+    App app;
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -159,6 +186,10 @@ main(int argc, char** argv)
         return usage("Missing required --tileset");
 
     bool readFeatures = arguments.read("--features");
+    app._randomColors = arguments.read("--random-colors");
+
+    app._maxSSE = 10.0f;
+    arguments.read("--maxsse", app._maxSSE);
 
     // load the tile set:
     URI tilesetURI(tilesetLocation);
@@ -169,8 +200,6 @@ main(int argc, char** argv)
     TDTiles::Tileset* tileset = TDTiles::Tileset::create(rr.getString(), tilesetLocation);
     if (!tileset)
         return usage("Bad tileset");
-
-    App app;
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
@@ -186,7 +215,7 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::get(node);
 
         if (readFeatures)
-            app._tileset = new TDTilesetGroup(new MyFeatureHandler());
+            app._tileset = new TDTilesetGroup(new FeatureRenderer(app));
         else
             app._tileset = new TDTilesetGroup();
 

@@ -23,6 +23,7 @@
 #include <osgEarth/TDTiles>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osg/ArgumentParser>
 #include <osgDB/FileUtils>
@@ -40,36 +41,29 @@ usage(const char* msg)
     OE_NOTICE 
         << "\n" << msg
         << "\nUsage: osgearth_featuretiler"
-        << "\n    --in driver [driver]   ; default=ogr"
-        << "\n    --in url [location]    ; filename or URL"
-        << "\n    --output [directory]   ; output folder name"
-        << "\n    --depth [n]            ; maximum split depth"
-        << "\n    --geometricerror [n]   ; geometric error in meters (default = 10m)"
+        << "\n    --in [location]        ; filename of source data (e.g. a shapefile)"
+        << "\n    --out [directory]      ; output folder name"
+        << "\n    --errors [...]         ; Comma-delimited geometric error per level (e.g. 1,150,500)"
         << std::endl;
     return -1;
 }
 
 struct Env
 {
-    double geometricError;
+    osg::ref_ptr<FeatureSource> input;
+    double* geometricError;
     unsigned maxDepth;
     URIContext uriContext;
     unsigned counter;
+
+    ~Env() { delete [] geometricError; }
 };
 
 int
-split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& env)
+split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& env)
 {
-    osg::ref_ptr<FeatureSource> input = FeatureSourceFactory::create(ConfigOptions(inputConf));
-    if (!input.valid())
-        return usage("Failed to open an input feature source");
-
-    const Status& inputStatus = input->open();
-    if (inputStatus.isError())
-        return usage(inputStatus.message().c_str());
-
     const Profile* profile = 0L;
-    const FeatureProfile* inputFP = input->getFeatureProfile();
+    const FeatureProfile* inputFP = env.input->getFeatureProfile();
     if (inputFP && inputFP->getExtent().isValid())
     {
         const GeoExtent& fex = inputFP->getExtent();
@@ -91,9 +85,9 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
             return usage("Failed to open output dataset");
 
         const Status& outputStatus = output[i]->create(
-            input->getFeatureProfile(),
-            input->getSchema(),
-            input->getGeometryType(),
+            env.input->getFeatureProfile(),
+            env.input->getSchema(),
+            env.input->getGeometryType(),
             NULL);
 
         if (outputStatus.isError())
@@ -118,10 +112,10 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
     } sortByY;
 
     std::vector<FeatureData> data;
-    int count = input->getFeatureCount();
+    int count = env.input->getFeatureCount();
     if (count > 0)
     {
-        OE_INFO << "Feature count = " << count << std::endl;
+        //OE_INFO << "Feature count = " << count << std::endl;
         data.reserve(count);
     }
     else
@@ -129,43 +123,71 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
         OE_INFO << "Feature count not available" << std::endl;
     }
 
+    // Just divide the error by 10 each level. Placeholder for something smarter.
+    double error = env.geometricError[depth];
+
+    FeatureList features;
     unsigned i = 0;
-    osg::ref_ptr<FeatureCursor> cursor = input->createFeatureCursor(0L);
-    if (cursor.valid())
+    Query query;
+    query.bounds() = extent.bounds();
+    osg::ref_ptr<FeatureCursor> cursor = env.input->createFeatureCursor(query, 0L);
+    if (!cursor.valid())
     {
-        while (cursor->hasMore())
-        {
-            Feature* f = cursor->nextFeature();
-            const GeoExtent& fex = f->getExtent();
-            FeatureData d;
-            fex.getCentroid(d.x, d.y);
-            d.fid = f->getFID();
-            data.push_back(d);
-        }
+        OE_WARN << "Feature cursor error" << std::endl;
+        return 0;
     }
 
-    const GeoExtent& extent = input->getFeatureProfile()->getExtent();
+    cursor->fill(features);
+    if (features.empty())
+        return 0;
+
+    ResampleFilter resample(error, DBL_MAX);
+    resample.push(features, FilterContext());
+    
+    for(FeatureList::iterator i = features.begin(); i != features.end(); ++i)
+    {
+        Feature* f = i->get();
+        const GeoExtent& fex = f->getExtent();
+        if (fex.width() < error && fex.height() < error)
+            continue;
+
+        FeatureData d;
+        fex.getCentroid(d.x, d.y);
+        d.fid = f->getFID();
+        data.push_back(d);
+    }
+
     bool isWide = extent.width() > extent.height();
 
-    OE_INFO << "Features Extent = " << extent.toString() << std::endl;
+    OE_INFO << "Depth = " << depth << ", features = " << data.size() << std::endl;
 
     double median;
 
-    if (isWide)
+    if (data.size() > 0)
     {
-        std::sort(data.begin(), data.end(), sortByX);
-        median = ((data.size() & 0x1) == 0) ?
-            0.5 * (data[data.size() / 2].x + data[data.size() / 2].x) :
-            data[data.size() / 2].x;
-        OE_INFO << "Median X = " << median << std::endl;
+        if (isWide)
+        {
+            std::sort(data.begin(), data.end(), sortByX);
+            median = ((data.size() & 0x1) == 0) ?
+                0.5 * (data[data.size() / 2].x + data[data.size() / 2].x) :
+                data[data.size() / 2].x;
+            OE_INFO << "  Median X = " << median << std::endl;
+        }
+        else
+        {
+            std::sort(data.begin(), data.end(), sortByY);
+            median = ((data.size() & 0x1) == 0) ?
+                0.5 * (data[data.size() / 2].y + data[data.size() / 2].y) :
+                data[data.size() / 2].y;
+            OE_INFO << "  Median Y = " << median << std::endl;
+        }
     }
     else
     {
-        std::sort(data.begin(), data.end(), sortByY);
-        median = ((data.size() & 0x1) == 0) ?
-            0.5 * (data[data.size() / 2].y + data[data.size() / 2].y) :
-            data[data.size() / 2].y;
-        OE_INFO << "Median Y = " << median << std::endl;
+        if (isWide)
+            median = extent.xMin() + extent.width()/2.0;
+        else
+            median = extent.yMin() + extent.height()/2.0;
     }
 
     osg::ref_ptr<TDTiles::Tile> child[2];
@@ -178,38 +200,26 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
     child[0]->refine() = TDTiles::REFINE_REPLACE;
     parentTile->children().push_back(child[1].get());
 
+    unsigned afeatures = 0u, bfeatures = 0u;
+
     for (unsigned i = 0; i < data.size(); ++i)
     {
         const FeatureData& d = data[i];
-        Feature* f = input->getFeature(d.fid);
+        Feature* f = env.input->getFeature(d.fid);
         double x, y;
         f->getExtent().getCentroid(x, y);
         double side = isWide ? x : y;
         if (side < median)
-            output[0]->insertFeature(f);
-        else
-            output[1]->insertFeature(f);
-    }
-
-    input = 0L;
-    output[0] = 0L;
-    output[1] = 0L;
-
-    for(unsigned i=0; i<2; ++i)
-    {
-        child[i]->content()->uri() = outputConf[i].url().get();
-
-        if (depth < env.maxDepth)
         {
-            Config conf = inputConf;
-            conf.set("url", outputConf[i].url()->full());
-            split(conf, child[i].get(), depth+1, env);
+            afeatures++;
+            output[0]->insertFeature(f);
+        }
+        else
+        {
+            bfeatures++;
+            output[1]->insertFeature(f);
         }
     }
-
-    //TODO: heights
-    const float zmin = 0.0f;
-    const float zmax = 1.0f;
 
     GeoExtent a(extent.getSRS()), b(extent.getSRS());
 
@@ -224,19 +234,38 @@ split(const Config& inputConf, TDTiles::Tile* parentTile, unsigned depth, Env& e
         b.set(extent.xMin(), median, extent.xMax(), extent.yMax());
     }
 
+    if (depth < env.maxDepth)
+    {
+        split(a, child[0].get(), depth + 1, env);
+        split(b, child[1].get(), depth + 1, env);
+    }
+
+    output[0] = 0L;
+    output[1] = 0L;
+
+    //TODO: heights
+    const float zmin = 0.0f;
+    const float zmax = 1.0f;
+
     const SpatialReference* epsg4979 = SpatialReference::get("epsg:4979");
     a = a.transform(epsg4979);
     b = b.transform(epsg4979);
 
+    if (afeatures > 0u)
+        child[0]->content()->uri() = outputConf[0].url().get();
+
     child[0]->boundingVolume()->region()->set(
         osg::DegreesToRadians(a.xMin()), osg::DegreesToRadians(a.yMin()), zmin, 
         osg::DegreesToRadians(a.xMax()), osg::DegreesToRadians(a.yMax()), zmax);
-    child[0]->geometricError() = env.geometricError / double(depth+1);
+    child[0]->geometricError() = error;
+
+    if (bfeatures > 0u)
+        child[1]->content()->uri() = outputConf[1].url().get();
 
     child[1]->boundingVolume()->region()->set(
         osg::DegreesToRadians(b.xMin()), osg::DegreesToRadians(b.yMin()), zmin,
         osg::DegreesToRadians(b.xMax()), osg::DegreesToRadians(b.yMax()), zmax);
-    child[1]->geometricError() = env.geometricError / double(depth+1);
+    child[1]->geometricError() = error;
 
     return 0;
 }
@@ -249,20 +278,16 @@ main(int argc, char** argv)
     if (arguments.read("--help"))
         return usage("Help!");
 
-    Config inputConf;
-    std::string key, value;
-    while(arguments.read("--in", key, value))
-        inputConf.set(key, value);
+    std::string source;
+    if (!arguments.read("--in", source))
+        return usage("Missing required --in argument");
 
     std::string outputLocation;
     if (!arguments.read("--out", outputLocation))
         return usage("Missing required --out argument");
 
-    unsigned maxDepth = 1u;
-    arguments.read("--depth", maxDepth);
-
-    double geometricError = 10.0;
-    arguments.read("--geometricerror", geometricError);
+    std::string errors("1,80,200");
+    arguments.read("--errors", errors);
 
     if (!osgDB::makeDirectory(outputLocation))
         return usage("Unable to create/find output location");
@@ -272,13 +297,43 @@ main(int argc, char** argv)
     std::string outFile = Stringify() << outputLocation << "/tileset.json";
     URIContext uriContext(outFile);
 
-    Env env;
-    env.counter = 0;
-    env.geometricError = geometricError;
-    env.maxDepth = maxDepth;
-    env.uriContext = uriContext;
+    Config inputConf;
+    inputConf.set("driver", "ogr");
+    inputConf.set("url", source);
+    osg::ref_ptr<FeatureSource> input = FeatureSourceFactory::create(ConfigOptions(inputConf));
+    if (!input.valid())
+        return usage("Failed to create the input feature source");
 
-    split(inputConf, root, 0, env);
+    if (input->open().isError())
+        return usage("Failed to open the input feature source");
+
+    std::vector<std::string> errorStrings;
+    StringTokenizer(errors, errorStrings, ",");
+    if (errorStrings.size() < 1)
+        return usage("Illegal errors input");
+
+    Env env;
+    env.input = input.get();
+    env.counter = 0;
+    env.uriContext = uriContext;    
+    env.geometricError = new double[errorStrings.size()];
+    env.maxDepth = errorStrings.size()-1;
+
+    // generate level errors:
+    OE_NOTICE << "Geometric errors: ";
+    for(int i=0; i<errorStrings.size(); ++i)
+    {
+        int j = errorStrings.size() - 1 - i;
+        env.geometricError[j] = osgEarth::as<double>(errorStrings[i], -1.0);
+        if (env.geometricError[j] <= 0.0)
+            return usage("Illegal geometric error in input");
+
+        OE_NOTIFY(osg::NOTICE, env.geometricError[j] << " ");
+    }
+    OE_NOTIFY(osg::NOTICE, std::endl);
+
+    // make it so
+    split(input->getFeatureProfile()->getExtent(), root, 0, env);
 
     osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
     tileset->root() = root.get();

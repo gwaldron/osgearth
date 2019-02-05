@@ -45,7 +45,7 @@ namespace osgEarth { namespace TDTiles
 
     public:
 
-        void GeometricErrorPagedLOD::traverse(osg::NodeVisitor& nv)
+        void traverse(osg::NodeVisitor& nv)
         {
             // set the frame number of the traversal so that external nodes can find out how active this
             // node is.

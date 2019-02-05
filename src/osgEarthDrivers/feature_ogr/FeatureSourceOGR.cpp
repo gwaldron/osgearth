@@ -144,7 +144,8 @@ public:
         // If nothing was set, we're done
         if (_source.empty() && !_geometry.valid())
         {
-            return Status::Error(Status::ConfigurationError, "No URL, connection, or inline geometry provided");
+            setStatus(Status(Status::ConfigurationError, "No URL, connection, or inline geometry provided"));
+            return getStatus();
         }
 
         std::string driverName = _options.ogrDriver().value();
@@ -158,7 +159,7 @@ public:
         if (!_dsHandle)
         {
             std::string msg = CPLGetLastErrorMsg();
-            setStatus(Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to create \"" << _source << "\" ... " << msg));
+            setStatus(Status(Status::ResourceUnavailable, Stringify() << "Failed to create \"" << _source << "\" ... " << msg));
             return getStatus();
         }
         
@@ -170,7 +171,7 @@ public:
 
         if (!_layerHandle)
         {
-            setStatus(Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to create layer \"" << _options.layer().get() << "\" from \"" << _source << "\""));
+            setStatus(Status(Status::ResourceUnavailable, Stringify() << "Failed to create layer \"" << _options.layer().get() << "\" from \"" << _source << "\""));
             return getStatus();
         }
 

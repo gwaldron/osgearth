@@ -10,7 +10,6 @@
 uniform sampler2DArray oe_GroundCover_billboardTex;
 uniform float oe_GroundCover_exposure;
 in vec2 oe_GroundCover_texCoord;
-in vec4 oe_layer_tilec;
 
 flat in float oe_GroundCover_arrayIndex; // from GroundCover.GS.glsl
 

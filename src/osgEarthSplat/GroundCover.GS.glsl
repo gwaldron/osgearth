@@ -12,9 +12,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 layout(triangles) in;        // triangles from the TileDrawable
 
 #ifdef OE_GROUNDCOVER_SHOW_TESSELLATION
-layout(line_strip, max_vertices=4) out;
+layout(line_strip, max_vertices=12) out;
 #else
-layout(triangle_strip, max_vertices=4) out;       // four verts per billboard
+layout(triangle_strip, max_vertices=12) out;  // max of 12 verts per billboard
 #endif
                 
 // VP helper functions:
@@ -131,6 +131,13 @@ oe_GroundCover_getRandomBarycentricPoint(vec2 seed)
     }
     b[2] = 1.0 - b[0] - b[1];
     return b;
+}
+
+uniform float shmoo;
+
+float oe_GroundCover_fastpow(in float x, in float y)
+{
+    return x / (x + y - y * x);
 }
 
 // MAIN ENTRY POINT  
@@ -327,9 +334,7 @@ oe_GroundCover_geom()
     // Color variation, brightness, and contrast:
     vec3 color = vec3( noise[NOISE_RANDOM_2] );
     color = ( ((color - 0.5) * oe_GroundCover_contrast + 0.5) * oe_GroundCover_brightness);
-
-    vp_Color = vec4(color*oe_GroundCover_ao, falloff);
-
+    
     // calculates normals:
     vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
 
@@ -341,29 +346,107 @@ oe_GroundCover_geom()
     vec3 Lnormal = mix(-tangentVector, faceNormalVector, blend);
     vec3 Rnormal = mix( tangentVector, faceNormalVector, blend);
 
-    gl_Position = LL;
-    oe_GroundCover_texCoord = vec2(0,0);
-    vp_Normal = Lnormal;
-    VP_EmitViewVertex();
+    // calculate a [0..1] factor for interpolating from a front billboard view
+    // to a top-down view of the tree (0.0=billboard, 1.0=topdown)
+    float topDownAmount = abs(dot(normalize(center_view.xyz), up_view));
+
+    // permute it towards billboard:
+    topDownAmount = topDownAmount*topDownAmount*topDownAmount;
+
+    float billboardAmount = 1.0-oe_GroundCover_fastpow(topDownAmount, 7.5);
+
+    const float billboardThreshold = 0.05;
+
+    if (billboardAmount > billboardThreshold)
+    {
+        vp_Color = vec4(color*oe_GroundCover_ao, falloff * billboardAmount);
+
+        gl_Position = LL;
+        oe_GroundCover_texCoord = vec2(0,0);
+        vp_Normal = Lnormal;
+        VP_EmitViewVertex();
     
-    gl_Position = LR;
-    oe_GroundCover_texCoord = vec2(1,0);
-    vp_Normal = Rnormal;
-    VP_EmitViewVertex();
+        gl_Position = LR;
+        oe_GroundCover_texCoord = vec2(1,0);
+        vp_Normal = Rnormal;
+        VP_EmitViewVertex();
 
-    vp_Color = vec4(color, falloff);      
+        vp_Color = vec4(color, falloff * billboardAmount);
 
-    gl_Position = UL;
-    oe_GroundCover_texCoord = vec2(0,1);
-    vp_Normal = Lnormal;
-    VP_EmitViewVertex();
+        gl_Position = UL;
+        oe_GroundCover_texCoord = vec2(0,1);
+        vp_Normal = Lnormal;
+        VP_EmitViewVertex();
 
-    oe_GroundCover_texCoord = vec2(1,1);
-    vp_Normal = Rnormal;
-    gl_Position = UR;
-    VP_EmitViewVertex();
+        oe_GroundCover_texCoord = vec2(1,1);
+        vp_Normal = Rnormal;
+        gl_Position = UR;
+        VP_EmitViewVertex();
                     
-    EndPrimitive();
+        EndPrimitive();
+    }
+
+    const float topDownThreshold = 0.5;
+
+    if (topDownAmount > topDownThreshold)
+    {
+        vec3 rightVector = vec3(1,0,0);
+        vec3 halfWidthFlatVector = cross(up_view, rightVector) * width * 0.25;
+        vec4 CL, CR;
+        vec3 CENTROID = center_view.xyz + (heightVector*0.4);
+        CL = vec4(CENTROID - rightVector*width*0.5, 1.0);
+        LL = CL - vec4(halfWidthFlatVector, 0.0);
+        UL = CL + vec4(halfWidthFlatVector, 0.0);
+        CR = vec4(CENTROID + rightVector*width*0.5, 1.0);
+        LR = CR - vec4(halfWidthFlatVector, 0.0);
+        UR = CR + vec4(halfWidthFlatVector, 0.0);
+
+        vp_Color = vec4(color, (topDownAmount-topDownThreshold)*(topDownAmount/topDownThreshold));
+
+        gl_Position = CL;
+        oe_GroundCover_texCoord = vec2(0, 0.5);
+        vp_Normal = (CL.xyz-CENTROID);
+        VP_EmitViewVertex();
+
+        gl_Position = CR;
+        oe_GroundCover_texCoord = vec2(1, 0.5);
+        vp_Normal = (CR.xyz-CENTROID);
+        VP_EmitViewVertex();
+
+        gl_Position = UL;
+        oe_GroundCover_texCoord = vec2(0, 0.9);
+        vp_Normal = (UL.xyz-CENTROID);
+        VP_EmitViewVertex();
+
+        gl_Position = UR;
+        oe_GroundCover_texCoord = vec2(1, 0.9);
+        vp_Normal = (UR.xyz -CENTROID);
+        VP_EmitViewVertex();
+
+        EndPrimitive();
+
+        gl_Position = LL;
+        oe_GroundCover_texCoord = vec2(0, 0.9);
+        vp_Normal = (LL.xyz -CENTROID);
+        VP_EmitViewVertex();
+
+        gl_Position = LR;
+        oe_GroundCover_texCoord = vec2(1, 0.9);
+        vp_Normal = (LR.xyz -CENTROID);
+        VP_EmitViewVertex();
+
+        gl_Position = CL;
+        oe_GroundCover_texCoord = vec2(0, 0.5);
+        vp_Normal = (CL.xyz-CENTROID);
+        VP_EmitViewVertex();
+
+        oe_GroundCover_texCoord = vec2(1, 0.5);
+        vp_Normal = (CR.xyz-CENTROID);
+        gl_Position = CR;
+        VP_EmitViewVertex();
+
+        EndPrimitive();
+    }
     
 #endif // !OE_IS_SHADOW_CAMERA
 }

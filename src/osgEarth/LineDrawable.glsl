@@ -91,8 +91,6 @@ out float oe_LineDrawable_lateral;
 float oe_LineDrawable_lateral;
 #endif
 
-out vec4 ccc;
-
 void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 {
     if (oe_LineDrawable_draw == 0)

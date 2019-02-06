@@ -59,6 +59,23 @@ struct Env
     ~Env() { delete [] geometricError; }
 };
 
+struct FeatureData {
+    double x, y;
+    FeatureID fid;
+};
+
+struct SortByX {
+    bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
+        return lhs.x < rhs.x;
+    }
+};
+
+struct SortByY {
+    bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
+        return lhs.y < rhs.y;
+    }
+};
+
 int
 split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& env)
 {
@@ -93,23 +110,6 @@ split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& e
         if (outputStatus.isError())
             return usage(outputStatus.message().c_str());
     }
-
-    struct FeatureData {
-        double x, y;
-        FeatureID fid;
-    };
-
-    struct SortByX {
-        bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
-            return lhs.x < rhs.x;
-        }
-    };
-
-    struct SortByY {
-        bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
-            return lhs.y < rhs.y;
-        }
-    };
 
     std::vector<FeatureData> data;
     int count = env.input->getFeatureCount();
@@ -343,7 +343,7 @@ main(int argc, char** argv)
     TDTiles::Asset asset;
     tileset->asset()->version() = "1.0";
 
-    std::ofstream out(outFile);
+    std::ofstream out(outFile.c_str());
     Json::Value tilesetJSON = tileset->getJSON();
     Json::StyledStreamWriter writer;
     writer.write(out, tilesetJSON);

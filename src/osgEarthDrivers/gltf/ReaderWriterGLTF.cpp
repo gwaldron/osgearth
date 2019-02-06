@@ -29,9 +29,10 @@
 #include <osg/MatrixTransform>
 #include <osg/Texture2D>
 #include <osgDB/ReadFile>
-
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
+#include <osgEarth/Notify>
+#include <osgEarth/URI>
 
 #include <iostream>
 #include <iomanip>
@@ -42,6 +43,9 @@
 // #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
 #include "tiny_gltf.h"
 using namespace tinygltf;
+using namespace osgEarth;
+
+#define LC "[gltf] "
 
 class GLTFReader : public osgDB::ReaderWriter
 {
@@ -475,25 +479,40 @@ public:
         unsigned int batchTableBinaryByteLength;
     };
 
-    osg::Node* loadb3dm(const std::string& filename) const
+    osg::Node* loadb3dm(const std::string& location) const
     {
         // Load the whole thing into memory
-        std::ifstream f(filename.c_str(), std::ifstream::binary);
-        f.seekg(0, f.end);
-        size_t sz = static_cast<size_t>(f.tellg());
-        f.seekg(0, f.beg);
+        URIStream inputStream(location, std::ifstream::binary);
 
-        std::string data;
-        data.resize(sz);
-        f.read(reinterpret_cast<char *>(&data[0]), static_cast<std::streamsize>(sz));
-        f.close();
+        std::istreambuf_iterator<char> eof;
+        std::string data(std::istreambuf_iterator<char>(inputStream), eof);
 
+        // Check the header's magic string. If it's not there, attempt
+        // to run a decompressor on it
+        std::string magic(data, 0, 4);
+        if (magic != "b3dm")
+        {
+            osg::ref_ptr<osgDB::BaseCompressor> compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
+            if (compressor.valid())
+            {
+                std::stringstream in_data(data);
+                std::string temp;
+                if (!compressor->decompress(in_data, temp))
+                {
+                    OE_WARN << LC << "Invalid b3dm" << std::endl;
+                    return NULL;
+                }
+                data = temp;
+            }
+        }
+
+        b3dmheader header;
         unsigned int bytesRead = 0;
 
         std::stringstream buf(data);
-        b3dmheader header;
         buf.read(reinterpret_cast<char*>(&header), sizeof(b3dmheader));
         bytesRead += sizeof(b3dmheader);
+        size_t sz = header.byteLength;
 
         osg::Vec3d rtc_center;
 
@@ -511,7 +530,7 @@ public:
                 rtc_center.y() = RTC_CENTER[1];
                 rtc_center.z() = RTC_CENTER[2];
             }
-            OSG_NOTICE << "Read rtc_center " << rtc_center.x() << ", " << rtc_center.y() << ", " << rtc_center.z() << std::endl;
+            OE_INFO << LC << "Read rtc_center " << rtc_center.x() << ", " << rtc_center.y() << ", " << rtc_center.z() << std::endl;
 
             bytesRead += header.featureTableJSONByteLength;
         }
@@ -570,14 +589,14 @@ public:
         }
     }
 
-    virtual ReadResult readObject(const std::string& fileName, const Options* opt) const
+    virtual ReadResult readObject(const std::string& location, const Options* opt) const
     {
-        return readNode(fileName, opt);
+        return readNode(location, opt);
     }
 
-    virtual ReadResult readNode(const std::string& fileName, const Options* options) const
+    virtual ReadResult readNode(const std::string& location, const Options* options) const
     {
-        std::string ext = osgDB::getFileExtension(fileName);
+        std::string ext = osgDB::getFileExtension(location);
         if (!acceptsExtension(ext))
             return ReadResult::FILE_NOT_HANDLED;
 
@@ -586,23 +605,23 @@ public:
         std::string err;
         std::string warn;
 
-        OSG_NOTICE << fileName << std::endl;
+        OE_INFO << LC << "Load: " << location << std::endl;
 
         if (ext == "glb")
         {
-            loader.LoadBinaryFromFile(&model, &err, &warn, fileName);
+            loader.LoadBinaryFromFile(&model, &err, &warn, location);
         }
         else if (ext == "b3dm")
         {
-            return loadb3dm(fileName);
+            return loadb3dm(location);
         }
         else
         {
-            loader.LoadASCIIFromFile(&model, &err, &warn, fileName);
+            loader.LoadASCIIFromFile(&model, &err, &warn, location);
         }
         if (!err.empty()) {
-            OSG_NOTICE << "gltf Error loading " << fileName << std::endl;
-            OSG_WARN << err << std::endl;
+            OE_WARN << LC << "gltf Error loading " << location << std::endl;
+            OE_WARN << LC << err << std::endl;
             return ReadResult::ERROR_IN_READING_FILE;
         }
 

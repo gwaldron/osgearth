@@ -113,7 +113,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT URIStream
     {
     public:
-        URIStream( const URI& uri );
+        URIStream(const URI& uri, std::ios_base::openmode mode =std::ios_base::in);
 
         virtual ~URIStream();
 
@@ -123,8 +123,7 @@ namespace osgEarth
 
     protected:
         friend class URI;
-        std::istream*     _fileStream;
-        std::stringstream _bufStream;
+        std::istream* _instream;
     };
 
 //--------------------------------------------------------------------

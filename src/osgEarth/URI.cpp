@@ -57,8 +57,8 @@ namespace
 
 //------------------------------------------------------------------------
 
-URIStream::URIStream( const URI& uri ) :
-_fileStream( 0L )
+URIStream::URIStream(const URI& uri, std::ios_base::openmode mode) :
+_instream( 0L )
 {
     if ( osgDB::containsServerAddress(uri.full()) )
     {
@@ -66,29 +66,29 @@ _fileStream( 0L )
         if ( res.isOK() )
         {
             std::string buf = res.getPartAsString(0);
-            _bufStream.str(buf);
+            _instream = new std::istringstream(buf);
         }
     }
     else
     {
-        _fileStream = new std::ifstream( uri.full().c_str() );
+        _instream = new std::ifstream(uri.full().c_str(), mode);
     }
 }
 
 URIStream::~URIStream()
 {
-    if ( _fileStream )
-        delete _fileStream;
+    if (_instream)
+        delete _instream;
 }
 
 URIStream::operator std::istream& ()
 {
     static std::istringstream s_nullStream;
 
-    if ( _fileStream )
-        return *_fileStream;
+    if ( _instream )
+        return *_instream;
     else
-        return _bufStream;
+        return s_nullStream;
 }
 
 //------------------------------------------------------------------------

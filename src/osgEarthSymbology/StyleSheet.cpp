@@ -216,7 +216,7 @@ StyleSheet::getConfig() const
         if ( !_script->profile.empty() )
             scriptConf.set( "profile", _script->profile );
         else if ( !_script->code.empty() )
-            scriptConf.value() = _script->code;
+            scriptConf.setValue(_script->code);
 
         conf.add( scriptConf );
     }
@@ -307,7 +307,7 @@ StyleSheet::mergeConfig( const Config& conf )
             for( std::vector<std::string>::iterator i = blocks.begin(); i != blocks.end(); ++i )
             {
                 Config blockConf( styleConf );
-                blockConf.value() = *i;
+                blockConf.setValue(*i);
                 //OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
                 Style style( blockConf, this );
                 _styles[ style.getName() ] = style;

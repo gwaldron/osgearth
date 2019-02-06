@@ -217,7 +217,7 @@ namespace
                 std::string newValue = resolve(inputURI);
                 if ( newValue != input.value() )
                 {
-                    input.value() = newValue;
+                    input.setValue(newValue);
                     input.setReferrer( _newReferrerAbsPath );
                 }
 

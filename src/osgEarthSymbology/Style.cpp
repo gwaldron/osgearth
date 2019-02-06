@@ -227,7 +227,7 @@ Style::getConfig( bool keepOrigType ) const
     if ( _origType == "text/css" && keepOrigType )
     {
         conf.set("type", _origType);
-        conf.value() = _origData;            
+        conf.setValue(_origData);
     }
     else
     {

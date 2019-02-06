@@ -123,6 +123,12 @@ namespace osgEarth { namespace Features
         //! Same as calling setReadOptions followed by open()
         const Status& open(const osgDB::Options* readOptions);
 
+        virtual const Status& create(
+            const FeatureProfile* profile,
+            const FeatureSchema& schema,
+            const Geometry::Type& geometryType,
+            const osgDB::Options* readOptions);
+
         /**
          * Status of the feature source
          */

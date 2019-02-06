@@ -64,6 +64,13 @@ namespace
             em->convertXYZToLatLongHeight(
                 points[i].x(), points[i].y(), points[i].z(),
                 lat, lon, alt );
+
+            // deal with bug in OSG 3.4.x in which convertXYZToLatLongHeight can return
+            // NANs when converting from (0,0,0) with a spherical ellipsoid -gw 2/5/2019
+            if (osg::isNaN(lon)) lon = 0.0;
+            if (osg::isNaN(lat)) lat = 0.0;
+            if (osg::isNaN(alt)) alt = 0.0;
+
             points[i].set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), alt );
         }
     }

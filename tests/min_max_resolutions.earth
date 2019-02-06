@@ -6,21 +6,25 @@ at a given resolution level.
 <map name="Min Max Resolution Levels" type="geocentric" version="2">
     
 	<!-- this level will be visible at lower resolutions -->
-	<image name="mapquest_aerial" driver="xyz">
-		<url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
-		<profile>spherical-mercator</profile>
-		<cache_policy usage="no_cache"/>
-		<nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>      
+	<image name="EOX cloudless" driver="wms">
+        	<url>https://tiles.maps.eox.at/wms?</url>
+        	<format>jpeg</format>
+        	<layers>s2cloudless</layers>
+        	<tile_size>256</tile_size>
+        	<srs>EPSG:4326</srs>
+        	<transparent>false</transparent> 
 		<min_resolution>7500</min_resolution>
 	</image> 
 
 	<!-- this level will be visible at higher resolutions -->
-	<image name="mapquest_osm" driver="xyz">
-		<url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
-		<profile>spherical-mercator</profile>       
-		<cache_policy usage="no_cache"/>
+	<image name="osm_mapnik" driver="xyz">
+        	<url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        	<profile>spherical-mercator</profile>
+        	<cache_policy usage="none"/>
+        	<attribution>&#169;OpenStreetMap contributors</attribution>
 		<max_resolution>2500</max_resolution>
 	</image>
+	
 	
 	<options lighting="false"/>
         

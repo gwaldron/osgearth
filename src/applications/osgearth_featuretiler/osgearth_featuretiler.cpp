@@ -59,6 +59,23 @@ struct Env
     ~Env() { delete [] geometricError; }
 };
 
+struct FeatureData {
+    double x, y;
+    FeatureID fid;
+};
+
+struct SortByX {
+    bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
+        return lhs.x < rhs.x;
+    }
+};
+
+struct SortByY {
+    bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
+        return lhs.y < rhs.y;
+    }
+};
+
 int
 split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& env)
 {
@@ -94,23 +111,6 @@ split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& e
             return usage(outputStatus.message().c_str());
     }
 
-    struct FeatureData {
-        double x, y;
-        FeatureID fid;
-    };
-
-    struct SortByX {
-        bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
-            return lhs.x < rhs.x;
-        }
-    };
-
-    struct SortByY {
-        bool operator()(const FeatureData& lhs, const FeatureData& rhs) const {
-            return lhs.y < rhs.y;
-        }
-    };
-
     std::vector<FeatureData> data;
     int count = env.input->getFeatureCount();
     if (count > 0)
@@ -142,7 +142,8 @@ split(const GeoExtent& extent, TDTiles::Tile* parentTile, unsigned depth, Env& e
         return 0;
 
     ResampleFilter resample(error, DBL_MAX);
-    resample.push(features, FilterContext());
+    FilterContext fc(0L, env.input->getFeatureProfile(), extent);
+    resample.push(features, fc);
     
     for(FeatureList::iterator i = features.begin(); i != features.end(); ++i)
     {
@@ -343,7 +344,7 @@ main(int argc, char** argv)
     TDTiles::Asset asset;
     tileset->asset()->version() = "1.0";
 
-    std::ofstream out(outFile);
+    std::ofstream out(outFile.c_str());
     Json::Value tilesetJSON = tileset->getJSON();
     Json::StyledStreamWriter writer;
     writer.write(out, tilesetJSON);

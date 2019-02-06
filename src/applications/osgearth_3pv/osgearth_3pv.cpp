@@ -182,7 +182,8 @@ makeFrustumFromMVP(const osg::Matrix& mv, const osg::Matrix& proj)
 int
 main( int argc, char** argv )
 {
-    putenv("OSGEARTH_REX_DEBUG=1");
+    std::string envstr("OSGEARTH_REX_DEBUG=1");
+    putenv(envstr.c_str());
 
     osg::ArgumentParser arguments( &argc, argv );
 

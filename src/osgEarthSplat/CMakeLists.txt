@@ -17,6 +17,7 @@ set(TARGET_GLSL
     Splat.vert.view.glsl
     Splat.frag.glsl
     Splat.util.glsl
+    GroundCover.glsl
     GroundCover.TCS.glsl
     GroundCover.TES.glsl
     GroundCover.GS.glsl

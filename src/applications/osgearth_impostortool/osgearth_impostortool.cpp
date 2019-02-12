@@ -59,6 +59,8 @@ fail(const std::string& msg, char** argv)
         << "\n  --test                          ; test an impostor"
         << "\n    --model <file>                ; source model (for side-by-side view)"
         << "\n    --texture <file>              ; texture created with --bake"
+        << "\n    --grid                        ; render a scattered grid of impostors"
+        << "\n    --debug                       ; render impostor billboards"
 
         << std::endl;
     return -1;
@@ -76,8 +78,7 @@ createColorCamera(unsigned dim)
     rtt->setClearColor(osg::Vec4(0, 0, 0, 0));
     rtt->setRenderOrder(osg::Camera::PRE_RENDER);
     rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-    //rtt->setImplicitBufferAttachmentMask(0, 0);
-    rtt->attach(osg::Camera::COLOR_BUFFER0, image); //, 4u, 4u);
+    rtt->attach(osg::Camera::COLOR_BUFFER0, image);
     return rtt;
 }
 
@@ -159,7 +160,7 @@ bake_main(int argc, char** argv)
     if (size < 2)
         return fail("--size must be greater than or equal to 2", argv);
 
-    int numFrames = 8;
+    int numFrames = 12;
     arguments.read("--frames", numFrames);
     if (numFrames < 2 || (numFrames & 0x01) != 0)
         return fail("--frames must be an even number greater than 1", argv);
@@ -225,10 +226,15 @@ bake_main(int argc, char** argv)
     osg::Camera* colorCamera = createColorCamera(size);
     colorCamera->addChild(models);
     root->addChild(colorCamera);
+    osg::StateSet* colorSS = colorCamera->getOrCreateStateSet();
+    colorSS->setMode(GL_BLEND, 1);
+    colorSS->setMode(GL_CULL_FACE, 0);
 
     osg::Camera* normalMapCamera = createNormalMapCamera(size);
     normalMapCamera->addChild(models);
     root->addChild(normalMapCamera);
+    osg::StateSet* normalMapSS = normalMapCamera->getOrCreateStateSet();
+    normalMapSS->setMode(GL_CULL_FACE, 0);
 
     VirtualProgram* normalMapVP = new VirtualProgram();
     normalMapCamera->getOrCreateStateSet()->setAttribute(normalMapVP, osg::StateAttribute::OVERRIDE);
@@ -242,7 +248,6 @@ bake_main(int argc, char** argv)
     osg::Matrix proj, view;
     proj.makeOrtho(-halfMaxSpan, -halfMaxSpan + maxSpan * numFrames, -halfMaxSpan, -halfMaxSpan + maxSpan * numFrames, -maxSpan, maxSpan);
     view.makeLookAt(osg::Vec3d(0, 0, 0), osg::Vec3d(0, 1, 0), osg::Vec3d(0, 0, 1));
-    //view.makeLookAt(osg::Vec3d(0, 0, 0), osg::Vec3d(0, 0, -1), osg::Vec3d(0, 1, 0));
 
     colorCamera->setProjectionMatrix(proj);
     colorCamera->setViewMatrix(view);
@@ -265,80 +270,44 @@ bake_main(int argc, char** argv)
         return 0;
 }
 
-
-const char* imposterVSModel =
-"#version 330 \n"
-"uniform float imposterSize; \n"
-"uniform mat4 osg_ViewMatrixInverse; \n"
-"vec3 vector; \n"
-"vec3 vp_Normal; \n"
-
-"vec3 spriteProjection(in vec3 pivotToCameraRayLocal, float frames, vec2 size, vec2 coord) { \n"
-"    vec3 gridVec = pivotToCameraRayLocal; \n"
-//octahedron vector, pivot to camera
-"    vec3 y = normalize(gridVec); \n"
-
-"    vec3 x = normalize(cross(y, vec3(0.0, 1.0, 0.0))); \n"
-"    vec3 z = normalize(cross(x, y)); \n"
-
-"    vec2 uv = ((coord*frames) - 0.5) * 2.0; //-1 to 1  \n"
-
-"    vec3 newX = x * uv.x; \n"
-"    vec3 newZ = z * uv.y; \n"
-
-"    vec2 halfSize = size * 0.5; \n"
-
-"    newX *= halfSize.x; \n"
-"    newZ *= halfSize.y; \n"
-
-"    vec3 res = newX + newZ; \n"
-"    return res; \n"
-"} \n"
-
-"void imposterVSModel(inout vec4 vertexModel) \n"
-"{ \n"
-"    vec3 eyeModel = osg_ViewMatrixInverse[3].xyz;\n"
-"    vector = normalize(eyeModel - vertexModel.xyz); \n"
-
-//"    vec2 offset; \n"
-//"    if      (gl_VertexID == 0) offset = vec2(-1, -1); \n"
-//"    else if (gl_VertexID == 1) offset = vec2( 1, -1); \n"
-//"    else if (gl_VertexID == 2) offset = vec2(-1,  1); \n"
-//"    else                       offset = vec2( 1,  1); \n"
-//
-//"    const float numFrames = 12.0; \n"
-//"    vec2 offsetUV = (offset+1.0)*0.5; \n"
-//"    offsetUV = vec2(offsetUV.x, offsetUV.y)*(1.0/numFrames); \n" // scale to a single frame
-//"    vec3 projected = spriteProjection(vector, numFrames, vec2(imposterSize), offsetUV); \n"
-//
-//"    vec3 pivotOffset = vec3(0.0); \n"
-//"    vec3 vertexOffset = projected + pivotOffset; \n"
-//"    vertexOffset = normalize(eyeModel - vertexOffset); \n"
-//"    vertexOffset += projected; \n"
-//"    vertexOffset -= vertexModel.xyz; \n"
-//"    vertexOffset += pivotOffset; \n"
-//
-//"    vertexModel.xyz += vertexOffset; \n"
-"} \n";
-
 const char* imposterVSView =
 "#version 330 \n"
 "uniform float imposterSize; \n"
 "out vec2 imposterTC; \n"
-"vec3 vector; \n"
+"out vec2 rawTC; \n"
 "vec3 vp_Normal; \n"
 "uniform mat4 osg_ViewMatrixInverse; \n"
 
+// given the octahedral vector, create a local coordinate system
+// in which to create the billboard plane. This returns the offset
+// vector for one of the billboard corners, whichever one is
+// represented by offset.
+"vec3 projectOffset(in vec3 vector, in vec2 offset) \n"
+"{ \n"
+// XYZ is the reference frame of the original viewer that was
+// used to capture the impostor:
+"    vec3 y = normalize(-vector); \n"
+"    vec3 x = normalize(cross(y, vec3(0,0,1))); \n"
+"    vec3 z = normalize(cross(x, y)); \n"
+"    vec3 newX = x * offset.x * imposterSize; \n"
+"    vec3 newZ = z * offset.y * imposterSize; \n"
+"    return newX + newZ; \n"
+"} \n"
+
+// transform from 2D frame-grid coordinates to a 3D octahedral vector
 // Assume normalized input on +Z hemisphere. Output is [0..1]
 "vec2 vec3_to_hemioct(in vec3 v) { \n"
 "    // Project the hemisphere onto the hemi-octahedron, and then into the xy plane \n"
 "    vec2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + v.z)); \n"
 "    // Rotate and scale the center diamond to the unit square \n"
-"    return (vec2(p.x + p.y, p.x - p.y)+1.0)*0.5; \n"
-//"    return vec2(p.x + p.y, p.x - p.y); \n"
+"    return (vec2(p.x + p.y, p.x - p.y)+1.0)*0.5; \n" // [0..1]
+//"    return vec2(p.x + p.y, p.x - p.y); \n" // [-1..1]
 "} \n"
 
-"vec3 hemioct_to_vec3(vec2 e) { \n"
+// transform from 3D octahedral vector to a 3D frame-grid coordinate
+// Input is [0..1]
+"vec3 hemioct_to_vec3(in vec2 t) { \n"
+"    vec2 e = t*2.0-1.0; \n"
 "    // Rotate and scale the unit square back to the center diamond \n"
 "    vec2 temp = vec2(e.x + e.y, e.x - e.y) * 0.5; \n"
 "    vec3 v = vec3(temp, 1.0 - abs(temp.x) - abs(temp.y)); \n"
@@ -346,48 +315,59 @@ const char* imposterVSView =
 "} \n"
 
 "void imposterVSView(inout vec4 vertexView) { \n"
+
+// number of frames in each dimension - make this a define or something
 "    const float numFrames = 12.0; \n"
+
+// calcuate the billboard corner offset vector for the current vertex:
 "    vec2 offset; \n"
 "    if      (gl_VertexID == 0) offset = vec2(-1, -1); \n"
 "    else if (gl_VertexID == 1) offset = vec2( 1, -1); \n"
 "    else if (gl_VertexID == 2) offset = vec2(-1,  1); \n"
 "    else                       offset = vec2( 1,  1); \n"
 
-"    vec2 octo = vec3_to_hemioct(vector); \n"
-"    octo = floor(octo*numFrames)/numFrames; \n" // quantize
-"    float t = (0.5/numFrames); \n" // half the size of a frame
+// get grid vector is the vector from the model to the camera
+// that will get mapped to 2D octahedral space. I tried to do 
+// this in view space but it didn't work - need to revisit that.
+"    vec3 eyeWorld = osg_ViewMatrixInverse[3].xyz;\n"
+"    vec4 vertexWorld = osg_ViewMatrixInverse * vertexView; \n"
+"    vec3 modelToCamera = normalize(eyeWorld - vertexWorld.xyz); \n"
 
-"    // establish the texture coordinates \n"
+// transform to 2D frame-grid space
+"    vec2 octo = vec3_to_hemioct(modelToCamera); \n"
+// quantize to the nearest frame
+"    octo = floor(octo*numFrames)/numFrames; \n"
+// calculate 1/2 the size of one frame:
+"    float t = (0.5/numFrames); \n"
+
+// establish the texture coordinates:
 "    imposterTC = vec2(t)+octo+(offset*t); \n"
 
-"    // next derive the original transform used to capture the impostor \n"
-//"    vec3 quantizedVector = hemioct_to_vec3(octo); \n"
-//"    vec3 F = -quantizedVector; \n"
-//"    vec3 R = cross(F, vp_Normal); \n"
-//"    vec3 U = cross(F, R); \n"
-//"    mat3 xform = mat3(R, U, -F); \n"
+// use the octahedral vector to establish a reference frame for
+// creating the billboard in model space, then xform that into
+// view space and create the billboard by offsetting the vertices:
+"    vec3 quantizedVector = hemioct_to_vec3(octo); \n"
+"    vec3 vertexOffset = gl_NormalMatrix * projectOffset(quantizedVector, offset); \n"
+"    vertexView.xyz += vertexOffset; \n"
 
-// rotate the billboard to match the impostor view matrix (?)
-//"    vec2 a = vec2(0,1); \n"
-"    vec2 b = normalize(vp_Normal.xy); \n"
-//"    mat2 r = mat2(a.x*b.x+a.y*b.y, a.x*b.y-b.x*a.y, -(a.x*b.y-b.x*a.y), a.x*b.x+a.y*b.y); \n"
-"    mat2 r = mat2(b.y, -b.x, b.x, b.y); \n"
-"    offset = r*offset; \n"
-
-"    vertexView.xy += offset*imposterSize; \n"
+"    rawTC = (offset+1.0)*0.5; \n" // debugging
 "} \n";
 
 const char* imposterFS =
 "#version 330 \n"
+"#pragma import_defines(IMPOSTOR_DEBUG) \n"
 "uniform sampler2D imposterTex; \n"
 "in vec2 imposterTC; \n"
-"in vec3 aaa; \n"
+"in vec2 rawTC; \n"
 "void imposterFS(inout vec4 color) { \n"
 "    vec4 texel = texture(imposterTex, imposterTC); \n"
 "    color = texel; \n"
-"    if (texel.a < 0.15) discard; \n"
-//"    color.a = 1; color.r = imposterTC.s; color.g = imposterTC.t; color.b = 0; \n"
-//"    color.rgb = aaa; \n" //(aaa+1.0)*0.5; \n"
+"#ifdef IMPOSTOR_DEBUG \n"
+"    // debugging \n"
+"    if (any(greaterThan(abs(rawTC*2.0-1.0), vec2(.99)))) color=vec4(1); \n"
+"    if (rawTC.t > .99) color=vec4(1,0,0,1); \n"
+"#endif \n"
+"    if (color.a < 0.15) discard; \n"
 "} \n";
 
 int
@@ -408,6 +388,10 @@ test_main(int argc, char** argv)
     std::string modelFile;
     if (!arguments.read("--model", modelFile))
         return fail("Missing required --model argument", argv);
+
+    bool grid = arguments.read("--grid");
+    bool random = arguments.read("--random");
+    bool debug = arguments.read("--debug");
 
     osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile(modelFile);
     if (!model.valid())
@@ -444,52 +428,64 @@ test_main(int argc, char** argv)
     imposterGeom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     osg::StateSet* imposterSS = imposterGeom->getOrCreateStateSet();
     VirtualProgram* geomVP = VirtualProgram::getOrCreate(imposterSS);
-    geomVP->setFunction("imposterVSModel", imposterVSModel, ShaderComp::LOCATION_VERTEX_MODEL);
     geomVP->setFunction("imposterVSView", imposterVSView, ShaderComp::LOCATION_VERTEX_VIEW);
     geomVP->setFunction("imposterFS", imposterFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
     imposterSS->setTextureAttribute(0, tex, osg::StateAttribute::ON);
     imposterSS->addUniform(imposterTexU);
     imposterSS->addUniform(imposterSizeU);
     imposterSS->setMode(GL_BLEND, 1);
+    if (debug) imposterSS->setDefine("IMPOSTOR_DEBUG");
 
     // Build the scene graph:
     osg::Group* root = new osg::Group();
 
-    double offset = model->getBound().radius();
+    double offset = model->getBound().radius() * 2.0;
 
-#if 1
-    const double DIM = 64;
     Random prng;
-    for(double i = -offset*DIM; i<= offset*DIM; i += offset)
-    {
-        for (double j = -offset * DIM; j <= offset * DIM; j += offset)
-        {
-            //osg::PositionAttitudeTransform* modelxform = new osg::PositionAttitudeTransform();
-            //modelxform->setPosition(osg::Vec3d(-offset, 0.0, 0.0));
-            //modelxform->addChild(model.get());
-            //root->addChild(modelxform);
 
-            osg::Quat q;
-            q.makeRotate(prng.next()*osg::PI*2.0, osg::Vec3d(0,0,1));
+    if (grid)
+    {
+        const double DIM = 128;
+        for(double i = -offset*DIM; i<= offset*DIM; i += offset)
+        {
+            for (double j = -offset * DIM; j <= offset * DIM; j += offset)
+            {
+                double x = i + offset*(prng.next()-0.5), y = j + offset*(prng.next()-0.5);
+                osg::PositionAttitudeTransform* imposterxform = new osg::PositionAttitudeTransform();
+                imposterxform->setPosition(osg::Vec3d(x, y, 0.0));
+                imposterxform->addChild(imposterGeom);
+                root->addChild(imposterxform);
+            }
+        }
+    }
+    else if (random)
+    {
+        const double DIM = 256;
+        const double range = offset * DIM;
+        for(int i=0; i<DIM*DIM; ++i)
+        {
+            double x = -range / 2 + (prng.next()*range);
+            double y = -range / 2 + (prng.next()*range);
 
             osg::PositionAttitudeTransform* imposterxform = new osg::PositionAttitudeTransform();
-            imposterxform->setPosition(osg::Vec3d(i, j, 0.0));
-            imposterxform->setAttitude(q);
+            imposterxform->setPosition(osg::Vec3d(x, y, 0.0));
             imposterxform->addChild(imposterGeom);
             root->addChild(imposterxform);
         }
     }
-#else
-    osg::PositionAttitudeTransform* modelxform = new osg::PositionAttitudeTransform();
-    modelxform->setPosition(osg::Vec3d(-offset, 0.0, 0.0));
-    modelxform->addChild(model.get());
-    root->addChild(modelxform);
+
+    else
+    {
+        osg::PositionAttitudeTransform* modelxform = new osg::PositionAttitudeTransform();
+        modelxform->setPosition(osg::Vec3d(-offset, 0.0, 0.0));
+        modelxform->addChild(model.get());
+        root->addChild(modelxform);
     
-    osg::PositionAttitudeTransform* imposterxform = new osg::PositionAttitudeTransform();
-    imposterxform->setPosition(osg::Vec3d(offset, 0.0, 0.0));
-    imposterxform->addChild(imposterGeom);
-    root->addChild(imposterxform);
-#endif
+        osg::PositionAttitudeTransform* imposterxform = new osg::PositionAttitudeTransform();
+        imposterxform->setPosition(osg::Vec3d(offset, 0.0, 0.0));
+        imposterxform->addChild(imposterGeom);
+        root->addChild(imposterxform);
+    }
 
     // default uniform values:
     GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());

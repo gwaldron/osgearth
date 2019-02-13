@@ -42,6 +42,10 @@ namespace osgEarth
         InstancingVertex = "Instancing.vert.glsl";
         _sources[InstancingVertex] = "@Instancing.vert.glsl@";
 
+        // Impostors
+        Impostors = "Impostors.glsl";
+        _sources[Impostors] = "@Impostors.glsl@";
+
         // LineDrawable
         LineDrawable = "LineDrawable.glsl";
         _sources[LineDrawable] = "@LineDrawable.glsl@";    

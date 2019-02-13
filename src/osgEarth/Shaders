@@ -36,6 +36,7 @@ namespace osgEarth
         std::string DepthOffsetVertex;
         std::string DrapingVertex, DrapingFragment;
         std::string GPUClampingVertex, GPUClampingFragment, GPUClampingVertexLib;
+        std::string Impostors;
         std::string InstancingVertex;
         std::string LineDrawable;
         std::string PointDrawable;

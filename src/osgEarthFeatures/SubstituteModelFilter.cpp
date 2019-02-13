@@ -31,6 +31,7 @@
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Shaders>
 
 #include <osg/AutoTransform>
 #include <osg/Drawable>
@@ -72,6 +73,7 @@ SubstituteModelFilter::SubstituteModelFilter( const Style& style ) :
 _style                ( style ),
 _cluster              ( false ),
 _useDrawInstanced     ( true ),
+_useImpostors         ( true ),
 _merge                ( true ),
 _normalScalingRequired( false ),
 _instanceCache        ( false )     // cache per object so MT not required
@@ -121,11 +123,12 @@ SubstituteModelFilter::findResource(const URI&            uri,
 }
 
 bool
-SubstituteModelFilter::process(const FeatureList&           features,
-                               const InstanceSymbol*        symbol,
-                               Session*                     session,
-                               osg::Group*                  attachPoint,
-                               FilterContext&               context )
+SubstituteModelFilter::process(const FeatureList&    features,
+                               const InstanceSymbol* symbol,
+                               Session*              session,
+                               osg::Group*           attachPoint,
+                               osg::Geometry*        impostorGeom,
+                               FilterContext&        context )
 {
     // Establish SRS information:
     bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
@@ -159,6 +162,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
         scaleYEx  = *modelSymbol->scaleY();
         scaleZEx  = *modelSymbol->scaleZ();
     }
+
+    unsigned count = 0;
 
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
@@ -323,7 +328,15 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     osg::MatrixTransform* xform = new osg::MatrixTransform();
                     xform->setMatrix( mat );
                     xform->setDataVariance( osg::Object::STATIC );
-                    xform->addChild( model.get() );
+                    if (impostorGeom)
+                    {
+                        xform->addChild(impostorGeom);
+                    }
+                    else
+                    {
+                        xform->addChild( model.get() );
+                    }
+
                     attachPoint->addChild( xform );
 
                     // Only tag nodes if we aren't using clustering.
@@ -339,6 +352,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         if ( !name.empty() )
                             xform->setName( name );
                     }
+
+                    ++count;
                 }
             }
         }
@@ -371,6 +386,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // install a shader program to render draw-instanced.
         DrawInstanced::install( attachPoint->getOrCreateStateSet() );
     }
+
+    OE_INFO << count << std::endl;
 
     return true;
 }
@@ -473,13 +490,60 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     osg::Group* group = createDelocalizeGroup();
 
-    osg::ref_ptr< osg::Group > attachPoint = new osg::Group;
+    osg::ref_ptr<osg::Group> attachPoint;
+    osg::ref_ptr<osg::Geometry> impostorGeom;
+    
+    if (_useImpostors)
+    {
+        osg::ref_ptr<osg::Vec3Array> impostorVerts;
+        osg::ref_ptr<osg::Vec3Array> impostorNormals;
+
+        impostorGeom = new osg::Geometry();
+        impostorGeom->setUseVertexBufferObjects(true);
+        impostorGeom->setUseDisplayList(false);
+        impostorGeom->setCullingActive(false);
+
+        impostorVerts = new osg::Vec3Array(4);
+        impostorGeom->setVertexArray(impostorVerts);
+
+        impostorNormals = new osg::Vec3Array();
+        impostorNormals->assign(4, osg::Vec3(0,0,1));
+        impostorGeom->setNormalArray(impostorNormals);
+
+        impostorGeom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, 4)); //, features.size()));
+        
+        osg::StateSet* impostorSS = impostorGeom->getOrCreateStateSet();
+
+        VirtualProgram* vp = VirtualProgram::getOrCreate(impostorSS);
+        osgEarth::Shaders package;
+        package.load(vp, package.Impostors);
+
+        osg::Uniform* impostorSizeU = new osg::Uniform("impostorSize", (float)(20.0f / 2.0f));
+
+        // Set up the imposter texture:
+        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile("out.png");
+        if (!image.valid())
+            abort();
+        osg::Texture2D* tex = new osg::Texture2D(image.get());
+        tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
+        tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+        tex->setWrap(tex->WRAP_S, tex->CLAMP_TO_EDGE);
+        tex->setWrap(tex->WRAP_T, tex->CLAMP_TO_EDGE);
+
+        osg::Uniform* impostorTexU = new osg::Uniform("imposterTex", (int)0);
+        impostorSS->addUniform(impostorTexU);
+        impostorSS->addUniform(impostorSizeU);
+        impostorSS->setTextureAttribute(0, tex, 1);
+    }
+
+    attachPoint = new osg::Group;
     group->addChild(attachPoint.get());
 
     // Process the feature set, using clustering if requested
     bool ok = true;
 
-    process( features, symbol.get(), context.getSession(), attachPoint.get(), newContext );
+    process( features, symbol.get(), context.getSession(), attachPoint.get(), impostorGeom.get(), newContext );
+
     if (_cluster)
     {
         // Extract the unclusterable things

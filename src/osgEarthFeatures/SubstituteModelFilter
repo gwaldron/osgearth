@@ -72,6 +72,10 @@ namespace osgEarth { namespace Features
         void setUseDrawInstanced( bool value ) { _useDrawInstanced = value; }
         bool getUseDrawInstanced() const { return _useDrawInstanced; }
 
+        /** Whether to use impostors instead of model sub */
+        void setUseImpostors(bool value) { _useImpostors = value; }
+        bool getUseImpostors() const { return _useImpostors; }
+
         /** Whether to merge marker geometries into geodes */
         void setMergeGeometry( bool value ) { _merge = value; }
         bool getMergeGeometry() const { return _merge; }
@@ -87,6 +91,7 @@ namespace osgEarth { namespace Features
         Style                         _style;
         bool                          _cluster;
         bool                          _useDrawInstanced;
+        bool                          _useImpostors;
         bool                          _merge;
         StringExpression              _featureNameExpr;
         osg::ref_ptr<ResourceLibrary> _resourceLib;
@@ -95,7 +100,7 @@ namespace osgEarth { namespace Features
         typedef LRUCache<URI, osg::ref_ptr<InstanceResource> > InstanceCache;
         InstanceCache _instanceCache;
         
-        bool process(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
+        bool process(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, osg::Geometry* imp, FilterContext& context );
         
         bool findResource( const URI& instanceURI, const InstanceSymbol* symbol, FilterContext& context, std::set<URI>& missing, osg::ref_ptr<InstanceResource>& output );
     };

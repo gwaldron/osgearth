@@ -46,6 +46,7 @@ set(TARGET_GLSL
     GPUClamping.vert.glsl
     GPUClamping.vert.lib.glsl
     GPUClamping.frag.glsl
+    Impostors.glsl
     Instancing.vert.glsl
     LineDrawable.glsl
     PhongLighting.vert.glsl
@@ -121,6 +122,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    Impostors
     IntersectionPicker
     IOTypes
     JsonUtils
@@ -297,6 +299,7 @@ set(TARGET_SRC
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    Impostors.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
     JsonUtils.cpp

@@ -30,6 +30,8 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Random>
+#include <osgEarthUtil/Controls>
+#include <osgEarthUtil/ExampleResources>
 
 #include <osg/Texture2D>
 #include <osg/Camera>
@@ -41,6 +43,7 @@
 #include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
+namespace ui = osgEarth::Util::Controls;
 
 #define LC "[impostertool] "
 
@@ -64,6 +67,31 @@ fail(const std::string& msg, char** argv)
 
         << std::endl;
     return -1;
+}
+
+struct App
+{
+    ui::HSliderControl* heading;
+    osg::PositionAttitudeTransform* impostorxform;
+    void setHeading() {
+        osg::Quat q;
+        q.makeRotate(heading->getValue(), osg::Vec3(1,0,0));
+        impostorxform->setAttitude(q);
+    }
+};
+
+OE_UI_HANDLER(setHeading);
+
+ui::Control* makeUI(App& app)
+{
+    ui::Grid* grid = new ui::Grid();
+    int r=0;
+    grid->setControl(0, r, new ui::LabelControl("Angle"));
+    app.heading = grid->setControl(1, r, new ui::HSliderControl(-osg::PI, osg::PI, 0, new setHeading(app)));
+    app.heading->setHorizFill(true, 300);
+    ++r;
+
+    return grid;
 }
 
 osg::Camera*
@@ -321,20 +349,27 @@ const char* imposterVSView =
 
 // calcuate the billboard corner offset vector for the current vertex:
 "    vec2 offset; \n"
-"    if      (gl_VertexID == 0) offset = vec2(-1, -1); \n"
-"    else if (gl_VertexID == 1) offset = vec2( 1, -1); \n"
-"    else if (gl_VertexID == 2) offset = vec2(-1,  1); \n"
-"    else                       offset = vec2( 1,  1); \n"
+"    int seq = gl_VertexID & 0x03; \n"
+"    if      (seq == 0) offset = vec2(-1, -1); \n"
+"    else if (seq == 1) offset = vec2( 1, -1); \n"
+"    else if (seq == 2) offset = vec2(-1,  1); \n"
+"    else               offset = vec2( 1,  1); \n"
 
 // get grid vector is the vector from the model to the camera
 // that will get mapped to 2D octahedral space. I tried to do 
 // this in view space but it didn't work - need to revisit that.
-"    vec3 eyeWorld = osg_ViewMatrixInverse[3].xyz;\n"
-"    vec4 vertexWorld = osg_ViewMatrixInverse * vertexView; \n"
-"    vec3 modelToCamera = normalize(eyeWorld - vertexWorld.xyz); \n"
+// This works, but it slow b/c of the matrix inversion. Find
+// another way.
+"mat4 viewToInstance = inverse(gl_ModelViewMatrix); \n"
+"vec4 cameraInstance = viewToInstance * vec4(0, 0, 0, 1); \n"
+"vec3 instanceToCamera = normalize(cameraInstance.xyz); \n"
+
+//"    mat4 viewToInstance = inverse(gl_ModelViewMatrix); \n"
+//"    vec4 eyeInstance = viewToInstance * vec4(0,0,0,1); \n"
+//"    vec3 instanceToCamera = normalize(eyeInstance.xyz - vec3(0)); \n"
 
 // transform to 2D frame-grid space
-"    vec2 octo = vec3_to_hemioct(modelToCamera); \n"
+"    vec2 octo = vec3_to_hemioct(instanceToCamera); \n"
 // quantize to the nearest frame
 "    octo = floor(octo*numFrames)/numFrames; \n"
 // calculate 1/2 the size of one frame:
@@ -347,8 +382,14 @@ const char* imposterVSView =
 // creating the billboard in model space, then xform that into
 // view space and create the billboard by offsetting the vertices:
 "    vec3 quantizedVector = hemioct_to_vec3(octo); \n"
-"    vec3 vertexOffset = gl_NormalMatrix * projectOffset(quantizedVector, offset); \n"
-"    vertexView.xyz += vertexOffset; \n"
+//"    vec3 vertexOffset = gl_NormalMatrix * projectOffset(quantizedVector, offset); \n"
+"    vec3 projected = projectOffset(quantizedVector, offset); \n"
+"    vec3 vertexOffset = projected; \n"
+"    vertexOffset = normalize(cameraInstance.xyz-vertexOffset); \n"
+"    vertexOffset += projected; \n"
+"    vertexOffset -= gl_Vertex.xyz; \n"
+
+"    vertexView.xyz += gl_NormalMatrix*vertexOffset; \n"
 
 "    rawTC = (offset+1.0)*0.5; \n" // debugging
 "} \n";
@@ -427,6 +468,7 @@ test_main(int argc, char** argv)
     imposterGeom->setNormalArray(normals);
     imposterGeom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     osg::StateSet* imposterSS = imposterGeom->getOrCreateStateSet();
+
     VirtualProgram* geomVP = VirtualProgram::getOrCreate(imposterSS);
     geomVP->setFunction("imposterVSView", imposterVSView, ShaderComp::LOCATION_VERTEX_VIEW);
     geomVP->setFunction("imposterFS", imposterFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
@@ -435,6 +477,8 @@ test_main(int argc, char** argv)
     imposterSS->addUniform(imposterSizeU);
     imposterSS->setMode(GL_BLEND, 1);
     if (debug) imposterSS->setDefine("IMPOSTOR_DEBUG");
+
+    App app;
 
     // Build the scene graph:
     osg::Group* root = new osg::Group();
@@ -450,11 +494,16 @@ test_main(int argc, char** argv)
         {
             for (double j = -offset * DIM; j <= offset * DIM; j += offset)
             {
+                osg::Quat rot;
+                rot.makeRotate(-osg::PI + prng.next()*2.0*osg::PI, osg::Vec3(1,0,0));
+                float scale = 1.0 + prng.next()*2.5; 
                 double x = i + offset*(prng.next()-0.5), y = j + offset*(prng.next()-0.5);
-                osg::PositionAttitudeTransform* imposterxform = new osg::PositionAttitudeTransform();
-                imposterxform->setPosition(osg::Vec3d(x, y, 0.0));
-                imposterxform->addChild(imposterGeom);
-                root->addChild(imposterxform);
+                osg::PositionAttitudeTransform* impostorxform = new osg::PositionAttitudeTransform();
+                impostorxform->setPosition(osg::Vec3d(x, y, 0.0));
+                impostorxform->setAttitude(rot);
+                impostorxform->setScale(osg::Vec3(scale,scale,scale));
+                impostorxform->addChild(imposterGeom);
+                root->addChild(impostorxform);
             }
         }
     }
@@ -485,6 +534,7 @@ test_main(int argc, char** argv)
         imposterxform->setPosition(osg::Vec3d(offset, 0.0, 0.0));
         imposterxform->addChild(imposterGeom);
         root->addChild(imposterxform);
+        app.impostorxform = imposterxform;
     }
 
     // default uniform values:
@@ -499,7 +549,12 @@ test_main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::RecordCameraPathHandler());
     viewer.addEventHandler(new osgViewer::ScreenCaptureHandler());
 
+
     viewer.setSceneData(root);
+
+    ui::ControlCanvas* canvas = ui::ControlCanvas::get(&viewer);
+    canvas->addControl(makeUI(app));
+
     return viewer.run();
 }
 

@@ -518,22 +518,42 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         osgEarth::Shaders package;
         package.load(vp, package.Impostors);
 
-        osg::Uniform* impostorSizeU = new osg::Uniform("impostorSize", (float)(20.0f / 2.0f));
+        osg::Uniform* impostorRadiusU = new osg::Uniform("oe_impostorRadius", (float)14.5);
 
-        // Set up the imposter texture:
+        // Set up the impostor texture atlas:
         osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile("out.png");
         if (!image.valid())
+        {
+            OE_WARN << "Can't load impostor atlas" << std::endl;
             abort();
+        }
         osg::Texture2D* tex = new osg::Texture2D(image.get());
         tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
         tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
         tex->setWrap(tex->WRAP_S, tex->CLAMP_TO_EDGE);
         tex->setWrap(tex->WRAP_T, tex->CLAMP_TO_EDGE);
 
-        osg::Uniform* impostorTexU = new osg::Uniform("imposterTex", (int)0);
+        osg::Uniform* impostorTexU = new osg::Uniform("impostorTex", (int)0);
         impostorSS->addUniform(impostorTexU);
-        impostorSS->addUniform(impostorSizeU);
+        impostorSS->addUniform(impostorRadiusU);
         impostorSS->setTextureAttribute(0, tex, 1);
+
+        // Set up the impostor normal map atlas:
+        osg::ref_ptr<osg::Image> normalmap = osgDB::readRefImageFile("out.normal.png");
+        if (!normalmap.valid())
+        {
+            OE_WARN << "Can't load impostor normal map" << std::endl;
+            abort();
+        }
+        osg::Texture2D* normalMapTex = new osg::Texture2D(normalmap.get());
+        normalMapTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+        normalMapTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+        normalMapTex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+        normalMapTex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+
+        osg::Uniform* impostorNormalMapU = new osg::Uniform("impostorNormalMap", (int)1);
+        impostorSS->addUniform(impostorNormalMapU);
+        impostorSS->setTextureAttribute(1, normalMapTex, 1);
     }
 
     attachPoint = new osg::Group;

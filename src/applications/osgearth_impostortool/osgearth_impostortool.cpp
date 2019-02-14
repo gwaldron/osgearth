@@ -149,7 +149,7 @@ const char* normalMapVS =
     "#version 330 \n"
     "out vec3 modelNormal; \n"
     "void normalMapVS(inout vec4 vertex) { \n"
-    "    modelNormal = gl_Normal; \n"
+    "    modelNormal = normalize(gl_Normal); \n"
     "} \n";
 
 const char* normalMapFS =
@@ -219,8 +219,13 @@ bake_main(int argc, char** argv)
     modelPAT->setPosition(-modelBB.center());
     modelPAT->addChild(model);
 
+    double radius = modelBB.radius();
+    double diameter = 2.0*radius;
+
     // number of frames in each dimension.
     double unitFrameSize = 1.0 / (double)numFrames;
+
+    double spacing = diameter/sqrt(2.0);
 
     osg::Group* models = new osg::Group();
     for (int i = 0; i < numFrames; ++i)
@@ -228,7 +233,7 @@ bake_main(int argc, char** argv)
         for (int j = 0; j < numFrames; ++j)
         {
             osg::PositionAttitudeTransform* xform = new osg::PositionAttitudeTransform();
-            xform->setPosition(osg::Vec3d(maxSpan*i, 0, maxSpan*j));
+            xform->setPosition(osg::Vec3d(spacing*i, 0, spacing*j));
             xform->addChild(modelPAT);
 
             models->addChild(xform);
@@ -274,7 +279,7 @@ bake_main(int argc, char** argv)
 
 
     osg::Matrix proj, view;
-    proj.makeOrtho(-halfMaxSpan, -halfMaxSpan + maxSpan * numFrames, -halfMaxSpan, -halfMaxSpan + maxSpan * numFrames, -maxSpan, maxSpan);
+    proj.makeOrtho(-spacing/2, -spacing/2 + spacing*numFrames, -spacing/2, -spacing/2 + spacing*numFrames, -diameter, diameter);
     view.makeLookAt(osg::Vec3d(0, 0, 0), osg::Vec3d(0, 1, 0), osg::Vec3d(0, 0, 1));
 
     colorCamera->setProjectionMatrix(proj);

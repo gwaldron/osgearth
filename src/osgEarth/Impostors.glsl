@@ -65,7 +65,7 @@ vec3 hemioct_to_vec3(in vec2 t)
 void oe_Impostor_VS(inout vec4 vertexView)
 {
     // number of frames in each dimension - make this a define or something
-    const float numFrames = 12.0;
+    const float numFrames = 16; //24; //12.0;
 
     // calcuate the billboard corner offset vector for the current vertex:
     vec2 offset;
@@ -147,7 +147,11 @@ void oe_Impostor_VS(inout vec4 vertexView)
 
     // encode the normal matrix so we can sample the normal map
     // in the fragment shader.
+#ifdef USE_INSTANCING
     oe_normalMatrix = gl_NormalMatrix * oe_instanceNormalMatrix;
+#else
+    oe_normalMatrix = gl_NormalMatrix;
+#endif
 
 #ifdef IMPOSTOR_DEBUG
     rawTC = (offset+1.0)*0.5;

@@ -122,7 +122,6 @@ createNormalMapCamera(unsigned dim)
     rtt->setClearColor(osg::Vec4(0, 0, 0, 0));
     rtt->setRenderOrder(osg::Camera::PRE_RENDER);
     rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-    rtt->setImplicitBufferAttachmentMask(0, 0);
     rtt->attach(osg::Camera::COLOR_BUFFER0, image);
     return rtt;
 }
@@ -216,6 +215,7 @@ bake_main(int argc, char** argv)
 
     // offset the model so the origin is at its bounding box centroid.
     osg::PositionAttitudeTransform* modelPAT = new osg::PositionAttitudeTransform();
+    osg::Vec3 center(0.0, modelBB.center().y(), modelBB.center().z());
     modelPAT->setPosition(-modelBB.center());
     modelPAT->addChild(model);
 
@@ -254,6 +254,7 @@ bake_main(int argc, char** argv)
     }
 
     osg::Group* root = new osg::Group();
+    root->getOrCreateStateSet()->setRenderBinDetails(11, "DepthSortedBin");
     root->addChild(models);
 
     osg::Camera* colorCamera = createColorCamera(size);
@@ -261,13 +262,13 @@ bake_main(int argc, char** argv)
     root->addChild(colorCamera);
     osg::StateSet* colorSS = colorCamera->getOrCreateStateSet();
     colorSS->setMode(GL_BLEND, 1);
-    colorSS->setMode(GL_CULL_FACE, 0);
+    //colorSS->setMode(GL_CULL_FACE, 0);
 
     osg::Camera* normalMapCamera = createNormalMapCamera(size);
     normalMapCamera->addChild(models);
     root->addChild(normalMapCamera);
     osg::StateSet* normalMapSS = normalMapCamera->getOrCreateStateSet();
-    normalMapSS->setMode(GL_CULL_FACE, 0);
+    //normalMapSS->setMode(GL_CULL_FACE, 0);
 
     VirtualProgram* normalMapVP = new VirtualProgram();
     normalMapCamera->getOrCreateStateSet()->setAttribute(normalMapVP, osg::StateAttribute::OVERRIDE);
@@ -279,7 +280,7 @@ bake_main(int argc, char** argv)
 
 
     osg::Matrix proj, view;
-    proj.makeOrtho(-spacing/2, -spacing/2 + spacing*numFrames, -spacing/2, -spacing/2 + spacing*numFrames, -diameter, diameter);
+    proj.makeOrtho(-spacing/2, -spacing/2 + spacing*numFrames, -spacing/2, -spacing/2 + spacing*numFrames, -diameter*10, diameter*10);
     view.makeLookAt(osg::Vec3d(0, 0, 0), osg::Vec3d(0, 1, 0), osg::Vec3d(0, 0, 1));
 
     colorCamera->setProjectionMatrix(proj);
@@ -368,10 +369,6 @@ const char* imposterVSView =
 "mat4 viewToInstance = inverse(gl_ModelViewMatrix); \n"
 "vec4 cameraInstance = viewToInstance * vec4(0, 0, 0, 1); \n"
 "vec3 instanceToCamera = normalize(cameraInstance.xyz); \n"
-
-//"    mat4 viewToInstance = inverse(gl_ModelViewMatrix); \n"
-//"    vec4 eyeInstance = viewToInstance * vec4(0,0,0,1); \n"
-//"    vec3 instanceToCamera = normalize(eyeInstance.xyz - vec3(0)); \n"
 
 // transform to 2D frame-grid space
 "    vec2 octo = vec3_to_hemioct(instanceToCamera); \n"

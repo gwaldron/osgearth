@@ -15,6 +15,7 @@ mat3 oe_instanceNormalMatrix;   // from Instancing.glsl
 // send to frag shader:
 out vec2 oe_impostorTC;
 out mat3 oe_normalMatrix;
+out vec2 oe_impostorBlend;
 
 #ifdef IMPOSTOR_DEBUG
 out vec2 rawTC;
@@ -101,17 +102,20 @@ void oe_Impostor_VS(inout vec4 vertexView)
     
     
     // transform to 2D frame-grid space
-    vec2 octo = vec3_to_hemioct(octahedralVector);
+    vec2 octa = vec3_to_hemioct(octahedralVector);
 
     // quantize to the nearest octahedral vertex:
     float numFramesMinusOne = numFrames-1.0;
-    octo = floor(octo*numFramesMinusOne)/ numFramesMinusOne;
+    vec2 octaQuantized = floor(octa*numFramesMinusOne)/ numFramesMinusOne;
 
     // calculate 1/2 the size of one frame:
     float t = (0.5/numFrames);
 
+    // blending factor for adjacent frames (TBD)
+    //oe_impostorBlend = (octa - octaQuantized) / t;
+
     // derive the texture coordinate at the center of the frame:
-    vec2 tc = octo*numFramesMinusOne/numFrames + t;
+    vec2 tc = octaQuantized *numFramesMinusOne/numFrames + t;
 
     // establish the texture coordinates:
     oe_impostorTC = tc +(offset*t);
@@ -119,10 +123,10 @@ void oe_Impostor_VS(inout vec4 vertexView)
     // use the octahedral vector to establish a reference frame for
     // creating the billboard in model space, then xform that into
     // view space and create the billboard by offsetting the vertices:
-    vec3 quantizedVector = hemioct_to_vec3(octo);
+    vec3 octahedralVectorQuantized = hemioct_to_vec3(octaQuantized);
 
 #if 1
-    vec3 vertexOffset = projectOffset(quantizedVector, offset, oe_impostorRadius) + pivotOffset;
+    vec3 vertexOffset = projectOffset(octahedralVectorQuantized, offset, oe_impostorRadius) + pivotOffset;
 #else
     vec3 projectedOffset = projectOffset(quantizedVector, offset, halfSize); // offset projected into object space
     vec3 vertexOffset = projectedOffset + pivotOffset;
@@ -181,7 +185,7 @@ in vec2 rawTC;
 #endif
 
 void oe_Impostor_FS(inout vec4 color)
-{
+{    
     vec4 texel = texture(impostorTex, oe_impostorTC);
     color = texel;
 

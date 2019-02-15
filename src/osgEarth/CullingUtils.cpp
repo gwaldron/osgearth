@@ -1099,6 +1099,7 @@ CullDebugger::dumpRenderBin(osgUtil::RenderBin* bin) const
     Config conf("RenderBin");
     if ( !bin->getName().empty() )
         conf.set("Name", bin->getName());
+    conf.set("SortMode", Stringify()<<bin->getSortMode());
     if (bin->getStateSet())
         conf.set("StateSet", dumpStateSet(bin->getStateSet()));
 

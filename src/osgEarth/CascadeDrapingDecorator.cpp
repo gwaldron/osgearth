@@ -352,6 +352,11 @@ namespace
             : osg::Camera(), _parentCamera(parentCamera), _dm(dm)
         {
             setCullingActive( false );
+            osg::StateSet* ss = getOrCreateStateSet();
+
+            // do not sort geometry - draw it in traversal order without depth testing
+            ss->setMode(GL_DEPTH_TEST, 0);
+            ss->setRenderBinDetails(1, "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
         }
 
     public: // osg::Node
@@ -360,6 +365,27 @@ namespace
         {
             DrapingCullSet& cullSet = _dm.get(_parentCamera);
             cullSet.accept( nv );
+
+            // manhandle the render bin sorting, since OSG ignores the override
+            // in the render bin details above
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            if (cv)
+            {
+                applyTraversalOrderSorting(cv->getCurrentRenderBin());
+            }
+        }
+
+        void applyTraversalOrderSorting(osgUtil::RenderBin* bin)
+        {
+            bin->setSortMode(osgUtil::RenderBin::TRAVERSAL_ORDER);
+
+            for (osgUtil::RenderBin::RenderBinList::iterator i = bin->getRenderBinList().begin();
+                i != bin->getRenderBinList().end();
+                ++i)
+            {
+                osgUtil::RenderBin* child = i->second.get();
+                applyTraversalOrderSorting(child);
+            }
         }
 
     protected:

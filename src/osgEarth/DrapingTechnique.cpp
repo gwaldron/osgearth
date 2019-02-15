@@ -42,6 +42,22 @@ using namespace osgEarth;
 
 namespace
 {
+    struct RenderBinSortingVisitor
+    {
+        void apply(osgUtil::RenderBin* bin)
+        {
+            bin->setSortMode(osgUtil::RenderBin::TRAVERSAL_ORDER);
+
+            for(osgUtil::RenderBin::RenderBinList::iterator i = bin->getRenderBinList().begin();
+                i != bin->getRenderBinList().end();
+                ++i)
+            {
+                osgUtil::RenderBin* child = i->second.get();
+                apply(child);
+            }
+        }
+    };
+
     /**
      * A camera that will traverse the per-thread DrapingCullSet instead of
      * its own children.
@@ -52,6 +68,9 @@ namespace
         DrapingCamera(DrapingManager& dm) : osg::Camera(), _dm(dm), _camera(0L)
         {
             setCullingActive( false );
+            osg::StateSet* ss = getOrCreateStateSet();
+            ss->setMode(GL_DEPTH_TEST, 0);
+            ss->setRenderBinDetails(1, "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
         }
 
     public: // osg::Node
@@ -66,6 +85,27 @@ namespace
         {
             DrapingCullSet& cullSet = _dm.get(_camera);
             cullSet.accept( nv );
+
+            // manhandle the render bin sorting, since OSG ignores the override
+            // in the render bin details above
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            if (cv)
+            {
+                applyTraversalOrderSorting(cv->getCurrentRenderBin());
+            }
+        }
+
+        void applyTraversalOrderSorting(osgUtil::RenderBin* bin)
+        {
+            bin->setSortMode(osgUtil::RenderBin::TRAVERSAL_ORDER);
+
+            for (osgUtil::RenderBin::RenderBinList::iterator i = bin->getRenderBinList().begin();
+                i != bin->getRenderBinList().end();
+                ++i)
+            {
+                osgUtil::RenderBin* child = i->second.get();
+                applyTraversalOrderSorting(child);
+            }
         }
 
     protected:
@@ -482,11 +522,6 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // TODO: we should probably lock this since other cull traversals might be accessing the group
     //       while we are changing its children.
     params._rttCamera->addChild( params._group );
-
-    // overlay geometry is rendered with no depth testing, and in the order it's found in the
-    // scene graph... until further notice.
-    rttStateSet->setMode(GL_DEPTH_TEST, 0);
-    rttStateSet->setRenderBinDetails(1, "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS );
 
     // add to the terrain stateset, i.e. the stateset that the OverlayDecorator will
     // apply to the terrain before cull-traversing it. This will activate the projective

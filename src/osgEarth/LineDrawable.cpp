@@ -766,7 +766,10 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
+                {
                     (*_current)[n] = vert;
+                }
+                _current->dirty();
 
                 // update next/previous verts:
                 if (numVerts == 1u)
@@ -775,22 +778,47 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                     {
                         (*_next)[i] = (*_previous)[i] = vert;
                     }
+                    _next->dirty();
+                    _previous->dirty();
                 }
                 else 
                 {
-                    unsigned rni = vi==0u? 0u : ri-4u;
-                    unsigned rpi = vi==numVerts-1 ? ri : ri+4u;
-
-                    for(unsigned n=0; n<rnum; ++n)
+                    if (vi > 0u)
                     {
-                        (*_next)[rni+n] = vert;
-                        (*_previous)[rpi+n] = vert;
+                        unsigned rni = ri-4u;
+                        for (unsigned n = 0; n < rnum; ++n)
+                        {
+                            (*_next)[rni + n] = vert;
+                        }
+                        _next->dirty();
+                    }
+                    else // if vi == 0
+                    {
+                        for (unsigned n = 0; n < rnum; ++n)
+                        {
+                            (*_previous)[n] = vert;
+                        }
+                        _previous->dirty();
+                    }
+
+                    if (vi < numVerts-1)
+                    {
+                        unsigned rpi = ri+4u;
+                        for (unsigned n = 0; n < rnum; ++n)
+                        {
+                            (*_previous)[rpi + n] = vert;
+                        }
+                        _previous->dirty();
+                    }
+                    else // if (vi == numVerts-1)
+                    {
+                        for (unsigned n = 0; n < rnum; ++n)
+                        {
+                            (*_next)[ri+n] = vert;
+                        }
+                        _next->dirty();
                     }
                 }
-                
-                _current->dirty();
-                _next->dirty();
-                _previous->dirty();
             }
 
             else if (_mode == GL_LINE_LOOP)
@@ -800,7 +828,10 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
+                {
                     (*_current)[n] = vert;
+                }
+                _current->dirty();
 
                 // update next/previous verts:
                 if (numVerts == 1u)
@@ -822,7 +853,6 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                     }
                 }
                 
-                _current->dirty();
                 _next->dirty();
                 _previous->dirty();
             }

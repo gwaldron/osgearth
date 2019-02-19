@@ -114,6 +114,7 @@ namespace
     // Shader that just copies the uniform value into a stage global/output
     const char* opacityVS =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform float oe_VisibleLayer_opacityUniform; \n"
         "out float oe_layer_opacity; \n"
         "void oe_VisibleLayer_initOpacity(inout vec4 vertex) \n"
@@ -123,6 +124,8 @@ namespace
 
     // Shader that incorporates range-based opacity (min/max range with attenuation)
     const char* rangeOpacityVS =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma import_defines(OE_DISABLE_RANGE_OPACITY) \n"
         "uniform vec3 oe_VisibleLayer_ranges; \n"
         "float oe_layer_opacity; \n"
@@ -162,6 +165,7 @@ namespace
     // Shader that calculates a modulation color based on the "opacity", i.e. intensity
     const char* opacityInterpolateFS =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "in float oe_layer_opacity; \n"
         "void oe_VisibleLayer_setOpacity(inout vec4 color) \n"
         "{ \n"
@@ -171,6 +175,7 @@ namespace
     // Shader that calculates a modulation color based on the "opacity", i.e. intensity
     const char* opacityModulateFS =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#define OE_MODULATION_EXPOSURE 2.35 \n"
         "in float oe_layer_opacity; \n"
         "void oe_VisibleLayer_setOpacity(inout vec4 color) \n"

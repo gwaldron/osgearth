@@ -88,6 +88,12 @@ namespace osgEarth { namespace Features
             const Symbology::Query& query,
             ProgressCallback*       progress) =0;
 
+        virtual const Status& create(
+            const FeatureProfile* profile,
+            const FeatureSchema& schema,
+            const Geometry::Type& geometryType,
+            const osgDB::Options* readOptions);
+
         /**
          * Creates a cursor that iterates over all the features corresponding to the
          * specified query.

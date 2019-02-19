@@ -23,6 +23,8 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
+#include <osgEarth/JsonUtils>
+#include <osgEarth/GeoData>
 #include <osg/Group>
 #include <osg/LOD>
 #include <osg/PagedLOD>
@@ -38,15 +40,27 @@ using namespace osgEarth;
  */
 namespace osgEarth { namespace TDTiles
 {
+    enum RefinePolicy
+    {
+        REFINE_REPLACE,
+        REFINE_ADD
+    };
+
+    struct LoadContext
+    {
+        URIContext _uc;
+        RefinePolicy _defaultRefine;
+    };
+
     class OSGEARTH_EXPORT Asset
     {
         OE_OPTION(std::string, version);
         OE_OPTION(std::string, tilesetVersion);
 
         Asset() { }
-        Asset(const Config& conf) { fromConfig(conf); }
-        void fromConfig(const Config& conf);
-        Config getConfig() const;
+        Asset(const Json::Value& value) { fromJSON(value); }
+        void fromJSON(const Json::Value&);
+        Json::Value getJSON() const;
     };
 
     class OSGEARTH_EXPORT BoundingVolume
@@ -56,9 +70,11 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION(osg::BoundingSphere, sphere);
 
         BoundingVolume() { }
-        BoundingVolume(const Config& conf) { fromConfig(conf); }
-        void fromConfig(const Config& conf);
-        Config getConfig() const;
+        BoundingVolume(const Json::Value& value) { fromJSON(value); }
+        void fromJSON(const Json::Value&);
+        Json::Value getJSON() const;
+
+        osg::BoundingSphere asBoundingSphere() const;
     };
 
     class OSGEARTH_EXPORT TileContent
@@ -67,15 +83,9 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION(URI, uri);
 
         TileContent() { }
-        TileContent(const Config& conf) { fromConfig(conf); }
-        void fromConfig(const Config& conf);
-        Config getConfig() const;
-    };
-
-    enum RefinePolicy
-    {
-        REFINE_REPLACE,
-        REFINE_ADD
+        TileContent(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext&);
+        Json::Value getJSON() const;
     };
 
     class OSGEARTH_EXPORT Tile : public osg::Referenced
@@ -90,9 +100,9 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION_VECTOR(osg::ref_ptr<Tile>, children);
 
         Tile() { }
-        Tile(const Config& conf) { fromConfig(conf); }
-        void fromConfig(const Config& conf);
-        Config getConfig() const;
+        Tile(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext& uc);
+        Json::Value getJSON() const;
     };
 
     class OSGEARTH_EXPORT Tileset : public osg::Referenced
@@ -105,16 +115,17 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION_REFPTR(Tile, root);
 
         Tileset() { }
-        Tileset(const Config& conf) { fromConfig(conf); }
-        void fromConfig(const Config& conf);
-        Config getConfig() const;
+        Tileset(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext& uc);
+        Json::Value getJSON() const;
 
+        static Tileset* create(const std::string& tilesetJSON, const URIContext& uc);
     };
 
     //! Object that takes a Tile and generates a node.
     //! This object is installed by default, but you can subclass it
     //! and replace it if you want.
-    class ContentHandler : public osg::Referenced
+    class OSGEARTH_EXPORT ContentHandler : public osg::Referenced
     {
     public:
         ContentHandler();
@@ -127,7 +138,7 @@ namespace osgEarth { namespace TDTiles
         float _maxSSE;
     };
 
-    class TileNode : public osg::MatrixTransform
+    class OSGEARTH_EXPORT TileNode : public osg::MatrixTransform
     {
     public:
         META_Node(osgEarth, TileNode);
@@ -137,6 +148,7 @@ namespace osgEarth { namespace TDTiles
         osg::ref_ptr<ContentHandler> _handler;
         osg::ref_ptr<const osgDB::Options> _readOptions;
         osg::ref_ptr<osg::Node> readContent() const;
+        osg::ref_ptr<osg::Node> loadChildren() const;
 
     protected:
         TileNode() { }
@@ -146,14 +158,10 @@ namespace osgEarth { namespace TDTiles
         float _maxSSE;
     };
 } }
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TDTiles::Asset);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TDTiles::BoundingVolume);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TDTiles::TileContent);
-
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT TDTilesetGroup : public osg::LOD
+    class OSGEARTH_EXPORT TDTilesetGroup : public osg::Group
     {
     public:
         META_Node(osgEarth, TDTilesetGroup);

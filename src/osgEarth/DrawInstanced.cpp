@@ -249,6 +249,7 @@ DrawInstanced::install(osg::StateSet* stateset)
     vp->setName("DrawInstanced");
     osgEarth::Shaders pkg;
     pkg.load( vp, pkg.InstancingVertex );
+    stateset->setDefine("OE_USE_INSTANCING");
 
     return true;
 }
@@ -288,17 +289,18 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     for( unsigned i=0; i < parent->getNumChildren(); ++i )
     {
         // each MT in the group parents the same child.
-        osg::MatrixTransform* mt = dynamic_cast<osg::MatrixTransform*>( parent->getChild(i) );
-        if ( mt )
+        osg::Transform* xform = dynamic_cast<osg::Transform*>(parent->getChild(i));
+        //osg::MatrixTransform* mt = dynamic_cast<osg::MatrixTransform*>( parent->getChild(i) );
+        if (xform)
         {
-            osg::Node* n = mt->getChild(0);
+            osg::Node* n = xform->getChild(0);
             //models[n].push_back( mt->getMatrix() );
 
             ModelInstance instance;
-            instance.matrix = mt->getMatrix();
+            xform->computeLocalToWorldMatrix(instance.matrix, 0L);
 
             // See whether the ObjectID is encoded in a uniform on the MT.
-            osg::StateSet* stateSet = mt->getStateSet();
+            osg::StateSet* stateSet = xform->getStateSet();
             if ( stateSet )
             {
                 osg::Uniform* uniform = stateSet->getUniform( Registry::objectIndex()->getObjectIDUniformName() );

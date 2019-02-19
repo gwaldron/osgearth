@@ -30,7 +30,8 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Random>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Shaders>
+#include <osgEarth/DrawInstanced>
 #include <osgEarthUtil/ExampleResources>
 
 #include <osg/Texture2D>
@@ -43,7 +44,6 @@
 #include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
-namespace ui = osgEarth::Util::Controls;
 
 #define LC "[impostertool] "
 
@@ -57,6 +57,7 @@ fail(const std::string& msg, char** argv)
         << "\n    --out <filename>              ; output texture filename"
         << "\n    --size <n>                    ; dimension of texture"
         << "\n    --frames <n>                  ; number of snapshots in each dimension"
+        << "\n    --parallax                    ; include parallax information in the normal map"
         << "\n    --view                        ; view the model matrix on screen"
         << "\n"
         << "\n  --test                          ; test an impostor"
@@ -67,31 +68,6 @@ fail(const std::string& msg, char** argv)
 
         << std::endl;
     return -1;
-}
-
-struct App
-{
-    ui::HSliderControl* heading;
-    osg::PositionAttitudeTransform* impostorxform;
-    void setHeading() {
-        osg::Quat q;
-        q.makeRotate(heading->getValue(), osg::Vec3(1,0,0));
-        impostorxform->setAttitude(q);
-    }
-};
-
-OE_UI_HANDLER(setHeading);
-
-ui::Control* makeUI(App& app)
-{
-    ui::Grid* grid = new ui::Grid();
-    int r=0;
-    grid->setControl(0, r, new ui::LabelControl("Angle"));
-    app.heading = grid->setControl(1, r, new ui::HSliderControl(-osg::PI, osg::PI, 0, new setHeading(app)));
-    app.heading->setHorizFill(true, 300);
-    ++r;
-
-    return grid;
 }
 
 osg::Camera*
@@ -107,14 +83,16 @@ createColorCamera(unsigned dim)
     rtt->setRenderOrder(osg::Camera::PRE_RENDER);
     rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
     rtt->attach(osg::Camera::COLOR_BUFFER0, image);
+    rtt->setComputeNearFarMode(osg::Camera::DO_NOT_COMPUTE_NEAR_FAR);
     return rtt;
 }
 
 osg::Camera*
-createNormalMapCamera(unsigned dim)
+createNormalMapCamera(unsigned dim, bool renderDepth)
 {
     osg::Image* image = new osg::Image();
-    image->allocateImage(dim, dim, 1, GL_RGB, GL_UNSIGNED_BYTE);
+    GLenum pixelFormat = renderDepth? GL_RGBA : GL_RGB;
+    image->allocateImage(dim, dim, 1, pixelFormat, GL_UNSIGNED_BYTE);
 
     osg::Camera* rtt = new osg::Camera();
     rtt->setReferenceFrame(osg::Camera::ABSOLUTE_RF);
@@ -123,6 +101,7 @@ createNormalMapCamera(unsigned dim)
     rtt->setRenderOrder(osg::Camera::PRE_RENDER);
     rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
     rtt->attach(osg::Camera::COLOR_BUFFER0, image);
+    rtt->setComputeNearFarMode(osg::Camera::DO_NOT_COMPUTE_NEAR_FAR);
     return rtt;
 }
 
@@ -144,19 +123,28 @@ hemiOctahedronToVec3(const osg::Vec2d& e)
 }
 
 // Shaders for rendering the normal map
-const char* normalMapVS =
+const char* normalMapModel =
     "#version 330 \n"
     "out vec3 modelNormal; \n"
-    "void normalMapVS(inout vec4 vertex) { \n"
+    "void normalMapModel(inout vec4 vertex) { \n"
     "    modelNormal = normalize(gl_Normal); \n"
+    "} \n";
+
+const char* normalMapClip =
+    "#version 330 \n"
+    "out float z; \n"
+    "void normalMapClip(inout vec4 vertex) { \n"
+    "    z = ((vertex.z/vertex.w)+1.0)*0.5; \n"
     "} \n";
 
 const char* normalMapFS =
     "#version 330 \n"
     "in vec3 modelNormal; \n"
-    "out vec3 encodedNormal; \n"
+    "in float z; \n"
+    "out vec4 encodedNormal; \n"
     "void normalMapFS(inout vec4 color) { \n"
-    "    encodedNormal = (modelNormal+1.0)*0.5; \n"
+    "    encodedNormal.xyz = (modelNormal+1.0)*0.5; \n"
+    "    encodedNormal.w = z; \n"
     "} \n";
 
 int
@@ -191,6 +179,8 @@ bake_main(int argc, char** argv)
     arguments.read("--frames", numFrames);
     if (numFrames < 2 || (numFrames & 0x01) != 0)
         return fail("--frames must be an even number greater than 1", argv);
+
+    bool supportParallax = arguments.read("--parallax");
 
     osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile(infile);
     if (!model.valid())
@@ -262,17 +252,16 @@ bake_main(int argc, char** argv)
     root->addChild(colorCamera);
     osg::StateSet* colorSS = colorCamera->getOrCreateStateSet();
     colorSS->setMode(GL_BLEND, 1);
-    //colorSS->setMode(GL_CULL_FACE, 0);
 
-    osg::Camera* normalMapCamera = createNormalMapCamera(size);
+    osg::Camera* normalMapCamera = createNormalMapCamera(size, supportParallax);
     normalMapCamera->addChild(models);
     root->addChild(normalMapCamera);
     osg::StateSet* normalMapSS = normalMapCamera->getOrCreateStateSet();
-    //normalMapSS->setMode(GL_CULL_FACE, 0);
 
     VirtualProgram* normalMapVP = new VirtualProgram();
     normalMapCamera->getOrCreateStateSet()->setAttribute(normalMapVP, osg::StateAttribute::OVERRIDE);
-    normalMapVP->setFunction("normalMapVS", normalMapVS, ShaderComp::LOCATION_VERTEX_MODEL);
+    normalMapVP->setFunction("normalMapModel", normalMapModel, ShaderComp::LOCATION_VERTEX_MODEL);
+    normalMapVP->setFunction("normalMapClip", normalMapClip, ShaderComp::LOCATION_VERTEX_CLIP);
     normalMapVP->setFunction("normalMapFS", normalMapFS, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
 
     viewer.setSceneData(root);
@@ -280,7 +269,7 @@ bake_main(int argc, char** argv)
 
 
     osg::Matrix proj, view;
-    proj.makeOrtho(-spacing/2, -spacing/2 + spacing*numFrames, -spacing/2, -spacing/2 + spacing*numFrames, -diameter*10, diameter*10);
+    proj.makeOrtho(-spacing/2, -spacing/2 + spacing*numFrames, -spacing/2, -spacing/2 + spacing*numFrames, -radius, +radius);
     view.makeLookAt(osg::Vec3d(0, 0, 0), osg::Vec3d(0, 1, 0), osg::Vec3d(0, 0, 1));
 
     colorCamera->setProjectionMatrix(proj);
@@ -441,6 +430,11 @@ test_main(int argc, char** argv)
         return fail("Failed to load model", argv);
     Registry::instance()->shaderGenerator().run(model.get());
 
+    std::string normalFile = osgDB::getNameLessExtension(textureFile) + ".normal.png";
+    osg::ref_ptr<osg::Image> normalImage = osgDB::readRefImageFile(normalFile);
+    if (!normalImage.valid())
+        return fail("Failed to load normal map", argv);
+
     // compute the bbox of the model and compute the maximum span (x,y,z)
     osg::ComputeBoundsVisitor cbv;
     model->accept(cbv);
@@ -449,7 +443,7 @@ test_main(int argc, char** argv)
     double y = modelBB.yMax() - modelBB.yMin();
     double z = modelBB.zMax() - modelBB.zMin();
     double maxSpan = osg::maximum(x, osg::maximum(y, z));
-    osg::Uniform* imposterSizeU = new osg::Uniform("imposterSize", (float)maxSpan / 2.0f);
+    osg::Uniform* imposterSizeU = new osg::Uniform("oe_impostorRadius", (float)maxSpan / 2.0f);
 
     // Set up the imposter texture:
     osg::Texture2D* tex = new osg::Texture2D(image.get());
@@ -457,7 +451,15 @@ test_main(int argc, char** argv)
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setWrap(tex->WRAP_S, tex->CLAMP_TO_EDGE);
     tex->setWrap(tex->WRAP_T, tex->CLAMP_TO_EDGE);
-    osg::Uniform* imposterTexU = new osg::Uniform("imposterTex", (int)0);
+    osg::Uniform* imposterTexU = new osg::Uniform("impostorTex", (int)0);
+
+    // Set up the normal/depth texture:
+    osg::Texture2D* normalMap = new osg::Texture2D(normalImage.get());
+    normalMap->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
+    normalMap->setFilter(tex->MAG_FILTER, tex->LINEAR);
+    normalMap->setWrap(tex->WRAP_S, tex->CLAMP_TO_EDGE);
+    normalMap->setWrap(tex->WRAP_T, tex->CLAMP_TO_EDGE);
+    osg::Uniform* imposterNormalMapU = new osg::Uniform("impostorNormalMap", (int)1);
 
     // Build the imposter geometry:
     osg::Geometry* imposterGeom = new osg::Geometry();
@@ -470,22 +472,24 @@ test_main(int argc, char** argv)
     imposterGeom->setNormalArray(normals);
     imposterGeom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     osg::StateSet* imposterSS = imposterGeom->getOrCreateStateSet();
+    imposterGeom->setInitialBound(modelBB);
 
     VirtualProgram* geomVP = VirtualProgram::getOrCreate(imposterSS);
-    geomVP->setFunction("imposterVSView", imposterVSView, ShaderComp::LOCATION_VERTEX_VIEW);
-    geomVP->setFunction("imposterFS", imposterFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    Shaders shaders;
+    shaders.load(geomVP, shaders.Impostors);
+
     imposterSS->setTextureAttribute(0, tex, osg::StateAttribute::ON);
+    imposterSS->setTextureAttribute(1, normalMap, osg::StateAttribute::ON);
     imposterSS->addUniform(imposterTexU);
+    imposterSS->addUniform(imposterNormalMapU);
     imposterSS->addUniform(imposterSizeU);
     imposterSS->setMode(GL_BLEND, 1);
     if (debug) imposterSS->setDefine("IMPOSTOR_DEBUG");
 
-    App app;
-
     // Build the scene graph:
     osg::Group* root = new osg::Group();
 
-    double offset = model->getBound().radius() * 2.0;
+    double offset = model->getBound().radius() * 1.2;
 
     Random prng;
 
@@ -497,7 +501,7 @@ test_main(int argc, char** argv)
             for (double j = -offset * DIM; j <= offset * DIM; j += offset)
             {
                 osg::Quat rot;
-                rot.makeRotate(-osg::PI + prng.next()*2.0*osg::PI, osg::Vec3(1,0,0));
+                rot.makeRotate(-osg::PI + prng.next()*2.0*osg::PI, osg::Vec3(0,0,1));
                 float scale = 1.0 + prng.next()*2.5; 
                 double x = i + offset*(prng.next()-0.5), y = j + offset*(prng.next()-0.5);
                 osg::PositionAttitudeTransform* impostorxform = new osg::PositionAttitudeTransform();
@@ -508,6 +512,8 @@ test_main(int argc, char** argv)
                 root->addChild(impostorxform);
             }
         }
+        DrawInstanced::convertGraphToUseDrawInstanced(root);
+        DrawInstanced::install(root->getOrCreateStateSet());
     }
     else if (random)
     {
@@ -523,6 +529,8 @@ test_main(int argc, char** argv)
             imposterxform->addChild(imposterGeom);
             root->addChild(imposterxform);
         }
+        DrawInstanced::convertGraphToUseDrawInstanced(root);
+        DrawInstanced::install(root->getOrCreateStateSet());
     }
 
     else
@@ -536,7 +544,6 @@ test_main(int argc, char** argv)
         imposterxform->setPosition(osg::Vec3d(offset, 0.0, 0.0));
         imposterxform->addChild(imposterGeom);
         root->addChild(imposterxform);
-        app.impostorxform = imposterxform;
     }
 
     // default uniform values:
@@ -551,11 +558,9 @@ test_main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::RecordCameraPathHandler());
     viewer.addEventHandler(new osgViewer::ScreenCaptureHandler());
 
+    viewer.getCamera()->setClearColor(osg::Vec4(1.0, 0.9, 0.85, 1.0));
 
     viewer.setSceneData(root);
-
-    ui::ControlCanvas* canvas = ui::ControlCanvas::get(&viewer);
-    canvas->addControl(makeUI(app));
 
     return viewer.run();
 }

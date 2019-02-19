@@ -4,13 +4,17 @@
 #pragma vp_location vertex_view
 
 #pragma import_defines(IMPOSTOR_DEBUG)
+#pragma import_defines(OE_USE_INSTANCING)
 
 uniform float oe_impostorRadius;
 
 // stage globals
 vec3 vp_Normal;
+
+#ifdef OE_USE_INSTANCING
 mat4 oe_instanceModelMatrix;    // from Instancing.glsl
 mat3 oe_instanceNormalMatrix;   // from Instancing.glsl
+#endif
 
 // send to frag shader:
 out vec2 oe_impostorTC;
@@ -20,8 +24,6 @@ out vec2 oe_impostorBlend;
 #ifdef IMPOSTOR_DEBUG
 out vec2 rawTC;
 #endif
-
-#define USE_INSTANCING
 
 // given the octahedral vector, create a local coordinate system
 // in which to create the billboard plane. This returns the offset
@@ -66,7 +68,7 @@ vec3 hemioct_to_vec3(in vec2 t)
 void oe_Impostor_VS(inout vec4 vertexView)
 {
     // number of frames in each dimension - make this a define or something
-    const float numFrames = 16; //24; //12.0;
+    const float numFrames = 12; //24; //12.0;
 
     // calcuate the billboard corner offset vector for the current vertex:
     vec2 offset;
@@ -80,7 +82,7 @@ void oe_Impostor_VS(inout vec4 vertexView)
     // that will get mapped to 2D octahedral space. I tried to do 
     // this in view space but it didn't work - need to revisit that.
     // Don't like the inverse. Can we ditch it?
-#ifdef USE_INSTANCING
+#ifdef OE_USE_INSTANCING
     mat4 instanceToView = gl_ModelViewMatrix * oe_instanceModelMatrix;
     mat4 viewToInstance = inverse(instanceToView);
     oe_normalMatrix = gl_NormalMatrix * oe_instanceNormalMatrix;
@@ -109,16 +111,17 @@ void oe_Impostor_VS(inout vec4 vertexView)
     vec2 octaQuantized = floor(octa*numFramesMinusOne)/ numFramesMinusOne;
 
     // calculate 1/2 the size of one frame:
-    float t = (0.5/numFrames);
+    float frameSize = 1.0/numFrames;
+    float halfFrameSize = 0.5*frameSize;
 
     // blending factor for adjacent frames (TBD)
-    //oe_impostorBlend = (octa - octaQuantized) / t;
+    oe_impostorBlend = fract(octa*numFramesMinusOne);
 
     // derive the texture coordinate at the center of the frame:
-    vec2 tc = octaQuantized *numFramesMinusOne/numFrames + t;
+    vec2 tc = octaQuantized *numFramesMinusOne/numFrames + halfFrameSize;
 
     // establish the texture coordinates:
-    oe_impostorTC = tc +(offset*t);
+    oe_impostorTC = tc +(offset*halfFrameSize);
 
     // use the octahedral vector to establish a reference frame for
     // creating the billboard in model space, then xform that into
@@ -136,7 +139,7 @@ void oe_Impostor_VS(inout vec4 vertexView)
     vertexOffset += pivotOffset;
 #endif
 
-#ifdef USE_INSTANCING
+#ifdef OE_USE_INSTANCING
     mat3 rotateInstanceToView = mat3(instanceToView);
     vertexOffset = rotateInstanceToView * vertexOffset;    
 #else
@@ -151,7 +154,7 @@ void oe_Impostor_VS(inout vec4 vertexView)
 
     // encode the normal matrix so we can sample the normal map
     // in the fragment shader.
-#ifdef USE_INSTANCING
+#ifdef OE_USE_INSTANCING
     oe_normalMatrix = gl_NormalMatrix * oe_instanceNormalMatrix;
 #else
     oe_normalMatrix = gl_NormalMatrix;
@@ -178,31 +181,56 @@ uniform sampler2D impostorNormalMap;
 
 in vec2 oe_impostorTC;
 in mat3 oe_normalMatrix;
+in vec2 oe_impostorBlend;
 vec3 vp_Normal;
 
 #ifdef IMPOSTOR_DEBUG
 in vec2 rawTC;
 #endif
 
+//#define USE_PARALLAX_MAPPING
+#define PARALLAX_BLEND_AMOUNT 0.0050 // should be computed
+
 void oe_Impostor_FS(inout vec4 color)
-{    
-    vec4 texel = texture(impostorTex, oe_impostorTC);
-    color = texel;
+{
+#ifdef USE_PARALLAX_MAPPING
+
+    // w component contains relative depth [0..1]
+    float encodedDepth = texture(impostorNormalMap, oe_impostorTC).w;
+    float depth = (encodedDepth*2.0) - 1.0; // [-1..1], [near..far]
+    if (depth < -0.999)
+        depth = 0.0;
+
+    float blend = (oe_impostorBlend.t-0.5)*2.0; // [-1..1]
+    vec2 tc = oe_impostorTC;
+    tc.x -= depth *blend*PARALLAX_BLEND_AMOUNT;
+
+    color = texture(impostorTex, tc);
+    if (color.a < 0.15)
+        discard;
+
+    vec3 encodedNormal = texture(impostorNormalMap, tc).xyz;
+    vec3 normal = encodedNormal.xyz*2.0 - 1.0;
+    vp_Normal = normalize(oe_normalMatrix * normal);
+
+
+#else
+
+    color = texture(impostorTex, oe_impostorTC);
+    if (color.a < 0.15)
+        discard;
+
+    vec3 encodedNormal = texture(impostorNormalMap, oe_impostorTC).xyz;
+    vec3 normal = encodedNormal.xyz*2.0 - 1.0;
+    vp_Normal = normalize(oe_normalMatrix * normal);
+
+#endif
 
 #ifdef IMPOSTOR_DEBUG
     // debugging - draw the billboard geometry, red on top
     if (any(greaterThan(abs(rawTC*2.0-1.0), vec2(.99)))) color=vec4(1);
-    if (rawTC.t > .99) color=vec4(1,0,0,1);
+    if (rawTC.t > .99) color=vec4(oe_impostorBlend.t,1.0- oe_impostorBlend.y,0,1);
 #endif
-
-    if (color.a < 0.15)
-        discard;
-
-    // sample the normal map and transform the normal into view space.
-    // todo: support octahedral compressed normals
-    vec3 encodedNormal = texture(impostorNormalMap, oe_impostorTC).xyz;
-    vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
-    vp_Normal = oe_normalMatrix * normal;
 
     // debug the normal map
     //color.rgb = encodedNormal;

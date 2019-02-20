@@ -202,9 +202,10 @@ void RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
    getMap()->getLayers(layers);
    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
    {
-      if ((*i)->getStateSet()) {
-         (*i)->getStateSet()->releaseGLObjects(state);
-      }
+//VRV_PATCH: start
+      // This is done via MapNode::releaseGLObjects in latest osg earth
+      (*i)->releaseGLObjects(state);
+//VRV_PATCH: end
    }
 }
 

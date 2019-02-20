@@ -301,6 +301,25 @@ GroundCoverLayer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack
     return true;
 }
 
+//VRV_PATCH: start
+void GroundCoverLayer::releaseGLObjects(osg::State* state) const
+{
+   for (Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
+   {
+      Zone* zone = z->get();
+      GroundCover* groundCover = zone->getGroundCover();
+      if (groundCover)
+      {
+         osg::StateSet* zoneStateSet = groundCover->getStateSet();
+         if (zoneStateSet)
+         {
+            zoneStateSet->releaseGLObjects(state);
+         }
+      }
+   }
+   const_cast<GroundCoverLayer*>(this)->buildStateSets();
+}
+//VRV_PATCH: end
 void
 GroundCoverLayer::buildStateSets()
 {
@@ -413,4 +432,5 @@ GroundCoverLayer::buildStateSets()
             OE_DEBUG << LC << "zone contains no ground cover information\n";
         }
     }
+
 }

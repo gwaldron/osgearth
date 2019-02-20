@@ -122,7 +122,9 @@ namespace osgEarth { namespace Splat
         //! Geogrphic zones; at least one is required
         Zones& zones() { return _zones; }
         const Zones& zones() const { return _zones; }
-
+//VRV_PATCH: start
+        virtual void releaseGLObjects(osg::State* state) const;
+//VRV_PATCH: end
     public: // Layer
 
         //! Override

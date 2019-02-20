@@ -332,3 +332,26 @@ Layer::getOrCreateStateSet()
     }
     return _stateSet.get();
 }
+//VRV_PATCH: start
+void
+Layer::resizeGLObjectBuffers(unsigned maxSize)
+{
+   osg::Object::resizeGLObjectBuffers(maxSize);
+   // In latest osg earth this exists because getNode is defined
+   //if (getNode())
+   //   getNode()->resizeGLObjectBuffers(maxSize);
+   if (getStateSet())
+      getStateSet()->resizeGLObjectBuffers(maxSize);
+}
+
+void
+Layer::releaseGLObjects(osg::State* state) const
+{
+   osg::Object::releaseGLObjects(state);
+   // In latest osg earth this exists because getNode is defined
+   //if (getNode())
+   //   getNode()->releaseGLObjects(state);
+   if (getStateSet())
+      getStateSet()->releaseGLObjects(state);
+}
+//VRV_PATCH: end

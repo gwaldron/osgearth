@@ -219,23 +219,15 @@ RexTerrainEngineNode::resizeGLObjectBuffers(unsigned maxSize)
 void
 RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 {
-    TerrainEngineNode::releaseGLObjects(state);
+    //getStateSet()->releaseGLObjects(state);
 
-    getStateSet()->releaseGLObjects(state);
-
-    _terrain->getStateSet()->releaseGLObjects(state);
+    //_terrain->getStateSet()->releaseGLObjects(state);
 
     _imageLayerStateSet.get()->releaseGLObjects(state);
 
-    // TODO: where should this live? MapNode?
-    LayerVector layers;
-    getMap()->getLayers(layers);
-    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
-    {
-        if ((*i)->getStateSet()) {
-            (*i)->getStateSet()->releaseGLObjects(state);
-        }
-    }
+    _geometryPool->clear();
+
+    TerrainEngineNode::releaseGLObjects(state);
 }
 
 void
@@ -495,6 +487,7 @@ RexTerrainEngineNode::setupRenderBindings()
 void
 RexTerrainEngineNode::dirtyTerrain()
 {
+    _terrain->releaseGLObjects();
     _terrain->removeChildren(0, _terrain->getNumChildren());
 
     // clear the loader:

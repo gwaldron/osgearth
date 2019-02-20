@@ -114,14 +114,13 @@ namespace osgEarth { namespace Splat
         void setGroundCover(GroundCover* groundCover) { _groundCover = groundCover; }
         GroundCover* getGroundCover() const { return _groundCover.get(); }
 
-        //osg::StateSet* getStateSet() { return _stateSet.get(); }
-
-        //osg::StateSet* getOrCreateStateSet();
-
         bool contains(const osg::Vec3& points) const;
 
         void setUID(UID uid) { _uid = uid; }
         UID getUID() const { return _uid; }
+
+        void resizeGLObjectBuffers(unsigned maxSize);
+        void releaseGLObjects(osg::State* state) const;
 
     protected:
         virtual ~Zone() { }
@@ -130,7 +129,6 @@ namespace osgEarth { namespace Splat
         Boundaries                  _boundaries;
         osg::ref_ptr<Surface>       _surface;
         osg::ref_ptr<GroundCover>   _groundCover;
-        osg::ref_ptr<osg::StateSet> _stateSet;
         const ZoneOptions           _options;
 
     public:

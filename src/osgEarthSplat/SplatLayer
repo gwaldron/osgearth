@@ -108,6 +108,11 @@ namespace osgEarth { namespace Splat
         virtual void removedFromMap(const Map* map);
         virtual void setTerrainResources(TerrainResources* res);
 
+    public:
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
+
     protected:
         virtual ~SplatLayer() { }
 

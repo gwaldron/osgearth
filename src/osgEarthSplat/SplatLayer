@@ -72,6 +72,11 @@ namespace osgEarth { namespace Splat
         virtual void removedFromMap(const Map* map);
         virtual void setTerrainResources(TerrainResources* res);
 
+    public:
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
+
     protected:
         virtual ~SplatLayer() { }
 
@@ -91,6 +96,8 @@ namespace osgEarth { namespace Splat
         bool _gpuNoise;
 
         void buildStateSets();
+
+        void aaa();
 
         struct ZoneSelector : public Layer::TraversalCallback
         {

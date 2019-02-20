@@ -99,9 +99,9 @@ namespace osgEarth { namespace Splat
         SplatLUT                          _splatLUT;
         osg::ref_ptr<osg::Texture>        _splatLUTBuffer;
         std::string                       _samplingFunction;
+        void resizeGLObjectBuffers(unsigned maxSize);
+        void releaseGLObjects(osg::State* state) const;
     };
-    
-    typedef std::vector<SplatTextureDef> SplatTextureDefVector;
 
     /**
      * Catalog of texture-splatting classes. Usually these correspond
@@ -163,7 +163,6 @@ namespace osgEarth { namespace Splat
         optional<std::string> _name;
         optional<std::string> _description;
         SplatClassMap         _classes;
-        SplatTextureDef       _textureDef;
     };
 
 } } // namespace osgEarth::Splat

@@ -33,6 +33,9 @@
 #include <osgDB/Registry>
 #include <osgEarth/Notify>
 #include <osgEarth/URI>
+#include <osgEarth/StringUtils>
+#include <osgEarth/Endian>
+#include <osgEarth/JsonUtils>
 
 #include <iostream>
 #include <iomanip>
@@ -45,7 +48,281 @@
 using namespace tinygltf;
 using namespace osgEarth;
 
+namespace gltf = tinygltf;
+
+
 #define LC "[gltf] "
+
+typedef std::map<const osg::Node*, int> OsgNodeSequenceMap;
+typedef std::map<const osg::BufferData*, int> ArraySequenceMap;
+typedef std::map<const osg::Array*, int> AccessorSequenceMap;
+
+//! Visitor that builds a GLTF data model from an OSG scene graph.
+class OSGtoGLTF : public osg::NodeVisitor
+{
+private:
+   gltf::Model _model;
+   OpenThreads::Atomic _nameGen;
+   std::stack<gltf::Node*> _gltfNodeStack;
+   OsgNodeSequenceMap _osgNodeSeqMap;
+   ArraySequenceMap _buffers;
+   ArraySequenceMap _bufferViews;
+   ArraySequenceMap _accessors;
+
+public:
+    gltf::Model& getModel()
+    {
+        return _model;
+    }
+
+    OSGtoGLTF()
+    {
+        setTraversalMode(TRAVERSE_ALL_CHILDREN);
+        setNodeMaskOverride(~0);
+
+        // default root scene:
+        _model.scenes.push_back(gltf::Scene());
+        gltf::Scene& scene = _model.scenes.back();
+        _model.defaultScene = 0;
+    }
+
+    void push(gltf::Node& gnode)
+    {
+        _gltfNodeStack.push(&gnode);
+    }
+
+    void pop()
+    {
+        _gltfNodeStack.pop();
+    }
+
+    void apply(osg::Node& node)
+    {
+        bool isRoot = _model.scenes[_model.defaultScene].nodes.empty();
+        if (isRoot)
+        {
+            // put a placeholder here just to prevent any other nodes
+            // from thinking they are the root
+            _model.scenes[_model.defaultScene].nodes.push_back(-1);
+        }
+
+        traverse(node);
+
+        _model.nodes.push_back(gltf::Node());
+        gltf::Node& gnode = _model.nodes.back();
+        int id = _model.nodes.size()-1;
+        gnode.name = Stringify() << "_gltfNode_" << id;
+        _osgNodeSeqMap[&node] = id;
+
+        if (isRoot)
+        {
+            // replace the placeholder with the actual root id.
+            _model.scenes[_model.defaultScene].nodes.back() = id;
+        }
+    }
+
+    void apply(osg::Group& group)
+    {
+        apply(static_cast<osg::Node&>(group));
+
+        for(unsigned i=0; i<group.getNumChildren(); ++i)
+        {
+            int id = _osgNodeSeqMap[group.getChild(i)];
+            _model.nodes.back().children.push_back(id);
+        }
+    }
+
+    void apply(osg::Transform& xform)
+    {
+        apply(static_cast<osg::Group&>(xform));
+
+        osg::Matrix matrix;
+        xform.computeLocalToWorldMatrix(matrix, this);
+        const double* ptr = matrix.ptr();
+        for(unsigned i=0; i<16; ++i)
+            _model.nodes.back().matrix.push_back(*ptr++);
+    }
+
+    unsigned getBytesInDataType(GLenum dataType)
+    {
+        return
+            dataType == GL_BYTE || dataType == GL_UNSIGNED_BYTE   ? 1 :
+            dataType == GL_SHORT || dataType == GL_UNSIGNED_SHORT ? 2 :
+            dataType == GL_INT || dataType == GL_UNSIGNED_INT || dataType == GL_FLOAT ? 4 :
+            0;
+    }
+
+    unsigned getBytesPerElement(const osg::Array* data)
+    {
+        return data->getDataSize() * getBytesInDataType(data->getDataType());
+    }
+
+    unsigned getBytesPerElement(const osg::DrawElements* data)
+    {
+        return
+            dynamic_cast<const osg::DrawElementsUByte*>(data)? 1 :
+            dynamic_cast<const osg::DrawElementsUShort*>(data) ? 2 :
+            4;
+    }
+
+    int getOrCreateBuffer(const osg::BufferData* data, GLenum type)
+    {
+        ArraySequenceMap::iterator a = _buffers.find(data);
+        if (a != _buffers.end())
+            return a->second;
+
+        _model.buffers.push_back(gltf::Buffer());
+        gltf::Buffer& buffer = _model.buffers.back();
+        int id = _model.buffers.size() - 1;
+        _buffers[data] = id;
+
+        int bytes = getBytesInDataType(type);
+        buffer.data.resize(data->getTotalDataSize());
+
+        //TODO: account for endianess
+        unsigned char* ptr = (unsigned char*)(data->getDataPointer());
+        for(unsigned i=0; i<data->getTotalDataSize(); ++i)
+            buffer.data[i] = *ptr++;
+
+        return id;
+    }
+
+    int getOrCreateBufferView(const osg::BufferData* data, GLenum type, GLenum target)
+    {
+        ArraySequenceMap::iterator a = _bufferViews.find(data);
+        if (a != _bufferViews.end())
+            return a->second;
+
+        int bufferId = -1;
+        ArraySequenceMap::iterator buffersIter = _buffers.find(data);
+        if (buffersIter != _buffers.end())
+            bufferId = buffersIter->second;
+        else
+            bufferId = getOrCreateBuffer(data, type);
+
+        _model.bufferViews.push_back(gltf::BufferView());
+        gltf::BufferView& bv = _model.bufferViews.back();
+        int id = _model.bufferViews.size()-1;
+        _bufferViews[data] = id;
+
+        bv.buffer = bufferId;
+        bv.byteLength = data->getTotalDataSize();
+        bv.byteOffset = 0;
+        bv.target = target;
+
+        //ONLY used for vertex attrbs, I guess:
+        //unsigned bytesPerComponent = getBytesPerComponent(data->getDataType());
+        //unsigned componentsPerElement = data->getDataSize();
+        //bv.byteStride = bytesPerComponent * componentsPerElement;
+
+        return id;
+    }
+
+    int getOrCreateAccessor(osg::Array* data, osg::PrimitiveSet* pset, gltf::Primitive& prim, const std::string& attr)
+    {
+        ArraySequenceMap::iterator a = _accessors.find(data);
+        if ( a != _accessors.end())
+            return a->second;
+
+        ArraySequenceMap::iterator bv = _bufferViews.find(data);
+        if (bv == _bufferViews.end())
+            return -1;
+
+        _model.accessors.push_back(gltf::Accessor());
+        gltf::Accessor& accessor = _model.accessors.back();
+        int accessorId = _model.accessors.size() - 1;
+        prim.attributes[attr] = accessorId;
+
+        accessor.type =
+            data->getDataSize() == 1 ? TINYGLTF_TYPE_SCALAR :
+            data->getDataSize() == 2 ? TINYGLTF_TYPE_VEC2 :
+            data->getDataSize() == 3 ? TINYGLTF_TYPE_VEC3 :
+            data->getDataSize() == 4 ? TINYGLTF_TYPE_VEC4 :
+            TINYGLTF_TYPE_SCALAR;
+
+        accessor.bufferView = bv->second;
+        accessor.byteOffset = 0;
+        accessor.componentType = data->getDataType();
+        accessor.count = data->getNumElements();
+
+        const osg::DrawArrays* da = dynamic_cast<const osg::DrawArrays*>(pset);
+        if (da)
+        {
+            accessor.byteOffset = da->getFirst() * getBytesPerElement(data);            
+        }
+
+        //TODO: indexed elements
+        osg::DrawElements* de = dynamic_cast<osg::DrawElements*>(pset);
+        if (de)
+        {
+            _model.accessors.push_back(gltf::Accessor());
+            gltf::Accessor& idxAccessor = _model.accessors.back();
+            prim.indices = _model.accessors.size() - 1;
+
+            idxAccessor.type = TINYGLTF_TYPE_SCALAR;
+            idxAccessor.byteOffset = 0;
+            idxAccessor.componentType = de->getDataType();
+                //dynamic_cast<const osg::DrawElementsUByte*>(de) ? GL_UNSIGNED_BYTE :
+                //dynamic_cast<const osg::DrawElementsUShort*>(de) ? GL_UNSIGNED_SHORT :
+                //GL_UNSIGNED_INT;
+            idxAccessor.count = de->getNumIndices();
+
+            getOrCreateBuffer(de, idxAccessor.componentType);
+            int idxBV = getOrCreateBufferView(de, idxAccessor.componentType, GL_ELEMENT_ARRAY_BUFFER);
+
+            idxAccessor.bufferView = idxBV;
+        }
+
+        return accessorId;
+    }
+
+    void apply(osg::Drawable& drawable)
+    {
+        if (drawable.asGeometry())
+        {
+            apply(static_cast<osg::Node&>(drawable));
+
+            osg::Geometry* geom = drawable.asGeometry();
+
+            _model.meshes.push_back(gltf::Mesh());
+            gltf::Mesh& mesh = _model.meshes.back();
+            _model.nodes.back().mesh = _model.meshes.size() - 1;
+
+            osg::Vec3Array* positions = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+            if (positions)
+            {
+                getOrCreateBufferView(positions, GL_FLOAT, GL_ARRAY_BUFFER);
+            }
+
+            osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
+            if (normals)
+            {
+                getOrCreateBufferView(normals, GL_FLOAT, GL_ARRAY_BUFFER);
+            }
+
+            osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>(geom->getColorArray());
+            if (colors)
+            {
+                getOrCreateBufferView(colors, GL_FLOAT, GL_ARRAY_BUFFER);
+            }
+
+            for(unsigned i=0; i<geom->getNumPrimitiveSets(); ++i)
+            {
+                osg::PrimitiveSet* pset = geom->getPrimitiveSet(i);
+
+                mesh.primitives.push_back(gltf::Primitive());
+                gltf::Primitive& primitive = mesh.primitives.back();
+
+                primitive.mode = pset->getMode();
+                    
+                getOrCreateAccessor(positions, pset, primitive, "POSITION");
+                getOrCreateAccessor(normals, pset, primitive, "NORMAL");
+                getOrCreateAccessor(colors, pset, primitive, "COLOR_0");
+            }
+        }
+    }
+};
+
 
 class GLTFReader : public osgDB::ReaderWriter
 {
@@ -166,6 +443,40 @@ public:
                     }
                 }
             }
+
+#if 0
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE && accessor.type == TINYGLTF_TYPE_SCALAR)
+            {
+                osg::UByteArray* output = new osg::UByteArray();
+                unsigned char* array = (unsigned char*)(&buffer.data[0] + accessor.byteOffset + bufferView.byteOffset);
+                for(unsigned j=0; j<accessor.count; ++j)
+                {
+                    output->push_back(array[j]);
+                }
+                osgArray = output;
+            }
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT && accessor.type == TINYGLTF_TYPE_SCALAR)
+            {
+                osg::UShortArray* output = new osg::UShortArray();
+                unsigned short* array = (unsigned short*)(&buffer.data[0] + accessor.byteOffset + bufferView.byteOffset);
+                for (unsigned j = 0; j < accessor.count; ++j)
+                {
+                    output->push_back(array[j*2]);
+                }
+                osgArray = output;
+            }
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT && accessor.type == TINYGLTF_TYPE_SCALAR)
+            {
+                osg::UIntArray* output = new osg::UIntArray();
+                unsigned int* array = (unsigned int*)(&buffer.data[0] + accessor.byteOffset + bufferView.byteOffset);
+                for (unsigned j = 0; j < accessor.count; ++j)
+                {
+                    output->push_back(array[j * 4]);
+                }
+                osgArray = output;
+            }
+#endif
+
 
             if (osgArray.valid())
             {
@@ -489,6 +800,7 @@ public:
 
         // Check the header's magic string. If it's not there, attempt
         // to run a decompressor on it
+
         std::string magic(data, 0, 4);
         if (magic != "b3dm")
         {
@@ -507,11 +819,21 @@ public:
         }
 
         b3dmheader header;
-        unsigned int bytesRead = 0;
+        unsigned bytesRead = 0;
 
         std::stringstream buf(data);
         buf.read(reinterpret_cast<char*>(&header), sizeof(b3dmheader));
         bytesRead += sizeof(b3dmheader);
+
+#ifdef OE_IS_BIG_ENDIAN
+        byteSwapInPlace(header.version);
+        byteSwapInPlace(header.byteLength);
+        byteSwapInPlace(header.featureTableJSONByteLength);
+        byteSwapInPlace(header.featureTableBinaryByteLength);
+        byteSwapInPlace(header.batchTableJSONByteLength);
+        byteSwapInPlace(header.batchTableBinaryByteLength);
+#endif
+        
         size_t sz = header.byteLength;
 
         osg::Vec3d rtc_center;
@@ -626,6 +948,117 @@ public:
         }
 
         return makeNodeFromModel(model);
+    }
+
+    //! Writes a node to GLTF.
+    WriteResult writeNode(const osg::Node& node, const std::string& location, const Options* options) const
+    {
+        std::string ext = osgDB::getLowerCaseFileExtension(location);
+        if (!acceptsExtension(ext))
+            return WriteResult::FILE_NOT_HANDLED;
+
+        if (ciEquals(ext, "gltf"))
+        {
+            return writeGLTF(node, location, false, options);
+        }
+        else if (ciEquals(ext, "glb"))
+        {
+            return writeGLTF(node, location, true, options);
+        }
+        else if (ciEquals(ext, "b3dm"))
+        {
+            return writeB3DM(node, location, true, options);
+        }
+
+        return WriteResult::ERROR_IN_WRITING_FILE;
+    }
+
+    WriteResult writeGLTF(const osg::Node& node, const std::string& location, bool isBinary, const Options* options) const
+    {
+        OSGtoGLTF collect;
+        osg::Node& nc_node = const_cast<osg::Node&>(node); // won't change it, promise :)
+        nc_node.accept(collect);
+
+        TinyGLTF writer;
+
+        writer.WriteGltfSceneToFile(
+            &collect.getModel(),
+            location,
+            true,           // embedImages
+            true,           // embedBuffers
+            true,           // prettyPrint
+            isBinary);      // writeBinary
+
+        return WriteResult::FILE_SAVED;
+    }
+
+    WriteResult writeB3DM(const osg::Node& node, const std::string& location, bool isBinary, const Options* options) const
+    {
+        std::fstream fout(location.c_str(), std::ios::out | std::ios::binary);
+        if (!fout.is_open())
+            return WriteResult::ERROR_IN_WRITING_FILE;
+
+        std::string featureTableJSON;
+        {
+            Json::Value value(Json::objectValue);
+            value["BATCH_LENGTH"] = 1;
+            // no RTC_CENTER
+            Json::FastWriter writer;
+            featureTableJSON = writer.write(value);
+        }
+
+        // no binary feature table
+
+        // no batch table, json or binary
+
+        // gltf
+        OSGtoGLTF collect;
+        osg::Node& nc_node = const_cast<osg::Node&>(node); // won't change it, promise :)
+        nc_node.accept(collect);
+        gltf::Model& model = collect.getModel();
+        TinyGLTF gltfWriter;
+        std::ostringstream gltfBuf;
+        gltfWriter.WriteGltfSceneToBinaryStream(&model, location, gltfBuf, true, true);
+        std::string gltfData = gltfBuf.str();
+        
+        // assemble the header:
+        b3dmheader header;
+        header.magic[0] = 'b', header.magic[1] = '3', header.magic[2] = 'd', header.magic[3] = 'm';
+        header.version = 1;
+        header.featureTableJSONByteLength = featureTableJSON.length();
+        header.featureTableBinaryByteLength = 0;
+        header.batchTableJSONByteLength = 0;
+        header.batchTableBinaryByteLength = 0;
+        header.byteLength =
+            sizeof(b3dmheader) +
+            header.featureTableJSONByteLength +
+            header.featureTableBinaryByteLength +
+            header.batchTableJSONByteLength +
+            header.batchTableBinaryByteLength +
+            gltfData.length();
+
+#ifdef OE_IS_BIG_ENDIAN
+        byteSwapInPlace(header.version);
+        byteSwapInPlace(header.byteLength);
+        byteSwapInPlace(header.featureTableJSONByteLength);
+        byteSwapInPlace(header.featureTableBinaryByteLength);
+        byteSwapInPlace(header.batchTableJSONByteLength);
+        byteSwapInPlace(header.batchTableBinaryByteLength);
+#endif
+
+        // B3DM header:
+        fout.write((const char*)&header, sizeof(b3dmheader));
+
+        // Tables:
+        fout.write(featureTableJSON.c_str(), featureTableJSON.length());
+        // If we want to write the other 3 tables, they go here
+
+        // GLTF binary data
+        fout.write(gltfData.c_str(), gltfData.length());
+
+        fout.close();
+
+        return WriteResult::FILE_SAVED;
     }
 };
 

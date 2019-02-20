@@ -174,5 +174,23 @@ inline double OE_DECODE_DOUBLE(uint64_t x) {
     return r;
 }
 
+namespace osgEarth
+{
+    inline void byteSwapInPlace(uint32_t x) {
+        unsigned char* p = (unsigned char*)&x;
+        std::swap(p[0], p[3]);
+        std::swap(p[1], p[2]);
+    }
+    inline void byteSwapInPlace(uint16_t x) {
+        unsigned char* p = (unsigned char*)&x;
+        std::swap(p[0], p[1]);
+    }
+}
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    #define OE_IS_LITTLE_ENDIAN
+#else
+    #define OE_IS_BIG_ENDIAN
+#endif
 
 #endif // OSGEARTH_PORTABLE_ENDIAN_H__

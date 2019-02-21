@@ -317,6 +317,7 @@ void GroundCoverLayer::releaseGLObjects(osg::State* state) const
          }
       }
    }
+   Layer::releaseGLObjects(state);
    const_cast<GroundCoverLayer*>(this)->buildStateSets();
 }
 //VRV_PATCH: end

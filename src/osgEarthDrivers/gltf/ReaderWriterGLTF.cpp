@@ -260,7 +260,7 @@ public:
             idxAccessor.count = de->getNumIndices();
 
             getOrCreateBuffer(de, idxAccessor.componentType);
-            int idxBV = getOrCreateBufferView(de, idxAccessor.componentType, GL_ELEMENT_ARRAY_BUFFER);
+            int idxBV = getOrCreateBufferView(de, idxAccessor.componentType, GL_ELEMENT_ARRAY_BUFFER_ARB);
 
             idxAccessor.bufferView = idxBV;
         }
@@ -285,7 +285,7 @@ public:
             osg::Vec3Array* positions = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
             if (positions)
             {
-                getOrCreateBufferView(positions, GL_FLOAT, GL_ARRAY_BUFFER);
+                getOrCreateBufferView(positions, GL_FLOAT, GL_ARRAY_BUFFER_ARB);
                 for(unsigned i=0; i<positions->size(); ++i)
                 {
                     const osg::Vec3f& v = (*positions)[i];
@@ -301,13 +301,13 @@ public:
             osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
             if (normals)
             {
-                getOrCreateBufferView(normals, GL_FLOAT, GL_ARRAY_BUFFER);
+                getOrCreateBufferView(normals, GL_FLOAT, GL_ARRAY_BUFFER_ARB);
             }
 
             osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>(geom->getColorArray());
             if (colors)
             {
-                getOrCreateBufferView(colors, GL_FLOAT, GL_ARRAY_BUFFER);
+                getOrCreateBufferView(colors, GL_FLOAT, GL_ARRAY_BUFFER_ARB);
             }
 
             for(unsigned i=0; i<geom->getNumPrimitiveSets(); ++i)

@@ -92,6 +92,7 @@ namespace osgEarth { namespace Features
         
         //! The feature source from which to read geometry. Use this OR setFeatureLayer
         void setFeatureSource(FeatureSource* fs);
+        FeatureSource* getFeatureSource() const;
 
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();

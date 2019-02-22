@@ -61,7 +61,7 @@ typedef std::map<const osg::Array*, int> AccessorSequenceMap;
 class OSGtoGLTF : public osg::NodeVisitor
 {
 private:
-   gltf::Model _model;
+   gltf::Model& _model;
    OpenThreads::Atomic _nameGen;
    std::stack<gltf::Node*> _gltfNodeStack;
    OsgNodeSequenceMap _osgNodeSeqMap;
@@ -70,12 +70,7 @@ private:
    ArraySequenceMap _accessors;
 
 public:
-    gltf::Model& getModel()
-    {
-        return _model;
-    }
-
-    OSGtoGLTF()
+    OSGtoGLTF(gltf::Model& model) : _model(model)
     {
         setTraversalMode(TRAVERSE_ALL_CHILDREN);
         setNodeMaskOverride(~0);
@@ -262,9 +257,6 @@ public:
             idxAccessor.type = TINYGLTF_TYPE_SCALAR;
             idxAccessor.byteOffset = 0;
             idxAccessor.componentType = de->getDataType();
-                //dynamic_cast<const osg::DrawElementsUByte*>(de) ? GL_UNSIGNED_BYTE :
-                //dynamic_cast<const osg::DrawElementsUShort*>(de) ? GL_UNSIGNED_SHORT :
-                //GL_UNSIGNED_INT;
             idxAccessor.count = de->getNumIndices();
 
             getOrCreateBuffer(de, idxAccessor.componentType);
@@ -288,10 +280,22 @@ public:
             gltf::Mesh& mesh = _model.meshes.back();
             _model.nodes.back().mesh = _model.meshes.size() - 1;
 
+            osg::Vec3f posMin(FLT_MAX, FLT_MAX, FLT_MAX);
+            osg::Vec3f posMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
             osg::Vec3Array* positions = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
             if (positions)
             {
                 getOrCreateBufferView(positions, GL_FLOAT, GL_ARRAY_BUFFER);
+                for(unsigned i=0; i<positions->size(); ++i)
+                {
+                    const osg::Vec3f& v = (*positions)[i];
+                    posMin.x() = osg::minimum(posMin.x(), v.x());
+                    posMin.y() = osg::minimum(posMin.y(), v.y());
+                    posMin.z() = osg::minimum(posMin.z(), v.z());
+                    posMax.x() = osg::maximum(posMax.x(), v.x());
+                    posMax.y() = osg::maximum(posMax.y(), v.y());
+                    posMax.z() = osg::maximum(posMax.z(), v.z());
+                }
             }
 
             osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
@@ -315,8 +319,19 @@ public:
 
                 primitive.mode = pset->getMode();
                     
-                getOrCreateAccessor(positions, pset, primitive, "POSITION");
+                int a = getOrCreateAccessor(positions, pset, primitive, "POSITION");
+
+                // record min/max for position array (required):
+                gltf::Accessor& posacc = _model.accessors[a];
+                posacc.minValues.push_back(posMin.x());
+                posacc.minValues.push_back(posMin.y());
+                posacc.minValues.push_back(posMin.z());
+                posacc.maxValues.push_back(posMax.x());
+                posacc.maxValues.push_back(posMax.y());
+                posacc.maxValues.push_back(posMax.z());
+
                 getOrCreateAccessor(normals, pset, primitive, "NORMAL");
+
                 getOrCreateAccessor(colors, pset, primitive, "COLOR_0");
             }
         }
@@ -484,7 +499,7 @@ public:
             }
             else
             {
-                OSG_NOTICE << "Adding null array for " << i << std::endl;
+                OSG_DEBUG << "Adding null array for " << i << std::endl;
             }
             arrays.push_back(osgArray);
         }
@@ -973,16 +988,34 @@ public:
         return WriteResult::ERROR_IN_WRITING_FILE;
     }
 
+    void convertOSGtoGLTF(const osg::Node& node, gltf::Model& model) const
+    {
+        model.asset.version = "2.0";
+
+        osg::Node& nc_node = const_cast<osg::Node&>(node); // won't change it, promise :)
+        nc_node.ref();
+
+        // GLTF uses a +X=right +y=up -z=forward coordinate system
+        osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform;
+        transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 0.0, 1.0), osg::Vec3d(0.0, 1.0, 0.0)));
+        transform->addChild(&nc_node);
+
+        OSGtoGLTF converter(model);
+        transform->accept(converter);
+
+        transform->removeChild(&nc_node);
+        nc_node.unref_nodelete();
+    }
+
     WriteResult writeGLTF(const osg::Node& node, const std::string& location, bool isBinary, const Options* options) const
     {
-        OSGtoGLTF collect;
-        osg::Node& nc_node = const_cast<osg::Node&>(node); // won't change it, promise :)
-        nc_node.accept(collect);
+        gltf::Model model;
+        convertOSGtoGLTF(node, model);
 
         TinyGLTF writer;
 
         writer.WriteGltfSceneToFile(
-            &collect.getModel(),
+            &model,
             location,
             true,           // embedImages
             true,           // embedBuffers
@@ -1006,26 +1039,29 @@ public:
             Json::FastWriter writer;
             featureTableJSON = writer.write(value);
         }
+        int featureTablePadding = 4 - (featureTableJSON.length() % 4);
+        if (featureTablePadding == 4) featureTablePadding = 0;
 
         // no binary feature table
 
         // no batch table, json or binary
 
-        // gltf
-        OSGtoGLTF collect;
-        osg::Node& nc_node = const_cast<osg::Node&>(node); // won't change it, promise :)
-        nc_node.accept(collect);
-        gltf::Model& model = collect.getModel();
+        // convert OSG to GLTF and write to a buffer:
+        gltf::Model model;
+        convertOSGtoGLTF(node, model);
+
         TinyGLTF gltfWriter;
         std::ostringstream gltfBuf;
-        gltfWriter.WriteGltfSceneToBinaryStream(&model, location, gltfBuf, true, true);
+        gltfWriter.WriteGltfSceneToBinaryStream(&model, location, gltfBuf, true, true);        
         std::string gltfData = gltfBuf.str();
+        int gltfDataPadding = 4 - (gltfData.length() % 4);
+        if (gltfDataPadding == 4) gltfDataPadding = 0;
         
         // assemble the header:
         b3dmheader header;
         header.magic[0] = 'b', header.magic[1] = '3', header.magic[2] = 'd', header.magic[3] = 'm';
         header.version = 1;
-        header.featureTableJSONByteLength = featureTableJSON.length();
+        header.featureTableJSONByteLength = featureTableJSON.length() + featureTablePadding;
         header.featureTableBinaryByteLength = 0;
         header.batchTableJSONByteLength = 0;
         header.batchTableBinaryByteLength = 0;
@@ -1035,7 +1071,8 @@ public:
             header.featureTableBinaryByteLength +
             header.batchTableJSONByteLength +
             header.batchTableBinaryByteLength +
-            gltfData.length();
+            gltfData.length() +
+            gltfDataPadding;
 
 #ifdef OE_IS_BIG_ENDIAN
         byteSwapInPlace(header.version);
@@ -1051,10 +1088,13 @@ public:
 
         // Tables:
         fout.write(featureTableJSON.c_str(), featureTableJSON.length());
+        fout.write("   ", featureTablePadding);
+
         // If we want to write the other 3 tables, they go here
 
         // GLTF binary data
         fout.write(gltfData.c_str(), gltfData.length());
+        fout.write("\0\0\0", gltfDataPadding);
 
         fout.close();
 

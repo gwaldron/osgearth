@@ -279,6 +279,19 @@ TDTiles::BoundingVolume::getJSON() const
         a.append(region()->zMax());
         value["region"] = a;
     }
+    else if (sphere().isSet())
+    {
+        Json::Value a(Json::arrayValue);
+        a.append(sphere()->center().x());
+        a.append(sphere()->center().y());
+        a.append(sphere()->center().z());
+        a.append(sphere()->radius());
+        value["sphere"] = a;
+    }
+    else if (box().isSet())
+    {
+        OE_WARN << LC << "box not implemented" << std::endl;
+    }
     return value;
 }
 

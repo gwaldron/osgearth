@@ -233,7 +233,7 @@ public:
             data->getDataSize() == 2 ? TINYGLTF_TYPE_VEC2 :
             data->getDataSize() == 3 ? TINYGLTF_TYPE_VEC3 :
             data->getDataSize() == 4 ? TINYGLTF_TYPE_VEC4 :
-            TINYGLTF_TYPE_SCALAR;
+                                       TINYGLTF_TYPE_SCALAR;
 
         accessor.bufferView = bv->second;
         accessor.byteOffset = 0;

@@ -95,7 +95,6 @@ namespace osgEarth { namespace Splat
         //! Splatting zones
         Zones& zones() { return _zones; }
         const Zones& zones() const { return _zones; }
-
     public: // Layer
 
         //! Override
@@ -112,6 +111,11 @@ namespace osgEarth { namespace Splat
         virtual void addedToMap(const Map* map);
         virtual void removedFromMap(const Map* map);
         virtual void setTerrainResources(TerrainResources* res);
+
+    public:
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
         virtual ~SplatLayer() { }

@@ -122,9 +122,6 @@ namespace osgEarth { namespace Splat
         //! Geogrphic zones; at least one is required
         Zones& zones() { return _zones; }
         const Zones& zones() const { return _zones; }
-//VRV_PATCH: start
-        virtual void releaseGLObjects(osg::State* state) const;
-//VRV_PATCH: end
     public: // Layer
 
         //! Override
@@ -144,6 +141,9 @@ namespace osgEarth { namespace Splat
         virtual void addedToMap(const Map* map);
         virtual void removedFromMap(const Map* map);
         virtual void setTerrainResources(TerrainResources*);
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
         virtual ~GroundCoverLayer() { }

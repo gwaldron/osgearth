@@ -190,23 +190,36 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
 
 void RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 {
-
-   getStateSet()->releaseGLObjects(state);
-
-   _terrain->getStateSet()->releaseGLObjects(state);
-
-   _imageLayerStateSet.get()->releaseGLObjects(state);
+//VRV_PATCH: start
+   if (_terrain)
+   {
+      _terrain->releaseGLObjects(state);
+   }
+   
+   if (_imageLayerStateSet)
+   {
+      _imageLayerStateSet->releaseGLObjects(state);
+   }
 
     // TODO: where should this live? MapNode?
    LayerVector layers;
-   getMap()->getLayers(layers);
+   if (getMap())
+   {
+      getMap()->getLayers(layers);
+   }
    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
    {
-//VRV_PATCH: start
       // This is done via MapNode::releaseGLObjects in latest osg earth
       (*i)->releaseGLObjects(state);
-//VRV_PATCH: end
    }
+
+   if (_geometryPool)
+   {
+      _geometryPool->clear();
+   }
+   
+   TerrainEngineNode::releaseGLObjects(state);
+//VRV_PATCH: end
 }
 
 void
@@ -454,6 +467,12 @@ RexTerrainEngineNode::setupRenderBindings()
 void
 RexTerrainEngineNode::dirtyTerrain()
 {
+//VRV_PATCH: start
+   if (_terrain)
+   {
+      _terrain->releaseGLObjects();
+   }
+//VRV_PATCH: end
     if ( _terrain )
     {
         this->removeChild( _terrain );

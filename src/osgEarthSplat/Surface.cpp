@@ -198,3 +198,21 @@ Surface::createLUTBuffer(const LandCoverDictionary* landCoverDict) const
 
     return buf;
 }
+
+void
+Surface::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if (getStateSet())
+        getStateSet()->resizeGLObjectBuffers(maxSize);
+
+    _textureDef.resizeGLObjectBuffers(maxSize);
+}
+
+void
+Surface::releaseGLObjects(osg::State* state) const
+{
+    if (getStateSet())
+        getStateSet()->releaseGLObjects(state);
+
+    _textureDef.releaseGLObjects(state);
+}

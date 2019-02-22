@@ -300,27 +300,6 @@ GroundCoverLayer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack
     }
     return true;
 }
-
-//VRV_PATCH: start
-void GroundCoverLayer::releaseGLObjects(osg::State* state) const
-{
-   for (Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
-   {
-      Zone* zone = z->get();
-      GroundCover* groundCover = zone->getGroundCover();
-      if (groundCover)
-      {
-         osg::StateSet* zoneStateSet = groundCover->getStateSet();
-         if (zoneStateSet)
-         {
-            zoneStateSet->releaseGLObjects(state);
-         }
-      }
-   }
-   Layer::releaseGLObjects(state);
-   const_cast<GroundCoverLayer*>(this)->buildStateSets();
-}
-//VRV_PATCH: end
 void
 GroundCoverLayer::buildStateSets()
 {
@@ -433,5 +412,31 @@ GroundCoverLayer::buildStateSets()
             OE_DEBUG << LC << "zone contains no ground cover information\n";
         }
     }
+}
 
+void
+GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
+{
+    for (Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
+    {
+        z->get()->resizeGLObjectBuffers(maxSize);
+    }
+
+    PatchLayer::resizeGLObjectBuffers(maxSize);
+}
+
+void
+GroundCoverLayer::releaseGLObjects(osg::State* state) const
+{
+    for (Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
+    {
+        z->get()->releaseGLObjects(state);
+    }
+
+    PatchLayer::releaseGLObjects(state);
+
+    // For some unknown reason, release doesn't work on the zone 
+    // texture def data (SplatTextureDef). So we have to recreate
+    // it here.
+    const_cast<GroundCoverLayer*>(this)->buildStateSets();
 }

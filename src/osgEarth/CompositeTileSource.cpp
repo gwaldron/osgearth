@@ -109,17 +109,17 @@ namespace
         {
             image = 0;
             opacity = 1;
-            dataInExtents = false;
+            mayHaveDataForKey = false;
         }
 
-        ImageInfo(osg::Image* image, float opacity, bool dataInExtents)
+        ImageInfo(osg::Image* image, float opacity, bool mayHaveDataForKey)
         {
             this->image = image;
             this->opacity = opacity;
-            this->dataInExtents = dataInExtents;
+            this->mayHaveDataForKey = mayHaveDataForKey;
         }
 
-        bool dataInExtents;
+        bool mayHaveDataForKey;
         float opacity;
         osg::ref_ptr< osg::Image> image;
     };
@@ -146,15 +146,20 @@ CompositeTileSource::createImage(const TileKey&    key,
     ImageMixVector images;
     images.reserve(_imageLayers.size());
 
+    if (key.str()=="4/12/0")
+    {
+        int x=0;
+    }
+
     // Try to get an image from each of the layers for the given key.
     for (ImageLayerVector::const_iterator itr = _imageLayers.begin(); itr != _imageLayers.end(); ++itr)
     {
         ImageLayer* layer = itr->get();
         ImageInfo imageInfo;
-        imageInfo.dataInExtents = layer->mayHaveData(key); //.getExtent());
+        imageInfo.mayHaveDataForKey = layer->mayHaveData(key);
         imageInfo.opacity = layer->getOpacity();
 
-        if (imageInfo.dataInExtents)
+        if (imageInfo.mayHaveDataForKey)
         {
             GeoImage image = layer->createImage(key, progress);
             if (image.valid())
@@ -196,7 +201,10 @@ CompositeTileSource::createImage(const TileKey&    key,
         {
             ImageInfo& info = images[i];
             ImageLayer* layer = _imageLayers[i].get();
-            if (!info.image.valid() && info.dataInExtents)
+
+            // If we didn't get any data for the tilekey, but the extents do overlap,
+            // we will try to fall back on lower LODs and get data there instead:
+            if (!info.image.valid() && layer->getDataExtentsUnion().intersects(key.getExtent()))
             {                      
                 TileKey parentKey = key.createParentKey();
 

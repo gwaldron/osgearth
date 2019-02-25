@@ -245,9 +245,7 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
 
     // The index type. Defaults to uint32_t, but you can also pass uint16_t if you know that your
     // data won't have more than 65536 vertices.
-    using N = uint32_t;
-
-    std::vector<N> indices = mapbox::earcut<N>(polygon);
+    std::vector<uint32_t> indices = mapbox::earcut<uint32_t>(polygon);
     // Remove the existing primitive sets
     geom.removePrimitiveSet(0, geom.getNumPrimitiveSets());
     osg::DrawElementsUInt* drawElements = new osg::DrawElementsUInt(GL_TRIANGLES);

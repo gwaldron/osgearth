@@ -99,7 +99,7 @@ namespace osgEarth { namespace TDTiles
         OE_OPTION(TileContent, content);
         OE_OPTION_VECTOR(osg::ref_ptr<Tile>, children);
 
-        Tile() { }
+        Tile() : _refine(REFINE_ADD) { }
         Tile(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
         void fromJSON(const Json::Value&, LoadContext& uc);
         Json::Value getJSON() const;
@@ -130,12 +130,8 @@ namespace osgEarth { namespace TDTiles
     public:
         ContentHandler();
         virtual osg::ref_ptr<osg::Node> createNode(Tile* tile, const osgDB::Options*) const;
-        virtual void setMaxScreenSpaceError(float);
-        float getMaxScreenSpaceError() const;
     protected:
         virtual ~ContentHandler() { }
-    private:
-        float _maxSSE;
     };
 
     class OSGEARTH_EXPORT TileNode : public osg::MatrixTransform
@@ -143,19 +139,18 @@ namespace osgEarth { namespace TDTiles
     public:
         META_Node(osgEarth, TileNode);
 
-        TileNode(Tile* tile, ContentHandler* factory, const osgDB::Options*, bool preLoadContent);
+        TileNode(Tile* tile, ContentHandler* factory, const osgDB::Options*);
         osg::ref_ptr<TDTiles::Tile> _tile;
         osg::ref_ptr<ContentHandler> _handler;
         osg::ref_ptr<const osgDB::Options> _readOptions;
-        osg::ref_ptr<osg::Node> readContent() const;
+        osg::ref_ptr<osg::Node> loadContent() const;
+        osg::ref_ptr<osg::Node> loadChild(unsigned i) const;
         osg::ref_ptr<osg::Node> loadChildren() const;
 
     protected:
         TileNode() { }
         TileNode(const TileNode& rhs, const osg::CopyOp& op) { }
         virtual ~TileNode() { }
-
-        float _maxSSE;
     };
 } }
 
@@ -172,6 +167,7 @@ namespace osgEarth
 
         //! Read options for this group and its children
         void setReadOptions(const osgDB::Options*);
+        const osgDB::Options* getReadOptions() const;
 
         //! Content handler for 3DTiles data.
         TDTiles::ContentHandler* getContentHandler() const;
@@ -181,14 +177,19 @@ namespace osgEarth
 
         //! Sets the URL of the root tileset to load.
         void setTilesetURL(const URI& location);
+        const URI& getTilesetURL() const;
+
+    public:
+        // internal
+        osg::ref_ptr<osg::Node> loadRoot(TDTiles::Tileset*) const;
 
     protected:
         TDTilesetGroup(const TDTilesetGroup& rhs, const osg::CopyOp& op) { }
         virtual ~TDTilesetGroup() { }
 
-        osg::ref_ptr<TDTiles::Tileset> _tileset;
         osg::ref_ptr<TDTiles::ContentHandler> _handler;
         osg::ref_ptr<const osgDB::Options> _readOptions;
+        URI _tilesetURI;
     };
 }
 

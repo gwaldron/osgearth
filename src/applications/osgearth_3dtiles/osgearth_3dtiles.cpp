@@ -32,6 +32,7 @@
 #include <osgEarth/TDTiles>
 #include <osgEarth/Random>
 #include <osgEarth/TileKey>
+#include <osgEarth/CullingUtils>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureCursor>
@@ -56,12 +57,14 @@ struct App
     EarthManipulator* _manip;
     osg::ref_ptr<TDTilesetGroup> _tileset;
     osgViewer::View* _view;
+    LODScaleGroup* _sseGroup;
     float _maxSSE;
     bool _randomColors;
 
     void changeSSE()
     {
-        _handler->setMaxScreenSpaceError(_sse->getValue());
+        _sseGroup->setLODScaleFactor(_sse->getValue());
+        //_handler->setMaxScreenSpaceError(_sse->getValue());
     }
 
     void zoomToData()
@@ -95,7 +98,7 @@ ui::Control* makeUI(App& app)
 
     int r=0;
     container->setControl(0, r, new ui::LabelControl("Screen-space error (px)"));
-    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, app._maxSSE, 1.0f, new changeSSE(app)));
+    app._sse = container->setControl(1, r, new ui::HSliderControl(app._maxSSE, 1.0f, app._maxSSE, new changeSSE(app)));
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
 
@@ -193,7 +196,7 @@ main_view(osg::ArgumentParser& arguments)
     bool readFeatures = arguments.read("--features");
     app._randomColors = arguments.read("--random-colors");
 
-    app._maxSSE = 10.0f;
+    app._maxSSE = 7.0f;
     arguments.read("--maxsse", app._maxSSE);
 
     // load the tile set:
@@ -225,12 +228,18 @@ main_view(osg::ArgumentParser& arguments)
     else
         app._tileset = new TDTilesetGroup();
 
-    app._handler = app._tileset->getContentHandler();
+
+    app._sseGroup = new LODScaleGroup();
+    app._sseGroup->addChild(app._tileset.get());
+
+    //app._handler = app._tileset->getContentHandler();
+
     ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
     app._tileset->setTileset(tileset);
     app._tileset->setReadOptions(mapNode->getMap()->getReadOptions());
-    mapNode->addChild(app._tileset.get());
+
+    mapNode->addChild(app._sseGroup);
 
     viewer.setSceneData( node.get() );
     return viewer.run();
@@ -343,6 +352,7 @@ main_build(osg::ArgumentParser& arguments)
     osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
     tileset->asset()->version() = "1.0";
     tileset->root() = new TDTiles::Tile();
+    tileset->root()->refine() = TDTiles::REFINE_ADD;
 
     // track the largest tile radius - we will use this as the geometric error
     // for the group.

@@ -22,6 +22,7 @@
 
 #include <osgViewer/Viewer>
 #include <osgDB/WriteFile>
+#include <osgUtil/Simplifier>
 #include <osgEarth/Notify>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
@@ -37,6 +38,7 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/FeatureModelLayer>
+#include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <iostream>
 
@@ -115,17 +117,19 @@ usage(const std::string& message)
         << "\n\n" << message
         << "\n\nUsage: osgearth_3dtiles"
         << "\n"
-        << "\n   --build [earthfile]         ; build a B3DM file"
-        << "\n     --startkey <Z,X,Y>        ; starting key of tiles to build"
-        << "\n     --endkey <Z,X,Y>          ; optional ending key"
-        << "\n     --out <filename>          ; output file with .b3dm extension"
-        << "\n     --error <meters>          ; geometric error (meters) of data (default=100)"
+        << "\n   --build [earthfile]          ; build a B3DM file"
+        << "\n     --extent <minLat> <minLon>"
+        << "\n              <maxLat> <maxLon> ; Extents to build (degrees)"
+        << "\n     --startkey <Z,X,Y>         ; starting key of tiles to build"
+        << "\n     --endkey <Z,X,Y>           ; optional ending key"
+        << "\n     --out <filename>           ; output file with .b3dm extension"
+        << "\n     --error <meters>           ; geometric error (meters) of data (default=100)"
         << "\n"
-        << "\n   --view                      ; view a 3dtiles dataset"
-        << "\n     --tileset <filename>      ; 3dtiles tileset JSON file to load"
-        << "\n     --maxsse <n>              ; maximum screen space error in pixels for UI"
-        << "\n     --features                ; treat the 3dtiles content as feature data"
-        << "\n     --random-colors           ; randomly color feature tiles (instead of one color)"
+        << "\n   --view                       ; view a 3dtiles dataset"
+        << "\n     --tileset <filename>       ; 3dtiles tileset JSON file to load"
+        << "\n     --maxsse <n>               ; maximum screen space error in pixels for UI"
+        << "\n     --features                 ; treat the 3dtiles content as feature data"
+        << "\n     --random-colors            ; randomly color feature tiles (instead of one color)"
         << std::endl;
         //<< MapNodeHelper().usage() << std::endl;
 
@@ -260,6 +264,36 @@ parseKey(const std::string& input, const Profile* profile)
         profile);
 }
 
+TDTiles::Tile*
+createTile(osg::Node* node, const GeoExtent& extent, double error, const std::string& filenamePrefix, TDTiles::RefinePolicy refine)
+{
+    std::string filename = Stringify() << filenamePrefix << "_" << int(error) << ".b3dm";
+
+    if (!osgDB::writeNodeFile(*node, filename))
+    {
+        OE_WARN << "Failed to write to output file (" << filename << ")" << std::endl;
+        return NULL;
+    }
+
+    osg::ref_ptr<TDTiles::Tile> tile = new TDTiles::Tile();
+    tile->content()->uri() = filename;
+
+    // Set up a bounding region (radians)
+    // TODO: calculate the correct Z min/max instead of hard-coding
+    tile->boundingVolume()->region()->set(
+        osg::DegreesToRadians(extent.xMin()),
+        osg::DegreesToRadians(extent.yMin()),
+        -1000.0,
+        osg::DegreesToRadians(extent.xMax()),
+        osg::DegreesToRadians(extent.yMax()),
+        3000.0);
+
+    tile->geometricError() = 0.0;
+    tile->refine() = refine;
+
+    return tile.release();
+}
+
 int
 main_build(osg::ArgumentParser& arguments)
 {
@@ -270,6 +304,16 @@ main_build(osg::ArgumentParser& arguments)
     // 4. Compile it into OSG geometry with a matrix transform
     // 5. Save that geometry to a B3DM file.
 
+    // Estalish extents for the build.
+    double minLat, minLon, maxLat, maxLon;
+    if (!arguments.read("--extent", minLat, minLon, maxLat, maxLon))
+        return usage("Missing required --extent");
+
+    GeoExtent extent(SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
+    if (!extent.isValid())
+        return usage("Invalid extent");
+
+#if 0
     // Establish the tile key to build
     std::string startkey, endkey;
     {
@@ -282,6 +326,7 @@ main_build(osg::ArgumentParser& arguments)
     }
     if (startkey.empty() || endkey.empty())
         return usage("Missing required --startkey or --startkey/endkey pair");
+#endif
 
     // Output filename prefix
     std::string prefix;
@@ -296,6 +341,10 @@ main_build(osg::ArgumentParser& arguments)
     double error;
     if (!arguments.read("--error", error))
         error = 100.0;
+
+    TDTiles::RefinePolicy refine = TDTiles::REFINE_REPLACE;
+    if (arguments.read("--add"))
+        refine = TDTiles::REFINE_ADD;
 
     // Open an earth file and load a Map.
     osg::ref_ptr<osg::Node> earthFile = osgDB::readNodeFiles(arguments);
@@ -329,17 +378,15 @@ main_build(osg::ArgumentParser& arguments)
     if (!fp->getProfile())
         return usage("Unagle to find a tiling profile in the feature profile");
 
-    TileKey LL = parseKey(startkey, fp->getProfile());
-    TileKey UR = parseKey(endkey, fp->getProfile());
-    if (LL.valid() == false || UR.valid() == false)
-        return usage("Bad tile keys");
+    std::vector<TileKey> keys;
+    fp->getProfile()->getIntersectingTiles(extent, fp->getMaxLevel(), keys);
+    if (keys.empty())
+        return usage("No data in requested extent");
+    OE_INFO << "Found " << keys.size() << " tiles in extent" << std::endl;
 
     StyleSheet* sheet = fml->options().styles().get();
     if (!sheet)
         return usage("Missing stylesheet");
-    const Style* style = sheet->getDefaultStyle();
-    if (!style)
-        return usage("No default style in the stylesheet");
 
     // Make sure the b3dm plugin is loaded
     std::string libname = osgDB::Registry::instance()->createLibraryNameForExtension("gltf");
@@ -347,6 +394,15 @@ main_build(osg::ArgumentParser& arguments)
 
     osg::ref_ptr<Session> session = new Session(map, sheet, fs, 0L);
     GeometryCompiler compiler(fml->options());
+
+    // Read all the styles in the stylesheet and sort them by geometric error:
+    std::map<double, Style> styles;
+    const StyleMap& smap = sheet->styles();
+    for(StyleMap::const_iterator i = smap.begin(); i != smap.end(); ++i)
+    {
+        styles[atoi(i->first.c_str())] = i->second;
+        OE_INFO << LC << "Found style \"" << i->first << "\"" << std::endl;
+    }
 
     // Create the tileset file
     osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
@@ -363,69 +419,56 @@ main_build(osg::ArgumentParser& arguments)
     GeoExtent total;
 
     //TODO: for loop on the feature keys
-    for(unsigned x=LL.getTileX(); x<=UR.getTileX(); ++x)
+    for(std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
     {
-        for(unsigned y=LL.getTileY(); y<=UR.getTileY(); ++y)
+        // Check the "radius"
+        double tileRadius = key->getExtent().computeBoundingGeoCircle().getRadius();
+        maxTileRadius = osg::maximum(tileRadius, maxTileRadius);
+
+        // Query the features corresponding to the tile key:
+        Query query;
+        query.tileKey() = *key;
+
+        std::string filenamePrefix = Stringify() << prefix << key->getLOD() << "_" << key->getTileX() << "_" << key->getTileY();
+
+        osg::ref_ptr<TDTiles::Tile> parent = tileset->root();
+
+        for(std::map<double, Style>::reverse_iterator i = styles.rbegin(); i != styles.rend(); ++i)
         {
-            TileKey key(LL.getLOD(), x, y, LL.getProfile());
+            double error = i->first;
+            const Style& style = i->second;
 
-            // Check the "radius"
-            double tileRadius = key.getExtent().computeBoundingGeoCircle().getRadius();
-            maxTileRadius = osg::maximum(tileRadius, maxTileRadius);
-
-            // Query the features corresponding to the tile key:
-            Query query;
-            query.tileKey() = key;
+            parent->geometricError() = error;
 
             osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(query, 0L);
             if (!cursor.valid())
                 continue;
 
-            OE_INFO << LC << "Tile " << key.str() << std::endl;
-
             // Compile into OSG geometry
             FeatureList features;
             cursor->fill(features);
-            OE_INFO << LC << "Found " << features.size() << " features" << std::endl;
-            if (features.size() == 0)
+            if (features.empty())
                 continue;
 
-            FilterContext fc(session.get(), fp, key.getExtent());
-            osg::ref_ptr<osg::Node> result = compiler.compile(features, *style, fc);
+            OE_INFO << LC << "Tile " << key->str() << ", features=" << features.size() << ", error=" << error << std::endl;
+
+            FilterContext fc(session.get(), fp, key->getExtent());
+            osg::ref_ptr<osg::Node> result = compiler.compile(features, style, fc);
             if (!result)
                 return usage("Failed to compile features into OSG geometry");
-    
-            std::string filename = Stringify() << prefix << key.getLOD() << "_" << key.getTileX() << "_" << key.getTileY() << ".b3dm";
-
-            // Write out a B3DM file
-            if (!osgDB::writeNodeFile(*result.get(), filename))
-                return usage("Failed to write to output file");
 
             if (result->getBound().valid())
             {
-                GeoExtent e = key.getExtent().transform(SpatialReference::get("wgs84"));
+                GeoExtent extent = key->getExtent().transform(SpatialReference::get("wgs84"));
                 if (total.isValid())
-                    total.expandToInclude(e);
+                    total.expandToInclude(extent);
                 else
-                    total = e;
+                    total = extent;
 
-                osg::ref_ptr<TDTiles::Tile> tile = new TDTiles::Tile();
-                tile->content()->uri() = filename;
+                osg::ref_ptr<TDTiles::Tile> tile = createTile(result.get(), extent, error, filenamePrefix, refine);
+                parent->children().push_back(tile);
 
-                // Set up a bounding region (radians)
-                // TODO: calculate the correct Z min/max instead of hard-coding
-                tile->boundingVolume()->region()->set(
-                    osg::DegreesToRadians(e.xMin()),
-                    osg::DegreesToRadians(e.yMin()),
-                    -1000.0,
-                    osg::DegreesToRadians(e.xMax()),
-                    osg::DegreesToRadians(e.yMax()),
-                    3000.0);
-
-                // This tile is the highest possible refinement (and no chidren),
-                // and thus has a geometric error of zero.
-                tile->geometricError() = 0;
-                tileset->root()->children().push_back(tile.get());
+                parent = tile;
             }
         }
     }
@@ -438,10 +481,8 @@ main_build(osg::ArgumentParser& arguments)
         osg::DegreesToRadians(total.xMax()),
         osg::DegreesToRadians(total.yMax()),
         3000.0);
-
-    tileset->root()->geometricError() = error;
-
-    tileset->geometricError() = error;
+    
+    tileset->geometricError() = tileset->root()->geometricError().get() * 1.5;
 
     // write out the tileset file ("tileset.json")
     std::ofstream out("tileset.json");

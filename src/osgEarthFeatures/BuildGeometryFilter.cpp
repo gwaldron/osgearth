@@ -144,6 +144,9 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             input->eval( temp, &context );
         }
 
+        if (input->getGeometry() == 0L)
+            continue;
+
         GeometryIterator parts( input->getGeometry(), false );
         while( parts.hasMore() )
         {

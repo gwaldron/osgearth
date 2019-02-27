@@ -284,7 +284,7 @@ namespace osgEarth
                             lastHealthyChild = &child;
 
                             // depending on the policy, traverse the live node now.
-                            // In "refine" mode, we have to want and see because we only
+                            // In "replace" mode, we have to want and see because we only
                             // want to display the last healthy node.
                             if (_policy == POLICY_ACCUMULATE || _policy == POLICY_INDEPENDENT)
                             {
@@ -347,7 +347,8 @@ namespace osgEarth
                 0.5f,                               // priority
                 nv.getFrameStamp(),                 // frame stamp
                 child._internalHandle,              // associates the request with a unique ID
-                child._options.get());              // osgDB plugin options
+                child._options.get()                // osgDB plugin options
+            );
         }
 
         //! Determines whether a child node is visible and therefore
@@ -359,7 +360,7 @@ namespace osgEarth
 #else
             osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
 #endif
-
+            
             if (_mode == MODE_GEOMETRIC_ERROR)
             {
                 if (cullStack && cullStack->getLODScale() > 0)
@@ -367,37 +368,24 @@ namespace osgEarth
                     // size of this node. Use setCenter and setRadius to make this work.
                     float sizeInMeters = getBound().radius() * 2.0;
                     float sizeInPixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
-
-                    int lastChildTraversed = -1;
-                    bool needToLoadChild = false;
-                    for (unsigned int i = 0; i < _children.size(); ++i)
-                    {
-                        const AsyncNode& child = _children[i];
-
-                        float maxMetersPerPixel = child._maxValue;
-
-                        // adjust sizeInPixels for the current SSE:
-                        float effectiveSizeInPixels = sizeInPixels; // / getMaxScreenSpaceError();
-                        float effectiveMetersPerPixel = effectiveSizeInPixels > 0.0 ? sizeInMeters / effectiveSizeInPixels : 0.0f;
-
-                        if (effectiveMetersPerPixel < maxMetersPerPixel)
-                        {
-                            return true;
-                        }
-                    }
+                    float metersPerPixel = sizeInPixels > 0.0 ? sizeInMeters / sizeInPixels : 0.0f;
+                    return metersPerPixel < async._maxValue;
                 }
             }
 
             else if (_mode == MODE_PIXEL_SIZE)
             {
-                OE_WARN << LC << "MODE_PIXEL_SIZE is not yet implemented" << std::endl;
-                return true;
+                if (cullStack && cullStack->getLODScale() > 0)
+                {
+                    float sizeInPixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
+                    return async._minValue <= sizeInPixels && sizeInPixels < async._maxValue;
+                }
             }
 
             else if (_mode == MODE_RANGE)
             {
-                OE_WARN << LC << "MODE_RANGE is not yet implemented" << std::endl;
-                return true;
+                float range = nv.getDistanceToViewPoint(getBound().center(), true);
+                return async._minValue <= range && range < async._maxValue;
             }
 
             return false;
@@ -462,7 +450,7 @@ namespace osgEarth { namespace TDTiles
         LoadChildren(TDTiles::TileNode* tileNode) : _tileNode(tileNode) { }
         virtual ReadResult operator()() const
         {
-            OE_INFO << LC << "LoadChildren" << std::endl;
+            OE_DEBUG << LC << "LoadChildren" << std::endl;
             osg::ref_ptr<TDTiles::TileNode> tileNode;
             if (_tileNode.lock(tileNode))
             {

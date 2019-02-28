@@ -1557,6 +1557,11 @@ RexTerrainEngineNode::updateState()
             // Apply uniforms for sampler bindings:
             OE_DEBUG << LC << "Render Bindings:\n";
             osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+//VRV_PATCH: start
+            // fixes invalid enumerant errors because source format is internal format if nothing is specified
+            // and that's a wrong enumerant for glTexImage2D call
+            tex->setSourceFormat(GL_RGBA);
+//VRV_PATCH: end
             for (unsigned i = 0; i < _renderBindings.size(); ++i)
             {
                 SamplerBinding& b = _renderBindings[i];

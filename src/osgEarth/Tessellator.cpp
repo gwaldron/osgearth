@@ -145,7 +145,7 @@ namespace mapbox {
     }
 }
 
-#define USE_EARCUT
+//#define USE_EARCUT
 
 bool
 Tessellator::tessellateGeometry(osg::Geometry &geom)

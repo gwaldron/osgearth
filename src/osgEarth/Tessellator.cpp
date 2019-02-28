@@ -23,7 +23,30 @@
 
 #include <osgEarth/Tessellator>
 
+#ifdef OSGEARTH_CXX11
+
 #include <osgEarth/earcut.hpp>
+namespace mapbox {
+    namespace util {
+        template <>
+        struct nth<0, osg::Vec2> {
+            inline static float get(const osg::Vec2 &t) {
+                return t.x();
+            };
+        };
+
+        template <>
+        struct nth<1, osg::Vec2> {
+            inline static float get(const osg::Vec2 &t) {
+                return t.y();
+            };
+        };
+    }
+}
+
+#define USE_EARCUT
+
+#endif
 
 using namespace osgEarth;
 
@@ -126,26 +149,6 @@ typedef std::vector<TriIndices> TriList;
 
 }
 
-
-namespace mapbox {
-    namespace util {
-        template <>
-        struct nth<0, osg::Vec2> {
-            inline static auto get(const osg::Vec2 &t) {
-                return t.x();
-            };
-        };
-
-        template <>
-        struct nth<1, osg::Vec2> {
-            inline static auto get(const osg::Vec2 &t) {
-                return t.y();
-            };
-        };
-    }
-}
-
-#define USE_EARCUT
 
 bool
 Tessellator::tessellateGeometry(osg::Geometry &geom)

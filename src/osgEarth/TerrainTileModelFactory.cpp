@@ -445,7 +445,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
                                                 ProgressCallback*               progress)
 {
   
-
+   // VRV_PATCH
    CacheBin* cacheBin = 0;
    const ElevationLayerVector& layers = frame.elevationLayers();
    std::string hfCacheKey;
@@ -471,7 +471,6 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
          //osg::CVMarkerSeries objectCreation("osgETiming");
          {
             //osg::CVSpan creationSpan(objectCreation, 4, "load HF");
-
             ReadResult rr = cacheBin->readObject(hfCacheKey, 0);
             if (rr.succeeded())
             {
@@ -496,6 +495,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
          return true;
       }
    }
+   //VRV_PATCH:end
 
     // check the quick cache.
     HFCacheKey cachekey;
@@ -574,6 +574,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
             HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
         }
 
+        //VRV_PATCH
         // cache it.
         if (_heightFieldCacheEnabled )
         {
@@ -597,6 +598,8 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
               cacheBin->write(normalCacheKey, out_normalMap.get(), 0L);
            }
         }
+        //VRV_PATCH:end
+
 		  
     }
 

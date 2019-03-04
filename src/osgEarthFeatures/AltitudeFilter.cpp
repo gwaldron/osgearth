@@ -91,6 +91,8 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
             StringExpression temp( _altitude->script().get() );
             feature->eval( temp, &cx );
         }
+        if (feature->getGeometry() == 0L)
+            continue;
 
         double minHAT       =  DBL_MAX;
         double maxHAT       = -DBL_MAX;
@@ -192,6 +194,8 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             StringExpression temp( _altitude->script().get() );
             feature->eval( temp, &cx );
         }
+        if (feature->getGeometry() == 0L)
+            continue;
 
         double maxTerrainZ  = -DBL_MAX;
         double minTerrainZ  =  DBL_MAX;

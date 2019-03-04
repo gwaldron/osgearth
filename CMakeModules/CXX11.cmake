@@ -22,7 +22,7 @@
 # Adapted from:
 # https://github.com/nathan-osman/CXX11-CMake-Macros
 #
-# Pass: 
+# Pass:
 #   msvc 14+
 #   g++ 4.9.0+
 #   clang 3.4+
@@ -36,12 +36,13 @@ macro(check_for_cxx11_compiler _VAR)
        (CMAKE_COMPILER_IS_GNUCXX AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.9.0) OR
        (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4))
         set(${_VAR} 1)
-        
+
         message(STATUS "Checking for C++11 compiler - available")
-        
+
         # enable C++11 compilation if available
         set(CMAKE_CXX_STANDARD 11)
-        
+        add_definitions(-DOSGEARTH_CXX11)
+
         # is GCC < 5, use the old ABI for binary compatibility
         if (CMAKE_COMPILER_IS_GNUCXX AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
             add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)

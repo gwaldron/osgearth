@@ -39,11 +39,6 @@ namespace osgEarth { namespace Features
     class FeatureNodeFactory;
 
     /**
-     * Serializable options to configure a FeatureModelLayer
-     */
-
-
-    /**
      * Layer that creates a scene graph from feature data and symbology.
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
@@ -68,12 +63,6 @@ namespace osgEarth { namespace Features
 
     public:
         META_Layer(osgEarth, FeatureModelLayer, Options, VisibleLayer, FeatureModel);
-
-        //! Options used to initialize this layer.
-        //const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
-
-        //! Sets the options to initilize the layer
-        //void setFeatureModelLayerOptions(const FeatureModelLayerOptions& options);
 
         //! The feature source from which to read geometry.
         void setFeatureSource(FeatureSource* layer);

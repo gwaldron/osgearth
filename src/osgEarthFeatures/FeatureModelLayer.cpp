@@ -116,12 +116,6 @@ FeatureModelLayer::init()
     installDefaultOpacityShader();
 }
 
-//void FeatureModelLayer::setFeatureModelLayerOptions(const FeatureModelLayerOptions& options)
-//{
-//    *_options = options;
-//    dirty();
-//}
-
 void FeatureModelLayer::dirty()
 {
     // feature source changed, so the graph needs rebuilding
@@ -165,7 +159,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 FeatureSource*
 FeatureModelLayer::getFeatureSource() const
 {
-    return _featureSource.get();
+    return _features.get();
 }
 
 void

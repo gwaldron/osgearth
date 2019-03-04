@@ -27,10 +27,6 @@
 
 namespace osgEarth { namespace Features
 {
-} }
-
-namespace osgEarth { namespace Features
-{
     /**
      * Layer that provides raw feature data.
      */

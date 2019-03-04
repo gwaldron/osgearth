@@ -102,6 +102,7 @@ VideoLayer::open()
 TextureWindow
 VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
 {   
+    osg::Matrix textureMatrix;
     bool flip = _texture->getImage()->getOrigin() == osg::Image::TOP_LEFT;    
     key.getExtent().createScaleBias(key.getProfile()->getExtent(), textureMatrix);
     if (flip)

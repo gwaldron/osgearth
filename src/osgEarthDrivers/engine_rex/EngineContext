@@ -121,7 +121,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         int                                   _tilesLastCull;
         osg::ref_ptr<ProgressCallback>        _progress;    
         double                                _expirationRange2;
-        ModifyBoundingBoxCallback*            _bboxCB;
+        osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

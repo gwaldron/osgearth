@@ -120,6 +120,12 @@ _updateScheduled( false )
 
     // register for update traversals so we can process terrain callbacks
     //ADJUST_UPDATE_TRAV_COUNT(this, 1);
+    
+    // Install an object to manage texture image unit usage:
+    _textureResourceTracker = new TerrainResources();
+    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
+    for (std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
+        _textureResourceTracker->setTextureImageUnitOffLimits(*i);
 }
 
 TerrainEngineNode::~TerrainEngineNode()
@@ -205,12 +211,6 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     {
         this->setEllipsoidModel( NULL );
     }
-    
-    // Install an object to manage texture image unit usage:
-    _textureResourceTracker = new TerrainResources();
-    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
-    for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
-        _textureResourceTracker->setTextureImageUnitOffLimits( *i );
 
     // Register a callback so we can process further map model changes
     _map->addMapCallback( new TerrainEngineNodeCallbackProxy(this) );

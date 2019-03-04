@@ -60,6 +60,8 @@ namespace osgEarth
         */
         osg::Image* convert(const osg::HeightField* hf, int pixelSize = 32);
 
+        osg::Image* convertToR16F(const osg::HeightField* hf) const;
+
         osg::Image* convertToR32F(const osg::HeightField* hf) const;
 
     private:

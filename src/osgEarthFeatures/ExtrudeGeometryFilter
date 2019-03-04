@@ -170,6 +170,7 @@ namespace osgEarth { namespace Features
         bool                           _gpuClamping;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
+        osg::ref_ptr<const PolygonSymbol>   _polySymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;
         osg::ref_ptr<const PolygonSymbol>   _wallPolygonSymbol;
         osg::ref_ptr<const SkinSymbol>      _roofSkinSymbol;

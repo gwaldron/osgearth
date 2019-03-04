@@ -101,23 +101,12 @@ VideoLayer::open()
 
 TextureWindow
 VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
-{    
-    if (key.getLOD() > 0)
-        return TextureWindow();
-
-    osg::Matrix textureMatrix;
-
-    bool flip = _texture->getImage()->getOrigin()==osg::Image::TOP_LEFT;
-    osg::Matrixf scale = osg::Matrixf::scale(0.5, flip? -1.0 : 1.0, 1.0);         
-
-    if (key.getTileX() == 0)
+{   
+    bool flip = _texture->getImage()->getOrigin() == osg::Image::TOP_LEFT;    
+    key.getExtent().createScaleBias(key.getProfile()->getExtent(), textureMatrix);
+    if (flip)
     {
-        textureMatrix = scale;
-    }
-    else if (key.getTileX() == 1)
-    {
-        textureMatrix =  scale * osg::Matrixf::translate(0.5, 0.0, 0.0);
-    }
-
+        textureMatrix *= osg::Matrixf::scale(1.0, flip ? -1.0 : 1.0, 1.0);
+    }  
     return TextureWindow(_texture.get(), textureMatrix);
 }

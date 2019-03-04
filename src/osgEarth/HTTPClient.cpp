@@ -1509,7 +1509,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
                     }
                     else
                     {
-                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
                     }
                 }
             }
@@ -1597,7 +1597,7 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
                     }
                     else
                     {
-                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
                     }
                 }
             }
@@ -1681,7 +1681,7 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
                     }
                     else
                     {
-                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
                     }
                 }
             }
@@ -1735,11 +1735,11 @@ HTTPClient::doReadString(const HTTPRequest&    request,
                 {
                     if (response.isCancelled())
                     {
-                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                        OE_NOTICE << LC << "HTTP request was cancelled" << std::endl;
                     }
                     else
                     {
-                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
                     }
                 }
             }

@@ -188,13 +188,13 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
         }
 
         // backup plan for poly symbols:
-        const PolygonSymbol* poly = _style.get<PolygonSymbol>();
-        if ( poly )
+        _polySymbol = _style.get<PolygonSymbol>();
+        if (_polySymbol.valid())
         {
             if ( !_wallPolygonSymbol.valid() )
-                _wallPolygonSymbol = poly;
+                _wallPolygonSymbol = _polySymbol.get();
             if ( !_roofPolygonSymbol.valid() )
-                _roofPolygonSymbol = poly;
+                _roofPolygonSymbol = _polySymbol.get();
         }
 
         _styleDirty = false;
@@ -998,11 +998,24 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
         Feature* input = f->get();
 
         // run a symbol script if present.
+        if (_polySymbol.valid() && _polySymbol->script().isSet())
+        {
+            StringExpression temp(_polySymbol->script().get());
+            input->eval(temp, &context);
+        }
+
+        if (input->getGeometry() == 0L)
+            continue;
+
+        // run a symbol script if present.
         if ( _extrusionSymbol->script().isSet() )
         {
             StringExpression temp( _extrusionSymbol->script().get() );
             input->eval( temp, &context );
         }
+
+        if (input->getGeometry() == 0L)
+            continue;
 
         // iterator over the parts.
         GeometryIterator iter( input->getGeometry(), false );

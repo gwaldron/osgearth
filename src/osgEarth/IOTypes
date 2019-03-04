@@ -90,6 +90,10 @@ namespace osgEarth
         ReadResult( Code code =RESULT_NOT_FOUND )
             : _code(code), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
+        /** Construct a result with an error message */
+        ReadResult(const std::string& error)
+            : _code(RESULT_NOT_FOUND), _fromCache(false), _lmt(0), _duration_s(0.0), _detail(error) { }
+
         /** Construct a result with code and data */
         ReadResult( Code code, osg::Object* result )
             : _code(code), _result(result), _fromCache(false), _lmt(0), _duration_s(0.0) { }

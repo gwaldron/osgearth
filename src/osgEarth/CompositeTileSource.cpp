@@ -109,17 +109,17 @@ namespace
         {
             image = 0;
             opacity = 1;
-            dataInExtents = false;
+            mayHaveDataForKey = false;
         }
 
-        ImageInfo(osg::Image* image, float opacity, bool dataInExtents)
+        ImageInfo(osg::Image* image, float opacity, bool mayHaveDataForKey)
         {
             this->image = image;
             this->opacity = opacity;
-            this->dataInExtents = dataInExtents;
+            this->mayHaveDataForKey = mayHaveDataForKey;
         }
 
-        bool dataInExtents;
+        bool mayHaveDataForKey;
         float opacity;
         osg::ref_ptr< osg::Image> image;
     };
@@ -151,10 +151,10 @@ CompositeTileSource::createImage(const TileKey&    key,
     {
         ImageLayer* layer = itr->get();
         ImageInfo imageInfo;
-        imageInfo.dataInExtents = layer->mayHaveData(key); //.getExtent());
+        imageInfo.mayHaveDataForKey = layer->mayHaveData(key);
         imageInfo.opacity = layer->getOpacity();
 
-        if (imageInfo.dataInExtents)
+        if (imageInfo.mayHaveDataForKey)
         {
             GeoImage image = layer->createImage(key, progress);
             if (image.valid())
@@ -162,7 +162,9 @@ CompositeTileSource::createImage(const TileKey&    key,
                 imageInfo.image = image.getImage();
             }
 
-            // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
+            // If the progress got cancelled (due to any reason, including network error)
+            // then return NULL to prevent this tile from being built and cached with
+            // incomplete or partial data.
             if (progress && progress->isCanceled())
             {
                 OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
@@ -196,7 +198,10 @@ CompositeTileSource::createImage(const TileKey&    key,
         {
             ImageInfo& info = images[i];
             ImageLayer* layer = _imageLayers[i].get();
-            if (!info.image.valid() && info.dataInExtents)
+
+            // If we didn't get any data for the tilekey, but the extents do overlap,
+            // we will try to fall back on lower LODs and get data there instead:
+            if (!info.image.valid() && layer->getDataExtentsUnion().intersects(key.getExtent()))
             {                      
                 TileKey parentKey = key.createParentKey();
 
@@ -388,7 +393,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                OE_DEBUG << LC << "Could not open image layer (" << layer->getName() << ") ... " << status.message() << std::endl;
+                setStatus(Status(Status::ResourceUnavailable, Stringify()
+                    << "Could not open sublayer (" << layer->getName() << ") ... " << status.message()));
+                return getStatus();
             }            
         }
         else if (i->_elevationLayerOptions.isSet() && !i->_layer.valid())
@@ -407,7 +414,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                OE_WARN << LC << "Could not open elevation layer (" << layer->getName() << ") ... " << status.message() << std::endl;
+                setStatus(Status(Status::ResourceUnavailable, Stringify()
+                    << "Could not open sublayer (" << layer->getName() << ") ... " << status.message()));
+                return getStatus();
             }
         }
 

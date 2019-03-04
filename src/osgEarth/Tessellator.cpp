@@ -19,9 +19,35 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#include <iterator>
 #include <limits.h>
 
 #include <osgEarth/Tessellator>
+
+#ifdef OSGEARTH_CXX11
+
+#include <osgEarth/earcut.hpp>
+namespace mapbox {
+    namespace util {
+        template <>
+        struct nth<0, osg::Vec2> {
+            inline static float get(const osg::Vec2 &t) {
+                return t.x();
+            };
+        };
+
+        template <>
+        struct nth<1, osg::Vec2> {
+            inline static float get(const osg::Vec2 &t) {
+                return t.y();
+            };
+        };
+    }
+}
+
+#define USE_EARCUT
+
+#endif
 
 using namespace osgEarth;
 
@@ -124,9 +150,11 @@ typedef std::vector<TriIndices> TriList;
 
 }
 
+
 bool
 Tessellator::tessellateGeometry(osg::Geometry &geom)
 {
+#ifndef USE_EARCUT
     osg::Vec3Array* vertices = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
 
     if (!vertices || vertices->empty() || geom.getPrimitiveSetList().empty()) return false;
@@ -194,8 +222,42 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
             //
         }
     }
-
     return success;
+#else
+    // Create array
+    std::vector< std::vector< osg::Vec2 > > polygon;
+    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom.getVertexArray());
+
+    for (unsigned int i = 0; i < geom.getNumPrimitiveSets(); i++)
+    {
+        std::vector< osg::Vec2 > ring;
+        osg::PrimitiveSet* pset = geom.getPrimitiveSet(i);
+        if (pset->getType() == osg::PrimitiveSet::DrawArraysPrimitiveType)
+        {
+            osg::DrawArrays* drawArray = static_cast<osg::DrawArrays*>(pset);
+            unsigned int first = drawArray->getFirst();
+            unsigned int last = first + drawArray->getCount();
+            ring.reserve(drawArray->getCount());
+            for (unsigned int j = first; j < last; j++)
+            {
+                const osg::Vec3& v = verts->at(j);
+                ring.push_back(osg::Vec2(v.x(), v.y()));
+            }
+        }
+        polygon.push_back(ring);
+    }
+
+    // The index type. Defaults to uint32_t, but you can also pass uint16_t if you know that your
+    // data won't have more than 65536 vertices.
+    std::vector<uint32_t> indices = mapbox::earcut<uint32_t>(polygon);
+    // Remove the existing primitive sets
+    geom.removePrimitiveSet(0, geom.getNumPrimitiveSets());
+    osg::DrawElementsUInt* drawElements = new osg::DrawElementsUInt(GL_TRIANGLES);
+    drawElements->reserve(indices.size());
+    std::copy(indices.begin(), indices.end(), std::back_inserter(*drawElements));
+    geom.addPrimitiveSet(drawElements);
+    return true;
+#endif
 }
 
 

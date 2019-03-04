@@ -162,6 +162,12 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
     }
 }
 
+FeatureSource*
+FeatureModelLayer::getFeatureSource() const
+{
+    return _featureSource.get();
+}
+
 void
 FeatureModelLayer::setStyleSheet(StyleSheet* value)
 {

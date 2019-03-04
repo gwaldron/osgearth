@@ -108,17 +108,23 @@ namespace
         }
 
         // save the geometry, if set:
-        if ( duk_get_prop_string(ctx, -1, "geometry")&& duk_is_object(ctx, -1) )
+        if ( duk_get_prop_string(ctx, -1, "geometry") )
         {
-            // [ptr, global, feature, geometry]
-            std::string json( duk_json_encode(ctx, -1) ); // [ptr, global, feature, json]
-            Geometry* newGeom = GeometryUtils::geometryFromGeoJSON(json);
-            if ( newGeom )
+            if (duk_is_object(ctx, -1))
             {
-                feature->setGeometry( newGeom );
+                // [ptr, global, feature, geometry]
+                std::string json( duk_json_encode(ctx, -1) ); // [ptr, global, feature, json]
+                Geometry* newGeom = GeometryUtils::geometryFromGeoJSON(json);
+                if ( newGeom )
+                {
+                    feature->setGeometry( newGeom );
+                }
+                duk_pop(ctx); // [ptr, global, feature]
             }
-            duk_pop(ctx);
-            // [ptr, global, feature]
+            else
+            {
+                feature->setGeometry(0L);
+            }
         }
         else
         {

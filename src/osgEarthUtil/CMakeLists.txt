@@ -12,7 +12,7 @@ SET(HEADERS_ROOT
     ActivityMonitorTool
     AutoClipPlaneHandler
     AutoScaleCallback
-    ArcGIS
+    #ArcGIS
     AtlasBuilder
     ClipSpace
     Common
@@ -37,7 +37,7 @@ SET(HEADERS_ROOT
     LatLongFormatter
     LineOfSight
     LinearLineOfSight
-    LODBlending
+    #LODBlending
     LogarithmicDepthBuffer
     MeasureTool
     MGRSFormatter

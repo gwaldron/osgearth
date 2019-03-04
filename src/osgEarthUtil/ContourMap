@@ -24,120 +24,71 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/TerrainEffect>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Extension>
 #include <osg/Texture1D>
 #include <osg/Texture2D>
 #include <osg/TransferFunction>
 
-namespace osgEarth {
-    class Map;
-    class MapNode;
-}
-
 namespace osgEarth { namespace Util
 {
-    class OSGEARTHUTIL_EXPORT ContourMapOptions : public ConfigOptions
+    class OSGEARTHUTIL_EXPORT ContourMapLayer : public VisibleLayer
     {
     public:
-        ContourMapOptions(const ConfigOptions& conf =ConfigOptions()) : ConfigOptions(conf),
-            _opacity(1.0f), _grayscale(false)
-        {
-            fromConfig(_conf);
-        }
-    public:
-        optional<float>& opacity() { return _opacity; }
-        const optional<float>& opacity() const { return _opacity; }
-
-        optional<bool>& grayscale() { return _grayscale; }
-        const optional<bool>& grayscale() const { return _grayscale; }
+        class OSGEARTHUTIL_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(bool, grayscale);
+            virtual Config getConfig() const;
+            static Config getMetadata();
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
-        void fromConfig(const Config& conf) {
-            conf.get("opacity", _opacity);
-            conf.get("grayscale", _grayscale);
-        }
-        Config getConfig() const {
-            Config conf;
-            conf.set("opacity", _opacity);
-            conf.set("grayscale", _grayscale);
-            return conf;
-        }
-        
-    private:
-        optional<float> _opacity;
-        optional<bool>  _grayscale;
-    };
+        META_Layer(osgEarth, ContourMapLayer, Options, VisibleLayer, ContourMap);
 
-    /**
-     * Terrain effect that applies a 1D contour coloring texture
-     * to the terrain based an on elevation->color map.
-     */
-    class OSGEARTHUTIL_EXPORT ContourMap : public TerrainEffect,
-                                           public ContourMapOptions
-    {
-    public:
+        //! Whether to render in grayscale
+        void setGrayscale(const bool& value);
+        const bool& getGrayscale() const;
+
+        //! Sets a custom transfer function
+        void setTransferFunction(osg::TransferFunction1D* xf);
+        osg::TransferFunction1D* getTransferFunction() const { return _xfer.get(); }
+
+    public: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+        //! Establishes a connection to the WMS service
+        virtual const Status& open();
+
+        //! MapNode will call this function when terrain resources are available
+        virtual void setTerrainResources(TerrainResources*);
+
+    protected:
+
+        //! Destructor
+        virtual ~ContourMapLayer() { }
+
 #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
         typedef osg::Texture2D TextureType;
 #else
         typedef osg::Texture1D TextureType;
 #endif
-    
-        /** construct a new effect */
-        ContourMap();
-        ContourMap(const ConfigOptions& co);
 
-        /** Sets a custom transfer function. */
-        void setTransferFunction(osg::TransferFunction1D* xf);
-        osg::TransferFunction1D* getTransferFunction() const { return _xfer.get(); }
-
-        /** rebuild after changing one of the options */
-        void dirty();
-
-    public: // TerrainEffect interface
-
-        void onInstall(TerrainEngineNode* engine);
-        void onUninstall(TerrainEngineNode* engine);
-
-    protected:
-        virtual ~ContourMap();
-        void init();
-
-        int                                   _unit;
+        TextureImageUnitReservation           _reservation;
         osg::ref_ptr<osg::TransferFunction1D> _xfer;
         osg::ref_ptr<TextureType>             _xferTexture;
         osg::ref_ptr<osg::Uniform>            _xferSampler;
         osg::ref_ptr<osg::Uniform>            _xferMin;
         osg::ref_ptr<osg::Uniform>            _xferRange;
-        osg::ref_ptr<osg::Uniform>            _opacityUniform;
     };
 
-    /** Activates contour map from the earth file. */
-    class OSGEARTHUTIL_EXPORT ContourMapExtension : public Extension,
-                                                    public ExtensionInterface<MapNode>,
-                                                    public ContourMapOptions
-    {
-    public:
-        META_OE_Extension(osgEarthUtil, ContourMapExtension, contour_map);
+} } // namespace osgEarth:Util
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::ContourMapLayer::Options);
 
-        ContourMapExtension() { }
-        ContourMapExtension(const ConfigOptions& co) : ContourMapOptions(co) { }
-
-    public: // ExtensionInterface<MapNode>
-        bool connect(MapNode*);
-        bool disconnect(MapNode*);
-
-    public: // Extension
-
-        const ConfigOptions& getConfigOptions() const { return *this; }
-
-    protected:
-        virtual ~ContourMapExtension() { }
-
-        osg::ref_ptr<ContourMap> _effect;
-    };
-
-
-} } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_CONTOUR_MAP_H

@@ -254,6 +254,7 @@ namespace osgEarth
         static bool isRecoverable(ReadResult::Code code)
         {
             return
+                code == ReadResult::RESULT_UNKNOWN_ERROR ||
                 code == ReadResult::RESULT_OK ||                
                 code == ReadResult::RESULT_SERVER_ERROR ||
                 code == ReadResult::RESULT_TIMEOUT ||

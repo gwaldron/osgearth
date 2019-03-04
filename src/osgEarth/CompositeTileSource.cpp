@@ -146,11 +146,6 @@ CompositeTileSource::createImage(const TileKey&    key,
     ImageMixVector images;
     images.reserve(_imageLayers.size());
 
-    if (key.str()=="4/12/0")
-    {
-        int x=0;
-    }
-
     // Try to get an image from each of the layers for the given key.
     for (ImageLayerVector::const_iterator itr = _imageLayers.begin(); itr != _imageLayers.end(); ++itr)
     {
@@ -167,7 +162,9 @@ CompositeTileSource::createImage(const TileKey&    key,
                 imageInfo.image = image.getImage();
             }
 
-            // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
+            // If the progress got cancelled (due to any reason, including network error)
+            // then return NULL to prevent this tile from being built and cached with
+            // incomplete or partial data.
             if (progress && progress->isCanceled())
             {
                 OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
@@ -396,7 +393,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                OE_DEBUG << LC << "Could not open image layer (" << layer->getName() << ") ... " << status.message() << std::endl;
+                setStatus(Status(Status::ResourceUnavailable, Stringify()
+                    << "Could not open sublayer (" << layer->getName() << ") ... " << status.message()));
+                return getStatus();
             }            
         }
         else if (i->_elevationLayerOptions.isSet() && !i->_layer.valid())
@@ -415,7 +414,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                OE_WARN << LC << "Could not open elevation layer (" << layer->getName() << ") ... " << status.message() << std::endl;
+                setStatus(Status(Status::ResourceUnavailable, Stringify()
+                    << "Could not open sublayer (" << layer->getName() << ") ... " << status.message()));
+                return getStatus();
             }
         }
 

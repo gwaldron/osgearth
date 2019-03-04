@@ -44,7 +44,8 @@ ADD_SUBDIRECTORY(osgearth_atlas)
 ADD_SUBDIRECTORY(osgearth_conv)
 ADD_SUBDIRECTORY(osgearth_3pv)
 ADD_SUBDIRECTORY(osgearth_featureinfo)
-ADD_SUBDIRECTORY(osgearth_featuretiler)
+
+#ADD_SUBDIRECTORY(osgearth_featuretiler)
 
 IF(BUILD_OSGEARTH_EXAMPLES)
     SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")
@@ -96,7 +97,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_magnify)
     ADD_SUBDIRECTORY(osgearth_eci)
     ADD_SUBDIRECTORY(osgearth_windows)
-    ADD_SUBDIRECTORY(osgearth_3dtiles)
+    #ADD_SUBDIRECTORY(osgearth_3dtiles)
 
     IF(SILVERLINING_FOUND)
         ADD_SUBDIRECTORY(osgearth_silverlining)

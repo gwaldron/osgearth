@@ -66,7 +66,6 @@ struct App
     void changeSSE()
     {
         _sseGroup->setLODScaleFactor(_sse->getValue());
-        //_handler->setMaxScreenSpaceError(_sse->getValue());
     }
 
     void zoomToData()
@@ -120,10 +119,10 @@ usage(const std::string& message)
         << "\n   --build [earthfile]          ; build a B3DM file"
         << "\n     --extent <minLat> <minLon>"
         << "\n              <maxLat> <maxLon> ; Extents to build (degrees)"
-        << "\n     --startkey <Z,X,Y>         ; starting key of tiles to build"
-        << "\n     --endkey <Z,X,Y>           ; optional ending key"
         << "\n     --out <filename>           ; output file with .b3dm extension"
         << "\n     --error <meters>           ; geometric error (meters) of data (default=100)"
+        << "\n     --resolution <meters>      ; downsample data to this resolution"
+        << "\n     --limit <n>                ; Only generate <n> tiles (for testing)"
         << "\n"
         << "\n   --view                       ; view a 3dtiles dataset"
         << "\n     --tileset <filename>       ; 3dtiles tileset JSON file to load"
@@ -288,7 +287,7 @@ createTile(osg::Node* node, const GeoExtent& extent, double error, const std::st
         osg::DegreesToRadians(extent.yMax()),
         3000.0);
 
-    tile->geometricError() = 0.0;
+    tile->geometricError() = 0.0; //error;
     tile->refine() = refine;
 
     return tile.release();
@@ -313,21 +312,6 @@ main_build(osg::ArgumentParser& arguments)
     if (!extent.isValid())
         return usage("Invalid extent");
 
-#if 0
-    // Establish the tile key to build
-    std::string startkey, endkey;
-    {
-        arguments.read("--startkey", startkey);
-
-        // If we only get startkey, copy it and do one key.
-        arguments.read("--endkey", endkey);
-        if (!startkey.empty() && endkey.empty())
-            endkey = startkey;
-    }
-    if (startkey.empty() || endkey.empty())
-        return usage("Missing required --startkey or --startkey/endkey pair");
-#endif
-
     // Output filename prefix
     std::string prefix;
     if (!arguments.read("--out", prefix))
@@ -338,13 +322,19 @@ main_build(osg::ArgumentParser& arguments)
     // is greater than "maxSSE" pixels per "error" meters.
     // For example, if error=100m, and maxSSE=16px, the data will only
     // render once 100m of data takes up at least 16px of screen space.
-    double error;
-    if (!arguments.read("--error", error))
-        error = 100.0;
+    double tilesetError;
+    if (!arguments.read("--error", tilesetError))
+        tilesetError = 500.0;
+
+    double resolution = 0.0;
+    arguments.read("--resolution", resolution);
 
     TDTiles::RefinePolicy refine = TDTiles::REFINE_REPLACE;
     if (arguments.read("--add"))
         refine = TDTiles::REFINE_ADD;
+
+    int limit = INT_MAX;
+    arguments.read("--limit", limit);
 
     // Open an earth file and load a Map.
     osg::ref_ptr<osg::Node> earthFile = osgDB::readNodeFiles(arguments);
@@ -409,6 +399,7 @@ main_build(osg::ArgumentParser& arguments)
     tileset->asset()->version() = "1.0";
     tileset->root() = new TDTiles::Tile();
     tileset->root()->refine() = TDTiles::REFINE_ADD;
+    tileset->root()->geometricError() = tilesetError;
 
     // track the largest tile radius - we will use this as the geometric error
     // for the group.
@@ -419,6 +410,7 @@ main_build(osg::ArgumentParser& arguments)
     GeoExtent total;
 
     //TODO: for loop on the feature keys
+    int count = 0;
     for(std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
     {
         // Check the "radius"
@@ -438,8 +430,6 @@ main_build(osg::ArgumentParser& arguments)
             double error = i->first;
             const Style& style = i->second;
 
-            parent->geometricError() = error;
-
             osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(query, 0L);
             if (!cursor.valid())
                 continue;
@@ -450,9 +440,17 @@ main_build(osg::ArgumentParser& arguments)
             if (features.empty())
                 continue;
 
-            OE_INFO << LC << "Tile " << key->str() << ", features=" << features.size() << ", error=" << error << std::endl;
+            OE_INFO << LC << "Tile " << key->str() << ", features=" << features.size() << ", width=" << key->getExtent().width() << ", error=" << error << std::endl;
 
             FilterContext fc(session.get(), fp, key->getExtent());
+
+            // first simplify the feature set
+            if (resolution > 0.0)
+            {
+                ResampleFilter resample(resolution, DBL_MAX);
+                fc = resample.push(features, fc);
+            }
+
             osg::ref_ptr<osg::Node> result = compiler.compile(features, style, fc);
             if (!result)
                 return usage("Failed to compile features into OSG geometry");
@@ -468,9 +466,14 @@ main_build(osg::ArgumentParser& arguments)
                 osg::ref_ptr<TDTiles::Tile> tile = createTile(result.get(), extent, error, filenamePrefix, refine);
                 parent->children().push_back(tile);
 
+                parent->geometricError() = error;
+
                 parent = tile;
             }
         }
+
+        if (++count >= limit)
+            break;
     }
 
     // TODO: calculate the correct Z min/max instead of hard-coding

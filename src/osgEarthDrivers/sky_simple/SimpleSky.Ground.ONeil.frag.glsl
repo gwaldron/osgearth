@@ -156,7 +156,9 @@ void atmos_fragment_main(inout vec4 color)
                     * pow(HdotN, shine);
             }
 
-            totalLighting += ambientReflection + diffuseReflection + specularReflection;
+            totalLighting += diffuseReflection + specularReflection;
+            totalLighting = max(totalLighting, ambientReflection);
+            //totalLighting += ambientReflection + diffuseReflection + specularReflection;
         }
     }
     

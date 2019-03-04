@@ -65,10 +65,6 @@ namespace osgEarth
         Config( const Config& rhs ) 
             : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _isNumber(rhs._isNumber), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
 
-        // Copy CTOR
-        Config(const Config& rhs)
-            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _isNumber(rhs._isNumber), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
-
         virtual ~Config();
 
         /**
@@ -433,17 +429,6 @@ namespace osgEarth
     template<> inline void Config::setValue<double>(const double& value) {
         _defaultValue = Stringify() << std::setprecision(16) << value;
         _isNumber = true;
-    }
-
-    // SPECIALIZATION - std::string
-
-    template<> inline void Config::setValue<std::string>(const std::string& value) {
-        _defaultValue = value;
-        _isNumber = false;
-    }
-    template<> inline void Config::setValue<bool>(const bool& value) {
-        _defaultValue = value == true ? "true" : "false";
-        _isNumber = false;
     }
 
     // Use this macro to "activate" any object with a getConfig/ctor(const Config&) pair

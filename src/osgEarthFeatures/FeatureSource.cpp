@@ -136,8 +136,7 @@ FeatureSource::create(
     const Geometry::Type& geometryType,
     const osgDB::Options* readOptions)
 {
-    _status = Status::Error(Status::ResourceUnavailable, "Driver does not support create");
-    return _status;
+    return setStatus(Status::ResourceUnavailable, "Driver does not support create");
 }
 
 void

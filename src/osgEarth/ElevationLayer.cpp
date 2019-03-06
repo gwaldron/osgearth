@@ -651,7 +651,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     }
 
     // post-processing -- must be done before caching because it may alter the heightfield data
-    if ( result.valid() )
+    if ( result.valid() && !fromMemCache && hf.valid() )
     {
         if ( options().noDataPolicy() == NODATA_MSL )
         {

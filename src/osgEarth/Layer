@@ -29,6 +29,7 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/Cache>
 #include <osgEarth/SceneGraphCallback>
+#include <osgEarth/LayerShader>
 #include <osg/BoundingBox>
 #include <osg/Callback>
 #include <osg/StateSet>
@@ -87,8 +88,8 @@ namespace osgEarth
         /**
          * Shader snippet(s) to inject into this layer's stateset.
          */
-        optional<std::string>& shader() { return _shader; }
-        const optional<std::string>& shader() const { return _shader; }
+        optional<ShaderOptions>& shader() { return _shader; }
+        const optional<ShaderOptions>& shader() const { return _shader; }
 
         /**
          * Whether this layer should be treated as part of the terrain
@@ -119,9 +120,9 @@ namespace osgEarth
         optional<std::string> _cacheId;
         optional<CachePolicy> _cachePolicy;
         optional<std::string> _shaderDefine;
-        optional<std::string> _shader;
+        optional<ShaderOptions> _shader;
         optional<bool> _terrainPatch;
-        optional<std::string>       _attribution;
+        optional<std::string> _attribution;
     };
 
 
@@ -260,7 +261,7 @@ namespace osgEarth
         virtual void removedFromMap(const class Map*) { }
 
         //! MapNode will call this function when terrain resources are available.
-        virtual void setTerrainResources(TerrainResources*) { }
+        virtual void setTerrainResources(TerrainResources*);
 
         //! Attribution to be displayed by the application
         virtual std::string getAttribution() const;
@@ -336,6 +337,7 @@ namespace osgEarth
         Status _status;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
+        osg::ref_ptr<LayerShader> _shader;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;

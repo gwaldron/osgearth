@@ -128,6 +128,7 @@ SET(LIB_PUBLIC_HEADERS
     LandCoverLayer
     Layer
     LayerListener
+    LayerShader
     Lighting
     LineDrawable
     LineFunctor
@@ -303,6 +304,7 @@ set(TARGET_SRC
     LandCover.cpp
     LandCoverLayer.cpp
     Layer.cpp
+    LayerShader.cpp
     Lighting.cpp
     LineDrawable.cpp
     Locators.cpp

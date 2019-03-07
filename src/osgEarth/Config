@@ -573,10 +573,7 @@ namespace osgEarth
             fromConfig(conf); \
         } \
     public: \
-        OE_COMMENT("Construct empty layer options") \
         MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
-        \
-        OE_COMMENT("Construct layer options from serialized data") \
         MYCLASS (const ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
 
 //! optional property macro

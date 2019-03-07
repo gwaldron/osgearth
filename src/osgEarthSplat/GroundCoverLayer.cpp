@@ -274,6 +274,8 @@ GroundCoverLayer::removedFromMap(const Map* map)
 void
 GroundCoverLayer::setTerrainResources(TerrainResources* res)
 {
+    PatchLayer::setTerrainResources(res);
+
     if (res)
     {
         if (_groundCoverTexBinding.valid() == false)

@@ -396,8 +396,8 @@ void
 SimpleSkyNode::setSunPosition(const osg::Vec3d& pos)
 {
     osg::Vec3d npos = pos;
+    _light->setPosition(osg::Vec4(npos, 0.0f)); // directional light
     npos.normalize();
-    _light->setPosition( osg::Vec4(npos, 0.0f) ); // directional light
 
     //OE_NOTICE << pos.x() << ", " << pos.y() << ", " << pos.z() << std::endl;
     

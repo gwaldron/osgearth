@@ -61,46 +61,44 @@ void atmos_fragment_main(inout vec4 color)
     // https://en.wikipedia.org/wiki/Phong_reflection_model
     // https://www.opengl.org/sdk/docs/tutorials/ClockworkCoders/lighting.php
     // https://en.wikibooks.org/wiki/GLSL_Programming/GLUT/Multiple_Lights
+    // https://en.wikibooks.org/wiki/GLSL_Programming/GLUT/Specular_Highlights
 
+    // normal vector at vertex
     vec3 N = normalize(vp_Normal);
 
     float shine = clamp(osg_FrontMaterial.shininess, 1.0, 128.0); 
+    vec4 surfaceSpecularity = osg_FrontMaterial.specular;
     
+    // up vector at vertex
     vec3 U = normalize(atmos_up);
 
-    // Accumulate the lighting, starting with material emission. We are currently
-    // omitting the ambient term for now since we are not using LightModel ambience.
-    vec3 totalLighting =
-        osg_FrontMaterial.emission.rgb;
-        // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;
+    // Accumulate the lighting for each component separately.
+    vec3 totalDiffuse = vec3(0.0);
+    vec3 totalAmbient = vec3(0.0);
+    vec3 totalSpecular = vec3(0.0);
 
     int numLights = OE_NUM_LIGHTS;
 
     for (int i=0; i<numLights; ++i)
     {
-        const float attenuation = 1.0;
-
         if (osg_LightSource[i].enabled)
         {
             float attenuation = 1.0;
-            vec3 L; // vertex-to-light-source vector.
 
-            // directional light:
-            if (osg_LightSource[i].position.w == 0.0)
-            {
-                L = normalize(osg_LightSource[i].position.xyz);
-            }
+            // L is the normalized camera-to-light vector.
+            vec3 L = normalize(osg_LightSource[i].position.xyz);
+
+            // V is the normalized vertex-to-camera vector.
+            vec3 V = -normalize(atmos_vert);
 
             // point or spot light:
-            else
+            if (osg_LightSource[i].position.w != 0.0)
             {
-                // calculate VL, the vertex-to-light vector:
-                vec4 V = vec4(atmos_vert, 1.0) * osg_LightSource[i].position.w;
-                vec4 VL4 = osg_LightSource[i].position - V;
-                L = normalize(VL4.xyz);
+                // VLu is the unnormalized vertex-to-light vector
+                vec3 Lu = osg_LightSource[i].position.xyz - atmos_vert;
 
                 // calculate attenuation:
-                float distance = length(VL4);
+                float distance = length(Lu);
                 attenuation = 1.0 / (
                     osg_LightSource[i].constantAttenuation +
                     osg_LightSource[i].linearAttenuation * distance +
@@ -126,11 +124,10 @@ void atmos_fragment_main(inout vec4 color)
 
             vec3 ambientReflection =
                 attenuation
-                * osg_FrontMaterial.ambient.rgb
                 * osg_LightSource[i].ambient.rgb
                 * ambientBoost;
 
-            float NdotL = max(dot(N,L), 0.0); 
+            float NdotL = max(dot(N,L), 0.0);
 
             // this term, applied to light 0 (the sun), attenuates the diffuse light
             // during the nighttime, so that geometry doesn't get lit based on its
@@ -140,28 +137,44 @@ void atmos_fragment_main(inout vec4 color)
             vec3 diffuseReflection =
                 attenuation
                 * diffuseAttenuation
-                * osg_LightSource[i].diffuse.rgb * osg_FrontMaterial.diffuse.rgb
+                * osg_LightSource[i].diffuse.rgb
                 * NdotL;
                 
             vec3 specularReflection = vec3(0.0);
             if (NdotL > 0.0)
             {
-                vec3 H = reflect(-L,N); 
-                float HdotN = max(dot(H,N), 0.0); 
+                // prevent a sharp edge where NdotL becomes positive
+                // by fading in the spec between (0.0 and 0.1)
+                float specAttenuation = clamp(NdotL*10.0, 0.0, 1.0);
+
+                vec3 H = reflect(-L,N);
+                float HdotV = max(dot(H,V), 0.0); 
 
                 specularReflection =
-                    attenuation
+                      specAttenuation
+                    * attenuation
                     * osg_LightSource[i].specular.rgb
-                    * osg_FrontMaterial.specular.rgb
-                    * pow(HdotN, shine);
+                    * surfaceSpecularity.rgb
+                    * pow(HdotV, shine);
             }
 
-            totalLighting += ambientReflection + diffuseReflection + specularReflection;
+            totalDiffuse += diffuseReflection;
+            totalAmbient += ambientReflection;
+            totalSpecular += specularReflection;
         }
     }
     
-    // add the atmosphere color, and scale by the lighting.
-    color.rgb = (color.rgb + atmos_color) * totalLighting;
+    // add the atmosphere color, and incorpoate the lights.
+    color.rgb += atmos_color;
+
+    vec3 lightColor =
+        osg_FrontMaterial.emission.rgb +
+        totalDiffuse * osg_FrontMaterial.diffuse.rgb +
+        totalAmbient * osg_FrontMaterial.ambient.rgb;
+
+    color.rgb =
+        color.rgb * lightColor +
+        totalSpecular; // * osg_FrontMaterial.specular.rgb;
     
     // Simulate HDR by applying an exposure factor (1.0 is none, 2-3 are reasonable)
     color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);

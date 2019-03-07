@@ -403,6 +403,7 @@ MapNode::init()
     osg::Material* defaultMaterial = new MaterialGL3();
     defaultMaterial->setDiffuse(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     defaultMaterial->setAmbient(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
+    //defaultMaterial->setSpecular(defaultMaterial->FRONT, osg::Vec4(1,0,0,1));
     stateset->setAttributeAndModes(defaultMaterial, 1);
     MaterialCallback().operator()(defaultMaterial, 0L);
 

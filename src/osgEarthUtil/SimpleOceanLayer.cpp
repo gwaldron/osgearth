@@ -90,11 +90,11 @@ SimpleOceanLayer::init()
 
     // Material.
     osg::Material* m = new MaterialGL3();
-    m->setAmbient(m->FRONT, osg::Vec4(0, 0, 0, 1));
+    m->setAmbient(m->FRONT, osg::Vec4(1, 1, 1, 1));
     m->setDiffuse(m->FRONT, osg::Vec4(1, 1, 1, 1));
-    m->setSpecular(m->FRONT, osg::Vec4(1, 1, 1, 1)); //0.2, 0.2, 0.2, 1));
+    m->setSpecular(m->FRONT, osg::Vec4(1, 1, 1, 1));
     m->setEmission(m->FRONT, osg::Vec4(0, 0, 0, 1));
-    m->setShininess(m->FRONT, 100.0);
+    m->setShininess(m->FRONT, 32.0);
     ss->setAttributeAndModes(m, 1);
     MaterialCallback().operator()(m, 0L);
     
@@ -106,6 +106,8 @@ SimpleOceanLayer::init()
 void
 SimpleOceanLayer::setTerrainResources(TerrainResources* res)
 {
+    VisibleLayer::setTerrainResources(res);
+
     if (options().texture().isSet()) // texture
     {
         if (res->reserveTextureImageUnitForLayer(_texReservation, this) == false)

@@ -213,6 +213,8 @@ SplatLayer::removedFromMap(const Map* map)
 void
 SplatLayer::setTerrainResources(TerrainResources* res)
 {
+    VisibleLayer::setTerrainResources(res);
+
     if (res)
     {
         // TODO.

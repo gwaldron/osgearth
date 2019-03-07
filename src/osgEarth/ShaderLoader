@@ -167,8 +167,8 @@ namespace osgEarth
             const std::string& multisource,
             std::vector<std::string>& out_sources);
     };
-
 } // namespace osgEarth
+
 
 #endif // OSGEARTH_SHADER_LOADER
 

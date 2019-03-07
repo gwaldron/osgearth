@@ -25,6 +25,7 @@
 #include <osgEarth/PluginLoader>
 #include <osgEarth/Cache>
 #include <osgEarth/SceneGraphCallback>
+#include <osgEarth/LayerShader>
 #include <osg/BoundingBox>
 #include <osg/Callback>
 #include <vector>
@@ -143,7 +144,7 @@ namespace osgEarth
             OE_OPTION(std::string, cacheId);
             OE_OPTION(CachePolicy, cachePolicy);
             OE_OPTION(std::string, shaderDefine);
-            OE_OPTION(std::string, shader);
+            OE_OPTION(ShaderOptions, shader);
             OE_OPTION(bool, terrainPatch);
             OE_OPTION(std::string, attribution);
             virtual Config getConfig() const;
@@ -283,7 +284,7 @@ namespace osgEarth
         virtual void removedFromMap(const class Map*) { }
 
         //! MapNode will call this function when terrain resources are available.
-        virtual void setTerrainResources(TerrainResources*) { }
+        virtual void setTerrainResources(TerrainResources*);
 
         //! Attribution to be displayed by the application
         virtual std::string getAttribution() const;
@@ -371,6 +372,7 @@ namespace osgEarth
         CallbackVector _callbacks;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
+        osg::ref_ptr<LayerShader> _shader;
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;        

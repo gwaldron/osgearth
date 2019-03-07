@@ -22,6 +22,7 @@
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/TileKey>
+#include <osgEarth/TerrainResources>
 #include <osg/StateSet>
 
 using namespace osgEarth;
@@ -248,17 +249,6 @@ Layer::open()
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
 
-    // Load any user defined shaders
-    if (options().shader().isSet() && !options().shader()->empty())
-    {
-        OE_INFO << LC << "Installing inline shader code\n";
-        VirtualProgram* vp = VirtualProgram::getOrCreate(this->getOrCreateStateSet());
-        vp->setName("Layer shader");
-        ShaderPackage package;
-        package.add("", options().shader().get());
-        package.loadAll(vp, getReadOptions());
-    }
-
     return _status;
 }
 
@@ -279,6 +269,18 @@ const Status&
 Layer::getStatus() const
 {
     return _status;
+}
+
+void
+Layer::setTerrainResources(TerrainResources* res)
+{
+    // Install an earth-file shader if necessary (once)
+    if (options().shader().isSet() && !_shader.valid())
+    {
+        OE_INFO << LC << "Installing inline shader code" << std::endl;
+        _shader = new LayerShader(options().shader().get());
+        _shader->install(this, res);
+    }
 }
 
 void

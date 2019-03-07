@@ -144,7 +144,7 @@ public:
                 geo );
 
             // contact the REST API. Docs are here:
-            // http://msdn.microsoft.com/en-us/library/ff701716.aspx
+            // https://msdn.microsoft.com/en-us/library/ff701716.aspx
 
             // construct the request URI:
             std::string request = Stringify()
@@ -273,7 +273,7 @@ private:
     std::string getDirectURI(const TileKey& key)
     {
         return Stringify()
-            << "http://ecn.t"
+            << "https://ecn.t"
             << _prng.next(4)
             << ".tiles.virtualearth.net/tiles/h"
             << getQuadKey(key)

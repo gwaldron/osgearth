@@ -71,6 +71,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
     ArcGISServer
     ArcGISTilePackage
+    Async
     Bing
     Bounds
     Cache
@@ -263,6 +264,7 @@ ENDIF (OSGEARTH_EMBED_GIT_SHA)
 set(TARGET_SRC
     ArcGISServer.cpp
     ArcGISTilePackage.cpp
+    Async.cpp
     Bing.cpp
     Bounds.cpp
     Cache.cpp

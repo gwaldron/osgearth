@@ -69,6 +69,7 @@ configure_shaders(
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS
+    Async
     Bounds
     Cache
     CacheEstimator
@@ -251,6 +252,7 @@ IF (OSGEARTH_EMBED_GIT_SHA)
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 set(TARGET_SRC
+    Async.cpp
     Bounds.cpp
     Cache.cpp
     CacheBin.cpp

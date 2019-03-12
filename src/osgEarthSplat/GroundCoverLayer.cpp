@@ -362,6 +362,7 @@ GroundCoverLayer::buildStateSets()
         new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
         osg::StateAttribute::OVERRIDE);
 
+    float maxRange = 0.0f;
 
     for (Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
     {
@@ -400,7 +401,10 @@ GroundCoverLayer::buildStateSets()
                 zoneStateSet->setTextureAttribute(_groundCoverTexBinding.unit(), tex);
                 zoneStateSet->addUniform(new osg::Uniform(GCTEX_SAMPLER, _groundCoverTexBinding.unit()));
 
-                OE_DEBUG << LC << "buildStateSets completed!\n";
+                if (groundCover->getMaxDistance() > maxRange)
+                {
+                    maxRange = groundCover->getMaxDistance();
+                }
             }
             else
             {
@@ -412,6 +416,12 @@ GroundCoverLayer::buildStateSets()
             // not an error.
             OE_DEBUG << LC << "zone contains no ground cover information\n";
         }
+    }
+
+    if (maxRange > 0.0f && !options().maxVisibleRange().isSet())
+    {
+        setMaxVisibleRange(maxRange);
+        OE_INFO << LC << "Max visible range set to " << maxRange << std::endl;
     }
 }
 

@@ -208,39 +208,47 @@ TerrainCuller::apply(TileNode& node)
         TileRenderModel& renderModel = _currentTileNode->renderModel();
 
         bool pushedMatrix = false;
-            
+
+        // Render patch layers if applicable.
+        // A patch layer is one rendered using GL_PATCHES.
         for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
         {
             PatchLayer* layer = i->get();
-            if (layer->getAcceptCallback() == 0L ||
-                layer->getAcceptCallback()->acceptKey(_currentTileNode->getKey()))
+
+            // is the layer accepting this key?
+            if (layer->getAcceptCallback() && !layer->getAcceptCallback()->acceptKey(_currentTileNode->getKey()))
+                continue;
+
+            // is the tile in visible range?
+            float range = _cv->getDistanceToViewPoint(node.getBound().center(), true) - node.getBound().radius();
+            if (layer->getMaxVisibleRange() < range)
+                continue;
+
+            // Push this tile's matrix if we haven't already done so:
+            if (!pushedMatrix)
             {
-                // Push this tile's matrix if we haven't already done so:
-                if (!pushedMatrix)
-                {
-                    SurfaceNode* surface = node.getSurfaceNode();
+                SurfaceNode* surface = node.getSurfaceNode();
                     
-                    // push the surface matrix:
-                    osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
-                    surface->computeLocalToWorldMatrix(*matrix,this);
-                    _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
+                // push the surface matrix:
+                osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
+                surface->computeLocalToWorldMatrix(*matrix,this);
+                _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
 
-                    pushedMatrix = true;
-                }
+                pushedMatrix = true;
+            }
 
-                // Add the draw command:
-                DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
-                if (cmd)
-                {
-                    cmd->_drawPatch = true;
-                    cmd->_drawCallback = layer->getDrawCallback();
-                }
+            // Add the draw command:
+            DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
+            if (cmd)
+            {
+                cmd->_drawPatch = true;
+                cmd->_drawCallback = layer->getDrawCallback();
             }
         }
 
         if (pushedMatrix)
         {
-           _cv-> popModelViewMatrix();
+           _cv->popModelViewMatrix();
         }
     }
 }

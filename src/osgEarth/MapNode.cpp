@@ -357,9 +357,6 @@ MapNode::open()
     // Callback listens for changes in the Map:
     _mapCallback = new MapNodeMapCallbackProxy(this);
     _map->addMapCallback( _mapCallback.get() );
-
-    // Invoke the callback manually to add all existing layers to this node:
-    _mapCallback->invokeOnLayerAdded(_map.get());
     
     // Now that layers exist, establish a map profile. This is guaranteed
     // to result in a map profile being set.
@@ -378,6 +375,11 @@ MapNode::open()
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
     }
 
+    // Invoke the callback manually to add all existing layers to this node.
+    // This needs to happen AFTER calling _terrainEngine->setMap().
+    _mapCallback->invokeOnLayerAdded(_map.get());
+
+
     // initialize terrain-level lighting:
     if ( options().terrain()->enableLighting().isSet() )
     {
@@ -385,7 +387,6 @@ MapNode::open()
             _terrainGroup->getOrCreateStateSet(),
             options().terrain()->enableLighting().get() ? 1 : 0 );
     }
-
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
     _terrainGroup->addChild(_overlayDecorator);

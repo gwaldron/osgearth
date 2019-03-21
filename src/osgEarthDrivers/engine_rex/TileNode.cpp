@@ -145,19 +145,16 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // whether the stitch together normal maps for adjacent tiles.
     _stitchNormalMap = context->_options.normalizeEdges() == true;
 
-    // Encode the tile key in a uniform. Note! The X and Y components are presented
-    // modulo 2^16 form so they don't overrun single-precision space.
+    // Encode the tile key in a uniform
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
-
-    const double m = 65536; //pow(2.0, 16.0);
 
     double x = (double)_key.getTileX();
     double y = (double)(th - _key.getTileY()-1);
 
     _tileKeyValue.set(
-        (float)fmod(x, m),
-        (float)fmod(y, m),
+        (float)x,
+        (float)y,
         (float)_key.getLOD(),
         -1.0f);
 

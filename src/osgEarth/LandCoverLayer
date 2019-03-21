@@ -86,6 +86,15 @@ namespace osgEarth
         GeoImage createMetaImageComponent(const TileKey& key, ProgressCallback* progress) const;
 
         void buildCodeMap(const LandCoverCoverageLayer*, CodeMap&);
+
+        struct MetaImageComponent {
+            MetaImageComponent() : pixel(0L) { }
+            osg::ref_ptr<osg::Image> image;
+            osg::Matrix scaleBias;
+            ImageUtils::PixelReader pixel;
+        };
+        typedef std::map<TileKey, MetaImageComponent> MetaImage;
+        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*);
     };
 
 } // namespace osgEarth

@@ -94,7 +94,7 @@ namespace osgEarth
             ImageUtils::PixelReader pixel;
         };
         typedef std::map<TileKey, MetaImageComponent> MetaImage;
-        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*);
+        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*) const;
     };
 
 } // namespace osgEarth

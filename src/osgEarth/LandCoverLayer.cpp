@@ -309,7 +309,7 @@ LandCoverLayer::addedToMap(const Map* map)
 }
 
 bool
-LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u, double v, osg::Vec4f& output, ProgressCallback* progress)
+LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u, double v, osg::Vec4f& output, ProgressCallback* progress) const
 {
     // Find the key containing the uv coordinates.
     int x = int(floor(u));
@@ -340,7 +340,7 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u
             while (bestkey.valid() && !tile.valid())
             {
                 // load the image and store it to the metaimage.
-                tile = ImageLayer::createImageImplementation(bestkey, progress);
+                tile = createMetaImageComponent(bestkey, progress);
                 if (tile.valid())
                 {
                     comp = &metaImage[actualKey];
@@ -372,7 +372,7 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u
 }
 
 GeoImage
-LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     MetaImage metaImage;
 
@@ -434,7 +434,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
                 if (warp != 0.0)
                 {
                     // use the noise function to warp the uv coordinates:
-                    noiseCoords = getSplatCoords(key, options().noiseLOD().get(), cov);
+                    noiseCoords = getSplatCoords(key, getNoiseLOD(), cov);
                     double noise = getNoise(noiseGen, noiseCoords);
                     cov = warpCoverageCoords(cov, noise, warp);
 

@@ -139,21 +139,42 @@ namespace osgEarth { namespace Splat
         GroundCoverBiomeOptionsVector _biomes;
     };
 
-
-    class OSGEARTHSPLAT_EXPORT GroundCoverBillboard
+    //! Base class for any ground cover object
+    class OSGEARTHSPLAT_EXPORT GroundCoverObject : public osg::Referenced
     {
     public:
-        GroundCoverBillboard(osg::Image* image, float width, float height)
-            : _image(image), _width(width), _height(height) { }
+        enum Type {
+            TYPE_BILLBOARD
+        };
+        virtual Type getType() const =0;
+    };
 
-        osg::ref_ptr<osg::Image> _image;
+    //! Collection of ground cover objects
+    typedef std::vector<osg::ref_ptr<GroundCoverObject> > GroundCoverObjects;
+
+    /**
+     * Billboard object - camera-facing side image coupled with an optional
+     * top-down image.
+     */
+    class OSGEARTHSPLAT_EXPORT GroundCoverBillboard : public GroundCoverObject
+    {
+    public:
+        GroundCoverBillboard(osg::Image* sideImage, osg::Image* topImage, float width, float height)
+            : _sideImage(sideImage), _topImage(topImage), _width(width), _height(height) { }
+
+        virtual Type getType() const { return TYPE_BILLBOARD; }
+
+        osg::ref_ptr<osg::Image> _sideImage;
+        osg::ref_ptr<osg::Image> _topImage;
         float                    _width;
         float                    _height;
     };
 
-    typedef std::vector<GroundCoverBillboard> GroundCoverBillboards;
-
-
+    /**
+     * A Biome is a collection of ground cover objects corresponding
+     * to a set of land cover classes. For example, the "forest" biome
+     * might map to three different tree billboards.
+     */
     class OSGEARTHSPLAT_EXPORT GroundCoverBiome : public osg::Referenced
     {
     public:
@@ -163,16 +184,16 @@ namespace osgEarth { namespace Splat
         void setClasses( const std::string& value ) { _classNames = value; }
         const std::string& getClasses() const { return _classNames; }
 
-        /** Resources that may be used to render land cover in this biome */
-        GroundCoverBillboards& getBillboards() { return _billboards; }
-        const GroundCoverBillboards& getBillboards() const { return _billboards; }
+        /** Objects that may be used to render land cover in this biome */
+        GroundCoverObjects& getObjects() { return _objects; }
+        const GroundCoverObjects& getObjects() const { return _objects; }
 
     protected:
         virtual ~GroundCoverBiome() { }
 
         std::string    _classNames;
         int            _code;
-        GroundCoverBillboards _billboards;
+        GroundCoverObjects _objects;
 
     public:
         typedef std::map<URI, osg::ref_ptr<osg::Image> > ImageCache;
@@ -227,7 +248,8 @@ namespace osgEarth { namespace Splat
 
     public:
 
-        int getTotalNumBillboards() const;
+        //! Total number of individual objects this class can render
+        int getTotalNumObjects() const;
 
         /** Creates the shader that contains the GLSL APOI for accessing this layer's information */
         osg::Shader* createShader() const;

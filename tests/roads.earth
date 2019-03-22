@@ -11,29 +11,30 @@ YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
 http://readymap.org
 
 -->
-<map name="readymap.org" type="geocentric">
+<Map name="Roads Test">
 
     <TMSImage name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
 
-    <image name="Tilekeys" driver="debug" enabled="false">
-    </image>
-
-    <road_surface name="road-surface" min_level="14" max_data_level="18">
+    <DebugImage name="Tilekeys" enabled="false"/>
+    
+    <RoadSurface name="road-surface" min_level="14" max_data_level="18">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
-        <feature_source>roads-data</feature_source>
-        <style type="text/css">
-            default {
-               stroke: #ffffff;
-               stroke-width: 65m;
-               stroke-image: "../data/road.png";
-            }                    
-        </style>
-    </road_surface>
+        <features>roads-data</features>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffffff;
+                   stroke-width: 20m;
+                   stroke-image: "../data/road.png";
+                }                    
+            </style>
+        </styles>
+    </RoadSurface>
 
-    <feature_model name="Road verts">
+    <FeatureModel name="Road verts">
         <feature_source>roads-data</feature_source>
         <styles>
             <style type="text/css">
@@ -47,22 +48,22 @@ http://readymap.org
                 }
             </style>
         </styles>
-    </feature_model>
+    </FeatureModel>
 
-    <feature_model name="Road skeleton" enabled="false">
+    <FeatureModel name="Road skeleton" enabled="false">
         <feature_source>roads-data</feature_source>
         <styles>
             <style type="text/css">
                 default {
                     stroke: #00ffff7f;
-                    stroke-width: 65m;
+                    stroke-width: 20m;
                     render-depth-test: false;
                     render-order: 2;
                     stroke-image: "../data/grid2.png";
                 }
             </style>
         </styles>
-    </feature_model>
+    </FeatureModel>
 
     <TFSFeatures name="roads-data">
         <url>http://readymap.org/osm/</url>
@@ -99,4 +100,4 @@ http://readymap.org
     </viewpoints>
 
     <libraries>osgEarthSplat</libraries>
-</map>
+</Map>

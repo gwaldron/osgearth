@@ -482,7 +482,9 @@ Geometry::intersects(
 
     //Destroy the geometry
     gc.disposeGeometry( otherGeom );
+    delete otherGeom;
     gc.disposeGeometry( inGeom );
+    delete inGeom;
 
     return intersects;
 

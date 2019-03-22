@@ -57,23 +57,30 @@ out vec2 oe_GroundCover_texCoord;
 //flat in int oe_GroundCover_biomeIndex;
 
 // Output that selects the land cover texture from the texture array (non interpolated)
-flat out float oe_GroundCover_arrayIndex;
+flat out float oe_GroundCover_atlasIndex;
 
 struct oe_GroundCover_Biome {
-    int firstBillboardIndex;
-    int numBillboards;
+    int firstObjectIndex;
+    int numObjects;
     float density;
     float fill;
     vec2 maxWidthHeight;
 };
-void oe_GroundCover_getBiome(in int biomeIndex, out oe_GroundCover_Biome biome);
+void oe_GroundCover_getBiome(in int index, out oe_GroundCover_Biome biome);
+
+struct oe_GroundCover_Object {
+    int type;             // 0=billboard 
+    int objectArrayIndex; // index into the typed object array 
+};
+void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object object);
 
 struct oe_GroundCover_Billboard {
-    int arrayIndex;
+    int atlasIndexSide;
+    int atlasIndexTop;
     float width;
     float height;
 };
-void oe_GroundCover_getBillboard(in int billboardIndex, out oe_GroundCover_Billboard bb);
+void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
 
 
 // Output colors/normals:
@@ -245,16 +252,20 @@ oe_GroundCover_geom()
         noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
 
     // select a billboard seemingly at random. Need to scale n to account for the fill limit first though.
-    int billboardIndex = biome.firstBillboardIndex + int( floor(noise[NOISE_RANDOM] * float(biome.numBillboards) ) );
-    billboardIndex = min(billboardIndex, biome.firstBillboardIndex + biome.numBillboards - 1);
+    int objectIndex = biome.firstObjectIndex + int(floor(noise[NOISE_RANDOM] * float(biome.numObjects)));
+    objectIndex = min(objectIndex, biome.firstObjectIndex + biome.numObjects - 1);
 
+    // Recover the object we randomly picked:
+    oe_GroundCover_Object object;
+    oe_GroundCover_getObject(objectIndex, object);
+
+    // for now, assume type == BILLBOARD.
+    // Find the billboard associated with the object:
     oe_GroundCover_Billboard billboard;
-    oe_GroundCover_getBillboard(billboardIndex, billboard);
-    
-    // pass the billboard's array index along to the fragment shader.
-    oe_GroundCover_arrayIndex = float(billboard.arrayIndex);
-    
-	
+    oe_GroundCover_getBillboard(object.objectArrayIndex, billboard);
+
+    oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
+
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
 
@@ -339,110 +350,101 @@ oe_GroundCover_geom()
     vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
 
     // if we are looking straight-ish down on the billboard, don't bother with it
-    if (abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
+    if (billboard.atlasIndexTop < 0 && 
+        abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
+    {
         return;
+    }
 
     float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
     vec3 Lnormal = mix(-tangentVector, faceNormalVector, blend);
     vec3 Rnormal = mix( tangentVector, faceNormalVector, blend);
 
-    // calculate a [0..1] factor for interpolating from a front billboard view
-    // to a top-down view of the tree (0.0=billboard, 1.0=topdown)
-    float topDownAmount = abs(dot(normalize(center_view.xyz), up_view));
+    float billboardAmount = 1.0;
+    float topDownAmount = 0.0;
 
-    // permute it towards billboard:
-    topDownAmount = topDownAmount*topDownAmount*topDownAmount;
+    if (billboard.atlasIndexTop >= 0)
+    {
+        // calculate a [0..1] factor for interpolating from a front billboard view
+        // to a top-down view of the tree (0.0=billboard, 1.0=topdown)
+        topDownAmount = abs(dot(vec3(0, 0, -1), up_view));
+        billboardAmount = 1.0 - oe_GroundCover_fastpow(topDownAmount, 10.0);
+        topDownAmount = clamp(topDownAmount*1.5, 0.0, 1.0);
+    }
 
-    float billboardAmount = 1.0-oe_GroundCover_fastpow(topDownAmount, 7.5);
-
-    const float billboardThreshold = 0.05;
+    const float billboardThreshold = 0.15;
 
     if (billboardAmount > billboardThreshold)
     {
         vp_Color = vec4(color*oe_GroundCover_ao, falloff * billboardAmount);
 
         gl_Position = LL;
-        oe_GroundCover_texCoord = vec2(0,0);
+        oe_GroundCover_texCoord = vec2(0.0, 0.0);
         vp_Normal = Lnormal;
         VP_EmitViewVertex();
-    
+
         gl_Position = LR;
-        oe_GroundCover_texCoord = vec2(1,0);
+        oe_GroundCover_texCoord = vec2(1.0, 0.0);
         vp_Normal = Rnormal;
         VP_EmitViewVertex();
 
         vp_Color = vec4(color, falloff * billboardAmount);
 
         gl_Position = UL;
-        oe_GroundCover_texCoord = vec2(0,1);
+        oe_GroundCover_texCoord = vec2(0.0, 1.0);
         vp_Normal = Lnormal;
         VP_EmitViewVertex();
 
-        oe_GroundCover_texCoord = vec2(1,1);
+        oe_GroundCover_texCoord = vec2(1.0, 1.0);
         vp_Normal = Rnormal;
         gl_Position = UR;
         VP_EmitViewVertex();
-                    
+
         EndPrimitive();
     }
 
     const float topDownThreshold = 0.5;
 
-    if (topDownAmount > topDownThreshold)
+    if (topDownAmount > topDownThreshold && billboard.atlasIndexTop >= 0)
     {
-        vec3 rightVector = vec3(1,0,0);
-        vec3 halfWidthFlatVector = cross(up_view, rightVector) * width * 0.25;
-        vec4 CL, CR;
-        vec3 CENTROID = center_view.xyz + (heightVector*0.4);
-        CL = vec4(CENTROID - rightVector*width*0.5, 1.0);
-        LL = CL - vec4(halfWidthFlatVector, 0.0);
-        UL = CL + vec4(halfWidthFlatVector, 0.0);
-        CR = vec4(CENTROID + rightVector*width*0.5, 1.0);
-        LR = CR - vec4(halfWidthFlatVector, 0.0);
-        UR = CR + vec4(halfWidthFlatVector, 0.0);
+        oe_GroundCover_atlasIndex = float(billboard.atlasIndexTop);
+        // estiblish the local tangent plane:
+        vec3 U = gl_NormalMatrix * vec3(0, 0, 1);
+        vec3 E = cross(U, up_view);
+        vec3 N = cross(up_view, E);
 
-        vp_Color = vec4(color, (topDownAmount-topDownThreshold)*(topDownAmount/topDownThreshold));
+        // now introduce a "random" rotation (using barycentric coords)
+        b = b * 2.0 - 1.0;  // from [0..1] to [-1..1]
+        N = normalize(E*b.x + N * b.y);
+        E = normalize(cross(N, U));
 
-        gl_Position = CL;
-        oe_GroundCover_texCoord = vec2(0, 0.5);
-        vp_Normal = (CL.xyz-CENTROID);
-        VP_EmitViewVertex();
+        float k = width * 0.5;
+        vec3 C = center_view.xyz + (heightVector*0.4);
+        LL = vec4(C - E*k - N*k, 1.0);
+        LR = vec4(C + E*k - N*k, 1.0);
+        UL = vec4(C - E*k + N*k, 1.0);
+        UR = vec4(C + E*k + N*k, 1.0);
 
-        gl_Position = CR;
-        oe_GroundCover_texCoord = vec2(1, 0.5);
-        vp_Normal = (CR.xyz-CENTROID);
-        VP_EmitViewVertex();
-
-        gl_Position = UL;
-        oe_GroundCover_texCoord = vec2(0, 0.9);
-        vp_Normal = (UL.xyz-CENTROID);
-        VP_EmitViewVertex();
-
-        gl_Position = UR;
-        oe_GroundCover_texCoord = vec2(1, 0.9);
-        vp_Normal = (UR.xyz -CENTROID);
-        VP_EmitViewVertex();
-
-        EndPrimitive();
+        vp_Color = vec4(color, (topDownAmount - topDownThreshold)*(topDownAmount / topDownThreshold));
 
         gl_Position = LL;
-        oe_GroundCover_texCoord = vec2(0, 0.9);
-        vp_Normal = (LL.xyz -CENTROID);
+        oe_GroundCover_texCoord = vec2(0.0, 0.0);
+        vp_Normal = (LL.xyz - C);
         VP_EmitViewVertex();
 
         gl_Position = LR;
-        oe_GroundCover_texCoord = vec2(1, 0.9);
-        vp_Normal = (LR.xyz -CENTROID);
+        oe_GroundCover_texCoord = vec2(1.0, 0.0);
+        vp_Normal = (LR.xyz - C);
         VP_EmitViewVertex();
 
-        gl_Position = CL;
-        oe_GroundCover_texCoord = vec2(0, 0.5);
-        vp_Normal = (CL.xyz-CENTROID);
+        gl_Position = UL;
+        oe_GroundCover_texCoord = vec2(0.0, 1.0);
+        vp_Normal = (UL.xyz - C);
         VP_EmitViewVertex();
 
-        oe_GroundCover_texCoord = vec2(1, 0.5);
-        vp_Normal = (CR.xyz-CENTROID);
-        gl_Position = CR;
+        gl_Position = UR;
+        oe_GroundCover_texCoord = vec2(1.0, 1.0);
+        vp_Normal = (UR.xyz - C);
         VP_EmitViewVertex();
 
         EndPrimitive();

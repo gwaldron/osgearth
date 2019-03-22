@@ -164,11 +164,11 @@ main(int argc, char** argv)
         return failed("Loading tree image");
 
     BillboardSymbol* treeSymbol = new BillboardSymbol();
-    treeSymbol->setImage(tree.get());
+    treeSymbol->setSideImage(tree.get());
     treeSymbol->width() = 12.0f;
     treeSymbol->height() = 16.0f;
 
-    // Add this symbol to a "frest" biome.
+    // Add this symbol to a "forest" biome.
     GroundCoverBiomeOptions forestBiome;
     forestBiome.biomeClasses() = "forest";
     forestBiome.symbols().push_back(treeSymbol);

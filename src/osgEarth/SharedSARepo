@@ -51,7 +51,10 @@ namespace osgEarth
 
         ~SharedSARepo() 
         {
-            clear();
+//START VRV_PATCH
+           pruneAndReleaseGLObjects(0);
+//END VRV_PATCH
+           clear();
         }
 
         void setEnabled(bool value)
@@ -110,7 +113,30 @@ namespace osgEarth
             _mx.unlock();
             return found;
         }
+//START VRV_PATCH
+        void pruneAndReleaseGLObjects(osg::State* state)
+        {
+           _mx.lock();
+           for (typename SAUniqueSet::iterator i = _set.begin(); i != _set.end(); )
+           {
+              osg::ref_ptr<T> temp;
+              if (i->lock(temp))
+              {
+                 temp->releaseGLObjects(state);
+                 ++i;
+              }
+              else
+              {
+                 // found an orphaned observer; prune it
+                 typename SAUniqueSet::iterator j = i++;
+                 _set.erase(j);
+                 //OE_DEBUG << LC << "Pruned a program; repo size = " << _set.size() << std::endl;
+              }
+           }
 
+           _mx.unlock();
+        }
+//END VRV_PATCH
         void clear()
         {
             _mx.lock();

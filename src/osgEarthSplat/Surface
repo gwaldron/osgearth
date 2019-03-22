@@ -97,6 +97,10 @@ namespace osgEarth { namespace Splat
         osg::StateSet* getOrCreateStateSet();
         osg::StateSet* getStateSet() const { return _stateSet.get(); }
 
+        void resizeGLObjectBuffers(unsigned maxSize);
+
+        void releaseGLObjects(osg::State* state) const;
+
     protected:
         virtual ~Surface() { }
 

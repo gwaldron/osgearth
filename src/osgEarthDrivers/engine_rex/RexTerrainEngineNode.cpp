@@ -190,22 +190,36 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
 
 void RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 {
-
-   getStateSet()->releaseGLObjects(state);
-
-   _terrain->getStateSet()->releaseGLObjects(state);
-
-   _imageLayerStateSet.get()->releaseGLObjects(state);
+//VRV_PATCH: start
+   if (_terrain)
+   {
+      _terrain->releaseGLObjects(state);
+   }
+   
+   if (_imageLayerStateSet)
+   {
+      _imageLayerStateSet->releaseGLObjects(state);
+   }
 
     // TODO: where should this live? MapNode?
    LayerVector layers;
-   getMap()->getLayers(layers);
+   if (getMap())
+   {
+      getMap()->getLayers(layers);
+   }
    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
    {
-      if ((*i)->getStateSet()) {
-         (*i)->getStateSet()->releaseGLObjects(state);
-      }
+      // This is done via MapNode::releaseGLObjects in latest osg earth
+      (*i)->releaseGLObjects(state);
    }
+
+   if (_geometryPool)
+   {
+      _geometryPool->clear();
+   }
+   
+   TerrainEngineNode::releaseGLObjects(state);
+//VRV_PATCH: end
 }
 
 void
@@ -453,6 +467,12 @@ RexTerrainEngineNode::setupRenderBindings()
 void
 RexTerrainEngineNode::dirtyTerrain()
 {
+//VRV_PATCH: start
+   if (_terrain)
+   {
+      _terrain->releaseGLObjects();
+   }
+//VRV_PATCH: end
     if ( _terrain )
     {
         this->removeChild( _terrain );
@@ -1537,6 +1557,11 @@ RexTerrainEngineNode::updateState()
             // Apply uniforms for sampler bindings:
             OE_DEBUG << LC << "Render Bindings:\n";
             osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+//VRV_PATCH: start
+            // fixes invalid enumerant errors because source format is internal format if nothing is specified
+            // and that's a wrong enumerant for glTexImage2D call
+            tex->setSourceFormat(GL_RGBA);
+//VRV_PATCH: end
             for (unsigned i = 0; i < _renderBindings.size(); ++i)
             {
                 SamplerBinding& b = _renderBindings[i];

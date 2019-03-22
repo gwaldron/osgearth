@@ -791,7 +791,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
     METRIC_SCOPED("ElevationLayer.populateHeightField");
     osg::CVMarkerSeries objectCreation("SubloadTask");
-    osg::CVSpan creationSpan(objectCreation, 3, "ElevationLayer.populateHeightField");
+    osg::CVSpan creationSpan(objectCreation, 3, "ElevationLayer.populateHeightFieldAndNormal");
 
     // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
     // the map profile has a vertical datum. This is the usual case when building the 3D

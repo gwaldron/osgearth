@@ -445,44 +445,57 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
                                                 ProgressCallback*               progress)
 {
   
+   // VRV_PATCH
+   CacheBin* cacheBin = 0;
+   const ElevationLayerVector& layers = frame.elevationLayers();
+   std::string hfCacheKey;
+   std::string normalCacheKey;
+   // GNP previously we did this at the map level using frame.getMapOptions().name().get() 
+   // but that had the downside of not sharing data between maps and being less editable at run time.
+   // for now just restrict the caching to single layer maps
+   if (layers.size() == 1)
+   {
+      hfCacheKey = "elevationGPU/" + key.str();
+      normalCacheKey = "normalGPU/" + key.str();
+      osg::ref_ptr< osg::HeightField > cachedHF;
+      osg::ref_ptr< NormalMap > cachedNormalMap;
+      const Map * map = frame.getMap();
+      if (map && map->getCache())
+      {
+         cacheBin = map->getCache()->addBin(layers[0]->getName());
+      }
 
-    std::string hfCacheKey = "map/elevation/" + key.str();
-    std::string normalCacheKey = "map/normal/" + key.str();
-    osg::ref_ptr< osg::HeightField > cachedHF;
-    osg::ref_ptr< NormalMap > cachedNormalMap;
-    CacheBin* cacheBin = 0;
-    const Map * map = frame.getMap();
-    if (map && map->getCache())
-    {
-        cacheBin = map->getCache()->addBin(frame.getMapOptions().name().get());
-    }
-    
 
-    if (cacheBin)
-    {
-       {
-          ReadResult rr = cacheBin->readObject(hfCacheKey, 0);
-          if (rr.succeeded())
-          {
-             cachedHF = rr.get<osg::HeightField>();
-          }
-       }
+      if (cacheBin)
+      {
+         //osg::CVMarkerSeries objectCreation("osgETiming");
+         {
+            //osg::CVSpan creationSpan(objectCreation, 4, "load HF");
+            ReadResult rr = cacheBin->readObject(hfCacheKey, 0);
+            if (rr.succeeded())
+            {
+               cachedHF = rr.get<osg::HeightField>();
+            }
+         }
 
-       {
-          ReadResult rr = cacheBin->readImage(normalCacheKey, 0);
-          if (rr.succeeded())
-          {
-             cachedNormalMap = new NormalMap(*rr.get<osg::Image>());
-          }
-       }
-    }
+         {
+            //osg::CVSpan creationSpan(objectCreation, 4, "load image");
+            ReadResult rr = cacheBin->readImage(normalCacheKey, 0);
+            if (rr.succeeded())
+            {
+               cachedNormalMap = new NormalMap(*rr.get<osg::Image>());
+            }
+         }
+      }
 
-    if (cachedHF.valid() && cachedNormalMap.valid())
-    {
-        out_hf = cachedHF.get();
-        out_normalMap = cachedNormalMap.get();
-        return true;
-    }
+      if (cachedHF.valid() && cachedNormalMap.valid())
+      {
+         out_hf = cachedHF.get();
+         out_normalMap = cachedNormalMap.get();
+         return true;
+      }
+   }
+   //VRV_PATCH:end
 
     // check the quick cache.
     HFCacheKey cachekey;
@@ -561,6 +574,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
             HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
         }
 
+        //VRV_PATCH
         // cache it.
         if (_heightFieldCacheEnabled )
         {
@@ -571,7 +585,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
             _heightFieldCache.insert( cachekey, newValue );
         }
 
-        if (cacheBin)
+        if (cacheBin &&  (layers.size() == 1))
         {
            osg::CVMarkerSeries objectCreation("SubloadTask");
            {
@@ -584,6 +598,9 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
               cacheBin->write(normalCacheKey, out_normalMap.get(), 0L);
            }
         }
+        //VRV_PATCH:end
+
+		  
     }
 
     return populated;

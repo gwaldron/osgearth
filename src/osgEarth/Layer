@@ -218,7 +218,11 @@ namespace osgEarth
          * Access to the SceneGraphCallbacks that you can use to detect scene graph changes
          */
         SceneGraphCallbacks* getSceneGraphCallbacks() const;
+//VRV_PATCH: start
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
 
+        virtual void releaseGLObjects(osg::State* state) const;
+//VRV_PATCH: end
     public:
 
         /** Adds a property notification callback to this layer */

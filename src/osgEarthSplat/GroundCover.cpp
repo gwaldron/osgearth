@@ -454,6 +454,20 @@ GroundCover::createTexture() const
     return tex;
 }
 
+void
+GroundCover::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if (getStateSet())
+        getStateSet()->resizeGLObjectBuffers(maxSize);
+}
+
+void
+GroundCover::releaseGLObjects(osg::State* state) const
+{
+    if (getStateSet())
+        getStateSet()->releaseGLObjects(state);
+}
+
 //............................................................................
 
 bool

@@ -1511,7 +1511,7 @@ ProgressCallback*     callback)
 					if (response.isCancelled())
 						OE_NOTICE << LC << "Request was cancelled" << std::endl;
 					else
-						OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
 				}
 				callback->setNeedsRetry(true);
 			}
@@ -1590,7 +1590,7 @@ ProgressCallback*     callback)
 					if (response.isCancelled())
 						OE_NOTICE << LC << "Request was cancelled" << std::endl;
 					else
-						OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
 				}
 				callback->setNeedsRetry(true);
 			}
@@ -1665,7 +1665,7 @@ ProgressCallback*     callback)
 					if (response.isCancelled())
 						OE_NOTICE << LC << "Request was cancelled" << std::endl;
 					else
-						OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
 				}
 				callback->setNeedsRetry(true);
 			}
@@ -1719,9 +1719,9 @@ ProgressCallback*     callback)
 				if (s_HTTP_DEBUG)
 				{
 					if (response.isCancelled())
-						OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                  OE_NOTICE << LC << "HTTP request was cancelled" << std::endl;
 					else
-						OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
 				}
 				callback->setNeedsRetry(true);
 			}

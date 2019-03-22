@@ -166,7 +166,9 @@ CompositeTileSource::createImage(const TileKey&    key,
                 imageInfo.image = image.getImage();
             }
 
-            // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
+            // If the progress got cancelled (due to any reason, including network error)
+            // then return NULL to prevent this tile from being built and cached with
+            // incomplete or partial data.
             if (progress && (progress->isCanceled() || progress->needsRetry()))
             {
                 OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
@@ -391,7 +393,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                OE_DEBUG << LC << "Could not open image layer (" << layer->getName() << ") ... " << status.message() << std::endl;
+               setStatus(Status(Status::ResourceUnavailable, Stringify()
+                  << "Could not open sublayer (" << layer->getName() << ") ... " << status.message()));
+               return getStatus();
             }            
         }
         else if (i->_elevationLayerOptions.isSet() && !i->_layer.valid())
@@ -410,7 +414,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                OE_WARN << LC << "Could not open elevation layer (" << layer->getName() << ") ... " << status.message() << std::endl;
+               setStatus(Status(Status::ResourceUnavailable, Stringify()
+                  << "Could not open sublayer (" << layer->getName() << ") ... " << status.message()));
+               return getStatus();
             }
         }
 
@@ -420,29 +426,39 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             i = _options._components.erase( i );
         }
         else
-        {            
+        {
             TileSource* source = i->_layer->getTileSource();
-
-            // If no profile is specified assume they want to use the profile of the first layer in the list.
-            if (!profile.valid())
+//VRV_PATCH: start
+            if (source)
             {
-                profile = source->getProfile();
-            }
+//VRV_PATCH: end
+                // If no profile is specified assume they want to use the profile of the first layer in the list.
+                if (!profile.valid())
+                {
+                    profile = source->getProfile();
+                }
 
-            _dynamic = _dynamic || source->isDynamic();
-            
-            // gather extents                        
-            const DataExtentList& extents = source->getDataExtents();            
-            for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-            {                
-                // Convert the data extent to the profile that is actually used by this TileSource
-                DataExtent dataExtent = *j;                
-                GeoExtent ext = dataExtent.transform(profile->getSRS());
-                unsigned int minLevel = 0;
-                unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
-                dataExtent = DataExtent(ext, minLevel, maxLevel);                                
-                getDataExtents().push_back( dataExtent );
-            }          
+                _dynamic = _dynamic || source->isDynamic();
+
+                // gather extents                        
+                const DataExtentList& extents = source->getDataExtents();
+                for (DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j)
+                {
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD(source->getProfile(), *dataExtent.maxLevel());
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);
+                    getDataExtents().push_back(dataExtent);
+                }
+            }
+//VRV_PATCH: start
+            else
+            {
+                OE_WARN << LC << "Tile Source is NULL (" << i->_layer->getName() << ") ... " << std::endl;
+            }
+//VRV_PATCH: end
 
             ++i;
         }

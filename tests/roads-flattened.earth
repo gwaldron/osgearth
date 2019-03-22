@@ -24,7 +24,7 @@
             }
 
             function getBufferWidth() {
-                return 12.0;
+                return 24.0;
             }
         ]]>
         </script>

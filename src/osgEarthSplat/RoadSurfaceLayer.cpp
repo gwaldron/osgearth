@@ -387,17 +387,10 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             Threading::Future<osg::Image> imageFuture;
 
             // Schedule the rasterization and get the future.
-            osg::ref_ptr<TileRasterizer> rasterizer;
-            if (_rasterizer.lock(rasterizer))
-            {
-                imageFuture = rasterizer->push(group.release(), getTileSize(), outputExtent);
+            imageFuture = _rasterizer->push(group.release(), getTileSize(), outputExtent);
 
-                // Immediately discard the temporary reference to the rasterizer, because
-                // otherwise a deadlock can occur if the application exits while the call
-                // to release() below is blocked.
-                rasterizer = 0L;
-            }
-
+            // Block until the image is ready.
+            // NULL means there was nothing to render.
             osg::Image* image = imageFuture.release();
             if (image)
             {

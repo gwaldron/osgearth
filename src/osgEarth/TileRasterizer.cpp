@@ -114,6 +114,9 @@ osg::Camera()
     _distortionU = new osg::Uniform("oe_rasterizer_f", 1.0f);
     ss->addUniform(_distortionU.get());
 #endif
+
+    _samplesQuery.resize(64u);
+    _samplesQuery.setAllElementsTo(INT_MAX);
 }
 
 TileRasterizer::~TileRasterizer()
@@ -150,6 +153,7 @@ TileRasterizer::ReadbackImage::readPixels(
     }
     else
     {
+        // synchronous:
         glReadPixels(x, y, width, height, getPixelFormat(), getDataType(), _data);
     }
 }
@@ -201,7 +205,13 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
         {
             Job& job = _finishedJobs.front();
             removeChild(job._node.get());
-            job._imagePromise.resolve(job._image.get());
+
+            // If the job didn't write any fragments, return a NULL image.
+            if (job._fragmentsWritten > 0)
+                job._imagePromise.resolve(job._image.get());
+            else
+                job._imagePromise.resolve(0L);
+
             _finishedJobs.pop(); 
             detach(osg::Camera::COLOR_BUFFER);
             dirtyAttachmentMap();
@@ -277,6 +287,18 @@ TileRasterizer::preDraw(osg::RenderInfo& ri) const
             {
                 job._image.get()->_ri = &ri;
             }
+
+            // allocate a query on demand for this GC:
+            osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(),true);
+            GLuint& query = _samplesQuery[ri.getContextID()];
+            if (query == INT_MAX)
+            {
+                ext->glGenQueries(1, &query);
+            }
+
+            // initiate a query for samples passing the fragment shader
+            // to see whether we drew anything.
+            ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, query);
         }
     }
 }
@@ -291,6 +313,14 @@ TileRasterizer::postDraw(osg::RenderInfo& ri) const
         if (!_readbackJobs.empty()) // double check!
         {
             Job& job = _readbackJobs.front();
+
+            // get the results of the query and store the
+            // # of fragments generated in the job.
+            osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+            GLuint query = _samplesQuery[ri.getContextID()];
+            ext->glEndQuery(GL_ANY_SAMPLES_PASSED);
+            ext->glGetQueryObjectuiv(query, GL_QUERY_RESULT, &job._fragmentsWritten);
+
             _finishedJobs.push(job);
             _readbackJobs.pop();
         }

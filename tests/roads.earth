@@ -13,19 +13,14 @@ http://readymap.org
 -->
 <map name="readymap.org" type="geocentric">
 
-    <options>
-        <terrain driver="rex" progressive="true">
-        </terrain>
-    </options>
-
     <TMSImage name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
 
-    <image name="Tilekeys" driver="debug">
+    <image name="Tilekeys" driver="debug" enabled="false">
     </image>
 
-    <road_surface name="road-surface" min_level="14" max_level="18" shared="true" cacheid="road_surface">
+    <road_surface name="road-surface" min_level="14" max_data_level="18">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <feature_source>roads-data</feature_source>
@@ -54,7 +49,7 @@ http://readymap.org
         </styles>
     </feature_model>
 
-    <feature_model name="Road skeleton" visible="true">
+    <feature_model name="Road skeleton" enabled="false">
         <feature_source>roads-data</feature_source>
         <styles>
             <style type="text/css">
@@ -63,7 +58,7 @@ http://readymap.org
                     stroke-width: 65m;
                     render-depth-test: false;
                     render-order: 2;
-                    stroke-image: "../data/grid.png";
+                    stroke-image: "../data/grid2.png";
                 }
             </style>
         </styles>

@@ -19,6 +19,7 @@
 #include <osgEarthSymbology/BillboardSymbol>
 #include <osgEarthSymbology/BillboardResource>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/URI>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -27,8 +28,8 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL(billboard, BillboardSymbol);
 
 
 BillboardSymbol::BillboardSymbol(const BillboardSymbol& rhs,const osg::CopyOp& copyop):
-InstanceSymbol(rhs, copyop),
-_image        (rhs._image.get())
+InstanceSymbol(rhs, copyop)//,
+//_image        (rhs._image.get())
 {
     //nop
 }
@@ -46,7 +47,8 @@ BillboardSymbol::getConfig() const
     conf.key() = "billboard";
     conf.set( "width", _width );
     conf.set( "height", _height );
-    conf.setNonSerializable( "BillboardSymbol::image", _image.get() );
+    conf.set( "top_url", _topURL );
+    //conf.setNonSerializable( "BillboardSymbol::image", _image.get() );
     return conf;
 }
 
@@ -55,7 +57,8 @@ BillboardSymbol::mergeConfig( const Config& conf )
 {
     conf.get( "width", _width );
     conf.get( "height", _height );
-    _image = conf.getNonSerializable<osg::Image>( "BillboardSymbol::image" );
+    conf.get( "top_url", _topURL );
+    //_image = conf.getNonSerializable<osg::Image>( "BillboardSymbol::image" );
 }
 
 InstanceResource*
@@ -70,6 +73,10 @@ BillboardSymbol::parseSLD(const Config& c, Style& style)
     if ( match(c.key(), "billboard-image") ) {
         style.getOrCreate<BillboardSymbol>()->url() = c.value();
         style.getOrCreate<BillboardSymbol>()->url()->setURIContext( c.referrer() );
+    }
+    else if (match(c.key(), "billboard-top-image")) {
+        style.getOrCreate<BillboardSymbol>()->topURL() = c.value();
+        style.getOrCreate<BillboardSymbol>()->topURL()->setURIContext(c.referrer());
     }
     else if ( match(c.key(), "billboard-width") ) {
         style.getOrCreate<BillboardSymbol>()->width() = as<float>(c.value(), 10.0f);

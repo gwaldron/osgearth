@@ -5,13 +5,14 @@
 
 #pragma import_defines(OE_GROUNDCOVER_HAS_MULTISAMPLES)
 #pragma import_defines(OE_GROUNDCOVER_SHOW_TESSELLATION)
-
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 uniform sampler2DArray oe_GroundCover_billboardTex;
 uniform float oe_GroundCover_exposure;
+
 in vec2 oe_GroundCover_texCoord;
 
-flat in float oe_GroundCover_arrayIndex; // from GroundCover.GS.glsl
+flat in float oe_GroundCover_atlasIndex; // from GroundCover.GS.glsl
 
 void oe_GroundCover_fragment(inout vec4 color)
 {    
@@ -21,14 +22,12 @@ void oe_GroundCover_fragment(inout vec4 color)
 #endif
 
     // modulate the texture
-    color = texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_arrayIndex)) * color;
+    color = texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex)) * color;
     color.rgb *= oe_GroundCover_exposure;
     
     // if multisampling is off, use alpha-discard.
-#ifndef OE_GROUNDCOVER_HAS_MULTISAMPLES
+#if !defined(OE_GROUNDCOVER_HAS_MULTISAMPLES) || defined(OE_IS_SHADOW_CAMERA)
     if (color.a < 0.15)
         discard;
 #endif
-    //if ( !oe_terrain_hasMultiSamples && color.a < 0.15 )
-    //    discard;
 }

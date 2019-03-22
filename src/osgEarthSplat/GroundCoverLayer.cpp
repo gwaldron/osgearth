@@ -372,7 +372,7 @@ GroundCoverLayer::buildStateSets()
         GroundCover* groundCover = zone->getGroundCover();
         if (groundCover)
         {
-            if (!groundCover->getBiomes().empty() || groundCover->getTotalNumBillboards() > 0)
+            if (!groundCover->getBiomes().empty() || groundCover->getTotalNumObjects() > 0)
             {
                 osg::StateSet* zoneStateSet = groundCover->getOrCreateStateSet();
                             

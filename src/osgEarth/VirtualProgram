@@ -188,6 +188,8 @@ namespace osgEarth
 
         static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);
 
+        /** Clear the shader cache ref_ptrs which hold onto the PolyShaders */
+        static void clearShaderCache();
 
     protected:
         virtual ~PolyShader() { }

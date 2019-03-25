@@ -2010,6 +2010,23 @@ PolyShader * PolyShader::lookUpShader(const std::string & functionName, const st
    return shader;
 }
 
+void PolyShader::clearShaderCache()
+{
+    _cacheMutex.lock();
+    // Erase our PolyShaders from the static
+    // _shaderCache
+    std::map<ShaderDesc, osg::ref_ptr<PolyShader> >::iterator shadeEnd 
+        = _shaderCache.end();
+    std::map<ShaderDesc, osg::ref_ptr<PolyShader> >::iterator shadeItr
+        = _shaderCache.begin();
+
+    for (; shadeItr != shadeEnd; ++shadeItr)
+    {
+        shadeItr->second = NULL;
+    }
+    _cacheMutex.unlock();
+}
+
 //.......................................................................
 // SERIALIZERS for VIRTUALPROGRAM
 

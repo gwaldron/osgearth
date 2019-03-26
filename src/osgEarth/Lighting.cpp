@@ -283,6 +283,8 @@ MaterialGL3::apply(osg::State& state) const
 {
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     osg::Material::apply(state);
+#else
+    state.Color(_diffuseFront.r(), _diffuseFront.g(), _diffuseFront.b(), _diffuseFront.a());
 #endif
 }
 

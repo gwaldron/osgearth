@@ -431,16 +431,6 @@ GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
         out_up.set(0, 0, 1);
         return true;
     }
-    else if ( _srs->isGeographic() )
-    {
-        double coslon = cos( osg::DegreesToRadians(x()) );
-        double coslat = cos( osg::DegreesToRadians(y()) );
-        double sinlon = sin( osg::DegreesToRadians(x()) );
-        double sinlat = sin( osg::DegreesToRadians(y()) );
-
-        out_up.set( coslon*coslat, sinlon*coslat, sinlat );
-        return true;
-    }
     else
     {
         osg::Vec3d ecef;
@@ -463,127 +453,98 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
     GeoPoint result;
 
-    GeoPoint to = rhs.transform(getSRS());
+    // Geometric slerp in unit sphere space
+    // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
 
-    if (getSRS()->isProjected())
-    {
-        osg::Vec3d w1, w2;
-        toWorld(w1);
-        rhs.toWorld(w2);
+    GeoPoint p1 = transform(getSRS()->getGeodeticSRS());
+    GeoPoint p2 = rhs.transform(p1.getSRS());
 
-        osg::Vec3d r(
-            w1.x() + (w2.x()-w1.x())*t,
-            w1.y() + (w2.y()-w1.y())*t,
-            w1.z() + (w2.z()-w1.z())*t);
+    double deltaZ = p2.z()-p1.z();
+
+    // Convert each point to unit sphere world space:
+    osg::Vec3d unitToEllip(
+        getSRS()->getEllipsoid()->getRadiusEquator(),
+        getSRS()->getEllipsoid()->getRadiusEquator(),
+        getSRS()->getEllipsoid()->getRadiusPolar());
+
+    osg::Vec3d ellipToUnit = osg::componentDivide(
+        osg::Vec3d(1,1,1), unitToEllip);
         
-        result.fromWorld(getSRS(), r);
-    }
+    osg::Vec3d w1;
+    p1.toWorld(w1);
+    w1 = osg::componentMultiply(w1, ellipToUnit);
+    w1.normalize();
 
-    else // geographic
-    {
-        // Geometric slerp in unit sphere space
-        // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+    osg::Vec3d w2;
+    p2.toWorld(w2);
+    w2 = osg::componentMultiply(w2, ellipToUnit);
+    w2.normalize();
 
-        double deltaZ = to.z()-z();
+    // perform geometric slerp:
+    double dp = w1*w2;
+    if (dp == 1.0)
+        return *this;
 
-        // Convert each point to unit sphere world space:
-        osg::Vec3d unitToEllip(
-            getSRS()->getEllipsoid()->getRadiusEquator(),
-            getSRS()->getEllipsoid()->getRadiusEquator(),
-            getSRS()->getEllipsoid()->getRadiusPolar());
+    double angle = acos(dp);
 
-        osg::Vec3d ellipToUnit = osg::componentDivide(
-            osg::Vec3d(1,1,1), unitToEllip);
-        
-        osg::Vec3d w1;
-        toWorld(w1);
-        w1 = osg::componentMultiply(w1, ellipToUnit);
-        w1.normalize();
+    double s = sin(angle);
+    if (s == 0.0)
+        return *this;
 
-        osg::Vec3d w2;
-        to.toWorld(w2);
-        w2 = osg::componentMultiply(w2, ellipToUnit);
-        w2.normalize();
+    double c1 = sin((1.0-t)*angle)/s;
+    double c2 = sin(t*angle)/s;
 
-        // perform geometric slerp:
-        double dp = w1*w2;
-        if (dp == 1.0)
-            return *this;
+    osg::Vec3d n = w1*c1 + w2*c2;
 
-        double angle = acos(dp);
+    // convert back to world space and apply altitude lerp
+    n = osg::componentMultiply(n, unitToEllip);
+    result.fromWorld(getSRS(), n);
+    result.z() = p1.z() + t*deltaZ;
 
-        double s = sin(angle);
-        if (s == 0.0)
-            return *this;
-
-        double c1 = sin((1.0-t)*angle)/s;
-        double c2 = sin(t*angle)/s;
-
-        osg::Vec3d n = w1*c1 + w2*c2;
-
-        // convert back to world space and apply altitude lerp
-        n = osg::componentMultiply(n, unitToEllip);
-        result.fromWorld(getSRS(), n);
-        result.z() = z() + t*deltaZ;
-    }
-
+    result.transformInPlace(getSRS());
     return result;
 }
 
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const
 {
-    if ( getSRS()->isProjected() && rhs.getSRS()->isProjected() )
-    {
-        if ( getSRS()->isEquivalentTo(rhs.getSRS()) )
-        {
-            return (vec3d() - rhs.vec3d()).length();
-        }
-        else
-        {
-            GeoPoint rhsT = rhs.transform(getSRS());
-            return (vec3d() - rhsT.vec3d()).length();
-        }
-    }
-    else
-    {
-        // https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal-surface_formulae
+    // https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal-surface_formulae
 
-        GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
-        GeoPoint p2 = rhs.transform( p1.getSRS() );
+    // Convert both points to geographic
+    GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
+    GeoPoint p2 = rhs.transform( p1.getSRS() );
 
-        double Re = getSRS()->getEllipsoid()->getRadiusEquator();
-        double Rp = getSRS()->getEllipsoid()->getRadiusPolar();
-        double F  = (Re-Rp)/Re; // flattening
+    double Re = getSRS()->getEllipsoid()->getRadiusEquator();
+    double Rp = getSRS()->getEllipsoid()->getRadiusPolar();
+    double F  = (Re-Rp)/Re; // flattening
 
-        double
-            lat1 = osg::DegreesToRadians(p1.y()),
-            lon1 = osg::DegreesToRadians(p1.x()),
-            lat2 = osg::DegreesToRadians(p2.y()),
-            lon2 = osg::DegreesToRadians(p2.x());
+    double
+        lat1 = osg::DegreesToRadians(p1.y()),
+        lon1 = osg::DegreesToRadians(p1.x()),
+        lat2 = osg::DegreesToRadians(p2.y()),
+        lon2 = osg::DegreesToRadians(p2.x());
 
-        double B1 = atan( (1.0-F)*tan(lat1) );
-        double B2 = atan( (1.0-F)*tan(lat2) );
+    double B1 = atan( (1.0-F)*tan(lat1) );
+    double B2 = atan( (1.0-F)*tan(lat2) );
 
-        double P = (B1+B2)/2.0;
-        double Q = (B2-B1)/2.0;
+    double P = (B1+B2)/2.0;
+    double Q = (B2-B1)/2.0;
 
-        double G = acos(sin(B1)*sin(B2) + cos(B1)*cos(B2)*cos(fabs(lon2-lon1)));
+    double G = acos(sin(B1)*sin(B2) + cos(B1)*cos(B2)*cos(fabs(lon2-lon1)));
 
-        double 
-            sinG = sin(G), 
-            sinP = sin(P), sinQ = sin(Q), 
-            cosP = cos(P), cosQ = cos(Q), 
-            sinG2 = sin(G/2.0), cosG2 = cos(G/2.0);
+    double 
+        sinG = sin(G), 
+        sinP = sin(P), sinQ = sin(Q), 
+        cosP = cos(P), cosQ = cos(Q), 
+        sinG2 = sin(G/2.0), cosG2 = cos(G/2.0);
 
-        double X = (G-sinG)*((sinP*sinP*cosQ*cosQ)/(cosG2*cosG2));
-        double Y = (G+sinG)*((cosP*cosP*sinQ*sinQ)/(sinG2*sinG2));
+    double X = (G-sinG)*((sinP*sinP*cosQ*cosQ)/(cosG2*cosG2));
+    double Y = (G+sinG)*((cosP*cosP*sinQ*sinQ)/(sinG2*sinG2));
 
-        double dist = Re*(G-(F/2.0)*(X+Y));
+    double dist = Re*(G-(F/2.0)*(X+Y));
 
-        // NaN could mean start/end points are the same
-        return osg::isNaN(dist)? 0.0 : dist;
-    }
+    // NaN could mean start/end points are the same
+    return osg::isNaN(dist)? 0.0 : dist;
 }
 
 std::string

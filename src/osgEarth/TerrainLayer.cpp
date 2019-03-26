@@ -1175,8 +1175,11 @@ TerrainLayer::getBestAvailableTileKey(const TileKey& key) const
         return localLOD > MDL ? key.createAncestorKey(MDL) : key;
     }
 
+    // Transform the key's extent to the layer's extent
+    GeoExtent localKeyExtent = getProfile()->clampAndTransformExtent(key.getExtent());
+
     // Reject if the extents don't overlap at all.
-    if (!getDataExtentsUnion().intersects(key.getExtent()))
+    if (!getDataExtentsUnion().intersects(localKeyExtent))
     {
         return TileKey::INVALID;
     }
@@ -1188,7 +1191,7 @@ TerrainLayer::getBestAvailableTileKey(const TileKey& key) const
     for (DataExtentList::const_iterator itr = de.begin(); itr != de.end(); ++itr)
     {
         // check for 2D intersection:
-        if (key.getExtent().intersects(*itr))
+        if (itr->intersects(localKeyExtent))
         {
             // check that the extent isn't higher-resolution than our key:
             if ( !itr->minLevel().isSet() || localLOD >= (int)itr->minLevel().get() )

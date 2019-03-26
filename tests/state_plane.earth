@@ -37,7 +37,7 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
     
     <!-- This image layer returns global geodetic tiles -->
     <image name="ags-imagery" driver="arcgis" max_level="16">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
     </image>    
     
 </map>

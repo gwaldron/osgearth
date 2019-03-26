@@ -236,13 +236,15 @@ namespace osgEarth
         bool createWorldUpVector( osg::Vec3d& out_up ) const;
 
         /**
-         * Calculates the distance in meters from this geopoint to another.
+         * The great-circle distance, in meters, from this point to another.
+         * This calculation does not consider altitude.
          */
         double distanceTo(const GeoPoint& rhs) const;
 
         /**
-         * Interpolates a point between this point and another point
-         * using the parameter t [0..1].
+         * Interpolates a point between this point and another point,
+         * along a great circle, using the parameter t [0..1]. It will also
+         * interpolate the altitude value.
          */
         GeoPoint interpolate(const GeoPoint& rhs, double t) const;
 

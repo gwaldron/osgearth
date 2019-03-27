@@ -50,11 +50,11 @@ uniform sampler2D oe_GroundCover_noiseTex;
 // Input tile coordinates [0..1]
 in vec4 oe_layer_tilec;
 
+int oe_terrain_vertexMarker;
+#define VERTEX_MARKER_DISCARD 1
+
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_GroundCover_texCoord;
-
-// Input from the TCS that 
-//flat in int oe_GroundCover_biomeIndex;
 
 // Output that selects the land cover texture from the texture array (non interpolated)
 flat out float oe_GroundCover_atlasIndex;
@@ -82,13 +82,9 @@ struct oe_GroundCover_Billboard {
 };
 void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
 
-
 // Output colors/normals:
 out vec4 vp_Color;
 out vec3 vp_Normal;
-
-// Up vector for clamping.
-//in vec3 oe_UpVectorView;
 
 // SDK import
 float oe_terrain_getElevation(in vec2);
@@ -101,7 +97,6 @@ uniform sampler2D OE_GROUNDCOVER_MASK_SAMPLER;
 uniform mat4 OE_GROUNDCOVER_MASK_MATRIX;
 #endif
 
-// Sample the elevation texture and move the vertex accordingly.
 void
 oe_GroundCover_clamp(inout vec4 vert_view, in vec3 up, vec2 UV)
 {
@@ -140,8 +135,6 @@ oe_GroundCover_getRandomBarycentricPoint(vec2 seed)
     return b;
 }
 
-uniform float shmoo;
-
 float oe_GroundCover_fastpow(in float x, in float y)
 {
     return x / (x + y - y * x);
@@ -150,7 +143,7 @@ float oe_GroundCover_fastpow(in float x, in float y)
 // MAIN ENTRY POINT  
 void
 oe_GroundCover_geom()
-{    
+{
     vec4 center = vec4(0,0,0,1);
     vec2 tileUV = vec2(0,0);
 
@@ -180,8 +173,12 @@ oe_GroundCover_geom()
     // using the barycentric coordinates.
     for(int i=0; i < 3; ++i)
     {
-        VP_LoadVertex(i);      
-        
+        VP_LoadVertex(i);
+
+        // check for the marker (set in GroundCover.TES.glsl)
+        if (oe_terrain_vertexMarker == VERTEX_MARKER_DISCARD)
+            return;
+
         center.x += b[i] * gl_in[i].gl_Position.x;
         center.y += b[i] * gl_in[i].gl_Position.y;
         center.z += b[i] * gl_in[i].gl_Position.z;
@@ -270,16 +267,8 @@ oe_GroundCover_geom()
     float falloff = 1.0-(nRange*nRange*nRange);
 
     // billboard width, which shrinks into the distance
-    float width = billboard.width * falloff * sizeScale;
-    
+    float width = billboard.width * falloff * sizeScale;    
     float height = billboard.height * falloff * sizeScale;
-
-    // vary the height of each instance and shrink it as it disappears into the distance.
-    // TODO: consider parameterizing this so we can toggle the feature
-    //height *= sizeScale;
-
-    // shrink land cover as it dissappears into the distance:
-    //height *= falloff;
 
 	// compute the billboard corners in view space.
     vec4 LL, LR, UL, UR;

@@ -8,6 +8,7 @@
 layout(triangles, equal_spacing, ccw) in;
 
 // Internal helpers:
+void VP_LoadVertex(int);
 void VP_Interpolate3();
 void VP_EmitVertex();
 
@@ -39,12 +40,38 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
 
                 
 vec3 vp_Normal;
+vec4 oe_layer_tilec;
+int oe_terrain_vertexMarker;
+
+// Vertex Markers:
+#define VERTEX_MARKER_DISCARD  1
+#define VERTEX_MARKER_BOUNDARY 8
 
 // simplest possible pass-though:
 void oe_GroundCover_tessellate()
 {
+    // check for special vertex types that will not support ground cover.
+    // if any of the 3 is BOUNDARY or DISCARD, mark all 3 as DISCARD
+    // and the GS will not emit any ground cover.
+    bool skipVertex = false;
+    for(int i=0; i<3; ++i)
+    {
+        VP_LoadVertex(i);
+        if ((oe_terrain_vertexMarker & VERTEX_MARKER_BOUNDARY) != 0 ||
+            (oe_terrain_vertexMarker & VERTEX_MARKER_DISCARD) != 0)
+        {
+            skipVertex = true;
+        }
+    }
+
     VP_Interpolate3();
     // Must re-normalize the normal vector since interpolation was linear?
 	//vp_Normal = normalize(vp_Normal);
+
+    if (skipVertex)
+    {
+        oe_terrain_vertexMarker = VERTEX_MARKER_DISCARD;
+    }
+
     VP_EmitVertex();
 }

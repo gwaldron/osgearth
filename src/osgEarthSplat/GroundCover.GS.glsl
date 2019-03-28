@@ -43,11 +43,12 @@ uniform sampler2D oe_GroundCover_noiseTex;
 // Input tile coordinates [0..1]
 in vec4 oe_layer_tilec;
 
+int oe_terrain_vertexMarker;
+#define VERTEX_MARKER_DISCARD 1
+
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_GroundCover_texCoord;
 
-// Input from the TCS that 
-//flat in int oe_GroundCover_biomeIndex;
 
 // Output that selects the land cover texture from the texture array (non interpolated)
 flat out float oe_GroundCover_arrayIndex;
@@ -67,7 +68,6 @@ struct oe_GroundCover_Billboard {
     float height;
 };
 void oe_GroundCover_getBillboard(in int billboardIndex, out oe_GroundCover_Billboard bb);
-
 
 // Output colors/normals:
 out vec4 vp_Color;
@@ -141,6 +141,10 @@ oe_GroundCover_geom()
     for(int i=0; i < 3; ++i)
     {
         VP_LoadVertex(i);      
+		
+		// check for the marker (set in GroundCover.TES.glsl)
+        if (oe_terrain_vertexMarker == VERTEX_MARKER_DISCARD)
+            return;
         
         center.x += b[i] * gl_in[i].gl_Position.x;
         center.y += b[i] * gl_in[i].gl_Position.y;
@@ -229,13 +233,6 @@ oe_GroundCover_geom()
     float width = billboard.width * falloff * sizeScale;
     
     float height = billboard.height * falloff * sizeScale;
-
-    // vary the height of each instance and shrink it as it disappears into the distance.
-    // TODO: consider parameterizing this so we can toggle the feature
-    //height *= sizeScale;
-
-    // shrink land cover as it dissappears into the distance:
-    //height *= falloff;
 
 	// compute the billboard corners in view space.
     vec4 LL, LR, UL, UR;

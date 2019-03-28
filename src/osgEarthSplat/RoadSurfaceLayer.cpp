@@ -293,6 +293,9 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     GeoExtent featureExtent = key.getExtent().transform(featureSRS);
     GeoExtent queryExtent = featureExtent;
 
+    if (!featureExtent.isValid())
+        return GeoImage::INVALID;
+
     // Buffer the incoming extent, if requested.
     if (options().featureBufferWidth().isSet())
     {

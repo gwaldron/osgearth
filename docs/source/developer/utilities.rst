@@ -6,47 +6,6 @@ with the map. None of these are strictly necessary for using osgEarth, but they 
 make it easier to perform some common operations.
 
 
-DataScanner
------------
-
-The ``DataScanner`` will recursively search a directory tree on the local filesystem
-for files that it can load as ``ImageLayer`` objects. It is a quick and easy way to 
-load a full directory of images as layers.
-
-**NOTE** that only the *MP Terrain Engine* supports an unlimited number of image layers,
-so it is wise to use that engine in conjunction with the DataScanner.
-
-Use DataScanner like this::
-
-    DataScanner scanner;
-    ImageLayerVector imageLayers;
-    scanner.findImageLayers( rootFolder, extensions, imageLayers );
-    
-You can then add the image layes to your ``Map`` object.
-
-The ``extensions`` parameter lets you filter files by extension. For example, pass in 
-"tif,ecw" to only consider files with those extensions. Separate multiple extensions
-with a comma.
-
-
-DetailTexture
--------------
-
-``DetailTexture`` is a terrain controller that will apply a non-geospatial texture
-across the terrain. This is an old trick that you can use to generate "noise" that makes
-a low resolution terrain appear more detailed::
-
-    DetailTexture* detail = new DetailTexture();
-    detail->setImage( osgDB::readImageFile("mytexture.jpg") );
-    detail->setIntensity( 0.5f );
-    detail->setImageUnit( 4 );
-    mapnode->getTerrainEngine()->addEffect( detail );
-
-Try the example. Zoom in fairly close to the terrain to see the effect::
-
-    osgearth_detailtex readymap.earth
-
-
 Logarithmic Depth Buffer
 ------------------------
 

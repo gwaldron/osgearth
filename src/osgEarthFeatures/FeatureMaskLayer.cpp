@@ -33,14 +33,30 @@ REGISTER_OSGEARTH_LAYER(featuremask, FeatureMaskLayer);
 void
 FeatureMaskLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("feature_source", _featureSource);
+    conf.get("features", _featureSourceLayer);
+    conf.get("feature_source", _featureSourceLayer);
+
+    // Check for an embedded feature source
+    for (ConfigSet::const_iterator i = conf.children().begin();
+        i != conf.children().end();
+        ++i)
+    {
+        osg::ref_ptr<FeatureSource> fs = FeatureSource::create(*i);
+        if (fs.valid())
+        {
+            _featureSource = FeatureSource::Options(*i);
+            break;
+        }
+    }
 }
 
 Config
 FeatureMaskLayer::Options::getConfig() const
 {
     Config conf = MaskLayer::Options::getConfig();
-    conf.set("feature_source", _featureSource);
+    conf.set("features", _featureSourceLayer);
+    if (_featureSource.isSet())
+        conf.set(_featureSource->getConfig());
     return conf;
 }
 
@@ -64,14 +80,19 @@ FeatureMaskLayer::setFeatureSource(FeatureSource* layer)
 const Status&
 FeatureMaskLayer::open()
 {
-    if (_featureSource.valid())
+    if (options().featureSource().isSet())
     {
-        _featureSource->setReadOptions(getReadOptions());
-        _featureSource->open();
-    }
-    else
-    {
-        setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
+        FeatureSource* fs = FeatureSource::create(options().featureSource().get());
+        if (fs)
+        {
+            fs->setReadOptions(getReadOptions());
+            const Status& fsStatus = fs->open();
+            if (fsStatus.isError())
+            {
+                return setStatus(fsStatus);
+            }
+            setFeatureSource(fs);
+        }
     }
 
     return MaskLayer::open();
@@ -112,13 +133,13 @@ FeatureMaskLayer::addedToMap(const Map* map)
     OE_DEBUG << LC << "addedToMap\n";
     MaskLayer::addedToMap(map);
 
-    if (options().featureSource().isSet())
+    if (options().featureSourceLayer().isSet())
     {
         _featureLayerListener.clear();
 
         _featureLayerListener.listen(
             map,
-            options().featureSource().get(),
+            options().featureSourceLayer().get(),
             this,
             &FeatureMaskLayer::setFeatureSource);
     }

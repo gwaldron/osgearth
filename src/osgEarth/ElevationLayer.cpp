@@ -538,9 +538,6 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
             //getOrCreatePreCacheOp() is only used in TileSource-based path atm.
             //We need to include the funcionality in all 
 
-            // Create the heightfield:
-            result = createHeightFieldImplementation(key, progress);
-
             if (key.getProfile()->isHorizEquivalentTo(getProfile()))
             {
                 result = createHeightFieldImplementation(key, progress);
@@ -570,6 +567,15 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
             {
                 OE_WARN << LC << "Generated an illegal heightfield!" << std::endl;
                 hf = 0L; // to fall back on cached data if possible.
+            }
+
+            // Pre-caching operation. If there's a TileSource, it runs the precache
+            // operator so we don't need to run it here. This is a temporary construct
+            // until we get rid of TileSource
+            if (getTileSource() == NULL)
+            {
+                NormalizeNoDataValues preCache(this);
+                preCache.operator()(hf);
             }
 
             // If we have a cacheable heightfield, and it didn't come from the cache

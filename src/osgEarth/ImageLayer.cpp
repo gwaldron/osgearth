@@ -588,6 +588,16 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         return GeoImage::INVALID;
     }
 
+    // Pre-caching operation. If there's a TileSource, it runs the precache
+    // operator so we don't need to run it here. This is a temporary construct
+    // until we get rid of TileSource
+    if (getTileSource() == NULL)
+    {
+        ImageLayerPreCacheOperation preCache;
+        osg::ref_ptr<osg::Image> image = result.getImage();
+        preCache.operator()(image);
+    }
+
     // memory cache first:
     if ( result.valid() && _memCache.valid() )
     {

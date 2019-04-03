@@ -303,9 +303,12 @@ Layer::create(const ConfigOptions& options)
 {
     std::string name = options.getConfig().key();
 
+    if (name.empty())
+        name = options.getConfig().value("driver");
+
     if ( name.empty() )
     {
-        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a plugin name" << std::endl;
+        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
         return 0L;
     }
 

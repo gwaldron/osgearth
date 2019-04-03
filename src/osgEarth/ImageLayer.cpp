@@ -285,6 +285,7 @@ ImageLayer::init()
     }
 }
 
+
 void
 ImageLayer::setAltitude(const Distance& value)
 {
@@ -879,6 +880,20 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
     return result;
 }
 
+Status
+ImageLayer::writeImage(const TileKey& key, osg::Image* image, ProgressCallback* progress)
+{
+    if (getStatus().isError())
+        return getStatus();
+
+    return writeImageImplementation(key, image, progress);
+}
+
+Status
+ImageLayer::writeImageImplementation(const TileKey& key, osg::Image* image, ProgressCallback* progress) const
+{
+    return Status(Status::ServiceUnavailable);
+}
 
 void
 ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const

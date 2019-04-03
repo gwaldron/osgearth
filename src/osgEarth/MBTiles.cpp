@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/StringUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgDB/FileUtils>
 #include <sstream>
@@ -116,8 +117,6 @@ MBTilesImageLayer::init()
 const Status&
 MBTilesImageLayer::open()
 {
-    bool readWrite = false; // TODO // options().openForWriting() == true;
-
     std::string fullFilename = options().url()->full();
     if (!osgDB::fileExists(fullFilename))
     {
@@ -125,6 +124,8 @@ MBTilesImageLayer::open()
         if (fullFilename.empty())
             fullFilename = options().url()->full();
     }
+
+    bool readWrite = isWritingRequested();
 
     bool isNewDatabase = readWrite && !osgDB::fileExists(fullFilename);
 
@@ -137,21 +138,10 @@ MBTilesImageLayer::open()
                 "Cannot create database; required Profile is missing");
         }
 
-        // For a NEW database the format is required.
-        if (options().format().isSet())
-        {
-            _tileFormat = options().format().value();
-            _rw = getReaderWriter(_tileFormat);
-            if (!_rw.valid())
-            {
-                return setStatus(Status::ServiceUnavailable, 
-                    "No plugin to load format \"" + _tileFormat + "\"");
-            }
-        }
-        else
+        if (!options().format().isSet())
         {
             return setStatus(Status::ConfigurationError,
-                "Cannot create database; required format is missing");
+                "Cannot create database; required format property is missing");
         }
 
         OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
@@ -175,6 +165,15 @@ MBTilesImageLayer::open()
     // New database setup:
     if (isNewDatabase)
     {
+        // Make sure we have a readerwriter for the underlying tile format:
+        _tileFormat = options().format().get();
+        _rw = getReaderWriter(_tileFormat);
+        if (!_rw.valid())
+        {
+            return setStatus(Status::ServiceUnavailable,
+                "No plugin found to load format \"" + _tileFormat + "\"");
+        }
+
         // create necessary db tables:
         createTables();
 
@@ -195,23 +194,6 @@ MBTilesImageLayer::open()
                 OE_INFO << LC << "Data will be compressed (zlib)" << std::endl;
             }
         }
-
-        // If we have some data extents at this point, write the bounds to the metadata.
-        if (getDataExtents().size() > 0)
-        {
-            // Get the union of all the extents
-            GeoExtent e(getDataExtents()[0]);
-            for (unsigned int i = 1; i < getDataExtents().size(); i++)
-            {
-                e.expandToInclude(getDataExtents()[i]);
-            }
-
-            // Convert the bounds to wgs84
-            GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
-            std::stringstream boundsStr;
-            boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
-            putMetaData("bounds", boundsStr.str());
-        }
     }
 
     // If the database pre-existed, read in the information from the metadata.
@@ -230,7 +212,9 @@ MBTilesImageLayer::open()
         std::string metaDataFormat;
         getMetaData("format", metaDataFormat);
         if (!metaDataFormat.empty())
+        {
             _tileFormat = metaDataFormat;
+        }
 
         // Try to get it from the options.
         if (_tileFormat.empty())
@@ -240,11 +224,29 @@ MBTilesImageLayer::open()
                 _tileFormat = options().format().value();
             }
         }
+        else
+        {
+            // warn the user if the options format differs from the database format
+            if (options().format().isSet() && options().format().get() != _tileFormat)
+            {
+                OE_WARN << LC
+                    << "Database tile format (" << _tileFormat << ") will override the layer options format ("
+                    << options().format().get() << ")" << std::endl;
+            }
+        }
 
         // By this point, we require a valid tile format.
         if (_tileFormat.empty())
         {
             return setStatus(Status::ConfigurationError, "Required format not in metadata, nor specified in the options.");
+        }
+
+        // Make sure we have a readerwriter for the tile format:
+        _rw = getReaderWriter(_tileFormat);
+        if (!_rw.valid())
+        {
+            return setStatus(Status::ServiceUnavailable,
+                "No plugin found to load format \"" + _tileFormat + "\"");
         }
 
         // check for compression.
@@ -335,6 +337,33 @@ MBTilesImageLayer::open()
     memset(data, 0, 4 * size * size);
     
     return ImageLayer::open();
+}
+
+void
+MBTilesImageLayer::setDataExtents(const DataExtentList& values)
+{
+    if (isWritingRequested() && _database != NULL)
+    {
+        // assign the collection:
+        dataExtents() = values;
+
+        // Write it to the database.
+        if (getDataExtents().size() > 0)
+        {
+            // Get the union of all the extents
+            GeoExtent e(getDataExtents()[0]);
+            for (unsigned int i = 1; i < getDataExtents().size(); i++)
+            {
+                e.expandToInclude(getDataExtents()[i]);
+            }
+
+            // Convert the bounds to wgs84
+            GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
+            std::stringstream boundsStr;
+            boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
+            putMetaData("bounds", boundsStr.str());
+        }
+    }
 }
 
 GeoImage
@@ -434,6 +463,97 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     return GeoImage(result, key.getExtent());
 }
+
+Status
+MBTilesImageLayer::writeImageImplementation(const TileKey& key, osg::Image* image, ProgressCallback* progress) const
+{
+    if (!isWritingRequested())
+        return Status::ServiceUnavailable;
+
+    Threading::ScopedMutexLock exclusiveLock(_mutex);
+
+    // encode the data stream:
+    std::stringstream buf;
+    osgDB::ReaderWriter::WriteResult wr;
+    if (_forceRGB && ImageUtils::hasAlphaChannel(image))
+    {
+        osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8(image);
+        wr = _rw->writeImage(*(rgb.get()), buf, _dbOptions.get());
+    }
+    else
+    {
+        wr = _rw->writeImage(*image, buf, _dbOptions.get());
+    }
+
+    if (wr.error())
+    {
+        return Status(Status::GeneralError, "Image encoding failed");
+    }
+
+    std::string value = buf.str();
+
+    // compress if necessary:
+    if (_compressor.valid())
+    {
+        std::ostringstream output;
+        if (!_compressor->compress(output, value))
+        {
+            return Status(Status::GeneralError, "Compressor failed");
+        }
+        value = output.str();
+    }
+
+    int z = key.getLOD();
+    int x = key.getTileX();
+    int y = key.getTileY();
+
+    // flip Y axis
+    unsigned int numRows, numCols;
+    key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+    y = numRows - y - 1;
+
+    sqlite3* database = (sqlite3*)_database;
+
+    // Prep the insert statement:
+    sqlite3_stmt* insert = NULL;
+    std::string query = "INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)";
+    int rc = sqlite3_prepare_v2(database, query.c_str(), -1, &insert, 0L);
+    if (rc != SQLITE_OK)
+    {
+        return Status(Status::GeneralError, Stringify()
+            << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(database));
+    }
+
+    // bind parameters:
+    sqlite3_bind_int(insert, 1, z);
+    sqlite3_bind_int(insert, 2, x);
+    sqlite3_bind_int(insert, 3, y);
+
+    // bind the data blob:
+    sqlite3_bind_blob(insert, 4, value.c_str(), value.length(), SQLITE_STATIC);
+
+    // run the sql.
+    bool ok = true;
+    int tries = 0;
+    do {
+        rc = sqlite3_step(insert);
+    } while (++tries < 100 && (rc == SQLITE_BUSY || rc == SQLITE_LOCKED));
+
+    if (SQLITE_OK != rc && SQLITE_DONE != rc)
+    {
+#if SQLITE_VERSION_NUMBER >= 3007015
+        return Status(Status::GeneralError, Stringify()<<"Failed query: " << query << "(" << rc << ")" << sqlite3_errstr(rc) << "; " << sqlite3_errmsg(database));
+#else
+        return Status(Status::GeneralError, Stringify()<< "Failed query: " << query << "(" << rc << ")" << rc << "; " << sqlite3_errmsg(database));
+#endif
+        ok = false;
+    }
+
+    sqlite3_finalize(insert);
+
+    return Status::OK();
+}
+
 bool
 MBTilesImageLayer::getMetaData(const std::string& key, std::string& value)
 {
@@ -637,7 +757,11 @@ MBTilesElevationLayer::open()
 
     // Initialize and open the image layer
     _imageLayer->setReadOptions(getReadOptions());
-    setStatus( _imageLayer->open() );
+
+    if (isWritingRequested())
+        setStatus(_imageLayer->openForWriting());
+    else
+        setStatus(_imageLayer->open());
 
     if (getStatus().isOK())
     {
@@ -645,6 +769,15 @@ MBTilesElevationLayer::open()
     }
 
     return ElevationLayer::open();
+}
+
+void
+MBTilesElevationLayer::setDataExtents(const DataExtentList& values)
+{
+    if (_imageLayer.valid())
+    {
+        _imageLayer->setDataExtents(values);
+    }
 }
 
 GeoHeightField
@@ -659,4 +792,16 @@ MBTilesElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
         return GeoHeightField(hf, key.getExtent());
     }
     else return GeoHeightField::INVALID;
+}
+
+Status
+MBTilesElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
+{
+    if (hf)
+    {
+        ImageToHeightFieldConverter conv;
+        osg::Image* image = conv.convertToR32F(hf);
+        return _imageLayer->writeImageImplementation(key, image, progress);
+    }
+    return Status::ServiceUnavailable;
 }

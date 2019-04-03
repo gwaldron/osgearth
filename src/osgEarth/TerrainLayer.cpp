@@ -207,6 +207,7 @@ TerrainLayer::init()
     Layer::init();
 
     _openCalled = false;
+    _writingRequested = false;
     _tileSourceExpected = true;
     _profileMatchesMapProfile = true;
 
@@ -392,6 +393,18 @@ TerrainLayer::open()
     }
 
     return getStatus();
+}
+
+
+const Status&
+TerrainLayer::openForWriting()
+{
+    if (isWritingSupported())
+    {
+        _writingRequested = true;
+        return open();
+    }
+    return setStatus(Status::ServiceUnavailable, "Layer does not support writing");
 }
 
 void

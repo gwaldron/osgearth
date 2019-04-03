@@ -1628,18 +1628,33 @@ GeoImage GeoImage::INVALID( 0L, GeoExtent::INVALID );
 
 GeoImage::GeoImage() :
 _image ( 0L ),
-_extent( GeoExtent::INVALID )
+_extent( GeoExtent::INVALID ),
+_status( Status::GeneralError )
 {
     //nop
+}
+
+GeoImage::GeoImage(const Status& status) :
+_image(0L),
+_extent(GeoExtent::INVALID),
+_status(status)
+{
+    if (_status.isOK())
+        _status = Status::GeneralError;
 }
 
 GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
 _image(image),
 _extent(extent)
 {
-    if ( _image.valid() && extent.isInvalid() )
+    if (_image.valid() && extent.isInvalid())
     {
         OE_WARN << LC << "ILLEGAL: created a GeoImage with a valid image and an invalid extent" << std::endl;
+        _status = Status::GeneralError;
+    }
+    else if (!_image.valid())
+    {
+        _status = Status::GeneralError;
     }
 }
 
@@ -2405,7 +2420,17 @@ _extent     ( GeoExtent::INVALID ),
 _minHeight  ( 0.0f ),
 _maxHeight  ( 0.0f )
 {
-    //nop
+    init();
+}
+
+GeoHeightField::GeoHeightField(const Status& value) :
+_heightField(0L),
+_extent(GeoExtent::INVALID),
+_minHeight(0.0f),
+_maxHeight(0.0f),
+_status(value)
+{
+    init();
 }
 
 GeoHeightField::GeoHeightField(osg::HeightField* heightField,
@@ -2436,6 +2461,7 @@ GeoHeightField::init()
     if ( _heightField.valid() && _extent.isInvalid() )
     {
         OE_WARN << LC << "Created with a valid heightfield AND INVALID extent" << std::endl;
+        _status = Status::GeneralError;
     }
 
     else if ( _heightField.valid() )
@@ -2456,6 +2482,11 @@ GeoHeightField::init()
             if ( h < _minHeight ) _minHeight = h;
         }
     }
+
+    else if (!_heightField.valid())
+    {
+        _status = Status::GeneralError;
+    }
 }
 
 bool
@@ -2467,6 +2498,9 @@ GeoHeightField::valid() const
 float
 GeoHeightField::getElevation(double x, double y) const
 {
+    if (!valid())
+        return NO_DATA_VALUE;
+
     return HeightFieldUtils::getHeightAtLocation(
         _heightField.get(),
         x, y,
@@ -2697,5 +2731,3 @@ GeoHeightField::getYInterval() const
 {
     return _extent.height() / (double)(_heightField->getNumRows()-1);
 }
-
-

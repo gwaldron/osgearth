@@ -115,7 +115,7 @@ namespace osgEarth
 
     public: // Layer
 
-        /** Opens the layer and initializes the data source. */
+        //! Opens the layer and initializes the data source.
         virtual const Status& open();
 
         //! Cache ID for this layer
@@ -123,6 +123,15 @@ namespace osgEarth
 
 
     public:
+
+        //! Open the layer for writing (calls open)
+        const Status& openForWriting();
+
+        //! Does the layer support writing?
+        virtual bool isWritingSupported() const { return false; }
+
+        //! Did the user open this layer for writing?
+        bool isWritingRequested() const { return _writingRequested; }
 
         //! Geospatial profile for this layer
         const Profile* getProfile() const;
@@ -207,6 +216,11 @@ namespace osgEarth
          * Gets an extent that is the union of all the extents in getDataExtents().
          */
         const GeoExtent& getDataExtentsUnion() const;
+
+        //! Assign a data extents collection to the layer if applicable.
+        //! This method may not be supported, or may only work for a layer that has
+        //! opened for writing.
+        virtual void setDataExtents(const DataExtentList&) { }
 
     public: // Layer interface
 
@@ -293,6 +307,7 @@ namespace osgEarth
         unsigned                       _tileSize;
         osg::ref_ptr<MemCache>         _memCache;
         bool                           _openCalled;
+        bool                           _writingRequested;
 
         // profile from tile source or cache, before any overrides applied
         mutable osg::ref_ptr<const Profile> _profileOriginal;

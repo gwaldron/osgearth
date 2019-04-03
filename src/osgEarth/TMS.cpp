@@ -921,7 +921,11 @@ TMS::Driver::read(const URI& uri,
         if (!image_url.empty())
         {
             URI uri(image_url, uri.context());
-            image = uri.readImage(readOptions, progress).getImage();
+            osgEarth::ReadResult rr = uri.readImage(readOptions, progress);
+            if (rr.failed())
+                return rr;
+
+            image = rr.getImage();
         }
 
         if (!image.valid())
@@ -1134,10 +1138,8 @@ TMSImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* p
     }
     else
     {
-        // NOP....silent fail....more detail later if there's a real problem
+        return GeoImage(Status(r.errorDetail()));
     }
-
-    return GeoImage::INVALID;
 }
 
 //........................................................................
@@ -1185,7 +1187,8 @@ TMSElevationLayer::open()
 
     if (getStatus().isOK())
     {
-        setProfile(_imageLayer->getProfile());            
+        setProfile(_imageLayer->getProfile());
+        dataExtents() = _imageLayer->getDataExtents();
     }
 
     return ElevationLayer::open();
@@ -1202,5 +1205,8 @@ TMSElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
         osg::HeightField* hf = conv.convert( image.getImage() );
         return GeoHeightField(hf, key.getExtent());
     }
-    else return GeoHeightField::INVALID;
+    else
+    {
+        return GeoHeightField(image.getStatus());
+    }
 }

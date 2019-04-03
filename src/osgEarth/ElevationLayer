@@ -85,6 +85,12 @@ namespace osgEarth
         GeoHeightField createHeightField(const TileKey& key, ProgressCallback* progress);
 
         /**
+         * Writes a height field for the specified key, if writing is
+         * supported and the layer was opened with openForWriting.
+         */
+        Status writeHeightField(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
+
+        /**
          * Whether this layer contains offsets instead of absolute heights
          */
         bool isOffset() const;
@@ -103,6 +109,12 @@ namespace osgEarth
         //! @param[in ] progress Progress reporting callack
         virtual GeoHeightField createHeightFieldImplementation(
             const TileKey& key, 
+            ProgressCallback* progress) const;
+
+        //! Subalss can override this to enable writing heightfields.
+        virtual Status writeHeightFieldImplementation(
+            const TileKey& key, 
+            const osg::HeightField* hf,
             ProgressCallback* progress) const;
         
         virtual ~ElevationLayer() { }

@@ -153,12 +153,13 @@ namespace osgEarth
          * image is in the profile of the key and will be reprojected, mosaiced and
          * cropped automatically.
          */
-        GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+        GeoImage createImage( const TileKey& key, ProgressCallback* progress =0L);
 
         /**
-         * Creates an image that is in the image layer's native profile.
+         * Stores an image in this layer, if writing is enabled.
+         * Returns a status value indicating whether the store succeeded.
          */
-        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress);
+        Status writeImage(const TileKey& key, osg::Image* image, ProgressCallback* progress =0L);
 
         /**
          * Applies the texture compression options to a texture.
@@ -180,11 +181,15 @@ namespace osgEarth
 
     public: // Layer
         
+        //! Open the layer for reading.
         virtual const Status& open();
 
         //! Subclass can override this when not using a TileSource
         //! by calling setTileSourceExpected(false).
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress) const;
+
+        //! Subclass can override this to write data for a tile key.
+        virtual Status writeImageImplementation(const TileKey&, osg::Image*, ProgressCallback*) const;
 
         //! Modify the bbox if an altitude is set (for culling)
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
@@ -250,6 +255,12 @@ namespace osgEarth
             osg::ref_ptr<osg::Image>           _noDataImage;
             bool                               _mosaicingPossible;
         };
+
+        /**
+         * @deprecated Used only by legacy terrain engine
+         * Creates an image that is in the image layer's native profile.
+         */
+        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress);
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

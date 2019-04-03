@@ -650,6 +650,22 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     return result;
 }
 
+Status
+ElevationLayer::writeHeightField(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
+{
+    if (isWritingSupported() && isWritingRequested())
+    {
+        return writeHeightFieldImplementation(key, hf, progress);
+    }
+    return Status::ServiceUnavailable;
+}
+
+Status
+ElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
+{
+    return Status::ServiceUnavailable;
+}
+
 
 //------------------------------------------------------------------------
 

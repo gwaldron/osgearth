@@ -621,7 +621,9 @@ Config
 FlatteningLayer::Options::getConfig() const
 {
     Config conf = ElevationLayer::Options::getConfig();
-    conf.set("feature_source", _featureSource);
+
+    FeatureSourceClient::getConfig(conf, _featureSourceLayer, _featureSource);
+
     conf.set("line_width", _lineWidth);
     conf.set("buffer_width", _bufferWidth);
     conf.set("fill", _fill);
@@ -655,7 +657,8 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     bufferWidth().init(40);
     URIContext uriContext = URIContext(conf.referrer());
 
-    conf.get("feature_source", _featureSource);
+    FeatureSourceClient::fromConfig(conf, _featureSourceLayer, _featureSource);
+
     conf.get("line_width", _lineWidth);
     conf.get("buffer_width", _bufferWidth);
     conf.get("fill", _fill);
@@ -711,10 +714,9 @@ const Status&
 FlatteningLayer::open()
 {
     // ensure the caller named a feature source:
-    if (_features.valid() == 0L && !options().featureSource().isSet())
-    {
-        return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
-    }
+    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    if (fsStatus.isError())
+        return setStatus(fsStatus);
     
     const Profile* profile = getProfile();
     if ( !profile )
@@ -728,13 +730,13 @@ FlatteningLayer::open()
 
 FlatteningLayer::~FlatteningLayer()
 {
-    _featureLayerListener.clear();
+    //nop
 }
 
 void
 FlatteningLayer::setFeatureSource(FeatureSource* layer)
 {
-    _features = layer;
+    _client.setFeatureSource(layer);
 }
 
 void
@@ -745,15 +747,8 @@ FlatteningLayer::addedToMap(const Map* map)
     // Initialize the elevation pool with our map:
     OE_INFO << LC << "Attaching elevation pool to map\n";
     _pool->setMap( map );
-        
-    // Listen for our feature source layer to arrive, if there is one.
-    if (_features.valid() == false && options().featureSource().isSet())
-    {
-        _featureLayerListener.listen(
-            map,
-            options().featureSource().get(), 
-            this, &FlatteningLayer::setFeatureSource);
-    }
+
+    _client.addedToMap(options().featureSourceLayer(), map);
         
     // Collect all elevation layers preceding this one and use them for flattening.
     ElevationLayerVector layers;
@@ -778,7 +773,7 @@ FlatteningLayer::removedFromMap(const Map* map)
 {
     ElevationLayer::removedFromMap(map);
 
-    _featureLayerListener.clear();
+    _client.removedFromMap(map);
 }
 
 GeoHeightField
@@ -789,19 +784,19 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         return GeoHeightField::INVALID;
     }
     
-    if (!_features.valid())
+    if (!getFeatureSource())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
         return GeoHeightField::INVALID;
     }
 
-    if (_features->getStatus().isError())
+    if (getFeatureSource()->getStatus().isError())
     {
-        setStatus(_features->getStatus());
+        setStatus(getFeatureSource()->getStatus());
         return GeoHeightField::INVALID;
     }
 
-    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (!featureProfile)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
@@ -894,7 +889,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
+            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
             while (cursor.valid() && cursor->hasMore())
             {
                 Feature* feature = cursor->nextFeature();
@@ -942,7 +937,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         query.bounds() = queryExtent.bounds();
 
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
+        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
         while (cursor.valid() && cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();

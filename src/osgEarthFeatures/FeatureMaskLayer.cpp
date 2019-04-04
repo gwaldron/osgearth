@@ -33,30 +33,14 @@ REGISTER_OSGEARTH_LAYER(featuremask, FeatureMaskLayer);
 void
 FeatureMaskLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("features", _featureSourceLayer);
-    conf.get("feature_source", _featureSourceLayer);
-
-    // Check for an embedded feature source
-    for (ConfigSet::const_iterator i = conf.children().begin();
-        i != conf.children().end();
-        ++i)
-    {
-        osg::ref_ptr<FeatureSource> fs = FeatureSource::create(*i);
-        if (fs.valid())
-        {
-            _featureSource = FeatureSource::Options(*i);
-            break;
-        }
-    }
+    FeatureSourceClient::fromConfig(conf, _featureSourceLayer, _featureSource);
 }
 
 Config
 FeatureMaskLayer::Options::getConfig() const
 {
     Config conf = MaskLayer::Options::getConfig();
-    conf.set("features", _featureSourceLayer);
-    if (_featureSource.isSet())
-        conf.set(_featureSource->getConfig());
+    FeatureSourceClient::getConfig(conf, _featureSourceLayer, _featureSource);
     return conf;
 }
 
@@ -65,34 +49,22 @@ FeatureMaskLayer::Options::getConfig() const
 void
 FeatureMaskLayer::setFeatureSource(FeatureSource* layer)
 {
-    if (layer && layer->getStatus().isError())
-    {
-        setStatus(Status::Error(Status::ResourceUnavailable, "Feature layer is unavailable; check for error"));
-        return;
-    }
+    _client.setFeatureSource(layer);
+}
 
-    if (layer)
-        OE_INFO << LC << "Feature source layer is \"" << layer->getName() << "\"\n";
-
-    _featureSource = layer;
+FeatureSource*
+FeatureMaskLayer::getFeatureSource() const
+{
+    return _client.getFeatureSource();
 }
 
 const Status&
 FeatureMaskLayer::open()
 {
-    if (options().featureSource().isSet())
+    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    if (fsStatus.isError())
     {
-        FeatureSource* fs = FeatureSource::create(options().featureSource().get());
-        if (fs)
-        {
-            fs->setReadOptions(getReadOptions());
-            const Status& fsStatus = fs->open();
-            if (fsStatus.isError())
-            {
-                return setStatus(fsStatus);
-            }
-            setFeatureSource(fs);
-        }
+        return setStatus(fsStatus);
     }
 
     return MaskLayer::open();
@@ -103,7 +75,9 @@ FeatureMaskLayer::getOrCreateMaskBoundary(float heightScale,
                                           const SpatialReference* srs,
                                           ProgressCallback* progress)
 {
-    if (!_featureSource.valid())
+    FeatureSource* fs = getFeatureSource();
+
+    if (fs == NULL)
         return 0L;
 
     if (!_boundary.valid())
@@ -111,7 +85,7 @@ FeatureMaskLayer::getOrCreateMaskBoundary(float heightScale,
         Threading::ScopedMutexLock lock(_boundaryMutex);
         if (!_boundary.valid())
         {
-            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(progress);
+            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(progress);
             if (cursor.valid() && cursor->hasMore())
             {
                 Feature* f = cursor->nextFeature();
@@ -132,17 +106,7 @@ FeatureMaskLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
     MaskLayer::addedToMap(map);
-
-    if (options().featureSourceLayer().isSet())
-    {
-        _featureLayerListener.clear();
-
-        _featureLayerListener.listen(
-            map,
-            options().featureSourceLayer().get(),
-            this,
-            &FeatureMaskLayer::setFeatureSource);
-    }
+    _client.addedToMap(options().featureSourceLayer(), map);
 
     create();
 }
@@ -151,19 +115,21 @@ void
 FeatureMaskLayer::removedFromMap(const Map* map)
 {
     MaskLayer::removedFromMap(map);
-    _featureLayerListener.clear();
+    _client.removedFromMap(map);
 }
 
 void
 FeatureMaskLayer::create()
 {
-    if (!_featureSource.valid())
+    FeatureSource* fs = getFeatureSource();
+
+    if (!fs)
     {
         setStatus(Status(Status::ConfigurationError, "No feature source available"));
         return;
     }
 
-    if (!_featureSource->getFeatureProfile())
+    if (!fs->getFeatureProfile())
     {
         setStatus(Status(Status::ConfigurationError, "Feature source cannot report profile (is it open?)"));
         return;

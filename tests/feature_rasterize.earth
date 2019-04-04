@@ -15,8 +15,8 @@ FeatureImage - rasterizes feature data into an image layer.
         <styles>        
             <style type="text/css">
                 default {
-					fill:          #ff7700;
-                    stroke:		   #ffff00;
+                    fill:          #ff7700;
+                    stroke:        #ffff00;
                     stroke-width:  5km;
                 }
             </style>

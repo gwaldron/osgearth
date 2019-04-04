@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthSymbology/Query>
 #include <osgEarth/Layer>
+#include <osgEarth/LayerListener>
 
 namespace osgEarth { namespace Features
 {
@@ -216,6 +217,29 @@ namespace osgEarth { namespace Features
         void applyFilters(FeatureList& features, const GeoExtent& extent) const;
 
         virtual ~FeatureSource() { }
+    };
+
+
+    //! Helper class for layers that want to connect to a FeatureSource.
+    class OSGEARTHFEATURES_EXPORT FeatureSourceClient
+    {
+    public:
+        void setFeatureSource(FeatureSource*);
+        FeatureSource* getFeatureSource() const { return _featureSource; }
+
+        static void fromConfig(const Config&, optional<std::string>&, optional<FeatureSource::Options>&);
+        static void getConfig(Config&, const optional<std::string>&, const optional<FeatureSource::Options>&);
+
+        void addedToMap(const optional<std::string>&, const Map*);
+        void removedFromMap(const Map*);
+
+        Status open(const optional<FeatureSource::Options>&, const osgDB::Options*);
+
+    protected:
+        LayerListener<FeatureSourceClient, FeatureSource> _featureLayerListener;
+
+    private:
+        osg::ref_ptr<FeatureSource> _featureSource;
     };
 
 } } // namespace osgEarth::Features

@@ -116,8 +116,7 @@ namespace osgEarth { namespace Features
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
     private:
-        osg::ref_ptr<FeatureSource> _features;
-        LayerListener<FeatureModelLayer, FeatureSource> _featureLayerListener;
+        FeatureSourceClient _client;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
         osg::ref_ptr<StyleSheet> _styleSheet;

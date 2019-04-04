@@ -50,6 +50,7 @@ namespace osgEarth { namespace Features
 
         //! Source of the masking feature(s)
         void setFeatureSource(FeatureSource* features);
+        FeatureSource* getFeatureSource() const;
 
     public: // MaskLayer
 
@@ -79,11 +80,11 @@ namespace osgEarth { namespace Features
 
     private:
 
-        LayerListener<FeatureMaskLayer, FeatureSource> _featureLayerListener;
+        FeatureSourceClient _client;
 
         void create();
 
-        osg::ref_ptr<FeatureSource> _featureSource;
+        //osg::ref_ptr<FeatureSource> _featureSource;
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         OpenThreads::Mutex _boundaryMutex;
     };

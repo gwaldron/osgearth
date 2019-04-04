@@ -194,10 +194,12 @@ const Status&
 FeatureImageLayer::open()
 {
     // assert a feature source:
-    if (!_features.valid() && !options().featureSourceLayer().isSet())
-    {
-        return setStatus(Status::ConfigurationError, "Missing required feature source");
-    }
+    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    if (fsStatus.isError())
+        return setStatus(fsStatus);
+
+    if (!getFeatureSource() && !options().featureSourceLayer().isSet())
+        return setStatus(Status::ConfigurationError, "No features");
 
     return ImageLayer::open();
 }
@@ -207,25 +209,13 @@ FeatureImageLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
+    _client.addedToMap(options().featureSourceLayer(), map);
+
     _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
 
-    if (_features.valid())
+    if (getFeatureSource())
     {
         establishSession();
-    }
-
-    else if (options().featureSourceLayer().isSet())
-    {
-        _layerListener.listen(
-            map,
-            options().featureSourceLayer().get(),
-            this,
-            &FeatureImageLayer::setFeatureSource);
-    }
-
-    else
-    {
-        setStatus(Status::ConfigurationError, "No features");
     }
 }
 
@@ -233,61 +223,62 @@ void
 FeatureImageLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _layerListener.clear();
+    _client.removedFromMap(map);
 }
 
 void
 FeatureImageLayer::setFeatureSource(FeatureSource* fs)
 {
-    _features = fs;
-    _featureProfile = 0L;
-
-    if (_features.valid())
+    if (getFeatureSource() != fs)
     {
-        if (_features->getStatus().isError())
-        {
-            setStatus(_features->getStatus());
-        }
+        _client.setFeatureSource(fs);
+        _featureProfile = 0L;
 
-        else
+        if (fs)
         {
-            // with a new feature source, we need to re-establish
-            // the data extents and open a new session.
-            establishSession();
+            if (fs->getStatus().isError())
+            {
+                setStatus(fs->getStatus());
+            }
+            else
+            {
+                // with a new feature source, we need to re-establish
+                // the data extents and open a new session.
+                establishSession();
+            }
         }
     }
 }
 
 void
 FeatureImageLayer::establishSession()
-{    
-    // Try to fill the DataExtent list using the FeatureProfile
-    if (!_featureProfile.valid())
+{
+    if (getFeatureSource())
     {
-        _featureProfile = _features->getFeatureProfile();
+        const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
 
         dataExtents().clear();
 
-        if (_featureProfile.valid())
+        if (fp)
         {
             // recalculate the data extents based on the feature source.
-            if (_featureProfile->getProfile() != NULL)
+            if (fp->getProfile() != NULL)
             {
                 // Use specified profile's GeoExtent
-                dataExtents().push_back(DataExtent(_featureProfile->getProfile()->getExtent()));
+                dataExtents().push_back(DataExtent(fp->getProfile()->getExtent()));
             }
-            else if (_featureProfile->getExtent().isValid() == true)
+            else if (fp->getExtent().isValid() == true)
             {
                 // Use FeatureProfile's GeoExtent
-                dataExtents().push_back(DataExtent(_featureProfile->getExtent()));
+                dataExtents().push_back(DataExtent(fp->getExtent()));
             }
         }
-    }
 
-    if (_session.valid() && _features.valid())
-    {
-        _session->setFeatureSource(_features.get());
-        _session->setStyles(options().styles().get());
+        if (_session.valid())
+        {
+            _session->setFeatureSource(getFeatureSource());
+            _session->setStyles(options().styles().get());
+        }
     }
 }
 
@@ -299,13 +290,13 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         return GeoImage::INVALID;
     }
     
-    if (!_features.valid())
+    if (!getFeatureSource())
     {
         setStatus(Status::ServiceUnavailable, "No feature source");
         return GeoImage::INVALID;
     }
 
-    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (!featureProfile)
     {
         setStatus(Status::ConfigurationError, "Feature profile is missing");
@@ -335,7 +326,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     preProcess(image.get());
 
-    bool ok = render(key, getFeatureSource(), _session.get(), options().styles().get(), image.get(), progress);
+    bool ok = render(key, _session.get(), options().styles().get(), image.get(), progress);
 
     if (ok)
     {
@@ -652,8 +643,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
 //........................................................................
 
 bool
-FeatureImageRenderer::render(const TileKey& key, 
-                             FeatureSource* features,
+FeatureImageRenderer::render(const TileKey& key,
                              Session* session,
                              const StyleSheet* styles,
                              osg::Image* target,
@@ -662,8 +652,12 @@ FeatureImageRenderer::render(const TileKey& key,
     Query defaultQuery;
     defaultQuery.tileKey() = key;
 
+    FeatureSource* features = session->getFeatureSource();
+    if (!features)
+        return false;
+
     // figure out if and how to style the geometry.
-    if ( features->hasEmbeddedStyles() )
+    if (features->hasEmbeddedStyles() )
     {
         // Each feature has its own embedded style data, so use that:
         osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(defaultQuery, progress);

@@ -34,7 +34,6 @@ namespace osgEarth { namespace Features
     public:
         bool render(
             const TileKey& key,
-            FeatureSource* features,
             Session* session,
             const StyleSheet* styles,
             osg::Image* target,
@@ -76,6 +75,7 @@ namespace osgEarth { namespace Features
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION(std::string, featureSourceLayer);
+            OE_OPTION(FeatureSource::Options, featureSource);
             OE_OPTION(double, gamma);
             OE_OPTION_REFPTR(StyleSheet, styles);
             virtual Config getConfig() const;
@@ -128,10 +128,9 @@ namespace osgEarth { namespace Features
         virtual ~FeatureImageLayer() { }
 
     private:
-        osg::ref_ptr<FeatureSource> _features;
+        FeatureSourceClient _client;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        LayerListener<FeatureImageLayer, FeatureSource> _layerListener;
         optional<double> _gamma;
 
         void establishSession();
@@ -151,9 +150,9 @@ namespace osgEarth { namespace Features
         bool postProcess(osg::Image* image) const;
     };
 
-    // template impls .................................................
+    // template/inline impls .................................................
 
-    FeatureSource* FeatureImageLayer::getFeatureSource() const { return _features.get(); }
+    FeatureSource* FeatureImageLayer::getFeatureSource() const { return _client.getFeatureSource(); }
     void FeatureImageLayer::setStyleSheet(StyleSheet* value) { options().styles() = value; }
     StyleSheet* FeatureImageLayer::getStyleSheet() const { return options().styles().get(); }
 

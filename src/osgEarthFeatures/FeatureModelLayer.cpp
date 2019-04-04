@@ -51,21 +51,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("features", _featureSourceLayer);
-    conf.get("feature_source", _featureSourceLayer);
-
-    // Check for an embedded feature source
-    for(ConfigSet::const_iterator i = conf.children().begin();
-        i != conf.children().end();
-        ++i)
-    {
-        osg::ref_ptr<FeatureSource> fs = FeatureSource::create(*i);
-        if (fs.valid())
-        {
-            _featureSource = FeatureSource::Options(*i);
-            break;
-        }
-    }
+    FeatureSourceClient::fromConfig(conf, _featureSourceLayer, _featureSource);
 }
 
 Config
@@ -75,10 +61,7 @@ FeatureModelLayer::Options::getConfig() const
     conf.merge(FeatureModelOptions::getConfig());
     conf.merge(GeometryCompilerOptions::getConfig());
 
-    conf.set("features", _featureSourceLayer);
-
-    if (_featureSource.isSet())
-        conf.set(_featureSource->getConfig());
+    FeatureSourceClient::getConfig(conf, _featureSourceLayer, _featureSource);
 
     return conf;
 }
@@ -128,23 +111,9 @@ void FeatureModelLayer::dirty()
 void
 FeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
-    if (source && source->getStatus().isError())
+    if (getFeatureSource() != source)
     {
-        setStatus(source->getStatus());
-        return;
-    }
-
-    if (source)
-    {
-        OE_INFO << LC << "Feature source layer is \"" << source->getName() << "\"\n";
-    }
-
-    if (_features.get() != source)
-    {
-        if (source)
-            OE_INFO << LC << "Setting feature source \"" << source->getName() << "\"\n";
-
-        _features = source;
+        _client.setFeatureSource(source);
 
         if (source && source->getStatus().isError())
         {
@@ -159,7 +128,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 FeatureSource*
 FeatureModelLayer::getFeatureSource() const
 {
-    return _features.get();
+    return _client.getFeatureSource();
 }
 
 void
@@ -189,20 +158,9 @@ FeatureModelLayer::getNode() const
 const Status&
 FeatureModelLayer::open()
 {
-    if (options().featureSource().isSet())
-    {
-        FeatureSource* fs = FeatureSource::create(options().featureSource().get());
-        if (fs)
-        {
-            fs->setReadOptions(getReadOptions());
-            const Status& fsStatus = fs->open();
-            if (fsStatus.isError())
-            {
-                return setStatus(fsStatus);
-            }
-            setFeatureSource(fs);
-        }
-    }
+    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    if (fsStatus.isError())
+        return setStatus(fsStatus);
 
     return VisibleLayer::open();
 }
@@ -212,8 +170,9 @@ FeatureModelLayer::getExtent() const
 {
     static GeoExtent s_invalid;
 
-    return _features.valid() && _features->getFeatureProfile() ?
-        _features->getFeatureProfile()->getExtent() :
+    FeatureSource* fs = getFeatureSource();
+    return fs && fs->getFeatureProfile() ?
+        fs->getFeatureProfile()->getExtent() :
         s_invalid;
 }
 
@@ -234,19 +193,10 @@ FeatureModelLayer::addedToMap(const Map* map)
     // If we have a layer name but no feature source, fire up a
     // listener so we'll be notified when the named layer is 
     // added to the map.
-    if (!_features.valid() && options().featureSourceLayer().isSet())
-    {
-        _featureLayerListener.listen(
-            map,
-            options().featureSourceLayer().get(),
-            this,
-            &FeatureModelLayer::setFeatureSource);
-    }
-    else
-    {
-        // re-create the graph if necessary.
-        create();
-    }
+    _client.addedToMap(options().featureSourceLayer(), map);
+
+    // re-create the graph if necessary.
+    create();
 }
 
 void
@@ -254,7 +204,8 @@ FeatureModelLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
 
-    _featureLayerListener.clear();
+    _client.removedFromMap(map);
+    //_featureLayerListener.clear();
     
     if (_root.valid())
     {
@@ -271,10 +222,10 @@ FeatureModelLayer::create()
 
     if (_graphDirty)
     {
-        if (_features.valid() && _session.valid())
+        if (getFeatureSource() && _session.valid())
         {
             // connect the session to the features:
-            _session->setFeatureSource(_features.get());
+            _session->setFeatureSource(getFeatureSource());
 
             // the factory builds nodes for the model graph:
             FeatureNodeFactory* nodeFactory = createFeatureNodeFactory();

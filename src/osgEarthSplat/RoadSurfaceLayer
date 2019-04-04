@@ -40,7 +40,8 @@ namespace osgEarth { namespace Splat
         class OSGEARTHSPLAT_EXPORT Options : public ImageLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION(std::string, featureSource);
+            OE_OPTION(std::string, featureSourceLayer);
+            OE_OPTION(FeatureSource::Options, featureSource);
             OE_OPTION(Distance, featureBufferWidth);
             OE_OPTION_REFPTR(StyleSheet, styles);
             virtual Config getConfig() const;
@@ -92,12 +93,13 @@ namespace osgEarth { namespace Splat
         virtual ~RoadSurfaceLayer() { }
 
     private:
-        osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<TileRasterizer> _rasterizer;
-        LayerListener<RoadSurfaceLayer, FeatureSource> _layerListener;
+        FeatureSourceClient _client;
     };
 
 } } // namespace osgEarth::Splat
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::RoadSurfaceLayer::Options);
 
 #endif // OSGEARTH_SPLAT_ROAD_SURFACE_LAYER

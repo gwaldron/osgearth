@@ -42,8 +42,7 @@ Config
 RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    conf.set("features", featureSource() );
-    conf.set("feature_source", featureSource() );
+    FeatureSourceClient::getConfig(conf, featureSourceLayer(), featureSource());
     conf.set("buffer_width", featureBufferWidth() );
     conf.set("styles", _styles);
     return conf;
@@ -52,7 +51,7 @@ RoadSurfaceLayer::Options::getConfig() const
 void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("features", featureSource() );
+    FeatureSourceClient::fromConfig(conf, featureSourceLayer(), featureSource());
     conf.get("buffer_width", featureBufferWidth() );
     conf.get("styles", _styles);
 }
@@ -82,10 +81,9 @@ const Status&
 RoadSurfaceLayer::open()
 {
     // assert a feature source:
-    if (!_features.valid() && !options().featureSource().isSet())
-    {
-        return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
-    }
+    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    if (fsStatus.isError())
+        return setStatus(fsStatus);
 
     return ImageLayer::open();
 }
@@ -100,26 +98,15 @@ RoadSurfaceLayer::addedToMap(const Map* map)
     _session = new Session(map, options().styles().get(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    if (_features.valid() == false && options().featureSource().isSet())
-    {
-        _layerListener.listen(
-            map,
-            options().featureSource().get(),
-            this,
-            &RoadSurfaceLayer::setFeatureSource);
-    }
-    else if (!_features.valid())
-    {
-        setStatus(Status::Error(Status::ConfigurationError, "No features"));
-    }
+    _client.addedToMap(options().featureSourceLayer(), map);
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
+    _client.removedFromMap(map);
     _session = 0L;
-    _layerListener.clear();
 }
 
 osg::Node*
@@ -132,12 +119,12 @@ RoadSurfaceLayer::getNode() const
 void
 RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 {
-    if (_features.get() != layer)
+    if (getFeatureSource() != layer)
     {
-        _features = layer;
-        if (_features.valid() && _features->getStatus().isError())
+        _client.setFeatureSource(layer);
+        if (layer && layer->getStatus().isError())
         {
-            setStatus(Status::Error(Status::ResourceUnavailable, "Features unavailable"));
+            setStatus(layer->getStatus());
         }
     }
 }
@@ -145,7 +132,7 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 FeatureSource*
 RoadSurfaceLayer::getFeatureSource() const
 {
-    return _features.get();
+    return _client.getFeatureSource();
 }
 
 void
@@ -265,19 +252,19 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         return GeoImage::INVALID;
     }
     
-    if (!_features.valid())
+    if (!getFeatureSource())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
         return GeoImage::INVALID;
     }
 
-    if (_features->getStatus().isError())
+    if (getFeatureSource()->getStatus().isError())
     {
-        setStatus(_features->getStatus());
+        setStatus(getFeatureSource()->getStatus());
         return GeoImage::INVALID;
     }
 
-    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (!featureProfile)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
@@ -329,7 +316,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
+            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
             if (cursor.valid())
             {
                 cursor->fill(features);
@@ -343,7 +330,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         query.bounds() = queryExtent.bounds();
 
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
+        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
         if (cursor.valid())
         {
             cursor->fill(features);

@@ -7,6 +7,8 @@
 #include <osgEarth/Random>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/JsonUtils>
+#include <osgEarth/Progress>
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
@@ -60,7 +62,6 @@ public:
     BingTileSource(const TileSourceOptions& options) : 
       TileSource   ( options ),
       BingOptions  ( options ),
-      //_options     ( options ),
       _debugDirect ( false ),
       _tileURICache( true, 1024u )
     {
@@ -76,6 +77,12 @@ public:
             _geom->push_back( osg::Vec3(10, 245, 0) );
             _font = Registry::instance()->getDefaultFont();
         }
+
+        const char* str = ::getenv("OSGEARTH_BING_KEY");
+        if (str)
+        {
+            apiKey().init(str);
+        }
     }
 
     /**
@@ -86,7 +93,7 @@ public:
         _readOptions = dbOptions;
 
         // If the user did not include an API key, fail.
-        if ( !apiKey().isSet() )
+        if (apiKey()->empty())
         {
             return Status::Error(Status::ConfigurationError, "Bing API key is required");
         }
@@ -97,13 +104,16 @@ public:
             imagerySet() = "Aerial";
         }
 
-        // Bing maps profile is spherical mercator with 2x2 tiles are the root.
-        const Profile* profile = Profile::create(
-            SpatialReference::get("spherical-mercator"),
-            MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
-            2, 2);
+        if (!getProfile())
+        {
+            // Bing maps profile is spherical mercator with 2x2 tiles are the root.
+            const Profile* profile = Profile::create(
+                SpatialReference::get("spherical-mercator"),
+                MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
+                2, 2);
 
-        setProfile( profile );
+            setProfile( profile );
+        }
 
         return STATUS_OK;
     }
@@ -200,6 +210,10 @@ public:
                 }
 
                 // decode it:
+                if (metadataResult.getString().empty())
+                {
+                    return 0L;
+                }
                 Config metadata;
                 if ( !metadata.fromJSON(metadataResult.getString()) )
                 {
@@ -242,6 +256,111 @@ public:
         }
 
         return image.release();
+    }
+    
+    osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress)
+    {
+        osg::ref_ptr<osg::HeightField> hf;
+
+        osg::ref_ptr<const Profile> gg = Profile::create("global-geodetic");
+        GeoExtent e = gg->clampAndTransformExtent(key.getExtent());
+
+        // contact the REST API. Docs are here:
+        // http://dev.virtualearth.net/REST/v1/Elevation/{Bounds}?bounds={boundingBox}&rows={rows}&cols={cols}&heights={heights}&key={BingMapsAPIKey}
+
+        // max return data is 1024 samples (32x32)
+        int tileSize = 32;
+
+        // construct the request URI:
+        std::string request = Stringify()
+            << std::setprecision(12)
+            << "http://dev.virtualearth.net/REST/v1/Elevation/Bounds"
+            << "?bounds=" << e.yMin()<<","<<e.xMin()<<","<<e.yMax()<<","<<e.xMax()
+            << "&rows=" << tileSize
+            << "&cols=" << tileSize
+            << "&heights=ellipsoid"
+            << "&key=" << apiKey().get();
+
+
+        // check the URI cache.
+        URI                  location;
+        TileURICache::Record rec;
+
+        if (_tileURICache.get(request, rec))
+        {
+            location = URI(rec.value());
+        }
+        else
+        {
+            unsigned c = ++_apiCount;
+            if (c % 25 == 0)
+                OE_DEBUG << LC << "API calls = " << c << std::endl;
+
+            // fetch it:
+            ReadResult result = URI(request).readString(_readOptions.get(), progress);
+
+            if (result.failed())
+            {
+                // check for a REST error:
+                if (result.code() == ReadResult::RESULT_SERVER_ERROR)
+                {
+                    OE_WARN << LC << "REST API request error!" << std::endl;
+
+                    Config metadata;
+                    std::string content = result.getString();
+                    OE_WARN << content << std::endl;
+                    metadata.fromJSON(content);
+                    ConfigSet errors = metadata.child("errorDetails").children();
+                    for (ConfigSet::const_iterator i = errors.begin(); i != errors.end(); ++i)
+                    {
+                        OE_WARN << LC << "REST API: " << i->value() << std::endl;
+                    }
+                    return 0L;
+                }
+                else
+                {
+                    OE_DEBUG << LC << "Request error: " << result.getResultCodeString() << std::endl;
+                    if (progress)
+                        progress->cancel();
+                }
+                return 0L;
+            }
+
+            Json::Value root;
+                
+            Json::Reader reader;
+            if (!reader.parse(result.getString(), root, false))
+            {
+                OE_DEBUG << LC << "Invalid JSON: " << result.getString() << std::endl;
+                return 0L;
+            }
+
+            Json::Path path(".resourceSets[0].resources[0].elevations");
+            const Json::Value& e = path.resolve(root);
+
+            if (e.isArray() == false)
+            {
+                OE_INFO << LC << "Path did not resolve." << std::endl;
+                return 0L;
+            }
+
+            if (e.size() != tileSize*tileSize)
+            {
+                OE_DEBUG << LC << "Insufficient data" << std::endl;
+                return 0L;
+            }
+
+            hf = new osg::HeightField();
+            hf->allocate(tileSize, tileSize);
+            int ptr = 0;
+            for(Json::ValueConstIterator i = e.begin(); i != e.end(); ++i)
+            {
+                float elevation = (*i).asDouble();
+                (*hf->getFloatArray())[ptr++] = elevation;
+            }
+        }
+
+        return hf.release();
     }
 
 private:

@@ -994,7 +994,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         ElevationLayer* layer = contenders[0].layer.get();
         TileKey& contenderKey = contenders[0].key;
 
-        GeoHeightField layerHF = layer->createHeightField(contenderKey, 0);
+        GeoHeightField layerHF = layer->createHeightField(contenderKey, progress);
         if (layerHF.valid())
         {
             if (layerHF.getHeightField()->getNumColumns() == hf->getNumColumns() &&

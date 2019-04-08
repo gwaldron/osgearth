@@ -1,39 +1,19 @@
 <map>
-    <options>
-        <terrain driver="rex"/>
-    </options>
-
-    <!-- Land cover dictionary -->
-    <xi:include href="../data/land_cover_dictionary.xml"/>
-
-    <!-- Land cover layer -->
-    <land_cover name="land-cover">
-        <cache_policy usage="no_cache"/>
-        <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-                <warp>0.025</warp>
-            </coverage>
-        </coverages>
-    </land_cover>
 
     <xi:include href="readymap_elevation.xml"/>
+    <xi:include href="readymap_imagery.xml"/>
 
-    <fractal_elevation name="Fractal Offset" min_level="13" max_data_level="14" offset="true">
+    <FractalElevation name="Fractal Offset" min_level="13" max_data_level="14" offset="true">
         <cache_policy usage="no_cache"/>
         <noise_image>H:/data/textures/seamless-noise-1.png</noise_image>
         <amplitude>8</amplitude>
         <land_cover_mappings>
             <mapping class="water" amplitude="0"/>
         </land_cover_mappings>
-    </fractal_elevation>
-
-    <!-- Satellite imagery -->
-    <xi:include href="readymap_imagery.xml"/>
+    </FractalElevation>
 
     <FeatureModel name="roads" min_level="12">
-        <feature_source>roads-data</feature_source>
+        <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
@@ -46,7 +26,6 @@
     </FeatureModel>
 
     <viewpoints>
-
         <viewpoint name="Far range">
             <heading>20.0616</heading>
             <pitch>-10.5897</pitch>
@@ -76,8 +55,6 @@
             <height>354.0491745267063</height>
             <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
-
-
     </viewpoints>
 
     <TFSFeatures name="roads-data">

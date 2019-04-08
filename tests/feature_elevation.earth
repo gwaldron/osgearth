@@ -11,21 +11,24 @@ osgEarth Sample - Feature to elevation driver.
         Add a shapefile to flatten the underlying elevation.
     -->
 
-    <elevation name="flatten" driver="feature_elevation" enabled="true" attr="ELEVATION">
+    <FlattenedElevation name="flattened" attr="ELEVATION">
         <!-- Specify a min_level so that we don't waste resources generating heightfields when they won't actually be visible -->
         <min_level>7</min_level>
+        
         <!--
         Because a feature dataset has theoretically infinite pixels resolutions, we specify a max level to keep a cap on how far down it generates data.  This is also critical for any code that uses terrain clamping so that it won't try to generate unnecessarily high
         resolution heightfields
         -->
         <max_level>17</max_level>
+        
         <!-- Specify a profile that matches the map's profile so no unnecssary reprojection and mosaicing occurs -->
         <profile>global-geodetic</profile>
+        
         <OGRFeatures name="flatten">
             <url>../data/flatten_mt_rainier.shp</url>
              <build_spatial_index>true</build_spatial_index>
         </OGRFeatures>
-    </elevation>
+    </FlattenedElevation>
     
     <viewpoints>
         <viewpoint>
@@ -35,8 +38,7 @@ osgEarth Sample - Feature to elevation driver.
             <range>38701.6m</range>
             <long>-121.7706234748925</long>
             <lat>46.84187674081022</lat>
-            <height>-0.002506599761545658</height>
-            
+            <height>-0.002506599761545658</height>            
         </viewpoint>
     </viewpoints>
 

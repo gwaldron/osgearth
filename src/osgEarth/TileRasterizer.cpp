@@ -101,8 +101,8 @@ osg::Camera()
     osg::GraphicsContext* gc = osg::GraphicsContext::createGraphicsContext(traits);
     setGraphicsContext(gc);
 #endif
-    setDrawBuffer(GL_FRONT);
-    setReadBuffer(GL_FRONT);
+    //setDrawBuffer(GL_FRONT);
+    //setReadBuffer(GL_FRONT);
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->setName("TileRasterizer");

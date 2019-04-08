@@ -5,8 +5,8 @@ http://pro.arcgis.com/en/pro-app/help/sharing/overview/tile-package.htm
 -->
 <Map name="Demo: TilePackage">
 
-    <image name="bluemarble" driver="tilepackage">    
+    <ArcGISTilePackageImage name="bluemarble">
         <url>../data/bluemarble_tilepackage</url>
-    </image>
+    </ArcGISTilePackageImage>
 
 </Map>

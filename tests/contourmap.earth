@@ -2,9 +2,8 @@
  | osgEarth Sample - Render elevation data as a contour map
  |-->
  
-<map>
-
+<Map>
     <xi:include href="readymap_elevation.xml"/>
 
-    <contour_map/>
-</map>
+    <ContourMap/>
+</Map>

@@ -746,7 +746,8 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     layer->setTerrainResources(getTerrainEngine()->getResources());
 
     // Each layer gets a callback to change the MapNode if necessary
-    layer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
+    // REMOVED this for osgEarth 3.0
+    //layer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getNode();

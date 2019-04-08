@@ -3,9 +3,8 @@ osgEarth Sample - Geometry Shader
 
 This example shows how to inject a GLSL Geometry Shader into the Terrain
 Rendering pipeline.
-
 -->
-<map name="readymap.org" type="geocentric">
+<map name="readymap.org">
         
     <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>

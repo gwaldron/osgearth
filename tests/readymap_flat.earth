@@ -11,10 +11,10 @@ YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
 http://readymap.org
 
 -->
-<map name="readymap.org" type="projected">    
+<map name="readymap.org">    
     
     <options>
-        <profile>plate-carre</profile>
+        <profile>global-mercator</profile>
     </options>
     
     <xi:include href="readymap_imagery.xml"/>

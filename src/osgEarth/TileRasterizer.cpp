@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2016 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/VirtualProgram>
@@ -75,7 +75,7 @@ osg::Camera()
     setCullingActive(false);
 
     // set up the RTT camera.
-    setClearColor(osg::Vec4(0,0,0,0));
+    setClearColor(osg::Vec4(0, 0, 0, 0));
     setClearMask(GL_COLOR_BUFFER_BIT);
     setReferenceFrame(ABSOLUTE_RF);
     //setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
@@ -90,12 +90,11 @@ osg::Camera()
     setViewport(-1, -1, 1, 1);
 
     osg::StateSet* ss = getOrCreateStateSet();
-    //ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     ss->setMode(GL_BLEND, 1);
     ss->setMode(GL_LIGHTING, 0);
     ss->setMode(GL_CULL_FACE, 0);
-    
+
     this->setPreDrawCallback(new PreDrawRouter<TileRasterizer>(this));
     this->setPostDrawCallback(new PostDrawRouter<TileRasterizer>(this));
 
@@ -149,8 +148,8 @@ TileRasterizer::push(osg::Node* node, osg::Texture* texture, const GeoExtent& ex
 
 void
 TileRasterizer::ReadbackImage::readPixels(
-    int x, int y, int width, int height,
-    GLenum pixelFormat, GLenum type, int packing)
+int x, int y, int width, int height,
+GLenum pixelFormat, GLenum type, int packing)
 {
     OE_DEBUG << LC << "ReadPixels in context " << _ri->getContextID() << std::endl;
 
@@ -164,7 +163,7 @@ TileRasterizer::ReadbackImage::readPixels(
     }
     else
     {
-       // synchronous:
+        // synchronous:
         glReadPixels(x, y, width, height, getPixelFormat(), getDataType(), _data);
     }
 }
@@ -172,7 +171,7 @@ TileRasterizer::ReadbackImage::readPixels(
 
 Threading::Future<osg::Image>
 TileRasterizer::push(osg::Node* node, unsigned size, const GeoExtent& extent)
-{    
+{
     Threading::ScopedMutexLock lock(_mutex);
 
     _pendingJobs.push(Job());
@@ -192,6 +191,19 @@ TileRasterizer::push(osg::Node* node, unsigned size, const GeoExtent& extent)
 }
 
 void
+TileRasterizer::accept(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.CULL_VISITOR && getBufferAttachmentMap().empty())
+    {
+        return;
+    }
+    else
+    {
+        osg::Camera::accept(nv);
+    }
+}
+
+void
 TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR)
@@ -205,11 +217,11 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 
             // If the job didn't write any fragments, return a NULL image.
             if (job._fragmentsWritten > 0)
-               job._imagePromise.resolve(job._image.get());
+                job._imagePromise.resolve(job._image.get());
             else
-               job._imagePromise.resolve(0L);
+                job._imagePromise.resolve(0L);
 
-            _finishedJobs.pop(); 
+            _finishedJobs.pop();
             detach(osg::Camera::COLOR_BUFFER);
             dirtyAttachmentMap();
         }
@@ -263,7 +275,10 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
     //if (!getBufferAttachmentMap().empty())
     else if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osg::Camera::traverse(nv);
+        if (!getBufferAttachmentMap().empty())
+        {
+            osg::Camera::traverse(nv);
+        }
     }
 }
 
@@ -287,7 +302,7 @@ TileRasterizer::preDraw(osg::RenderInfo& ri) const
             GLuint& query = _samplesQuery[ri.getContextID()];
             if (query == INT_MAX)
             {
-               ext->glGenQueries(1, &query);
+                ext->glGenQueries(1, &query);
             }
 
             // initiate a query for samples passing the fragment shader

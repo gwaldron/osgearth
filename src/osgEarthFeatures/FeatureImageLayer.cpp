@@ -159,7 +159,7 @@ Config
 FeatureImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    FeatureSourceClient::getConfig(conf, featureSourceLayer(), featureSource());
+    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
     conf.set("gamma", gamma());
     conf.set("styles", _styles);
     return conf;
@@ -169,7 +169,7 @@ void
 FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
     gamma().init(1.3);
-    FeatureSourceClient::fromConfig(conf, featureSourceLayer(), featureSource());
+    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
     conf.get("gamma", gamma());
     conf.get("styles", _styles);
 }
@@ -229,7 +229,7 @@ FeatureImageLayer::setFeatureSource(FeatureSource* fs)
 {
     if (getFeatureSource() != fs)
     {
-        _client.setFeatureSource(fs);
+        _client.setLayer(fs);
         _featureProfile = 0L;
 
         if (fs)

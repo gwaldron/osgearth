@@ -51,7 +51,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    FeatureSourceClient::fromConfig(conf, _featureSourceLayer, _featureSource);
+    LayerClient<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
 }
 
 Config
@@ -61,7 +61,7 @@ FeatureModelLayer::Options::getConfig() const
     conf.merge(FeatureModelOptions::getConfig());
     conf.merge(GeometryCompilerOptions::getConfig());
 
-    FeatureSourceClient::getConfig(conf, _featureSourceLayer, _featureSource);
+    LayerClient<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
 
     return conf;
 }
@@ -113,7 +113,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
     if (getFeatureSource() != source)
     {
-        _client.setFeatureSource(source);
+        _client.setLayer(source);
 
         if (source && source->getStatus().isError())
         {
@@ -128,7 +128,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 FeatureSource*
 FeatureModelLayer::getFeatureSource() const
 {
-    return _client.getFeatureSource();
+    return _client.getLayer();
 }
 
 void
@@ -205,7 +205,6 @@ FeatureModelLayer::removedFromMap(const Map* map)
     VisibleLayer::removedFromMap(map);
 
     _client.removedFromMap(map);
-    //_featureLayerListener.clear();
     
     if (_root.valid())
     {

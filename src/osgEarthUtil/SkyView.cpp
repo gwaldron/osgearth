@@ -44,44 +44,19 @@ Config
 SkyViewImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    if (_imageLayer.isSet())
-        conf.add(_imageLayer->getConfig());
+    LayerClient<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
     return conf;
 }
 
 void
 SkyViewImageLayer::Options::fromConfig(const Config& conf)
 {
-    // TODO: make a helper function for this..LayerClient<> maybe,
-    // analagous to FeatureSourceClient?
-    for (ConfigSet::const_iterator i = conf.children().begin();
-        i != conf.children().end();
-        ++i)
-    {
-        osg::ref_ptr<Layer> fs = Layer::create(*i);
-        if (fs.valid() && dynamic_cast<ImageLayer*>(fs.get()))
-        {
-            imageLayer() = ImageLayer::Options(*i);
-            break;
-        }
-    }
+    LayerClient<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
 }
 
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(skyview, SkyViewImageLayer);
-
-void
-SkyViewImageLayer::setImageLayer(ImageLayer* layer)
-{
-    _imageLayer = layer;
-}
-
-ImageLayer*
-SkyViewImageLayer::getImageLayer() const
-{
-    return _imageLayer.get();
-}
 
 void
 SkyViewImageLayer::init()
@@ -93,27 +68,12 @@ SkyViewImageLayer::init()
 const Status&
 SkyViewImageLayer::open()
 {
-    // create the subordinate layer ig required:
-    if (_imageLayer.valid() == false && options().imageLayer().isSet())
-    {
-        _imageLayer = dynamic_cast<ImageLayer*>(Layer::create(options().imageLayer().get()));
-    }
+    Status imageStatus = _client.open(options().imageLayer(), getReadOptions());
+    if (imageStatus.isError())
+        return setStatus(imageStatus);
 
-    if (_imageLayer.valid() == false)
-    {
-        return setStatus(Status::ConfigurationError, "Missing subordinate image layer");
-    }
-
-    // open the subordinate layer:
-    _imageLayer->setReadOptions(getReadOptions());
-    const Status& insideStatus = _imageLayer->open();
-    if (insideStatus.isError())
-    {
-        return setStatus(insideStatus);
-    }
-
-    // copy the profile:
-    setProfile(_imageLayer->getProfile());
+    // copy over the profile
+    setProfile(getImageLayer()->getProfile());
 
     return ImageLayer::open();
 }
@@ -121,7 +81,7 @@ SkyViewImageLayer::open()
 GeoImage
 SkyViewImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    if (getStatus().isError())
+    if (getStatus().isError() || !getImageLayer())
         return GeoImage(getStatus());
 
     // We need to flip the image horizontally so that it's viewable from inside the globe.
@@ -135,7 +95,7 @@ SkyViewImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     unsigned int level = key.getLevelOfDetail();
 
     TileKey flippedKey(level, tileX, tileY, key.getProfile());
-    GeoImage image = _imageLayer->createImageImplementation(flippedKey, progress);
+    GeoImage image = getImageLayer()->createImageImplementation(flippedKey, progress);
     if (image.valid())
     {
         // If an image was read successfully, we still need to flip it horizontally

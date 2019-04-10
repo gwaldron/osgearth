@@ -622,7 +622,7 @@ FlatteningLayer::Options::getConfig() const
 {
     Config conf = ElevationLayer::Options::getConfig();
 
-    FeatureSourceClient::getConfig(conf, _featureSourceLayer, _featureSource);
+    LayerClient<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
 
     conf.set("line_width", _lineWidth);
     conf.set("buffer_width", _bufferWidth);
@@ -657,7 +657,7 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     bufferWidth().init(40);
     URIContext uriContext = URIContext(conf.referrer());
 
-    FeatureSourceClient::fromConfig(conf, _featureSourceLayer, _featureSource);
+    LayerClient<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
 
     conf.get("line_width", _lineWidth);
     conf.get("buffer_width", _bufferWidth);
@@ -736,7 +736,7 @@ FlatteningLayer::~FlatteningLayer()
 void
 FlatteningLayer::setFeatureSource(FeatureSource* layer)
 {
-    _client.setFeatureSource(layer);
+    _client.setLayer(layer);
 }
 
 void

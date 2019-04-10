@@ -24,6 +24,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/LayerListener>
 
 namespace osgEarth { namespace Util
 {
@@ -37,6 +38,7 @@ namespace osgEarth { namespace Util
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION(ImageLayer::Options, imageLayer);
+            OE_OPTION(std::string, imageLayerName);
             virtual Config getConfig() const;
             static Config getMetadata();
         private:
@@ -47,8 +49,8 @@ namespace osgEarth { namespace Util
         META_Layer(osgEarth, SkyViewImageLayer, Options, ImageLayer, SkyView);
 
         //! Image layer to render in skyview mode
-        void setImageLayer(ImageLayer*);
-        ImageLayer* getImageLayer() const;
+        void setImageLayer(ImageLayer* layer) { _client.setLayer(layer); }
+        ImageLayer* getImageLayer() const { return _client.getLayer(); }
 
     public: // Layer
 
@@ -66,7 +68,9 @@ namespace osgEarth { namespace Util
         //! Destructor
         virtual ~SkyViewImageLayer() { }
 
-        osg::ref_ptr<ImageLayer> _imageLayer;
+        //osg::ref_ptr<ImageLayer> _imageLayer;
+
+        LayerClient<ImageLayer> _client;
     };
 
 } } // namespace osgEarth:Util

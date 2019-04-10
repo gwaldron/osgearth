@@ -42,7 +42,7 @@ Config
 RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    FeatureSourceClient::getConfig(conf, featureSourceLayer(), featureSource());
+    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
     conf.set("buffer_width", featureBufferWidth() );
     conf.set("styles", _styles);
     return conf;
@@ -51,7 +51,7 @@ RoadSurfaceLayer::Options::getConfig() const
 void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    FeatureSourceClient::fromConfig(conf, featureSourceLayer(), featureSource());
+    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
     conf.get("buffer_width", featureBufferWidth() );
     conf.get("styles", _styles);
 }
@@ -121,7 +121,7 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 {
     if (getFeatureSource() != layer)
     {
-        _client.setFeatureSource(layer);
+        _client.setLayer(layer);
         if (layer && layer->getStatus().isError())
         {
             setStatus(layer->getStatus());
@@ -132,7 +132,7 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 FeatureSource*
 RoadSurfaceLayer::getFeatureSource() const
 {
-    return _client.getFeatureSource();
+    return _client.getLayer();
 }
 
 void

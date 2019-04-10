@@ -80,11 +80,10 @@ namespace osgEarth { namespace Features
 
     private:
 
-        FeatureSourceClient _client;
+        LayerClient<FeatureSource> _client;
 
         void create();
 
-        //osg::ref_ptr<FeatureSource> _featureSource;
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         OpenThreads::Mutex _boundaryMutex;
     };

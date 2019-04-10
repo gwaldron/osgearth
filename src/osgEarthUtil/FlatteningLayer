@@ -65,7 +65,7 @@ namespace osgEarth { namespace Util
 
         //! Feature source layer to get features from
         void setFeatureSource(FeatureSource* layer);
-        FeatureSource* getFeatureSource() const { return _client.getFeatureSource(); }
+        FeatureSource* getFeatureSource() const { return _client.getLayer(); }
 
         //! For line features, the width around the line to flatten
         void setLineWidth(const NumericExpression& value);
@@ -109,7 +109,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<ElevationPool> _pool;
         osg::ref_ptr<ScriptEngine> _scriptEngine;
         osg::observer_ptr< const Map > _map;
-        FeatureSourceClient _client;
+        LayerClient<FeatureSource> _client;
     };
 
 } } // namespace osgEarth::Util

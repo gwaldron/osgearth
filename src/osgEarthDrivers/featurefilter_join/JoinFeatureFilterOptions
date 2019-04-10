@@ -47,7 +47,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "join";
-            FeatureSourceClient::getConfig(conf, featureSourceLayer(), featureSource());
+            LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
             return conf;
         }
 
@@ -59,7 +59,7 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            FeatureSourceClient::fromConfig(conf, featureSourceLayer(), featureSource());
+            LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
         }
 
         optional<std::string>            _layerName;

@@ -22,13 +22,12 @@
 
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/LayerListener>
-
-namespace osgEarth {
-    class ImageLayer;
-}
+#include <osgEarth/ImageLayer>
 
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+
     /**
      * A FeatureSourceLayer that extracts features from raster data in
      * an image layer.
@@ -40,7 +39,8 @@ namespace osgEarth { namespace Features
         {
         public:
             META_LayerOptions(osgEarth, Options, FeatureSource::Options);
-            OE_OPTION(std::string, imageLayer);
+            OE_OPTION(std::string, imageLayerName);
+            OE_OPTION(ImageLayer::Options, imageLayer);
             OE_OPTION(unsigned, level);
             OE_OPTION(std::string, attribute);
             virtual Config getConfig() const;
@@ -81,8 +81,7 @@ namespace osgEarth { namespace Features
 
     protected:
         
-        LayerListener<ImageToFeatureSource, ImageLayer> _imageLayerListener;
-        osg::observer_ptr<ImageLayer> _layer;
+        LayerClient<ImageLayer> _client;
     };
 
 } } // namespace osgEarth::Features

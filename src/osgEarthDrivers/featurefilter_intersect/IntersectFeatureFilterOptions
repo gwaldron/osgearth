@@ -55,7 +55,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "intersect";
-            FeatureSourceClient::getConfig(conf, featureSourceLayer(), featureSource());
+            LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
             conf.set( "contains", _contains );
             return conf;
         }
@@ -68,7 +68,7 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            FeatureSourceClient::fromConfig(conf, featureSourceLayer(), featureSource());
+            LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
             conf.get( "contains", _contains );
         }
 

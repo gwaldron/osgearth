@@ -128,7 +128,7 @@ namespace osgEarth { namespace Features
         virtual ~FeatureImageLayer() { }
 
     private:
-        FeatureSourceClient _client;
+        LayerClient<FeatureSource> _client;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         optional<double> _gamma;
@@ -152,7 +152,7 @@ namespace osgEarth { namespace Features
 
     // template/inline impls .................................................
 
-    FeatureSource* FeatureImageLayer::getFeatureSource() const { return _client.getFeatureSource(); }
+    FeatureSource* FeatureImageLayer::getFeatureSource() const { return _client.getLayer(); }
     void FeatureImageLayer::setStyleSheet(StyleSheet* value) { options().styles() = value; }
     StyleSheet* FeatureImageLayer::getStyleSheet() const { return options().styles().get(); }
 

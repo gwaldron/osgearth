@@ -40,7 +40,7 @@ namespace osgEarth {
 Config
 ImageToFeatureSource::Options::getConfig() const {
     Config conf = FeatureSource::Options::getConfig();
-    conf.set("image", imageLayer());
+    LayerClient<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
     conf.set("level", level());
     conf.set("attribute", attribute());
     return conf;
@@ -52,7 +52,7 @@ ImageToFeatureSource::Options::fromConfig(const Config& conf)
     level().init(0u);
     attribute().init("value");
 
-    conf.get("image", imageLayer());
+    LayerClient<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
     conf.get("level", level());
     conf.get("attribute", attribute());
 }
@@ -71,7 +71,13 @@ ImageToFeatureSource::init()
 void
 ImageToFeatureSource::setImageLayer(ImageLayer* layer)
 {
-    _layer = layer;
+    _client.setLayer(layer);
+}
+
+ImageLayer*
+ImageToFeatureSource::getImageLayer() const
+{
+    return _client.getLayer();
 }
 
 const Status&
@@ -95,21 +101,23 @@ void
 ImageToFeatureSource::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap" << std::endl;
+    _client.addedToMap(options().imageLayerName(), map);
     FeatureSource::addedToMap(map);
 
-    if (_layer.valid() == false && options().imageLayer().isSet())
-    {
-        _imageLayerListener.listen(
-            map,
-            options().imageLayer().get(),
-            this,
-            &ImageToFeatureSource::setImageLayer);
-    }
+    //if (_layer.valid() == false && options().imageLayer().isSet())
+    //{
+    //    _imageLayerListener.listen(
+    //        map,
+    //        options().imageLayer().get(),
+    //        this,
+    //        &ImageToFeatureSource::setImageLayer);
+    //}
 }
 
 void
 ImageToFeatureSource::removedFromMap(const Map* map)
 {
+    _client.removedFromMap(map);
     FeatureSource::removedFromMap(map);
 }
 
@@ -118,9 +126,9 @@ ImageToFeatureSource::createFeatureCursor(const Symbology::Query& query, Progres
 {
     TileKey key = *query.tileKey();
 
-    if (_layer.valid())
+    if (getImageLayer())
     {
-        GeoImage image = _layer->createImage(key, progress);
+        GeoImage image = getImageLayer()->createImage(key, progress);
 
         FeatureList features;
 

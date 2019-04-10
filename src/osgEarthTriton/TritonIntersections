@@ -22,7 +22,6 @@
 #include "Common"
 
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
 #include <osgEarthTriton/TritonCallback>
 

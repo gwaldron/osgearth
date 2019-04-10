@@ -57,7 +57,7 @@ public: // FeatureFilter
     Status initialize(const osgDB::Options* readOptions)
     {
         // Load the feature source containing the intersection geometry.
-        _featureSource = FeatureSource::create(features().get());
+        _featureSource = FeatureSource::create(featureSource().get());
         if ( !_featureSource.valid() )
             return Status::Error(Status::ServiceUnavailable, "Failed to create features source");
 

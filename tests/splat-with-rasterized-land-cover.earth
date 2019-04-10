@@ -18,7 +18,7 @@
             <coverage name="ESA GLOBCOVER">
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
                 <warp>0.05</warp>
-                <GDALImage>
+                <GDALImage coverage="true">
                     <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                     <profile>global-geodetic</profile>
                 </GDALImage>
@@ -29,7 +29,7 @@
                 <land_cover_mappings>
                     <mapping value="1" class="water"/>
                 </land_cover_mappings>
-                <FeatureImage>
+                <FeatureImage coverage="true">
                     <OGRFeatures>
                         <url>H:/data/naturalearth/vector-10m/ne_10m_lakes.shp</url>
                     </OGRFeatures>
@@ -49,7 +49,7 @@
                 <land_cover_mappings>
                     <mapping value="1" class="asphalt"/>
                 </land_cover_mappings>  
-                <FeatureImage>
+                <FeatureImage coverage="true">
                     <OGRFeatures build_spatial_index="true">
                         <url>../data/boston-scl-utm19n-meters.shp</url>
                     </OGRFeatures>                

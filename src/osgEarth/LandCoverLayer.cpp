@@ -298,13 +298,24 @@ LandCoverLayer::addedToMap(const Map* map)
     {
         for(unsigned i=0; i<_coverageLayers.size(); ++i)
         {
+            _coverageLayers[i]->addedToMap(map);
             buildCodeMap(_coverageLayers[i].get(), _codemaps[i]);
         }
-        //static_cast<LandCoverTileSource*>(getTileSource())->setDictionary(_lcDictionary.get());
     }
     else
     {
         OE_WARN << LC << "Did not find a LandCoverDictionary in the Map!\n";
+    }
+}
+
+void
+LandCoverLayer::removedFromMap(const Map* map)
+{
+    ImageLayer::removedFromMap(map);
+
+    for (unsigned i = 0; i < _coverageLayers.size(); ++i)
+    {
+        _coverageLayers[i]->removedFromMap(map);
     }
 }
 

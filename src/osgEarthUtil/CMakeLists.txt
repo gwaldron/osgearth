@@ -12,7 +12,6 @@ SET(HEADERS_ROOT
     ActivityMonitorTool
     AutoClipPlaneHandler
     AutoScaleCallback
-    #ArcGIS
     AtlasBuilder
     ClipSpace
     Common
@@ -37,7 +36,6 @@ SET(HEADERS_ROOT
     LatLongFormatter
     LineOfSight
     LinearLineOfSight
-    #LODBlending
     LogarithmicDepthBuffer
     MeasureTool
     MGRSFormatter
@@ -50,6 +48,7 @@ SET(HEADERS_ROOT
     SimpleOceanLayer
     SimplePager
     Sky
+    SkyView
     StarData
     TerrainProfile
     TileIndex
@@ -130,6 +129,7 @@ SET(SOURCES_ROOT
     SimpleOceanLayer.cpp
     SimplePager.cpp
     Sky.cpp
+    SkyView.cpp
     TerrainProfile.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp

@@ -37,14 +37,17 @@ namespace osgEarth { namespace Drivers
         }
 
         /** Features to load and use as boundary geometries */
-        optional<FeatureSource::Options>& features() { return _features; }
-        const optional<FeatureSource::Options>& features() const { return _features; }
+        optional<std::string>& featureSourceLayer() { return _layerName; }
+        const optional<std::string>& featureSourceLayer() const { return _layerName; }
+
+        optional<FeatureSource::Options>& featureSource() { return _features; }
+        const optional<FeatureSource::Options>& featureSource() const { return _features; }
 
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "join";
-            conf.set( "features", _features );
+            FeatureSourceClient::getConfig(conf, featureSourceLayer(), featureSource());
             return conf;
         }
 
@@ -56,9 +59,10 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.get( "features", _features );
+            FeatureSourceClient::fromConfig(conf, featureSourceLayer(), featureSource());
         }
 
+        optional<std::string>            _layerName;
         optional<FeatureSource::Options> _features;
     };
 

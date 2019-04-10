@@ -1,6 +1,8 @@
 <!--
  osgEarth example - use a layer shader to simulate day/night transition
  
+ Run with the "--sky" argument.
+ 
  Earth at night imagery: 
  https://earthobservatory.nasa.gov/Features/NightLights/page3.php
 -->
@@ -50,6 +52,4 @@
         </shader>
     </TMSImage>      
 
-    <sky driver="simple" hours="14.0" ambient="0.2"/>
-    
 </map>

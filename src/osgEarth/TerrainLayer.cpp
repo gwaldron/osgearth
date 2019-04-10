@@ -295,6 +295,8 @@ TerrainLayer::open()
 {
     if ( !_openCalled )
     {
+        _openCalled = true;
+
         // Call base class
         if (VisibleLayer::open().isError())
             return getStatus();
@@ -386,9 +388,6 @@ TerrainLayer::open()
             << (getProfile()? getProfile()->toString() : "[no profile]") << " "
             << (_cacheSettings.valid()? _cacheSettings->toString() : "[no cache settings]")
             << std::endl;
-
-        // Done!
-        _openCalled = true;
 
     }
 

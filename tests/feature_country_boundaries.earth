@@ -5,7 +5,9 @@
             
     <OGRFeatures name="world-data">
         <url>../data/world.shp</url>
-        <convert type="line"/>
+        <filters>
+            <convert type="line"/>
+        </filters>
     </OGRFeatures>
     
     <FeatureModel name="Country boundaries" feature_source="world-data">
@@ -21,8 +23,7 @@
                    stroke-width:             3px;
                    stroke-tessellation-size: 1km;
                    render-lighting:          false;
-                   altitude-clamping:        terrain-gpu;
-                   render-depth-offset:      true;                   
+                   altitude-clamping:        terrain-drape;        
                 }            
             </style>
         </styles>

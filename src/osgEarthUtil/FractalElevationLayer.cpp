@@ -134,6 +134,8 @@ FractalElevationLayer::~FractalElevationLayer()
 void
 FractalElevationLayer::init()
 {
+    ElevationLayer::init();
+
     _debug = false;
 
     // No tile source; we will override createImplementation
@@ -192,8 +194,6 @@ FractalElevationLayer::init()
             OE_INFO << LC << "   " << i->second.className << " => " << i->second.amplitude.get() << "\n";
         }
     }
-
-    ElevationLayer::init();
 }
 
 const Status&
@@ -228,11 +228,8 @@ FractalElevationLayer::removedFromMap(const Map* map)
     _landCoverDict = 0L;
 }
 
-void
-FractalElevationLayer::createImplementation(const TileKey& key,
-                                            osg::ref_ptr<osg::HeightField>& out_hf,
-                                            osg::ref_ptr<NormalMap>& out_normalMap,
-                                            ProgressCallback* progress)
+GeoHeightField
+FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     double min_n = FLT_MAX, max_n = -FLT_MAX;
     double min_h = FLT_MAX, max_h = -FLT_MAX;
@@ -347,8 +344,7 @@ FractalElevationLayer::createImplementation(const TileKey& key,
             << "h[" << min_h << ", " << max_h << "]\n";
     }
 
-    out_hf = hf.release();
-    out_normalMap = 0L;
+    return GeoHeightField(hf.release(), key.getExtent());
 }
 
 const FractalElevationLayer::LandCoverMapping*

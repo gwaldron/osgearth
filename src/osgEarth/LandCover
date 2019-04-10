@@ -243,6 +243,10 @@ namespace osgEarth
 
         const Status& open();
 
+        void addedToMap(const class Map*);
+
+        void removedFromMap(const class Map*);
+
     private:
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
         osg::ref_ptr<ImageLayer> _imageLayer;

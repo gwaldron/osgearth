@@ -224,6 +224,15 @@ namespace osgEarth
 
     public: // Layer interface
 
+        //! Extent of this layer's data.
+        virtual const GeoExtent& getExtent() const;
+
+        //! Called by Map when added
+        virtual void addedToMap(const Map*);
+
+        //! Called by Map when removed
+        virtual void removedFromMap(const Map*);
+
         virtual SequenceControl* getSequenceControl();
 
     public:
@@ -269,15 +278,6 @@ namespace osgEarth
 
         // CTOR initialization; call from subclass.
         virtual void init();
-
-        //! Extent of this layer's data.
-        virtual const GeoExtent& getExtent() const;
-
-        //! Called by Map when added
-        virtual void addedToMap(const Map*);
-
-        //! Called by Map when removed
-        virtual void removedFromMap(const Map*);
 
     protected:
 

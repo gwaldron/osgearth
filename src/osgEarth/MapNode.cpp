@@ -472,6 +472,16 @@ MapNode::open()
         this->addCullCallback(new HorizonClipPlane(getMapSRS()->getEllipsoid()));
     }
 
+    // connect any extensions that have already been added.
+    for(Extensions::iterator i = _extensions.begin(); i != _extensions.end(); ++i)
+    {
+        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(i->get());
+        if (extensionIF)
+        {
+            extensionIF->connect(this);
+        }
+    }
+
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
@@ -643,11 +653,14 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
         else if ( getMap()->getReadOptions() )
             extension->setDBOptions( getMap()->getReadOptions() );
 
-        // start it.
-        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(extension);
-        if ( extensionIF )
+        // start it if the map is open; otherwise this will happen during MapNode::open.
+        if (_isOpen)
         {
-            extensionIF->connect( this );
+            ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(extension);
+            if ( extensionIF )
+            {
+                extensionIF->connect( this );
+            }
         }
 
         OE_INFO << LC << "Added extension \"" << extension->getName() << "\"\n";

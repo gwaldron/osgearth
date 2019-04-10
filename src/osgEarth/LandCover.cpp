@@ -321,10 +321,29 @@ LandCoverCoverageLayer::open()
     if (_imageLayer.valid())
     {
         _imageLayer->setReadOptions(getReadOptions());
+        _imageLayer->setCoverage(true);
         return _imageLayer->open();
     }
 
     return setStatus(Status::ConfigurationError, "No image layer");
+}
+
+void
+LandCoverCoverageLayer::addedToMap(const Map* map)
+{
+    Layer::addedToMap(map);
+
+    if (_imageLayer.valid())
+        _imageLayer->addedToMap(map);
+}
+
+void
+LandCoverCoverageLayer::removedFromMap(const Map* map)
+{
+    Layer::removedFromMap(map);
+
+    if (_imageLayer.valid())
+        _imageLayer->removedFromMap(map);
 }
 
 void

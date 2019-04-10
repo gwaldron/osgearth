@@ -74,19 +74,19 @@ namespace osgEarth { namespace Splat
         // Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
-    protected: // Layer
-
         // Called by Map when it adds this layer
         virtual void addedToMap(const class Map*);
 
         // Called by Map when it removes this layer
         virtual void removedFromMap(const class Map*);
 
-        // post-ctor initialization
-        virtual void init();
-
         // A node to add to the scene graph for this layer.
         virtual osg::Node* getNode() const;
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init();
 
     protected:
 

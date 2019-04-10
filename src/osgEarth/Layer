@@ -277,15 +277,6 @@ namespace osgEarth
         //! Class type name without namespace. For example if the leaf class type
         const char* getTypeName() const;
 
-        //! Map will call this function when this Layer is added to a Map.
-        virtual void addedToMap(const class Map*) { }
-
-        //! Map will call this function when this Layer is removed from a Map.
-        virtual void removedFromMap(const class Map*) { }
-
-        //! MapNode will call this function when terrain resources are available.
-        virtual void setTerrainResources(TerrainResources*);
-
         //! Attribution to be displayed by the application
         virtual std::string getAttribution() const;
         
@@ -310,6 +301,12 @@ namespace osgEarth
         //! Called to traverse this layer
         void apply(osg::Node* node, osg::NodeVisitor* nv) const;
 
+        //! Map will call this function when this Layer is added to a Map.
+        virtual void addedToMap(const class Map*) { }
+
+        //! Map will call this function when this Layer is removed from a Map.
+        virtual void removedFromMap(const class Map*) { }
+
     public: // osg::Object
 
         virtual void setName(const std::string& name);
@@ -333,6 +330,8 @@ namespace osgEarth
         //! Removes a property notification callback from this layer
         void removeCallback(LayerCallback* cb);
 
+        //! MapNode will call this function when terrain resources are available.
+        virtual void setTerrainResources(TerrainResources*);
 
     protected:
 
@@ -375,7 +374,8 @@ namespace osgEarth
         osg::ref_ptr<LayerShader> _shader;
 
         // allow the map access to the addedToMap/removedFromMap methods
-        friend class Map;        
+        friend class Map; 
+        friend class MapNode;
                 
     public:
         Layer::Options& options() { return *_options; }

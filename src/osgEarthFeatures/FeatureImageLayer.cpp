@@ -307,6 +307,12 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         setStatus(Status::ConfigurationError, "Feature profile has no SRS");
         return GeoImage::INVALID;
     }
+
+    if (!_session.valid())
+    {
+        setStatus(Status::AssertionFailure, "_session is NULL - call support");
+        return GeoImage::INVALID;
+    }
     
     // allocate the image.
     osg::ref_ptr<osg::Image> image = new osg::Image();
@@ -602,7 +608,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
             }
             else
             {
-                osg::Vec4f color = poly->fill()->color();
+                osg::Vec4f color = poly ? poly->fill()->color() : osg::Vec4(1, 1, 1, 1);
                 rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
 

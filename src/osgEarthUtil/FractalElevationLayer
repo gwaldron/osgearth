@@ -104,11 +104,9 @@ namespace osgEarth { namespace Util
 
         virtual void removedFromMap(const class Map*);
 
-        virtual void createImplementation(
+        virtual GeoHeightField createHeightFieldImplementation(
             const TileKey& key,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            osg::ref_ptr<NormalMap>& out_normalMap,
-            ProgressCallback* progress);
+            ProgressCallback* progress) const;
 
     protected:
 

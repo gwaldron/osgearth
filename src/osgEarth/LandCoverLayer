@@ -68,6 +68,8 @@ namespace osgEarth
 
         virtual void addedToMap(const class Map*);
 
+        virtual void removedFromMap(const class Map*);
+
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback*) const;
 
     protected: // Layer

@@ -23,7 +23,9 @@ osgEarth Sample. Like boston.earth, but on a projected map
          
         <OGRFeatures name="buildings">
             <url>../data/boston_buildings_utm19.shp</url>
-			<resample min_length="2.5"/>
+            <filters>
+			    <resample min_length="2.5"/>
+            </filters>
         </OGRFeatures>
         
         <!--

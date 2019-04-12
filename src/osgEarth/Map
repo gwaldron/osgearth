@@ -192,7 +192,7 @@ namespace osgEarth
         //! and an optional flag specifying a projected profile.
         //! This method will be called automatically by MapNode if a
         //! profile has not already been set via setProfile().
-        void calculateProfile(bool makeProjected =false);
+        const Profile* calculateProfile(bool makeProjected =false) const;
 
     protected:
 

@@ -288,6 +288,9 @@ Map::setProfile(const Profile* value)
         {
             _profileNoVDatum = _profile;
         }
+
+        // finally, fire an event if the profile has been set.
+        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
     }
 
     // If we just set the profile, tell all our layers they are not added
@@ -762,69 +765,61 @@ Map::setLayersFromMap(const Map* map)
 }
 
 
-void
-Map::calculateProfile(bool makeProjected)
+const Profile*
+Map::calculateProfile(bool makeProjected) const
 {
     // collect the terrain layers; we will need them later
     TerrainLayerVector layers;
     getLayers(layers);
 
     // Figure out the map profile:
-    if ( !_profile.valid() )
+    osg::ref_ptr<const Profile> profile;
+
+    // Do the map options contain a profile? If so, try to use it:
+    if ( options().profile().isSet() )
     {
-        osg::ref_ptr<const Profile> profile;
+        profile = Profile::create( options().profile().value() );
+    }
 
-        // Do the map options contain a profile? If so, try to use it:
-        if ( options().profile().isSet() )
-        {
-            profile = Profile::create( options().profile().value() );
-        }
-
-        // Do the map options ask for a projected map?
-        if (makeProjected)
-        {
-            // Is there no profile set try to derive one from the Map layers:
-            if (!profile.valid())
-            {
-                for (TerrainLayerVector::iterator i = layers.begin(); !profile.valid() && i != layers.end(); ++i)
-                {
-                    profile = i->get()->getProfile();
-                }
-            }
-
-            // If we have a profile now, but it's geographic, switch over to a
-            // flat plate carre setup.
-            if (profile.valid() && profile->getSRS()->isGeographic())
-            {
-                OE_WARN << LC << "Projected map type conflicts with the geographic SRS profile; converting to Equirectangular projection\n";
-                unsigned u, v;
-                profile->getNumTiles(0, u, v);
-                const osgEarth::SpatialReference* eqc = profile->getSRS()->createEquirectangularSRS();
-                osgEarth::GeoExtent e = profile->getExtent().transform( eqc );
-                profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
-            }
-
-            // Still nothing? Pick Mercator.
-            if (!profile.valid())
-            {
-                OE_WARN << LC << "No profile information available; defaulting to Spherical Mercator projection\n";
-                profile = Registry::instance()->getSphericalMercatorProfile();
-            }
-        }
-
-        // Finally, if there is still no profile, default to global geodetic.
+    // Do the map options ask for a projected map?
+    if (makeProjected)
+    {
+        // Is there no profile set try to derive one from the Map layers:
         if (!profile.valid())
         {
-            profile = Registry::instance()->getGlobalGeodeticProfile();
+            for (TerrainLayerVector::iterator i = layers.begin(); !profile.valid() && i != layers.end(); ++i)
+            {
+                profile = i->get()->getProfile();
+            }
         }
 
+        // If we have a profile now, but it's geographic, switch over to a
+        // flat plate carre setup.
+        if (profile.valid() && profile->getSRS()->isGeographic())
+        {
+            OE_WARN << LC << "Projected map type conflicts with the geographic SRS profile; converting to Equirectangular projection\n";
+            unsigned u, v;
+            profile->getNumTiles(0, u, v);
+            const osgEarth::SpatialReference* eqc = profile->getSRS()->createEquirectangularSRS();
+            osgEarth::GeoExtent e = profile->getExtent().transform( eqc );
+            profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
+        }
 
-        // Set the map's profile!
-        setProfile( profile.get() );
-
-        // finally, fire an event if the profile has been set.
-        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
+        // Still nothing? Pick Mercator.
+        if (!profile.valid())
+        {
+            OE_WARN << LC << "No profile information available; defaulting to Spherical Mercator projection\n";
+            profile = Registry::instance()->getSphericalMercatorProfile();
+        }
     }
+
+    // Finally, if there is still no profile, default to global geodetic.
+    if (!profile.valid())
+    {
+        profile = Registry::instance()->getGlobalGeodeticProfile();
+    }
+
+    return profile.release();
 }
 
 const SpatialReference*

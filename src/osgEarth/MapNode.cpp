@@ -362,7 +362,11 @@ MapNode::open()
     // to result in a map profile being set.
     if (!_map->getProfile())
     {
-        _map->calculateProfile(options().projected().get());
+        osg::ref_ptr<const Profile> profile = _map->calculateProfile(options().projected().get());
+        if (profile.valid())
+        {
+            _map->setProfile(profile.get());
+        }
     }
 
     // Give the terrain engine a map to render.

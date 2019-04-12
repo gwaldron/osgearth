@@ -608,7 +608,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
             }
             else
             {
-                osg::Vec4f color = poly ? poly->fill()->color() : osg::Vec4(1, 1, 1, 1);
+                osg::Vec4f color = poly ? poly->fill()->color() : osg::Vec4f(1, 1, 1, 1);
                 rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
 

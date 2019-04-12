@@ -20,6 +20,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/JsonUtils>
+#include <osgEarth/Progress>
 #include <osgDB/FileUtils>
 #include <cstdlib>
 
@@ -74,6 +76,12 @@ BingImageLayer::init()
 
     // disable caching by default due to TOS
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
+
+    const char* key = ::getenv("OSGEARTH_BING_KEY");
+    if (key)
+        _key = key;
+    else
+        _key = options().apiKey().get();
 }
 
 BingImageLayer::~BingImageLayer()
@@ -84,7 +92,7 @@ BingImageLayer::~BingImageLayer()
 const Status&
 BingImageLayer::open()
 {
-    if (!options().apiKey().isSet())
+    if (_key.empty())
     {
         return setStatus(Status::ConfigurationError, "Bing API key is required");
     }
@@ -139,7 +147,7 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
             << "/" << geo.y() << "," << geo.x()        // center point in lat/long
             << "?zl=" << key.getLOD() + 1              // zoom level
             << "&o=json"                               // response format
-            << "&key=" << options().apiKey().get();    // API key
+            << "&key=" << _key;                        // API key
 
         // check the URI cache.
         URI                  location;
@@ -157,56 +165,45 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 
             // fetch it:
             ReadResult metadataResult = URI(request).readString(_readOptions.get(), progress);
-
             if (metadataResult.failed())
             {
                 // check for a REST error:
                 if (metadataResult.code() == ReadResult::RESULT_SERVER_ERROR)
                 {
-                    OE_WARN << LC << "REST API request error!" << std::endl;
-
-                    Config metadata;
-                    std::string content = metadataResult.getString();
-                    metadata.fromJSON(content);
-                    ConfigSet errors = metadata.child("errorDetails").children();
-                    for (ConfigSet::const_iterator i = errors.begin(); i != errors.end(); ++i)
-                    {
-                        OE_WARN << LC << "REST API: " << i->value() << std::endl;
-                    }
-                    return GeoImage::INVALID;
+                    return Status("Bing REST API error");
                 }
                 else
                 {
-                    OE_WARN << LC << "Request error: " << metadataResult.getResultCodeString() << std::endl;
+                    OE_DEBUG << LC << "Request error: " << metadataResult.getResultCodeString() << std::endl;
+                    if (progress)
+                        progress->cancel();
                 }
                 return GeoImage::INVALID;
             }
 
-            // decode it:
-            Config metadata;
-            if (!metadata.fromJSON(metadataResult.getString()))
+            Json::Reader reader;
+
+            Json::Value metadata;
+            if (!reader.parse(metadataResult.getString(), metadata))
             {
-                OE_WARN << LC << "Error decoding REST API response" << std::endl;
-                return GeoImage::INVALID;
+                return Status("Bing: Error decoding REST API response");
             }
 
             // check the vintage field. If it's empty, that means we got a "no data" tile.
-            Config* vintageEnd = metadata.find("vintageEnd");
-            if (!vintageEnd || vintageEnd->value().empty())
+            const Json::Value& vintageEnd = Json::Path(".resourceSets[0].resources[0].vintageEnd").resolve(metadata);
+            if (vintageEnd.empty())
             {
-                OE_DEBUG << LC << "NO data image encountered." << std::endl;
-                return GeoImage::INVALID;
+                return Status("Bing: NO data image encountered");
             }
 
             // find the tile URI:
-            Config* locationConf = metadata.find("imageUrl");
-            if (!locationConf)
+            const Json::Value& imageUrl = Json::Path(".resourceSets[0].resources[0].imageUrl").resolve(metadata);
+            if (imageUrl.empty())
             {
-                OE_WARN << LC << "REST API JSON parsing error (imageUrl not found)" << std::endl;
-                return GeoImage::INVALID;
+                return Status("Bing: REST API JSON parsing error (imageUrl not found)");
             }
 
-            location = URI(locationConf->value());
+            location = URI(imageUrl.asString());
             _tileURICache->insert(request, location.full());
         }
 
@@ -252,4 +249,144 @@ BingImageLayer::getDirectURI(const TileKey& key) const
         << ".tiles.virtualearth.net/tiles/h"
         << getQuadKey(key)
         << ".jpeg?g=1236";
+}
+
+//........................................................................
+
+Config
+BingElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    conf.set("key", _apiKey);
+    conf.set("url", _url);
+    return conf;
+}
+
+void
+BingElevationLayer::Options::fromConfig(const Config& conf)
+{
+    conf.get("key", _apiKey);
+    conf.get("url", _url);
+}
+
+//........................................................................
+
+REGISTER_OSGEARTH_LAYER(bingelevation, BingElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(BingElevationLayer, std::string, APIKey, apiKey);
+OE_LAYER_PROPERTY_IMPL(BingElevationLayer, URI, URL, url);
+
+void
+BingElevationLayer::init()
+{
+    ElevationLayer::init();
+
+    setTileSourceExpected(false);
+
+    // disable caching by default due to TOS
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
+
+    _globalGeodetic = Profile::create("global-geodetic");
+
+    const char* key = ::getenv("OSGEARTH_BING_KEY");
+    if (key)
+        _key = key;
+    else
+        _key = options().apiKey().get();
+}
+
+BingElevationLayer::~BingElevationLayer()
+{
+    //nop
+}
+
+const Status&
+BingElevationLayer::open()
+{
+    if (_key.empty())
+    {
+        return setStatus(Status::ConfigurationError, "Bing API key is required");
+    }
+
+    // Bing maps profile is spherical mercator with 2x2 tiles are the root.
+    setProfile(Profile::create(
+        SpatialReference::get("spherical-mercator"),
+        MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
+        2u, 2u));
+
+    return ElevationLayer::open();
+}
+
+GeoHeightField
+BingElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    osg::ref_ptr<osg::HeightField> hf;
+
+    // Get the extent in lat/long:
+    GeoExtent latLonExtent = _globalGeodetic->clampAndTransformExtent(key.getExtent());
+
+    // contact the REST API. Docs are here:
+    // http://dev.virtualearth.net/REST/v1/Elevation/{Bounds}?bounds={boundingBox}&rows={rows}&cols={cols}&heights={heights}&key={BingMapsAPIKey}
+
+    // max return data is 1024 samples (32x32)
+    int tileSize = 32;
+
+    // construct the request URI:
+    std::string request = Stringify()
+        << std::setprecision(12)
+        << "http://dev.virtualearth.net/REST/v1/Elevation/Bounds"
+        << "?bounds=" << latLonExtent.yMin() << "," << latLonExtent.xMin() << "," << latLonExtent.yMax() << "," << latLonExtent.xMax()
+        << "&rows=" << tileSize
+        << "&cols=" << tileSize
+        << "&heights=ellipsoid"
+        << "&key=" << _key;
+
+    // fetch it:
+    ReadResult result = URI(request).readString(_readOptions.get(), progress);
+    if (result.failed())
+    {
+        // check for a REST error:
+        if (result.code() == ReadResult::RESULT_SERVER_ERROR)
+        {
+            return Status(result.errorDetail());
+        }
+        else
+        {
+            OE_DEBUG << LC << "Request error: " << result.getResultCodeString() << std::endl;
+            if (progress)
+                progress->cancel();
+
+            return GeoHeightField::INVALID;
+        }
+    }
+
+    Json::Value response;
+
+    Json::Reader reader;
+    if (!reader.parse(result.getString(), response, false))
+    {
+        return Status("Bing response: Invalid JSON in response");
+    }
+
+    const Json::Value& elevations = Json::Path(".resourceSets[0].resources[0].elevations").resolve(response);
+    if (elevations.isArray() == false)
+    {
+        return Status("Bing response: JSON path did not resolve");
+    }
+
+    if (elevations.size() != tileSize * tileSize)
+    {
+        return Status("Bing response: Insufficient data");
+    }
+
+    hf = new osg::HeightField();
+    hf->allocate(tileSize, tileSize);
+    int ptr = 0;
+    for (Json::ValueConstIterator i = elevations.begin(); i != elevations.end(); ++i)
+    {
+        float elevation = (*i).asDouble();
+        (*hf->getFloatArray())[ptr++] = elevation;
+    }
+
+    return GeoHeightField(hf.release(), key.getExtent());
 }

@@ -22,11 +22,10 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
-#include <osgEarth/Random>
 
 /**
- * Bing image layer endpoint.
  * Bing maps requires a license
  * https://msdn.microsoft.com/en-us/library/ff428643.aspx
  */
@@ -92,13 +91,68 @@ namespace osgEarth
         bool _debugDirect;
         TileURICache* _tileURICache;
         mutable OpenThreads::Atomic _apiCount;
+        std::string _key;
 
         std::string getQuadKey(const TileKey&) const;
         std::string getDirectURI(const TileKey&) const;
     };
 
+
+    /**
+     * Elevation layer connected to a Microsoft Bing Maps API endpoint
+     */
+    class OSGEARTH_EXPORT BingElevationLayer : public ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(std::string, apiKey);
+            OE_OPTION(URI, url);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, BingElevationLayer, Options, ElevationLayer, BingElevation);
+
+    public:
+        //! User's API key
+        void setAPIKey(const std::string& value);
+        const std::string& getAPIKey() const;
+
+        //! API endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the service
+        virtual const Status& open();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~BingElevationLayer();
+
+    private:
+        osg::ref_ptr<const Profile> _globalGeodetic;
+        std::string _key;
+    };
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::BingImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::BingElevationLayer::Options);
 
 #endif // OSGEARTH_TMS_H

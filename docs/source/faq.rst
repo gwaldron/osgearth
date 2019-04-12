@@ -51,12 +51,20 @@ I loaded a model, but it has no texture/lighting/etc. in osgEarth. Why?
     like sky lighting.
 
 
-My Annotations (FeatureNode, etc.) are not rendering. Why?
-..........................................................
+Lines or Annotations (FeatureNode, etc.) are not rendering. Why?
+................................................................
 
-    Best practice is to place an Annotation node (FeatureNodes, PlaceNodes, etc.)
-    as a descendant of the MapNode in your scene graph. You can also add them
-    to an AnnotationLayer and add that layer to the Map.
+    Lines render using a shader that requires some initial state to be set.
+    You can apply this state to your top-level camera (or anywhere else 
+    above the geometry) like so:
+    
+        #include <osgEarth/GLUtils>
+        ...
+        GLUtils::setGlobalDefaults(camera->getOrCreateStateSet());
+
+    For Annotations (FeatureNodes, PlaceNodes, etc.) best practice is to place
+    an Annotation node as a descendant of the MapNode in your scene graph.
+    You can also add them to an AnnotationLayer and add that layer to the Map.
 
     Annotations need access to the MapNode in order to render properly. If you 
     cannot place them under the MapNode, you will have to manually install a few

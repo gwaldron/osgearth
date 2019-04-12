@@ -23,6 +23,10 @@
 
 #define LC "[TileRasterizer] "
 
+#ifndef GL_ANY_SAMPLES_PASSED
+#define GL_ANY_SAMPLES_PASSED 0x8C2F
+#endif
+
 using namespace osgEarth;
 
 namespace

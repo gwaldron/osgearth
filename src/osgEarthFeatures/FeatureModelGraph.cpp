@@ -197,7 +197,9 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
             //if (map.valid() == true)
             {
                 Registry::instance()->startActivity(uri);
-                osg::Node* node = graph->load(lod, x, y, uri, readOptions);             
+                //START VRV_PATCH switched to ref_ptr so DtOsgFileCache does not thow it away.
+                osg::ref_ptr<osg::Node> node = graph->load(lod, x, y, uri, readOptions);   
+                //END VRV_PATCH 
                 Registry::instance()->endActivity(uri);
                 return ReadResult(node);
             }
@@ -642,8 +644,9 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
 {
     OE_TEST << LC << "load " << lod << "_" << tileX << "_" << tileY << std::endl;
 
-    osg::Group* result = 0L;
-    
+    //START VRV_PATCH switched to ref_ptr so DtOsgFileCache does not thow it away.
+    osg::ref_ptr<osg::Group> result = 0L;
+    //END VRV_PATCH
     if ( _useTiledSource )
     {       
         // A "tiled" source has a pre-generted tile hierarchy, but no range information.
@@ -788,7 +791,9 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
     // Done - run the pre-merge operations.
     runPreMergeOperations(result);
 
-    return result;
+    //START VRV_PATCH switched to ref_ptr so DtOsgFileCache does not thow it away.
+    return result.release();
+    //END VRV_PATCH 
 }
 
 

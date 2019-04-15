@@ -25,7 +25,7 @@
 #include <osgEarth/Locators>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/MapFrame>
+#include "MapFrame"
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>

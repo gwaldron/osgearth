@@ -31,7 +31,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/MapFrame>
+#include "MapFrame"
 #include <osgEarth/MapInfo>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine

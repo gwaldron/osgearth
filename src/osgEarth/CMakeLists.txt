@@ -143,7 +143,6 @@ SET(LIB_PUBLIC_HEADERS
     LocalTangentPlane
     Map
     MapCallback
-    MapFrame
     MapInfo
     MapModelChange
     MapNode
@@ -328,7 +327,6 @@ set(TARGET_SRC
     LocalTangentPlane.cpp
     Map.cpp
     MapCallback.cpp
-    MapFrame.cpp
     MapInfo.cpp
     MapNode.cpp
     MaskLayer.cpp

@@ -1143,16 +1143,6 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
                     moveElevationLayer(change.getElevationLayer());
                 break;
 
-            case MapModelChange::TOGGLE_LAYER:
-            {
-                ElevationLayer* elevationLayer = change.getElevationLayer();
-                if (elevationLayer)
-                {
-                    toggleElevationLayer(elevationLayer);
-                }
-                break;
-            }
-
             default:
                 break;
             }
@@ -1358,12 +1348,6 @@ RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layerMoved)
     {
         refresh();
     }
-}
-
-void
-RexTerrainEngineNode::toggleElevationLayer(ElevationLayer* layer)
-{
-    refresh();
 }
 
 // Generates the main shader code for rendering the terrain.

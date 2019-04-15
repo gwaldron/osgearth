@@ -811,16 +811,6 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
                     moveElevationLayer(change.getElevationLayer());
                 break;
 
-            case MapModelChange::TOGGLE_LAYER:
-            {
-                ElevationLayer* elevationLayer = change.getElevationLayer();
-                if (elevationLayer)
-                {
-                    toggleElevationLayer(elevationLayer);
-                }
-                break;
-            }
-
             default:
                 break;
             }

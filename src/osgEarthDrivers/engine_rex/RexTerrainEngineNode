@@ -120,7 +120,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void addTileLayer( Layer* layer );
         void removeImageLayer( ImageLayer* layerRemoved );
         void removeElevationLayer( ElevationLayer* layerRemoved );
-        void toggleElevationLayer( ElevationLayer* layer );
         void moveElevationLayer( ElevationLayer* layerMoved );
         
         //! refresh the statesets of the terrain and the imagelayer tile surface

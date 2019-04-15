@@ -42,6 +42,7 @@ SET(LIB_PUBLIC_HEADERS
     Feature
     FeatureCursor
     FeatureDisplayLayout
+    FeatureElevationLayer
     FeatureImageLayer
     FeatureIndex
     FeatureMaskLayer
@@ -90,6 +91,7 @@ SET(TARGET_SRC
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
+    FeatureElevationLayer.cpp
     FeatureImageLayer.cpp
     FeatureMaskLayer.cpp
     FeatureModelGraph.cpp

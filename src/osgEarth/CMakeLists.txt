@@ -89,7 +89,6 @@ SET(LIB_PUBLIC_HEADERS
     ColorFilter
     Common
     Composite
-    CompositeTileSource
     Config
     Containers
     Cube
@@ -281,7 +280,6 @@ set(TARGET_SRC
     Color.cpp
     ColorFilter.cpp
     Composite.cpp
-    CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
     CullingUtils.cpp

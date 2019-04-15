@@ -143,7 +143,7 @@ namespace osgEarth
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
         //! Writes a raster image for the given key (if the layer is open for writing)
-        virtual Status writeImageImplementation(const TileKey& key, osg::Image* image, ProgressCallback* progress) const;
+        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const;
 
         //! Assigns data extents to this layer (if open for writing).
         virtual void setDataExtents(const DataExtentList&);

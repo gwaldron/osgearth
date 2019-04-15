@@ -891,7 +891,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 }
 
 Status
-ImageLayer::writeImage(const TileKey& key, osg::Image* image, ProgressCallback* progress)
+ImageLayer::writeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress)
 {
     if (getStatus().isError())
         return getStatus();
@@ -900,7 +900,7 @@ ImageLayer::writeImage(const TileKey& key, osg::Image* image, ProgressCallback* 
 }
 
 Status
-ImageLayer::writeImageImplementation(const TileKey& key, osg::Image* image, ProgressCallback* progress) const
+ImageLayer::writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const
 {
     return Status(Status::ServiceUnavailable);
 }

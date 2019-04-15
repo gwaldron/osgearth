@@ -465,7 +465,7 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 }
 
 Status
-MBTilesImageLayer::writeImageImplementation(const TileKey& key, osg::Image* image, ProgressCallback* progress) const
+MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const
 {
     if (!isWritingRequested())
         return Status::ServiceUnavailable;

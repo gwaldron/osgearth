@@ -159,7 +159,7 @@ namespace osgEarth
          * Stores an image in this layer, if writing is enabled.
          * Returns a status value indicating whether the store succeeded.
          */
-        Status writeImage(const TileKey& key, osg::Image* image, ProgressCallback* progress =0L);
+        Status writeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress =0L);
 
         /**
          * Applies the texture compression options to a texture.
@@ -189,7 +189,7 @@ namespace osgEarth
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress) const;
 
         //! Subclass can override this to write data for a tile key.
-        virtual Status writeImageImplementation(const TileKey&, osg::Image*, ProgressCallback*) const;
+        virtual Status writeImageImplementation(const TileKey&, const osg::Image*, ProgressCallback*) const;
 
         //! Modify the bbox if an altitude is set (for culling)
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;

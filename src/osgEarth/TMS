@@ -557,10 +557,15 @@ namespace osgEarth
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
+        //! Writes a raster image for he given tile key (if open for writing)
+        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const;
+
     protected: // Layer
 
         //! Called by constructors
         virtual void init();
+
+        virtual bool isWritingSupported() const { return true; }
 
     protected:
 

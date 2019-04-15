@@ -27,14 +27,6 @@ using namespace osgEarth;
 
 //...................................................................
 
-Map::VisibleLayerCB::VisibleLayerCB(Map* map) : _map(map) { }
-
-void Map::VisibleLayerCB::onVisibleChanged(VisibleLayer* layer) {
-    osg::ref_ptr<Map> map;
-    if ( _map.lock(map) )
-        _map->notifyLayerVisibleChanged(layer);
-}
-
 Map::LayerCB::LayerCB(Map* map) : _map(map) { }
 
 void Map::LayerCB::onEnabledChanged(Layer* layer) {
@@ -156,12 +148,6 @@ Map::init()
     // we do our own caching
     _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
-    // encode this map in the read options.
-    //OptionsData<const Map>::set(_readOptions.get(), "osgEarth.Map", this);
-
-    // set up a callback that the Map will use to detect Layer visibility changes
-    _visibleLayerCB = new VisibleLayerCB(this);
-
     // create a callback that the Map will use to detect setEnabled calls
     _layerCB = new LayerCB(this);
 
@@ -179,34 +165,6 @@ ElevationPool*
 Map::getElevationPool() const
 {
     return _elevationPool.get();
-}
-
-void
-Map::notifyLayerVisibleChanged(VisibleLayer* layer)
-{
-    // bump the revision safely:
-    Revision newRevision;
-    {
-        Threading::ScopedWriteLock lock(_mapDataMutex);
-        newRevision = ++_dataModelRevision;
-    }
-
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    if (elevationLayer)
-    {
-        // reinitialize the elevation pool:
-        _elevationPool->clear();
-    }
-
-    MapModelChange change(
-        MapModelChange::TOGGLE_LAYER,
-        newRevision,
-        layer);
-
-    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-    {
-        i->get()->onMapModelChanged(change);
-    }
 }
 
 void
@@ -243,18 +201,6 @@ Map::notifyOnLayerEnabledChanged(Layer* layer)
     {
         i->get()->onMapModelChanged(change);
     }
-}
-
-const osgDB::Options*
-Map::getGlobalOptions() const
-{
-    return _globalOptions.get();
-}
-
-void
-Map::setGlobalOptions( const osgDB::Options* options )
-{
-    _globalOptions = options;
 }
 
 void
@@ -588,14 +534,8 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
 void
 Map::installLayerCallbacks(Layer* layer)
 {
-    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
-    if (visibleLayer)
-    {
-        visibleLayer->addCallback(_visibleLayerCB.get());
-    }
-
     // If this is an elevation layer, install a callback so we know when
-    // it's visibility changes:
+    // it's enabled state changes:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
     {
@@ -610,12 +550,6 @@ Map::installLayerCallbacks(Layer* layer)
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
-    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
-    if (visibleLayer)
-    {
-        visibleLayer->removeCallback(_visibleLayerCB.get());
-    }
-
     // undo the things we did in prepareLayer:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)

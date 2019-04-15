@@ -331,25 +331,6 @@ MapNode::open()
         HTTPClient::setProxySettings( options().proxySettings().get() );
     }
 
-    // establish global driver options. These are OSG reader-writer options that
-    // will make their way to any read* calls down the pipe
-    const osgDB::Options* global_options = _map->getGlobalOptions();
-
-    osg::ref_ptr<osgDB::Options> local_options = global_options ?
-        Registry::instance()->cloneOrCreateOptions( global_options ) :
-        NULL;
-
-    if ( local_options.valid() )
-    {
-        OE_INFO << LC
-            << "Options string = "
-            << (local_options.valid()? local_options->getOptionString() : "<empty>")
-            << std::endl;
-    }
-
-    // TODO: not sure why we call this here
-    _map->setGlobalOptions( local_options.get() );
-
     // load and attach the terrain engine.
     _terrainEngine = TerrainEngineNodeFactory::create(options().terrain().get());
     _terrainEngineInitialized = false;

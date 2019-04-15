@@ -207,22 +207,12 @@ namespace osgEarth
         std::string _name;
         LayerVector _layers;
         mutable MapCallbackList _mapCallbacks;
-        osg::ref_ptr<const osgDB::Options> _globalOptions;
         mutable Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<ElevationPool> _elevationPool;
-
-        struct VisibleLayerCB : public VisibleLayerCallback {
-            osg::observer_ptr<Map> _map;
-            VisibleLayerCB(Map*);
-            void onVisibleChanged(VisibleLayer* layer);
-        };
-        osg::ref_ptr<VisibleLayerCB> _visibleLayerCB;
-        friend struct VisibleLayerCB;
-        void notifyLayerVisibleChanged(VisibleLayer*);
 
         struct LayerCB : public LayerCallback {
             LayerCB(Map*);

@@ -131,6 +131,17 @@ ElevationLayer::init()
     // elevation layers do not render directly; rather, a composite of elevation data
     // feeds the terrain engine to permute the mesh.
     setRenderType(RENDERTYPE_NONE);
+
+    // sync up enabled & visible
+    if (getVisible() != getEnabled())
+        setVisible(getEnabled());
+}
+
+void
+ElevationLayer::setVisible(bool value)
+{
+    VisibleLayer::setVisible(value);
+    setEnabled(value);
 }
 
 bool

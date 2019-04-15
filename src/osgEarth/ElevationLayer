@@ -63,6 +63,9 @@ namespace osgEarth
         void setNoDataPolicy(const ElevationNoDataPolicy& value);
         const ElevationNoDataPolicy& getNoDataPolicy() const;
 
+        //! Override from VisibleLayer
+        virtual void setVisible(bool value);
+
     public: // methods
         
         /**

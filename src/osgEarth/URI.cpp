@@ -368,6 +368,7 @@ namespace
             return HTTPClient::readObject(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
+            if (!osgDB::fileExists(uri)) return ReadResult::RESULT_NOT_FOUND;
             return ReadResult(osgDB::readRefObjectFile(uri, opt).get());
         }
     };
@@ -388,6 +389,7 @@ namespace
             return HTTPClient::readNode(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
+            if (!osgDB::fileExists(uri)) return ReadResult::RESULT_NOT_FOUND;
             return ReadResult(osgDB::readRefNodeFile(uri, opt));
         }
     };
@@ -420,6 +422,7 @@ namespace
             return r;
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
+            if (!osgDB::fileExists(uri)) return ReadResult::RESULT_NOT_FOUND;
             ReadResult r = ReadResult(osgDB::readRefImageFile(uri, opt));
             if ( r.getImage() ) r.getImage()->setFileName( uri );
             return r;

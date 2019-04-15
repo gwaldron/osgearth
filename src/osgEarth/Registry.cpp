@@ -41,6 +41,11 @@ using namespace OpenThreads;
 
 #define LC "[Registry] "
 
+void osgEarth::initialize()
+{
+    osgEarth::Registry::instance()->getCapabilities();
+}
+
 namespace
 {
     void CPL_STDCALL myCPLErrorHandler(CPLErr errClass, int errNum, const char* msg)

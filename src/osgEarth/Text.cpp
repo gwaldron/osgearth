@@ -216,8 +216,7 @@ Text::createStateSet()
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset.get());
     vp->setName("osgEarth::Text");
     osgEarth::Shaders coreShaders;
-    coreShaders.load(vp, coreShaders.TextVertex);
-    coreShaders.load(vp, coreShaders.TextFragment);
+    coreShaders.load(vp, coreShaders.Text);
 
     return stateset.release();
 #else

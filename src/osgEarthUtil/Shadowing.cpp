@@ -186,8 +186,7 @@ ShadowCaster::reinitialize()
     // Load the shadowing shaders.
     Shaders package;
     package.replace("$OE_SHADOW_NUM_SLICES", Stringify()<<numSlices);
-    package.load(vp, package.Shadowing_Vertex);
-    package.load(vp, package.Shadowing_Fragment);
+    package.load(vp, package.ShadowCaster);
 
     // the texture coord generator matrix array (from the caster):
     _shadowMapTexGenUniform = _renderStateSet->getOrCreateUniform(

@@ -112,7 +112,7 @@ ContourMapLayer::init()
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     vp->setName("ContourMap");
     Shaders pkg;
-    pkg.load(vp, pkg.ContourMap_Fragment);
+    pkg.load(vp, pkg.ContourMap);
 
     // build a transfer function.
     osg::TransferFunction1D* xfer = new osg::TransferFunction1D();

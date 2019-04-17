@@ -60,12 +60,11 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 
         if ( _useFragDepth )
         {
-            pkg.load( vp, pkg.LogDepthBuffer_VertFile );
-            pkg.load( vp, pkg.LogDepthBuffer_FragFile );
+            pkg.load( vp, pkg.LogDepthBuffer );
         }
         else
         {
-            pkg.load( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
+            pkg.load( vp, pkg.LogDepthBuffer_VertOnly );
         }
     }
 }
@@ -82,9 +81,8 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             if ( vp )
             {
                 Shaders pkg;
-                pkg.unload( vp, pkg.LogDepthBuffer_FragFile );
-                pkg.unload( vp, pkg.LogDepthBuffer_VertFile );
-                pkg.unload( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
+                pkg.unload( vp, pkg.LogDepthBuffer );
+                pkg.unload( vp, pkg.LogDepthBuffer_VertOnly );
             }
         }
     }

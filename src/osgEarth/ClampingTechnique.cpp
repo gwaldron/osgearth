@@ -300,8 +300,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     vp->addBindAttribLocation( Clamping::HeightsAttrName, Clamping::HeightsAttrLocation );
 
     osgEarth::Shaders pkg;
-    pkg.load(vp, pkg.GPUClampingVertex);
-    pkg.load(vp, pkg.GPUClampingFragment);
+    pkg.load(vp, pkg.GPUClamping);
 }
 
 

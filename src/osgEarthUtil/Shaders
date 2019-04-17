@@ -32,25 +32,13 @@ namespace osgEarth { namespace Util
         Shaders();
 
 		std::string
-            ContourMap_Vertex,
-            ContourMap_Fragment,
-
-            Fog_Vertex,
-            Fog_Fragment,
-
-            Graticule_Fragment,
-            Graticule_Vertex,
-
-            LogDepthBuffer_VertFile,
-            LogDepthBuffer_FragFile,
-            LogDepthBuffer_VertOnly_VertFile,
-
-            Shadowing_Vertex,
-            Shadowing_Fragment,
-
-            SimpleOceanLayer_Vertex,
-            SimpleOceanLayer_Fragment,
-            
+            ContourMap,
+            Fog,
+            GeodeticGraticule,
+            LogDepthBuffer,
+            LogDepthBuffer_VertOnly,
+            ShadowCaster,
+            SimpleOceanLayer,            
             RTTPicker;
 	};	
 } } // namespace osgEarth::Util

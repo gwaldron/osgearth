@@ -91,8 +91,7 @@ SimpleOceanLayer::init()
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->setName("SimpleOceanLayer");
     Shaders shaders;
-    shaders.load(vp, shaders.SimpleOceanLayer_Vertex);
-    shaders.load(vp, shaders.SimpleOceanLayer_Fragment);
+    shaders.load(vp, shaders.SimpleOceanLayer);
 
     ss->setDefine("OE_TERRAIN_RENDER_ELEVATION", osg::StateAttribute::OFF);
     ss->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP", osg::StateAttribute::OFF);

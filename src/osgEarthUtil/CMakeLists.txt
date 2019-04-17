@@ -69,19 +69,13 @@ set(SHADERS_CPP
     "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 set(TARGET_GLSL
-    ContourMap.vert.glsl
-    ContourMap.frag.glsl
-    Fog.vert.glsl
-    Fog.frag.glsl
-    Graticule.vert.glsl
-    Graticule.frag.glsl
-    LogDepthBuffer.vert.glsl
-    LogDepthBuffer.VertOnly.vert.glsl
-    LogDepthBuffer.frag.glsl
-    Shadowing.vert.glsl
-    Shadowing.frag.glsl
-    SimpleOceanLayer.vert.glsl
-    SimpleOceanLayer.frag.glsl
+    ContourMap.glsl
+    Fog.glsl
+    GeodeticGraticule.glsl
+    LogDepthBuffer.glsl
+    LogDepthBuffer.VertOnly.glsl
+    ShadowCaster.glsl
+    SimpleOceanLayer.glsl
     RTTPicker.glsl)
 
 set(TARGET_IN

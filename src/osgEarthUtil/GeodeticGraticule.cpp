@@ -350,8 +350,7 @@ GeodeticGraticule::setMapNode(MapNode* mapNode)
             if ( vp )
             {
                 Shaders package;
-                package.unload( vp, package.Graticule_Vertex );
-                package.unload( vp, package.Graticule_Fragment );
+                package.unload( vp, package.GeodeticGraticule );
 
                 stateset->removeUniform( COLOR_UNIFORM );
                 stateset->removeUniform( WIDTH_UNIFORM );
@@ -375,8 +374,7 @@ GeodeticGraticule::setMapNode(MapNode* mapNode)
 
         // configure shaders
         Shaders package;
-        package.load(vp, package.Graticule_Vertex);
-        package.load(vp, package.Graticule_Fragment);
+        package.load(vp, package.GeodeticGraticule);
 
         stateset->addUniform(new osg::Uniform(COLOR_UNIFORM, options().color().get()));
         stateset->addUniform(new osg::Uniform(WIDTH_UNIFORM, options().lineWidth().get()));

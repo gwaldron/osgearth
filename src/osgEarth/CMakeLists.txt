@@ -40,19 +40,15 @@ SET(LIB_NAME osgEarth)
 set(TARGET_GLSL
     CascadeDraping.glsl
     ClipPlane.glsl
-    DepthOffset.vert.glsl
-    Draping.vert.glsl
-    Draping.frag.glsl
-    GPUClamping.vert.glsl
-    GPUClamping.vert.lib.glsl
-    GPUClamping.frag.glsl
-    Instancing.vert.glsl
+    DepthOffset.glsl
+    Draping.glsl
+    GPUClamping.glsl
+    GPUClamping.lib.glsl
+    Instancing.glsl
     LineDrawable.glsl
-    PhongLighting.vert.glsl
-    PhongLighting.frag.glsl
+    PhongLighting.glsl
     PointDrawable.glsl
-    Text.vert.glsl
-    Text.frag.glsl
+    Text.glsl
     Text_legacy.glsl
     )
 

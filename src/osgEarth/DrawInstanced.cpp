@@ -248,7 +248,7 @@ DrawInstanced::install(osg::StateSet* stateset)
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     vp->setName("DrawInstanced");
     osgEarth::Shaders pkg;
-    pkg.load( vp, pkg.InstancingVertex );
+    pkg.load( vp, pkg.Instancing );
 
     return true;
 }
@@ -265,7 +265,7 @@ DrawInstanced::remove(osg::StateSet* stateset)
         return;
 
     Shaders pkg;
-    pkg.unload( vp, pkg.InstancingVertex );
+    pkg.unload( vp, pkg.Instancing );
 }
 
 bool

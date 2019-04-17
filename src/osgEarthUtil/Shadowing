@@ -32,6 +32,18 @@
 namespace osgEarth { namespace Util 
 {
     /**
+     * Static Shadowing methods
+     */
+    struct OSGEARTHUTIL_EXPORT Shadowing
+    {
+        //! Marks a camera as a shadow map camera
+        static void setIsShadowCamera(osg::Camera* camera);
+
+        //! Whether a camera is marked as a shadow map camera
+        static bool isShadowCamera(const osg::Camera* camera);
+    };
+
+    /**
      * Group that casts shadows on its subgraph.
      *
      * NOTE!! This object is not multi-camera aware yet.
@@ -39,6 +51,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT ShadowCaster : public osg::Group
     {
     public:
+        //! Construct a shadow caster
         ShadowCaster();
 
         /** Whether shadows are supported (requires GLSL) */

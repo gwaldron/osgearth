@@ -23,8 +23,7 @@
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Shadowing>
-#include <osgEarth/ClampableNode>
+#include <osgEarth/CameraUtils>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
@@ -89,14 +88,13 @@ bool
 GroundCoverLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
 {
     // if this is a shadow camera and the layer is configured to cast shadows, accept it.
-    if (osgEarth::Shadowing::isShadowCamera(camera))
+    if (CameraUtils::isShadowCamera(camera))
     {
-        bool use = (_layer->options().castShadows() == true);
-        return use;
+        return _layer->getCastShadows();
     }
 
     // if this is a depth-pass camera (and not a shadow cam), reject it.
-    bool isDepthCamera = ClampableNode::isDepthCamera(camera);
+    bool isDepthCamera = CameraUtils::isDepthCamera(camera);
     if (isDepthCamera)
         return false;
 

@@ -19,24 +19,38 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/Shadowing>
+#include <osgEarth/CameraUtils>
+#include <osg/Camera>
 
-#define LC "[Shadowing] "
+#define LC "[CameraUtils] "
 
 using namespace osgEarth;
 
-
 void
-Shadowing::setIsShadowCamera(osg::Camera* camera)
+CameraUtils::setIsShadowCamera(osg::Camera* camera)
 {
     osg::StateSet* ss = camera->getOrCreateStateSet();
     ss->setDefine("OE_IS_SHADOW_CAMERA");
+    setIsDepthCamera(camera);
+}
+
+bool
+CameraUtils::isShadowCamera(const osg::Camera* camera)
+{
+    const osg::StateSet* ss = camera->getStateSet();
+    return ss && ss->getDefinePair("OE_IS_SHADOW_CAMERA") != 0L;
+}
+
+void
+CameraUtils::setIsDepthCamera(osg::Camera* camera)
+{
+    osg::StateSet* ss = camera->getOrCreateStateSet();
     ss->setDefine("OE_IS_DEPTH_CAMERA");
 }
 
 bool
-Shadowing::isShadowCamera(const osg::Camera* camera)
+CameraUtils::isDepthCamera(const osg::Camera* camera)
 {
     const osg::StateSet* ss = camera->getStateSet();
-    return ss && ss->getDefinePair("OE_IS_SHADOW_CAMERA") != 0L;
+    return ss && ss->getDefinePair("OE_IS_DEPTH_CAMERA") != 0L;
 }

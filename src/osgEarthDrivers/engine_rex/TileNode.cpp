@@ -30,7 +30,6 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TraversalData>
-#include <osgEarth/Shadowing>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TraversalData>

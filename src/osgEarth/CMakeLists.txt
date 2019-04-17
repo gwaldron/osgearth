@@ -79,6 +79,7 @@ SET(LIB_PUBLIC_HEADERS
     CacheBin
     CachePolicy
     CacheSeed
+    CameraUtils
     Capabilities
     CesiumIon
     CascadeDrapingDecorator
@@ -183,7 +184,6 @@ SET(LIB_PUBLIC_HEADERS
     ShaderLoader
     ShaderMerger
     ShaderUtils
-    Shadowing
     SimplexNoise
     SpatialReference
     StateSetCache
@@ -270,6 +270,7 @@ set(TARGET_SRC
     CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
+    CameraUtils.cpp
     Capabilities.cpp
     CesiumIon.cpp
     CascadeDrapingDecorator.cpp
@@ -361,7 +362,6 @@ set(TARGET_SRC
     ShaderLoader.cpp
     ShaderMerger.cpp
     ShaderUtils.cpp
-    Shadowing.cpp
     SimplexNoise.cpp
     SpatialReference.cpp
     StateSetCache.cpp

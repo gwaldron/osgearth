@@ -19,23 +19,33 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_SHADOWING_H
-#define OSGEARTH_SHADOWING_H  1
+#ifndef OSGEARTH_CAMERAUTILS_H
+#define OSGEARTH_CAMERAUTILS_H  1
 
 #include <osgEarth/Common>
-#include <osg/Camera>
+
+namespace osg {
+    class Camera;
+}
 
 namespace osgEarth
 {
-    struct OSGEARTH_EXPORT Shadowing
+    struct OSGEARTH_EXPORT CameraUtils
     {
-        /** Marks a camera as a shadow map camera */
+        //! Marks a camera as a shadow map camera
         static void setIsShadowCamera(osg::Camera* camera);
 
-        /** Whether a camera is marked as a shadow map camera */
+        //! Whether a camera is marked as a shadow map camera
         static bool isShadowCamera(const osg::Camera* camera);
+
+        //! Marks a camera as a depth camera
+        static void setIsDepthCamera(osg::Camera* camera);
+
+        //! Whether a camera is marked is a depth camera
+        static bool isDepthCamera(const osg::Camera* camera);
+
     };
 
 }  // namespace osgEarth::Util
 
-#endif // OSGEARTH_SHADOWING_H
+#endif // OSGEARTH_CAMERAUTILS_H

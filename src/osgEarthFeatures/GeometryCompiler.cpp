@@ -74,13 +74,9 @@ _optimizeStateSharing  ( true ),
 _optimize              ( false ),
 _optimizeVertexOrdering( true ),
 _validate              ( false ),
-_maxPolyTilingAngle    ( 45.0f ),
-_useGPULines           ( false )
+_maxPolyTilingAngle    ( 45.0f )
 {
-    if (::getenv("OSGEARTH_GPU_SCREEN_SPACE_LINES") != 0L)
-    {
-        _useGPULines.init(true);
-    }
+    //nop
 }
 
 //-----------------------------------------------------------------------
@@ -97,8 +93,7 @@ _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
 _optimize              ( s_defaults.optimize().value() ),
 _optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
 _validate              ( s_defaults.validate().value() ),
-_maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
-_useGPULines           ( s_defaults.useGPUScreenSpaceLines().value() )
+_maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() )
 {
     fromConfig(conf.getConfig());
 }
@@ -119,7 +114,6 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.get( "optimize_vertex_ordering", _optimizeVertexOrdering);
     conf.get( "validate", _validate );
     conf.get( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.get( "use_gpu_screen_space_lines", _useGPULines );
 
     conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -143,7 +137,6 @@ GeometryCompilerOptions::getConfig() const
     conf.set( "optimize_vertex_ordering", _optimizeVertexOrdering);
     conf.set( "validate", _validate );
     conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.set( "use_gpu_screen_space_lines", _useGPULines );
 
     conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );

@@ -95,7 +95,6 @@ namespace osgEarth { namespace Features
         Config getConfig() const;
 
     protected:
-        //optional<FeatureSource::Options>      _featureSource;
         optional<FeatureDisplayLayout>      _layout;
         optional<StringExpression>          _featureNameExpr;
         optional<bool>                      _lit;

@@ -368,8 +368,9 @@ namespace
             return HTTPClient::readObject(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            if (!osgDB::fileExists(uri)) return ReadResult::RESULT_NOT_FOUND;
-            return ReadResult(osgDB::readRefObjectFile(uri, opt).get());
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readObject(uri, opt);
+            if (osgRR.validObject()) return ReadResult(osgRR.takeObject());
+            else return ReadResult(osgRR.statusMessage());
         }
     };
 
@@ -389,8 +390,9 @@ namespace
             return HTTPClient::readNode(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            if (!osgDB::fileExists(uri)) return ReadResult::RESULT_NOT_FOUND;
-            return ReadResult(osgDB::readRefNodeFile(uri, opt));
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readNode(uri, opt);
+            if (osgRR.validNode()) return ReadResult(osgRR.takeNode());
+            else return ReadResult(osgRR.statusMessage());
         }
     };
 
@@ -422,10 +424,12 @@ namespace
             return r;
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            if (!osgDB::fileExists(uri)) return ReadResult::RESULT_NOT_FOUND;
-            ReadResult r = ReadResult(osgDB::readRefImageFile(uri, opt));
-            if ( r.getImage() ) r.getImage()->setFileName( uri );
-            return r;
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImage(uri, opt);
+            if (osgRR.validImage()) {
+                osgRR.getImage()->setFileName(uri);
+                return ReadResult(osgRR.takeImage());
+            }
+            else return ReadResult(osgRR.statusMessage());
         }
     };
 

@@ -68,7 +68,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, ModelLayer, Options, VisibleLayer, model);
+        META_Layer(osgEarth, ModelLayer, Options, VisibleLayer, Model);
 
     public:
         //! Sets the node to add to the map's scene graph. Set this OR setURL

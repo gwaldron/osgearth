@@ -15,7 +15,4 @@ needs to be absolutely positioned.
     <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>
     
-    <viewpoints>
-        <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
-    </viewpoints>
 </Map>

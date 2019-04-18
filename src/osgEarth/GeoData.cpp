@@ -119,7 +119,7 @@ _altMode( ALTMODE_ABSOLUTE )
     conf.get( "alt", _p.z() );
     conf.get( "hat", _p.z() ); // height above terrain (relative)
 
-    if ( !_srs.valid() )
+    if ( !_srs.valid() && conf.hasValue("srs") )
         _srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
 
     if ( conf.hasValue("lat") && (!_srs.valid() || _srs->isGeographic()) )

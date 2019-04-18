@@ -198,7 +198,7 @@ MapNode::Options::getConfig() const
     conf.set( "cascade_draping",          useCascadeDraping() );
     conf.set( "projected",                projected() );
 
-    if (terrain().isSet())
+    if (terrain().isSet() && !terrain()->empty())
         conf.set( "terrain", terrain()->getConfig() );
 
     return conf;

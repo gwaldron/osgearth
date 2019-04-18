@@ -27,6 +27,7 @@ using namespace osgEarth::Features;
 #define LC "[FeatureMaskLayer] "
 
 REGISTER_OSGEARTH_LAYER(featuremask, FeatureMaskLayer);
+REGISTER_OSGEARTH_LAYER(feature_mask, FeatureMaskLayer);
 
 //........................................................................
 

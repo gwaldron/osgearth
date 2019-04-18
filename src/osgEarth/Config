@@ -530,7 +530,8 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.set("driver", _driver);
+            if (!_driver.empty())
+                conf.set("driver", _driver);
             return conf;
         }
 

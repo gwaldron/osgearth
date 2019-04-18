@@ -454,17 +454,6 @@ ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
             ++count;
     }
 
-    if (count < input.size())
-    {
-        OE_WARN << LC << "Issue: Envelope had failed samples" << std::endl;
-        for (ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin(); tile_ref != _tiles.end(); ++tile_ref)
-        {
-            ElevationPool::Tile* tile = tile_ref->get();
-            OE_WARN << LC << " ... tile " << tile->_bounds.toString() << std::endl;
-        }
-        OE_WARN << LC << std::endl;
-    }
-
     return count;
 }
 

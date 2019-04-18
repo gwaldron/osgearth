@@ -135,6 +135,10 @@ Config::merge( const Config& rhs )
     // add in the new values.
     for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
         add( *c );
+    
+    // merge ref map
+    for( RefMap::const_iterator c = rhs._refMap.begin(); c != rhs._refMap.end(); ++c )
+        _refMap[c->first] = c->second;
 }
 
 const Config*

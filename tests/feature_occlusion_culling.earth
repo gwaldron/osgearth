@@ -11,7 +11,7 @@ Demonstrates occlusion culling on feature labels.
         <url>../data/world.shp</url>
     </OGRFeatures>
             
-    <FeatureModel name="labels" feature_source="labels-data">
+    <FeatureModel name="labels" features="labels-data">
         <styles>
             <style type="text/css">              
                 labels {                            

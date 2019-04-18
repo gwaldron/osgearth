@@ -14,7 +14,7 @@ the feature data.
         <url>../data/world.tif</url>
     </GDALImage>
     
-    <FeatureModel name="Countries" feature_source="world-data" opacity="0.8">
+    <FeatureModel name="Countries" features="world-data" opacity="0.8">
         <styles>        
             <style type="text/css">
                 base {

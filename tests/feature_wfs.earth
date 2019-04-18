@@ -15,7 +15,7 @@ Demonstrates how to read feature data from a WFS server
         <outputformat>json</outputformat>
     </WFSFeatures>
     
-    <FeatureModel name="States" feature_source="states">
+    <FeatureModel name="States" features="states">
         <styles>        
             <style type="text/css">
                 states {
@@ -28,7 +28,7 @@ Demonstrates how to read feature data from a WFS server
         </styles>
     </FeatureModel>
     
-    <FeatureModel name="Labels" feature_source="states">
+    <FeatureModel name="Labels" features="states">
         <styles>
             <style type="text/css">              
                 names {

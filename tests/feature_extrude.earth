@@ -9,7 +9,7 @@ osgEarth Sample - footprint extrusion
         <build_spatial_index>true</build_spatial_index>
     </OGRFeatures>
 	         
-    <FeatureModel name="buildings" feature_source="buildings-data">
+    <FeatureModel name="buildings" features="buildings-data">
         <styles>
             <style type="text/css">
                 buildings {

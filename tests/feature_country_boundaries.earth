@@ -10,7 +10,7 @@
         </filters>
     </OGRFeatures>
     
-    <FeatureModel name="Country boundaries" feature_source="world-data">
+    <FeatureModel name="Country boundaries" features="world-data">
         
         <layout tile_size="500000" crop_features="true" paged="true">
             <level max_range="1e10"/>

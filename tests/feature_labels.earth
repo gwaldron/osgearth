@@ -13,7 +13,7 @@ This shows how to label point features with an attribute.
         <url>../data/cities.gpkg</url>
     </OGRFeatures>
     
-    <FeatureModel name="cities" feature_source="city-data">        
+    <FeatureModel name="cities" features="city-data">        
         <feature_indexing enabled="false"/>
         <styles>
             <selector class="cities">

@@ -31,7 +31,7 @@ display. The options are:
         </geometry>
     </OGRFeatures>
 
-    <FeatureModel name="Great Circle" feature_source="geometry1">
+    <FeatureModel name="Great Circle" features="geometry1">
         <geo_interpolation>great_circle</geo_interpolation>
         <styles>
             <style type="text/css">
@@ -46,7 +46,7 @@ display. The options are:
         </styles>        
     </FeatureModel>
 
-    <FeatureModel name="Rhumb Line" feature_source="geometry2">
+    <FeatureModel name="Rhumb Line" features="geometry2">
         <geo_interpolation>rhumb_line</geo_interpolation>
         <styles>
             <style type="text/css">

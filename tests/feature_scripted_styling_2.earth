@@ -16,7 +16,7 @@ Demonstrates how to select a style name using javascript.
         </filters>
     </OGRFeatures>
     
-    <FeatureModel name="countries" feature_source="country-data">        
+    <FeatureModel name="countries" features="country-data">        
         <styles>        
             <style type="text/css">
                 p1 { fill: #ffff80; altitude-clamping: terrain-drape; }

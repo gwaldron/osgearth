@@ -4,7 +4,7 @@
         <url>../data/points.shp</url>
     </OGRFeatures>
                
-    <FeatureModel name="points" feature_source="points">                
+    <FeatureModel name="points" features="points">                
         <styles>
             <style type="text/css">
                 points {

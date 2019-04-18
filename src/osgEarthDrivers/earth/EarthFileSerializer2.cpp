@@ -382,8 +382,8 @@ namespace
             const std::string& driver = c.value("driver");
             if (driver == "gdal") c.key() = "GDALImage";
             else if (driver == "mbtiles") c.key() = "MBTilesImage";
-            else if (driver == "arcgisonline") c.key() == "ArcGISServerImage";
-            else if (driver == "tilepackage") c.key() == "ArcGISTilePackageImage";
+            else if (driver == "arcgisonline") c.key() = "ArcGISServerImage";
+            else if (driver == "tilepackage") c.key() = "ArcGISTilePackageImage";
             else if (driver == "bing") c.key() = "BingImage";
             else if (driver == "cesiumion") c.key() = "CesiumIonImage";
             else if (driver == "landcover") c.key() = "LandCover";

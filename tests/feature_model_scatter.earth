@@ -18,7 +18,7 @@ is randomized, but it is randomized exactly the same way each time.
     <FeatureModel name="trees" enabled="true">
     
         <!-- Feature Layer to read the data from -->
-        <feature_source> trees-data </feature_source>
+        <features> trees-data </features>
         
         <!-- The stylesheet will describe how to render the feature data. In this case
              we indicate model substitution with density-based scattering. The "density"

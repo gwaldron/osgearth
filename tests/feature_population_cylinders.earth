@@ -14,7 +14,7 @@ Shows how to use JavaScript to create geometry parametrically.
         <build_spatial_index>true</build_spatial_index>
     </OGRFeatures>
     
-    <FeatureModel name="City Population" feature_source="cities-data">
+    <FeatureModel name="City Population" features="cities-data">
         <styles>
             <script profile="full">
               <![CDATA[
@@ -46,7 +46,7 @@ Shows how to use JavaScript to create geometry parametrically.
     </FeatureModel>
     
     
-    <FeatureModel name="City Labels" feature_source="cities-data">        
+    <FeatureModel name="City Labels" features="cities-data">        
         <layout>
             <level name="far" style="large"  max_range="1e10"/>
         </layout>

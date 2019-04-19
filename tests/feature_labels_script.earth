@@ -13,7 +13,7 @@ This shows how to label point features with an attribute (with some extra zing).
         <url>../data/world.shp</url>
     </OGRFeatures>
     
-    <FeatureModel name="City names" feature_source="city-data">
+    <FeatureModel name="City names" features="city-data">
         <styles>
 		    <script profile="full">
               <![CDATA[

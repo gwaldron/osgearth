@@ -15,7 +15,7 @@ Shows how to use Levels and Selectors together when rendering feature data.
         <url>../data/cities.gpkg</url>
     </OGRFeatures>
     
-    <FeatureModel name="Boundaries" feature_source="boundary-data">
+    <FeatureModel name="Boundaries" features="boundary-data">
         <styles>
             <style type="text/css">
                 world {
@@ -28,7 +28,7 @@ Shows how to use Levels and Selectors together when rendering feature data.
         </styles>        
     </FeatureModel>    
     
-    <FeatureModel name="Cities" feature_source="city-data">        
+    <FeatureModel name="Cities" features="city-data">        
         <layout>
             <level name="far"    style="large"  max_range="1e10"/>
             <level name="medium" style="medium" max_range="3000000"/>

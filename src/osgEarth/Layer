@@ -40,7 +40,7 @@ namespace osgDB {
 //! Macro to use when defining a LayerOptions class
 #define META_LayerOptions(LIBRARY, MYCLASS, SUPERCLASS) \
     protected: \
-        virtual void mergeConfig(const Config& conf) { \
+        virtual void mergeConfig(const osgEarth::Config& conf) { \
             SUPERCLASS ::mergeConfig(conf); \
             fromConfig(conf); \
         } \
@@ -49,7 +49,7 @@ namespace osgDB {
         MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
         \
         OE_COMMENT("Construct layer options from serialized data") \
-        MYCLASS (const ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
+        MYCLASS (const osgEarth::ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
 
 
 //! Macro to use when defining a Layer class

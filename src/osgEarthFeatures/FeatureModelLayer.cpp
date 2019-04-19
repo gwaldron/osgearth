@@ -74,6 +74,9 @@ void FeatureModelLayer::Options::mergeConfig(const Config& conf)
 
 //...........................................................................
 
+OE_LAYER_PROPERTY_IMPL(FeatureModelLayer, bool, AlphaBlending, alphaBlending);
+OE_LAYER_PROPERTY_IMPL(FeatureModelLayer, bool, EnableLighting, enableLighting);
+
 FeatureModelLayer::~FeatureModelLayer()
 {
     //NOP

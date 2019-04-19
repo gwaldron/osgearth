@@ -70,6 +70,13 @@ namespace osgEarth { namespace Features
 
         //! Stylesheet to apply to the features
         void setStyleSheet(StyleSheet* value);
+        StyleSheet* getStyleSheet() const { return _styleSheet.get(); }
+
+        void setAlphaBlending(const bool& value);
+        const bool& getAlphaBlending() const;
+
+        void setEnableLighting(const bool& value);
+        const bool& getEnableLighting() const;
 
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();

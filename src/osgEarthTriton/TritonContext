@@ -43,7 +43,7 @@ namespace osgEarth { namespace Triton
     public:
         META_Object(osgEarth, TritonContext);
 
-        TritonContext(const TritonLayerOptions&);
+        TritonContext(const TritonLayer::Options&);
 
         /** Sets the spatial reference system of the map */
         void setSRS(const osgEarth::SpatialReference* srs);
@@ -93,7 +93,7 @@ namespace osgEarth { namespace Triton
         TritonContext(const TritonContext&, const osg::CopyOp&) { }
 
     private:
-        TritonLayerOptions    _options;
+        TritonLayer::Options _options;
 
         bool             _initAttempted;
         bool             _initFailed;

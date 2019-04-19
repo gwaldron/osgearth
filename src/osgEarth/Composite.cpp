@@ -62,17 +62,10 @@ namespace osgEarth { namespace Composite
         {
             image = 0;
             opacity = 1;
-            dataInExtents = false;
         }
 
-        ImageInfo(osg::Image* image, float opacity, bool dataInExtents)
-        {
-            this->image = image;
-            this->opacity = opacity;
-            this->dataInExtents = dataInExtents;
-        }
-
-        bool dataInExtents;
+        TileKey bestAvailableKey;
+        //bool mayHaveData;
         float opacity;
         osg::ref_ptr< osg::Image> image;
     };
@@ -116,8 +109,8 @@ CompositeImageLayer::open()
     // You may not call addLayers() and also put layers in the options.
     if (_layers.empty() == false && options().layers().empty() == false)
     {
-        return setStatus(Status(Status::ConfigurationError, 
-            "Illegal to add layers both by options and by API"));
+        return setStatus(Status::ConfigurationError, 
+            "Illegal to add layers both by options and by API");
     }
 
     // If the user didn't call addLayer(), try to read them from the options.
@@ -141,10 +134,10 @@ CompositeImageLayer::open()
         }
     }
 
-    // otherwise, we need to add these layers to the options in case
-    // someone calls getConfig.
     else
     {
+        // the user added layers through the API, so store each layer's options
+        // for serialization
         for(ImageLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
         {
             ImageLayer* layer = i->get();
@@ -176,8 +169,9 @@ CompositeImageLayer::open()
             profile = layer->getProfile();
             if (!profile.valid())
             {
-                return setStatus(Status(Status::ResourceUnavailable, 
-                    Stringify()<<"Cannot establish profile for layer " << layer->getName()));
+                return setStatus(
+                    Status::ResourceUnavailable, 
+                    Stringify()<<"Cannot establish profile for layer " << layer->getName());
             }
         }
 
@@ -231,10 +225,11 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
     {
         ImageLayer* layer = itr->get();
         Composite::ImageInfo imageInfo;
-        imageInfo.dataInExtents = layer->mayHaveData(key);
         imageInfo.opacity = layer->getOpacity();
-
-        if (imageInfo.dataInExtents)
+        imageInfo.bestAvailableKey = layer->getBestAvailableTileKey(key);
+        
+        // if there is possibly actual data for this key...
+        if (imageInfo.bestAvailableKey == key)
         {
             GeoImage image = layer->createImage(key, progress);
             if (image.valid())
@@ -253,7 +248,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
         images.push_back(imageInfo);
     }
 
-    // Determine the output texture size to use based on the image that were creatd.
+    // Determine the output texture size to use based on the image that were created.
     unsigned numValidImages = 0;
     osg::Vec2s textureSize;
     for (unsigned int i = 0; i < images.size(); i++)
@@ -276,27 +271,28 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
         {
             Composite::ImageInfo& info = images[i];
             ImageLayer* layer = _layers[i].get();
-            if (!info.image.valid() && info.dataInExtents)
-            {                      
-                TileKey parentKey = key.createParentKey();
+            if (info.image.valid() == false && info.bestAvailableKey.valid())
+            {
+                TileKey currentKey = info.bestAvailableKey; //key.createParentKey();
 
                 GeoImage image;
-                while (!image.valid() && parentKey.valid())
+                while (!image.valid() && currentKey.valid())
                 {
-                    image = layer->createImage(parentKey, progress);
+                    image = layer->createImage(currentKey, progress);
                     if (image.valid())
                     {
                         break;
                     }
 
-                    // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
+                    // If the progress got cancelled or it needs a retry then return INVALID
+                    // to prevent this tile from being built and cached with incomplete or partial data.
                     if (progress && progress->isCanceled())
                     {
                         OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
                         return GeoImage::INVALID;
                     }
 
-                    parentKey = parentKey.createParentKey();
+                    currentKey = currentKey.createParentKey();
                 }
 
                 if (image.valid())

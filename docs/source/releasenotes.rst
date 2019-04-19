@@ -1,6 +1,10 @@
 Release Notes
 =============
 
+Version 2.10.1 (April 2019)
+---------------------------
+* Bug fix and performance release based on the 2.10 branch.
+
 Version 2.10 (November 2018)
 ----------------------------
 * REX terrain engine promoted to default. Old MP engine is now in legacy support mode.

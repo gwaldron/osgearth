@@ -370,7 +370,7 @@ namespace
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
             osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readObject(uri, opt);
             if (osgRR.validObject()) return ReadResult(osgRR.takeObject());
-            else return ReadResult(osgRR.statusMessage());
+            else return ReadResult(osgRR.message());
         }
     };
 
@@ -392,7 +392,7 @@ namespace
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
             osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readNode(uri, opt);
             if (osgRR.validNode()) return ReadResult(osgRR.takeNode());
-            else return ReadResult(osgRR.statusMessage());
+            else return ReadResult(osgRR.message());
         }
     };
 
@@ -429,7 +429,7 @@ namespace
                 osgRR.getImage()->setFileName(uri);
                 return ReadResult(osgRR.takeImage());
             }
-            else return ReadResult(osgRR.statusMessage());
+            else return ReadResult(osgRR.message());
         }
     };
 

@@ -178,7 +178,7 @@ namespace
     texCoords->push_back( (*texCoords)[INDEX] ); \
     texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_MARKER_SKIRT); \
     if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
-    if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] - ((*neighborNormals)[INDEX])*(HEIGHT) ); \
+    if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] ); \
 }
 
 #define addSkirtTriangles(INDEX0, INDEX1) \

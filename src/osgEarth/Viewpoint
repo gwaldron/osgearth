@@ -63,6 +63,7 @@ namespace osgEarth
          */
         optional<std::string>& name()             { return _name; }
         const optional<std::string>& name() const { return _name; }
+        void setName(const std::string& value)    { _name = value; }
 
         /**
          * The geospatial location at which the camera is pointing. If the Node (below)
@@ -70,6 +71,7 @@ namespace osgEarth
          */
         optional<GeoPoint>& focalPoint()             { return _point; }
         const optional<GeoPoint>& focalPoint() const { return _point; }
+        void setFocalPoint(const GeoPoint& value)    { _point = value; }
 
         /**
          * The node in the scene graph at which the camera is pointing. The "getter" follows
@@ -88,18 +90,21 @@ namespace osgEarth
          */
         optional<Angle>& heading()             { return _heading; }
         const optional<Angle>& heading() const { return _heading; }
+        void setHeading(const Angle& value)    { _heading = value; }
 
         /**
          * The pitch of the camera relative to the focal point.
          */
         optional<Angle>& pitch()             { return _pitch; }
         const optional<Angle>& pitch() const { return _pitch; }
+        void setPitch(const Angle& value)    { _pitch = value; }
 
         /**
          * The distance from the camera to the focal point.
          */
         optional<Distance>& range()             { return _range; }
         const optional<Distance>& range() const { return _range; }
+        void setRange(const Distance& value)    { _range = value; }
 
         /**
          * Local offsets from the focal point, in meters. For example if the Viewpoint
@@ -108,6 +113,7 @@ namespace osgEarth
          */
         optional<osg::Vec3d>& positionOffset()             { return _posOffset; }
         const optional<osg::Vec3d>& positionOffset() const { return _posOffset; }
+        void setPositionOffset(const osg::Vec3d& value)    { _posOffset = value; }
 
         /**
          * Returns a printable string with the viewpoint data

@@ -22,16 +22,13 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/ImageLayer>
+#include <osgEarthSymbology/Geometry>
 
 using namespace osgEarth;
 
 namespace osgText {
     class Font;
 }
-namespace osgEarth { namespace Symbology {
-    class Geometry;
-} }
-
 
 namespace osgEarth { namespace Util
 {

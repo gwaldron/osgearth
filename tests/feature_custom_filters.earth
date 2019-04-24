@@ -22,7 +22,7 @@ Shows how you can use a custom FeatureFilter, even one that is defined in an Ear
         </filters>
     </OGRFeatures>
     
-    <FeatureModel name="cities" feature_source="city-data">
+    <FeatureModel name="cities" features="city-data">
         <styles>
             <style type="text/css">              
                 cities {

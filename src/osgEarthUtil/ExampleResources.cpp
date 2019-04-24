@@ -309,6 +309,13 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
+    // fallback in case none is specified:
+    if (!node.valid())
+    {
+        OE_WARN << LC << "No earth file given; attempting to load \"simple.earth\"" << std::endl;
+        node = osgDB::readNodeFile("simple.earth");
+    }
+
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
     if ( !mapNode.valid() )
     {

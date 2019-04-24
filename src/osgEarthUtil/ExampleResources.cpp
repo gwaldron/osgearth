@@ -316,6 +316,13 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         return 0L;
     }
 
+    // open the map node:
+    if (!mapNode->open())
+    {
+        OE_WARN << LC << "Failed to open MapNode" << std::endl;
+        return 0L;
+    }
+
     // collect the views
     osgViewer::Viewer::Views views;
     if (viewer)

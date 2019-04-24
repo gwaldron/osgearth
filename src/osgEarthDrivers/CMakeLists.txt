@@ -24,6 +24,9 @@ SET(TARGET_COMMON_LIBRARIES
     osgEarth
 )
 
+# Whether to build the legacy MP terrain engine (default is NO)
+OPTION(OSGEARTH_BUILD_LEGACY_MP_TERRAIN_ENGINE "Build the legacy MP terrain engine plugin" OFF)
+
 # Folder name for plugins
 SET(OSGEARTH_PLUGINS_FOLDER Plugins)
 
@@ -34,11 +37,7 @@ add_subdirectory(cache_rocksdb)
 add_subdirectory(colorramp)
 add_subdirectory(detail)
 add_subdirectory(earth)
-add_subdirectory(engine_mp)
 add_subdirectory(engine_rex)
-IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE AND NOT ANDROID)
-add_subdirectory(fastdxt)
-ENDIF()
 add_subdirectory(featurefilter_intersect)
 add_subdirectory(featurefilter_join)
 add_subdirectory(kml)
@@ -56,6 +55,14 @@ add_subdirectory(vdatum_egm2008)
 add_subdirectory(vdatum_egm84)
 add_subdirectory(vdatum_egm96)
 add_subdirectory(viewpoints)
+
+if(OSGEARTH_BUILD_LEGACY_MP_TERRAIN_ENGINE)
+    add_subdirectory(engine_mp)
+endif()
+
+IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE AND NOT ANDROID)
+    add_subdirectory(fastdxt)
+ENDIF()
 
 # Libraries that require C++11 support
 if(CXX11_AVAILABLE)

@@ -1,17 +1,7 @@
 <!--
 osgEarth Sample - OpenWeatherMap Clouds
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
 -->
-<map name="readymap.org" type="geocentric">
+<map name="Demo: OpenWeatherMap">
 
     <xi:include href="readymap_imagery.xml"/> 
 

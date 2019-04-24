@@ -1,19 +1,12 @@
 <!--
-osgEarth Sample - Shows an elevation-derived normal map.
+osgEarth Sample - Use a bump map to simulate terrain variation
+Run with --sky
 -->
-<map name="readymap.org" type="geocentric">    
-
-    <options>
-        <terrain normal_maps="true"/>
-    </options>
+<map name="BumpMap Example (use --sky)">
     
-    <TMSImage name="Imagery">
-        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
-    </TMSImage>
+    <xi:include href="readymap_imagery.xml"/>
     
     <xi:include href="readymap_elevation.xml"/>
-    
-    <sky driver="gl"/>
     
     <bumpmap>
         <image>../data/rock_hard.jpg</image>

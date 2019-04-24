@@ -5,15 +5,12 @@ Shows the skyview driver, which will flip an image source horizontally
 so that it's viewable from inside the globe, planetarium style.
 Run with osgearth_skyview skyview1.earth
 -->
-<map name="skyview" type="geocentric">
-    
+<map name="SkyView Demo">
 
     <options>
         <terrain>
             <cluster_culling>false</cluster_culling>
-            <skirt_ratio>0.0</skirt_ratio>
         </terrain>
-
     </options>
    
     <!-- Wrap the image in the skyview driver to flip it-->
@@ -23,7 +20,5 @@ Run with osgearth_skyview skyview1.earth
 	        <profile>global-geodetic</profile>
 	    </GDALImage>
     </SkyView>
-    
-
 
 </map>

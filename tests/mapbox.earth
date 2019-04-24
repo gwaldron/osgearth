@@ -4,7 +4,7 @@ Demo of MapBox's satellite, terrain and streets layers
 Please change your API key to your own MapBox account, this key is for demo purposes only.
 -->
 
-<map name="MapBox" type="geocentric" version="2">
+<map name="MapBox">
 
 
     <XYZImage name="mapbox_satellite" driver="xyz">

@@ -1,16 +1,14 @@
 <!--
 osgEarth Sample - Annotation going across the dateline.  Should split into multiple features on either side of the earth.
 -->
-<map name="readymap.org" type="projected" version="2">
+<map name="Annotation IDL Example">
 
     <options>
         <profile>plate-carre</profile>
     </options>
 
 
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 
     <annotations>
 

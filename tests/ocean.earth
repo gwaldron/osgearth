@@ -1,12 +1,7 @@
 <!--
-osgEarth Sample - Simple Ocean with surface texture
-
-You can adjust the sea level with a uniform; e.g.:
-
-  --uniform ocean_seaLevel 0 100
-  
+osgEarth Sample - Simple Ocean with surface texture  
 -->
-<map name="readymap.org" type="geocentric">
+<map name="Demo: Ocean layer (use --sky)">
 
     <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>

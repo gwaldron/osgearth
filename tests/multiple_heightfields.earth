@@ -8,9 +8,9 @@ files. This is not a bug! A good technique for fixing this would be to provide a
 lo-res heightfield underlay.
 -->
 
-<map type="geocentric" version="2">
+<map name="Multiple elevation layers">
 
-    <ContourMap opacity="1"/>
+    <ContourMap/>
     
     <GDALImage name="world-tiff" enabled="false">
         <url>../data/world.tif</url>

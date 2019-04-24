@@ -2,7 +2,7 @@
 osgEarth Sample. Like boston.earth, but on a projected map
 -->
 
-<map name="Boston Demo" type="projected">
+<map name="Boston Projected Demo">
     
     <options>
 		<profile srs="+proj=utm +zone=19 +ellps=GRS80 +units=m +no_defs"
@@ -92,7 +92,7 @@ osgEarth Sample. Like boston.earth, but on a projected map
     </FeatureModel>
 	
 	
-	<FeatureModel name="streetlamps" features="streets-data">
+	<FeatureModel name="Lamps" features="streets-data">
         <layout tile_size="1000" crop_features="true">
             <level max_range="1000" style="default"/>
         </layout>

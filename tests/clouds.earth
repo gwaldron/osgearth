@@ -1,7 +1,7 @@
 <!--
 osgEarth Sample - Rendering a cloud layer with a layer shader
 -->
-<map name="Imagery with clouds" type="geocentric">
+<map name="Imagery with clouds">
     
     <xi:include href="readymap_imagery.xml"/>
     

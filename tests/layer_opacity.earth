@@ -4,11 +4,10 @@ osgEarth Sample : Layer Opacity
 This example tests setting a layers initial opacity in the .earth file
 -->
 
-<map name="hi-res inset" type="geocentric" version="2">
+<map name="Demo: Layer Opacity">
 
-    <GDALImage name="world-tiff" cache_enabled="false">
+    <GDALImage name="world-tiff">
         <url>../data/world.tif</url>
-        <caching_policy usage="no_cache"/>
     </GDALImage>
     
     <GDALImage name="boston_inset" opacity="0.3">

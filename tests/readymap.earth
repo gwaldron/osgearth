@@ -11,7 +11,7 @@ YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
 http://readymap.org
 
 -->
-<map name="readymap.org" type="geocentric">
+<map name="ReadyMap.org">
 
 	<TMSImage name="ReadyMap 15m Imagery">
 		<url>http://readymap.org/readymap/tiles/1.0.0/7/</url>

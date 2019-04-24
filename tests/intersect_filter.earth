@@ -4,13 +4,13 @@ Shows how to use an Intersect Filter to crop incoming features
 to a polygon mask.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
+<map name="Demo: Intersect Filter">
             
-    <GDALImage>
+    <GDALImage name="World Imagery">
         <url>../data/world.tif</url>
     </GDALImage>
     
-    <FeatureModel comment="Outline of France">
+    <FeatureModel name="Outline of France">
         <OGRFeatures>
             <url>../data/france.shp</url>
         </OGRFeatures>

@@ -8,7 +8,7 @@ This image was shot with the "photosphere" mode with a Google Nexus 6p
 
 Run with osgearth_skyview photosphere1.earth
 -->
-<map name="photosphere" type="geocentric">
+<map name="Demo: photosphere">
 
     <options>
 
@@ -21,10 +21,10 @@ Run with osgearth_skyview photosphere1.earth
 
     <!-- Wrap the image in the skyview driver to flip it-->
     <SkyView>
-	<GDALImage name="stockholm_castle">
-		<url>../data/skyview/stockholm_castle.jpg</url>
-		<profile>global-geodetic</profile>
-	</GDALImage>      
+        <GDALImage name="stockholm_castle">
+            <url>../data/skyview/stockholm_castle.jpg</url>
+            <profile>global-geodetic</profile>
+        </GDALImage>      
     </SkyView>
 
 </map>

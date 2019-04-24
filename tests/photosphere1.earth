@@ -20,11 +20,11 @@ Run with osgearth_skyview photosphere1.earth
     </options>
 
     <!-- Wrap the image in the skyview driver to flip it-->
-    <image name="stockholm_castle" driver="skyview">
-	    <image name="stockholm_castle" driver="osg">
-	        <url>../data/skyview/stockholm_castle.jpg</url>
-	        <profile>global-geodetic</profile>
-	    </image>      
-    </image>
+    <SkyView>
+	<GDALImage name="stockholm_castle">
+		<url>../data/skyview/stockholm_castle.jpg</url>
+		<profile>global-geodetic</profile>
+	</GDALImage>      
+    </SkyView>
 
 </map>

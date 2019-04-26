@@ -24,7 +24,7 @@
 #include <osgEarth/DateTime>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Converts a filename to an absolute path.
@@ -144,6 +144,6 @@ namespace osgEarth
          std::vector< std::string > filenames;    
      };
 
-}
+} }
 
 #endif

@@ -30,7 +30,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 
 REGISTER_OSGEARTH_LAYER(geodeticgraticule, GeodeticGraticule);
 REGISTER_OSGEARTH_LAYER(geodetic_graticule, GeodeticGraticule);

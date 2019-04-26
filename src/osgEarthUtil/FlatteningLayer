@@ -30,12 +30,8 @@
 #include <osgDB/FileNameUtils>
 
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Features;
-    using namespace osgEarth::Symbology;
-
     /**
      * Elevation layer that overlays modified elevation samples intended to
      * flatten the terrain around vector features. The use case is to make
@@ -112,8 +108,8 @@ namespace osgEarth { namespace Util
         LayerClient<FeatureSource> _client;
     };
 
-} } // namespace osgEarth::Util
+} }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::FlatteningLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::FlatteningLayer::Options);
 
 #endif // OSGEARTH_UTIL_FLATTENING_LAYER

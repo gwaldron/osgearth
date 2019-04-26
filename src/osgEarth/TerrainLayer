@@ -34,7 +34,7 @@ namespace osgEarth
 {
     class Cache;
     class CacheBin;
-    class MemCache;
+    class Support::MemCache;
 
     struct TerrainLayerCallback : public VisibleLayerCallback
     {

@@ -45,13 +45,18 @@ namespace osgEarth
     class Cache;
     class Capabilities;
     class Profile;
-    class ShaderFactory;
-    class TaskServiceManager;
     class URIReadCallback;
-    class ColorFilterRegistry;
-    class StateSetCache;
     class ObjectIndex;
     class Units;
+
+    namespace Support
+    {
+        class ShaderFactory;
+        class TaskServiceManager;
+        class StateSetCache;
+    }
+
+    using namespace Support;
 
 
     extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();

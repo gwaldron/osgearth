@@ -40,7 +40,6 @@
 #include <osgEarthAnnotation/ImageOverlayEditor>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 

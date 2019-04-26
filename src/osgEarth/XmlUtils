@@ -33,7 +33,7 @@
 
 // XML support utilites.
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class OSGEARTH_EXPORT XmlNode : public osg::Referenced
     {
@@ -158,6 +158,6 @@ namespace osgEarth
         std::string              _name;
         osg::ref_ptr<XmlElement> _root;
     };
-}
+} }
 
 #endif // OSGEARTH_XML_UTILS_H

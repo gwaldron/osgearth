@@ -34,6 +34,7 @@
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[MapNode] "
 

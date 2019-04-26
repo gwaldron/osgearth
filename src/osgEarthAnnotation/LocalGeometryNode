@@ -28,11 +28,8 @@
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
+namespace osgEarth
+{
     /**
      * Simple node that renders geometry into a scene graph node. The geometry
      * is in a local tangent plane that may be positioned somewhere on the 
@@ -132,6 +129,6 @@ namespace osgEarth { namespace Annotation
         GeoPoint _lastPosition;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H

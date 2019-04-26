@@ -34,8 +34,6 @@
 #define LC "[TrackNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 

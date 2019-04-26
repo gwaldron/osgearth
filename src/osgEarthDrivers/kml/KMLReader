@@ -34,7 +34,7 @@ using namespace rapidxml;
 namespace osgEarth_kml
 {
     using namespace osgEarth;
-    using namespace osgEarth::Drivers;
+    using namespace osgEarth::KML;
 
     class KMLReader
     {

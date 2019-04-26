@@ -24,10 +24,8 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * A query filter that you can use to limit a set of symbology to process.
      */
@@ -57,8 +55,8 @@ namespace osgEarth { namespace Symbology
         const optional<std::string>& orderby() const { return _orderby; }
 
         /** Sets a driver-specific query expression. */
-        optional<osgEarth::TileKey>& tileKey() { return _tileKey; }
-        const optional<osgEarth::TileKey>& tileKey() const { return _tileKey; }
+        optional<TileKey>& tileKey() { return _tileKey; }
+        const optional<TileKey>& tileKey() const { return _tileKey; }
 
         /** The maximum number of features to be returned by this Query.  This is driver specific . */
         optional<int>& limit() { return _limit; }
@@ -76,12 +74,17 @@ namespace osgEarth { namespace Symbology
         optional<Bounds> _bounds;
         optional<std::string> _expression;
         optional<std::string> _orderby;
-        optional<osgEarth::TileKey> _tileKey;
+        optional<TileKey> _tileKey;
         optional<int> _limit;
     };
 
-} } // namespace osgEarth::Symbology
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Query);
+    namespace Symbology {
+        typedef osgEarth::Query Query;
+    }
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Query);
 
 #endif // OSGEARTHSYMBOLOGY_QUERY_H

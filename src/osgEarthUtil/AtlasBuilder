@@ -31,8 +31,10 @@ namespace osgDB {
     class Options;
 }
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
+    using namespace osgEarth;
+
     /**
      * Compiles a resource library into a texture atlas.
      */
@@ -44,10 +46,10 @@ namespace osgEarth { namespace Util
             // resulting atlas images. The first one is the master atlas image;
             // any following ones correspond to images created based on auxiliary
             // patterns added with addAuxFilePattern.
-            std::vector<osg::ref_ptr<osg::Image> >             _images;
+            std::vector<osg::ref_ptr<osg::Image> > _images;
 
             // resulting resource library for the atlas
-            osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> _lib;
+            osg::ref_ptr<ResourceLibrary> _lib;
         };
 
     public:
@@ -73,9 +75,9 @@ namespace osgEarth { namespace Util
 
         /** Builds an atlas. */
         bool build(
-            const osgEarth::Symbology::ResourceLibrary* input,
-            const std::string&                          newAtlasURI,
-            Atlas&                                      output) const;
+            const ResourceLibrary* input,
+            const std::string& newAtlasURI,
+            Atlas& output) const;
 
 
     protected:
@@ -88,6 +90,6 @@ namespace osgEarth { namespace Util
         bool _rgb;
     };
 
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTHUTIL_ATLAS_BUILDER_H

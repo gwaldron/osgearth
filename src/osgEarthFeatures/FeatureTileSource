@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
+#if 0
 #ifndef OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H
 #define OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H 1
 
@@ -191,9 +191,10 @@ namespace osgEarth { namespace Features
             ProgressCallback* progress);
     };
 
-    } } // namespace osgEarth::Features
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H
+#endif
 
 
 

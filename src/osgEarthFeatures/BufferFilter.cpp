@@ -22,8 +22,6 @@
 #define LC "[BufferFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 bool
 BufferFilter::isSupported()
@@ -93,15 +91,15 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
         if ( !feature || !feature->getGeometry() )
             continue;
 
-        osg::ref_ptr<Symbology::Geometry> output;
+        osg::ref_ptr<Geometry> output;
 
-        Symbology::BufferParameters params;
+        BufferParameters params;
         
         params._capStyle =
-                _capStyle == Stroke::LINECAP_ROUND  ? Symbology::BufferParameters::CAP_ROUND :
-                _capStyle == Stroke::LINECAP_SQUARE ? Symbology::BufferParameters::CAP_SQUARE :
-                _capStyle == Stroke::LINECAP_FLAT   ? Symbology::BufferParameters::CAP_FLAT :
-                                                      Symbology::BufferParameters::CAP_SQUARE;
+                _capStyle == Stroke::LINECAP_ROUND  ? BufferParameters::CAP_ROUND :
+                _capStyle == Stroke::LINECAP_SQUARE ? BufferParameters::CAP_SQUARE :
+                _capStyle == Stroke::LINECAP_FLAT   ? BufferParameters::CAP_FLAT :
+                                                      BufferParameters::CAP_SQUARE;
 
         params._cornerSegs = _numQuadSegs;
 

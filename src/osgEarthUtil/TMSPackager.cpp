@@ -27,8 +27,8 @@
 
 #define LC "[TMSPackager] "
 
-using namespace osgEarth::Util;
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, TMSPackager* packager):
     _layer( layer ),

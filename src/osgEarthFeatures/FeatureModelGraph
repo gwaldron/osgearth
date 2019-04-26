@@ -30,11 +30,8 @@
 #include <osg/Node>
 #include <set>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     class Session;
 
     /**
@@ -238,6 +235,10 @@ namespace osgEarth { namespace Features
         bool createOrUpdateNode(FeatureCursor*, const Style&, FilterContext&, const osgDB::Options*, osg::ref_ptr<osg::Node>& output);
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureModelGraph FeatureModelGraph;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H

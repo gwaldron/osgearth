@@ -23,12 +23,8 @@
 #include <osgEarth/LayerListener>
 #include <osgEarthFeatures/FeatureSource>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Features;
-
-
     class OSGEARTHFEATURES_EXPORT FeatureImageRenderer
     {
     public:
@@ -157,8 +153,13 @@ namespace osgEarth { namespace Features
     StyleSheet* FeatureImageLayer::getStyleSheet() const { return options().styles().get(); }
 
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureImageRenderer FeatureImageRenderer;
+        typedef osgEarth::FeatureImageLayer FeatureImageLayer;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureImageLayer::Options);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureImageLayer::Options);
 
 #endif // OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER

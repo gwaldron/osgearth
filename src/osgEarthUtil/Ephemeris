@@ -28,10 +28,8 @@
 #include <osgEarth/GeoData>
 #include <osg/Vec3d>
 
-namespace osgEarth { namespace Util 
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Location of a celestial body relative to the Earth.
      */
@@ -71,6 +69,6 @@ namespace osgEarth { namespace Util
         osg::Vec3d getECEFfromRADecl(double ra, double decl, double range) const;
     };
     
-} } // namespace osgEarth::Util
+}
 
 #endif // OSGEARTHUTIL_EPHEMERIS

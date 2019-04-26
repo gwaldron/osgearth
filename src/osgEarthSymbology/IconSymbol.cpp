@@ -25,7 +25,6 @@
 #include <osgDB/Options>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(icon, IconSymbol);
 

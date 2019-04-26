@@ -24,10 +24,9 @@
 #include <osgEarthSymbology/Style>
 #include <osg/Image>
 
-namespace osgEarth { namespace Drivers
+namespace osgEarth { namespace KML
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     /**
      * Options for the KML loader. You can pass an instance of this class
@@ -84,6 +83,6 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<osg::Group> _iconAndLabelGroup;
     };
 
-} } // namespace osgEarth::Drivers
+} } // namespace osgEarth::KML
 
 #endif // OSGEARTH_DRIVER_KML_OPTIONS

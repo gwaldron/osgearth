@@ -19,7 +19,6 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Registry>
-#include <osgEarth/Utils>
 
 using namespace osgEarth;
 

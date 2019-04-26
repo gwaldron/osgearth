@@ -26,10 +26,8 @@
 #include <list>
 
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Base class for a filter.
      */
@@ -137,7 +135,7 @@ namespace osgEarth { namespace Features
 
 #define OSGEARTH_REGISTER_FEATUREFILTER( CLASSNAME )\
     extern "C" void osgearth_featurefilter_##KEY(void) {} \
-    static osgEarth::Features::RegisterFeatureFilterProxy<CLASSNAME> s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME;
+    static osgEarth::RegisterFeatureFilterProxy<CLASSNAME> s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME;
     
 #define USE_OSGEARTH_FEATUREFILTER( KEY ) \
     extern "C" void osgearth_featurefilter_##KEY(void); \
@@ -145,7 +143,7 @@ namespace osgEarth { namespace Features
 
 #define OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER( KEY, CLASSNAME)\
     extern "C" void osgearth_simple_featurefilter_##KEY(void) {} \
-    static osgEarth::Features::RegisterFeatureFilterProxy< osgEarth::Features::SimpleFeatureFilterFactory<CLASSNAME> > s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME##KEY(new osgEarth::Features::SimpleFeatureFilterFactory<CLASSNAME>(#KEY));
+    static osgEarth::RegisterFeatureFilterProxy< osgEarth::SimpleFeatureFilterFactory<CLASSNAME> > s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME##KEY(new osgEarth::SimpleFeatureFilterFactory<CLASSNAME>(#KEY));
     
 #define USE_OSGEARTH_SIMPLE_FEATUREFILTER( KEY ) \
     extern "C" void osgearth_simple_featurefilter_##KEY(void); \
@@ -218,6 +216,15 @@ namespace osgEarth { namespace Features
         osg::Matrixd _world2local, _local2world;   // for coordinate localization
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::Filter Filter;
+        typedef osgEarth::FeatureFilter FeatureFilter;
+        typedef osgEarth::FeatureFilterFactory FeatureFilterFactory;
+        typedef osgEarth::FeatureFilterFactoryList FeatureFilterFactoryList;
+        typedef osgEarth::FeatureFilterDriver FeatureFilterDriver;
+        typedef osgEarth::FeaturesToNodeFilter FeaturesToNodeFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FILTER_H

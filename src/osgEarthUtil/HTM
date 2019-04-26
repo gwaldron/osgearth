@@ -30,7 +30,7 @@
 #include <vector>
 #include <osgEarth/optional>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
     using namespace osgEarth;
 

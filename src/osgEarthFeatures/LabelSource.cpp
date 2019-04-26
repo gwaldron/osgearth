@@ -21,8 +21,6 @@
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[LabelSource] "
 
@@ -62,7 +60,7 @@ LabelSource::~LabelSource()
 
 #undef  LC
 #define LC "[LabeSourceFactory] "
-#define LABEL_SOURCE_OPTIONS_TAG "__osgEarth::Features::LabelSourceOptions"
+#define LABEL_SOURCE_OPTIONS_TAG "__osgEarth::LabelSourceOptions"
 
 LabelSource*
 LabelSourceFactory::create( const LabelSourceOptions& options )

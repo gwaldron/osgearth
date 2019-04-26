@@ -23,7 +23,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/Expression>
 
-namespace osgEarth { namespace Symbology 
+namespace osgEarth
 {
     /**
      * A style selector lets you classify styles based on rules, such as a
@@ -72,9 +72,13 @@ namespace osgEarth { namespace Symbology
     };
 
     typedef std::list<StyleSelector>   StyleSelectorList;
-    typedef std::vector<StyleSelector> StyleSelectorVector;
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::StyleSelector StyleSelector;
+        typedef osgEarth::StyleSelectorList StyleSelectorList;
+    }
+
+} // namespace osgEarth
 
 
 #endif // OSGEARTHSYMBOLOGY_STYLE_SELECTOR_H

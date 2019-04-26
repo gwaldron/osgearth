@@ -27,8 +27,6 @@
 #define LC "[XYZFeatureSource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
 //........................................................................
@@ -302,7 +300,7 @@ XYZFeatureSource::isJSON(const std::string& mime) const
 }
 
 URI
-XYZFeatureSource::createURL(const Symbology::Query& query)
+XYZFeatureSource::createURL(const Query& query)
 {
     if (query.tileKey().isSet())
     {

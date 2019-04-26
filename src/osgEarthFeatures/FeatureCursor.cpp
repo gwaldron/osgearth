@@ -20,8 +20,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarth/Progress>
 
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace OpenThreads;
 
 //---------------------------------------------------------------------------

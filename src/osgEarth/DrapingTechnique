@@ -33,7 +33,10 @@
 namespace osgEarth
 {
     class TerrainEngineNode;
+}
 
+namespace osgEarth { namespace Support
+{
     /**
      * Projects an overlay scene graph onto the main model.
      *
@@ -144,6 +147,6 @@ namespace osgEarth
         void setUpCamera(OverlayDecorator::TechRTTParams& params);
     };
 
-} // namespace osgEarth
+} } 
 
 #endif //OSGEARTH_OVERLAY_DRAPING_TECHNIQUE

@@ -29,11 +29,8 @@
 #include <osgEarth/ScreenSpaceLayout>
 #include <osg/Geode>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     /**
      * Text labeling node.
      */
@@ -116,6 +113,6 @@ namespace osgEarth { namespace Annotation
 
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNOTATION_LABEL_NODE_H

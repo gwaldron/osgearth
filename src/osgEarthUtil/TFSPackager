@@ -24,10 +24,10 @@
 #include <osgEarthFeatures/CropFilter>
 
 
-namespace osgEarth { namespace Util 
+namespace osgEarth { namespace Contrib 
 {
-    using namespace osgEarth;    
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
+
     /**
      * Utility that grids up feature data into a tiled json format.
      */
@@ -109,6 +109,6 @@ namespace osgEarth { namespace Util
         GeoExtent _customExtent;
     };
 
-} } // namespace osgEarth::Util
+} } // namespace osgEarth::Tools
 
 #endif

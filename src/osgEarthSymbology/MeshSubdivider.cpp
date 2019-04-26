@@ -30,7 +30,6 @@
 #define LC "[MeshSubdivider] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 // Define this to create line strips after tessellating line geometry.
 // This is necessary if you intend to use stippling!

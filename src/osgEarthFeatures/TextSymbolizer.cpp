@@ -21,8 +21,6 @@
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 TextSymbolizer::TextSymbolizer(const TextSymbol* symbol) :
 _symbol( symbol )

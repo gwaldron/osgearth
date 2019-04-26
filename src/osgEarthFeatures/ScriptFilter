@@ -25,10 +25,8 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/ScriptEngine>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Options structure for serializing/configuring the ScriptFilter.
      */
@@ -100,6 +98,11 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<ScriptEngine> _engine;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::ScriptFilterOptions ScriptFilterOptions;
+        typedef osgEarth::ScriptFilter ScriptFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_SCRIPT_FILTER_H

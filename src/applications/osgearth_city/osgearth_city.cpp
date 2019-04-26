@@ -36,8 +36,6 @@
 #include <osgEarthFeatures/OGRFeatureSource>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 #define IMAGERY_URL      "http://readymap.org/readymap/tiles/1.0.0/22/"

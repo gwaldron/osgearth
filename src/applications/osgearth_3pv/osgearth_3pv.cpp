@@ -36,7 +36,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
+using namespace osgEarth::Contrib;
 
 #include <osg/Geometry>
 #include <osg/Depth>

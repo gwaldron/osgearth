@@ -39,7 +39,7 @@
 #include <osg/Object>
 #include <vector>
 
-namespace osgEarth { namespace Symbology 
+namespace osgEarth
 {
     class StyleSheet;
 
@@ -171,8 +171,14 @@ namespace osgEarth { namespace Symbology
     typedef std::vector<Style>           StyleList;
     typedef std::map<std::string, Style> StyleMap;
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::Style Style;
+        typedef osgEarth::StyleList StyleList;
+        typedef osgEarth::StyleMap StyleMap;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Style);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Style);
 
 #endif // OSGEARTHSYMBOLOGY_STYLE_H

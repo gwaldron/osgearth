@@ -19,6 +19,7 @@
 #include <osgEarth/TaskService>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 using namespace OpenThreads;
 
 #define LC "[TaskService] "

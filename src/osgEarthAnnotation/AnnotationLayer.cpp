@@ -20,7 +20,6 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 
 REGISTER_OSGEARTH_LAYER(annotations, AnnotationLayer);
 

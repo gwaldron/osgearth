@@ -33,7 +33,6 @@
 #define LC "[ReaderWriterKML] "
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 using namespace osgEarth_kml;
 
 //---------------------------------------------------------------------------
@@ -92,8 +91,8 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
             return ReadResult("Missing required MapNode option");
 
         // grab the KMLOptions if present
-        const KMLOptions* kmlOptions =
-            static_cast<const KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
+        const KML::KMLOptions* kmlOptions =
+            static_cast<const KML::KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
 
         // fire up a KML reader and parse the data.
         KMLReader reader( mapNode, kmlOptions );

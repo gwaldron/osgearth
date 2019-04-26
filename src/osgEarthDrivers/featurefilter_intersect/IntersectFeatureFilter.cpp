@@ -35,9 +35,7 @@
 #define LC "[Intersect FeatureFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
 
 
 

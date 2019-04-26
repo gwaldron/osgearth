@@ -22,7 +22,6 @@
 #define LC "[CentroidFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 //------------------------------------------------------------------------
 

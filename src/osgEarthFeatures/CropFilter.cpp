@@ -21,8 +21,6 @@
 #define LC "[CropFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 CropFilter::CropFilter( CropFilter::Method method ) :
 _method( method )
@@ -79,7 +77,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
 #ifdef OSGEARTH_HAVE_GEOS
 
         // create the intersection polygon:
-        osg::ref_ptr<Symbology::Polygon> poly;
+        osg::ref_ptr<Polygon> poly;
         
         for( FeatureList::iterator i = input.begin(); i != input.end();  )
         {
@@ -87,7 +85,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
 
             Feature* feature = i->get();
 
-            Symbology::Geometry* featureGeom = feature->getGeometry();
+            Geometry* featureGeom = feature->getGeometry();
             if ( featureGeom && featureGeom->isValid() )
             {
                 // test for trivial acceptance:
@@ -108,7 +106,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                 {
                     if ( !poly.valid() )
                     {
-                        poly = new Symbology::Polygon();
+                        poly = new Polygon();
                         poly->push_back( osg::Vec3d( extent.xMin(), extent.yMin(), 0 ));
                         poly->push_back( osg::Vec3d( extent.xMax(), extent.yMin(), 0 ));
                         poly->push_back( osg::Vec3d( extent.xMax(), extent.yMax(), 0 ));

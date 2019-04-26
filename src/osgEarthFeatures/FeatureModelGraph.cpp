@@ -50,8 +50,8 @@
 #define LC "[FeatureModelGraph] " << getName() << ": "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 #define OE_TEST OE_NULL

@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Utility that reads GLSL source code and lexes it into chunks that
@@ -58,6 +58,6 @@ namespace osgEarth
         /** Create a chunk from a line. */
         Chunk chunkLine(const std::string& line) const;
     };
-}
+} }
 
 #endif // OSGEARTH_GLSL_CHUNKER_H

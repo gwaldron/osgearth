@@ -36,7 +36,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Triton;
-using namespace osgEarth::Annotation;
 namespace ui = osgEarth::Util::Controls;
 
 struct Settings

@@ -27,7 +27,7 @@
 #include <osg/NodeVisitor>
 #include <osg/fast_back_stack>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Utility that takes existing OSG geometry and modifies it so that
@@ -116,6 +116,6 @@ namespace osgEarth
         GeometryClamper _clamper;
     };
 
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_GEOMETRY_CLAMPER

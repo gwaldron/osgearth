@@ -26,7 +26,7 @@
 #include <osg/NodeCallback>
 #include <osg/Vec3d>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
     /**
      * A CULL callback you can install on a GeoPositionNode that will
@@ -53,6 +53,6 @@ namespace osgEarth { namespace Annotation
 		double _maxScale;
     };
 
-} } // namespace
+} // namespace
 
 #endif //OSGEARTH_ANNOTATION_GEO_POSITION_NODE_AUTO_SCALER_H

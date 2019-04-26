@@ -22,7 +22,7 @@
 
 #include <osgEarthAnnotation/AnnotationData>
 
-using namespace osgEarth::Annotation;
+using namespace osgEarth;
 
 AnnotationData::AnnotationData() :
 _viewpoint( 0L ),

@@ -25,7 +25,7 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/MapNode>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
     class AnnotationFactory;
 
@@ -67,7 +67,7 @@ namespace osgEarth { namespace Annotation
 
     private:
         AnnotationRegistry() { }
-        typedef std::map<std::string, class AnnotationFactory*> FactoryMap;
+        typedef std::map<std::string, AnnotationFactory*> FactoryMap;
         FactoryMap _factories;
 
         AnnotationNode* createOne( 
@@ -106,6 +106,6 @@ namespace osgEarth { namespace Annotation
         AnnotationNode* create(const Config& conf, const osgDB::Options* options) const { return new T(conf, options); }
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNO_FEATURE_NODE_H

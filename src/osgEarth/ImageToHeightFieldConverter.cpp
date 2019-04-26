@@ -27,6 +27,7 @@
 #include <osg/Texture>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 static bool
 isNoData( float f )

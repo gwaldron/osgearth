@@ -27,7 +27,7 @@
 
 namespace osgEarth { namespace Util
 {
-    struct OSGEARTHUTIL_EXPORT Shaders : public osgEarth::ShaderPackage
+    struct OSGEARTHUTIL_EXPORT Shaders : public osgEarth::Support::ShaderPackage
 	{
         Shaders();
 

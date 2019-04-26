@@ -29,10 +29,13 @@
 namespace osg {
     class StateSet;
 }
-
-namespace osgEarth
-{
+namespace osgEarth {
     class Layer;
+}
+
+namespace osgEarth { namespace Support
+{
+    using namespace osgEarth;
 
     //! Serializable shader that supports samplers and uniforms
     //! in an earth file.
@@ -93,8 +96,9 @@ namespace osgEarth
         std::vector<TextureImageUnitReservation> _reservations;
     };
 
-} // namespace osgEarth
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ShaderOptions);
+} } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Support::ShaderOptions);
 
 #endif // OSGEARTH_LAYER_SHADER_H
 

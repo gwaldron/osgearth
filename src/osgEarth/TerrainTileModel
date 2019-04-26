@@ -32,6 +32,8 @@
 
 namespace osgEarth
 {
+    using namespace Support;
+
     /**
      * Data model backing an individual layer of a terrain tile.
      */

@@ -6,7 +6,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
 
-using namespace osgEarth::Util;
+using namespace osgEarth::Support;
 
 #define LC "[SimplerPager] "
 

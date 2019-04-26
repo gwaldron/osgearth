@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #include <osgEarthFeatures/FeatureTileSource>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/FeatureCursor>
@@ -27,8 +28,6 @@
 #include <osg/Notify>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[FeatureTileSource] "
 
@@ -393,4 +392,4 @@ FeatureTileSource::getFeatures(const Query& query, const GeoExtent& imageExtent,
         }
     }
 }
-
+#endif

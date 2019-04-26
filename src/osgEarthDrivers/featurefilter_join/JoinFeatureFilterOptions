@@ -25,7 +25,6 @@
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     class JoinFeatureFilterOptions : public ConfigOptions // NO EXPORT; header only
     {

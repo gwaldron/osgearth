@@ -22,9 +22,7 @@
 #include <osgEarthFeatures/FeatureCursor>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 
 REGISTER_OSGEARTH_LAYER(flattenedelevation, FlatteningLayer);
 REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);
@@ -87,7 +85,7 @@ namespace
     // This will not always work with polygons that contain holes,
     // so we need to come up with a different algorithm if this becomes a problem.
     // Maybe try a random point generator and profile it.
-    osg::Vec3d inline getInternalPoint(const Symbology::Polygon* p)
+    osg::Vec3d inline getInternalPoint(const Polygon* p)
     {
         // Simple test: if the centroid is in the polygon, use it.
         osg::Vec3d centroid = p->getBounds().center();
@@ -155,7 +153,7 @@ namespace
         return p->getBounds().center();
     }
 
-    double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Symbology::Polygon* poly)
+    double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Polygon* poly)
     {        
         double Dmin = DBL_MAX;
         ConstSegmentIterator segIter(poly, true);
@@ -230,7 +228,7 @@ namespace
                 double minD2 = DBL_MAX;//bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
                 double bufferWidth = 0.0;
 
-                const Symbology::Polygon* bestPoly = 0L;
+                const Polygon* bestPoly = 0L;
 
                 for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
                 {
@@ -239,7 +237,7 @@ namespace
                     ConstGeometryIterator giter(component, false);
                     while (giter.hasMore() && !done)
                     {
-                        const Symbology::Polygon* polygon = dynamic_cast<const Symbology::Polygon*>(giter.next());
+                        const Polygon* polygon = dynamic_cast<const Polygon*>(giter.next());
                         if (polygon)
                         {
                             // Does the point P fall within the polygon?

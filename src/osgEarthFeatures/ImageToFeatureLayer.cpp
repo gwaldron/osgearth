@@ -24,8 +24,6 @@
 #define LC "[ImageToFeatureSource] " << getName() << ": "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
 
 
 namespace osgEarth {
@@ -122,7 +120,7 @@ ImageToFeatureSource::removedFromMap(const Map* map)
 }
 
 FeatureCursor*
-ImageToFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
+ImageToFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {
     TileKey key = *query.tileKey();
 

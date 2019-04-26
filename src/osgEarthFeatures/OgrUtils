@@ -29,37 +29,35 @@
 #include <osg/Notify>
 #include <ogr_api.h>
 
-using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
-
-struct OSGEARTHFEATURES_EXPORT OgrUtils
+namespace osgEarth
 {
-    static void populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints );
+    struct OSGEARTHFEATURES_EXPORT OgrUtils
+    {
+        static void populate( OGRGeometryH geomHandle, Geometry* target, int numPoints );
     
-    static Symbology::Polygon* createPolygon( OGRGeometryH geomHandle );
+        static Polygon* createPolygon( OGRGeometryH geomHandle );
        
-    static Symbology::Geometry* createGeometry( OGRGeometryH geomHandle );
+        static Geometry* createGeometry( OGRGeometryH geomHandle );
 
-    static OGRGeometryH encodePart( const Geometry* geometry, OGRwkbGeometryType part_type );
+        static OGRGeometryH encodePart( const Geometry* geometry, OGRwkbGeometryType part_type );
 
-    static OGRGeometryH encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type );    
+        static OGRGeometryH encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type );    
 
-    static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
+        static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
 
-    static Feature* createFeature( OGRFeatureH handle, const FeatureProfile* profile );
+        static Feature* createFeature( OGRFeatureH handle, const FeatureProfile* profile );
     
-    static AttributeType getAttributeType( OGRFieldType type );
+        static AttributeType getAttributeType( OGRFieldType type );
 
-    static OGRwkbGeometryType getOGRGeometryType(const Geometry::Type& type);
+        static OGRwkbGeometryType getOGRGeometryType(const Geometry::Type& type);
     
-    static OGRwkbGeometryType getOGRGeometryType(const Geometry* geometry);
+        static OGRwkbGeometryType getOGRGeometryType(const Geometry* geometry);
 
-private:
+    private:
     
-    static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs );
-};
-
+        static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs );
+    };
+}
 
 #endif // OSGEARTHFEATURES_FEATURE_OGR_GEOM_UTILS
 

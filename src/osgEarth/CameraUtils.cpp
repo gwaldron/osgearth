@@ -25,6 +25,7 @@
 #define LC "[CameraUtils] "
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 void
 CameraUtils::setIsShadowCamera(osg::Camera* camera)

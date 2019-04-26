@@ -26,7 +26,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {    
     /**
      * Simple numeric expression evaluator with variables.
@@ -169,10 +169,14 @@ namespace osgEarth { namespace Symbology
         void init();
     };
 
+    namespace Symbology {
+        typedef osgEarth::NumericExpression NumericExpression;
+        typedef osgEarth::StringExpression StringExpression;
+    }
 
-} } // namespace osgEarth::Symbology
+} // namespace osgEarth
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::NumericExpression);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::StringExpression);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::NumericExpression);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::StringExpression);
 
 #endif // OSGEARTHSYMBOLOGY_EXPRESSION_H

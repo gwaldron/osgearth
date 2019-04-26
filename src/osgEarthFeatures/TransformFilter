@@ -25,7 +25,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osg/BoundingBox>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
     using namespace osgEarth;
 
@@ -64,6 +64,11 @@ namespace osgEarth { namespace Features
         bool push( Feature* feature, FilterContext& context );
     };
 
-} } // namespace osgEarth::Features
+
+    namespace Features {
+        typedef osgEarth::TransformFilter TransformFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_TRANSFORM_FILTER_H

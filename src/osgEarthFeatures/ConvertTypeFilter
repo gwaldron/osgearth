@@ -25,10 +25,8 @@
 #include <osgEarthFeatures/Filter>
 #include <osg/Geode>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * This filter will change geometry from one type to another.
      */
@@ -40,7 +38,7 @@ namespace osgEarth { namespace Features
 
     public:
         ConvertTypeFilter();
-        ConvertTypeFilter( const Symbology::Geometry::Type& toType );
+        ConvertTypeFilter( const Geometry::Type& toType );
         ConvertTypeFilter( const ConvertTypeFilter& rhs );
 
         ConvertTypeFilter( const Config& conf );
@@ -53,18 +51,22 @@ namespace osgEarth { namespace Features
         virtual ~ConvertTypeFilter() { }
 
     public:
-        Symbology::Geometry::Type& toType() {
+        Geometry::Type& toType() {
             return _toType; }
-        const Symbology::Geometry::Type& toType() const {
+        const Geometry::Type& toType() const {
             return _toType; }
 
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
-        Symbology::Geometry::Type _toType;
+        Geometry::Type _toType;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::ConvertTypeFilter ConvertTypeFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H

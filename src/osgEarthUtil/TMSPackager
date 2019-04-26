@@ -28,7 +28,7 @@
 #include <osgEarth/TileHandler>
 #include <osgEarth/TileVisitor>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
     class TMSPackager;
 
@@ -200,6 +200,6 @@ namespace osgEarth { namespace Util
 
     };
 
-} } // namespace osgEarth::Util
+} } // namespace osgEarth::Tools
 
 #endif // OSGEARTHUTIL_TMS_PACKAGER_H

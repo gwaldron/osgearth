@@ -52,7 +52,7 @@ namespace osgSim
     class LightPointNode;
 }
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Traverses a scene graph and generates VirtualProgram attributes to
@@ -273,6 +273,6 @@ namespace osgEarth
         osg::ref_ptr<ShaderGenerator> _instance;
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_GENERATOR_H

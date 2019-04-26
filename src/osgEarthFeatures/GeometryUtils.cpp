@@ -23,11 +23,10 @@
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarthFeatures/OgrUtils>
 
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 
 std::string
-osgEarth::Features::GeometryUtils::geometryToWKT( const Geometry* geometry )
+osgEarth::GeometryUtils::geometryToWKT( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -45,7 +44,7 @@ osgEarth::Features::GeometryUtils::geometryToWKT( const Geometry* geometry )
 }
 
 std::string 
-osgEarth::Features::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
+osgEarth::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -64,7 +63,7 @@ osgEarth::Features::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
 }
 
 Geometry*
-osgEarth::Features::GeometryUtils::geometryFromGeoJSON(const std::string& geojson)
+osgEarth::GeometryUtils::geometryFromGeoJSON(const std::string& geojson)
 {
     Geometry* result = 0L;
     OGRGeometryH g = OGR_G_CreateGeometryFromJson(geojson.c_str());
@@ -77,7 +76,7 @@ osgEarth::Features::GeometryUtils::geometryFromGeoJSON(const std::string& geojso
 }
 
 std::string 
-osgEarth::Features::GeometryUtils::geometryToKML( const Geometry* geometry )
+osgEarth::GeometryUtils::geometryToKML( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -96,7 +95,7 @@ osgEarth::Features::GeometryUtils::geometryToKML( const Geometry* geometry )
 }
 
 std::string 
-osgEarth::Features::GeometryUtils::geometryToGML( const Geometry* geometry )
+osgEarth::GeometryUtils::geometryToGML( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -115,7 +114,7 @@ osgEarth::Features::GeometryUtils::geometryToGML( const Geometry* geometry )
 }
 
 Geometry*
-osgEarth::Features::GeometryUtils::geometryFromWKT( const std::string& wkt )
+osgEarth::GeometryUtils::geometryFromWKT( const std::string& wkt )
 {       
     OGRwkbGeometryType type = 
         startsWith( wkt, "POINT" ) ? wkbPoint :
@@ -127,7 +126,7 @@ osgEarth::Features::GeometryUtils::geometryFromWKT( const std::string& wkt )
         startsWith( wkt, "GEOMETRYCOLLECTION" ) ? wkbGeometryCollection :
         wkbNone;
 
-    Symbology::Geometry* output = 0L;
+    Geometry* output = 0L;
     if ( type != wkbNone )
     {
         OGRGeometryH geom = OGR_G_CreateGeometry( type );
@@ -150,7 +149,7 @@ osgEarth::Features::GeometryUtils::geometryFromWKT( const std::string& wkt )
 }
 
 double
-osgEarth::Features::GeometryUtils::getGeometryArea( const Geometry* geometry )
+osgEarth::GeometryUtils::getGeometryArea( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     

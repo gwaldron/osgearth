@@ -24,11 +24,5 @@
 #include <osgEarthAnnotation/Export>
 
 // common utilities
-namespace osgEarth { 
-    
-    //! Annotations
-    namespace Annotation {
-    
-} } // namespace osgEarth::Annotation
 
 #endif // OSGEARTH_ANNOTATION_COMMON_H

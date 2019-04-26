@@ -30,7 +30,8 @@ namespace osgEarth {
     class MapNode;
 }
     
-namespace osgEarth { namespace Util {
+namespace osgEarth { namespace Contrib
+{
 
     /**
      * Stores the results of a terrain profile calculation
@@ -222,6 +223,6 @@ namespace osgEarth { namespace Util {
         ChangedCallbackList _changedCallbacks;
     };
 
-} } // namespace osgEarth::Util
+} } // namespace osgEarth::Tools
 
 #endif // OSGEARTHUTIL_TERRAINPROFILE

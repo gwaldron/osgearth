@@ -31,7 +31,7 @@
 #include <map>
 #include <iterator>
 
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 
 #define LC "[MeshConsolidator] "
 

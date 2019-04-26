@@ -35,8 +35,6 @@
 
 namespace osgEarth { namespace Util
 {
-    using namespace osgEarth;
-
     /**
      * A programmable manipulator suitable for use with geospatial terrains.
      *
@@ -1043,6 +1041,6 @@ namespace osgEarth { namespace Util
         void ctor_init();
     };
 
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTHUTIL_EARTHMANIPULATOR

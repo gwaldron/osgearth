@@ -43,8 +43,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Annotation;
 namespace ui = osgEarth::Util::Controls;
 
 int

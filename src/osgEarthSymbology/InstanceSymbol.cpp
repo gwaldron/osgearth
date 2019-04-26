@@ -21,7 +21,6 @@
 #include <osgEarthSymbology/ModelSymbol>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 InstanceSymbol::InstanceSymbol( const Config& conf ) :
 _placement ( PLACEMENT_VERTEX ),

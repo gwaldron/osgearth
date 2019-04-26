@@ -27,6 +27,11 @@
 namespace osgEarth
 {
     class Map;
+}
+
+namespace osgEarth { namespace Support
+{
+    using namespace osgEarth;
 
     /**
      * A convenience class that combines a general geospatial profile and additional 
@@ -70,6 +75,6 @@ namespace osgEarth
         bool _isGeocentric, _isCube;
         RasterInterpolation _elevationInterpolation;
     };
-}
+} }
 
 #endif // OSGEARTH_MAP_CALLBACK_H

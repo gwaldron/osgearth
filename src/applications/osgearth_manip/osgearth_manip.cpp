@@ -48,7 +48,6 @@
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Annotation;
 
 #define D2R (osg::PI/180.0)
 #define R2D (180.0/osg::PI)

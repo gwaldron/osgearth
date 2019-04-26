@@ -17,17 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_CLAMP_FILTER_H
-#define OSGEARTHFEATURES_CLAMP_FILTER_H 1
+#ifndef OSGEARTHFEATURES_ALTITUDE_FILTER_H
+#define OSGEARTHFEATURES_ALTITUDE_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Feature filter that will clamp incoming feature geometry to an elevation model.
      */
@@ -60,6 +58,10 @@ namespace osgEarth { namespace Features
         void pushAndDontClamp( FeatureList& input, FilterContext& cx );
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::AltitudeFilter AltitudeFilter;
+    }
 
-#endif // OSGEARTHFEATURES_CLAMP_FILTER_H
+} // namespace osgEarth
+
+#endif // OSGEARTHFEATURES_ALTITUDE_FILTER_H

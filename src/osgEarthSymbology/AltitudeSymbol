@@ -23,7 +23,7 @@
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Expression>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Symbol that conveys information about altitude and terrain interaction
@@ -129,6 +129,10 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _verticalScale;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::AltitudeSymbol AltitudeSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

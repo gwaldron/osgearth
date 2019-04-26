@@ -28,7 +28,7 @@
 /**
  * Classes for asynchronous loading of scene graph nodes.
  */
-namespace osgEarth 
+namespace osgEarth { namespace Support
 {
     /**
      * Result returned from an asynchronous function
@@ -163,6 +163,6 @@ namespace osgEarth
         // how child node should interact with each other
         Policy _policy;
     };
-}
+} }
 
 #endif // OSGEARTH_ASYNC_H

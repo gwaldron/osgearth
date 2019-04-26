@@ -35,6 +35,10 @@
 namespace osgEarth
 {
     class TerrainEngineNode;
+}
+
+namespace osgEarth { namespace Support
+{
     class OverlayDecorator;
     class OverlayTechnique;
 
@@ -225,6 +229,6 @@ namespace osgEarth
         virtual void releaseGLObjects(osg::State* state) const { }
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif //OSGEARTH_OVERLAY_DECORATOR

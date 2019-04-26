@@ -40,8 +40,6 @@
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 

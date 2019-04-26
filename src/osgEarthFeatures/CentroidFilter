@@ -23,11 +23,8 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Filter>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     /**
      * Replaces each feature's geometry with a single-point centroid.
      */
@@ -41,6 +38,10 @@ namespace osgEarth { namespace Features
         virtual FilterContext push( FeatureList& input, FilterContext& context );
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::CentroidFilter CentroidFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_CENTROID_FILTER_H

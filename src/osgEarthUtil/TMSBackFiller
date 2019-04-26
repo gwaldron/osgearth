@@ -26,7 +26,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/TMS>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
     using namespace osgEarth;
 
@@ -91,6 +91,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr< osgDB::Options > _options;
     };
 
-} } // namespace osgEarth::Util
+} } // namespace osgEarth::Tools
 
 #endif // OSGEARTHUTIL_TMS_PACKAGER_H

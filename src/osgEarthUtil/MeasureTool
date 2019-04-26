@@ -29,9 +29,9 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler, public MapNodeObserver
     {
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Util
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
         
-        osgEarth::Features::Feature* getFeature() const { return _feature.get(); }
+        osgEarth::Feature* getFeature() const { return _feature.get(); }
 
     public: // MapNodeObserver
 
@@ -92,11 +92,11 @@ namespace osgEarth { namespace Util
         int _mouseButton;
         osg::ref_ptr< osg::Group > _root;
 
-        osg::ref_ptr< osgEarth::Annotation::FeatureNode > _featureNode;
-        osg::ref_ptr< osgEarth::Features::Feature >  _feature;
+        osg::ref_ptr< osgEarth::FeatureNode > _featureNode;
+        osg::ref_ptr< osgEarth::Feature >  _feature;
 
-        osg::ref_ptr< osgEarth::Annotation::FeatureNode > _extentFeatureNode;
-        osg::ref_ptr< osgEarth::Features::Feature >       _extentFeature;
+        osg::ref_ptr< osgEarth::FeatureNode > _extentFeatureNode;
+        osg::ref_ptr< osgEarth::Feature >       _extentFeature;
 
         MeasureToolEventHandlerList _eventHandlers;
         bool _isPath;        
@@ -105,5 +105,6 @@ namespace osgEarth { namespace Util
 
         void rebuild();
     };
-}}
+} }
+
 #endif

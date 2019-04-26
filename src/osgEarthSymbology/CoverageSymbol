@@ -26,7 +26,7 @@
 #include <osg/Referenced>
 #include <vector>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /** 
      * Symbol that contains coverage encoding information
@@ -34,7 +34,7 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT CoverageSymbol : public Symbol
     {
     public:
-        META_Object(osgEarthSymbology, CoverageSymbol);
+        META_Object(osgEarth, CoverageSymbol);
 
         /** construct a symbol */
         CoverageSymbol(const Config& conf =Config());
@@ -56,6 +56,10 @@ namespace osgEarth { namespace Symbology
         virtual ~CoverageSymbol() { }
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::CoverageSymbol CoverageSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H

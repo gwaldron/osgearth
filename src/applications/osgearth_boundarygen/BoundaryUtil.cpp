@@ -634,18 +634,18 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
 bool
 BoundaryUtil::simpleBoundaryTest(const osg::Vec3dArray& boundary)
 {
-  osg::ref_ptr<osgEarth::Symbology::Polygon> boundsPoly = new osgEarth::Symbology::Polygon();
+  osg::ref_ptr<osgEarth::Polygon> boundsPoly = new osgEarth::Polygon();
   for (int i=0; i < (int)boundary.size(); i++)
     boundsPoly->push_back(boundary[i]);
 
   osgEarth::Bounds boundsBounds = boundsPoly->getBounds();
 
-  osg::ref_ptr<osgEarth::Symbology::Polygon> outterPoly = new osgEarth::Symbology::Polygon();
+  osg::ref_ptr<osgEarth::Polygon> outterPoly = new osgEarth::Polygon();
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMin() - 10.0, boundsBounds.yMin() - 10.0, boundsBounds.zMin()));
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMax() + 10.0, boundsBounds.yMin() - 10.0, boundsBounds.zMin()));
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMax() + 10.0, boundsBounds.yMax() + 10.0, boundsBounds.zMin()));
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMin() - 10.0, boundsBounds.yMax() + 10.0, boundsBounds.zMin()));
 
-  osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
+  osg::ref_ptr<osgEarth::Geometry> outPoly;
   return outterPoly->difference(boundsPoly.get(), outPoly);
 }

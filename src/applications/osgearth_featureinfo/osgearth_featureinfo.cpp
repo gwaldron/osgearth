@@ -24,8 +24,7 @@
 #include <osgEarthFeatures/OGRFeatureSource>
 #include <osgEarthFeatures/GeometryUtils>
 
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 
 std::string attributeTypeToString( AttributeType type )
 {
@@ -44,7 +43,7 @@ std::string indent = "    ";
 void printStats(FeatureSource* features)
 {
     std::cout << "Feature Count:  " << features->getFeatureCount() << std::endl;
-    std::cout << "Geometry Type:  " << osgEarth::Symbology::Geometry::toString( features->getGeometryType() ) << std::endl;
+    std::cout << "Geometry Type:  " << osgEarth::Geometry::toString( features->getGeometryType() ) << std::endl;
 
     //Print the schema
     const FeatureSchema schema = features->getSchema();

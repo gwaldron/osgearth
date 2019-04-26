@@ -36,8 +36,6 @@
 #include <osgEarthFeatures/FeatureImageLayer>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 int usage( const std::string& app )

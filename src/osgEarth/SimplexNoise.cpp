@@ -24,6 +24,8 @@
 #define POW2(x) ((double)(x==0 ? 1 : (2 << (x-1))))
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 const SimplexNoise::Grad SimplexNoise::grad3[12] = {
     Grad(1, 1, 0), Grad(-1, 1, 0), Grad(1, -1, 0), Grad(-1, -1, 0),

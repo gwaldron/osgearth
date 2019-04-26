@@ -27,7 +27,7 @@
 
 #include <osgEarthUtil/TileIndex>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {    
 	/**
 	 * Utility class for buildling a TileIndex shapefile.

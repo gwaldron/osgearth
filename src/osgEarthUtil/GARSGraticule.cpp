@@ -25,9 +25,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 namespace
 {

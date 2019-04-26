@@ -30,15 +30,23 @@
 
 namespace osgEarth
 {
-    class OverlayDecorator;
     class Terrain;
     class TerrainEngineNode;
-    class MapNodeCullData;
     class SpatialReference;
-    class ResourceReleaser;
-    class DrapingManager;
-    class ClampingManager;
-    class CascadeDrapingDecorator;
+    class DrapableNode;
+    class ClampableNode;
+
+    namespace Support
+    {
+        class OverlayDecorator;
+        class ResourceReleaser;
+        class DrapingManager;
+        class ClampingManager;
+        class CascadeDrapingDecorator;
+        class DrapingTechnique;
+        class ClampingTechnique;
+        class MapNodeCullData;
+    }
 
     /**
      * OSG Node that forms the root of an osgEarth map.

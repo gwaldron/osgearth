@@ -31,11 +31,8 @@
 #include <map>
 #include <list>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     class FilterContext;
     class Session;
 
@@ -168,9 +165,9 @@ namespace osgEarth { namespace Features
         /**
          * The geometry in this feature.
          */
-        void setGeometry( Symbology::Geometry* geom );
-        Symbology::Geometry* getGeometry() { dirty(); return _geom.get(); }
-        const Symbology::Geometry* getGeometry() const { return _geom.get(); }
+        void setGeometry( Geometry* geom );
+        Geometry* getGeometry() { dirty(); return _geom.get(); }
+        const Geometry* getGeometry() const { return _geom.get(); }
 
         /**
          * The spatial reference of the geometry in this feature.
@@ -278,8 +275,18 @@ namespace osgEarth { namespace Features
         void dirty();
     };
 
+    namespace Features {
+        typedef osgEarth::FeatureProfile FeatureProfile;
+        typedef osgEarth::AttributeValueUnion AttributeValueUnion;
+        typedef osgEarth::AttributeType AttributeType;
+        typedef osgEarth::AttributeValue AttributeValue;
+        typedef osgEarth::AttributeTable AttributeTable;
+        typedef osgEarth::FeatureID FeatureID;
+        typedef osgEarth::RefFeatureID RefFeatureID;
+        typedef osgEarth::FeatureList FeatureList;
+        typedef osgEarth::Feature Feature;
+    }
 
-
-} } // namespace osgEarth::Features
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_H

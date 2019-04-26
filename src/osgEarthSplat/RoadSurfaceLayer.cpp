@@ -27,8 +27,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[RoadSurfaceLayer] "
 

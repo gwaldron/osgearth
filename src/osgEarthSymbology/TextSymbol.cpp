@@ -23,7 +23,6 @@
 #include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(text, TextSymbol);
 

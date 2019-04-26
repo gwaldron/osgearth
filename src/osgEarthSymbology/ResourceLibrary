@@ -29,10 +29,8 @@
 #include <osgEarth/Random>
 #include <map>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
-    template<typename T> struct ResourceMap : public std::map<std::string, osg::ref_ptr<T> > { };
-
     /** 
      * ResourceLibrary manages a collection of external resources that a
      * build system can use the construct geometries.
@@ -134,7 +132,8 @@ namespace osgEarth { namespace Symbology
         const optional<URI>& uri() const { return _uri; }
 
     protected:
-        typedef std::map< const Symbol*, Random > RandomMap;
+        template<typename T> struct ResourceMap : public std::map<std::string, osg::ref_ptr<T> > { };
+
         optional<URI>                      _uri;
         std::string                        _name;
         bool                               _initialized;
@@ -149,7 +148,11 @@ namespace osgEarth { namespace Symbology
 
     typedef std::map< std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraryMap;
 
+    namespace Symbology {
+        typedef osgEarth::ResourceLibrary ResourceLibrary;
+        typedef osgEarth::ResourceLibraryMap ResourceLibraryMap;
+    }
 
-} } // namespace osgEarth::Symbology
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H

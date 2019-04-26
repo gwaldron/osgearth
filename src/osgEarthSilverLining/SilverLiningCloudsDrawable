@@ -25,6 +25,8 @@
 
 namespace osgEarth { namespace SilverLining
 {
+    using namespace osgEarth::Support;
+
     class SilverLiningContext;
 	class SilverLiningContextNode;
 
@@ -54,7 +56,7 @@ namespace osgEarth { namespace SilverLining
         osg::observer_ptr<SilverLiningContext> _SL;
 		SilverLiningContextNode* _contextNode;
 
-        mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
+        mutable osg::buffered_object<NativeProgramAdapterCollection> _adapters;
         
         CloudsDrawable(const CloudsDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

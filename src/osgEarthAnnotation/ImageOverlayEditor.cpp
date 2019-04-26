@@ -27,7 +27,6 @@
 #include <osgViewer/Viewer>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 
 /***************************************************************************/
 

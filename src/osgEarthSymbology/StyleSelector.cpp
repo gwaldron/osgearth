@@ -24,7 +24,6 @@
 #define LC "[StyleSelector] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 

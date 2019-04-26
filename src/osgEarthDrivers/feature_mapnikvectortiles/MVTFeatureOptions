@@ -26,7 +26,6 @@
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     /**
      * Options for the TFS feature driver.

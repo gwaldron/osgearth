@@ -27,10 +27,8 @@
 #include <osgEarth/Containers>
 #include <osgEarth/ThreadingUtils>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth { namespace Support
 {
-    using namespace osgEarth;
-
     /**
      * Caches the runtime objects created by resources, so we can avoid creating them
      * each time they are referenced.
@@ -100,6 +98,10 @@ namespace osgEarth { namespace Symbology
         Threading::Mutex      _resourceLibraryMutex;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::ResourceCache ResourceCache;
+    }
+
+} } 
 
 #endif // OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H

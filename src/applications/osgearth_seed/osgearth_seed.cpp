@@ -44,7 +44,6 @@
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 #define LC "[osgearth_cache] "
 

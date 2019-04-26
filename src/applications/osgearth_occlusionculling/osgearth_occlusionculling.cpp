@@ -43,7 +43,6 @@
 
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 
 int

@@ -31,10 +31,8 @@
 #include <map>
 #include <set>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Options for a feature index
      */
@@ -153,7 +151,7 @@ namespace osgEarth { namespace Features
                                                            public FeatureIndexBuilder
     {
     public:
-        META_Node(osgEarth::Features, FeatureSourceIndexNode);
+        META_Node(osgEarth, FeatureSourceIndexNode);
         typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
 
         /** default ctor */
@@ -208,8 +206,14 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSourceIndex> _index;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureSourceIndexOptions FeatureSourceIndexOptions;
+        typedef osgEarth::FeatureSourceIndex FeatureSourceIndex;
+        typedef osgEarth::FeatureSourceIndexNode FeatureSourceIndexNode;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSourceIndexOptions);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSourceIndexOptions);
 
 #endif // OSGEARTHFEATURES_FEATURE_SOURCE_INDEX_NODE_H

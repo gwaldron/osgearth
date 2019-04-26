@@ -31,7 +31,7 @@
 #define LC "[DrawInstanced] "
 
 using namespace osgEarth;
-using namespace osgEarth::DrawInstanced;
+using namespace osgEarth::Support;
 
 // Ref: http://sol.gfxile.net/instancing.html
 
@@ -42,7 +42,7 @@ using namespace osgEarth::DrawInstanced;
 
 //----------------------------------------------------------------------
 
-namespace osgEarth { namespace DrawInstanced
+namespace osgEarth { namespace Support
 {
     class MakeTransformsStatic : public osg::NodeVisitor
     {
@@ -58,7 +58,7 @@ namespace osgEarth { namespace DrawInstanced
             traverse(node);
         }
     };
-}}
+} }
 
 namespace
 {
@@ -150,6 +150,8 @@ namespace
         osg::BoundingBox computeBound(const osg::Drawable&) const { return _box; }
     };
 }
+
+using namespace DrawInstanced;
 
 ConvertToDrawInstanced::ConvertToDrawInstanced(unsigned                numInstances,
                                                const osg::BoundingBox& bbox,

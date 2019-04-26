@@ -33,6 +33,7 @@ namespace osgEarth {
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
+    using namespace osgEarth::Support;
 
     /**
      * A CULL callback that automatically adjusts the calculated near and far clip planes for
@@ -97,8 +98,6 @@ namespace osgEarth { namespace Util
         PerObjectFastMap< osg::Camera*, osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> > _clampers;
     };
 
-
-
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTHUTIL_AUTOCLIPPLANEHANDLER_H

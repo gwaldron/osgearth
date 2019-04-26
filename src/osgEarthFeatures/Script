@@ -26,9 +26,8 @@
 #include <map>
 #include <stdlib.h>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-
   /** 
    * Script contains code written in a scripting language (javascript is default).
    */
@@ -103,10 +102,6 @@ namespace osgEarth { namespace Features
   };
 
 
-  typedef std::list< osg::ref_ptr<Script> > ScriptList;
-  typedef std::map<std::string, osg::ref_ptr<Script> > ScriptMap;
-
-
   class OSGEARTHFEATURES_EXPORT ScriptResult : public osg::Referenced
   {
   public:
@@ -132,6 +127,12 @@ namespace osgEarth { namespace Features
     std::string _msg;
   };
 
-} } // namespace osgEarth::Features
+
+  namespace Features {
+      typedef osgEarth::Script Script;
+      typedef osgEarth::ScriptResult ScriptResult;
+  }
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_FEATURES_SCRIPT_H

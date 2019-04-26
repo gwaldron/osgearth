@@ -29,7 +29,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     struct LayerExtent
     {
@@ -91,6 +91,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     };
 
-} } } // namespace 
+} } // namespace 
 
 #endif // OSGEARTH_REX_TERRAIN_CULLER_H

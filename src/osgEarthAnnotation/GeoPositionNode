@@ -27,10 +27,8 @@
 #include <osgEarth/CullingUtils>
 #include <osg/PositionAttitudeTransform>
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-
+namespace osgEarth
+{
     /**
      * Base class for an annotation node that is anchored to a GeoPoint on the map.
      * Use getGeoTransform() to control the map position, and getPositionAttitudeTransform()
@@ -132,6 +130,6 @@ namespace osgEarth { namespace Annotation
         GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNO_LOCALIZED_NODE_H

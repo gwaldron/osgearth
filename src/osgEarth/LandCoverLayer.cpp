@@ -23,6 +23,7 @@
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define LC "[LandCoverLayer] "
 

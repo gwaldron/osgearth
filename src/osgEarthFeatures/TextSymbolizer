@@ -25,12 +25,10 @@
 #include <osgText/Text>
 #include <osg/BoundingBox>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
     class Feature;
     class FilterContext;
-
-    using namespace osgEarth::Symbology;
 
     /**
      * Applies the TextSymbol to a Text object.
@@ -60,6 +58,10 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const TextSymbol> _symbol;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::TextSymbolizer TextSymbolizer;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_TEXT_SYMBOLIZER_H

@@ -33,11 +33,8 @@
 #include <list>
 #include <vector>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     //class Session;
     class FeatureProfile;
     class FeatureIndexBuilder;
@@ -209,7 +206,11 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const SpatialReference> _outputSRS;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FilterContext FilterContext;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FILTER_CONTEXT_H
 

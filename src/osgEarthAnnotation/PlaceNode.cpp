@@ -38,8 +38,6 @@
 #define LC "[PlaceNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
 
 namespace
 {
@@ -501,7 +499,7 @@ PlaceNode::setDynamic( bool value )
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
+OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::PlaceNode );
 
 PlaceNode::PlaceNode(const Config&         conf,
                      const osgDB::Options* readOptions) :
@@ -573,12 +571,12 @@ PlaceNode::getConfig() const
 namespace osgEarth { namespace Serializers { namespace PlaceNode
 {
     // functions
-    static bool checkConfig(const osgEarth::Annotation::PlaceNode& node)
+    static bool checkConfig(const osgEarth::PlaceNode& node)
     {
         return true;
     }
 
-    static bool readConfig(osgDB::InputStream& is, osgEarth::Annotation::PlaceNode& node)
+    static bool readConfig(osgDB::InputStream& is, osgEarth::PlaceNode& node)
     {
         std::string json;
         is >> json;
@@ -588,7 +586,7 @@ namespace osgEarth { namespace Serializers { namespace PlaceNode
         return true;
     }
 
-    static bool writeConfig(osgDB::OutputStream& os, const osgEarth::Annotation::PlaceNode& node)
+    static bool writeConfig(osgDB::OutputStream& os, const osgEarth::PlaceNode& node)
     {
         os << node.getConfig().toJSON(false) << std::endl;
         return true;
@@ -596,9 +594,9 @@ namespace osgEarth { namespace Serializers { namespace PlaceNode
 
     REGISTER_OBJECT_WRAPPER(
         PlaceNode,
-        new osgEarth::Annotation::PlaceNode,
-        osgEarth::Annotation::PlaceNode,
-        "osg::Object osg::Node osg::Group osgEarth::Annotation::AnnotationNode osgEarth::Annotation::GeoPositionNode osgEarth::Annotation::PlaceNode")
+        new osgEarth::PlaceNode,
+        osgEarth::PlaceNode,
+        "osg::Object osg::Node osg::Group osgEarth::AnnotationNode osgEarth::GeoPositionNode osgEarth::PlaceNode")
     {
         ADD_USER_SERIALIZER(Config);
     }

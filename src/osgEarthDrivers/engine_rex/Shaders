@@ -19,9 +19,9 @@
 */
 #include <osgEarth/ShaderLoader>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
-    struct Shaders : public ShaderPackage
+    struct Shaders : public osgEarth::Support::ShaderPackage
 	{
         Shaders();
 
@@ -37,4 +37,4 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             SDK;
 	};
 	
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX

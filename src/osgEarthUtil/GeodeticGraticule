@@ -28,20 +28,10 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osg/ClipPlane>
 
-namespace osgEarth { namespace Util { namespace Internal
-{
-    using namespace osgEarth;
-    using namespace osgEarth::Annotation;
-    using namespace osgEarth::Symbology;
-
-} } }
-
-
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Annotation;
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth::Support;
 
     /**
      * Graticule that shows lat/long lines and automatically places labels.
@@ -198,6 +188,6 @@ namespace osgEarth { namespace Util
         };
         friend struct MyGroup;
     };
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTHUTIL_GEODETIC_GRATICULE_H

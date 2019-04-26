@@ -39,7 +39,6 @@
 #endif
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 
 #define LC "[AnnotationNode] "
 

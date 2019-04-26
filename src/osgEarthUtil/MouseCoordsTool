@@ -30,9 +30,11 @@ namespace osgEarth {
     class MapNode;
 }
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
-    using namespace Controls;
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+    using namespace osgEarth::Util::Controls;
 
     /**
      * Tool that prints the map coordinates under the mouse into a 
@@ -106,6 +108,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<Formatter>         _formatter;
     };
 
-} } // namespace osgEarthUtil
+} }
 
 #endif // OSGEARTHUTIL_MOUSE_COORDS_TOOL_H

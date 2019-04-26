@@ -25,7 +25,7 @@
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/ResourceLibrary>
 
-namespace osgEarth { namespace Symbology 
+namespace osgEarth
 {
     /**
      * A complete definition of style information.
@@ -120,8 +120,12 @@ namespace osgEarth { namespace Symbology
 
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::StyleSheet StyleSheet;
+    }
 
-//OSGEARTH_SPECIALIZE_REF_CONFIG(osgEarth::Symbology::StyleSheet);
+} // namespace osgEarth
+
+//OSGEARTH_SPECIALIZE_REF_CONFIG(osgEarth::StyleSheet);
 
 #endif // OSGEARTHSYMBOLOGY_STYLE_SHEET_H

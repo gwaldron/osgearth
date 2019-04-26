@@ -23,6 +23,7 @@
 #include <cstdarg>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[Metrics] "
 

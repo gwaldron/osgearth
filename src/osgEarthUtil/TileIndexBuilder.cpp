@@ -28,20 +28,18 @@
 
 using namespace osgDB;
 using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Features;
-using namespace std;
+using namespace osgEarth::Contrib;
 
 TileIndexBuilder::TileIndexBuilder()
 {
 }
 
-void TileIndexBuilder::setProgressCallback( osgEarth::ProgressCallback* progress )
+void TileIndexBuilder::setProgressCallback( ProgressCallback* progress )
 {
     _progress = progress;
 }
 
-void TileIndexBuilder::build(const std::string& indexFilename, const osgEarth::SpatialReference* srs)
+void TileIndexBuilder::build(const std::string& indexFilename, const SpatialReference* srs)
 {
     expandFilenames();
 
@@ -50,7 +48,7 @@ void TileIndexBuilder::build(const std::string& indexFilename, const osgEarth::S
         srs = osgEarth::SpatialReference::create("wgs84");
     }
 
-    osg::ref_ptr< osgEarth::Util::TileIndex > index = osgEarth::Util::TileIndex::create( indexFilename, srs );
+    osg::ref_ptr< TileIndex > index = TileIndex::create( indexFilename, srs );
 
     _indexFilename = indexFilename;
     std::string indexDir = getFilePath( _indexFilename );    

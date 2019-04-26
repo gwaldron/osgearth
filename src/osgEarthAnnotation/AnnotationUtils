@@ -32,11 +32,8 @@
 #include <osgText/Text>
 #include <osgUtil/CullVisitor>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     /**
      * Internal tools used by the annotation library.
      */
@@ -164,6 +161,6 @@ namespace osgEarth { namespace Annotation
         }
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif //OSGEARTH_ANNOTATION_ANNOTATION_UTILS_H

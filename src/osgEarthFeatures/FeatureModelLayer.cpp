@@ -20,8 +20,6 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[FeatureModelLayer] "
 

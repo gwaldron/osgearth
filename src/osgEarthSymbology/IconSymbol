@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarthSymbology/InstanceSymbol>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     class Style;
     class InstanceResource;
@@ -102,6 +102,10 @@ namespace osgEarth { namespace Symbology
         optional<double>                 _occlusionCullAltitude;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::IconSymbol IconSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif

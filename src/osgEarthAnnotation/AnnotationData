@@ -26,10 +26,8 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/DateTimeRange>
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    
+namespace osgEarth
+{    
     /**
      * Stores annotation metadata/extra information that can be stored
      * in a UserData slot
@@ -99,6 +97,6 @@ namespace osgEarth { namespace Annotation
         DateTimeRange _dateTimeRange;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif //OSGEARTH_ANNOTATION_ANNOTATION_DATA_H

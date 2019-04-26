@@ -26,8 +26,12 @@
 
 namespace osgEarth
 {
-    class MapInfo;
     class TileKey;
+}
+
+namespace osgEarth { namespace Support
+{
+    class MapInfo;
 
     /**
      * Locator that stores the extent of its source data (which might be different
@@ -121,6 +125,6 @@ namespace osgEarth
 
         void postInit();
     };
-}
+} }
 
 #endif // OSGEARTH_LOCATORS_H

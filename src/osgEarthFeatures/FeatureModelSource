@@ -31,11 +31,8 @@
 #include <osgEarth/Map>
 #include <osg/Node>
 
-namespace osgEarth { namespace Features
-{
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-    
+namespace osgEarth
+{    
     class FeatureModelOptions
     {
     public: //properties
@@ -261,7 +258,15 @@ namespace osgEarth { namespace Features
 
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureModelOptions FeatureModelOptions;
+        typedef osgEarth::FeatureModelSourceOptions FeatureModelSourceOptions;
+        typedef osgEarth::FeatureNodeFactory FeatureNodeFactory;
+        typedef osgEarth::GeomFeatureNodeFactory GeomFeatureNodeFactory;
+        typedef osgEarth::FeatureModelSource FeatureModelSource;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
 

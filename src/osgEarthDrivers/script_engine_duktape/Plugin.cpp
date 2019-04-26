@@ -31,7 +31,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
     /**
      * Driver plugin entry point - creates a DuktapeEngine instance.
      */
-    class DuktapeScriptEngineDriver : public osgEarth::Features::ScriptEngineDriver
+    class DuktapeScriptEngineDriver : public osgEarth::ScriptEngineDriver
     {
     public:
         DuktapeScriptEngineDriver()

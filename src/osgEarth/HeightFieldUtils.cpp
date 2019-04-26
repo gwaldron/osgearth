@@ -22,6 +22,7 @@
 #include <osgEarth/CullingUtils>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 
 bool

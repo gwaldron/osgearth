@@ -28,7 +28,7 @@ namespace osg {
     class Camera;
 }
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     struct OSGEARTH_EXPORT CameraUtils
     {
@@ -46,6 +46,6 @@ namespace osgEarth
 
     };
 
-}  // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTH_CAMERAUTILS_H

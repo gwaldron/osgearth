@@ -30,8 +30,10 @@
 #include <osg/Matrix>
 #include <vector>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
+    using namespace osgEarth::Support;
+
     /**
      * A single texture and its matrix. This corresponds to a 
      * single SamplerBinding (above).
@@ -173,6 +175,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} }
 
 #endif // OSGEARTH_REX_TILE_RENDER_MODEL

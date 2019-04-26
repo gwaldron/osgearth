@@ -26,6 +26,8 @@
 #define LC "[CacheSeed] "
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
+using namespace osgEarth::Support;
 using namespace OpenThreads;
 
 CacheTileHandler::CacheTileHandler( TerrainLayer* layer, const Map* map ):

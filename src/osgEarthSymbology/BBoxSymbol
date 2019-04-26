@@ -25,7 +25,7 @@
 #include <osgEarthSymbology/Fill>
 #include <osgEarthSymbology/Stroke>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Symbol that describes how to render bounding boxes around text labels.
@@ -75,6 +75,10 @@ namespace osgEarth { namespace Symbology
         optional<BboxGeom>          _bboxGeom;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::BBoxSymbol BBoxSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_BBOX_SYMBOL_H

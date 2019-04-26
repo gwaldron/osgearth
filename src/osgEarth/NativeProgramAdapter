@@ -35,7 +35,7 @@
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Wraps a native glProgram handle so we can earch it form uniforms and
@@ -150,7 +150,7 @@ namespace osgEarth
         }
     };
 
-}
+} }
 
 #undef LC
 

@@ -28,9 +28,6 @@
 
 namespace osgEarth { namespace Drivers { namespace Duktape
 {
-    using namespace osgEarth::Features;
-    using namespace osgEarth::Symbology;
-
     struct GeometryAPI
     {
         static void install(duk_context* ctx)

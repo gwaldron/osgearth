@@ -28,11 +28,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Units>
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
+namespace osgEarth
+{
     /**
      * Rectangle annotation.
      */
@@ -140,6 +137,6 @@ namespace osgEarth { namespace Annotation
         Linear _height;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNOTATION_RECTANGLE_NODE_H

@@ -20,6 +20,7 @@
 #include <osgEarth/Map>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[MapInfo] "
 

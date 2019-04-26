@@ -26,8 +26,7 @@
 #include <algorithm>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Support;
 
 #define LC "[Feature] "
 
@@ -119,7 +118,7 @@ AttributeValue::getDouble( double defaultValue ) const
     }
 
     switch( first ) {
-        case ATTRTYPE_STRING: return osgEarth::as<double>(second.stringValue, defaultValue);
+        case ATTRTYPE_STRING: return Strings::as<double>(second.stringValue, defaultValue);
         case ATTRTYPE_DOUBLE: return second.doubleValue;
         case ATTRTYPE_INT:    return (double)second.intValue;
         case ATTRTYPE_BOOL:   return second.boolValue? 1.0 : 0.0;
@@ -137,7 +136,7 @@ AttributeValue::getInt( int defaultValue ) const
     }
 
     switch( first ) {
-        case ATTRTYPE_STRING: return osgEarth::as<int>(second.stringValue, defaultValue);
+        case ATTRTYPE_STRING: return Strings::as<int>(second.stringValue, defaultValue);
         case ATTRTYPE_DOUBLE: return (int)second.doubleValue;
         case ATTRTYPE_INT:    return second.intValue;
         case ATTRTYPE_BOOL:   return second.boolValue? 1 : 0;
@@ -155,7 +154,7 @@ AttributeValue::getBool( bool defaultValue ) const
     }
 
     switch( first ) {
-        case ATTRTYPE_STRING: return osgEarth::as<bool>(second.stringValue, defaultValue);
+        case ATTRTYPE_STRING: return Strings::as<bool>(second.stringValue, defaultValue);
         case ATTRTYPE_DOUBLE: return second.doubleValue != 0.0;
         case ATTRTYPE_INT:    return second.intValue != 0;
         case ATTRTYPE_BOOL:   return second.boolValue;
@@ -737,7 +736,7 @@ void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
                     }
                     osg::ref_ptr< Feature > croppedFeature = new Feature(*this);
                     // Make sure the feature is wound correctly.
-                    croppedGeometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+                    croppedGeometry->rewind(osgEarth::Geometry::ORIENTATION_CCW);
                     croppedFeature->setGeometry(croppedGeometry.get());
                     splitFeatures.push_back(croppedFeature);
                 }

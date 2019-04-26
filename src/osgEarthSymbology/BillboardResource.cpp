@@ -21,7 +21,6 @@
 #define LC "[BillboardResource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 
 BillboardResource::BillboardResource(const Config& conf) :

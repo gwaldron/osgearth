@@ -35,8 +35,7 @@
 #endif
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Features::MVT;
+using namespace osgEarth::MVT;
 
 #define LC "[MVT] "
 
@@ -45,7 +44,7 @@ using namespace osgEarth::Features::MVT;
 #define CMD_LINETO 2
 #define CMD_CLOSEPATH 7
 
-namespace osgEarth { namespace Features { namespace MVT
+namespace osgEarth { namespace MVT
 {
     // https://github.com/mapbox/mapnik-vector-tile/blob/master/examples/c%2B%2B/tileinfo.cpp
     enum CommandType {
@@ -76,8 +75,8 @@ namespace osgEarth { namespace Features { namespace MVT
         int x = 0;
         int y = 0;
 
-        std::vector< osg::ref_ptr< osgEarth::Symbology::LineString > > lines;
-        osg::ref_ptr< osgEarth::Symbology::LineString > currentLine;
+        std::vector< osg::ref_ptr< osgEarth::LineString > > lines;
+        osg::ref_ptr< osgEarth::LineString > currentLine;
 
         for (int k = 0; k < feature.geometry_size();)
         {
@@ -95,7 +94,7 @@ namespace osgEarth { namespace Features { namespace MVT
                 {
                     if (cmd == SEG_MOVETO)
                     {
-                        currentLine = new osgEarth::Symbology::LineString;
+                        currentLine = new osgEarth::LineString;
                         lines.push_back( currentLine.get() );
                     }
                     int px = feature.geometry(k++);
@@ -152,7 +151,7 @@ namespace osgEarth { namespace Features { namespace MVT
         int x = 0;
         int y = 0;
 
-        osgEarth::Symbology::PointSet *geometry = new osgEarth::Symbology::PointSet();
+        osgEarth::PointSet *geometry = new osgEarth::PointSet();
 
         for (int k = 0; k < feature.geometry_size();)
         {
@@ -207,11 +206,11 @@ namespace osgEarth { namespace Features { namespace MVT
         int y = 0;
 
         // The list of polygons we've collected
-        std::vector< osg::ref_ptr< osgEarth::Symbology::Polygon > > polygons;
+        std::vector< osg::ref_ptr< osgEarth::Polygon > > polygons;
 
-        osg::ref_ptr< osgEarth::Symbology::Polygon > currentPolygon;
+        osg::ref_ptr< osgEarth::Polygon > currentPolygon;
 
-        osg::ref_ptr< osgEarth::Symbology::Ring > currentRing;
+        osg::ref_ptr< osgEarth::Ring > currentRing;
 
         for (int k = 0; k < feature.geometry_size();)
         {
@@ -228,7 +227,7 @@ namespace osgEarth { namespace Features { namespace MVT
                 {
                     if (!currentRing)
                     {
-                        currentRing = new osgEarth::Symbology::Ring();
+                        currentRing = new osgEarth::Ring();
                     }
 
                     int px = feature.geometry(k++);
@@ -261,7 +260,7 @@ namespace osgEarth { namespace Features { namespace MVT
                         // osgearth orientations are reversed from mvt
                         currentRing->rewind(Geometry::ORIENTATION_CCW);
 
-                        currentPolygon = new osgEarth::Symbology::Polygon(&currentRing->asVector());
+                        currentPolygon = new osgEarth::Polygon(&currentRing->asVector());
                         polygons.push_back(currentPolygon.get());
                     }
                     else if (orientation == Geometry::ORIENTATION_CCW)
@@ -412,7 +411,7 @@ namespace osgEarth { namespace Features { namespace MVT
 
 
 
-                    osg::ref_ptr< osgEarth::Symbology::Geometry > geometry;
+                    osg::ref_ptr< osgEarth::Geometry > geometry;
 
                     eGeomType geomType = static_cast<eGeomType>(feature.type());
                     if (geomType == MVT::Polygon)
@@ -449,7 +448,7 @@ namespace osgEarth { namespace Features { namespace MVT
         return true;
     }
 
-}}} // namespace osgEarth::Features::MVT
+}} // namespace osgEarth::MVT
 
 //........................................................................
 
@@ -508,7 +507,7 @@ MVTFeatureSource::init()
 }
 
 FeatureCursor*
-MVTFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
+MVTFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {
     if (!query.tileKey().isSet())
     {

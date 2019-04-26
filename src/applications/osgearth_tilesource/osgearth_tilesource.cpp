@@ -34,7 +34,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 
 /**
  * This sample demonstrates how to create a custom TileSource.

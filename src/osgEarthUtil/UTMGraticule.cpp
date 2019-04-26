@@ -31,9 +31,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Internal;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #ifndef GL_CLIP_DISTANCE0
 #define GL_CLIP_DISTANCE0 0x3000

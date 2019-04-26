@@ -32,7 +32,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 namespace ui = osgEarth::Util::Controls;
 
 int

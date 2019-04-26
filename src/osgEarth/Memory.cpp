@@ -22,6 +22,7 @@
 #include <osgEarth/Memory>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 /*
  * ADAPTED FROM:

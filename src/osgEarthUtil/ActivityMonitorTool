@@ -25,27 +25,25 @@
 #include <osgGA/GUIEventHandler>
 #include <set>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
-    using namespace Controls;
-
     /**
      * Tool that displays the contents of the registry's activity set.
      */
     class OSGEARTHUTIL_EXPORT ActivityMonitorTool : public osgGA::GUIEventHandler
     {
     public:
-        ActivityMonitorTool(VBox* vbox);
+        ActivityMonitorTool(Util::Controls::VBox* vbox);
         virtual ~ActivityMonitorTool() { }
 
     public: // GUIEventHandler
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
     protected:
-        osg::observer_ptr<VBox> _vbox;
+        osg::observer_ptr<Util::Controls::VBox> _vbox;
         std::set<std::string>   _prev;
     };
 
-} } // namespace osgEarthUtil
+} }
 
 #endif // OSGEARTHUTIL_MOUSE_COORDS_TOOL_H

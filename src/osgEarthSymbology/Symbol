@@ -27,7 +27,7 @@
 #include <osg/Referenced>
 #include <vector>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     class Style;
     
@@ -140,7 +140,7 @@ namespace osgEarth { namespace Symbology
 
 #define OSGEARTH_REGISTER_SYMBOL( CLASSNAME )\
     extern "C" void osgearth_symbol_##CLASSNAME(void) {} \
-    static osgEarth::Symbology::RegisterSymbolProxy<CLASSNAME> s_osgEarthRegisterSymbolProxy_##CLASSNAME;
+    static osgEarth::RegisterSymbolProxy<CLASSNAME> s_osgEarthRegisterSymbolProxy_##CLASSNAME;
     
 #define USE_OSGEARTH_SYMBOL( CLASSNAME ) \
     extern "C" void osgearth_symbol_##CLASSNAME(void); \
@@ -148,13 +148,17 @@ namespace osgEarth { namespace Symbology
 
 #define OSGEARTH_REGISTER_SIMPLE_SYMBOL( KEY, CLASSNAME)\
     extern "C" void osgearth_simple_symbol_##KEY(void) {} \
-    static osgEarth::Symbology::RegisterSymbolProxy< osgEarth::Symbology::SimpleSymbolFactory<CLASSNAME> > s_osgEarthRegisterSymbolProxy_##CLASSNAME##KEY(new osgEarth::Symbology::SimpleSymbolFactory<CLASSNAME>(#KEY));
+    static osgEarth::RegisterSymbolProxy< osgEarth::SimpleSymbolFactory<CLASSNAME> > s_osgEarthRegisterSymbolProxy_##CLASSNAME##KEY(new osgEarth::SimpleSymbolFactory<CLASSNAME>(#KEY));
     
 #define USE_OSGEARTH_SIMPLE_SYMBOL( KEY ) \
     extern "C" void osgearth_simple_symbol_##KEY(void); \
     static osgDB::PluginFunctionProxy proxy_osgearth_simple_symbol_##KEY(osgearth_simple_symbol_##KEY);
 
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::Symbol Symbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

@@ -24,10 +24,8 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/ObjectIndex>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Client interface for fetching features from an index given an object id.
      */
@@ -52,6 +50,11 @@ namespace osgEarth { namespace Features
         //empty
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureIndex FeatureIndex;
+        typedef osgEarth::FeatureIndexBuilder FeatureIndexBuilder;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_INDEX

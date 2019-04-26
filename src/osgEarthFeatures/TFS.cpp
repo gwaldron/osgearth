@@ -46,8 +46,7 @@
 #define LC "[TFS FeatureSource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Features::TFS;
+using namespace osgEarth::TFS;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
@@ -254,7 +253,7 @@ TFSFeatureSource::open()
 
 
 FeatureCursor*
-TFSFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
+TFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {
     FeatureCursor* result = 0L;
 
@@ -438,7 +437,7 @@ TFSFeatureSource::isJSON(const std::string& mime) const
 }
 
 std::string
-TFSFeatureSource::createURL(const Symbology::Query& query)
+TFSFeatureSource::createURL(const Query& query)
 {
     if (query.tileKey().isSet())
     {

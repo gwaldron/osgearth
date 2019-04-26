@@ -23,7 +23,6 @@
 #include <osgEarth/GeoCommon>
 #include <osgEarth/Bounds>
 #include <osgEarth/SpatialReference>
-#include <osgEarth/Units>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Status>
 

@@ -30,7 +30,6 @@
 #define LC "[viewer] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 
 

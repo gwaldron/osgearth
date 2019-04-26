@@ -24,10 +24,8 @@
 #include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * A FeatureSourceLayer that extracts features from raster data in
      * an image layer.
@@ -66,7 +64,7 @@ namespace osgEarth { namespace Features
     public: // FeatureLayer
         
         virtual FeatureCursor* createFeatureCursor(
-            const Symbology::Query& query,
+            const Query& query,
             ProgressCallback* progress);
 
     public: // Layer
@@ -84,8 +82,12 @@ namespace osgEarth { namespace Features
         LayerClient<ImageLayer> _client;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::ImageToFeatureSource ImageToFeatureSource;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::ImageToFeatureSource::Options);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ImageToFeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H

@@ -2,7 +2,7 @@
 
 #include <osgEarth/Shaders>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     Shaders::Shaders()
     {
@@ -52,4 +52,4 @@ namespace osgEarth
         TextLegacy = "Text_legacy.glsl";
         _sources[TextLegacy] = "@Text_legacy.glsl@";
     }
-};
+} }

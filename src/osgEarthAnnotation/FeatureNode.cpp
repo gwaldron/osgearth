@@ -46,9 +46,6 @@
 #define LC "[FeatureNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 FeatureNode::FeatureNode(Feature* feature,
                          const Style& in_style,
@@ -382,7 +379,7 @@ FeatureNode::traverse(osg::NodeVisitor& nv)
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
+OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::FeatureNode );
 
 
 FeatureNode::FeatureNode(const Config&         conf,

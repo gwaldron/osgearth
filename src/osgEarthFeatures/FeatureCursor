@@ -26,10 +26,8 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Profile>
 
-namespace osgEarth { namespace Features
-{   
-    using namespace osgEarth;
-
+namespace osgEarth
+{
     /**
      * A cursor that lets you iterate over a collection of features returned 
      * from a feature query performed on a FeatureStore.
@@ -80,8 +78,8 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT GeometryFeatureCursor : public FeatureCursor
     {
     public:
-        GeometryFeatureCursor( Symbology::Geometry* geom );
-        GeometryFeatureCursor( Symbology::Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
+        GeometryFeatureCursor( Geometry* geom );
+        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
 
     public: // FeatureCursor
         virtual bool hasMore() const;
@@ -89,13 +87,19 @@ namespace osgEarth { namespace Features
 
     protected:
         virtual ~GeometryFeatureCursor();
-        osg::ref_ptr<Symbology::Geometry> _geom;
+        osg::ref_ptr<Geometry> _geom;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         osg::ref_ptr<const FeatureFilterChain> _filterChain;
         osg::ref_ptr<Feature> _lastFeature;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureCursor FeatureCursor;
+        typedef osgEarth::FeatureListCursor FeatureListCursor;
+        typedef osgEarth::GeometryFeatureCursor GeometryFeatureCursor;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_CURSOR_H
 

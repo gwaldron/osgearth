@@ -29,10 +29,8 @@
 #include <geos/geom/Geometry.h>
 #include <geos/geom/GeometryFactory.h>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     class GEOSContext
     {
     public:
@@ -40,9 +38,9 @@ namespace osgEarth { namespace Symbology
         ~GEOSContext();
 
     public:
-        Symbology::Geometry* exportGeometry(const geos::geom::Geometry* input);
+        Geometry* exportGeometry(const geos::geom::Geometry* input);
 
-        geos::geom::Geometry* importGeometry( const Symbology::Geometry* input );
+        geos::geom::Geometry* importGeometry( const Geometry* input );
 
         void disposeGeometry(geos::geom::Geometry* input);
 
@@ -56,7 +54,11 @@ namespace osgEarth { namespace Symbology
 #endif
     };
 
-} } // namespace osgEarth::Features
+    namespace Symbology {
+        typedef osgEarth::GEOSContext GEOSContext;
+    }
+
+} // namespace osgEarth::Features
 
 #endif // OSGEARTH_HAVE_GEOS
 

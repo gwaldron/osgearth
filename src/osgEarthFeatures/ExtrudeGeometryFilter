@@ -28,19 +28,11 @@
 #include <vector>
 #include <list>
 
-namespace osgEarth {
-    namespace Symbology {
-        class ResourceLibrary;
-    }
-}
-
-namespace osgEarth { namespace Features 
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-    
     class FeatureSourceIndex;
     class FeatureIndexBuilder;
+    class ResourceLibrary;
 
     /**
      * Extrudes footprint geometry into 3D geometry
@@ -215,6 +207,10 @@ namespace osgEarth { namespace Features
         osg::Drawable* buildOutlineGeometry(const Structure& structure);
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::ExtrudeGeometryFilter ExtrudeGeometryFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

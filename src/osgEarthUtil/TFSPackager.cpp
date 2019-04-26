@@ -27,14 +27,13 @@
 #define LC "[TFSPackager] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 
 /******************************************************************************************/
 class FeatureTileVisitor;
 class FeatureTile;
 
-typedef std::list< osgEarth::Features::FeatureID > FeatureIDList;
+typedef std::list< osgEarth::FeatureID > FeatureIDList;
 
 class FeatureTile : public osg::Referenced
 {

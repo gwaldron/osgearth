@@ -25,7 +25,7 @@
 #include <vector>
 #include <stack>
 
-namespace osgEarth { namespace Symbology 
+namespace osgEarth
 {
     using namespace osgEarth;
 
@@ -496,9 +496,23 @@ namespace osgEarth { namespace Symbology
         bool _closeLoop;
     };
 
-    typedef std::vector<osg::ref_ptr<Geometry> > GeometryList;
+    namespace Symbology {
+        typedef osgEarth::PointSet PointSet;
+        typedef osgEarth::BufferParameters BufferParameters;
+        typedef osgEarth::Vec3dVector Vec3dVector;
+        typedef osgEarth::Geometry Geometry;
+        typedef osgEarth::GeometryCollection GeometryCollection;
+        typedef osgEarth::LineString LineString;
+        typedef osgEarth::Ring Ring;
+        typedef osgEarth::RingCollection RingCollection;
+        typedef osgEarth::Polygon Polygon;
+        typedef osgEarth::MultiGeometry MultiGeometry;
+        typedef osgEarth::GeometryIterator GeometryIterator;
+        typedef osgEarth::ConstGeometryIterator ConstGeometryIterator;
+        typedef osgEarth::ConstSegmentIterator ConstSegmentIterator;
+    }
 
-} } // namespace osgEarth::Symbology
+} // namespace osgEarth
 
 
 #endif // OSGEARTHSYMBOLOGY_GEOMETRY_H

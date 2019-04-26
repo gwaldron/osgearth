@@ -24,10 +24,8 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * The scale filter is kind of a poor-man's buffer. It simply
      * scales and re-centers the feature geometry within its envelope.
@@ -50,6 +48,10 @@ namespace osgEarth { namespace Features
         double _scale;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::ScaleFilter ScaleFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_SCALE_FILTER_H

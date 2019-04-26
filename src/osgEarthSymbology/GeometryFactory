@@ -26,7 +26,7 @@
 /**
  * A collection of utilities for creating geometric features
  */
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     using namespace osgEarth;
 
@@ -133,6 +133,10 @@ namespace osgEarth { namespace Symbology
         osg::ref_ptr<const SpatialReference> _srs;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::GeometryFactory GeometryFactory;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_GEOMETRY_FACTORY

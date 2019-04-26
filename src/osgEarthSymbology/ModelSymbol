@@ -26,7 +26,7 @@
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osg/Vec3f>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     class InstanceResource;
 
@@ -125,6 +125,10 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _scaleZ;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::ModelSymbol ModelSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif

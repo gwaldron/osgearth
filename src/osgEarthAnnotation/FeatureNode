@@ -30,12 +30,8 @@
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osg/Polytope>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Features;
-    using namespace osgEarth::Symbology;
-
     /**
      * Renders a single feature. Since no feature profile is provided,
      * the feature must contain geometry that is in the same SRS as the map.
@@ -172,6 +168,6 @@ namespace osgEarth { namespace Annotation
             TerrainCallbackContext& context);
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNO_FEATURE_NODE_H

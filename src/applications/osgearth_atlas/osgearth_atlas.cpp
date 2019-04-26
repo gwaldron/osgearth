@@ -47,6 +47,7 @@
 #define LC "[atlas] "
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 int
 usage(const char* msg, const char* name =0L)
@@ -102,15 +103,15 @@ build(osg::ArgumentParser& arguments)
         return usage("Input file not found");
 
     // open the resource library.
-    osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> lib =
-        new osgEarth::Symbology::ResourceLibrary("unnamed", inCatalogPath);
+    osg::ref_ptr<osgEarth::ResourceLibrary> lib =
+        new osgEarth::ResourceLibrary("unnamed", inCatalogPath);
 
     if ( !lib->initialize(0L) )
         return usage("Error loading input catalog file");
     
     // build the atlas.
-    osgEarth::Util::AtlasBuilder        builder;
-    osgEarth::Util::AtlasBuilder::Atlas atlas;
+    AtlasBuilder        builder;
+    AtlasBuilder::Atlas atlas;
 
     // max x/y dimensions:
     unsigned sizex, sizey;
@@ -194,8 +195,8 @@ show(osg::ArgumentParser& arguments)
     arguments.read("--aux", auxPattern);
 
     // open the resource library:
-    osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> lib =
-        new osgEarth::Symbology::ResourceLibrary("temp", osgEarth::URI(inCatalogFile) );
+    osg::ref_ptr<osgEarth::ResourceLibrary> lib =
+        new osgEarth::ResourceLibrary("temp", osgEarth::URI(inCatalogFile) );
     if ( lib->initialize(0L) == false )
         return usage("Failed to load resource catalog");
 
@@ -237,7 +238,7 @@ show(osg::ArgumentParser& arguments)
     osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0].set(1,1,0,1);
     geom->setColorArray(c);
-    osgEarth::Symbology::SkinResourceVector skins;
+    osgEarth::SkinResourceVector skins;
     lib->getSkins(skins);
     OE_WARN << "num = " << skins.size() << "\n";
 

@@ -30,7 +30,7 @@ namespace osgViewer {
     class Viewer;
 }
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Interface for a class that handles collecting metrics.
@@ -264,6 +264,6 @@ namespace osgEarth
 
 #define METRIC_SCOPED_EX(NAME, COUNT, ...) \
     osgEarth::ScopedMetric scoped_metric__(NAME, osgEarth::Metrics::enabled() ? osgEarth::Metrics::encodeArgs(COUNT, __VA_ARGS__) : osgEarth::Config())
-};
+} }
 
 #endif

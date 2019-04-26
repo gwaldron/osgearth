@@ -26,7 +26,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerListener>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
     /**
      * Image layer intended to be viewed from the inside.
@@ -73,8 +73,9 @@ namespace osgEarth { namespace Util
         LayerClient<ImageLayer> _client;
     };
 
-} } // namespace osgEarth:Util
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::SkyViewImageLayer::Options);
+} } // namespace osgEarth:Contrib
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::SkyViewImageLayer::Options);
 
 
 #endif // OSGEARTHUTIL_SKYVIEW_H

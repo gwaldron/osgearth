@@ -29,7 +29,7 @@
 #include <osg/Uniform>
 #include <osg/Light>
 
-namespace osgEarth { namespace Util 
+namespace osgEarth { namespace Util
 {
     /**
      * Static Shadowing methods
@@ -153,6 +153,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Uniform>  _shadowToPrimaryMatrix;
     };
 
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTH_UTIL_SHADOWING_H

@@ -21,10 +21,7 @@
 
 #include <osgEarthFeatures/FeatureSource>
 
-using namespace osgEarth;
-using namespace osgEarth::Features;
-
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
     /**
      * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
@@ -74,16 +71,16 @@ namespace osgEarth { namespace Features
         const std::string& getLayer() const;
 
         //! Query expression to use when accessing data source
-        void setQuery(const Symbology::Query& value);
-        const Symbology::Query& getQuery() const;
+        void setQuery(const Query& value);
+        const Query& getQuery() const;
 
         //! URL of inline geometry to load.
         void setGeometryURL(const URI& value);
         const URI& getGeometryURL() const;
 
         //! Sets an inline geometry to use.
-        void setGeometry(Symbology::Geometry* geom) { _geometry = geom; }
-        const Symbology::Geometry* getGeometry() const { return _geometry.get(); }
+        void setGeometry(Geometry* geom) { _geometry = geom; }
+        const Geometry* getGeometry() const { return _geometry.get(); }
 
         //! Profile of feature data
         void setProfile(const Profile* profile) { _profile = profile; }
@@ -101,7 +98,7 @@ namespace osgEarth { namespace Features
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress);        
+        virtual FeatureCursor* createFeatureCursor(const Query& query, ProgressCallback* progress);        
 
         virtual bool deleteFeature(FeatureID fid);
 
@@ -117,23 +114,23 @@ namespace osgEarth { namespace Features
     
         virtual bool insertFeature(Feature* feature);
 
-        virtual osgEarth::Symbology::Geometry::Type getGeometryType() const;
+        virtual osgEarth::Geometry::Type getGeometryType() const;
 
     protected:
 
         virtual ~OGRFeatureSource();
 
         // parses an explicit WKT geometry string into a Geometry.
-        Symbology::Geometry* parseGeometry( const Config& geomConf );
+        Geometry* parseGeometry( const Config& geomConf );
 
         // read the WKT geometry from a URL, then parse into a Geometry.
-        Symbology::Geometry* parseGeometryUrl( const URI& geomUrl, const osgDB::Options* dbOptions );
+        Geometry* parseGeometryUrl( const URI& geomUrl, const osgDB::Options* dbOptions );
 
         void initSchema();
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
+        osg::ref_ptr<Geometry> _geometry; // explicit geometry.
         std::string _source;
         void* _dsHandle;
         void* _layerHandle;
@@ -147,8 +144,13 @@ namespace osgEarth { namespace Features
         void ctor();
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::OGRFeatureSource OGRFeatureSource;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::OGRFeatureSource::Options);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::OGRFeatureSource::Options);
+
 
 #endif // OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER

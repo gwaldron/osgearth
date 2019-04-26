@@ -34,15 +34,10 @@
 #include <osgEarth/Shaders>
 #include <osgText/Text>
 #include <osg/Depth>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
 
 #define LC "[LabelNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
-
 
 //-------------------------------------------------------------------
 
@@ -312,7 +307,7 @@ LabelNode::setDynamic( bool dynamic )
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::Annotation::LabelNode );
+OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::LabelNode );
 
 
 LabelNode::LabelNode(const Config&         conf,

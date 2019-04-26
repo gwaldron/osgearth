@@ -42,8 +42,6 @@
 #include <osg/Projection>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 
 osgText::String::Encoding
 AnnotationUtils::convertTextSymbolEncoding (const TextSymbol::Encoding encoding) {

@@ -24,7 +24,7 @@
 #include <osg/Geometry>
 #include <osg/PrimitiveSet>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Recursively subdivides (tesselates) a geocentric geometry mesh to the specified
@@ -70,6 +70,10 @@ namespace osgEarth { namespace Symbology
         unsigned int _maxElementsPerEBO;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::MeshSubdivider MeshSubdivider;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_MESH_SUBDIVIDER

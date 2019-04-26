@@ -25,7 +25,7 @@ SET(HEADERS_ROOT
     ExampleResources
     Export
     FlatteningLayer
-    Fog
+    #Fog
     Formatter
     FractalElevationLayer
     GARSGraticule
@@ -70,7 +70,7 @@ set(SHADERS_CPP
 
 set(TARGET_GLSL
     ContourMap.glsl
-    Fog.glsl
+    #Fog.glsl
     GeodeticGraticule.glsl
     LogDepthBuffer.glsl
     LogDepthBuffer.VertOnly.glsl
@@ -89,7 +89,7 @@ configure_shaders(
 
 SET(SOURCES_ROOT
     ActivityMonitorTool.cpp
-    ArcGIS.cpp
+    #ArcGIS.cpp
     AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
@@ -140,39 +140,12 @@ SET(SOURCES_ROOT
 SOURCE_GROUP( Sources FILES ${SOURCES_ROOT} )
 
 
-SET(HEADERS_COLORFILTER
-    BrightnessContrastColorFilter
-    CMYKColorFilter
-    GammaColorFilter
-    GLSLColorFilter
-    HSLColorFilter
-    RGBColorFilter
-    ChromaKeyColorFilter
-    NightColorFilter
-)
-SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
-
-
-SET(SOURCES_COLORFILTER
-    BrightnessContrastColorFilter.cpp
-    CMYKColorFilter.cpp
-    GammaColorFilter.cpp
-    GLSLColorFilter.cpp
-    HSLColorFilter.cpp
-    RGBColorFilter.cpp
-    ChromaKeyColorFilter.cpp
-    NightColorFilter.cpp
-)
-SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
-
-
 SET(LIB_PUBLIC_HEADERS
     ${HEADERS_ROOT}
-    ${HEADERS_COLORFILTER}
 )
 
 SET(LIB_COMMON_FILES
-    ${SOURCES_ROOT} ${SOURCES_COLORFILTER}
+    ${SOURCES_ROOT}
 )
 
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
@@ -202,7 +175,7 @@ LINK_INTERNAL(${LIB_NAME}
     osgEarthAnnotation
 )
 
-LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGMANIPULATOR_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY)
+LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY)
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
 INCLUDE(ModuleInstall OPTIONAL)

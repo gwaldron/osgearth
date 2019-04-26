@@ -28,8 +28,6 @@
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[FeatureImageLayer] "
 
@@ -39,7 +37,7 @@ REGISTER_OSGEARTH_LAYER(feature_image, FeatureImageLayer);
 
 //........................................................................
 
-namespace osgEarth { namespace Features { namespace FeatureImageLayerImpl
+namespace osgEarth { namespace FeatureImageLayerImpl
 {
     struct RenderFrame
     {
@@ -151,7 +149,7 @@ namespace osgEarth { namespace Features { namespace FeatureImageLayerImpl
         ras.render(ren, value);
         ras.reset();
     }
-}}};
+}};
 
 //........................................................................
 
@@ -176,7 +174,7 @@ FeatureImageLayer::Options::fromConfig(const Config& conf)
 
 //........................................................................
 
-using namespace osgEarth::Features::FeatureImageLayerImpl;
+using namespace osgEarth::FeatureImageLayerImpl;
 
 void
 FeatureImageLayer::init()
@@ -576,7 +574,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
         }
     }
 
-    osg::ref_ptr<Symbology::Polygon> cropPoly = new Symbology::Polygon(4);
+    osg::ref_ptr<Polygon> cropPoly = new Polygon(4);
     cropPoly->push_back(osg::Vec3d(cropXMin, cropYMin, 0));
     cropPoly->push_back(osg::Vec3d(cropXMax, cropYMin, 0));
     cropPoly->push_back(osg::Vec3d(cropXMax, cropYMax, 0));

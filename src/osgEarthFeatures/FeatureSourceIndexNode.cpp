@@ -22,7 +22,6 @@
 #include <algorithm>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 // for testing:
 //#undef  OE_DEBUG
@@ -266,7 +265,7 @@ FeatureSourceIndexNode* FeatureSourceIndexNode::get(osg::Node* graph)
 
 namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNodeClass
 {
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
 
     bool checkFIDMap(const FeatureSourceIndexNode& node)
     {
@@ -314,9 +313,9 @@ namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNodeCla
 
     REGISTER_OBJECT_WRAPPER(
         FeatureSourceIndexNode,
-        new osgEarth::Features::FeatureSourceIndexNode,
-        osgEarth::Features::FeatureSourceIndexNode,
-        "osg::Object osg::Node osg::Group osgEarth::Features::FeatureSourceIndexNode")
+        new osgEarth::FeatureSourceIndexNode,
+        osgEarth::FeatureSourceIndexNode,
+        "osg::Object osg::Node osg::Group osgEarth::FeatureSourceIndexNode")
     {
         ADD_USER_SERIALIZER(FIDMap);
     }

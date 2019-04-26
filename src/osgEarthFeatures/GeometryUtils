@@ -26,10 +26,8 @@
 #include <osgEarthSymbology/Geometry>
 
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth::Symbology;
-
     namespace GeometryUtils
     {
         extern OSGEARTHFEATURES_EXPORT std::string geometryToWKT( const Geometry* geometry );
@@ -43,7 +41,7 @@ namespace osgEarth { namespace Features
         extern OSGEARTHFEATURES_EXPORT double getGeometryArea( const Geometry* geometry );
     }
 
-} } // namespace osgEarth::Features
+} // namespace osgEarth
 
 #endif
 

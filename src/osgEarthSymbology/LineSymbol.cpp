@@ -20,7 +20,6 @@
 #include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 namespace
 {

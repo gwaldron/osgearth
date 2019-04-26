@@ -30,8 +30,9 @@
 
 #include <osgEarthUtil/Common>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {	
+    using namespace osgEarth;
 
     /**
      * ClampCallback is a callback you can attach to either MatrixTransforms or Geodes to clamp them against the terrain.

@@ -25,9 +25,6 @@
 #include <osgEarthSymbology/Geometry>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::MapInspector;
 
 namespace ui = osgEarth::Util::Controls;

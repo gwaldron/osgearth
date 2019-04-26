@@ -41,8 +41,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
 
 #define LC "[osgearth_tracks] "
 

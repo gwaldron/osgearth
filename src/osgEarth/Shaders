@@ -24,7 +24,7 @@
 
 #include <osgEarth/ShaderLoader>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class OSGEARTH_EXPORT Shaders : public ShaderPackage
 	{
@@ -43,6 +43,6 @@ namespace osgEarth
         std::string Text, TextLegacy;
 	};	
 
-} // namespace osgEarth
+} } 
 
 #endif // OSGEARTH_SHADERS

@@ -107,7 +107,7 @@ SpatialReference::createCube()
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
 	{
-        result = new CubeSpatialReference( handle );
+        result = new Contrib::CubeSpatialReference( handle );
 	}
 	else 
 	{
@@ -1496,7 +1496,7 @@ SpatialReference::_init()
 
     // Extract the base units:
     std::string units = getOGRAttrValue( _handle, "UNIT", 0, true );
-    double unitMultiplier = osgEarth::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
+    double unitMultiplier = osgEarth::Support::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
     if ( _is_geographic )
         _units = Units(units, units, Units::TYPE_ANGULAR, unitMultiplier);
     else

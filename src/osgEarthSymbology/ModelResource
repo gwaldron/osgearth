@@ -24,10 +24,8 @@
 #include <osgEarthSymbology/InstanceResource>
 #include <osgEarth/Status>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * A resource that materializes an InstanceSymbol, which is a single-point object
      * that resolves to an osg::Node. Instances are usually used for point-model
@@ -72,6 +70,11 @@ namespace osgEarth { namespace Symbology
 
     typedef std::vector<osg::ref_ptr<ModelResource> > ModelResourceVector;
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::ModelResource ModelResource;
+        typedef osgEarth::ModelResourceVector ModelResourceVector;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H

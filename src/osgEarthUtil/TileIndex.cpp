@@ -31,8 +31,7 @@
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Features;
+using namespace osgEarth::Contrib;
 using namespace std;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
@@ -107,15 +106,15 @@ void
 TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string >& files)
 {            
     files.clear();
-    osgEarth::Symbology::Query query;    
+    osgEarth::Query query;    
 
     GeoExtent transformed = extent.transform( _features->getFeatureProfile()->getSRS() );
     query.bounds() = transformed.bounds();
-    osg::ref_ptr< osgEarth::Features::FeatureCursor> cursor = _features->createFeatureCursor( query, 0L );
+    osg::ref_ptr< osgEarth::FeatureCursor> cursor = _features->createFeatureCursor( query, 0L );
 
     while (cursor->hasMore())
     {
-        osg::ref_ptr< osgEarth::Features::Feature> feature = cursor->nextFeature();
+        osg::ref_ptr< osgEarth::Feature> feature = cursor->nextFeature();
         if (feature.valid())
         {
             std::string location = getFullPath(_filename, feature->getString("location"));

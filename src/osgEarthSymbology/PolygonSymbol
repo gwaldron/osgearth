@@ -23,7 +23,7 @@
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Fill>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Symbol that describes how to render a polygonal geometry.
@@ -60,6 +60,10 @@ namespace osgEarth { namespace Symbology
     };
 
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::PolygonSymbol PolygonSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

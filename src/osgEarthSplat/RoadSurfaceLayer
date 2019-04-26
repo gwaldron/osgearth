@@ -29,7 +29,6 @@
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     /**
      * Renders a road surface.

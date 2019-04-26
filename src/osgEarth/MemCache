@@ -21,7 +21,7 @@
 
 #include <osgEarth/Cache>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * An in-memory cache.
@@ -53,6 +53,6 @@ namespace osgEarth
         unsigned _maxBinSize;
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_MEMCACHE_H

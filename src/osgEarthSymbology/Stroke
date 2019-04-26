@@ -26,7 +26,7 @@
 #include <osgEarth/Units>
 
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Drawing parameters for a line.
@@ -127,8 +127,13 @@ namespace osgEarth { namespace Symbology
         void init();
     };
 
-} } // namespace osgEarth::Symbology
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Stroke);
+    namespace Symbology {
+        typedef osgEarth::Stroke Stroke;
+    }
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Stroke);
 
 #endif // OSGEARTHSYMBOLOGY_STROKE_H

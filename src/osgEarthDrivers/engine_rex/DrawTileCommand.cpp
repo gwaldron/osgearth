@@ -18,7 +18,7 @@
  */
 #include "DrawTileCommand"
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[DrawTileCommand] "

@@ -24,6 +24,7 @@
 #include <osgDB/ObjectWrapper>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 namespace
 {

@@ -26,9 +26,13 @@
 
 namespace osgEarth
 {
-    class MapInfo;
     class Layer;
     struct MapModelChange;
+
+    namespace Support
+    {
+        class MapInfo;
+    }
 
     /**
      * Callback that the Map object uses to notify listeners of map data model changes.
@@ -36,7 +40,7 @@ namespace osgEarth
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
         //! Invoked when a Map first establishes a valid profile.
-        virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
+        virtual void onMapInfoEstablished( const Support::MapInfo& mapInfo ) { } 
 
         //! Invoked when a batch operation begins.
         virtual void onBeginUpdate() { }

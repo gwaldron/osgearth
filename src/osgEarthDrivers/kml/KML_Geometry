@@ -25,7 +25,6 @@
 namespace osgEarth_kml
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     struct KML_Geometry : public KML_Object
     {

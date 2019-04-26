@@ -52,8 +52,6 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 namespace
 {
@@ -1046,7 +1044,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
     if ( !ring->isValid() )
         return;
 
-    ring->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+    ring->rewind(osgEarth::Geometry::ORIENTATION_CCW);
 
     osg::ref_ptr<osg::Vec3Array> allPoints = new osg::Vec3Array();
     transformAndLocalize( ring->asVector(), featureSRS, allPoints.get(), outputSRS, world2local, makeECEF );
@@ -1062,7 +1060,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             Geometry* hole = h->get();
             if ( hole->isValid() )
             {
-                hole->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CW);
+                hole->rewind(osgEarth::Geometry::ORIENTATION_CW);
 
                 osg::ref_ptr<osg::Vec3Array> holePoints = new osg::Vec3Array();
                 transformAndLocalize( hole->asVector(), featureSRS, holePoints.get(), outputSRS, world2local, makeECEF );

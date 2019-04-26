@@ -27,11 +27,8 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/ShaderUtils>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     class OSGEARTHFEATURES_EXPORT GeometryCompilerOptions
     {
     public:
@@ -76,8 +73,8 @@ namespace osgEarth { namespace Features
         const optional<bool>& ignoreAltitudeSymbol() const { return _ignoreAlt; }
 
         //todo: merge this with geoInterp()
-        optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() { return _resampleMode;}
-        const optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() const { return _resampleMode;}
+        optional<osgEarth::ResampleFilter::ResampleMode>& resampleMode() { return _resampleMode;}
+        const optional<osgEarth::ResampleFilter::ResampleMode>& resampleMode() const { return _resampleMode;}
 
         optional<double>& resampleMaxLength() { return _resampleMaxLength; }
         const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
@@ -199,6 +196,11 @@ namespace osgEarth { namespace Features
         GeometryCompilerOptions _options;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::GeometryCompilerOptions GeometryCompilerOptions;
+        typedef osgEarth::GeometryCompiler GeometryCompiler;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_FEATURES_GEOMETRY_COMPILER_H

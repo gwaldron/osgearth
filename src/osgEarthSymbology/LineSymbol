@@ -23,7 +23,7 @@
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Stroke>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /** 
      * Symbol that describes how to draw linear geometry.
@@ -72,6 +72,10 @@ namespace osgEarth { namespace Symbology
         optional<StringExpression> _imageURI;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::LineSymbol LineSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_LINE_SYMBOL_H

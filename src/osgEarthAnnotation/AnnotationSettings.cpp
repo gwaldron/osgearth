@@ -22,7 +22,7 @@
 
 #include <osgEarthAnnotation/AnnotationSettings>
 
-using namespace osgEarth::Annotation;
+using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 

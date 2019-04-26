@@ -30,10 +30,10 @@
 #include <osgEarth/Containers>
 #include <osgEarthAnnotation/LabelNode>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Support
 {
     using namespace osgEarth;
-    using namespace osgEarth::Annotation;
+    using namespace osgEarth::Util;
 
     /**
      * Node that plots geodetic coordinats labels along the edge of the

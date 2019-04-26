@@ -31,8 +31,7 @@
 #include <osgDB/WriteFile>
 
 using namespace osgEarth_kml;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
+using namespace osgEarth;
 
 void 
 KML_Placemark::build( xml_node<>* node, KMLContext& cx )

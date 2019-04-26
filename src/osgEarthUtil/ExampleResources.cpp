@@ -50,9 +50,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Drivers;
+using namespace osgEarth::Contrib;
 
 namespace ui = osgEarth::Util::Controls;
 
@@ -467,7 +465,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Loading KML from the command line:
     if ( !kmlFile.empty() )
     {
-        KMLOptions kml_options;
+        KML::KMLOptions kml_options;
         kml_options.declutter() = true;
 
         // set up a default icon for point placemarks:

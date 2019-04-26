@@ -26,8 +26,6 @@
 #include <osgEarthFeatures/GeometryUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
 
 TEST_CASE("Feature::splitAcrossDateLine doesn't modify features that don't cross the dateline") {
     osg::ref_ptr< Feature > feature = new Feature(GeometryUtils::geometryFromWKT("POLYGON((-81 26, -40.5 45, -40.5 75.5, -81 60))"), osgEarth::SpatialReference::create("wgs84"));

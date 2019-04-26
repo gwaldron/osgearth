@@ -42,7 +42,7 @@
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 
 class MyMeasureToolCallback : public MeasureToolHandler::MeasureToolEventHandler
 {

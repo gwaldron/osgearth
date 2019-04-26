@@ -22,7 +22,6 @@
 #define LC "[GeometryFactory] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 GeometryFactory::GeometryFactory( const SpatialReference* srs ) :
 _srs( srs )

@@ -23,9 +23,8 @@
 #include <osgUtil/IntersectionVisitor>
 #include <osgEarth/Common>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
-
 /** Concrete class for implementing line intersections with the scene graph.
   * To be used in conjunction with IntersectionVisitor. */
 class OSGEARTH_EXPORT PrimitiveIntersector : public osgUtil::Intersector
@@ -125,7 +124,7 @@ protected:
 
 };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif //OSGEARTH_PRIMITIVE_INTERSECTOR_H
 

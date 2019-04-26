@@ -32,9 +32,6 @@
 #include <cmath>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 
 CircleNode::CircleNode() :
@@ -169,7 +166,7 @@ CircleNode::buildGeometry()
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
+OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::CircleNode );
 
 
 CircleNode::CircleNode(const Config&         conf,

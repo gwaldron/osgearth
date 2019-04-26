@@ -20,7 +20,6 @@
 #include <osgEarth/StringUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 Resource::Resource( const Config& conf )
 {

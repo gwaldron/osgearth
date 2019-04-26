@@ -21,7 +21,6 @@
 #include <osgEarthSymbology/ModelSymbol>
 
 using namespace osgEarth_kml;
-using namespace osgEarth::Symbology;
 
 void
 KML_Model::parseCoords( xml_node<>* node, KMLContext& cx )

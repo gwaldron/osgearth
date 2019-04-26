@@ -26,11 +26,8 @@
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     /**
      * Crops feature geometry to an extent, either by centroid or by actually
      * cutting the geometry.
@@ -58,6 +55,10 @@ namespace osgEarth { namespace Features
         optional<Method> _method;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::CropFilter CropFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_BUFFER_FILTER_H

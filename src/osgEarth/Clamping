@@ -30,7 +30,7 @@
 #include <osg/ObserverNodePath>
 #include <osg/Camera>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Support for GPU Clamping.
@@ -146,6 +146,6 @@ namespace osgEarth
     private:
         PerObjectFastMap<const osg::Camera*, ClampingCullSet> _sets;
     };
-}
+} }
 
 #endif // OSGEARTH_CLAMPING_H

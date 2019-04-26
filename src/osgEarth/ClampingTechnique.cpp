@@ -40,6 +40,7 @@
 //#define TIME_RTT_CAMERA 1
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 //---------------------------------------------------------------------------
 

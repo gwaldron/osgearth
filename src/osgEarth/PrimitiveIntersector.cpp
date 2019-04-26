@@ -24,6 +24,7 @@
 #define LC "[PrmitiveIntersector] "
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 namespace
 {

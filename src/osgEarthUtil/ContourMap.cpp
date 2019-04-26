@@ -28,7 +28,6 @@
 #define LC "[ContourMap] "
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 //........................................................................
 
@@ -111,7 +110,7 @@ ContourMapLayer::init()
     // shaders:
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     vp->setName("ContourMap");
-    Shaders pkg;
+    Util::Shaders pkg;
     pkg.load(vp, pkg.ContourMap);
 
     // build a transfer function.

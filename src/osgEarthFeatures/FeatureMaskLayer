@@ -26,7 +26,7 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/LayerListener>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
     /**
      * MaskLayer whose boundary geometry comes from a feature source.
@@ -88,9 +88,13 @@ namespace osgEarth { namespace Features
         OpenThreads::Mutex _boundaryMutex;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureMaskLayer FeatureMaskLayer;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureMaskLayer::Options);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureMaskLayer::Options);
 
 #endif // OSGEARTH_FEATURE_MASK_LAYER_H
 

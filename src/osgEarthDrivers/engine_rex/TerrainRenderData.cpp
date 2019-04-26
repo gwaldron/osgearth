@@ -21,7 +21,7 @@
 #include "SurfaceNode"
 #include <osgEarth/CameraUtils>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[TerrainRenderData] "

@@ -19,7 +19,7 @@
 #include "LayerDrawable"
 #include "TerrainRenderData"
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[LayerDrawable] "

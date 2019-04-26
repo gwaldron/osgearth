@@ -30,8 +30,8 @@
 #include <osg/Group>
 #include <osg/PagedLOD>
 
-namespace osgEarth { namespace Util {
-
+namespace osgEarth { namespace Support
+{
     using namespace osgEarth;
 
     class OSGEARTHUTIL_EXPORT SimplePager : public osg::Group

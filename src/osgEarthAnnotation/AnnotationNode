@@ -44,11 +44,8 @@ namespace osgEarth
 }
 
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
+namespace osgEarth
+{
     /**
      * Base class for all annotation node types.
      */
@@ -164,6 +161,6 @@ namespace osgEarth { namespace Annotation
         virtual ~AnnotationNode();
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNO_ANNOTATION_NODE_H

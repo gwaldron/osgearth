@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/Symbol>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 SymbolRegistry::SymbolRegistry()
 {

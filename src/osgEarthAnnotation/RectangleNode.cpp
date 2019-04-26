@@ -33,9 +33,6 @@
 #include <osg/MatrixTransform>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 RectangleNode::RectangleNode() :
 GeoPositionNode()
@@ -380,7 +377,7 @@ RectangleNode::compile()
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
+OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::RectangleNode );
 
 
 RectangleNode::RectangleNode(const Config&         conf,

@@ -405,7 +405,7 @@ Registry::overrideCachePolicy() const
                 const char* cacheMaxAge = ::getenv(OSGEARTH_ENV_CACHE_MAX_AGE);
                 if ( cacheMaxAge )
                 {
-                    TimeSpan maxAge = osgEarth::as<long>( std::string(cacheMaxAge), INT_MAX );
+                    TimeSpan maxAge = osgEarth::Strings::as<long>( std::string(cacheMaxAge), INT_MAX );
                     _overrideCachePolicy->maxAge() = maxAge;
                     OE_INFO << LC << "Cache max age set from environment: " << cacheMaxAge << std::endl;
                 }

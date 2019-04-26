@@ -2,15 +2,12 @@
 
 #include <osgEarthUtil/Shaders>
 
-using namespace osgEarth::Util;
+using namespace osgEarth::Support;
 
 Shaders::Shaders()
 {
     ContourMap = "ContourMap.glsl";
     _sources[ContourMap] = "@ContourMap.glsl@";
-
-    Fog = "Fog.glsl";
-    _sources[Fog] = "@Fog.glsl@";
 
     LogDepthBuffer = "LogDepthBuffer.glsl";
     _sources[LogDepthBuffer] = "@LogDepthBuffer.glsl@";

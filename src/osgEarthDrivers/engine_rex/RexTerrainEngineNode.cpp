@@ -42,7 +42,7 @@
 
 #define LC "[RexTerrainEngineNode] "
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define DEFAULT_MAX_LOD 19u

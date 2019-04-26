@@ -27,8 +27,10 @@
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     /**
     * Utility class that traverses a Profile and emits TileKey's based on a collection of extents and min/max levels
     */
@@ -203,7 +205,7 @@ namespace osgEarth
         std::string _earthFile;
 
         // The work queue to pass seed operations to
-        osg::ref_ptr<osgEarth::TaskService> _taskService;        
+        osg::ref_ptr<TaskService> _taskService;        
     };
 
     
@@ -226,6 +228,6 @@ namespace osgEarth
 
 
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_TRAVERSAL_DATA_H

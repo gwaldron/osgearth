@@ -32,7 +32,6 @@
 //#define MAXIMUM_ISOLATION
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Drivers::Duktape;
 
 //............................................................................

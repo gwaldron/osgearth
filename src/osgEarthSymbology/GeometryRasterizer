@@ -25,7 +25,7 @@
 #include <osgEarthSymbology/Style>
 #include <osg/Image>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Draws geometry onto an Image canvas using software path-rendering.
@@ -52,6 +52,10 @@ namespace osgEarth { namespace Symbology
         osg::ref_ptr<osg::Referenced> _state;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::GeometryRasterizer GeometryRasterizer;
+    }
+
+} // namespace osgEarth::Symbology
 
 #endif // OSGEARTHSYMBOLOGY_GEOMETRY_RASTERIZER_H

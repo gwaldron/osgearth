@@ -20,7 +20,6 @@
 #include <osg/Texture2D>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 
 // internal thread-safety not required since we mutex it in this object.

@@ -29,7 +29,7 @@
 #include <osg/Camera>
 #include <osg/ObserverNodePath>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Culling set for tracking groups whose contents should be "draped",
@@ -83,6 +83,6 @@ namespace osgEarth
         PerObjectFastMap<const osg::Camera*, DrapingCullSet> _sets;
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_DRAPING_CULL_SET

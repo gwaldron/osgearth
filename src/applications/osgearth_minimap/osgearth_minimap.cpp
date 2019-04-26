@@ -33,8 +33,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
-
 
 /**
  * Makes a simple projected MapNode that contains a basemap of the world
@@ -68,13 +66,13 @@ osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
     }
     else
     {
-        osgEarth::Symbology::LineString* geom = new osgEarth::Symbology::LineString();
+        osgEarth::LineString* geom = new osgEarth::LineString();
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
         geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMin(), 0));
         geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMax(), 0));
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMax(), 0));
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
-        osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(geom, osgEarth::SpatialReference::create("wgs84"));
+        osgEarth::Feature* feature = new osgEarth::Feature(geom, osgEarth::SpatialReference::create("wgs84"));
         Style style;
         style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Yellow;
         feature->style() = style;

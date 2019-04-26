@@ -26,8 +26,6 @@
 
 namespace osgEarth { namespace Util
 {
-    using namespace osgEarth;
-
     /**
      * Creates Viewpoints that fit a camera's view frustum to encompass
      * a set of geospatial points as tightly as possible.
@@ -60,6 +58,6 @@ namespace osgEarth { namespace Util
         double _buffer_m;
     };
 
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTH_UTIL_VIEW_FITTER_H

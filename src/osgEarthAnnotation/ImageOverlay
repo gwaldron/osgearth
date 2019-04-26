@@ -33,10 +33,8 @@
 #include <osg/Image>
 #include <osg/MatrixTransform>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * ImageOverlay drapes a rectangular texture on the terrain.
      */
@@ -160,7 +158,7 @@ namespace osgEarth { namespace Annotation
 
         void updateFilters();
 
-        osg::Node* createNode(osgEarth::Features::Feature* feature, bool split);
+        osg::Node* createNode(osgEarth::Feature* feature, bool split);
 
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
@@ -194,7 +192,7 @@ namespace osgEarth { namespace Annotation
         static osg::ref_ptr<VirtualProgram> _program;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNO_IMAGE_OVERLAY_H
 

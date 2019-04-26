@@ -15,7 +15,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
-using namespace osgEarth::Symbology;
 
 #define LC "[GroundCover] "
 

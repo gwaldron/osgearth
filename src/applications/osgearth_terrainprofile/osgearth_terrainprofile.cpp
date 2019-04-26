@@ -42,10 +42,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
-
+using namespace osgEarth::Contrib;
 
 //Creates a simple HUD camera
 osg::Camera* createHud(double width, double height)

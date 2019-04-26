@@ -27,12 +27,10 @@
 #include <osgDB/WriteFile>
 #include <osg/Billboard>
 
-using namespace osgEarth;
-using namespace osgEarth::Symbology;
-
 #define LC "[MeshFlattener] "
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 namespace
 {

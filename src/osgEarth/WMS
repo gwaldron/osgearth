@@ -27,8 +27,10 @@
 #include <osg/ImageSequence>
 
 namespace osgEarth {
-    class XmlElement;
     class WMSImageLayer;
+    namespace Support {
+        class XmlElement;
+    }
 }
 
 /**

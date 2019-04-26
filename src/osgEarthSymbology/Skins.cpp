@@ -29,7 +29,6 @@
 #define LC "[SkinResource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //---------------------------------------------------------------------------
 

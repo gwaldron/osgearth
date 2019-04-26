@@ -27,7 +27,7 @@
 #include "TileRenderModel"
 #include <osgEarth/Progress>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class LoadTileData : public Loader::Request
     {
@@ -62,6 +62,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual ~LoadTileData() { }
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_REX_LOAD_TILE_DATA

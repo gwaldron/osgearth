@@ -21,11 +21,7 @@
 
 #include <osgEarthFeatures/FeatureSource>
 
-using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
-
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
     /**
      * FeatureSource that reads feature tiles from a parameterized "XYZ" source.
@@ -79,7 +75,7 @@ namespace osgEarth { namespace Features
 
     public: // FeatureLayer
 
-        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress);        
+        virtual FeatureCursor* createFeatureCursor(const Query& query, ProgressCallback* progress);        
         
         virtual const FeatureSchema& getSchema() const { return _schema; }
 
@@ -99,10 +95,15 @@ namespace osgEarth { namespace Features
         std::string getExtensionForMimeType(const std::string& mime);
         bool isGML( const std::string& mime ) const;
         bool isJSON( const std::string& mime ) const;
-        URI createURL(const Symbology::Query& query);
+        URI createURL(const Query& query);
     };
 
-} } // namespace osgEarth::Features
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::XYZFeatureSource::Options);
+    namespace Features {
+        typedef osgEarth::XYZFeatureSource XYZFeatureSource;
+    }
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZFeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER

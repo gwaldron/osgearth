@@ -25,7 +25,6 @@
 #include <algorithm>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 

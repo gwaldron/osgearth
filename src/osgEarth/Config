@@ -31,6 +31,7 @@
 
 namespace osgEarth
 {
+    using namespace osgEarth::Support;
     typedef std::list<class Config> ConfigSet;
 
     /**
@@ -258,7 +259,7 @@ namespace osgEarth
         /** Default value transformed to another type */
         template<typename T>
         T valueAs(const T& fallback) const {
-            return osgEarth::as<T>(_defaultValue, fallback);
+            return osgEarth::Support::as<T>(_defaultValue, fallback);
         }
 
         /** Value cast to a particular primitive type (with fallback in case casting fails) */
@@ -267,7 +268,7 @@ namespace osgEarth
             std::string r;
             if (hasChild(key))
                 r = child(key).value();
-            return osgEarth::as<T>(r, fallback);
+            return osgEarth::Support::as<T>(r, fallback);
         }
 
         /** Populates the output value iff the Config exists. */
@@ -277,7 +278,7 @@ namespace osgEarth
             if (hasChild(key))
                 r = child(key).value();
             if (!r.empty()) {
-                output = osgEarth::as<T>(r, output.defaultValue());
+                output = osgEarth::Support::as<T>(r, output.defaultValue());
                 return true;
             }
             else

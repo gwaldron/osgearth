@@ -31,8 +31,10 @@
 #include <set>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     /**
      * General purpose operation for doing something to a node.
      */
@@ -411,6 +413,6 @@ namespace osgEarth
             OE_INFO << "**INTERNAL: ADJUST_EVENT_TRAV_COUNT wrapped around" << std::endl; \
         } \
     }
-}
+} }
 
 #endif // OSGEARTH_CACHING_H

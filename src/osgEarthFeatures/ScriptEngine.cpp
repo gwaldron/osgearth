@@ -22,7 +22,6 @@
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 /****************************************************************/
 
@@ -68,7 +67,7 @@ ScriptEngineOptions::getConfig() const
 
 #undef  LC
 #define LC "[ScriptEngineFactory] "
-#define SCRIPT_ENGINE_OPTIONS_TAG "__osgEarth::Features::ScriptEngineOptions"
+#define SCRIPT_ENGINE_OPTIONS_TAG "__osgEarth::ScriptEngineOptions"
 
 ScriptEngineFactory* ScriptEngineFactory::s_singleton = 0L;
 osgEarth::Threading::Mutex ScriptEngineFactory::s_singletonMutex;

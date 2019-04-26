@@ -32,11 +32,10 @@
 #define LC "[OGRFeatureSource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
-namespace osgEarth { namespace Features
+namespace osgEarth { namespace OGR
 {
     // helper function.
     OGRLayerH openLayer(OGRDataSourceH ds, const std::string& layer)
@@ -44,7 +43,7 @@ namespace osgEarth { namespace Features
         OGRLayerH h = OGR_DS_GetLayerByName(ds, layer.c_str());
         if ( !h )
         {
-            unsigned index = osgEarth::as<unsigned>(layer, 0);
+            unsigned index = Strings::as<unsigned>(layer, 0);
             h = OGR_DS_GetLayer(ds, index);
         }
         return h;
@@ -92,7 +91,7 @@ namespace osgEarth { namespace Features
             OGRLayerH                 layerHandle,
             const FeatureSource*       source,
             const FeatureProfile*     profile,
-            const Symbology::Query&   query,
+            const Query&   query,
             const FeatureFilterChain* filters,
             ProgressCallback*         progress);
 
@@ -109,7 +108,7 @@ namespace osgEarth { namespace Features
         OGRLayerH                           _layerHandle;
         OGRLayerH                           _resultSetHandle;
         OGRGeometryH                        _spatialFilter;
-        Symbology::Query                    _query;
+        Query                               _query;
         unsigned                            _chunkSize;
         OGRFeatureH                         _nextHandleToQueue;
         osg::ref_ptr<const FeatureSource>    _source;
@@ -126,13 +125,13 @@ namespace osgEarth { namespace Features
 
 //........................................................................
 
-OGRFeatureCursor::OGRFeatureCursor(OGRDataSourceH              dsHandle,
-                                   OGRLayerH                   layerHandle,
-                                   const FeatureSource*         source,
-                                   const FeatureProfile*       profile,
-                                   const Symbology::Query&     query,
-                                   const FeatureFilterChain*   filters,
-                                   ProgressCallback*           progress) :
+OGR::OGRFeatureCursor::OGRFeatureCursor(OGRDataSourceH              dsHandle,
+                                        OGRLayerH                   layerHandle,
+                                        const FeatureSource*        source,
+                                        const FeatureProfile*       profile,
+                                        const Query&                query,
+                                        const FeatureFilterChain*   filters,
+                                        ProgressCallback*           progress) :
 FeatureCursor     ( progress ),
 _source           ( source ),
 _dsHandle         ( dsHandle ),
@@ -241,7 +240,7 @@ _filters          ( filters )
     readChunk();
 }
 
-OGRFeatureCursor::~OGRFeatureCursor()
+OGR::OGRFeatureCursor::~OGRFeatureCursor()
 {
     OGR_SCOPED_LOCK;
 
@@ -259,13 +258,13 @@ OGRFeatureCursor::~OGRFeatureCursor()
 }
 
 bool
-OGRFeatureCursor::hasMore() const
+OGR::OGRFeatureCursor::hasMore() const
 {
     return _resultSetHandle && _queue.size() > 0;
 }
 
 Feature*
-OGRFeatureCursor::nextFeature()
+OGR::OGRFeatureCursor::nextFeature()
 {
     if ( !hasMore() )
         return 0L;
@@ -285,7 +284,7 @@ OGRFeatureCursor::nextFeature()
 // reads a chunk of features into a memory cache; do this for performance
 // and to avoid needing the OGR Mutex every time
 void
-OGRFeatureCursor::readChunk()
+OGR::OGRFeatureCursor::readChunk()
 {
     if ( !_resultSetHandle )
         return;
@@ -556,7 +555,7 @@ OGRFeatureSource::open()
         }
 
         // Open a specific layer within the data source, if applicable:
-        _layerHandle = openLayer(_dsHandle, options().layer().value());
+        _layerHandle = OGR::openLayer(_dsHandle, options().layer().value());
         if (!_layerHandle)
         {
             return setStatus(
@@ -693,7 +692,7 @@ OGRFeatureSource::open()
 }
 
 FeatureCursor*
-OGRFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
+OGRFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {
     if (_geometry.valid())
     {
@@ -716,7 +715,7 @@ OGRFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCal
             dsHandle = OGROpenShared(_source.c_str(), 0, &_ogrDriverHandle);
             if (dsHandle)
             {
-                layerHandle = openLayer(dsHandle, options().layer().get());
+                layerHandle = OGR::openLayer(dsHandle, options().layer().get());
             }
         }
 
@@ -731,7 +730,7 @@ OGRFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCal
             OE_DEBUG << newQuery.getConfig().toJSON(true) << std::endl;
 
             // cursor is responsible for the OGR handles.
-            return new OGRFeatureCursor(
+            return new OGR::OGRFeatureCursor(
                 dsHandle,
                 layerHandle,
                 this,
@@ -880,7 +879,7 @@ OGRFeatureSource::insertFeature(Feature* feature)
     return true;
 }
 
-osgEarth::Symbology::Geometry::Type
+osgEarth::Geometry::Type
 OGRFeatureSource::getGeometryType() const
 {
     return _geometryType;
@@ -888,14 +887,14 @@ OGRFeatureSource::getGeometryType() const
 
 
 // parses an explicit WKT geometry string into a Geometry.
-Symbology::Geometry*
+Geometry*
 OGRFeatureSource::parseGeometry(const Config& geomConf)
 {
     return GeometryUtils::geometryFromWKT(geomConf.value());
 }
 
 // read the WKT geometry from a URL, then parse into a Geometry.
-Symbology::Geometry*
+Geometry*
 OGRFeatureSource::parseGeometryUrl(const URI& geomUrl, const osgDB::Options* dbOptions)
 {
     ReadResult r = geomUrl.readString(dbOptions);

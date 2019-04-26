@@ -39,10 +39,7 @@
 #define LC "[wfs example] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 int
 usage(const char* name)

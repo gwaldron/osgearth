@@ -39,7 +39,8 @@
 #include <osgEarthUtil/GARSGraticule>
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
+using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Contrib;
 
 int
 usage( const std::string& msg )

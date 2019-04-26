@@ -26,7 +26,7 @@
 #include <osgEarthSymbology/Fill>
 #include <osgEarthSymbology/Stroke>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Symbol that describes how to render text labels.
@@ -183,6 +183,10 @@ namespace osgEarth { namespace Symbology
         optional<double>            _occlusionCullAltitude;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::TextSymbol TextSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H

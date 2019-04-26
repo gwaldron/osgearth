@@ -27,11 +27,8 @@
 #include <osgEarth/CachePolicy>
 #include <osgDB/ReaderWriter>
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
+namespace osgEarth
+{
     /**
      * Annotation node that loads a 3D model from a URI and places it
      * at a geo location.
@@ -89,6 +86,6 @@ namespace osgEarth { namespace Annotation
         void construct();
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H

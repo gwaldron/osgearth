@@ -32,10 +32,8 @@ namespace osgEarth {
     class Map;
 }
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     class FeatureNodeFactory;
 
     /**
@@ -134,6 +132,10 @@ namespace osgEarth { namespace Features
         FeatureNodeFactory* createFeatureNodeFactory();
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureModelLayer FeatureModelLayer;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_FEATURES_FEATURE_MODEL_LAYER

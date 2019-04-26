@@ -24,15 +24,12 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/ModelLayer>
 #include <osgEarthSymbology/Geometry>
-
 #include <osgUtil/DelaunayTriangulator>
 
-
-using namespace osgEarth::Drivers::RexTerrainEngine;
-using namespace osgEarth::Symbology;
-
-
 #define LC "[MaskGenerator] "
+
+using namespace osgEarth;
+using namespace osgEarth::REX;
 
 #define MATCH_TOLERANCE 0.000001
 

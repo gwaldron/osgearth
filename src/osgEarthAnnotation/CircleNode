@@ -28,11 +28,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Units>
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
+namespace osgEarth
+{
     /**
      * Circle annotation.
      */
@@ -142,6 +139,6 @@ namespace osgEarth { namespace Annotation
         bool           _pie;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNOTATION_CIRCLE_NODE_H

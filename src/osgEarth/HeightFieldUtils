@@ -28,7 +28,7 @@
 #include <osg/CoordinateSystemNode>
 #include <osg/ClusterCullingCallback>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     struct HeightFieldNeighborhood
     {
@@ -220,6 +220,6 @@ namespace osgEarth
          **/
         static bool validateSamples(float &a, float &b, float &c, float &d);
     };
-}
+} }
 
 #endif //OSGEARTH_HEIGHTFIELDUTILS_H

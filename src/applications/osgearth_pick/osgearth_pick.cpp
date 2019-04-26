@@ -42,8 +42,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
 
 namespace ui = osgEarth::Util::Controls;
 

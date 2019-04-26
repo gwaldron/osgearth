@@ -22,8 +22,6 @@
 #define LC "[FeatureSource] " << getName() << ": "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 //...................................................................

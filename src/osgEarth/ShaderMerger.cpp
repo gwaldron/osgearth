@@ -23,6 +23,7 @@
 #include <sstream>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 
 void

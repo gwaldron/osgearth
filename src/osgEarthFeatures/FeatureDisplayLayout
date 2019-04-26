@@ -27,10 +27,8 @@
 #include <osg/Geode>
 #include <vector>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Settings for a single level of detail of feature data
      */
@@ -192,10 +190,15 @@ namespace osgEarth { namespace Features
         void fromConfig( const Config& conf );
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureLevel FeatureLevel;
+        typedef osgEarth::FeatureDisplayLayout FeatureDisplayLayout;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureLevel);
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureDisplayLayout);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureLevel);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureDisplayLayout);
 
 
 #endif // OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H

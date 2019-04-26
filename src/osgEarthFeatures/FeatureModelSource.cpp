@@ -30,8 +30,6 @@
 #include <osg/Notify>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #ifndef GL_CLIP_DISTANCE0
 #define GL_CLIP_DISTANCE0 0x3000

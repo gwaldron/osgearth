@@ -38,6 +38,7 @@
 
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 
 osg::Image*

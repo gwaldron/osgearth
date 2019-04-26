@@ -22,7 +22,7 @@
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Fill>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Symbol that describes how to render point geometries.
@@ -61,6 +61,10 @@ namespace osgEarth { namespace Symbology
         optional<bool>  _smooth;
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::PointSymbol PointSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_POINT_SYMBOL_H

@@ -24,7 +24,7 @@
 #include <osgEarth/ModelLayer>
 #include <osgUtil/LineSegmentIntersector>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * @deprecated after 2.10 - Use ElevationPool instead, via Map::getElevationPool to
@@ -135,6 +135,6 @@ namespace osgEarth
         Revision _mapRevision;
     };
 
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_ELEVATION_QUERY_H

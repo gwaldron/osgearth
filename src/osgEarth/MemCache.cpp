@@ -19,6 +19,7 @@
 #include <osgEarth/MemCache>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[MemCacheBin] "
 

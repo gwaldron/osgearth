@@ -25,7 +25,7 @@
 #include <osgEarth/Config>
 
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
      * Drawing parameters for a filled area.
@@ -53,8 +53,12 @@ namespace osgEarth { namespace Symbology
         void init();
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::Fill Fill;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Fill);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Fill);
 
 #endif // OSGEARTHSYMBOLOGY_FILL_H

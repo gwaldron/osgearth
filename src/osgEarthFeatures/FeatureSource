@@ -26,7 +26,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
     /**
      * Layer that provides raw feature data.
@@ -82,7 +82,7 @@ namespace osgEarth { namespace Features
          * Caller takes ownership of the returned object.
          */
         virtual FeatureCursor* createFeatureCursor(
-            const Symbology::Query& query,
+            const Query& query,
             ProgressCallback*       progress) =0;
 
         virtual const Status& create(
@@ -219,8 +219,11 @@ namespace osgEarth { namespace Features
         virtual ~FeatureSource() { }
     };
 
-} } // namespace osgEarth::Features
+    namespace Features { 
+        typedef osgEarth::FeatureSource FeatureSource;
+    }
+}
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSource::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_FEATURE_SOURCE_H

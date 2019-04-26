@@ -31,8 +31,8 @@
 #include <string>
 #include <vector>
 
-namespace osgEarth { namespace Util
-{    
+namespace osgEarth { namespace Contrib
+{
     /**
      * Manages a FeatureSource that is an index of geospatial data files     
      */
@@ -62,7 +62,7 @@ namespace osgEarth { namespace Util
         TileIndex();        
         ~TileIndex();
 
-        osg::ref_ptr< osgEarth::Features::FeatureSource > _features;
+        osg::ref_ptr< osgEarth::FeatureSource > _features;
         std::string _filename;
     };
 

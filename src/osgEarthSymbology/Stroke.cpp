@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/Stroke>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 

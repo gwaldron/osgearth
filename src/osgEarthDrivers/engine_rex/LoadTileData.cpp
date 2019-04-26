@@ -22,7 +22,7 @@
 #include <osgEarth/Terrain>
 #include <osg/NodeVisitor>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[LoadTileData] "

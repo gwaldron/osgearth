@@ -22,9 +22,8 @@
 #ifndef OSGEARTHUTIL_STAR_DATA
 #define OSGEARTHUTIL_STAR_DATA
 
-namespace osgEarth { namespace Util 
+namespace osgEarth { namespace Support
 {
-
   /*
   Star data from the Yale Bright Star Catalog. Extracted from the ASCII version.
   Includes all stars with magnitude > 6.2.

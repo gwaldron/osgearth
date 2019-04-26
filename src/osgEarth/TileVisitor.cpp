@@ -28,6 +28,7 @@
 #endif
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 TileVisitor::TileVisitor():
 _total(0),

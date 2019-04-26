@@ -24,11 +24,8 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarth/Random>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     /**
      * Feature filter that will take source feature and scatter points within
      * that feature. It will either scatter points randomly (the default), or
@@ -82,6 +79,10 @@ namespace osgEarth { namespace Features
         Random   _prng;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::ScatterFilter ScatterFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H

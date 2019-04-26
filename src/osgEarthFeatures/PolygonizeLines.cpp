@@ -26,7 +26,7 @@
 
 #define LC "[PolygonizeLines] "
 
-using namespace osgEarth::Features;
+using namespace osgEarth;
 
 #define OV(p) "("<<p.x()<<","<<p.y()<<")"
 

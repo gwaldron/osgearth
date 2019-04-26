@@ -39,10 +39,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Internal;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Annotation;
+using namespace osgEarth::Support;
 
 REGISTER_OSGEARTH_LAYER(mgrsgraticule, MGRSGraticule);
 REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
@@ -216,7 +213,7 @@ namespace
                 return false;
             }
 
-            osgEarth::Symbology::Ring* line = new osgEarth::Symbology::Ring();
+            osgEarth::Ring* line = new osgEarth::Ring();
             for (u_short n = 0; n < numPoints; ++n)
             {
                 uint64_t x;

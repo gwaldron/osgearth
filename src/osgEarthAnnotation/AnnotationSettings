@@ -25,7 +25,7 @@
 #include <osgEarthAnnotation/Common>
 #include <osg/NodeVisitor>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {	
     /**
      * Global default settings for controlling annotation behavior
@@ -45,6 +45,6 @@ namespace osgEarth { namespace Annotation
         static double _occlusionCullingMaxAltitude;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif //OSGEARTH_ANNOTATION_SETTINGS_H

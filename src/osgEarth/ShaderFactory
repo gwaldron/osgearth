@@ -27,7 +27,7 @@
 #include <osgEarth/ColorFilter>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * A factory object that generates shader program "scaffolding" for VirtualProgram
@@ -107,10 +107,6 @@ namespace osgEarth
         FragmentStageOrder _fragStageOrder;
     };
 
-
-
-
-
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_FACTORY_H

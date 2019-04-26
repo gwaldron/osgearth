@@ -24,13 +24,6 @@
 #define LC "[ScatterFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
-
-//------------------------------------------------------------------------
-
-
-//------------------------------------------------------------------------
 
 ScatterFilter::ScatterFilter() :
 _density   ( 10.0f ),

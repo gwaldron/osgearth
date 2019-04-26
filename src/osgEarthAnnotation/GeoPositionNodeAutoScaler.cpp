@@ -27,8 +27,6 @@
 #define LC "[GeoPositionNodeAutoScaler] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-
 
 GeoPositionNodeAutoScaler::GeoPositionNodeAutoScaler(const osg::Vec3d& baseScale, double minScale, double maxScale) :
 _baseScale( baseScale ),

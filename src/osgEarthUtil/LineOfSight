@@ -22,7 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osg/Group>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
     using namespace osgEarth;
 

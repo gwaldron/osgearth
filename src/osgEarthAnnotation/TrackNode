@@ -27,17 +27,9 @@
 #include <osgEarth/Containers>
 #include <osg/Image>
 #include <osgText/String>
-
-namespace osgEarth
-{ 
-    class MapNode;
-}
     
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
+namespace osgEarth
+{
     /**
      * Defines for a labeling field associated with a TrackNode. A TrackNode
      * can have zero or more "fields", each being a text label rendered 
@@ -169,6 +161,6 @@ namespace osgEarth { namespace Annotation
         void compile();
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif //OSGEARTH_ANNOTATION_TRACK_NODE_H

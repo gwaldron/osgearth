@@ -29,7 +29,6 @@
 #define LC "[InstanceResource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //---------------------------------------------------------------------------
 

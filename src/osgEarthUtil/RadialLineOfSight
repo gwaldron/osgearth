@@ -29,8 +29,10 @@
 #include <osgEarth/GeoData>
 #include <osgEarthAnnotation/Draggers>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
+    using namespace osgEarth;
+
     /**
      * A Node that can be used to display radial line of sight calculations
      */
@@ -222,12 +224,12 @@ namespace osgEarth { namespace Util
         void updateDraggers();
     private:
         osg::ref_ptr< RadialLineOfSightNode > _los;
-        osgEarth::Annotation::Dragger* _dragger;
+        osgEarth::Dragger* _dragger;
         osg::ref_ptr< LOSChangedCallback > _callback;
     };
 
 
 
-} } // namespace osgEarth::Util
+} } // namespace osgEarth::Tools
 
 #endif // OSGEARTHUTIL_LINEOFSIGHT

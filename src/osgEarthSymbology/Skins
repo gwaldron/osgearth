@@ -27,10 +27,8 @@
 #include <osg/TexEnv>
 #include <osg/Image>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * A resource that points to a "skin", which is a Texture image paired with
      * a collection of metadata that describes its suitability for use in a scene.
@@ -223,7 +221,12 @@ namespace osgEarth { namespace Symbology
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
 
+    namespace Symbology {
+        typedef osgEarth::SkinResource SkinResource;
+        typedef osgEarth::SkinSymbol SkinSymbol;
+        typedef osgEarth::SkinResourceVector SkinResourceVector;
+    }
 
-} } // namespace osgEarth::Symbology
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H

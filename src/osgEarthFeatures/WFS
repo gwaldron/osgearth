@@ -22,11 +22,9 @@
 #include <osgEarthFeatures/FeatureSource>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 // WFS API
-namespace osgEarth { namespace Features { namespace WFS
+namespace osgEarth {  namespace WFS
 {
     class OSGEARTHFEATURES_EXPORT FeatureType : public osg::Referenced
     {
@@ -141,10 +139,10 @@ namespace osgEarth { namespace Features { namespace WFS
         void fromConfig(const Config& conf);
     };
 
-}}} // osgEarth::Features::WFS
+}} // osgEarth::WFS
 
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
     /**
      * Feature Layer that accesses features from an OGC WFS endpoint
@@ -193,7 +191,7 @@ namespace osgEarth { namespace Features
 
     public: // FeatureLayer
 
-        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress);        
+        virtual FeatureCursor* createFeatureCursor(const Query& query, ProgressCallback* progress);        
         
         virtual const FeatureSchema& getSchema() const { return _schema; }
 
@@ -210,11 +208,15 @@ namespace osgEarth { namespace Features
         std::string getExtensionForMimeType(const std::string& mime);
         bool isGML( const std::string& mime ) const;
         bool isJSON( const std::string& mime ) const;
-        std::string createURL(const Symbology::Query& query) const;
+        std::string createURL(const Query& query) const;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::WFSFeatureSource WFSFeatureSource;
+    }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::WFSFeatureSource::Options);
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::WFSFeatureSource::Options);
 
 #endif // OSGEARTH_FEATURES_WFS_FEATURESOURCE_LAYER

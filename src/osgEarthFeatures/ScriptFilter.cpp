@@ -20,8 +20,6 @@
 #include <osgEarthFeatures/FilterContext>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(script, ScriptFilter);
 

@@ -29,10 +29,8 @@
 #include <osg/Geometry>
 #include <osg/BoundingBox>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
-    using namespace osgEarth::Symbology;
-
     /**
      * Drawable for rendering bounding box around label
      */
@@ -46,6 +44,6 @@ namespace osgEarth { namespace Annotation
         BboxDrawable(const BboxDrawable& rhs, const osg::CopyOp& op) { }
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNOTATION_BBOXDRAWABLE_H

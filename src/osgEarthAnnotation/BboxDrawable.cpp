@@ -25,7 +25,6 @@
 #include <osg/LineWidth>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 
 
 //------------------------------------------------------------------------

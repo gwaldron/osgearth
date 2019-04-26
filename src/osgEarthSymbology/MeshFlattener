@@ -21,7 +21,7 @@
 
 #include <osgEarthSymbology/Common>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /**
     * Prepares a scene graph for aggressive optimization.  Removes things like names, user data, callbacks, etc.
@@ -89,9 +89,11 @@ namespace osgEarth { namespace Symbology
     };
 
 
-
-
-
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::PrepareForOptimizationVisitor PrepareForOptimizationVisitor;
+        typedef osgEarth::FlattenSceneGraphVisitor FlattenSceneGraphVisitor;
+        typedef osgEarth::MeshFlattener MeshFlattener;
+    }
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_MESH_FLATTENER

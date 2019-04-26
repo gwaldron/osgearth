@@ -23,12 +23,9 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
-#include <osg/Geode>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     class ResampleFilterOptions : public ConfigOptions
     {
     public:
@@ -104,6 +101,11 @@ namespace osgEarth { namespace Features
         bool push( Feature* input, FilterContext& context );
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::ResampleFilterOptions ResampleFilterOptions;
+        typedef osgEarth::ResampleFilter ResampleFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_RESAMPLE_FILTER_H

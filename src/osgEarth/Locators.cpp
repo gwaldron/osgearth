@@ -21,6 +21,7 @@
 #include <osgEarth/MapInfo>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 GeoLocator::GeoLocator() :
 _inverseCalculated(false),

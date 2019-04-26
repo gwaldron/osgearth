@@ -116,6 +116,6 @@ namespace osgEarth { namespace Util
 		double _maxScale;
     };
 
-} } // namespace
+} }
 
 #endif //OSGEARTHUTIL_AUTO_SCALE_CALLBACK

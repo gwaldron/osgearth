@@ -24,8 +24,6 @@
 
 namespace osgEarth { namespace Util
 {
-    using namespace osgEarth;
-
     /**
      * Interface class for coordinate formatters.
      */
@@ -38,7 +36,6 @@ namespace osgEarth { namespace Util
         /** dtor */
         virtual ~Formatter() { }
     };
-
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTH_UTIL_FORMATTER_H

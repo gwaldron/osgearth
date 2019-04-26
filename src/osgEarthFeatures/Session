@@ -24,21 +24,17 @@
 #include <osgEarth/Map>
 #include <osgEarth/URI>
 
-namespace osgEarth {
-    class StateSetCache;
-    namespace Symbology {
-        class ResourceCache;
-        class StyleSheet;
-    }
-    namespace Features {
-        class FeatureSource;
-        class ScriptEngine;
-    }
-}
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
+    class StyleSheet;
+    class FeatureSource;
+    class ScriptEngine;
+
+    namespace Support
+    {
+        class StateSetCache;
+        class ResourceCache;
+    }
 
     /**
      * Session is a state object that exists throughout the life of one or more related
@@ -135,6 +131,9 @@ namespace osgEarth { namespace Features
         Session(const Session& rhs, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
     };
 
-} }
+    namespace Features {
+        typedef osgEarth::Session Session;
+    }
+}
 
 #endif // OSGEARTH_FEATURES_SESSION_H

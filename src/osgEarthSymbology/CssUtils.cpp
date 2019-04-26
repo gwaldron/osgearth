@@ -23,7 +23,6 @@
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 void
 CssUtils::split( const std::string& input, std::vector<std::string>& output )

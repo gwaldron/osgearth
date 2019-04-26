@@ -30,13 +30,12 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 
 #undef LC
 #define LC "[Debug] "
 
 //........................................................................
-namespace osgEarth { namespace Util { namespace Debug
+namespace osgEarth { namespace Debug
 {
     static osg::Vec4 colors[4] = {
         osg::Vec4(1,0,0,1),
@@ -65,7 +64,7 @@ namespace osgEarth { namespace Util { namespace Debug
         }
     }
 
-} } } // namespace osgEarth::Util::Debug
+} } // namespace osgEarth::Debug
 
 //........................................................................
 

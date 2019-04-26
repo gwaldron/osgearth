@@ -26,11 +26,8 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/ScreenSpaceLayout>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     /** 
      * A PlaceNode combines an 2D icon, a label, support for mouse interaction
      * and a popup control (eventually)
@@ -131,6 +128,6 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<osg::StateSet> _geodeStateSet, _imageStateSet;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif //OSGEARTH_ANNOTATION_PLACE_NODE_H

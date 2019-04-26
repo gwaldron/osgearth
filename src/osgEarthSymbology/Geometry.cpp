@@ -25,7 +25,6 @@
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 #ifdef OSGEARTH_HAVE_GEOS
 #  include <geos/geom/Geometry.h>
@@ -288,7 +287,7 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
                 // still returning false but allows for check.
                 if (outGeom->getNumPoints() == 0)
                 {
-                    output = new osgEarth::Symbology::Geometry();
+                    output = new osgEarth::Geometry();
                 }
             }
 
@@ -379,7 +378,7 @@ Geometry::geounion( const Geometry* other, osg::ref_ptr<Geometry>& output ) cons
                 // still returning false but allows for check.
                 if (outGeom->getNumPoints() == 0)
                 {
-                    output = new osgEarth::Symbology::Geometry();
+                    output = new osgEarth::Geometry();
                 }
             }
 

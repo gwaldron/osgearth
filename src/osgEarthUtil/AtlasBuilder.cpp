@@ -25,8 +25,7 @@
 #define LC "[AtlasBuilder] "
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 
 
 namespace

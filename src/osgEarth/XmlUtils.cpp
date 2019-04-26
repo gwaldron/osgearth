@@ -23,6 +23,7 @@
 
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 static std::string EMPTY_VALUE = "";
 

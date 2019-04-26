@@ -42,8 +42,6 @@
 #include <osgViewer/Viewer>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 
 //------------------------------------------------------------------

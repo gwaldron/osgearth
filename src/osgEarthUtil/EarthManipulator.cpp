@@ -23,15 +23,10 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgViewer/View>
 
-
 #define LC "[EarthManip] "
 
-using namespace osgEarth::Util;
 using namespace osgEarth;
-
-
-//------------------------------------------------------------------------
-
+using namespace osgEarth::Util;
 
 namespace
 {

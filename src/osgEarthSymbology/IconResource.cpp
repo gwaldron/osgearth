@@ -33,7 +33,6 @@
 #define LC "[IconResource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //---------------------------------------------------------------------------
 

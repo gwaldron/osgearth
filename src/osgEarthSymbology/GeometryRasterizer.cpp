@@ -22,7 +22,7 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/AGG.h>
 
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 
 #define LC "[GeometryRasterizer] "
 

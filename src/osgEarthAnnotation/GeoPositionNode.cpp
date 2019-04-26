@@ -41,7 +41,6 @@
 #define LC "[GeoPositionNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 
 #define DEFAULT_OCCLUSION_CULLING false
 #define DEFAULT_HORIZON_CULLING true

@@ -30,8 +30,8 @@
 
 #define LC "[TMSBackFiller] "
 
-using namespace osgEarth::Util;
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 TMSBackFiller::TMSBackFiller() :
 _minLevel(0u),

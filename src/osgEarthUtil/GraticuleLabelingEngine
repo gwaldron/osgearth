@@ -29,10 +29,9 @@
 #include <osgEarth/Containers>
 #include <osgEarthAnnotation/LabelNode>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Support
 {
     using namespace osgEarth;
-    using namespace osgEarth::Annotation;
 
     /**
      * Node that plots graticule coordinates labels along the edge of the

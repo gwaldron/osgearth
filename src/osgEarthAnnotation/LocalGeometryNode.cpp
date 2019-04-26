@@ -33,8 +33,6 @@
 #define LC "[GeometryNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 
 
 LocalGeometryNode::LocalGeometryNode() :
@@ -298,7 +296,7 @@ LocalGeometryNode::traverse(osg::NodeVisitor& nv)
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometryNode );
+OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::LocalGeometryNode );
 
 
 LocalGeometryNode::LocalGeometryNode(const Config&         conf,

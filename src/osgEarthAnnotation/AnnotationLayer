@@ -22,10 +22,8 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarthAnnotation/Common>
 
-namespace osgEarth { namespace Annotation
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     class AnnotationNode;
 
     /**
@@ -71,6 +69,6 @@ namespace osgEarth { namespace Annotation
 
         void deserialize();
     };  
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNOTATION_ANNOTATION_LAYER

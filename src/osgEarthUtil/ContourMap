@@ -31,7 +31,7 @@
 #include <osg/Texture2D>
 #include <osg/TransferFunction>
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
     class OSGEARTHUTIL_EXPORT ContourMapLayer : public VisibleLayer
     {
@@ -87,8 +87,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Uniform>            _xferRange;
     };
 
-} } // namespace osgEarth:Util
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::ContourMapLayer::Options);
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ContourMapLayer::Options);
 
 
 #endif // OSGEARTHUTIL_CONTOUR_MAP_H

@@ -26,6 +26,7 @@
 #include <osgEarth/GLUtils>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[Lighting] "
 

@@ -43,7 +43,7 @@ namespace osgEarth {
     class TerrainEngine;
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class SelectionInfo;
 
@@ -123,6 +123,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::Drivers::RexTerrainEngine
 
 #endif // OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY

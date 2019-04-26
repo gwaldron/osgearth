@@ -28,7 +28,7 @@
 #include <osgEarthSymbology/Expression>
 #include <osg/Vec3f>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     class InstanceResource;
     class IconSymbol;
@@ -128,6 +128,11 @@ namespace osgEarth { namespace Symbology
         optional<StringExpression>   _script;
     };
 
-} } // namespace osgEarth::Symbology
+
+    namespace Symbology {
+        typedef osgEarth::InstanceSymbol InstanceSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H

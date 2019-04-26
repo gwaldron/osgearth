@@ -28,10 +28,9 @@
 #include <osg/Group>
 
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class TileNodeRegistry; // for UnloaderGroup
-
 
     /**
      * Pure interface class for a tile unloader. The Tile Unloader is 
@@ -76,7 +75,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         mutable Threading::Mutex       _mutex;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 
 #endif // OSGEARTH_REX_UNLOADER

@@ -19,7 +19,7 @@
 #include "SelectionInfo"
 #include <osgEarth/TileKey>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[SelectionInfo] "

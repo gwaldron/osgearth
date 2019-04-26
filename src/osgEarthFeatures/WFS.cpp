@@ -38,8 +38,7 @@
 #define LC "[WFSFeatureSource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Features::WFS;
+using namespace osgEarth::WFS;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
@@ -439,7 +438,7 @@ WFSFeatureSource::isJSON(const std::string& mime) const
 }
 
 std::string 
-WFSFeatureSource::createURL(const Symbology::Query& query) const
+WFSFeatureSource::createURL(const Query& query) const
 {
     char sep = options().url()->full().find_first_of('?') == std::string::npos ? '?' : '&';
 
@@ -501,7 +500,7 @@ WFSFeatureSource::createURL(const Symbology::Query& query) const
 }
 
 FeatureCursor* 
-WFSFeatureSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
+WFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {
     FeatureCursor* result = 0L;
 

@@ -19,7 +19,6 @@
 #include <osgEarthFeatures/FeatureElevationLayer>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 #define LC "[FeatureElevationLayer] "
 
@@ -198,7 +197,7 @@ FeatureElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
                         if (progress && progress->isCanceled())
                             return GeoHeightField::INVALID;
 
-                        osgEarth::Symbology::Polygon* boundary = dynamic_cast<osgEarth::Symbology::Polygon*>((*f)->getGeometry());
+                        osgEarth::Polygon* boundary = dynamic_cast<osgEarth::Polygon*>((*f)->getGeometry());
 
                         if (!boundary)
                         {

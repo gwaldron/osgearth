@@ -29,7 +29,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarthAnnotation/Draggers>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
     /**
      * A Node that can be used to display point to point line of sight calculations
@@ -245,11 +245,11 @@ namespace osgEarth { namespace Util
         void updateDraggers();
     private:
         osg::ref_ptr< LinearLineOfSightNode > _los;
-        osgEarth::Annotation::Dragger* _startDragger;
-        osgEarth::Annotation::Dragger* _endDragger;
+        osgEarth::Dragger* _startDragger;
+        osgEarth::Dragger* _endDragger;
         osg::ref_ptr< LOSChangedCallback > _callback;
     };
 
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTHUTIL_LINEAR_LINE_OF_SIGHT

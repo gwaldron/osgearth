@@ -26,10 +26,8 @@
 #include <osgEarth/URI>
 #include <osgEarth/LandCoverLayer>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Contrib
 {
-    using namespace osgEarth;
-
     /**
      * Elevation layer that adds fractal noise offset values.
      */
@@ -122,6 +120,6 @@ namespace osgEarth { namespace Util
         const LandCoverMapping* getMapping(const LandCoverClass*) const;
     };
 
-} } // namespace osgEarth::Util
+} }
 
 #endif // OSGEARTH_UTIL_FRACTAL_ELEVATION_LAYER

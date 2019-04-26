@@ -34,6 +34,7 @@
 #include "rapidxml_ext.hpp"
 
 using namespace rapidxml;
+using namespace osgEarth::KML;
 
 #define LC "[KML] "
 
@@ -69,8 +70,6 @@ using namespace rapidxml;
 namespace osgEarth_kml
 {
     using namespace osgEarth;
-    using namespace osgEarth::Drivers;
-    using namespace osgEarth::Symbology;
 
     struct KMLContext
     {

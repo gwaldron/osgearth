@@ -22,6 +22,7 @@
 #define LC "[ImageMosaic] "
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 
 /***************************************************************************/

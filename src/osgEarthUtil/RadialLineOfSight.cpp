@@ -24,7 +24,7 @@
 #include <osgEarth/GLUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 
 namespace
 {
@@ -707,7 +707,7 @@ namespace
     };
 
         
-    class RadialLOSDraggerCallback : public osgEarth::Annotation::Dragger::PositionChangedCallback
+    class RadialLOSDraggerCallback : public osgEarth::Dragger::PositionChangedCallback
     {
     public:
         RadialLOSDraggerCallback(RadialLineOfSightNode* los):
@@ -715,7 +715,7 @@ namespace
           {
           }
 
-          virtual void onPositionChanged(const osgEarth::Annotation::Dragger* sender, const osgEarth::GeoPoint& position)
+          virtual void onPositionChanged(const osgEarth::Dragger* sender, const osgEarth::GeoPoint& position)
           {
               _los->setCenter( position );
 
@@ -741,9 +741,9 @@ RadialLineOfSightEditor::RadialLineOfSightEditor(RadialLineOfSightNode* los):
 _los(los)
 {
 
-    _dragger  = new osgEarth::Annotation::SphereDragger(_los->getMapNode());
+    _dragger  = new osgEarth::SphereDragger(_los->getMapNode());
     _dragger->addPositionChangedCallback(new RadialLOSDraggerCallback(_los.get() ) );    
-    static_cast<osgEarth::Annotation::SphereDragger*>(_dragger)->setColor(osg::Vec4(0,0,1,0));
+    static_cast<osgEarth::SphereDragger*>(_dragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_dragger);    
 
     _callback = new RadialUpdateDraggersCallback( this );

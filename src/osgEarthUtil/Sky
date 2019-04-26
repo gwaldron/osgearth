@@ -33,18 +33,12 @@
 #include <osg/View>
 #include <osgDB/ReaderWriter>
 
-namespace osgEarth {
-    class MapNode;
-}
 namespace osgDB {
     class Options;
 }
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
-    using namespace osgEarth;
-
-
     /**
      * Base Options structure for loading an environment node from
      * a plugin.
@@ -233,7 +227,6 @@ namespace osgEarth { namespace Util
     public:
         virtual SkyNode* createSkyNode() =0;
     };
-
-} } // namespace osgEarth::Util
+}
 
 #endif // OSGEARTHUTIL_SKY

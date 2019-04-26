@@ -29,9 +29,6 @@
 #include <cmath>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 
 EllipseNode::EllipseNode() :
@@ -210,7 +207,7 @@ EllipseNode::buildGeometry()
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::Annotation::EllipseNode );
+OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::EllipseNode );
 
 
 EllipseNode::EllipseNode(const Config&         conf,

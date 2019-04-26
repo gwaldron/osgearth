@@ -25,7 +25,7 @@
 #include <osgEarthUtil/Common>
 #include <osg/Camera>
 
-namespace osgEarth { namespace Util 
+namespace osgEarth
 {
     /**
      * Installs and controls a logarithmic depth buffer that improves
@@ -75,6 +75,6 @@ namespace osgEarth { namespace Util
         bool _useFragDepth;
     };
 
-} } // namespace osgEarth::Util
+}
 
 #endif // OSGEARTH_UTIL_LOG_DEPTH_BUFFER_H

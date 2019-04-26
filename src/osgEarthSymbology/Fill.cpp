@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/Fill>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 

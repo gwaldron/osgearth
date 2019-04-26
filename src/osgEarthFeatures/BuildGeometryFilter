@@ -27,11 +27,8 @@
 #include <osgEarth/GeoMath>
 #include <osg/Geode>
 
-namespace osgEarth { namespace Features 
+namespace osgEarth
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
     /**
      * Builds geometry from a stream of input features.
      */
@@ -136,6 +133,10 @@ namespace osgEarth { namespace Features
         osg::Geode* processPoints          (FeatureList& input, FilterContext& cx);
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::BuildGeometryFilter BuildGeometryFilter;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

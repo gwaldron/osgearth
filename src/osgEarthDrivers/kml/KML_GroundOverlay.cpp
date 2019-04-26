@@ -21,7 +21,7 @@
 #include <osgEarthAnnotation/ImageOverlay>
 
 using namespace osgEarth_kml;
-using namespace osgEarth::Annotation;
+using namespace osgEarth;
 
 void
 KML_GroundOverlay::scan( xml_node<>* node, KMLContext& cx )

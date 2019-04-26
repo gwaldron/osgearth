@@ -32,7 +32,7 @@
 #define SUPPORTS_VAO 1
 #endif
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
@@ -236,6 +236,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _debug;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_GEOMETRY_POOL

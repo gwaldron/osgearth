@@ -24,10 +24,8 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/LayerListener>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Elevation layer that sets elevation based on feature data
      */
@@ -77,6 +75,10 @@ namespace osgEarth { namespace Features
         bool intersects(const TileKey&) const;
     };
 
-} } // namespace osgEarth::Features
+    namespace Features {
+        typedef osgEarth::FeatureElevationLayer FeatureElevationLayer;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_FEATURE_ELEVATION_LAYER

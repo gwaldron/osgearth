@@ -29,8 +29,6 @@
 #include <osgEarthUtil/SimpleOceanLayer>
 #include <osgEarth/Viewpoint>
 
-//#include <osg/ArgumentParser>
-
 namespace osgEarth {
     class MapNode;
 }

@@ -456,7 +456,7 @@ namespace osgEarth
         };
 
         typedef unsigned                              ShaderID;
-        typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
+        typedef Support::vector_map<ShaderID, ShaderEntry> ShaderMap;
         typedef std::set<std::string>                 ExtensionsSet;
         typedef std::map< std::string, std::string >  AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;

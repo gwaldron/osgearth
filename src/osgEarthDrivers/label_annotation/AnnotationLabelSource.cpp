@@ -30,8 +30,6 @@
 #define LC "[AnnoLabelSource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 
 class AnnotationLabelSource : public LabelSource
 {

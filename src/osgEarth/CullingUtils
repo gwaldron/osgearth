@@ -35,7 +35,7 @@
 #include <osg/ClipPlane>
 #include <osgUtil/CullVisitor>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {    
     /**
      * A customized CCC that works correctly under an RTT camera and also with 
@@ -267,6 +267,6 @@ namespace osgEarth
         optional<float> _maxAltitude;
         osg::ref_ptr<const SpatialReference> _srs;
     };
-}
+} }
 
 #endif // OSGEARTH_CULLING_UTILS_H

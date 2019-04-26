@@ -24,7 +24,7 @@
 #include <osgEarth/Config>
 #include <vector>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     class OSGEARTHSYMBOLOGY_EXPORT CssUtils
     {
@@ -62,6 +62,6 @@ namespace osgEarth { namespace Symbology
         static void split( const std::string& css, std::vector<std::string>& output );
     };
 
-} } // namespace osgEarth::Features2
+} // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_CSSUTILS_H

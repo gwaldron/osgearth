@@ -21,8 +21,6 @@
 #include <osgEarth/GeoMath>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 

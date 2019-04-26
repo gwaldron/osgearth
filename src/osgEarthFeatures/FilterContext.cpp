@@ -22,7 +22,6 @@
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 FilterContext::FilterContext() :
 _session(0L),

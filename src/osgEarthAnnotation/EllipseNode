@@ -28,11 +28,8 @@
 #include <osgEarth/Units>
 #include <osgEarth/MapNode>
 
-namespace osgEarth { namespace Annotation
-{	
-    using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
+namespace osgEarth
+{
     /** 
      * Renders an ellipse that can drape on a MapNode terrain.    
      */
@@ -164,6 +161,6 @@ namespace osgEarth { namespace Annotation
         unsigned int _numSegments;
     };
 
-} } // namespace osgEarth::Annotation
+}
 
 #endif // OSGEARTH_ANNOTATION_ELLIPSE_NODE_H

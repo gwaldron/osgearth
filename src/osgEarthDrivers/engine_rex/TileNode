@@ -41,7 +41,7 @@ namespace osgEarth {
     class TerrainOptions;
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class LoadTileData;
     class EngineContext;
@@ -196,6 +196,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE

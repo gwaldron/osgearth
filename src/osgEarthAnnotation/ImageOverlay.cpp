@@ -37,10 +37,6 @@
 #define LC "[ImageOverlay] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
-
 
 //---------------------------------------------------------------------------
 
@@ -74,7 +70,7 @@ namespace
 
 //---------------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
+OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::ImageOverlay );
 
 osg::ref_ptr<VirtualProgram> ImageOverlay::_program;
 
@@ -302,7 +298,7 @@ ImageOverlay::compile()
             {
                 osg::ref_ptr< Feature > croppedFeature = new Feature(*f);
                 // Make sure the feature is wound correctly.
-                geomA->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+                geomA->rewind(osgEarth::Geometry::ORIENTATION_CCW);
                 croppedFeature->setGeometry(geomA.get());
                 features.push_back(croppedFeature);
             }
@@ -311,7 +307,7 @@ ImageOverlay::compile()
             {
                 osg::ref_ptr< Feature > croppedFeature = new Feature(*f);
                 // Make sure the feature is wound correctly.
-                geomA->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+                geomA->rewind(osgEarth::Geometry::ORIENTATION_CCW);
                 croppedFeature->setGeometry(geomB.get());
                 features.push_back(croppedFeature);
             }

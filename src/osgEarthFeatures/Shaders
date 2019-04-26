@@ -25,7 +25,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarth/ShaderLoader>
 
-namespace osgEarth { namespace Features
+namespace osgEarth { namespace Support
 {
     class OSGEARTHFEATURES_EXPORT Shaders : public ShaderPackage
 	{

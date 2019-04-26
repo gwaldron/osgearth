@@ -5,7 +5,8 @@
 typedef std::pair<int, int> TPoint;
 typedef std::vector< std::size_t > TIds;
 
-using namespace osgEarth::Util;
+using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 ClusterNode::ClusterNode(MapNode* mapNode, osg::Image* defaultImage) :
     _radius(50),

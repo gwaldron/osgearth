@@ -28,7 +28,7 @@
 #include <set>
 #include <algorithm>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     typedef std::vector<std::string> TagVector;
     typedef std::set<std::string>    TagSet;
@@ -119,6 +119,6 @@ namespace osgEarth { namespace Symbology
         }
     };
 
-} } // namespace osgEarth::Symbology
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_QUERY_H

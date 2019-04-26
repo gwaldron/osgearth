@@ -26,6 +26,7 @@
 #include <osgDB/Registry>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[Async] "
 
@@ -44,7 +45,7 @@ _node(node), _requestId(0u)
 
 //........................................................................
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     // internal class
     class AsyncNode : public osg::Referenced
@@ -87,7 +88,7 @@ namespace osgEarth
     };
 
     OpenThreads::Atomic AsyncNode::_idgen;
-}
+} }
 
 //........................................................................
 
@@ -359,7 +360,7 @@ AsyncLOD::isVisible(const AsyncNode& async, osg::NodeVisitor& nv) const
     return false;
 }
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     struct AsyncNodePseudoLoader : public osgDB::ReaderWriter
     {
@@ -381,4 +382,4 @@ namespace osgEarth
         }
     };
     REGISTER_OSGPLUGIN(ASYNC_PSEUDOLOADER_EXT, AsyncNodePseudoLoader);
-}
+} }

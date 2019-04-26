@@ -25,7 +25,7 @@
 
 #include <osgEarth/Common>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class OSGEARTH_EXPORT Memory
     {
@@ -46,7 +46,7 @@ namespace osgEarth
         // Not creatable.
         Memory() { }
     };
-}
+} }
 
 
 #endif // OSGEARTH_MEMORY_H

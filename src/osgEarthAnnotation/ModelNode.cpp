@@ -35,8 +35,6 @@
 #define LC "[ModelNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
 
 
 //------------------------------------------------------------------------
@@ -183,7 +181,7 @@ ModelNode::compileModel()
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
+OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::ModelNode );
 
 
 ModelNode::ModelNode(const Config& conf, const osgDB::Options* readOptions) :

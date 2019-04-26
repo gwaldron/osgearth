@@ -28,8 +28,10 @@
 
 #include <osgEarth/TerrainLayer>
 
-namespace osgEarth
+
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
     class TileVisitor;
 
     /**
@@ -58,6 +60,6 @@ namespace osgEarth
         virtual std::string getProcessString() const;
     };    
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_TRAVERSAL_DATA_H

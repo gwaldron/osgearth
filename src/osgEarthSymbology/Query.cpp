@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/Query>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 Query Query::ALL;
 

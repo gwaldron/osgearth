@@ -33,11 +33,12 @@ namespace osg {
 namespace osgUtil {
     class CullVisitor;
 }
-
-namespace osgEarth
-{
+namespace osgEarth {
     class TerrainResources;
+}
 
+namespace osgEarth { namespace Support
+{
     /**
      * Projects geometry from a separate scene graph onto the terrain.
      */
@@ -144,6 +145,6 @@ namespace osgEarth
         void reserveTextureImageUnit();
     };
 
-} // namespace osgEarth
+} }
 
 #endif //OSGEARTH_CASCADE_DRAPING_DECORATOR

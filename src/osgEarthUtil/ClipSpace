@@ -26,9 +26,8 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/GeoData>
 
-namespace osgEarth { namespace Util
-{	
-
+namespace osgEarth { namespace Support
+{
     /**
     * Utility class for perform operations in clip space
     */

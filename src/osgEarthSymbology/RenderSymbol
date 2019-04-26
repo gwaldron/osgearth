@@ -27,7 +27,7 @@
 #include <osg/Referenced>
 #include <vector>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarth
 {
     /** 
      * Symbol that contains general rendering settings.
@@ -112,6 +112,10 @@ namespace osgEarth { namespace Symbology
         virtual ~RenderSymbol() { }
     };
 
-} } // namespace osgEarth::Symbology
+    namespace Symbology {
+        typedef osgEarth::RenderSymbol RenderSymbol;
+    }
+
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H

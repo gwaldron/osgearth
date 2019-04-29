@@ -18,7 +18,7 @@
  */
 #include "KML_Model"
 
-#include <osgEarthSymbology/ModelSymbol>
+#include <osgEarth/ModelSymbol>
 
 using namespace osgEarth_kml;
 

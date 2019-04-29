@@ -22,22 +22,22 @@
 
 #include <osgEarth/MapNode>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 
-#include <osgEarthAnnotation/ImageOverlay>
-#include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/RectangleNode>
-#include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/LocalGeometryNode>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/ModelNode>
+#include <osgEarth/ImageOverlay>
+#include <osgEarth/CircleNode>
+#include <osgEarth/RectangleNode>
+#include <osgEarth/EllipseNode>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/LocalGeometryNode>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/ModelNode>
 
-#include <osgEarthAnnotation/ImageOverlayEditor>
+#include <osgEarth/ImageOverlayEditor>
 
-#include <osgEarthSymbology/GeometryFactory>
+#include <osgEarth/GeometryFactory>
 
 #include <osgViewer/Viewer>
 

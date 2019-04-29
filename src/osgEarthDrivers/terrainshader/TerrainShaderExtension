@@ -23,7 +23,7 @@
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEffect>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Controls>
 
 namespace osgEarth { namespace TerrainShader
 {

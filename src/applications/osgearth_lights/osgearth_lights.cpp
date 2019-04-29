@@ -28,10 +28,10 @@
 #include <osgEarth/Lighting>
 #include <osgEarth/PhongLightingEffect>
 #include <osgEarth/NodeUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Ephemeris>
-#include <osgEarthUtil/Shadowing>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Ephemeris>
+#include <osgEarth/Shadowing>
 
 #define LC "[lights] "
 

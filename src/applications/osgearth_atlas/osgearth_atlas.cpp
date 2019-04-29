@@ -23,9 +23,9 @@
 #include <osgEarth/Notify>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarthUtil/AtlasBuilder>
-#include <osgEarthSymbology/ResourceLibrary>
-#include <osgEarthSymbology/Skins>
+#include <osgEarth/AtlasBuilder>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/Skins>
 #include <osgEarth/Utils>
 #include <osgEarth/Lighting>
 

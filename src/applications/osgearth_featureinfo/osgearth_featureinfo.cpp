@@ -21,8 +21,8 @@
 */
 
 #include <osg/Notify>
-#include <osgEarthFeatures/OGRFeatureSource>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/OGRFeatureSource>
+#include <osgEarth/GeometryUtils>
 
 using namespace osgEarth;
 

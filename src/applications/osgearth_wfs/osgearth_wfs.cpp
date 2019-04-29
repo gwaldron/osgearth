@@ -22,18 +22,18 @@
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 
 #include <osgEarth/Units>
 #include <osgEarth/MapNode>
 
 // include for WFS feature driver:
-#include <osgEarthFeatures/WFS>
+#include <osgEarth/WFS>
 
 // include for feature geometry model renderer:
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/Style>
 
 
 #define LC "[wfs example] "

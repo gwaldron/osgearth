@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_SILVERLINING_OPTIONS 1
 
 #include "Common"
-#include <osgEarthUtil/Sky>
+#include <osgEarth/Sky>
 
 namespace osgEarth { namespace SilverLining
 {
@@ -64,7 +64,7 @@ namespace osgEarth { namespace SilverLining
 
     public:
         osgEarth::Config getConfig() const {
-            osgEarth::Config conf = osgEarth::Util::SkyOptions::getConfig();
+            osgEarth::Config conf = osgEarth::SkyOptions::getConfig();
             conf.set("user", _user);
             conf.set("license_code", _licenseCode);
             conf.set("resource_path", _resourcePath);
@@ -75,7 +75,7 @@ namespace osgEarth { namespace SilverLining
 
     protected:
         void mergeConfig( const osgEarth::Config& conf ) {
-            osgEarth::Util::SkyOptions::mergeConfig( conf );
+            osgEarth::SkyOptions::mergeConfig( conf );
             fromConfig(conf);
         }
 

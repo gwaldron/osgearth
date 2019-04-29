@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/LabelSource>
-#include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/FilterContext>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/LabelSource>
+#include <osgEarth/FeatureSourceIndexNode>
+#include <osgEarth/FilterContext>
+#include <osgEarth/LabelNode>
+#include <osgEarth/PlaceNode>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/StateSetCache>

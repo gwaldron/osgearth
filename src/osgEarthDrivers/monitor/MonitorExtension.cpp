@@ -19,8 +19,8 @@
 #include "MonitorExtension"
 #include "MonitorUI"
 
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/Style>
 
 #include <osgGA/GUIEventHandler>
 

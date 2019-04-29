@@ -20,9 +20,9 @@
 #ifndef OSGEARTHDRIVERS_DUKTAPE_ENGINE_H
 #define OSGEARTHDRIVERS_DUKTAPE_ENGINE_H 1
 
-#include <osgEarthFeatures/ScriptEngine>
-#include <osgEarthFeatures/Script>
-#include <osgEarthFeatures/Feature>
+#include <osgEarth/ScriptEngine>
+#include <osgEarth/Script>
+#include <osgEarth/Feature>
 #include <osgEarth/Containers>
 #include "duktape.h"
 

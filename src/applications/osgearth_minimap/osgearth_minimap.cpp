@@ -22,10 +22,10 @@
 
 #include <osg/Notify>
 #include <osgViewer/Viewer>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/FeatureNode>
 #include <osgViewer/CompositeViewer>
 #include <osgEarth/GDAL>
 

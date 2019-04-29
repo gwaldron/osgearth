@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_KML_KML_GEOMETRY 1
 
 #include "KML_Object"
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Geometry>
 
 namespace osgEarth_kml
 {

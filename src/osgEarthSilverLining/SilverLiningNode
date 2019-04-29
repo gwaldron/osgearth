@@ -21,25 +21,20 @@
 #include "SilverLiningOptions"
 #include "SilverLiningCallback"
 #include "SilverLiningAPIWrapper"
-#include <osgEarthUtil/Sky>
-#include <osgEarth/Map>
-#include <osgEarth/Containers>
+#include <osgEarth/Sky>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 #include <osg/LightSource>
 
 namespace osgEarth { namespace SilverLining
 {
-    using namespace osgEarth::Support;
-    using namespace osgEarth::Util;
-
     class SilverLiningContext;
 	class SilverLiningContextNode;
 
     /**
      * Node that roots the silverlining adapter.
      */
-    class OSGEARTHSILVERLINING_EXPORT SilverLiningNode : public osgEarth::Util::SkyNode
+    class OSGEARTHSILVERLINING_EXPORT SilverLiningNode : public osgEarth::SkyNode
     {
     public:
         SilverLiningNode(
@@ -77,7 +72,7 @@ namespace osgEarth { namespace SilverLining
         osg::ref_ptr<osg::LightSource> _lightSource;
         osg::ref_ptr<osg::Light> _light;
         const SilverLiningOptions _options;
-        osg::ref_ptr<PhongLightingEffect> _lighting;
+        osg::ref_ptr<osgEarth::Util::PhongLightingEffect> _lighting;
         osg::ref_ptr<Callback> _callback;
 
         typedef std::map<osg::Camera*, osg::ref_ptr<osg::Node> > CameraContextMap;

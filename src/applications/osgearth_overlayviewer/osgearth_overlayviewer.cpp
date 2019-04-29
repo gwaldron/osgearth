@@ -31,9 +31,9 @@
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
 #include <osgEarth/CascadeDrapingDecorator>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/ViewFitter>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/ViewFitter>
 
 #define LC "[viewer] "
 

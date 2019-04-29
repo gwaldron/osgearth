@@ -25,11 +25,11 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/ExampleResources>
 
-#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarth/AnnotationData>
 
 #include <osgEarthDrivers/kml/KML>
 

@@ -22,8 +22,8 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/LayerListener>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
 #include "Export"
 
 namespace osgEarth { namespace Splat

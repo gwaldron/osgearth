@@ -697,7 +697,7 @@ namespace osgEarth { namespace Support
         DATA& get(KEY k)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            typename osgEarth::fast_map<KEY,DATA>::iterator i = _data.find(k);
+            typename fast_map<KEY,DATA>::iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second;
             else

@@ -31,11 +31,11 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/Lighting>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Sky>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Sky>
 #include <osgEarth/Color>
-#include <osgEarthAnnotation/LabelNode>
+#include <osgEarth/LabelNode>
 #include <osgViewer/Viewer>
 #include <iostream>
 

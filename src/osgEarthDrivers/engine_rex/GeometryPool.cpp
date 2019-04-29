@@ -19,7 +19,7 @@
 #include "GeometryPool"
 #include <osgEarth/Locators>
 #include <osgEarth/NodeUtils>
-#include <osgEarthUtil/TopologyGraph>
+#include <osgEarth/TopologyGraph>
 #include <osg/Point>
 #include <cstdlib> // for getenv
 

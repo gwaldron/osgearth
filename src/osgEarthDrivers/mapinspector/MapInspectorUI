@@ -23,7 +23,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainLayer>
 #include <osgEarth/ModelLayer>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Controls>
 #include <osg/View>
 
 namespace osgEarth { namespace MapInspector

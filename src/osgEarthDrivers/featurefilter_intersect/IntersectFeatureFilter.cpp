@@ -22,12 +22,12 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Progress>
 
-#include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FilterContext>
+#include <osgEarth/Filter>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FilterContext>
 
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Geometry>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>

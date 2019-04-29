@@ -21,7 +21,7 @@
 
 #include <osgEarth/Extension>
 #include <osgEarth/Viewpoint>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Controls>
 #include <osgGA/GUIEventAdapter>
 #include <osg/View>
 #include <vector>

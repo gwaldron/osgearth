@@ -34,7 +34,10 @@ namespace osgEarth
 {
     class Cache;
     class CacheBin;
-    class Support::MemCache;
+
+    namespace Support {
+        class MemCache;
+    }
 
     struct TerrainLayerCallback : public VisibleLayerCallback
     {
@@ -303,11 +306,11 @@ namespace osgEarth
 
     protected:
 
-        optional<bool>                 _profileMatchesMapProfile;
-        unsigned                       _tileSize;
-        osg::ref_ptr<MemCache>         _memCache;
-        bool                           _openCalled;
-        bool                           _writingRequested;
+        optional<bool> _profileMatchesMapProfile;
+        unsigned _tileSize;
+        osg::ref_ptr<Support::MemCache> _memCache;
+        bool _openCalled;
+        bool _writingRequested;
 
         // profile from tile source or cache, before any overrides applied
         mutable osg::ref_ptr<const Profile> _profileOriginal;

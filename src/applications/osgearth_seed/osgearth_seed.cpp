@@ -37,7 +37,7 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/FileUtils>
 
-#include <osgEarthFeatures/OGRFeatureSource>
+#include <osgEarth/OGRFeatureSource>
 
 #include <iostream>
 #include <sstream>
@@ -302,7 +302,7 @@ int seed( osg::ArgumentParser& args )
     
 
     // Initialize the seeder
-    CacheSeed seeder;
+    osgEarth::Contrib::CacheSeed seeder;
     seeder.setVisitor(visitor.get());
 
     osgEarth::Map* map = mapNode->getMap();

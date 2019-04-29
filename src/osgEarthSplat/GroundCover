@@ -23,8 +23,8 @@
 #include <osgEarth/Config>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LandCoverLayer>
-#include <osgEarthSymbology/ResourceLibrary>
-#include <osgEarthSymbology/Symbol>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/Symbol>
 #include <osg/BoundingBox>
 #include <osg/Shader>
 

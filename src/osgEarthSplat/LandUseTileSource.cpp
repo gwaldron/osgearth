@@ -66,7 +66,7 @@ namespace
             osg::clampBetween( covIn.y() + n1*warp, 0.0f, 1.0f ) );
     }
 
-    float getNoise(osgEarth::SimplexNoise& noiseGen, const osg::Vec2& uv)
+    float getNoise(osgEarth::Util::SimplexNoise& noiseGen, const osg::Vec2& uv)
     {
         // TODO: check that u and v are 0..s and not 0..s-1
         double n = noiseGen.getTiledValue(uv.x(), uv.y());

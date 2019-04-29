@@ -13,12 +13,6 @@ SET(LIB_PUBLIC_HEADERS
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS} )
-
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-    osgEarthUtil
-    osgEarthFeatures
-    osgEarthSymbology
-    osgEarthAnnotation)
 	
 SETUP_PLUGIN(osgearth_monitor)
 

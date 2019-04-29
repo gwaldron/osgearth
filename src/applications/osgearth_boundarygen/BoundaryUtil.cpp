@@ -28,7 +28,7 @@
 #include <osg/Point>
 #include <osg/TriangleIndexFunctor>
 #include <osg/ComputeBoundsVisitor>
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Geometry>
 #include <osgEarth/SpatialReference>
 #include <osgDB/WriteFile>
 #include <map>

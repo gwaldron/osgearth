@@ -11,16 +11,13 @@ IF(NOT OSGCORE_BUNDLED)
 	ENDIF(OSGCORE_FOUND)
 	SET(CMAKE_MODULE_PATH  ${PROJECT_SOURCE_DIR}/../../Macros)
 ENDIF(NOT OSGCORE_BUNDLED)
+
 SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
 
 
 #OpenThreads, osg, osgDB and osgUtil are included elsewhere.
 SET(TARGET_COMMON_LIBRARIES
     osgEarth
-    osgEarthFeatures
-    osgEarthUtil
-    osgEarthSymbology
-    osgEarthAnnotation
 )
 
 SET(TARGET_DEFAULT_PREFIX "application_")

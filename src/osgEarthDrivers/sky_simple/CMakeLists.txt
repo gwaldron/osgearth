@@ -36,9 +36,6 @@ set(TARGET_H
 	SimpleSkyNode
     SimpleSkyShaders )
 
-set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-    osgEarthUtil )
-
 setup_plugin(osgearth_sky_simple)
 
 

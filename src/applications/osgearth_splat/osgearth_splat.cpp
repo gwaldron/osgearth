@@ -32,10 +32,10 @@
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarth/GDAL>
 
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 
-#include <osgEarthSymbology/BillboardSymbol>
+#include <osgEarth/BillboardSymbol>
 
 
 #define LC "[splat] "

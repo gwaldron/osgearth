@@ -27,13 +27,13 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/GDAL>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 
-#include <osgEarthSymbology/Style>
-#include <osgEarthFeatures/OGRFeatureSource>
-#include <osgEarthFeatures/FeatureModelLayer>
-#include <osgEarthFeatures/FeatureImageLayer>
+#include <osgEarth/Style>
+#include <osgEarth/OGRFeatureSource>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/FeatureImageLayer>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

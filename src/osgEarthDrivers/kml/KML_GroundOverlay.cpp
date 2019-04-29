@@ -18,7 +18,7 @@
  */
 #include "KML_GroundOverlay"
 #include "KML_Geometry"
-#include <osgEarthAnnotation/ImageOverlay>
+#include <osgEarth/ImageOverlay>
 
 using namespace osgEarth_kml;
 using namespace osgEarth;

@@ -19,8 +19,8 @@
 #include "MapInspectorExtension"
 #include "MapInspectorUI"
 
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

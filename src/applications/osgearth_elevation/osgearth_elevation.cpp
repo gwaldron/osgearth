@@ -30,11 +30,11 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Terrain>
 #include <osgEarth/VerticalDatum>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/LatLongFormatter>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/ModelNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
+#include <osgEarth/LatLongFormatter>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/ModelNode>
 #include <iomanip>
 
 using namespace osgEarth;

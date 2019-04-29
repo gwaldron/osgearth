@@ -21,11 +21,10 @@
 #include "SilverLiningOptions"
 #include "SilverLiningCallback"
 #include "SilverLiningAPIWrapper"
-#include <osgEarthUtil/Sky>
-#include <osgEarth/Map>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 #include <osg/LightSource>
+#include <osg/Geode>
 
 namespace osgEarth { namespace SilverLining
 {

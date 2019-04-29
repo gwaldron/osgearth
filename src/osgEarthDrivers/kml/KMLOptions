@@ -21,7 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/URI>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/Style>
 #include <osg/Image>
 
 namespace osgEarth { namespace KML

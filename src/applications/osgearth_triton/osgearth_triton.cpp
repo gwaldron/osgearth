@@ -21,15 +21,15 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
 #include <osgEarthTriton/TritonAPIWrapper>
 #include <osgEarthTriton/TritonCallback>
 #include <osgEarthTriton/TritonLayer>
-#include <osgEarthAnnotation/AnnotationLayer>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/GeoPositionNode>
+#include <osgEarth/AnnotationLayer>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/GeoPositionNode>
 
 #define LC "[osgearth_triton] "
 

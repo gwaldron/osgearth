@@ -35,14 +35,14 @@
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/EarthManipulator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Controls>
 
 using namespace osgEarth;
 using namespace osgEarth::Util::Controls;

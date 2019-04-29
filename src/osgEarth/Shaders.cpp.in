@@ -51,5 +51,26 @@ namespace osgEarth { namespace Support
 
         TextLegacy = "Text_legacy.glsl";
         _sources[TextLegacy] = "@Text_legacy.glsl@";
+        
+        ContourMap = "ContourMap.glsl";
+        _sources[ContourMap] = "@ContourMap.glsl@";
+
+        LogDepthBuffer = "LogDepthBuffer.glsl";
+        _sources[LogDepthBuffer] = "@LogDepthBuffer.glsl@";
+
+        LogDepthBuffer_VertOnly = "LogDepthBuffer.VertOnly.glsl";
+        _sources[LogDepthBuffer_VertOnly] = "@LogDepthBuffer.VertOnly.glsl@";
+
+        GeodeticGraticule = "GeodeticGraticule.glsl";
+        _sources[GeodeticGraticule] = "@GeodeticGraticule.glsl@";
+
+        ShadowCaster = "ShadowCaster.glsl";
+        _sources[ShadowCaster] = "@ShadowCaster.glsl@";
+
+        SimpleOceanLayer = "SimpleOceanLayer.glsl";
+        _sources[SimpleOceanLayer] = "@SimpleOceanLayer.glsl@";
+        
+        RTTPicker = "RTTPicker.glsl";
+        _sources[RTTPicker] = "@RTTPicker.glsl@";
     }
 } }

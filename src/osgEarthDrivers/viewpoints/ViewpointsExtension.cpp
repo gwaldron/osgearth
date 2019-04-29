@@ -19,7 +19,7 @@
 #include "ViewpointsExtension"
 #include <osgEarth/Viewpoint>
 #include <osgEarth/XmlUtils>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/EarthManipulator>
 #include <osgViewer/View>
 
 using namespace osgEarth;

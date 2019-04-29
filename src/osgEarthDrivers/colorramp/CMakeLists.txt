@@ -4,7 +4,6 @@ SET(TARGET_H
 SET(TARGET_SRC 
     ColorRampTileSource.cpp
 )
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 SETUP_PLUGIN(osgearth_colorramp)
 
 

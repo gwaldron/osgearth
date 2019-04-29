@@ -30,7 +30,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/VideoLayer>
 #include <osgEarth/TMS>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/EarthManipulator>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

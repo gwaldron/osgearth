@@ -33,16 +33,15 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/TMS>
 
-#include <osgEarthFeatures/OGRFeatureSource>
+#include <osgEarth/OGRFeatureSource>
 
-#include <osgEarthUtil/TMSPackager>
+#include <osgEarth/TMSPackager>
 
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 
 #define LC "[osgearth_package] "

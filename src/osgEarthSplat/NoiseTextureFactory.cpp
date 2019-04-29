@@ -50,10 +50,10 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 
     Random random(0, Random::METHOD_FAST);
     
-    for(int k=0; k<chans; ++k)
+    for(unsigned k=0; k<chans; ++k)
     {
         // Configure the noise function:
-        SimplexNoise noise;
+        Util::SimplexNoise noise;
         noise.setNormalize( true );
         noise.setRange( 0.0, 1.0 );
         noise.setFrequency( F[k] );

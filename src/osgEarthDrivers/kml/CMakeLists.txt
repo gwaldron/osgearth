@@ -11,13 +11,6 @@ IF(WIN32)
     ENDIF(CURL_IS_STATIC)
 ENDIF(WIN32)
     
-set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} 
-    osgEarthFeatures 
-    osgEarthSymbology 
-    osgEarthUtil
-    osgEarthAnnotation
-)
-
 SET(TARGET_H
     KML
     KMLOptions

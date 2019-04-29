@@ -149,7 +149,7 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<ImageLayer>     _imageLayer;
         ImageLayerVector             _imageLayers;
         std::vector<float>           _warps;
-        osgEarth::SimplexNoise _noiseGen;
+        osgEarth::Util::SimplexNoise _noiseGen;
     };
 
     /**

@@ -27,10 +27,10 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/LinearLineOfSight>
-#include <osgEarthUtil/RadialLineOfSight>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/LinearLineOfSight>
+#include <osgEarth/RadialLineOfSight>
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
 #include <osg/Depth>

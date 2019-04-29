@@ -20,8 +20,8 @@
 #ifndef OSGEARTHDRIVERS_DUKTAPE_JS_GEOMETRY_H
 #define OSGEARTHDRIVERS_DUKTAPE_JS_GEOMETRY_H
 
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/Geometry>
+#include <osgEarth/GeometryUtils>
 #include "duktape.h"
 
 #define LC "[duktape] "

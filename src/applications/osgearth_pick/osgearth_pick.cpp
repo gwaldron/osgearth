@@ -24,13 +24,13 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/RTTPicker>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureIndex>
-#include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
+#include <osgEarth/RTTPicker>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureIndex>
+#include <osgEarth/AnnotationNode>
 
 #include <osgEarth/IntersectionPicker>
 

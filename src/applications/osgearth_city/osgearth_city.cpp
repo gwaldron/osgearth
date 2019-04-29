@@ -28,12 +28,12 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TMS>
 
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/LogarithmicDepthBuffer>
 
-#include <osgEarthFeatures/FeatureModelLayer>
-#include <osgEarthFeatures/OGRFeatureSource>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/OGRFeatureSource>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

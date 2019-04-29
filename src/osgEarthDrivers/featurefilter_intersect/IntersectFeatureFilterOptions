@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_INTERSECT_FEATUREFILTER_OPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/FeatureSource>
 
 namespace osgEarth { namespace Drivers
 {

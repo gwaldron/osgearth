@@ -25,7 +25,7 @@
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/ExampleResources>
 #include <osgDB/ReaderWriter>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>

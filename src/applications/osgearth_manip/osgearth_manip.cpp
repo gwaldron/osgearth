@@ -36,14 +36,14 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/LogarithmicDepthBuffer>
-#include <osgEarthUtil/ViewFitter>
-#include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/LogarithmicDepthBuffer>
+#include <osgEarth/ViewFitter>
+#include <osgEarth/AnnotationUtils>
+#include <osgEarth/LabelNode>
+#include <osgEarth/Style>
 #include <osgEarth/ScreenSpaceLayout>
 
 using namespace osgEarth::Util;
@@ -128,7 +128,7 @@ namespace
 
     /**
      * Handler that demonstrates the "viewpoint" functionality in 
-     *  osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
+     * EarthManipulator. Press a number key to fly to a viewpoint.
      */
     struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
     {

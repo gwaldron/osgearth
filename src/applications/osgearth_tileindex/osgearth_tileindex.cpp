@@ -29,7 +29,7 @@
 #include <osgDB/FileNameUtils>
 
 #include <osgEarth/Progress>
-#include <osgEarthUtil/TileIndexBuilder>
+#include <osgEarth/TileIndexBuilder>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;

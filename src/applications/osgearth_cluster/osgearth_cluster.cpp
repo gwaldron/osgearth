@@ -22,17 +22,17 @@
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
 #include <osgEarth/Registry>
 #include <iostream>
 
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/PlaceNode>
 
-#include <osgEarthUtil/ClusterNode>
+#include <osgEarth/ClusterNode>
 
 #define LC "[viewer] "
 

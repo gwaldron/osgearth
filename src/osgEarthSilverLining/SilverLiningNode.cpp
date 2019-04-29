@@ -62,7 +62,7 @@ SilverLiningNode::construct()
 
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();
-    _lighting = new PhongLightingEffect();
+    _lighting = new Util::PhongLightingEffect();
     //_lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
 
@@ -188,5 +188,5 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
         _lightSource->accept(nv);
     }
 
-    osgEarth::Util::SkyNode::traverse(nv);
+    osgEarth::SkyNode::traverse(nv);
 }

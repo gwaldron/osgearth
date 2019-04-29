@@ -20,10 +20,10 @@
 #include "KML_Geometry"
 #include "KML_Style"
 
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/ModelNode>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/ModelNode>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Registry>
 

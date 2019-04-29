@@ -21,21 +21,20 @@
 */
 
 #include <osgViewer/Viewer>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/MouseCoordsTool>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/MouseCoordsTool>
 
 #include <osgEarth/Horizon>
 #include <osgEarth/TraversalData>
 #include <osgEarth/Lighting>
 #include <osgEarth/GLUtils>
 
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/PlaceNode>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 
 #include <osg/Geometry>

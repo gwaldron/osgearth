@@ -28,15 +28,15 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/GLUtils>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/MGRSFormatter>
-#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/MouseCoordsTool>
+#include <osgEarth/MGRSFormatter>
+#include <osgEarth/LatLongFormatter>
 
-#include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/MGRSGraticule>
-#include <osgEarthUtil/UTMGraticule>
-#include <osgEarthUtil/GARSGraticule>
+#include <osgEarth/GeodeticGraticule>
+#include <osgEarth/MGRSGraticule>
+#include <osgEarth/UTMGraticule>
+#include <osgEarth/GARSGraticule>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;

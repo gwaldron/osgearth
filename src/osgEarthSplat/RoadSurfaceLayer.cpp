@@ -21,8 +21,8 @@
 #include <osgEarth/Map>
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/VirtualProgram>
-#include <osgEarthFeatures/FilterContext>
-#include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarth/FilterContext>
+#include <osgEarth/GeometryCompiler>
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;

@@ -49,7 +49,6 @@ LINK_EXTERNAL(
 LINK_INTERNAL(
     ${LIB_NAME}
     osgEarth
-    osgEarthUtil
 )
 
 LINK_WITH_VARIABLES(

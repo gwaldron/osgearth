@@ -33,12 +33,12 @@
 #include <osgEarth/XYZ>
 #include <osgEarth/Composite>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/AutoScaleCallback>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/AutoScaleCallback>
 
-#include <osgEarthFeatures/FeatureMaskLayer>
-#include <osgEarthFeatures/OGRFeatureSource>
+#include <osgEarth/FeatureMaskLayer>
+#include <osgEarth/OGRFeatureSource>
 
 #include <osg/PositionAttitudeTransform>
 #include <osgDB/WriteFile>

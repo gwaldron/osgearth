@@ -20,7 +20,7 @@
 #include "JSGeometry"
 #include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/GeometryUtils>
 #include <sstream>
 
 #undef  LC

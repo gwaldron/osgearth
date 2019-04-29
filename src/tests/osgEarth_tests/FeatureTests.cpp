@@ -22,8 +22,8 @@
 
 #include <osgEarth/catch.hpp>
 
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/Feature>
+#include <osgEarth/GeometryUtils>
 
 using namespace osgEarth;
 

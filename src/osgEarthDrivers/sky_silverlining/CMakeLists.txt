@@ -10,7 +10,6 @@ INCLUDE_DIRECTORIES(
 )
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-    osgEarthUtil
     osgEarthSilverLining
 )
 

@@ -41,6 +41,13 @@ namespace osgEarth { namespace Support
         std::string PointDrawable;
         std::string PhongLighting;
         std::string Text, TextLegacy;
+        std::string ContourMap;
+        std::string GeodeticGraticule;
+        std::string LogDepthBuffer;
+        std::string LogDepthBuffer_VertOnly;
+        std::string ShadowCaster;
+        std::string SimpleOceanLayer;
+        std::string RTTPicker;
 	};	
 
 } } 

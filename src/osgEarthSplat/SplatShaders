@@ -26,7 +26,7 @@
 
 namespace osgEarth { namespace Splat
 {
-    struct SplattingShaders : public osgEarth::ShaderPackage
+    struct SplattingShaders : public osgEarth::Support::ShaderPackage
 	{
         SplattingShaders();
 
@@ -40,7 +40,7 @@ namespace osgEarth { namespace Splat
             Util;
 	};
 
-    struct GroundCoverShaders : public osgEarth::ShaderPackage
+    struct GroundCoverShaders : public osgEarth::Support::ShaderPackage
 	{
         GroundCoverShaders();
 

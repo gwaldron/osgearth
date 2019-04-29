@@ -28,7 +28,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Lighting>
 #include <osgEarth/PhongLightingEffect>
-#include <osgEarthUtil/Ephemeris>
+#include <osgEarth/Ephemeris>
 
 #define LC "[GLSkyNode] "
 

@@ -23,7 +23,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapInfo>
 #include <osgEarth/ModelLayer>
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Geometry>
 #include <osgUtil/DelaunayTriangulator>
 
 #define LC "[MaskGenerator] "

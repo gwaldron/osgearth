@@ -59,7 +59,7 @@ main(int argc, char** argv)
     int octaves = 12;
     arguments.read("--octaves", octaves);
 
-    SimplexNoise noise;
+    osgEarth::Util::SimplexNoise noise;
     noise.setFrequency(freq);
     noise.setOctaves(octaves);
     noise.setNormalize(true);

@@ -18,9 +18,9 @@
 */
 #include <osgViewer/Viewer>
 #include <osgDB/FileNameUtils>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
 #include <osgEarthSilverLining/SilverLiningNode>
 #include <osgEarth/NodeUtils>
 

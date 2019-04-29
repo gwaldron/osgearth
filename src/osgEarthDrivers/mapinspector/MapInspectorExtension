@@ -22,7 +22,7 @@
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapCallback>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Controls>
 
 namespace osgEarth { namespace MapInspector
 {

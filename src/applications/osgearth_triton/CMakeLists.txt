@@ -19,11 +19,7 @@ SET(TARGET_LIBRARIES_VARS
 )
 
 # osgEarth:
-SET(TARGET_COMMON_LIBRARIES 
-    ${TARGET_COMMON_LIBRARIES}
-    osgEarthUtil
-    osgEarthTriton
-)
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthTriton)
 
 SET(TARGET_SRC osgearth_triton.cpp)
 

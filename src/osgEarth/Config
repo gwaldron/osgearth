@@ -512,6 +512,7 @@ namespace osgEarth
 
     /**
      * Base configoptions class for driver options.
+     * @deprecated - will be removed.
      */
     class OSGEARTH_EXPORT DriverConfigOptions : public ConfigOptions
     {

@@ -19,6 +19,7 @@
 #include <osgEarth/ConvertTypeFilter>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(convert, ConvertTypeFilter)
 

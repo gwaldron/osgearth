@@ -44,7 +44,6 @@
 #define LC "[ExtrudeGeometryFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
 
 namespace
 {

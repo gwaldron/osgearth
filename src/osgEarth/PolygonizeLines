@@ -25,7 +25,7 @@
 #include <osg/Array>
 #include <osg/Geometry>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Triangulates a line string into a buffered geometry.
@@ -97,12 +97,6 @@ namespace osgEarth
 
         Style _style;
     };
-
-    namespace Features {
-        typedef osgEarth::PolygonizeLinesOperator PolygonizeLinesOperator;
-        typedef osgEarth::PolygonizeLinesFilter PolygonizeLinesFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_POLYGONIZE_LINES_H

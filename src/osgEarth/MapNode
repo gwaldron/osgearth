@@ -42,9 +42,9 @@ namespace osgEarth
         class ResourceReleaser;
         class DrapingManager;
         class ClampingManager;
-        class CascadeDrapingDecorator;
         class DrapingTechnique;
         class ClampingTechnique;
+        class CascadeDrapingDecorator;
         class MapNodeCullData;
     }
 

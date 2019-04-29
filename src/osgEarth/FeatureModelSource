@@ -109,7 +109,7 @@ namespace osgEarth
 
 
     class OSGEARTH_EXPORT FeatureModelSourceOptions : public ModelSourceOptions,
-                                                              public FeatureModelOptions
+                                                      public FeatureModelOptions
     {
     public: //properties
 
@@ -193,6 +193,7 @@ namespace osgEarth
 
     /**
      * A ModelSource that renders Feature data from a FeatureSource.
+     * @deprecated
      */
     class OSGEARTH_EXPORT FeatureModelSource : public ModelSource
     {

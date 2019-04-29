@@ -28,39 +28,9 @@
 #include <osg/ClipPlane>
 #include <vector>
 
-namespace osgEarth { namespace Util { namespace Internal
-{
-    using namespace osgEarth;
-    using namespace osgEarth::Features;
-    using namespace osgEarth::Symbology;
-
-    // UTM data (used by the UTM Graticule and the MGRS Graticule).
-    class UTMData
-    {
-    public:
-        typedef std::map<std::string, GeoExtent> SectorTable;
-
-    public:
-        UTMData() { }
-
-        void rebuild(const Profile* profile);
-
-        osg::Group* buildGZDTile(const std::string& name, const GeoExtent& extent, const Style& style, const FeatureProfile* featureProfile, const Map* map);
-
-        SectorTable& sectorTable() { return _gzd; }
-        const SectorTable& sectorTable() const { return _gzd; }
-
-    private:
-        SectorTable _gzd;
-    };
-} } }
-
-
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
-    using namespace osgEarth::Symbology;
 
     /**
      * UTM (Universal Transverse Mercator) map graticule. 

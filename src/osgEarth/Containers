@@ -487,10 +487,10 @@ namespace osgEarth { namespace Support
     //--------------------------------------------------------------------
 
     /**
-     * Same of osg::MixinVector, but with a superclass template parameter.
+     * Same of osg::InlineVector, but with a superclass template parameter.
      */
     template<class ValueT, class SuperClass>
-    class MixinVector : public SuperClass
+    class InlineVector : public SuperClass
     {
         typedef typename std::vector<ValueT> vector_type;
     public:
@@ -507,51 +507,51 @@ namespace osgEarth { namespace Support
         typedef typename vector_type::size_type size_type;
         typedef typename vector_type::difference_type difference_type;
 
-        explicit MixinVector() : _impl()
+        explicit InlineVector() : _impl()
         {
         }
 
-        explicit MixinVector(size_type initial_size, const value_type& fill_value = value_type())
+        explicit InlineVector(size_type initial_size, const value_type& fill_value = value_type())
         : _impl(initial_size, fill_value)
         {
         }
 
         template<class InputIterator>
-        MixinVector(InputIterator first, InputIterator last)
+        InlineVector(InputIterator first, InputIterator last)
         : _impl(first, last)
         {
         }
 
-        MixinVector(const vector_type& other)
+        InlineVector(const vector_type& other)
         : _impl(other)
         {
         }
 
-        MixinVector(const MixinVector& other)
+        InlineVector(const InlineVector& other)
         : _impl(other._impl)
         {
         }
 
-        MixinVector& operator=(const vector_type& other)
+        InlineVector& operator=(const vector_type& other)
         {
             _impl = other;
             return *this;
         }
 
-        MixinVector& operator=(const MixinVector& other)
+        InlineVector& operator=(const InlineVector& other)
         {
             _impl = other._impl;
             return *this;
         }
 
-        virtual ~MixinVector() {}
+        virtual ~InlineVector() {}
 
         void clear() { _impl.clear(); }
         void resize(size_type new_size, const value_type& fill_value = value_type()) { _impl.resize(new_size, fill_value); }
         void reserve(size_type new_capacity) { _impl.reserve(new_capacity); }
 
         void swap(vector_type& other) { _impl.swap(other); }
-        void swap(MixinVector& other) { _impl.swap(other._impl); }
+        void swap(InlineVector& other) { _impl.swap(other._impl); }
 
         bool empty() const { return _impl.empty(); }
         size_type size() const { return _impl.size(); }
@@ -606,29 +606,29 @@ namespace osgEarth { namespace Support
         vector_type& asVector() { return _impl; }
         const vector_type& asVector() const { return _impl; }
 
-        friend inline bool operator==(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl == right._impl; }
-        friend inline bool operator==(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl == right; }
-        friend inline bool operator==(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left == right._impl; }
+        friend inline bool operator==(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl == right._impl; }
+        friend inline bool operator==(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl == right; }
+        friend inline bool operator==(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left == right._impl; }
 
-        friend inline bool operator!=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl != right._impl; }
-        friend inline bool operator!=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl != right; }
-        friend inline bool operator!=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left != right._impl; }
+        friend inline bool operator!=(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl != right._impl; }
+        friend inline bool operator!=(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl != right; }
+        friend inline bool operator!=(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left != right._impl; }
 
-        friend inline bool operator<(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl < right._impl; }
-        friend inline bool operator<(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl < right; }
-        friend inline bool operator<(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left < right._impl; }
+        friend inline bool operator<(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl < right._impl; }
+        friend inline bool operator<(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl < right; }
+        friend inline bool operator<(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left < right._impl; }
 
-        friend inline bool operator>(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl > right._impl; }
-        friend inline bool operator>(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl > right; }
-        friend inline bool operator>(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left > right._impl; }
+        friend inline bool operator>(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl > right._impl; }
+        friend inline bool operator>(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl > right; }
+        friend inline bool operator>(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left > right._impl; }
 
-        friend inline bool operator<=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl <= right._impl; }
-        friend inline bool operator<=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl <= right; }
-        friend inline bool operator<=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left <= right._impl; }
+        friend inline bool operator<=(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl <= right._impl; }
+        friend inline bool operator<=(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl <= right; }
+        friend inline bool operator<=(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left <= right._impl; }
 
-        friend inline bool operator>=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl >= right._impl; }
-        friend inline bool operator>=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl >= right; }
-        friend inline bool operator>=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left >= right._impl; }
+        friend inline bool operator>=(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl >= right._impl; }
+        friend inline bool operator>=(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl >= right; }
+        friend inline bool operator>=(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left >= right._impl; }
 
     private:
         vector_type _impl;

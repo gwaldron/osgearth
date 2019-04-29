@@ -27,7 +27,7 @@
 #include <osgEarth/Feature>
 #include <osgEarth/FilterContext>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Tessellates linear data in a feature geometry by subdividing each
@@ -90,10 +90,6 @@ namespace osgEarth
         GeoInterpolation   _defaultInterp;
     };
 
-    namespace Features {
-        typedef osgEarth::TessellateOperator TessellateOperator;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_TESSELLATE_OPERATOR_H

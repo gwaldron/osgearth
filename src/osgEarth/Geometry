@@ -50,7 +50,7 @@ namespace osgEarth
      * Baseline geometry class. All Geometry objects derive from this
      * class, even MultiGeometry.
      */
-    class OSGEARTH_EXPORT Geometry : public osgEarth::MixinVector<osg::Vec3d,osg::Referenced>
+    class OSGEARTH_EXPORT Geometry : public osgEarth::InlineVector<osg::Vec3d,osg::Referenced>
     {
     public:
         Geometry( int capacity =0 );
@@ -238,11 +238,11 @@ namespace osgEarth
         virtual Geometry* clone() const { return cloneAs(getType()); }
 
         void push_back(const osg::Vec3d& v ) {
-            osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(v); }
+            osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(v); }
         void push_back(double x, double y) { 
-            osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,0.)); }
+            osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,0.)); }
         void push_back(double x, double y, double z) { 
-            osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
+            osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
 
     protected:
     };

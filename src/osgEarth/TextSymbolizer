@@ -28,6 +28,10 @@
 namespace osgEarth
 {
     class Feature;
+}
+
+namespace osgEarth { namespace Support
+{
     class FilterContext;
 
     /**
@@ -58,10 +62,6 @@ namespace osgEarth
         osg::ref_ptr<const TextSymbol> _symbol;
     };
 
-    namespace Features {
-        typedef osgEarth::TextSymbolizer TextSymbolizer;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_TEXT_SYMBOLIZER_H

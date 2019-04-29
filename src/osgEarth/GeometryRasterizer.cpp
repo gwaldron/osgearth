@@ -28,23 +28,26 @@ using namespace osgEarth;
 
 // --------------------------------------------------------------------------
 
-struct AggState : public osg::Referenced
+namespace
 {
-    AggState( osg::Image* image )
-        : _rbuf( image->data(), image->s(), image->t(), image->s()*4 ),
-          _ren( _rbuf )
+    struct AggState : public osg::Referenced
     {
-        _ras.gamma( 1.3 );
-        _ras.filling_rule( agg::fill_even_odd );
+        AggState( osg::Image* image )
+            : _rbuf( image->data(), image->s(), image->t(), image->s()*4 ),
+              _ren( _rbuf )
+        {
+            _ras.gamma( 1.3 );
+            _ras.filling_rule( agg::fill_even_odd );
 
-        // pre-clear the buffer....
-        _ren.clear(agg::rgba8(0,0,0,0));
-    }
+            // pre-clear the buffer....
+            _ren.clear(agg::rgba8(0,0,0,0));
+        }
 
-    agg::rendering_buffer           _rbuf;
-    agg::renderer<agg::span_abgr32, agg::rgba8> _ren;
-    agg::rasterizer                 _ras;
-};
+        agg::rendering_buffer           _rbuf;
+        agg::renderer<agg::span_abgr32, agg::rgba8> _ren;
+        agg::rasterizer                 _ras;
+    };
+}
 
 // --------------------------------------------------------------------------
 

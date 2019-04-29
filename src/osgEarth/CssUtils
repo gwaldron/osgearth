@@ -24,8 +24,10 @@
 #include <osgEarth/Config>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     class OSGEARTH_EXPORT CssUtils
     {
     public:
@@ -62,6 +64,6 @@ namespace osgEarth
         static void split( const std::string& css, std::vector<std::string>& output );
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_CSSUTILS_H

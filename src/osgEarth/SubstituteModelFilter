@@ -26,7 +26,7 @@
 #include <osgEarth/Style>
 #include <osgEarth/Containers>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class ResourceLibrary;
 
@@ -92,11 +92,6 @@ namespace osgEarth
         
         bool findResource( const URI& instanceURI, const InstanceSymbol* symbol, FilterContext& context, std::set<URI>& missing, osg::ref_ptr<InstanceResource>& output );
     };
-
-    namespace Features {
-        typedef osgEarth::SubstituteModelFilter SubstituteModelFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H

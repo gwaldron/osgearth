@@ -37,6 +37,9 @@ namespace osgEarth
      * get a crash -- it does NO type checking.
      *
      * geoPosNode->addCullCallback( new GeoPositionNodeAutoScaler() );
+     *
+     * @deprecated - replace with osgEarth::AutoScaleCallback, and support
+     * with a scale() method no GeoPositionNode et al
      */
     class OSGEARTH_EXPORT GeoPositionNodeAutoScaler : public osg::NodeCallback
     {

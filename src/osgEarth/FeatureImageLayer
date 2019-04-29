@@ -25,46 +25,49 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT FeatureImageRenderer
+    namespace Support
     {
-    public:
-        bool render(
-            const TileKey& key,
-            Session* session,
-            const StyleSheet* styles,
-            osg::Image* target,
-            ProgressCallback* progress) const;
+        class OSGEARTH_EXPORT FeatureImageRenderer
+        {
+        public:
+            bool render(
+                const TileKey& key,
+                Session* session,
+                const StyleSheet* styles,
+                osg::Image* target,
+                ProgressCallback* progress) const;
 
-    protected:
-        virtual bool renderFeaturesForStyle(
-            Session*           session,
-            const Style&       style,
-            const FeatureList& features,
-            const GeoExtent&   imageExtent,
-            osg::Image*        out_image ) const = 0;
+        protected:
+            virtual bool renderFeaturesForStyle(
+                Session*           session,
+                const Style&       style,
+                const FeatureList& features,
+                const GeoExtent&   imageExtent,
+                osg::Image*        out_image ) const = 0;
 
-    private:
-        bool queryAndRenderFeaturesForStyle(
-            Session*          session,
-            const Style&      style,
-            const Query&      query,
-            const GeoExtent&  imageExtent,
-            osg::Image*       out_image,
-            ProgressCallback* progress) const;
+        private:
+            bool queryAndRenderFeaturesForStyle(
+                Session*          session,
+                const Style&      style,
+                const Query&      query,
+                const GeoExtent&  imageExtent,
+                osg::Image*       out_image,
+                ProgressCallback* progress) const;
         
-        void getFeatures(
-            Session* session,
-            const Query& query, 
-            const GeoExtent& imageExtent, 
-            FeatureList& features,
-            ProgressCallback* progress) const;
-    };
+            void getFeatures(
+                Session* session,
+                const Query& query, 
+                const GeoExtent& imageExtent, 
+                FeatureList& features,
+                ProgressCallback* progress) const;
+        };
+    }
 
     /**
      * Rasterizes feature data into an image layer.
      */
     class OSGEARTH_EXPORT FeatureImageLayer : public osgEarth::ImageLayer,
-                                                      public FeatureImageRenderer
+                                              public osgEarth::Support::FeatureImageRenderer
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {

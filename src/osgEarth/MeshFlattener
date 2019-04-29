@@ -21,7 +21,7 @@
 
 #include <osgEarth/Common>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
     * Prepares a scene graph for aggressive optimization.  Removes things like names, user data, callbacks, etc.
@@ -87,13 +87,6 @@ namespace osgEarth
         /** Run the flattener and indicate the target vertex count for the MergeGeometry stage. */
         static void run(osg::Group* group, unsigned maxVertsPerCluster);
     };
-
-
-    namespace Symbology {
-        typedef osgEarth::PrepareForOptimizationVisitor PrepareForOptimizationVisitor;
-        typedef osgEarth::FlattenSceneGraphVisitor FlattenSceneGraphVisitor;
-        typedef osgEarth::MeshFlattener MeshFlattener;
-    }
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHSYMBOLOGY_MESH_FLATTENER

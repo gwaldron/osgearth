@@ -301,7 +301,6 @@ SET(LIB_PUBLIC_HEADERS
     FeatureModelSource
     FeatureSource
     FeatureSourceIndexNode
-    FeatureTileSource
     Filter
     FilterContext
     GeometryCompiler
@@ -632,7 +631,6 @@ set(TARGET_SRC
     FeatureModelSource.cpp
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp
-    FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
     GeometryCompiler.cpp

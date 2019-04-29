@@ -24,7 +24,7 @@
 #include <osgEarth/Filter>
 #include <osgEarth/Style>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Builds text labels from a stream of input features.
@@ -46,11 +46,6 @@ namespace osgEarth
     protected:
         Style _style;
     };
-
-    namespace Features {
-        typedef osgEarth::BuildTextFilter BuildTextFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

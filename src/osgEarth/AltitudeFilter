@@ -24,7 +24,7 @@
 #include <osgEarth/Feature>
 #include <osgEarth/Filter>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Feature filter that will clamp incoming feature geometry to an elevation model.
@@ -57,11 +57,6 @@ namespace osgEarth
         void pushAndClamp( FeatureList& input, FilterContext& cx );
         void pushAndDontClamp( FeatureList& input, FilterContext& cx );
     };
-
-    namespace Features {
-        typedef osgEarth::AltitudeFilter AltitudeFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_ALTITUDE_FILTER_H

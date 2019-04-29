@@ -26,7 +26,7 @@
 #include <osgEarth/URI>
 #include <map>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * A resource that materializes an InstanceSymbol, which is a single-point object
@@ -66,12 +66,6 @@ namespace osgEarth
 
         virtual osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const =0;
     };
-
-
-    namespace Symbology {
-        typedef osgEarth::InstanceResource InstanceResource;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHSYMBOLOGY_MARKER_RESOURCE_H

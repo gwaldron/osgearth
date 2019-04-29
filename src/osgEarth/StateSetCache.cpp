@@ -27,7 +27,6 @@
 #define STATESET_SHARING_SUPPORTED 1
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
 
 //---------------------------------------------------------------------------
 

@@ -25,6 +25,7 @@
 #define LC "[BuildTextFilter] "
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 BuildTextFilter::BuildTextFilter( const Style& style ) :
 _style( style )

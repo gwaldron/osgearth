@@ -29,7 +29,7 @@
 #include <osg/Notify>
 #include <ogr_api.h>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     struct OSGEARTH_EXPORT OgrUtils
     {
@@ -57,7 +57,7 @@ namespace osgEarth
     
         static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs );
     };
-}
+} }
 
 #endif // OSGEARTHFEATURES_FEATURE_OGR_GEOM_UTILS
 

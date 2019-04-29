@@ -26,8 +26,10 @@
 #include <osgEarth/Style>
 #include <osg/Geode>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     /**
      * The buffer geometry operation takes each input vector shape and applies
      * morphological dilation or erosion to it.
@@ -85,10 +87,6 @@ namespace osgEarth
         Stroke::LineCapStyle _capStyle;
     };
 
-    namespace Features {
-        typedef osgEarth::BufferFilter BufferFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_BUFFER_FILTER_H

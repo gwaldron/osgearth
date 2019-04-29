@@ -27,7 +27,7 @@
 #include <osgEarth/GeoMath>
 #include <osg/Geode>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Builds geometry from a stream of input features.
@@ -132,11 +132,6 @@ namespace osgEarth
         osg::Group* processPolygonizedLines(FeatureList& input, bool twosided, FilterContext& cx);
         osg::Geode* processPoints          (FeatureList& input, FilterContext& cx);
     };
-
-    namespace Features {
-        typedef osgEarth::BuildGeometryFilter BuildGeometryFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

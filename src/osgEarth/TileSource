@@ -397,9 +397,7 @@ namespace osgEarth
         TileSourceOptions _options;
 
         friend class Map;
-        friend class MapEngine;
         friend class TileSourceFactory;
-        friend class CompositeTileSource;
 
         osg::ref_ptr< TileBlacklist > _blacklist;
         std::string _blacklistFilename;

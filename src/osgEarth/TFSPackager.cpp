@@ -30,258 +30,260 @@ using namespace osgEarth;
 using namespace osgEarth::Contrib;
 
 /******************************************************************************************/
-class FeatureTileVisitor;
-class FeatureTile;
 
-typedef std::list< osgEarth::FeatureID > FeatureIDList;
-
-class FeatureTile : public osg::Referenced
+namespace
 {
-public:
-    FeatureTile( const TileKey& key ):
-      _key( key ),
-          _isSplit( false )
-      {        
-      }
+    class FeatureTileVisitor;
 
-      const GeoExtent& getExtent() const
-      {
-          return _key.getExtent();
-      }
+    typedef std::list< osgEarth::FeatureID > FeatureIDList;
 
-      const TileKey& getKey() const
-      {
-          return _key;
-      }
-
-      bool getIsSplit() const { return _isSplit;}
-
-      void split()
-      {
-          if (!_isSplit)
-          {
-              for (unsigned int i = 0; i < 4; ++i)
-              {  
-                  _children[i] = new FeatureTile(_key.createChildKey( i ) );
-              }
-              _isSplit = true;
-          }
-      }
-
-      void accept( FeatureTileVisitor* v);
-
-      void traverse( FeatureTileVisitor* v )
-      {
-          if (_isSplit)
-          {
-              for (unsigned int i = 0; i < 4; ++i)
-              {
-                  _children[i]->accept( v );
-              }
-          }
-      }
-
-      FeatureIDList& getFeatures()
-      {
-          return _features;
-      }
-
-
-private:    
-    FeatureIDList _features;
-    TileKey _key;   
-    osg::ref_ptr<FeatureTile> _children[4];
-    bool _isSplit;
-};
-
-class FeatureTileVisitor : public osg::Referenced
-{
-public:
-    virtual void traverse(FeatureTile* tile)
+    class FeatureTile : public osg::Referenced
     {
-        tile->traverse( this );
-    }
-};
-
-void FeatureTile::accept(FeatureTileVisitor* v)
-{    
-    v->traverse( this );
-}
-
-/******************************************************************************************/
-
-class AddFeatureVisitor : public FeatureTileVisitor
-{
-public:
-    AddFeatureVisitor( Feature* feature, int maxFeatures, int firstLevel, int maxLevel, CropFilter::Method cropMethod):
-      _feature( feature ),
-          _maxFeatures( maxFeatures ),      
-          _maxLevel( maxLevel ),
-          _firstLevel( firstLevel ),
-          _added(false),
-          _numAdded( 0 ),
-          _levelAdded(-1),
-          _cropMethod( cropMethod )
-      {
-
-      }
-
-      virtual void traverse( FeatureTile* tile)
-      {        
-          if (_added && _cropMethod != CropFilter::METHOD_CROPPING) return;
-
-          bool traverse = true;
-
-          GeoExtent featureExtent(_feature->getSRS(), _feature->getGeometry()->getBounds());
-
-          bool valid = false;
-          // It's a single point, so we do a contains check instead of an intersection check b/c the bounds really aren't valid.
-          if (featureExtent.width() == 0 && featureExtent.height() == 0)
-          {                            
-              valid = tile->getExtent().contains( featureExtent.xMin(), featureExtent.yMin());
-          }
-          else
-          {
-              // Do a normal intersection check
-              valid = featureExtent.intersects( tile->getExtent());
+    public:
+        FeatureTile( const TileKey& key ):
+          _key( key ),
+              _isSplit( false )
+          {        
           }
 
-          if (valid)
+          const GeoExtent& getExtent() const
           {
-              //If the node contains the feature, and it doesn't contain the max number of features add it.  If it's already full then 
-              //split it.
-              if (tile->getKey().getLevelOfDetail() >= (unsigned int)_firstLevel && 
-                  (tile->getFeatures().size() < (unsigned int)_maxFeatures || tile->getKey().getLevelOfDetail() == _maxLevel || tile->getKey().getLevelOfDetail() == _levelAdded))
+              return _key.getExtent();
+          }
+
+          const TileKey& getKey() const
+          {
+              return _key;
+          }
+
+          bool getIsSplit() const { return _isSplit;}
+
+          void split()
+          {
+              if (!_isSplit)
               {
-                  if (_levelAdded < 0 || _levelAdded == tile->getKey().getLevelOfDetail())
-                  {
-                      osg::ref_ptr< Feature > clone = new Feature( *_feature, osg::CopyOp::DEEP_COPY_ALL );
-                      FeatureList features;
-                      features.push_back( clone );
-
-                      CropFilter cropFilter(_cropMethod);
-                      FilterContext context(0);
-                      context.extent() = tile->getExtent();
-                      cropFilter.push( features, context );
-
-
-                      if (!features.empty() && clone->getGeometry() && clone->getGeometry()->isValid())
-                      {
-                          //tile->getFeatures().push_back( clone );
-                          tile->getFeatures().push_back( clone->getFID() );
-                          _added = true;
-                          _levelAdded = tile->getKey().getLevelOfDetail();
-                          _numAdded++;                   
-                          traverse = false;
-                      }
+                  for (unsigned int i = 0; i < 4; ++i)
+                  {  
+                      _children[i] = new FeatureTile(_key.createChildKey( i ) );
                   }
+                  _isSplit = true;
+              }
+          }
 
-                  if (traverse || _cropMethod == CropFilter::METHOD_CROPPING)
+          void accept( FeatureTileVisitor* v);
+
+          void traverse( FeatureTileVisitor* v )
+          {
+              if (_isSplit)
+              {
+                  for (unsigned int i = 0; i < 4; ++i)
                   {
-                      tile->traverse( this );
+                      _children[i]->accept( v );
                   }
+              }
+          }
+
+          FeatureIDList& getFeatures()
+          {
+              return _features;
+          }
+
+
+    private:    
+        FeatureIDList _features;
+        TileKey _key;   
+        osg::ref_ptr<FeatureTile> _children[4];
+        bool _isSplit;
+    };
+
+    class FeatureTileVisitor : public osg::Referenced
+    {
+    public:
+        virtual void traverse(FeatureTile* tile)
+        {
+            tile->traverse( this );
+        }
+    };
+
+    void FeatureTile::accept(FeatureTileVisitor* v)
+    {    
+        v->traverse( this );
+    }
+
+    /******************************************************************************************/
+
+    class AddFeatureVisitor : public FeatureTileVisitor
+    {
+    public:
+        AddFeatureVisitor( Feature* feature, int maxFeatures, int firstLevel, int maxLevel, CropFilter::Method cropMethod):
+          _feature( feature ),
+              _maxFeatures( maxFeatures ),      
+              _maxLevel( maxLevel ),
+              _firstLevel( firstLevel ),
+              _added(false),
+              _numAdded( 0 ),
+              _levelAdded(-1),
+              _cropMethod( cropMethod )
+          {
+
+          }
+
+          virtual void traverse( FeatureTile* tile)
+          {        
+              if (_added && _cropMethod != CropFilter::METHOD_CROPPING) return;
+
+              bool traverse = true;
+
+              GeoExtent featureExtent(_feature->getSRS(), _feature->getGeometry()->getBounds());
+
+              bool valid = false;
+              // It's a single point, so we do a contains check instead of an intersection check b/c the bounds really aren't valid.
+              if (featureExtent.width() == 0 && featureExtent.height() == 0)
+              {                            
+                  valid = tile->getExtent().contains( featureExtent.xMin(), featureExtent.yMin());
               }
               else
-              {   
-                  tile->split();
-                  tile->traverse( this );
+              {
+                  // Do a normal intersection check
+                  valid = featureExtent.intersects( tile->getExtent());
               }
 
-          }          
-      }
-
-      int _levelAdded;
-
-      bool _added;
-      int _maxFeatures;
-      int _firstLevel;
-      int _maxLevel;
-      int _numAdded;
-
-      CropFilter::Method _cropMethod;
-
-
-
-      osg::ref_ptr< Feature > _feature;
-};
-
-
-/******************************************************************************************/
-class WriteFeaturesVisitor : public FeatureTileVisitor
-{
-public:
-    WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, CropFilter::Method cropMethod, const SpatialReference* srs):
-      _dest( dest ),
-          _features( features ),
-          _cropMethod( cropMethod ),
-          _srs( srs )
-      {
-
-      }
-
-      virtual void traverse( FeatureTile* tile)
-      {
-          if (tile->getFeatures().size() > 0)
-          {                 
-              //Actually load up the features
-              FeatureList features;
-              for (FeatureIDList::const_iterator i = tile->getFeatures().begin(); i != tile->getFeatures().end(); i++)
+              if (valid)
               {
-                  Feature* f = _features->getFeature( *i );                  
-
-                  if (f)
+                  //If the node contains the feature, and it doesn't contain the max number of features add it.  If it's already full then 
+                  //split it.
+                  if (tile->getKey().getLevelOfDetail() >= (unsigned int)_firstLevel && 
+                      (tile->getFeatures().size() < (unsigned int)_maxFeatures || tile->getKey().getLevelOfDetail() == _maxLevel || tile->getKey().getLevelOfDetail() == _levelAdded))
                   {
-                      //Reproject the feature to the dest SRS if it's not already
-                      if (!f->getSRS()->isEquivalentTo( _srs.get() ) )
+                      if (_levelAdded < 0 || _levelAdded == tile->getKey().getLevelOfDetail())
                       {
-                          f->transform( _srs.get() );
+                          osg::ref_ptr< Feature > clone = new Feature( *_feature, osg::CopyOp::DEEP_COPY_ALL );
+                          FeatureList features;
+                          features.push_back( clone );
+
+                          CropFilter cropFilter(_cropMethod);
+                          FilterContext context(0);
+                          context.extent() = tile->getExtent();
+                          cropFilter.push( features, context );
+
+
+                          if (!features.empty() && clone->getGeometry() && clone->getGeometry()->isValid())
+                          {
+                              //tile->getFeatures().push_back( clone );
+                              tile->getFeatures().push_back( clone->getFID() );
+                              _added = true;
+                              _levelAdded = tile->getKey().getLevelOfDetail();
+                              _numAdded++;                   
+                              traverse = false;
+                          }
                       }
-                      features.push_back( f );
+
+                      if (traverse || _cropMethod == CropFilter::METHOD_CROPPING)
+                      {
+                          tile->traverse( this );
+                      }
                   }
                   else
-                  {
-                      OE_NOTICE << "couldn't get feature " << *i << std::endl;
+                  {   
+                      tile->split();
+                      tile->traverse( this );
                   }
-              }
 
-              //Need to do the cropping again since these are brand new features coming from the feature source.
-              CropFilter cropFilter(_cropMethod);
-              FilterContext context(0);
-              context.extent() = tile->getExtent();
-              cropFilter.push( features, context );
-
-              std::string contents = Feature::featuresToGeoJSON( features );
-              std::stringstream buf;
-              int x =  tile->getKey().getTileX();
-              unsigned int numRows, numCols;
-              tile->getKey().getProfile()->getNumTiles(tile->getKey().getLevelOfDetail(), numCols, numRows);
-              int y  = numRows - tile->getKey().getTileY() - 1;
-
-              buf << _dest << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
-              std::string filename = buf.str();
-              //OE_NOTICE << "Writing " << features.size() << " features to " << filename << std::endl;
-
-              if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
-                  osgEarth::makeDirectoryForFile( filename );
-
-
-              std::fstream output( filename.c_str(), std::ios_base::out );
-              if ( output.is_open() )
-              {
-                  output << contents;
-                  output.flush();
-                  output.close();                
-              }            
+              }          
           }
-          tile->traverse( this );        
-      }
 
-      osg::ref_ptr< FeatureSource > _features;
-      std::string _dest;      
-      CropFilter::Method _cropMethod;
-      osg::ref_ptr< const SpatialReference > _srs;
-};
+          int _levelAdded;
 
+          bool _added;
+          int _maxFeatures;
+          int _firstLevel;
+          int _maxLevel;
+          int _numAdded;
+
+          CropFilter::Method _cropMethod;
+
+
+
+          osg::ref_ptr< Feature > _feature;
+    };
+
+
+    /******************************************************************************************/
+    class WriteFeaturesVisitor : public FeatureTileVisitor
+    {
+    public:
+        WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, CropFilter::Method cropMethod, const SpatialReference* srs):
+          _dest( dest ),
+              _features( features ),
+              _cropMethod( cropMethod ),
+              _srs( srs )
+          {
+
+          }
+
+          virtual void traverse( FeatureTile* tile)
+          {
+              if (tile->getFeatures().size() > 0)
+              {                 
+                  //Actually load up the features
+                  FeatureList features;
+                  for (FeatureIDList::const_iterator i = tile->getFeatures().begin(); i != tile->getFeatures().end(); i++)
+                  {
+                      Feature* f = _features->getFeature( *i );                  
+
+                      if (f)
+                      {
+                          //Reproject the feature to the dest SRS if it's not already
+                          if (!f->getSRS()->isEquivalentTo( _srs.get() ) )
+                          {
+                              f->transform( _srs.get() );
+                          }
+                          features.push_back( f );
+                      }
+                      else
+                      {
+                          OE_NOTICE << "couldn't get feature " << *i << std::endl;
+                      }
+                  }
+
+                  //Need to do the cropping again since these are brand new features coming from the feature source.
+                  CropFilter cropFilter(_cropMethod);
+                  FilterContext context(0);
+                  context.extent() = tile->getExtent();
+                  cropFilter.push( features, context );
+
+                  std::string contents = Feature::featuresToGeoJSON( features );
+                  std::stringstream buf;
+                  int x =  tile->getKey().getTileX();
+                  unsigned int numRows, numCols;
+                  tile->getKey().getProfile()->getNumTiles(tile->getKey().getLevelOfDetail(), numCols, numRows);
+                  int y  = numRows - tile->getKey().getTileY() - 1;
+
+                  buf << _dest << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
+                  std::string filename = buf.str();
+                  //OE_NOTICE << "Writing " << features.size() << " features to " << filename << std::endl;
+
+                  if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
+                      osgEarth::makeDirectoryForFile( filename );
+
+
+                  std::fstream output( filename.c_str(), std::ios_base::out );
+                  if ( output.is_open() )
+                  {
+                      output << contents;
+                      output.flush();
+                      output.close();                
+                  }            
+              }
+              tile->traverse( this );        
+          }
+
+          osg::ref_ptr< FeatureSource > _features;
+          std::string _dest;      
+          CropFilter::Method _cropMethod;
+          osg::ref_ptr< const SpatialReference > _srs;
+    };
+}
 
 
 /******************************************************************************************/

@@ -21,6 +21,7 @@
 #include <osgEarth/GeoMath>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 

@@ -27,6 +27,7 @@
 #include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 /********************************************************************************/
 Filter::~Filter()

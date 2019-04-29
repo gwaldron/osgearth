@@ -39,73 +39,76 @@ using namespace osgEarth;
 // A custom P-Buffer graphics context that we will use to query for OpenGL 
 // extension and hardware support. (Adapted from osgconv in OpenSceneGraph)
 
-struct MyGraphicsContext
+namespace
 {
-    MyGraphicsContext()
+    struct MyGraphicsContext
     {
-
-    	osg::GraphicsContext::ScreenIdentifier si;
-	    si.readDISPLAY();
-	    si.setUndefinedScreenDetailsToDefaultScreen();
-
-        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
-    	traits->hostName = si.hostName;
-	    traits->displayNum = si.displayNum;
-	    traits->screenNum = si.screenNum;
-        traits->x = 0;
-        traits->y = 0;
-        traits->width = 1;
-        traits->height = 1;
-        traits->windowDecoration = false;
-        traits->doubleBuffer = false;
-        traits->sharedContext = 0;
-        traits->pbuffer = false;
-        traits->glContextVersion = osg::DisplaySettings::instance()->getGLContextVersion();
-        traits->glContextProfileMask = osg::DisplaySettings::instance()->getGLContextProfileMask();
-
-        // Intel graphics adapters dont' support pbuffers, and some of their drivers crash when
-        // you try to create them. So by default we will only use the unmapped/pbuffer method
-        // upon special request.
-        if ( getenv( "OSGEARTH_USE_PBUFFER_TEST" ) )
+        MyGraphicsContext()
         {
-            traits->pbuffer = true;
-            OE_INFO << LC << "Activating pbuffer test for graphics capabilities" << std::endl;
-            _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
-            if ( !_gc.valid() )
-                OE_WARN << LC << "Failed to create pbuffer" << std::endl;
-        }
 
-        if (!_gc.valid())
-        {
-            // fall back on a mapped window
+    	    osg::GraphicsContext::ScreenIdentifier si;
+	        si.readDISPLAY();
+	        si.setUndefinedScreenDetailsToDefaultScreen();
+
+            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
+    	    traits->hostName = si.hostName;
+	        traits->displayNum = si.displayNum;
+	        traits->screenNum = si.screenNum;
+            traits->x = 0;
+            traits->y = 0;
+            traits->width = 1;
+            traits->height = 1;
+            traits->windowDecoration = false;
+            traits->doubleBuffer = false;
+            traits->sharedContext = 0;
             traits->pbuffer = false;
-            _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
-        }
+            traits->glContextVersion = osg::DisplaySettings::instance()->getGLContextVersion();
+            traits->glContextProfileMask = osg::DisplaySettings::instance()->getGLContextProfileMask();
 
-        if (_gc.valid()) 
-        {
-            _gc->realize();
-            _gc->makeCurrent();
-
-            if ( traits->pbuffer == false )
+            // Intel graphics adapters dont' support pbuffers, and some of their drivers crash when
+            // you try to create them. So by default we will only use the unmapped/pbuffer method
+            // upon special request.
+            if ( getenv( "OSGEARTH_USE_PBUFFER_TEST" ) )
             {
-                OE_DEBUG << LC << "Realized graphics window for OpenGL operations." << std::endl;
+                traits->pbuffer = true;
+                OE_INFO << LC << "Activating pbuffer test for graphics capabilities" << std::endl;
+                _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+                if ( !_gc.valid() )
+                    OE_WARN << LC << "Failed to create pbuffer" << std::endl;
+            }
+
+            if (!_gc.valid())
+            {
+                // fall back on a mapped window
+                traits->pbuffer = false;
+                _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+            }
+
+            if (_gc.valid()) 
+            {
+                _gc->realize();
+                _gc->makeCurrent();
+
+                if ( traits->pbuffer == false )
+                {
+                    OE_DEBUG << LC << "Realized graphics window for OpenGL operations." << std::endl;
+                }
+                else
+                {
+                    OE_DEBUG << LC << "Realized pbuffer for OpenGL operations." << std::endl;
+                }
             }
             else
             {
-                OE_DEBUG << LC << "Realized pbuffer for OpenGL operations." << std::endl;
+                OE_WARN << LC << "Failed to create graphic window too." << std::endl;
             }
         }
-        else
-        {
-            OE_WARN << LC << "Failed to create graphic window too." << std::endl;
-        }
-    }
 
-    bool valid() const { return _gc.valid() && _gc->isRealized(); }
+        bool valid() const { return _gc.valid() && _gc->isRealized(); }
 
-    osg::ref_ptr<osg::GraphicsContext> _gc;
-};
+        osg::ref_ptr<osg::GraphicsContext> _gc;
+    };
+}
 
 // ---------------------------------------------------------------------------
 

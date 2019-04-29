@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/InstanceResource>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     using namespace osgEarth;
 
@@ -65,10 +65,6 @@ namespace osgEarth
         optional<float> _height;
     };
 
-    namespace Symbology {
-        typedef osgEarth::BillboardResource BillboardResource;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHSYMBOLOGY_BILLBOARD_RESOURCE_H

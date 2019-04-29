@@ -20,10 +20,9 @@
 #define OSGEARTHFEATURES_FEATURE_H 1
 
 #include <osgEarth/Common>
-
+#include <osgEarth/Profile>
 #include <osgEarth/Geometry>
 #include <osgEarth/Style>
-
 #include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
@@ -33,8 +32,11 @@
 
 namespace osgEarth
 {
-    class FilterContext;
-    class Session;
+    namespace Support
+    {
+        class FilterContext;
+        class Session;
+    }
 
     /**
      * Metadata and schema information for feature data.
@@ -109,21 +111,6 @@ namespace osgEarth
     typedef std::map<std::string, AttributeValue, CIStringComp> AttributeTable;
 
     typedef unsigned long FeatureID;
-
-    /**
-     * Wraps a FeatureID in a referenced object.
-     */
-    class RefFeatureID : public osg::Referenced
-    {
-    public:
-        RefFeatureID( FeatureID fid ) : _fid(fid) { }
-        virtual ~RefFeatureID() { }
-
-        operator FeatureID () const { return _fid; }
-    protected:
-        FeatureID _fid;
-    };
-
 
     typedef std::map< std::string, AttributeType > FeatureSchema;
 
@@ -274,18 +261,6 @@ namespace osgEarth
 
         void dirty();
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureProfile FeatureProfile;
-        typedef osgEarth::AttributeValueUnion AttributeValueUnion;
-        typedef osgEarth::AttributeType AttributeType;
-        typedef osgEarth::AttributeValue AttributeValue;
-        typedef osgEarth::AttributeTable AttributeTable;
-        typedef osgEarth::FeatureID FeatureID;
-        typedef osgEarth::RefFeatureID RefFeatureID;
-        typedef osgEarth::FeatureList FeatureList;
-        typedef osgEarth::Feature Feature;
-    }
 
 } // namespace osgEarth
 

@@ -206,27 +206,29 @@ namespace osgEarth
         void baseInit(const SkyOptions&);
     };
 
-
-    /**
-     * Base class for an sky driver plugin implementation.
-     */
-    class OSGEARTH_EXPORT SkyDriver : public osgDB::ReaderWriter
+    namespace Support 
     {
-    protected:
-        const SkyOptions& getSkyOptions(const osgDB::Options* opt) const;
-    };
+        /**
+         * Base class for an sky driver plugin implementation.
+         */
+        class OSGEARTH_EXPORT SkyDriver : public osgDB::ReaderWriter
+        {
+        protected:
+            const SkyOptions& getSkyOptions(const osgDB::Options* opt) const;
+        };
 
-    /**
-     * Factory interface that sky extensions need to implement. Someday we will
-     * convert the sky extensions into proper NodeKits, at which point this method
-     * will probably be no longer necessary since you can just link with the library
-     * and create the SkyNode normally.
-     */
-    class /*header-only*/ SkyNodeFactory
-    {
-    public:
-        virtual SkyNode* createSkyNode() =0;
-    };
+        /**
+         * Factory interface that sky extensions need to implement. Someday we will
+         * convert the sky extensions into proper NodeKits, at which point this method
+         * will probably be no longer necessary since you can just link with the library
+         * and create the SkyNode normally.
+         */
+        class /*header-only*/ SkyNodeFactory
+        {
+        public:
+            virtual SkyNode* createSkyNode() =0;
+        };
+    }
 }
 
 #endif // OSGEARTHUTIL_SKY

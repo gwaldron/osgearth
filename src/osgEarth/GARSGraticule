@@ -27,7 +27,6 @@
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     /**
      * GARS (Global Area Reference System) Graticuler map layer.

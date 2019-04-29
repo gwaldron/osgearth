@@ -25,8 +25,10 @@
 #include <osgEarth/Filter>
 #include <osg/Geode>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     /**
      * This filter will change geometry from one type to another.
      */
@@ -62,11 +64,6 @@ namespace osgEarth
     protected:
         Geometry::Type _toType;
     };
-
-    namespace Features {
-        typedef osgEarth::ConvertTypeFilter ConvertTypeFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H

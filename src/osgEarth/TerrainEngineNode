@@ -49,6 +49,11 @@ namespace osgEarth
     class TerrainEffect;
     class VirtualProgram;
 
+    namespace Support
+    {
+        class TerrainEngineNodeFactory;
+    }
+
     /**
      * Interface for and object that can create a new terrain tile models
      */
@@ -301,7 +306,6 @@ namespace osgEarth
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;
-        friend struct MapNodeMapLayerController;
 
         void ctor();
         void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
@@ -369,15 +373,17 @@ namespace osgEarth
         }
     };
 
-    /**
-     * Factory class for creating terrain engine instances.
-     */
-    class TerrainEngineNodeFactory
+    namespace Support
     {
-    public:
-        static TerrainEngineNode* create(const TerrainOptions& options);
-    };
-
+        /**
+         * Factory class for creating terrain engine instances.
+         */
+        class TerrainEngineNodeFactory
+        {
+        public:
+            static TerrainEngineNode* create(const TerrainOptions& options);
+        };
+    }
 } // namespace osgEarth
 
 #endif // OSGEARTH_TERRAIN_ENGINE_NODE_H

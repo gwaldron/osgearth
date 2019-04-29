@@ -28,7 +28,9 @@
 
 namespace osgEarth
 {
-    class InstanceResource;
+    namespace Support {
+        class InstanceResource;
+    }
 
     /**
      * Represents a 2D camera-facing image

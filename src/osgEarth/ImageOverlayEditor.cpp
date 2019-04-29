@@ -27,46 +27,49 @@
 #include <osgViewer/Viewer>
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 /***************************************************************************/
 
-
-class ImageOverlayDraggerCallback : public Dragger::PositionChangedCallback
+namespace
 {
-public:
-    ImageOverlayDraggerCallback(ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint, bool singleVert):
-      _overlay(overlay),
-      _controlPoint(controlPoint),
-      _singleVert( singleVert )
-      {}
-
-      virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
-      {
-          //Convert to lat/lon
-          GeoPoint p;
-          position.transform(SpatialReference::create( "epsg:4326"), p);
-          _overlay->setControlPoint(_controlPoint, p.x(), p.y(), _singleVert);
-      }
-
-      osg::ref_ptr<ImageOverlay>           _overlay;
-      ImageOverlay::ControlPoint _controlPoint;
-      bool _singleVert;
-};
-
-struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
-{
-    OverlayCallback(ImageOverlayEditor *editor)
-        : _editor(editor)
+    class ImageOverlayDraggerCallback : public Dragger::PositionChangedCallback
     {
-    }
+    public:
+        ImageOverlayDraggerCallback(ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint, bool singleVert):
+          _overlay(overlay),
+          _controlPoint(controlPoint),
+          _singleVert( singleVert )
+          {}
 
-    virtual void onOverlayChanged()
+          virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
+          {
+              //Convert to lat/lon
+              GeoPoint p;
+              position.transform(SpatialReference::create( "epsg:4326"), p);
+              _overlay->setControlPoint(_controlPoint, p.x(), p.y(), _singleVert);
+          }
+
+          osg::ref_ptr<ImageOverlay>           _overlay;
+          ImageOverlay::ControlPoint _controlPoint;
+          bool _singleVert;
+    };
+
+    struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
     {
-        _editor->updateDraggers();
-    }
+        OverlayCallback(ImageOverlayEditor *editor)
+            : _editor(editor)
+        {
+        }
 
-    ImageOverlayEditor* _editor;    
-};
+        virtual void onOverlayChanged()
+        {
+            _editor->updateDraggers();
+        }
+
+        ImageOverlayEditor* _editor;    
+    };
+}
 
 /***************************************************************************/
 

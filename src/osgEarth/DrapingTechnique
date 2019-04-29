@@ -135,7 +135,7 @@ namespace osgEarth { namespace Support
 
         mutable DrapingManager _drapingManager;
         DrapingManager& getDrapingManager() { return _drapingManager; }
-        friend class MapNode;
+        friend class osgEarth::MapNode;
 
         struct TechData : public osg::Referenced
         {

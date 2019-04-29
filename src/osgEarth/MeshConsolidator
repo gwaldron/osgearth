@@ -23,7 +23,7 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Consolidates all the like-moded primitive sets in a geometry.
@@ -58,10 +58,6 @@ namespace osgEarth
         static void run( osg::Geode& geode );
     };
 
-    namespace Symbology {
-        typedef osgEarth::MeshConsolidator MeshConsolidator;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR

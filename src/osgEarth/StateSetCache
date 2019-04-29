@@ -27,7 +27,7 @@
 #include <osg/StateSet>
 #include <set>
 
-namespace osgEarth { namespace Support
+namespace osgEarth
 {
     /**
      * Cache for optimizing state set sharing. Running a sharing pass on a node
@@ -164,6 +164,6 @@ namespace osgEarth { namespace Support
         unsigned _attrShareHits;
         unsigned _attrShareMisses;
     };
-} }
+}
 
 #endif // OSGEARTH_STATE_SET_CACHE_H

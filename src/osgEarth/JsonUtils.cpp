@@ -95,20 +95,22 @@ public:
 
 } } } // namespaces
 
-static ValueAllocator *&valueAllocator()
+namespace
 {
-   static DefaultValueAllocator defaultAllocator;
-   static ValueAllocator *valueAllocator = &defaultAllocator;
-   return valueAllocator;
+    static ValueAllocator *&valueAllocator()
+    {
+       static DefaultValueAllocator defaultAllocator;
+       static ValueAllocator *valueAllocator = &defaultAllocator;
+       return valueAllocator;
+    }
+
+    static struct DummyValueAllocatorInitializer {
+       DummyValueAllocatorInitializer() 
+       {
+          valueAllocator();      // ensure valueAllocator() statics are initialized before main().
+       }
+    } dummyValueAllocatorInitializer;
 }
-
-static struct DummyValueAllocatorInitializer {
-   DummyValueAllocatorInitializer() 
-   {
-      valueAllocator();      // ensure valueAllocator() statics are initialized before main().
-   }
-} dummyValueAllocatorInitializer;
-
 
 
 // //////////////////////////////////////////////////////////////////

@@ -22,12 +22,15 @@
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
 #include <osgEarth/FilterContext>
+#include <osgEarth/GeoData>
 #include <osg/Matrixd>
 #include <list>
 
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     /**
      * Base class for a filter.
      */
@@ -216,15 +219,6 @@ namespace osgEarth
         osg::Matrixd _world2local, _local2world;   // for coordinate localization
     };
 
-    namespace Features {
-        typedef osgEarth::Filter Filter;
-        typedef osgEarth::FeatureFilter FeatureFilter;
-        typedef osgEarth::FeatureFilterFactory FeatureFilterFactory;
-        typedef osgEarth::FeatureFilterFactoryList FeatureFilterFactoryList;
-        typedef osgEarth::FeatureFilterDriver FeatureFilterDriver;
-        typedef osgEarth::FeaturesToNodeFilter FeaturesToNodeFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_FILTER_H

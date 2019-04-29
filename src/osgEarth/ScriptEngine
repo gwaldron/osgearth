@@ -26,7 +26,11 @@
 
 namespace osgEarth
 {
-  class Feature;
+    class Feature;
+}
+
+namespace osgEarth { namespace Support
+{
   class FilterContext;
 
   /**
@@ -137,14 +141,6 @@ namespace osgEarth
     static ScriptEngineFactory* s_singleton;
     static osgEarth::Threading::Mutex s_singletonMutex;
   };
-
-  namespace Features {
-      typedef osgEarth::ScriptEngineOptions ScriptEngineOptions;
-      typedef osgEarth::ScriptEngine ScriptEngine;
-      typedef osgEarth::ScriptEngineDriver ScriptEngineDriver;
-      typedef osgEarth::ScriptEngineFactory ScriptEngineFactory;
-  }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_FEATURES_SCRIPTENGINE_H

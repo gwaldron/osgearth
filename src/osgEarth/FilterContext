@@ -35,10 +35,12 @@
 
 namespace osgEarth
 {
-    //class Session;
     class FeatureProfile;
     class FeatureIndexBuilder;
+}
 
+namespace osgEarth { namespace Support
+{
     /**
      * Context within which a chain of filters is executed.
      */
@@ -205,12 +207,7 @@ namespace osgEarth
         std::vector<std::string>           _history;
         osg::ref_ptr<const SpatialReference> _outputSRS;
     };
-
-    namespace Features {
-        typedef osgEarth::FilterContext FilterContext;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_FILTER_CONTEXT_H
 

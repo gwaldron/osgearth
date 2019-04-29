@@ -110,40 +110,38 @@ namespace
     };
 
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;
-}
 
-//---------------------------------------------------------------------------
-
-class RemoveBlacklistedFilenamesVisitor : public osg::NodeVisitor
-{
-public:
-    RemoveBlacklistedFilenamesVisitor():
-      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-          _numRemoved(0)
-      {
-      }
-
-      virtual void apply(osg::PagedLOD& node)
-      {
-          //The PagedLOD node will contain two filenames, the first is empty and is the actual geometry of the
-          //tile and the second is the filename of the next tile.
-          if (node.getNumFileNames() > 1)
+    class RemoveBlacklistedFilenamesVisitor : public osg::NodeVisitor
+    {
+    public:
+        RemoveBlacklistedFilenamesVisitor():
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _numRemoved(0)
           {
-              //Get the child filename
-              const std::string &filename = node.getFileName(1);
-              if (osgEarth::Registry::instance()->isBlacklisted(filename))
-              {
-                  //If the tile is blacklisted, we set the actual geometry, child 0, to always display
-                  //and the second child to never display
-                  node.setRange(0, 0, FLT_MAX);
-                  node.setRange(1, FLT_MAX, FLT_MAX);
-              }
           }
-          traverse(node);
-      }
 
-      unsigned int _numRemoved;
-};
+          virtual void apply(osg::PagedLOD& node)
+          {
+              //The PagedLOD node will contain two filenames, the first is empty and is the actual geometry of the
+              //tile and the second is the filename of the next tile.
+              if (node.getNumFileNames() > 1)
+              {
+                  //Get the child filename
+                  const std::string &filename = node.getFileName(1);
+                  if (osgEarth::Registry::instance()->isBlacklisted(filename))
+                  {
+                      //If the tile is blacklisted, we set the actual geometry, child 0, to always display
+                      //and the second child to never display
+                      node.setRange(0, 0, FLT_MAX);
+                      node.setRange(1, FLT_MAX, FLT_MAX);
+                  }
+              }
+              traverse(node);
+          }
+
+          unsigned int _numRemoved;
+    };
+}
 
 //---------------------------------------------------------------------------
 

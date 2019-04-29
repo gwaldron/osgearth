@@ -28,14 +28,14 @@ namespace osgEarth
 {
     class StyleSheet;
     class FeatureSource;
+    class StateSetCache;
+}
+
+namespace osgEarth { namespace Support
+{
+    class ResourceCache;
     class ScriptEngine;
-
-    namespace Support
-    {
-        class StateSetCache;
-        class ResourceCache;
-    }
-
+ 
     /**
      * Session is a state object that exists throughout the life of one or more related
      * feature compilations.
@@ -130,10 +130,6 @@ namespace osgEarth
         Session();
         Session(const Session& rhs, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
     };
-
-    namespace Features {
-        typedef osgEarth::Session Session;
-    }
-}
+} }
 
 #endif // OSGEARTH_FEATURES_SESSION_H

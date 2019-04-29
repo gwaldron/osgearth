@@ -27,7 +27,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Base class for a Resource, which is an external data element managed
@@ -72,13 +72,6 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<Resource> > ResourceVector;
-
-
-    namespace Symbology {
-        typedef osgEarth::Resource Resource;
-        typedef osgEarth::ResourceVector ResourceVector;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H

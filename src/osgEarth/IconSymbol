@@ -1,4 +1,5 @@
-/* -*-c++-*- */
+/* -*-c+
++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2018 Pelican Mapping
  * http://osgearth.org
@@ -26,7 +27,9 @@
 namespace osgEarth
 {
     class Style;
-    class InstanceResource;
+    namespace Support {
+        class InstanceResource;
+    }
 
     /**
      * Represents a 2D icon for instancing
@@ -101,10 +104,6 @@ namespace osgEarth
         optional<bool>                   _occlusionCull;
         optional<double>                 _occlusionCullAltitude;
     };
-
-    namespace Symbology {
-        typedef osgEarth::IconSymbol IconSymbol;
-    }
 
 } // namespace osgEarth
 

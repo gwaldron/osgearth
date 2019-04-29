@@ -24,8 +24,10 @@
 #include <osgEarth/InstanceResource>
 #include <osgEarth/URI>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     /**
      * A resource that materializes an InstanceSymbol, which is a single-point object
      * that resolves to an osg::Node. Instances are usually used for point-model
@@ -51,11 +53,6 @@ namespace osgEarth
 
         virtual osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const;
     };
-
-    namespace Symbology {
-        typedef osgEarth::IconResource IconResource;
-    }
-
-} // namespace osgEarth::Symbology
+} }
 
 #endif // OSGEARTHSYMBOLOGY_ICON_RESOURCE_H

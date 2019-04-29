@@ -25,7 +25,7 @@
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/MapNode>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class AnnotationFactory;
 
@@ -106,6 +106,6 @@ namespace osgEarth
         AnnotationNode* create(const Config& conf, const osgDB::Options* options) const { return new T(conf, options); }
     };
 
-}
+} }
 
 #endif // OSGEARTH_ANNO_FEATURE_NODE_H

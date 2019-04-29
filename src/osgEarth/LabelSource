@@ -27,10 +27,14 @@
 
 namespace osgEarth
 {  
-    class FilterContext;
+    namespace Support
+    {
+        class FilterContext;
+    }
 
     /**
      * Configuration options for a label source.
+     * @deprecated - refactor
      */
     class OSGEARTH_EXPORT LabelSourceOptions : public DriverConfigOptions
     {
@@ -57,6 +61,7 @@ namespace osgEarth
 
     /**
      * Plugin object that generates text label nodes.
+     * @deprecated - refactor
      */
     class OSGEARTH_EXPORT LabelSource : public osg::Object, public Revisioned
     {
@@ -102,14 +107,6 @@ namespace osgEarth
 	public:
         static LabelSource* create( const LabelSourceOptions& options =LabelSourceOptions() );
     };
-
-
-    namespace Features {
-        typedef osgEarth::LabelSourceOptions LabelSourceOptions;
-        typedef osgEarth::LabelSource LabelSource;
-        typedef osgEarth::LabelSourceDriver LabelSourceDriver;
-        typedef osgEarth::LabelSourceFactory LabelSourceFactory;
-    }
 
 } // namespace osgEarth
 

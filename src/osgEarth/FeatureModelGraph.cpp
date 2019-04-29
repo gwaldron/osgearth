@@ -155,44 +155,46 @@ namespace
 }
 
 
-/**
- * A pseudo-loader for paged feature tiles.
- */
-struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
+namespace
 {
-    osgEarthFeatureModelPseudoLoader()
+    /**
+     * A pseudo-loader for paged feature tiles.
+     */
+    struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     {
-        supportsExtension( "osgearth_pseudo_fmg", "Feature model pseudo-loader" );
-    }
-
-    const char* className() const
-    { // override
-        return "osgEarth Feature Model Pseudo-Loader";
-    }
-
-    ReadResult readNode(const std::string& uri, const osgDB::Options* readOptions) const
-    {
-        if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
-            return ReadResult::FILE_NOT_HANDLED;
-
-        //UID uid;
-        unsigned lod, x, y;
-        sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
-
-        osg::ref_ptr<FeatureModelGraph> graph;
-        if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
+        osgEarthFeatureModelPseudoLoader()
         {
-           OE_WARN << LC << "Internal error - no FeatureModelGraph object in OptionsData\n";
-           return ReadResult::ERROR_IN_READING_FILE;
+            supportsExtension( "osgearth_pseudo_fmg", "Feature model pseudo-loader" );
         }
 
-        Registry::instance()->startActivity(uri);
-        osg::Node* node = graph->load(lod, x, y, uri, readOptions);
-        Registry::instance()->endActivity(uri);
-        return ReadResult(node);
-    }
-};
+        const char* className() const
+        { // override
+            return "osgEarth Feature Model Pseudo-Loader";
+        }
 
+        ReadResult readNode(const std::string& uri, const osgDB::Options* readOptions) const
+        {
+            if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
+                return ReadResult::FILE_NOT_HANDLED;
+
+            //UID uid;
+            unsigned lod, x, y;
+            sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
+
+            osg::ref_ptr<FeatureModelGraph> graph;
+            if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
+            {
+               OE_WARN << LC << "Internal error - no FeatureModelGraph object in OptionsData\n";
+               return ReadResult::ERROR_IN_READING_FILE;
+            }
+
+            Registry::instance()->startActivity(uri);
+            osg::Node* node = graph->load(lod, x, y, uri, readOptions);
+            Registry::instance()->endActivity(uri);
+            return ReadResult(node);
+        }
+    };
+}
 REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
 
 

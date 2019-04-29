@@ -41,12 +41,15 @@
 #define OSGEARTH_ENV_NO_CACHE      "OSGEARTH_NO_CACHE"
 #define OSGEARTH_ENV_CACHE_MAX_AGE "OSGEARTH_CACHE_MAX_AGE"
 
-namespace osgEarth
+namespace osgEarth 
 {
-#define DEFAULT_BIN_ID ""
-
     class Cache;
     class CachePolicy;
+}
+
+namespace osgEarth { namespace Support
+{
+#define DEFAULT_BIN_ID ""
 
     /**
      * CacheSettings is an object stored in the osgDB::Options structure that
@@ -106,9 +109,12 @@ namespace osgEarth
         optional<CachePolicy>    _policy;
         mutable Threading::Mutex _mutex;
     };
+} }
 
 //--------------------------------------------------------------------
 
+namespace osgEarth
+{
     /**
      * Base class for Cache options.
      */
@@ -149,7 +155,6 @@ OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CacheOptions);
 namespace osgEarth
 {
     typedef PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
-
 
     /**
      * Cache is a container for local storage of keyed data elements.
@@ -230,29 +235,30 @@ namespace osgEarth
 
 //----------------------------------------------------------------------
 
-    /**
-     * Base class for a cache driver plugin.
-     */
-    class OSGEARTH_EXPORT CacheDriver : public osgDB::ReaderWriter
+    namespace Support
     {
-    public:
-        const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
+        /**
+         * Base class for a cache driver plugin.
+         */
+        class OSGEARTH_EXPORT CacheDriver : public osgDB::ReaderWriter
+        {
+        public:
+            const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
 
-        /** dtor */
-        virtual ~CacheDriver();
-    };
+            /** dtor */
+            virtual ~CacheDriver();
+        };
 
-//----------------------------------------------------------------------
-
-    /**
-     * Factory class that can load and instantiate a Cache implementation based on the
-     * information in the CacheOptions settings.
-     */
-    class OSGEARTH_EXPORT CacheFactory
-    {
-    public:
-        static Cache* create( const CacheOptions& options);
-    };
+        /**
+         * Factory class that can load and instantiate a Cache implementation based on the
+         * information in the CacheOptions settings.
+         */
+        class OSGEARTH_EXPORT CacheFactory
+        {
+        public:
+            static osgEarth::Cache* create( const CacheOptions& options);
+        };
+    }
 }
 
 #endif // OSGEARTH_CACHE_H

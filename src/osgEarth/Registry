@@ -48,12 +48,12 @@ namespace osgEarth
     class URIReadCallback;
     class ObjectIndex;
     class Units;
+    class StateSetCache;
 
     namespace Support
     {
         class ShaderFactory;
         class TaskServiceManager;
-        class StateSetCache;
     }
 
     using namespace Support;
@@ -381,12 +381,16 @@ namespace osgEarth
 }
 
 
-/** Proxy class for automatic registration of Units with the Registry.*/
-struct osgEarthRegisterUnits {
-    osgEarthRegisterUnits(const osgEarth::Units* units) {
-        osgEarth::Registry::instance()->registerUnits(units);
-    }
-};
+namespace
+{
+    /** Proxy class for automatic registration of Units with the Registry.*/
+    struct osgEarthRegisterUnits {
+        osgEarthRegisterUnits(const osgEarth::Units* units) {
+            osgEarth::Registry::instance()->registerUnits(units);
+        }
+    };
+}
+
 #define OSGEARTH_REGISTER_UNITS(NAME,INSTANCE) \
     extern "C" void osgearth_units_##NAME(void) {} \
     static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)

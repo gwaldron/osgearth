@@ -32,6 +32,12 @@ namespace osgEarth
 {
     class FeatureSourceIndex;
     class FeatureIndexBuilder;
+}
+
+namespace osgEarth { namespace Support
+{
+    using namespace osgEarth;
+
     class ResourceLibrary;
 
     /**
@@ -206,11 +212,6 @@ namespace osgEarth
 
         osg::Drawable* buildOutlineGeometry(const Structure& structure);
     };
-
-    namespace Features {
-        typedef osgEarth::ExtrudeGeometryFilter ExtrudeGeometryFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

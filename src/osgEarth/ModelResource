@@ -24,7 +24,7 @@
 #include <osgEarth/InstanceResource>
 #include <osgEarth/Status>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * A resource that materializes an InstanceSymbol, which is a single-point object
@@ -69,12 +69,6 @@ namespace osgEarth
     };
 
     typedef std::vector<osg::ref_ptr<ModelResource> > ModelResourceVector;
-
-    namespace Symbology {
-        typedef osgEarth::ModelResource ModelResource;
-        typedef osgEarth::ModelResourceVector ModelResourceVector;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H

@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H
 #define OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H 1
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Interface for querying terrain engine feature requirements.
@@ -36,6 +36,6 @@ namespace osgEarth
     public:
         virtual ~TerrainEngineRequirements() { }
     };
-}
+} }
 
 #endif // OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H

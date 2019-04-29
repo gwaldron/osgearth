@@ -30,9 +30,11 @@
 
 namespace osgEarth
 {
-    class InstanceResource;
     class IconSymbol;
     class ModelSymbol;
+    namespace Support {
+        class InstanceResource;
+    }
 
     /**
      * Base class for symbols that represent an instance of an external resource

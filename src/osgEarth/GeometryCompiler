@@ -29,6 +29,7 @@
 
 namespace osgEarth
 {
+    /** TODO: refactor into GeometryCompiler::Options */
     class OSGEARTH_EXPORT GeometryCompilerOptions
     {
     public:

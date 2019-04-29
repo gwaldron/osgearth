@@ -57,6 +57,7 @@ namespace osgEarth
 
 
     /**
+     * @deprecated - remove
      * MaskSource is a plugin object that generates a masking goemetry
      *
      * TODO: there is only one kind of mask source (FeatureMaskSource) so

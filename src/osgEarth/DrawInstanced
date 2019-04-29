@@ -35,6 +35,8 @@ namespace osg {
  */
 namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     namespace DrawInstanced
     {
         /**
@@ -42,11 +44,11 @@ namespace osgEarth { namespace Support
         * in the node that's been instanced so the app can recover the 
         * original positioning data.
         */
-        class MatrixRefVector : public MixinVector<osg::Matrixf,osg::Object>
+        class MatrixRefVector : public InlineVector<osg::Matrixf,osg::Object>
         {
         public:
             META_Object(osgEarth,MatrixRefVector);
-            MatrixRefVector() : MixinVector<osg::Matrixf,osg::Object>() { }
+            MatrixRefVector() : InlineVector<osg::Matrixf,osg::Object>() { }
         protected:
             MatrixRefVector(const MatrixRefVector& rhs, const osg::CopyOp& op) { }
         };

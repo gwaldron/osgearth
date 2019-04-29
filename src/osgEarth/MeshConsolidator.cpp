@@ -32,10 +32,9 @@
 #include <iterator>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[MeshConsolidator] "
-
-using namespace osgEarth;
 
 //------------------------------------------------------------------------
 

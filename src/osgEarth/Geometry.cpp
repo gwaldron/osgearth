@@ -42,7 +42,7 @@ using namespace geos::operation;
 
 
 Geometry::Geometry( const Geometry& rhs ) :
-osgEarth::MixinVector<osg::Vec3d,osg::Referenced>( rhs )
+osgEarth::InlineVector<osg::Vec3d,osg::Referenced>( rhs )
 {
     //nop
 }

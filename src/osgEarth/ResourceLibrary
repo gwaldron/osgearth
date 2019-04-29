@@ -29,7 +29,7 @@
 #include <osgEarth/Random>
 #include <map>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /** 
      * ResourceLibrary manages a collection of external resources that a
@@ -147,12 +147,6 @@ namespace osgEarth
 
 
     typedef std::map< std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraryMap;
-
-    namespace Symbology {
-        typedef osgEarth::ResourceLibrary ResourceLibrary;
-        typedef osgEarth::ResourceLibraryMap ResourceLibraryMap;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H

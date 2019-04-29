@@ -29,7 +29,7 @@
 #include <geos/geom/Geometry.h>
 #include <geos/geom/GeometryFactory.h>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class GEOSContext
     {
@@ -54,11 +54,7 @@ namespace osgEarth
 #endif
     };
 
-    namespace Symbology {
-        typedef osgEarth::GEOSContext GEOSContext;
-    }
-
-} // namespace osgEarth::Features
+} }
 
 #endif // OSGEARTH_HAVE_GEOS
 

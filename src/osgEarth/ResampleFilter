@@ -24,7 +24,7 @@
 #include <osgEarth/Feature>
 #include <osgEarth/Filter>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class ResampleFilterOptions : public ConfigOptions
     {
@@ -100,12 +100,6 @@ namespace osgEarth
     protected:
         bool push( Feature* input, FilterContext& context );
     };
-
-    namespace Features {
-        typedef osgEarth::ResampleFilterOptions ResampleFilterOptions;
-        typedef osgEarth::ResampleFilter ResampleFilter;
-    }
-
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTHFEATURES_RESAMPLE_FILTER_H

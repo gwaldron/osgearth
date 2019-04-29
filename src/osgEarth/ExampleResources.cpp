@@ -242,43 +242,46 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 
 //------------------------------------------------------------------------
 
-std::string getAttributionString(Map* map)
+namespace
 {
-    StringSet attributions;
-    map->getAttributions(attributions);
-    std::stringstream buf;
-    for (StringSet::iterator itr = attributions.begin(); itr != attributions.end(); ++itr)
+    std::string getAttributionString(Map* map)
     {
-        buf << *itr << std::endl;
-    }
-
-    return buf.str();
-}
-
-class AttributeCallback : public osgEarth::MapCallback
-{
-public:
-    AttributeCallback(LabelControl* label, MapNode* mapNode) :
-        _label(label),
-        _mapNode(mapNode)
-    {
-    }
-
-    virtual void onMapModelChanged(const MapModelChange& change)
-    {
-        osg::ref_ptr< LabelControl > label;
-        osg::ref_ptr< MapNode > mapNode;
-
-        StringVector attributions;
-        if (_mapNode.lock(mapNode) && _label.lock(label))
+        StringSet attributions;
+        map->getAttributions(attributions);
+        std::stringstream buf;
+        for (StringSet::iterator itr = attributions.begin(); itr != attributions.end(); ++itr)
         {
-            label->setText(getAttributionString(_mapNode->getMap()));
+            buf << *itr << std::endl;
         }
+
+        return buf.str();
     }
 
-    osg::observer_ptr< LabelControl > _label;
-    osg::observer_ptr< MapNode > _mapNode;
-};
+    class AttributeCallback : public osgEarth::MapCallback
+    {
+    public:
+        AttributeCallback(LabelControl* label, MapNode* mapNode) :
+            _label(label),
+            _mapNode(mapNode)
+        {
+        }
+
+        virtual void onMapModelChanged(const MapModelChange& change)
+        {
+            osg::ref_ptr< LabelControl > label;
+            osg::ref_ptr< MapNode > mapNode;
+
+            StringVector attributions;
+            if (_mapNode.lock(mapNode) && _label.lock(label))
+            {
+                label->setText(getAttributionString(_mapNode->getMap()));
+            }
+        }
+
+        osg::observer_ptr< LabelControl > _label;
+        osg::observer_ptr< MapNode > _mapNode;
+    };
+}
 
 Control* AttributionControlFactory::create(MapNode* mapNode) const
 {

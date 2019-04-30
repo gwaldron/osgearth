@@ -28,6 +28,7 @@
 #include <osg/Texture2D>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
+#include <osgUtil/Optimizer>
 #include <osgEarth/Notify>
 
 #undef LC
@@ -64,9 +65,7 @@ public:
 
     osg::Node* makeNodeFromModel(const tinygltf::Model &model) const
     {
-        // Rotate y-up to z-up
-        osg::MatrixTransform* transform = new osg::MatrixTransform;
-        transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
+        osg::Group* group = new osg::Group();
 
         for (unsigned int i = 0; i < model.scenes.size(); i++)
         {
@@ -76,12 +75,11 @@ public:
                 osg::Node* node = createNode(model, model.nodes[scene.nodes[j]]);
                 if (node)
                 {
-                    transform->addChild(node);
+                    group->addChild(node);
                 }
             }
         }
-
-        return transform;
+        return group;
     }
 
     osg::Node* createNode(const tinygltf::Model &model, const tinygltf::Node& node) const
@@ -140,6 +138,9 @@ public:
 
         std::vector< osg::ref_ptr< osg::Array > > arrays;
         extractArrays(model, arrays);
+
+        // Transforms verts and normals from Y-UP (GLTF spec) to Z-UP (OSG)
+        const osg::Matrixd YUP2ZUP(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1);
 
         OE_DEBUG << "Drawing " << mesh.primitives.size() << " primitives in mesh" << std::endl;
 
@@ -259,11 +260,21 @@ public:
                 if (it->first.compare("POSITION") == 0)
                 {
                     geom->setVertexArray(arrays[it->second]);
+
+                    // convert Y-UP to Z-UP
+                    osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+                    for(unsigned i=0; i<verts->size(); ++i)
+                        (*verts)[i] = (*verts)[i] * YUP2ZUP;
                 }
 
                 else if (it->first.compare("NORMAL") == 0)
                 {
                     geom->setNormalArray(arrays[it->second]);
+
+                    // convert Y-UP to Z-UP
+                    osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
+                    for (unsigned i = 0; i < normals->size(); ++i)
+                        (*normals)[i] = osg::Matrixd::transform3x3((*normals)[i], YUP2ZUP);
                 }
                 else if (it->first.compare("TEXCOORD_0") == 0)
                 {

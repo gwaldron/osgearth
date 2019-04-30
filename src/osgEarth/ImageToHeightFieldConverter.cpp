@@ -29,12 +29,13 @@
 using namespace osgEarth;
 using namespace osgEarth::Support;
 
-static bool
-isNoData( float f )
+namespace
 {
-  return f == FLT_MAX || f == -FLT_MAX;
+    bool isNoData( float f )
+    {
+        return f == FLT_MAX || f == -FLT_MAX;
+    }
 }
-
 
 ImageToHeightFieldConverter::ImageToHeightFieldConverter():
 _replace_nodata( false ),

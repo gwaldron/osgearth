@@ -136,13 +136,31 @@ void TileMap::setExtents( double minX, double minY, double maxX, double maxY)
 
 #define ATTR_DESCRIPTION "description"
 
-bool intersects(const double &minXa, const double &minYa, const double &maxXa, const double &maxYa,
-                const double &minXb, const double &minYb, const double &maxXb, const double &maxYb)
+namespace
 {
-    return  osg::maximum(minXa, minXb) <= osg::minimum(maxXa,maxXb) &&
-            osg::maximum(minYa, minYb) <= osg::minimum(maxYa, maxYb);
-}
+    bool intersects(const double &minXa, const double &minYa, const double &maxXa, const double &maxYa,
+                    const double &minXb, const double &minYb, const double &maxXb, const double &maxYb)
+    {
+        return  osg::maximum(minXa, minXb) <= osg::minimum(maxXa,maxXb) &&
+                osg::maximum(minYa, minYb) <= osg::minimum(maxYa, maxYb);
+    }
 
+    std::string getHorizSRSString(const osgEarth::SpatialReference* srs)
+    {
+        if (srs->isSphericalMercator())
+        {
+            return "EPSG:900913";
+        }
+        else if (srs->isGeographic())
+        {
+            return "EPSG:4326";
+        }
+        else
+        {
+            return srs->getHorizInitString(); //srs();
+        }
+    }
+}
 
 
 void TileMap::computeMinMaxLevel()
@@ -360,22 +378,6 @@ TileMap::generateTileSets(unsigned int numLevels)
         ts.setOrder(i);
         _tileSets.push_back(ts);
     }
-}
-
-std::string getHorizSRSString(const osgEarth::SpatialReference* srs)
-{
-    if (srs->isSphericalMercator())
-    {
-        return "EPSG:900913";
-    }
-    else if (srs->isGeographic())
-    {
-        return "EPSG:4326";
-    }
-    else
-    {
-        return srs->getHorizInitString(); //srs();
-    }	
 }
 
 

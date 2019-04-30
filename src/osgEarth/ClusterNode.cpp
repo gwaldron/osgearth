@@ -109,15 +109,16 @@ void ClusterNode::setCanClusterCallback(ClusterNode::CanClusterCallback* callbac
     _dirty = true;
 }
 
-bool boundSort(const osg::ref_ptr< osg::Node> &i, const osg::ref_ptr< osg::Node> &j)
+namespace
 {
-    osg::BoundingSphere bsI = i->getBound();
-    osg::BoundingSphere bsJ = j->getBound();
+    bool boundSort(const osg::ref_ptr< osg::Node> &i, const osg::ref_ptr< osg::Node> &j)
+    {
+        osg::BoundingSphere bsI = i->getBound();
+        osg::BoundingSphere bsJ = j->getBound();
 
-    return bsI.center().x() < bsJ.center().x();
+        return bsI.center().x() < bsJ.center().x();
+    }
 }
-
-
 void ClusterNode::buildIndex()
 {
     if (_dirtyIndex)

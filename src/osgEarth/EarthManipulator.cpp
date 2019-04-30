@@ -234,36 +234,39 @@ EarthManipulator::Action::getDoubleOption( int option, double defaultValue ) con
 
 EarthManipulator::Action EarthManipulator::NullAction( EarthManipulator::ACTION_NULL );
 
-static std::string s_actionNames[] = {
-    "null",
-    "home",
-    "goto",
-    "pan",
-    "pan-left",
-    "pan-right",
-    "pan-up",
-    "pan-down",
-    "rotate",
-    "rotate-left",
-    "rotate-right",
-    "rotate-up",
-    "rotate-down",
-    "zoom",
-    "zoom-in",
-    "zoom-out",
-    "earth-drag"
-};
+namespace
+{
+    static std::string s_actionNames[] = {
+        "null",
+        "home",
+        "goto",
+        "pan",
+        "pan-left",
+        "pan-right",
+        "pan-up",
+        "pan-down",
+        "rotate",
+        "rotate-left",
+        "rotate-right",
+        "rotate-up",
+        "rotate-down",
+        "zoom",
+        "zoom-in",
+        "zoom-out",
+        "earth-drag"
+    };
 
-static std::string s_actionOptionNames[] = {
-    "scale-x",
-    "scale-y",
-    "continuous",
-    "single-axis",
-    "goto-range-factor",
-    "duration"
-};
+    static std::string s_actionOptionNames[] = {
+        "scale-x",
+        "scale-y",
+        "continuous",
+        "single-axis",
+        "goto-range-factor",
+        "duration"
+    };
 
-static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
+    static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
+}
 
 //------------------------------------------------------------------------
 
@@ -1921,13 +1924,13 @@ namespace
         osg::NodePath        _nodePath;
         osg::NodePathList    _nodePaths;
     };
-}
 
-osg::NodePathList getAllParentalNodePaths(osg::Node* node, osg::Node* haltTraversalAtNode = 0)
-{
-    CollectAllParentPaths cpp(haltTraversalAtNode);
-    node->accept(cpp);
-    return cpp._nodePaths;
+    osg::NodePathList getAllParentalNodePaths(osg::Node* node, osg::Node* haltTraversalAtNode = 0)
+    {
+        CollectAllParentPaths cpp(haltTraversalAtNode);
+        node->accept(cpp);
+        return cpp._nodePaths;
+    }
 }
 
 void

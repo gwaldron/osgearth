@@ -984,9 +984,12 @@ ScreenSpaceLayout::getOptions()
 
 //----------------------------------------------------------------------------
 
-/** the actual registration. */
-extern "C" void osgEarth_declutter(void) {}
-static osgEarthRegisterRenderBinProxy<osgEarthScreenSpaceLayoutRenderBin> s_regbin(OSGEARTH_SCREEN_SPACE_LAYOUT_BIN);
+namespace
+{
+    /** the actual registration. */
+    extern "C" void osgEarth_declutter(void) {}
+    static osgEarthRegisterRenderBinProxy<osgEarthScreenSpaceLayoutRenderBin> s_regbin(OSGEARTH_SCREEN_SPACE_LAYOUT_BIN);
+}
 
 
 //----------------------------------------------------------------------------

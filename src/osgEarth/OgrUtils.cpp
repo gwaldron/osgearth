@@ -33,18 +33,20 @@ using namespace osgEarth;
 #  define GDAL_HAS_M_TYPES
 #endif
 
-int IsFieldSet(OGRFeatureH handle, int i)
+namespace
 {
-    // https://github.com/Toblerity/Fiona/issues/460
-    // GDAL 2.2 changed the behavior of OGR_F_IsFieldSet so that null fields will still be considered set.
-    // We consider unset or null fields to be the same, so we use OGR_F_IsFieldSetAndNotNull
-#if GDAL_VERSION_AT_LEAST(2,2,0)
-    return OGR_F_IsFieldSetAndNotNull(handle, i);
-#else
-    return OGR_F_IsFieldSet(handle, i);
-#endif
+    int IsFieldSet(OGRFeatureH handle, int i)
+    {
+        // https://github.com/Toblerity/Fiona/issues/460
+        // GDAL 2.2 changed the behavior of OGR_F_IsFieldSet so that null fields will still be considered set.
+        // We consider unset or null fields to be the same, so we use OGR_F_IsFieldSetAndNotNull
+    #if GDAL_VERSION_AT_LEAST(2,2,0)
+        return OGR_F_IsFieldSetAndNotNull(handle, i);
+    #else
+        return OGR_F_IsFieldSet(handle, i);
+    #endif
+    }
 }
-
 
 void
 OgrUtils::populate( OGRGeometryH geomHandle, Geometry* target, int numPoints )

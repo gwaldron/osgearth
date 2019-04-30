@@ -142,8 +142,10 @@ ResourceLibrary::removeResource( Resource* resource )
     }
 }
 
-
-static Threading::Mutex s_initMutex;
+namespace
+{
+    static Threading::Mutex s_initMutex;
+}
 
 bool
 ResourceLibrary::initialize( const osgDB::Options* dbOptions )

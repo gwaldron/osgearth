@@ -24,11 +24,14 @@
 
 #define LC "[ShaderFactory] "
 
-#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-    static bool s_GLES_SHADERS = true;
-#else
-    static bool s_GLES_SHADERS = false;
-#endif
+namespace
+{
+    #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+        static bool s_GLES_SHADERS = true;
+    #else
+        static bool s_GLES_SHADERS = false;
+    #endif
+}
 
 #define INDENT "    "
 #define RANGE  osgEarth::Registry::instance()->shaderFactory()->getRangeUniformName()

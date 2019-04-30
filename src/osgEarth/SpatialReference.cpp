@@ -74,6 +74,21 @@ namespace
             points[i].set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), alt );
         }
     }
+
+    // Make a MatrixTransform suitable for use with a Locator object based on the given extents.
+    // Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the
+    // _inverse member isn't updated properly.  Calling Locator::setTransform works correctly.
+    osg::Matrixd
+    getTransformFromExtents(double minX, double minY, double maxX, double maxY)
+    {
+        osg::Matrixd transform;
+        transform.set(
+            maxX - minX, 0.0, 0.0, 0.0,
+            0.0, maxY - minY, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            minX, minY, 0.0, 1.0);
+        return transform;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -867,21 +882,6 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
     csn->setEllipsoidModel( _ellipsoid.get() );
     
     return true;
-}
-
-// Make a MatrixTransform suitable for use with a Locator object based on the given extents.
-// Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the
-// _inverse member isn't updated properly.  Calling Locator::setTransform works correctly.
-static osg::Matrixd
-getTransformFromExtents(double minX, double minY, double maxX, double maxY)
-{
-    osg::Matrixd transform;
-    transform.set(
-        maxX-minX, 0.0,       0.0, 0.0,
-        0.0,       maxY-minY, 0.0, 0.0,
-        0.0,       0.0,       1.0, 0.0,
-        minX,      minY,      0.0, 1.0); 
-    return transform;
 }
 
 GeoLocator*

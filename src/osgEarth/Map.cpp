@@ -259,8 +259,6 @@ Map::getProfile() const
     return _profile.get();
 }
 
-OE_PROPERTY_IMPL(Map, RasterInterpolation, ElevationInterpolation, elevationInterpolation);
-
 void
 Map::setCachePolicy(const CachePolicy& value)
 {
@@ -277,6 +275,18 @@ const CachePolicy&
 Map::getCachePolicy() const
 {
     return options().cachePolicy().get();
+}
+
+void
+Map::setElevationInterpolation(const RasterInterpolation& value)
+{
+    options().elevationInterpolation() = value;
+}
+
+const RasterInterpolation&
+Map::getElevationInterpolation() const
+{
+    return options().elevationInterpolation().get();
 }
 
 Cache*
@@ -681,22 +691,6 @@ Map::clear()
     // Invalidate the elevation pool.
     getElevationPool()->clear();
 }
-
-
-void
-Map::setLayersFromMap(const Map* map)
-{
-    this->clear();
-
-    if ( map )
-    {
-        LayerVector layers;
-        map->getLayers(layers);
-        for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
-            addLayer(i->get());
-    }
-}
-
 
 const Profile*
 Map::calculateProfile(bool makeProjected) const

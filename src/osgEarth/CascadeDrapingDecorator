@@ -34,11 +34,14 @@ namespace osgUtil {
     class CullVisitor;
 }
 namespace osgEarth {
+    class MapNode;
     class TerrainResources;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Contrib
 {
+    using namespace osgEarth;
+
     /**
      * Projects geometry from a separate scene graph onto the terrain.
      */

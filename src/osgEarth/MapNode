@@ -44,7 +44,6 @@ namespace osgEarth
         class ClampingManager;
         class DrapingTechnique;
         class ClampingTechnique;
-        class CascadeDrapingDecorator;
         class MapNodeCullData;
     }
 
@@ -148,12 +147,6 @@ namespace osgEarth
          * Accesses the root node for a specific ModelLayer.
          */
         osg::Node* getLayerNode(Layer* layer) const;
-        
-        /**
-         * Gets the overlay decorator in this mapnode. Usually you do not need to
-         * access this directly. Instead install a DrapeableNode in the scene graph.
-         */
-        OverlayDecorator* getOverlayDecorator() { return _overlayDecorator; }
 
         /**
          * Gets the underlying terrain engine that renders the terrain surface of the map.
@@ -238,7 +231,6 @@ namespace osgEarth
 
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
-        OverlayDecorator*  _overlayDecorator;
         Config             _externalConf;
         osg::Group*        _maskLayerNode;
         unsigned           _lastNumBlacklistedFilenames;
@@ -248,7 +240,6 @@ namespace osgEarth
         ResourceReleaser*  _resourceReleaser;
         DrapingManager*    _drapingManager;
         ClampingManager*   _clampingManager;
-        CascadeDrapingDecorator* _cascadeDrapingDecorator;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 
@@ -260,10 +251,6 @@ namespace osgEarth
         void onLayerAdded(Layer* layer, unsigned index);
         void onLayerRemoved(Layer* layer, unsigned index);
         void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
-
-        // internal
-        osg::Node* getDrapingDump();
-        CascadeDrapingDecorator* getCascadeDrapingDecorator() const;
 
     private:
 

@@ -45,6 +45,7 @@
 #define LC "[CascadeDrapingDecorator] "
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 using namespace osgEarth::Support;
 
 

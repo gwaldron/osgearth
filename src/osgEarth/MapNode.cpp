@@ -35,6 +35,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Support;
+using namespace osgEarth::Contrib;
 
 #define LC "[MapNode] "
 
@@ -282,7 +283,6 @@ MapNode::init()
     // initialize 0Ls
     _terrainEngine = 0L;
     _terrainGroup = 0L;
-    _overlayDecorator = 0L;
     _layerNodes = 0L;
     _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
@@ -297,10 +297,6 @@ MapNode::init()
     // Construct the container for the terrain engine, which also hold the options.
     _terrainGroup = new StickyGroup();
     this->addChild(_terrainGroup);
-
-    // a decorator for overlay models:
-    _overlayDecorator = new OverlayDecorator();
-    _terrainGroup->addChild(_overlayDecorator);
 
     // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
     _layerNodes = new StickyGroup();
@@ -371,22 +367,23 @@ MapNode::open()
             _terrainGroup->getOrCreateStateSet(),
             options().terrain()->enableLighting().get() ? 1 : 0 );
     }
+
     // a decorator for overlay models:
-    _overlayDecorator = new OverlayDecorator();
-    _terrainGroup->addChild(_overlayDecorator);
+    OverlayDecorator* overlayDecorator = new OverlayDecorator();
+    _terrainGroup->addChild(overlayDecorator);
 
     // install the Clamping technique for overlays:
     ClampingTechnique* clamping = new ClampingTechnique();
-    _overlayDecorator->addTechnique(clamping);
+    overlayDecorator->addTechnique(clamping);
     _clampingManager = &clamping->getClampingManager();
 
     bool envUseCascadedDraping = (::getenv("OSGEARTH_USE_CASCADE_DRAPING") != 0L);
     if (envUseCascadedDraping || options().useCascadeDraping() == true)
     {
-        _cascadeDrapingDecorator = new CascadeDrapingDecorator(getMapSRS(), _terrainEngine->getResources());
-        _overlayDecorator->addChild(_cascadeDrapingDecorator);
-        _drapingManager = &_cascadeDrapingDecorator->getDrapingManager();
-        _cascadeDrapingDecorator->addChild(_terrainEngine);
+        CascadeDrapingDecorator* cascadeDrapingDecorator = new CascadeDrapingDecorator(getMapSRS(), _terrainEngine->getResources());
+        overlayDecorator->addChild(cascadeDrapingDecorator);
+        _drapingManager = &cascadeDrapingDecorator->getDrapingManager();
+        cascadeDrapingDecorator->addChild(_terrainEngine);
     }
 
     else
@@ -416,13 +413,13 @@ MapNode::open()
             draping->setResolutionRatio( options().overlayResolutionRatio().get() );
 
         draping->reestablish( _terrainEngine );
-        _overlayDecorator->addTechnique( draping );
+        overlayDecorator->addTechnique( draping );
         _drapingManager = &draping->getDrapingManager();
 
-        _overlayDecorator->addChild(_terrainEngine);
+        overlayDecorator->addChild(_terrainEngine);
     }
 
-    _overlayDecorator->setTerrainEngine(_terrainEngine);
+    overlayDecorator->setTerrainEngine(_terrainEngine);
 
     osg::StateSet* stateset = getOrCreateStateSet();
     stateset->setName("MapNode");
@@ -892,18 +889,4 @@ ClampingManager*
 MapNode::getClampingManager()
 {
     return _clampingManager;
-}
-
-osg::Node*
-MapNode::getDrapingDump()
-{
-    return
-        _cascadeDrapingDecorator ? _cascadeDrapingDecorator->getDump() :
-        _overlayDecorator->getDump();
-}
-
-CascadeDrapingDecorator*
-MapNode::getCascadeDrapingDecorator() const
-{
-    return _cascadeDrapingDecorator;
 }

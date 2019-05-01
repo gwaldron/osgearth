@@ -330,9 +330,10 @@ namespace
 
     bool isSampleValid(const Sample* b1, Samples& samples)
     {
-        for (unsigned i = 0; i < samples.size(); ++i)
+        const unsigned int sampleSize = samples.size();
+        for (unsigned int i = 0; i < sampleSize; ++i)
         {
-            Sample* b2 = &samples[i];
+            const Sample* b2 = &samples[i];
             if (b1 == b2) continue;
             if (b1->T == 0.0 && (EQ2(b1->A, b2->A) || EQ2(b1->A, b2->B))) return false;
             if (b1->T == 1.0 && (EQ2(b1->B, b2->A) || EQ2(b1->B, b2->B))) return false;
@@ -403,17 +404,22 @@ namespace
         double row_interval = ex.height() / (double)(hf->getNumRows()-1);
 
         osg::Vec3d Pex, P, PROJ;
+        // For the point calcs in the inner loops
+        osg::Vec3d AB, AP;
 
         bool needsTransform = ex.getSRS() != geomSRS;
+
+        const unsigned int numCol = hf->getNumColumns();
+        const unsigned int numRow = hf->getNumRows();
         
         // Loop over the new heightfield.
-        for (unsigned col = 0; col < hf->getNumColumns(); ++col)
+        for (unsigned col = 0; col < numCol; ++col)
         {
             Pex.x() = ex.xMin() + (double)col * col_interval;
 
-            for (unsigned row = 0; row < hf->getNumRows(); ++row)
+            for (unsigned row = 0; row < numRow; ++row)
             {
-                // check for cancelation periodically
+                // check for cancellation periodically
                 //if (progress && progress->isCanceled())
                 //    return false;
 
@@ -431,33 +437,36 @@ namespace
                 // radius; we will collect up to MaxSamples of these for each heightfield point.
                 static const unsigned Maxsamples = 4;
                 Samples samples;
+                const unsigned int geomNumComponents = geom->getNumComponents();
+                const GeometryCollection& geomColl = geom->getComponents();
 
-                for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
+                for (unsigned int geomIndex = 0; geomIndex < geomNumComponents; ++geomIndex)
                 {
-                    Widths w = widths[geomIndex];
-                    double innerRadius = w.lineWidth * 0.5;
-                    double outerRadius = innerRadius + w.bufferWidth;
-                    double outerRadius2 = outerRadius * outerRadius;
+                    const Widths w = widths[geomIndex];
+                    const double innerRadius = w.lineWidth * 0.5;
+                    const double outerRadius = innerRadius + w.bufferWidth;
+                    const double outerRadius2 = outerRadius * outerRadius;
 
-                    Geometry* component = geom->getComponents()[geomIndex];
+                    const Geometry* component = geomColl[geomIndex];
                     // Search for line segments.
                     ConstGeometryIterator giter(component);
                     while (giter.hasMore())
                     {
-                        const Geometry* part = giter.next();                        
+                        const Geometry* part = giter.next();
+                        const int partSize = part->size()-1;
 
-                        for (int i = 0; i < part->size()-1; ++i)
+                        for (int i = 0; i < partSize; ++i)
                         {
                             // AB is a candidate line segment:
                             const osg::Vec3d& A = (*part)[i];
                             const osg::Vec3d& B = (*part)[i+1];
 
-                            osg::Vec3d AB = B - A;    // current segment AB
+                            AB = B - A;    // current segment AB
 
                             double t;                 // parameter [0..1] on segment AB
                             double D2;                // shortest distance from point P to segment AB, squared
-                            double L2 = AB.length2(); // length (squared) of segment AB
-                            osg::Vec3d AP = P - A;    // vector from endpoint A to point P
+                            const double L2 = AB.length2(); // length (squared) of segment AB
+                            AP = P - A;    // vector from endpoint A to point P
 
                             if (L2 == 0.0)
                             {
@@ -484,7 +493,8 @@ namespace
                             {
                                 // see if P is a new sample.
                                 Sample* b;
-                                if (samples.size() < Maxsamples)
+                                const unsigned int samplesSize = samples.size();
+                                if (samplesSize < Maxsamples)
                                 {
                                     // If we haven't collected the maximum number of samples yet,
                                     // just add this to the list:
@@ -495,8 +505,8 @@ namespace
                                 {
                                     // If we are maxed out on samples, find the farthest one we have so far
                                     // and replace it if the new point is closer:
-                                    unsigned max_i = 0;
-                                    for (unsigned i=1; i<samples.size(); ++i)
+                                    unsigned int max_i = 0;
+                                    for (unsigned int i=1; i<samplesSize; ++i)
                                         if (samples[i].D2 > samples[max_i].D2)
                                             max_i = i;
 
@@ -533,12 +543,13 @@ namespace
                 // Now that we are done searching for line segments close to our point,
                 // we will collect the elevations at our sample points and use them to 
                 // create a new elevation value for our point.
-                if (samples.size() > 0)
+                const unsigned int samplesSize = samples.size();
+                if (samplesSize > 0)
                 {
                     // The original elevation at our point:
-                    float elevP = envelope->getElevation(P.x(), P.y());
+                    const float elevP = envelope->getElevation(P.x(), P.y());
                     
-                    for (unsigned i = 0; i < samples.size(); ++i)
+                    for (unsigned i = 0; i < samplesSize; ++i)
                     {
                         Sample& sample = samples[i];
 
@@ -546,7 +557,7 @@ namespace
 
                         // Blend factor. 0 = distance is less than or equal to the inner radius;
                         //               1 = distance is greater than or equal to the outer radius.
-                        double blend = clamp(
+                        const double blend = clamp(
                             (sample.D - sample.innerRadius) / (sample.outerRadius - sample.innerRadius),
                             0.0, 1.0);
                         
@@ -582,7 +593,7 @@ namespace
                     }
 
                     // Finally, combine our new elevation values and set the new value in the output.
-                    float finalElev = interpolateSamplesIDW(samples);
+                    const float finalElev = interpolateSamplesIDW(samples);
                     if (finalElev < FLT_MAX)
                         hf->setHeight(col, row, finalElev);
                     else
@@ -594,7 +605,7 @@ namespace
                 else if (fillAllPixels)
                 {
                     // No close segments were found, so just copy over the source data.
-                    float h = envelope->getElevation(P.x(), P.y());
+                    const float h = envelope->getElevation(P.x(), P.y());
                     hf->setHeight(col, row, h);
 
                     // Note: do not set wroteChanges to true.

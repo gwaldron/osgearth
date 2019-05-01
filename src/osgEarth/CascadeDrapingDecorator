@@ -34,7 +34,6 @@ namespace osgUtil {
     class CullVisitor;
 }
 namespace osgEarth {
-    class MapNode;
     class TerrainResources;
 }
 
@@ -72,6 +71,9 @@ namespace osgEarth { namespace Contrib
 
         //! Debugging method (used by osgearth_overlayviewer to visualize cascades)
         osg::Node* getDump();
+
+        //! Underlying object to track draped scene graphs
+        DrapingManager& getDrapingManager() { return _manager; }
 
     public: // osg::Node
 
@@ -141,8 +143,6 @@ namespace osgEarth { namespace Contrib
 
         // tracks drapable objects in the scene graph
         mutable DrapingManager _manager;
-        DrapingManager& getDrapingManager() { return _manager; }
-        friend class MapNode;
 
         osg::observer_ptr<TerrainResources> _resources;
         void reserveTextureImageUnit();

@@ -28,8 +28,6 @@
 
 #include <osgEarthSplat/SplatLayer>
 #include <osgEarthSplat/GroundCoverLayer>
-
-#include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarth/GDAL>
 
 #include <osgEarth/ExampleResources>

@@ -21,7 +21,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth { namespace Drivers { namespace RocksDBCache
+namespace osgEarth { namespace RocksDBCache
 {
     /**
      * This driver defers loading of the source data to the appropriate OSG plugin. You
@@ -54,4 +54,4 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
 
     REGISTER_OSGPLUGIN(osgearth_cache_rocksdb, RocksDBCacheDriver);
 
-} } } // namespace osgEarth::Drivers::RocksDBCache
+} } // namespace osgEarth::RocksDBCache

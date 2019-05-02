@@ -473,7 +473,7 @@ namespace osgEarth { namespace Symbology
 
     private:
         const Geometry* _next;
-        std::stack<const Geometry*> _stack;
+        std::stack<const Geometry*, std::vector<const Geometry*> > _stack;
         bool _traverseMulti;
         bool _traversePolyHoles;
 

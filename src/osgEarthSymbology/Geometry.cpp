@@ -1123,7 +1123,7 @@ void
 ConstGeometryIterator::fetchNext()
 {
     _next = 0L;
-    if ( _stack.size() == 0 )
+    if ( _stack.empty() )
         return;
 
     const Geometry* current = _stack.top();
@@ -1132,14 +1132,16 @@ ConstGeometryIterator::fetchNext()
     if ( current->getType() == Geometry::TYPE_MULTI && _traverseMulti )
     {
         const MultiGeometry* m = static_cast<const MultiGeometry*>(current);
-        for( GeometryCollection::const_iterator i = m->getComponents().begin(); i != m->getComponents().end(); ++i )
+        const GeometryCollection::const_iterator geomComponentsEnd = m->getComponents().end();
+        for( GeometryCollection::const_iterator i = m->getComponents().begin(); i != geomComponentsEnd; ++i )
             _stack.push( i->get() );
         fetchNext();
     }
     else if ( current->getType() == Geometry::TYPE_POLYGON && _traversePolyHoles )
     {
         const Polygon* p = static_cast<const Polygon*>(current);
-        for( RingCollection::const_iterator i = p->getHoles().begin(); i != p->getHoles().end(); ++i )
+        const RingCollection::const_iterator holeEnd = p->getHoles().end();
+        for( RingCollection::const_iterator i = p->getHoles().begin(); i != holeEnd; ++i )
             _stack.push( i->get() );
         _next = current;
     }

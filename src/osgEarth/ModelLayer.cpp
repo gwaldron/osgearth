@@ -348,7 +348,7 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
         return i->second.get();
 
     // need to create it.
-    osg::Node* node = 0L;
+    osg::ref_ptr<osg::Node> node = 0L;
 
     if ( _modelSource.valid() )
     {

@@ -940,7 +940,8 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // Create a view matrix that looks straight down at the horizon plane form the eyepoint.
     // This will be our view matrix for all RTT draping cameras.
     osg::Matrix rttView;
-    osg::Vec3d rttLook = -horizonPlane.getNormal();
+    osg::Vec3d rttLook = -ellipsoid->computeLocalUpVector(camEye.x(), camEye.y(), camEye.z());
+    rttLook.normalize();
     osg::Vec3d camLeft = camUp ^ camLook;
     osg::Vec3d rttUp = rttLook ^ camLeft;
     rttView.makeLookAt(camEye, camEye + rttLook, rttUp);

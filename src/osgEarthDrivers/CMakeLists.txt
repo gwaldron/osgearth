@@ -79,6 +79,7 @@ add_subdirectory(vdatum_egm96)
 add_subdirectory(viewpoints)
 add_subdirectory(vpb)
 add_subdirectory(wcs)
+add_subdirectory(webp)
 add_subdirectory(wms)
 add_subdirectory(xyz)
 

@@ -55,7 +55,7 @@ You can add layers to the map at any time::
         map->addLayer(layer);
     }
 
-    // Add an elevationlayer (SRTM from a local GeoTiff file)
+    // Add an elevation layer (SRTM from a local GeoTiff file)
     {
         GDALElevationLayer* layer = new GDALElevationLayer();
         layer->setName("SRTM");
@@ -83,17 +83,17 @@ Use the static ``get`` function::
     osg::Node* loadedModel = osgDB::readNodeFile("mymap.earth");
 
     // Find the MapNode
-    osgEarth::MapNode* mapNode = MapNode::get( loadedModel );
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::get( loadedModel );
 
     
 Once you have a reference to the ``MapNode``, you can get to the map::
 
     // Add an OpenStreetMap image source
-    TMSImageLayer* osmLayer = new TMSImageLayer();
+    XYZImageLayer* osmLayer = new XYZImageLayer();
     osmLayer->setName("OSM");
-    osmLayer->setURI("http://tile.openstreetmap.org/");
-    osmLayer->options().tmsType() = "google";
-    osmLayer->options().profile() = ProfileOptions("global-mercator");
+    osmLayer->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
+    osmLayer->setProfile(Profile::create("spherical-mercator"));
+    osmLayer->setAttribution("Copyright OpenStreetMap Contributors");
 
     mapNode->getMap()->addImageLayer( osmLayer );
 
@@ -105,16 +105,3 @@ You can also remove or re-order layers::
 
     // Move a layer to position 1 in the image stack
     mapNode->getMap()->moveImageLayer( layer, 1 );
-
-
-Working with Layers
--------------------
-
-The ``Map`` contains ``ImageLayer`` and ``ElevationLayer`` objects.
-These contain some properties that you can adjust at runtime.
-For example, you can toggle a layer on or off or adjust an ``ImageLayer`` opacity using the API::
-
-    ImageLayer* layer;
-    ...
-    layer->setOpacity( 0.5 );  // makes the layer partially transparent
-

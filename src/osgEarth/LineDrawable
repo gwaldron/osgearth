@@ -167,6 +167,8 @@ namespace osgEarth
         void setMode(GLenum mode);
         GLenum getMode() const { return _mode; }
 
+        osg::StateSet* getGPUStateSet() const { return _gpuStateSet.get(); }
+
     protected:
 
         //! destructor

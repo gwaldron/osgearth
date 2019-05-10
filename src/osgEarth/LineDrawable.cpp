@@ -507,22 +507,20 @@ LineDrawable::setLineSmooth(bool value)
 void
 LineDrawable::setColor(const osg::Vec4& color)
 {
-    if (_color != color)
-    {
-        initialize();
+    initialize();
 
-        _color = color;
-        if (_colors && !_colors->empty())
-        {
-            _colors->assign(_colors->size(), _color);
-            _colors->dirty();
-        }
+    _color = color;
+    if (_colors && !_colors->empty())
+    {
+        _colors->assign(_colors->size(), _color);
+        _colors->dirty();
     }
 }
 
 void
 LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
 {
+    bool dirty = false;
     if (_gpu)
     {
         if (_mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP)
@@ -530,25 +528,61 @@ LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
             if (vi == 0)
             {
                 for (unsigned i=0; i<2; ++i)
-                    (*_colors)[i] = color;
+                {
+                    if ((*_colors)[i] != color)
+                    {
+                        (*_colors)[i] = color;
+                        dirty = true;
+                    }
+                }
                 for (unsigned i=_colors->size()-2; i<_colors->size(); ++i)
-                    (*_colors)[i] = color;
+                {
+                    if ((*_colors)[i] != color)
+                    {
+                        (*_colors)[i] = color;
+                        dirty = true;
+                    }
+                }
             }
             else
+            {
                 for (unsigned i=vi*4-2; i<vi*4+2; ++i)
-                    (*_colors)[i] = color;
+                {
+                    if ((*_colors)[i] != color)
+                    {
+                        (*_colors)[i] = color;
+                        dirty = true;
+                    }
+                }
+            }
         }
-        else
+        else // GL_LINES
         {
-            (*_colors)[vi*2u] = color;
-            (*_colors)[vi*2u+1] = color;
+            if ((*_colors)[vi*2u] != color)
+            {
+                (*_colors)[vi*2u] = color;
+                dirty = true;
+            }
+            if ((*_colors)[vi*2u+1] != color)
+            {
+                (*_colors)[vi*2u+1] = color;
+                dirty = true;
+            }
         }
     }
     else
     {
-        (*_colors)[vi] = color;
+        if ((*_colors)[vi] != color)
+        {
+            (*_colors)[vi] = color;
+            dirty = true;
+        }
     }
-    _colors->dirty();
+
+    if (dirty)
+    {
+        _colors->dirty();
+    }
 }
 
 void

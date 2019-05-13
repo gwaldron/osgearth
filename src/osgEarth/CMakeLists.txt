@@ -82,6 +82,7 @@ SET(LIB_PUBLIC_HEADERS
     CacheBin
     CachePolicy
     CacheSeed
+    Callouts
     CameraUtils
     Capabilities
     CesiumIon
@@ -436,6 +437,7 @@ set(TARGET_SRC
     CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
+    Callouts.cpp
     CameraUtils.cpp
     Capabilities.cpp
     CesiumIon.cpp

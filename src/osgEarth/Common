@@ -40,7 +40,9 @@
 #define OE_MULTILINE(...) #__VA_ARGS__
 
 // expandable comment for macros (only works in MSVC)
-#ifdef _MSC_VER
+// TODO: Fails when using Qt - reevaluate later
+//#ifdef _MSC_VER
+#if 0
 #define OE_COMMENT(STR) / ## ** #STR * ## /
 #else
 #define OE_COMMENT(STR)

@@ -39,7 +39,7 @@ namespace osgEarth { namespace Support
 
     //! Serializable shader that supports samplers and uniforms
     //! in an earth file.
-    class ShaderOptions : public ConfigOptions
+    class OSGEARTH_EXPORT ShaderOptions : public ConfigOptions
     {
     public:
         META_ConfigOptions(osgEarth, ShaderOptions, ConfigOptions);

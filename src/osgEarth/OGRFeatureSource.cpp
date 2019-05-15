@@ -538,6 +538,13 @@ OGRFeatureSource::open()
             driverName = "ESRI Shapefile";
 
         _ogrDriverHandle = OGRGetDriverByName(driverName.c_str());
+        
+        if (_ogrDriverHandle == NULL)
+        {
+            return setStatus(
+                Status::ResourceUnavailable,
+                Stringify() << "OGR driver \"" << driverName << "\" not found");
+        }
 
         // attempt to open the dataset:
         int openMode = options().openWrite().isSet() && options().openWrite().value() ? 1 : 0;
@@ -687,6 +694,8 @@ OGRFeatureSource::open()
         return setStatus(
             Status::Error(Status::ResourceUnavailable, "Failed to establish a valid feature profile"));
     }
+
+    OE_INFO << LC << getName() << " : opened OK" << std::endl;
 
     return FeatureSource::open();
 }

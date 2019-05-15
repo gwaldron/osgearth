@@ -392,6 +392,8 @@ SET(LIB_PUBLIC_HEADERS
     PlaceNode
     RectangleNode
     TrackNode
+    
+    rtree.h
 )
 
 

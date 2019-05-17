@@ -63,8 +63,15 @@ namespace osgEarth { namespace Contrib
     public:
         CalloutManager();
 
-        void push(Callout*, osgUtil::CullVisitor&);
+        //! Reset the label positions based on the current view
+        void reset();
 
+        //! Whether to draw labels that are overlapping.
+        void setDrawObscuredItems(bool value);
+        bool getDrawObscuredItems() const;
+
+        //! Whether to reset the label positioning when the view changes
+        void setResetWhenViewChanges(bool value);
 
         // from osg::Drawable
         void drawImplementation(osg::RenderInfo& ri) const;
@@ -73,6 +80,12 @@ namespace osgEarth { namespace Contrib
         virtual ~CalloutManager() { }
 
     private:
+
+        //! Callout calls this to push itself onto the rendering queue
+        void push(Callout*, osgUtil::CullVisitor&);
+
+        friend class Callout;
+
         struct BBox
         {
             BBox() { }
@@ -93,15 +106,26 @@ namespace osgEarth { namespace Contrib
             BBox _vpBB;
             BBox _leaderBB;
             osg::Vec3d _offsetVector;     // offset in pixels at which to place the label
+            osg::Vec3d _bestVector;
             unsigned _leaderLineIndex;    // index of leader line vertex in line drawable
             bool _conflicted;
+            bool _moveRequested;
+
+            int _moveAttempts;
+            float _overlap;
+
+            osg::Vec3d _pos;
+            bool _posChanged;
 
             bool operator < (const CalloutRecord& rhs) const;
             void move(float dir);
             void realign();
+            void setAlpha(float a);
         };
 
         void sort(osg::NodeVisitor& nv);
+
+        void handleOverlap(CalloutRecord* lhs, const BBox& bb);
 
 #ifdef USE_RTREE
         typedef RTree<CalloutRecord*, float, 2> SpatialIndex;
@@ -114,10 +138,17 @@ namespace osgEarth { namespace Contrib
         Callouts _callouts;
         LineDrawable* _leaders;
         mutable bool _leadersDirty;
-        mutable SpatialIndex _index;
+        osg::Vec4f _leaderColor;
+        mutable SpatialIndex _labelIndex;
+        mutable SpatialIndex _leaderIndex;
         double _leaderLen;
         Callouts::iterator _walker;
         double _maxOverlap;
+        int _maxMoveAttempts;
+        bool _drawConflictedRecords;
+        bool _resetWhenViewChanges;
+        osg::Matrix _vpm;
+        bool _vpmChanged;
 
         struct SortCallback : public osg::NodeCallback
         {

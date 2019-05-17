@@ -20,6 +20,8 @@
 */
 #include <osgEarth/Callouts>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/Color>
+#include <osgEarth/GLUtils>
 #include <osg/Depth>
 #include <osgUtil/CullVisitor>
 
@@ -58,7 +60,12 @@ Callout::accept(osg::NodeVisitor& nv)
 //...................................................................
 
 CalloutManager::CalloutManager() :
-osg::Drawable()
+osg::Drawable(),
+_maxMoveAttempts(32),
+_leaderColor(Color::Yellow),
+_drawConflictedRecords(false),
+_resetWhenViewChanges(false),
+_vpmChanged(false)
 {
     setCullingActive(false);
     setDataVariance(osg::Object::DYNAMIC);
@@ -76,7 +83,9 @@ osg::Drawable()
     _leaders->setCullingActive(false);
     _leaders->setDataVariance(osg::Object::DYNAMIC);
     _leaders->setColor(osg::Vec4f(1, 1, 0, 1));
-    _leaders->setLineWidth(1.0f);
+    _leaders->setLineWidth(1.5f);
+    _leaders->setLineSmooth(true);
+    GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF|osg::StateAttribute::PROTECTED);
     _leadersDirty = false;
     _leaderLen = 40;
 
@@ -88,22 +97,51 @@ osg::Drawable()
     _maxOverlap = 0.0;
 }
 
+void
+CalloutManager::reset()
+{
+    _callouts.clear();
+    _walker = _callouts.end();
+}
+
+void
+CalloutManager::setDrawObscuredItems(bool value)
+{
+    _drawConflictedRecords = value;
+}
+
+bool
+CalloutManager::getDrawObscuredItems() const
+{
+    return _drawConflictedRecords;
+}
+
+void
+CalloutManager::setResetWhenViewChanges(bool value)
+{
+    _resetWhenViewChanges = value;
+}
 
 // cull traversal calls this to render a Callout
 void
 CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
 {
+    unsigned frame = nv.getFrameStamp()->getFrameNumber();
+
+    // Insert (or lookup) callout record:
     static CalloutRecord prototype;
     std::pair<Callouts::iterator, bool> result = _callouts.insert(CalloutTuple(node->getUID(), prototype));
     CalloutRecord& rec = result.first->second;
-    if (result.second) // new insertion
-    {
-        rec._node = node;
-        rec.realign();
-    }
+
+    // Whether the track was just added (or just came back form the dead):
+    bool isNew = 
+        (result.second == true) || 
+        (frame-rec._frame > 1);
+
+    // Update record based on node position/size:
     rec._textBB = node->getBoundingBox();
     rec._matrix = nv.getModelViewMatrix();
-    rec._frame = nv.getFrameStamp()->getFrameNumber();
+    rec._frame = frame;
 
     const osg::Viewport* vp = nv.getCurrentCamera()->getViewport();
 
@@ -115,6 +153,38 @@ CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
         osg::Matrix::translate(1, 1, 1) *
         osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
 
+    // track whether the position of the anchor point has changed since last time
+    rec._posChanged = rec._pos.x() != anchor.x() || rec._pos.y() != anchor.y();
+    rec._pos = anchor;
+
+    // If it's a new track initialize the offset based on its screen position.
+    // This forumula orients the label so its leader is pointing towards the
+    // center of the viewport.
+    if (isNew)
+    {
+        rec._node = node;
+        rec._offsetVector = anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
+        rec._offsetVector.normalize();
+        rec._bestVector = rec._offsetVector;
+        rec.realign();
+        rec._moveAttempts = 0;
+        rec._moveRequested = false;
+        rec._conflicted = false;
+        rec._overlap = 1.0f;
+        rec._posChanged = false;
+    }
+    else if (_resetWhenViewChanges && _vpmChanged)
+    {
+        rec._offsetVector = anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
+        rec._offsetVector.normalize();
+        rec._bestVector = rec._offsetVector;
+        rec.realign();
+        rec._moveAttempts = 0;
+        rec._moveRequested = false;
+        rec._overlap = 1.0f;
+    }
+
+    // create a leader line on demand
     if (rec._leaderLineIndex == INT_MAX)
     {
         rec._leaderLineIndex = _leaders->getNumVerts();
@@ -123,29 +193,69 @@ CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
         _leadersDirty = true;
     }
 
+    // calculate the viewport-space bounding box of the label
     osg::Vec3d labelpos = anchor + rec._offsetVector*_leaderLen;
     rec._vpBB.LL.set(labelpos.x() + rec._textBB.LL.x(), labelpos.y() + rec._textBB.LL.y());
     rec._vpBB.UR.set(labelpos.x() + rec._textBB.UR.x(), labelpos.y() + rec._textBB.UR.y());
 
+    // and update the modelview matrix
     rec._matrix->makeTranslate(labelpos);
 
+    // and update the leader line endpoints
     if (anchor != _leaders->getVertex(rec._leaderLineIndex))
     {
         _leaders->setVertex(rec._leaderLineIndex, anchor);
     }
-
     if (labelpos != _leaders->getVertex(rec._leaderLineIndex + 1))
     {
         _leaders->setVertex(rec._leaderLineIndex + 1, labelpos);
     }
 
+    // create the leader line bounding box
     rec._leaderBB.LL.set(osg::minimum(anchor.x(), labelpos.x()), osg::minimum(anchor.y(), labelpos.y()));
     rec._leaderBB.UR.set(osg::maximum(anchor.x(), labelpos.x()), osg::maximum(anchor.y(), labelpos.y()));
 
-    if (!rec._conflicted)
+    // and update the colors of the leader line
+    if (getDrawObscuredItems() || !rec._conflicted)
     {
-        _leaders->setColor(rec._leaderLineIndex, osg::Vec4f(1, 1, 1, 0.2));
-        _leaders->setColor(rec._leaderLineIndex + 1, osg::Vec4f(1, 1, 1, 0.8));
+        Color color = 
+            rec._node->getDrawMode() & osgText::Text::BOUNDINGBOX ?
+            rec._node->getBoundingBoxColor() :
+            _leaderColor;
+
+        _leaders->setColor(rec._leaderLineIndex,     color);
+        _leaders->setColor(rec._leaderLineIndex + 1, color);
+    }
+}
+
+void
+CalloutManager::handleOverlap(CalloutRecord* lhs, const BBox& bbox)
+{
+    float overlap = lhs->_vpBB.overlap(bbox); // 0..1
+
+    if (overlap > _maxOverlap) // allow for some overlap..
+    {
+        lhs->_conflicted = true;
+
+        // do we still have some attempts left to deconflict this callout?
+        if (lhs->_moveAttempts < _maxMoveAttempts)
+        {
+            // is the current overlap better than the best-so-far?
+            if (overlap < lhs->_overlap)
+            {
+                lhs->_overlap = overlap;
+                lhs->_bestVector = lhs->_offsetVector;
+            }
+            
+            lhs->_moveRequested = true;
+            //lhs->move(1);
+            //++lhs->_moveAttempts;
+        }
+        else
+        {
+            // ran out of move attempts.. accept the overlap.
+            lhs->_offsetVector = lhs->_bestVector;
+        }
     }
 }
 
@@ -155,8 +265,21 @@ CalloutManager::sort(osg::NodeVisitor& nv)
     if (_callouts.empty())
         return;
 
+    if (_resetWhenViewChanges)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        if (cv && cv->getCurrentCamera())
+        {
+            osg::Matrix VPM = cv->getCurrentCamera()->getViewMatrix() * (*cv->getProjectionMatrix());
+            _vpmChanged = VPM != _vpm;
+            _vpm = VPM;
+        }
+    }
+
 #ifdef USE_RTREE
-    _index.RemoveAll();
+    _labelIndex.RemoveAll();
+    _leaderIndex.RemoveAll();
+    //_index.RemoveAll();
 
     float a_min[2], a_max[2];
     float b_min[2], b_max[2];
@@ -181,32 +304,35 @@ CalloutManager::sort(osg::NodeVisitor& nv)
             b_min[0] = rec._leaderBB.LL.x(), b_min[1] = rec._leaderBB.LL.y();
             b_max[0] = rec._leaderBB.UR.x(), b_max[1] = rec._leaderBB.UR.y();
 
-            // does the label conflict with anything?
-            if (_index.Search(a_min, a_max, &hits, 1) > 0)
+            // does the label conflict with another label?
+            if (_labelIndex.Search(a_min, a_max, &hits, 1) > 0)
             {
-                CalloutRecord* rhs = (*hits.begin());
-                if ((rhs == NULL) || (rec._vpBB.overlap(rhs->_vpBB) > _maxOverlap))
-                {
-                    rec._conflicted = true;
-                }
+                handleOverlap(&rec, (*hits.begin())->_vpBB);
             }
+
+            // does the label conflict with another leader?
+            else if (_leaderIndex.Search(a_min, a_max, &hits, 1) > 0)
+            {
+                handleOverlap(&rec, (*hits.begin())->_leaderBB);
+            }
+
             else
             {
-                // does the leader line conflict with anything?
-                if (_index.Search(b_min, b_max, NULL, 1) > 0)
-                {
-                    rec._conflicted = true;
-                }
-                else
+                // If the track was conflicting but now is not, reset its state.
+                if (rec._conflicted)
                 {
                     rec._conflicted = false;
+                    rec._moveAttempts = 0;
+                    rec._moveRequested = false;
+                    rec._overlap = 1.0f;
                 }
             }
 
-            if (rec._conflicted == false)
+            // record the areas of both the label and the leader.
+            if (getDrawObscuredItems() || !rec._conflicted)
             {
-                _index.Insert(a_min, a_max, &rec);
-                _index.Insert(b_min, b_max, NULL);
+                _labelIndex.Insert(a_min, a_max, &rec);   // label
+                _leaderIndex.Insert(b_min, b_max, &rec);  // leader
             }
         }
     }
@@ -238,6 +364,7 @@ CalloutManager::sort(osg::NodeVisitor& nv)
     }
 #endif
 
+#if 1
     // Next, declutter incrementally
 
     if (_walker == _callouts.end())
@@ -250,9 +377,11 @@ CalloutManager::sort(osg::NodeVisitor& nv)
 
         if (frame - rec._frame <= 2)
         {
-            if (rec._conflicted == true)
+            if (rec._conflicted && rec._moveRequested)
             {
                 rec.move(1);
+                rec._moveAttempts++;
+                rec._moveRequested = false;
                 ++tries;
             }
             ++_walker;
@@ -270,6 +399,7 @@ CalloutManager::sort(osg::NodeVisitor& nv)
             ++_walker;
         }
     }
+#endif
 }
 
 void
@@ -284,12 +414,14 @@ CalloutManager::drawImplementation(osg::RenderInfo& ri) const
 #ifdef USE_RTREE
     bool appliedFirstState = false;
 
-#if 0
+#if 1
     // render all:
-    for (Callouts::const_iterator i = _Callouts.begin(); i != _Callouts.end(); ++i)
+    for (Callouts::const_iterator i = _callouts.begin(); i != _callouts.end(); ++i)
     {
-        const Callout* dec = &i->second;
-        if (dec->_frame < ri.getState()->getFrameStamp()->getFrameNumber())
+        const CalloutRecord* rec = &i->second;
+        if (rec->_frame < ri.getState()->getFrameStamp()->getFrameNumber())
+            continue;
+        if (rec->_conflicted && !getDrawObscuredItems())
             continue;
 #else
 
@@ -395,7 +527,12 @@ CalloutManager::CalloutRecord::CalloutRecord() :
     _frame(NULL),
     _leaderLineIndex(INT_MAX),
     _conflicted(false),
-    _offsetVector(0,1,0)
+    _offsetVector(0,1,0),
+    _bestVector(0,1,0),
+    _moveAttempts(0),
+    _moveRequested(false),
+    _overlap(1.0f),
+    _posChanged(true)
 {
     //nop
 }
@@ -411,10 +548,29 @@ void
 CalloutManager::CalloutRecord::move(float dir)
 {
     // rotate little more than 1/4 turn:
-    const double rotation = 1.7; //osg::PI / 32; //1.6;
+    const double rotation = osg::PI/16; //1.7; //osg::PI / 32; //1.6;
     const osg::Quat q(dir*rotation, osg::Vec3d(0, 0, 1));
     _offsetVector = q * _offsetVector;
     realign();
+}
+
+void
+CalloutManager::CalloutRecord::setAlpha(float a)
+{
+    osg::Vec4f c;
+
+    c = _node->getColor();
+    c.a() = a;
+    _node->setColor(c);
+
+    c = _node->getBoundingBoxColor();
+    c.a() = a;
+    _node->setBoundingBoxColor(c);
+
+    if (a < 1.0f)
+        _node->setDrawMode(_node->getDrawMode() &~ _node->BOUNDINGBOX);
+    else
+        _node->setDrawMode(_node->getDrawMode() | _node->BOUNDINGBOX);
 }
 
 void 

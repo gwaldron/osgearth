@@ -8,17 +8,54 @@
 #include <osgEarth/GLUtils>
 #include <osgText/Font>
 #include <osgEarth/Callouts>
+#include <osgEarth/Controls>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
+using namespace osgEarth::Util::Controls;
 
 struct App
 {
     CalloutManager* _cm;
     osg::ref_ptr<osgText::Font> _font;
     osg::ref_ptr<HorizonCullCallback> _horizonCull;
+    ButtonControl* _resetButton;
+    CheckBoxControl* _drawObscuredCheck;
+    CheckBoxControl* _resetWhenViewChangesCheck;
+
+    void resetPressed() {
+        _cm->reset();
+    }
+    void toggleDrawObscured() {
+        _cm->setDrawObscuredItems(_drawObscuredCheck->getValue());
+    }
+    void toggleResetWhenViewChanges() {
+        _cm->setResetWhenViewChanges(_resetWhenViewChangesCheck->getValue());
+    }
+
 };
+
+OE_UI_HANDLER(resetPressed);
+OE_UI_HANDLER(toggleDrawObscured);
+OE_UI_HANDLER(toggleResetWhenViewChanges);
+
+Control* makeUI(App& app)
+{
+    VBox* vbox = new VBox();
+    app._resetButton = vbox->addControl(new ButtonControl("Reset callouts", new resetPressed(app)));
+    {
+        HBox* hbox = vbox->addControl(new HBox());
+        app._drawObscuredCheck = hbox->addControl(new CheckBoxControl(app._cm->getDrawObscuredItems(), new toggleDrawObscured(app)));
+        hbox->addControl(new LabelControl("Draw obscured callouts"));
+    }
+    {
+        HBox* hbox = vbox->addControl(new HBox());
+        app._resetWhenViewChangesCheck = hbox->addControl(new CheckBoxControl(false, new toggleResetWhenViewChanges(app)));
+        hbox->addControl(new LabelControl("Reset when view changes"));
+    }
+    return vbox;
+}
 
 osg::Node* loadData(App& app)
 {
@@ -85,6 +122,8 @@ main(int argc, char** argv)
 
         MapNode::get(node)->addChild(app._cm);
         MapNode::get(node)->addChild(loadData(app));
+
+        ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
         viewer.setSceneData( node );
         viewer.run();

@@ -1310,41 +1310,26 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 void
 RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    if ( layer == 0L || layer->getEnabled() == false )
-        return;
-
-    //layer->addCallback( _elevationCallback.get() );
-
-    // only need to refresh is the elevation layer is visible.
-    if (layer->getVisible())
+    if (layer && layer->getEnabled() && layer->getVisible())
     {
         refresh();
     }
 }
 
 void
-RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
+RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layer)
 {
-    if ( layerRemoved->getEnabled() == false )
-        return;
-
-    //layerRemoved->removeCallback( _elevationCallback.get() );
-
     // only need to refresh is the elevation layer is visible.
-    if (layerRemoved->getVisible())
+    if (layer)
     {
         refresh();
     }
 }
 
 void
-RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layerMoved)
+RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layer)
 {
-    if (layerMoved->getEnabled() == false)
-        return;
-
-    // only need to refresh is the elevation layer is visible.
-    if (layerMoved->getVisible())
+    if (layer && layer->getEnabled() && layer->getVisible())
     {
         refresh();
     }

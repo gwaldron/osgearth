@@ -144,6 +144,13 @@ ElevationLayer::setVisible(bool value)
     setEnabled(value);
 }
 
+void
+ElevationLayer::setEnabled(bool value)
+{
+    VisibleLayer::setVisible(value);
+    VisibleLayer::setEnabled(value);
+}
+
 bool
 ElevationLayer::isOffset() const
 {

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
+#include <limits>
 
 namespace osgEarth
 {
@@ -78,7 +79,7 @@ public:
 public:
 
   RTree();
-  RTree(const RTree& other);
+  //RTree(const RTree& other);
   virtual ~RTree();
   
   /// Insert entry
@@ -477,11 +478,11 @@ RTREE_QUAL::RTree()
 }
 
 
-RTREE_TEMPLATE
-RTREE_QUAL::RTree(const RTree& other) : RTree()
-{
-	CopyRec(m_root, other.m_root);
-}
+//RTREE_TEMPLATE
+//RTREE_QUAL::RTree(const RTree& other) : RTree()
+//{
+//	CopyRec(m_root, other.m_root);
+//}
 
 
 RTREE_TEMPLATE

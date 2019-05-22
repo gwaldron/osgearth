@@ -251,6 +251,8 @@ GroundCover::createShader() const
             {
                 // otherwise, use the next available slot and increment.
                 texArrayIndex = nextTexArrayIndex++;
+                // update our map to include this new image
+                uniqueImages[bb._image.get()] = texArrayIndex;
             }
 
             billboardBuf

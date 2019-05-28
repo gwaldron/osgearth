@@ -21,6 +21,7 @@ SET(TARGET_COMMON_LIBRARIES
     osgEarthUtil
     osgEarthSymbology
     osgEarthAnnotation
+    stdc++
 )
 
 SET(TARGET_DEFAULT_PREFIX "application_")

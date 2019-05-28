@@ -47,7 +47,9 @@ namespace osgEarth { namespace Symbology
         void disposeGeometry(geos::geom::Geometry* input);
 
     protected:
-#if GEOS_VERSION_MAJOR >= 3 && GEOS_VERSION_MINOR >= 6
+#if GEOS_VERSION_MAJOR >= 3 && GEOS_VERSION_MINOR >= 7
+        geos::geom::GeometryFactory::Ptr _factory;
+#elif GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR == 6
         geos::geom::GeometryFactory::unique_ptr _factory;
 #else
         geos::geom::GeometryFactory* _factory;

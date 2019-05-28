@@ -58,6 +58,7 @@ InstanceSymbol::getConfig() const
     conf.addIfSet   ( "placement", "interval",  _placement, PLACEMENT_INTERVAL );
     conf.addIfSet   ( "placement", "random",    _placement, PLACEMENT_RANDOM );
     conf.addIfSet   ( "placement", "centroid",  _placement, PLACEMENT_CENTROID );
+    conf.addIfSet   ( "placement", "first",     _placement, PLACEMENT_FIRSTVERTEX );
     conf.addIfSet   ( "density", _density );
     conf.addIfSet   ( "random_seed", _randomSeed );
 
@@ -79,6 +80,7 @@ InstanceSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.getIfSet   ( "placement", "random",   _placement, PLACEMENT_RANDOM );
     conf.getIfSet   ( "placement", "centroid", _placement, PLACEMENT_CENTROID );
+    conf.getIfSet   ( "placement", "first",    _placement, PLACEMENT_FIRSTVERTEX );
     conf.getIfSet   ( "density", _density );
     conf.getIfSet   ( "random_seed", _randomSeed );
     

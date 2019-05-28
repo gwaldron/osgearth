@@ -305,6 +305,8 @@ Like icons, models are typically used for:
 |                         |    :random:   Place models randomly within the geometry, according |
 |                         |               to the ``model-density`` property.                   |
 |                         |    :centroid: Place a single model at the centroid of the geometry.|
+|                         |    :first:    Place a single model at the first vertex of the      |
+|                         |               geometry.                                            |
 +-------------------------+--------------------------------------------------------------------+
 | model-density           | For ``model-placement`` settings of ``interval`` or ``random``,    |
 |                         | this property is hint as to how many instances osgEarth should     |

@@ -35,7 +35,7 @@ FIND_PATH(CURL_INCLUDE_DIR curl.h curl/curl.h
 
 #Find the CURL release library
 FIND_LIBRARY(CURL_LIBRARY
-  NAMES curl curllib CURL libcurl
+  NAMES curl curllib CURL libcurl libcurl_imp
   PATHS
   ${THIRD_PARTY_DIR}/lib
   $ENV{CURL_DIR}
@@ -49,7 +49,7 @@ FIND_LIBRARY(CURL_LIBRARY
     PATH_SUFFIXES lib64 lib
 )
 FIND_LIBRARY(CURL_LIBRARY
-  NAMES curl CURL curllib libcurl
+  NAMES curl CURL curllib libcurl libcurl_imp
   PATHS
     ~/Library/Frameworks
     /Library/Frameworks

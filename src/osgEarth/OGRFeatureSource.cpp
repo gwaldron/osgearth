@@ -700,6 +700,90 @@ OGRFeatureSource::open()
     return FeatureSource::open();
 }
 
+const Status&
+OGRFeatureSource::create(const FeatureProfile* profile,
+                         const FeatureSchema& schema,
+                         const Geometry::Type& geometryType,
+                         const osgDB::Options* readOptions)
+{
+    setFeatureProfile(profile);
+
+    _schema = schema;
+
+    // Data source at a URL?
+    if (options().url().isSet())
+    {
+        _source = options().url()->full();
+
+        // ..inside a zip file?
+        if (osgEarth::endsWith(_source, ".zip", false) || _source.find(".zip/") != std::string::npos)
+        {
+            _source = Stringify() << "/vsizip/" << _source;
+        }
+    }
+    // ..or database connection?
+    else if (options().connection().isSet())
+    {
+        _source = options().connection().value();
+    }
+
+    // ..or inline geometry?
+    _geometry =
+        options().geometryConfig().isSet() ? parseGeometry(*options().geometryConfig()) :
+        options().geometryUrl().isSet() ? parseGeometryUrl(*options().geometryUrl(), readOptions) :
+        0L;
+
+    // If nothing was set, we're done
+    if (_source.empty() && !_geometry.valid())
+    {
+        setStatus(Status(Status::ConfigurationError, "No URL, connection, or inline geometry provided"));
+        return getStatus();
+    }
+
+    std::string driverName = options().ogrDriver().value();
+    if (driverName.empty())
+        driverName = "ESRI Shapefile";
+
+    _ogrDriverHandle = OGRGetDriverByName(driverName.c_str());
+
+    _dsHandle = OGR_Dr_CreateDataSource(_ogrDriverHandle, _source.c_str(), NULL);
+
+    if (!_dsHandle)
+    {
+        std::string msg = CPLGetLastErrorMsg();
+        setStatus(Status(Status::ResourceUnavailable, Stringify() << "Failed to create \"" << _source << "\" ... " << msg));
+        return getStatus();
+    }
+
+    OGRwkbGeometryType ogrGeomType = OgrUtils::getOGRGeometryType(geometryType);
+
+    OGRSpatialReferenceH ogrSRS = profile->getSRS()->getHandle();
+
+    _layerHandle = OGR_DS_CreateLayer(_dsHandle, "", ogrSRS, ogrGeomType, NULL);
+
+    if (!_layerHandle)
+    {
+        setStatus(Status(Status::ResourceUnavailable, Stringify() << "Failed to create layer \"" << options().layer().get() << "\" from \"" << _source << "\""));
+        return getStatus();
+    }
+
+    for (FeatureSchema::const_iterator i = _schema.begin(); i != _schema.end(); ++i)
+    {
+        OGRFieldType type =
+            i->second == ATTRTYPE_DOUBLE ? OFTReal :
+            i->second == ATTRTYPE_INT ? OFTInteger :
+            OFTString;
+        OGRFieldDefnH fdef = OGR_Fld_Create(i->first.c_str(), type);
+        OGR_L_CreateField(_layerHandle, fdef, TRUE);
+    }
+
+    _featureCount = 0;
+
+    _geometryType = geometryType;
+
+    return getStatus();
+}
+
 FeatureCursor*
 OGRFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {

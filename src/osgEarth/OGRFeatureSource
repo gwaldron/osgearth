@@ -116,6 +116,12 @@ namespace osgEarth
 
         virtual osgEarth::Geometry::Type getGeometryType() const;
 
+        const Status& create(
+                const FeatureProfile* profile,
+                const FeatureSchema& schema,
+                const Geometry::Type& geometryType,
+                const osgDB::Options* readOptions);
+
     protected:
 
         virtual ~OGRFeatureSource();

@@ -48,7 +48,7 @@ _node(node), _requestId(0u)
 namespace osgEarth { namespace Support
 {
     // internal class
-    class AsyncNode : public osg::Referenced
+    class AsyncNode : public osg::Group
     {
     public:
         AsyncNode()
@@ -62,7 +62,6 @@ namespace osgEarth { namespace Support
 
         bool _needy;
         unsigned _id;
-        osg::ref_ptr<osg::Node> _node;
         osg::ref_ptr<AsyncFunction> _callback;
         std::string _pseudoloaderFilename;
         double _lastTimeWeMet;
@@ -72,14 +71,11 @@ namespace osgEarth { namespace Support
         osg::ref_ptr<osg::Referenced> _internalHandle;
         osg::ref_ptr<osgDB::Options> _options;
 
-        void accept(osg::NodeVisitor& nv) { if (_node) _node->accept(nv); }
-
-        //! Use the node's bound if we have it, or a preset
-        //! bound if we don't.
-        const osg::BoundingSphere& getBound() const
+        //! Use the node's bound if we have it, or a preset bound if we don't.
+        osg::BoundingSphere computeBound() const
         {
-            if (_node.valid())
-                return _node->getBound();
+            if (getNumChildren() > 0)
+                return osg::Group::computeBound();
             else
                 return _bound;
         }
@@ -138,32 +134,32 @@ AsyncLOD::setRadius(double radius)
 void
 AsyncLOD::addChild(AsyncFunction* callback, float minValue, float maxValue)
 {
-    _children.push_back(AsyncNode());
-    AsyncNode& child = _children.back();
-    child._callback = callback;
-    child._minValue = minValue;
-    child._maxValue = maxValue;
-    child._lastTimeWeMet = DBL_MAX;
-    child._options = Registry::instance()->cloneOrCreateOptions(_readOptions.get());
-    OptionsData<AsyncFunction>::set(child._options.get(), TAG_ASYNC_CALLBACK, callback);
-    _lookup[child._id] = &child;
+    AsyncNode* child = new AsyncNode();
+    osg::Group::addChild(child);
+    child->_callback = callback;
+    child->_minValue = minValue;
+    child->_maxValue = maxValue;
+    child->_lastTimeWeMet = DBL_MAX;
+    child->_options = Registry::instance()->cloneOrCreateOptions(_readOptions.get());
+    OptionsData<AsyncFunction>::set(child->_options.get(), TAG_ASYNC_CALLBACK, callback);
+    _lookup[child->_id] = child;
 }
 
 void
 AsyncLOD::addChild(osg::Node* node, float minValue, float maxValue)
 {
-    _children.push_back(AsyncNode());
-    AsyncNode& child = _children.back();
-    child._node = node;
-    child._minValue = minValue;
-    child._maxValue = maxValue;
-    child._lastTimeWeMet = DBL_MAX;
+    AsyncNode* child = new AsyncNode();
+    osg::Group::addChild(child);
+    child->addChild(node);
+    child->_minValue = minValue;
+    child->_maxValue = maxValue;
+    child->_lastTimeWeMet = DBL_MAX;
 }
 
 void
 AsyncLOD::clear()
 {
-    _children.clear();
+    osg::Group::removeChildren(0, getNumChildren());
     _mutex.lock();
     _lookup.clear();
     _mutex.unlock();
@@ -188,7 +184,8 @@ AsyncLOD::addChild(osg::Node* node)
             // if the operation returned a node, install it now
             if (ar->_node.valid())
             {
-                async->_node = ar->_node.get();
+                async->addChild(ar->_node.get());
+                dirtyBound();
             }
 
             // node is no longer needy. Yay!
@@ -196,6 +193,10 @@ AsyncLOD::addChild(osg::Node* node)
         }
         _mutex.unlock();
         return true;
+    }
+    else
+    {
+        OE_WARN << LC << "API error: Illegal invocation of AsyncLOD::addChild(osg::Node*)" << std::endl;
     }
     return false;
 }
@@ -213,16 +214,10 @@ AsyncLOD::computeBound() const
     }
     else
     {
-        osg::BoundingSphere bs;
-        for (std::vector<AsyncNode>::const_iterator i = _children.begin();
-            i != _children.end();
-            ++i)
-        {
-            bs.expandBy(i->getBound());
-        }
-        return bs;
+        return osg::Group::computeBound();
     }
 }
+
 void
 AsyncLOD::traverse(osg::NodeVisitor& nv)
 {
@@ -235,44 +230,50 @@ AsyncLOD::traverse(osg::NodeVisitor& nv)
         AsyncNode* lastNeedyChild = 0L;
 
         // visit each child:
-        for (std::vector<AsyncNode>::iterator i = _children.begin(); i != _children.end(); ++i)
+        for(unsigned i=0; i<getNumChildren(); ++i)
         {
-            AsyncNode& child = *i;
-
-            // is the child visible?
-            if (isVisible(child, nv))
+            AsyncNode* child = dynamic_cast<AsyncNode*>(getChild(i));
+            if (child)
             {
-                // if so, update its timestamp
-                child._lastTimeWeMet = nv.getFrameStamp()->getReferenceTime();
-
-                // if this child has a live node, traverse it if we're in 
-                // accumulate mode (which means everything loaded so far is visible)
-                if (child._node.valid())
+                // is the child visible?
+                if (isVisible(*child, nv))
                 {
-                    lastHealthyChild = &child;
+                    // if so, update its timestamp
+                    child->_lastTimeWeMet = nv.getFrameStamp()->getReferenceTime();
 
-                    // depending on the policy, traverse the live node now.
-                    // In "replace" mode, we have to want and see because we only
-                    // want to display the last healthy node.
-                    if (_policy == POLICY_ACCUMULATE || _policy == POLICY_INDEPENDENT)
+                    // if this child has a live node, traverse it if we're in 
+                    // accumulate mode (which means everything loaded so far is visible)
+                    if (child->getNumChildren() > 0)
                     {
-                        child._node->accept(nv);
+                        lastHealthyChild = child;
+
+                        // depending on the policy, traverse the live node now.
+                        // In "replace" mode, we have to want and see because we only
+                        // want to display the last healthy node.
+                        if (_policy == POLICY_ACCUMULATE || _policy == POLICY_INDEPENDENT)
+                        {
+                            child->accept(nv);
+                        }
+                    }
+
+                    // if the child does NOT have a node (but wants one)
+                    // put in a request. If we're in accumulate or refine mode,
+                    // we'll defer this request until after we have checked on
+                    // all children.
+                    else if (child->_needy)
+                    {
+                        lastNeedyChild = child;
+
+                        if (_policy == POLICY_INDEPENDENT)
+                        {
+                            ask(*child, nv);
+                        }
                     }
                 }
-
-                // if the child does NOT have a node (but wants one)
-                // put in a request. If we're in accumulate or refine mode,
-                // we'll defer this request until after we have checked on
-                // all children.
-                else if (child._needy)
-                {
-                    lastNeedyChild = &child;
-
-                    if (_policy == POLICY_INDEPENDENT)
-                    {
-                        ask(child, nv);
-                    }
-                }
+            }
+            else
+            {
+                getChild(i)->accept(nv);
             }
         }
 
@@ -294,13 +295,7 @@ AsyncLOD::traverse(osg::NodeVisitor& nv)
     // Update, ComputeBound, CompileGLObjects, etc.
     else if (nv.getTraversalMode() == nv.TRAVERSE_ALL_CHILDREN)
     {
-        for (std::vector<AsyncNode>::iterator i = _children.begin(); i != _children.end(); ++i)
-        {
-            if (i->_node.valid())
-            {
-                i->_node->accept(nv);
-            }
-        }
+        osg::Group::traverse(nv);
     }
 }
 
@@ -371,7 +366,10 @@ namespace osgEarth { namespace Support
 
             osg::ref_ptr<AsyncFunction> callback = OptionsData<AsyncFunction>::get(options, TAG_ASYNC_CALLBACK);
             if (!callback.valid())
+            {
+                OE_WARN << "Callback missing" << std::endl;
                 return ReadResult::FILE_NOT_FOUND;
+            }
 
             unsigned id = atoi(osgDB::getNameLessExtension(location).c_str());
             osgEarth::ReadResult r = (*callback.get())();

@@ -139,9 +139,6 @@ namespace osgEarth { namespace Support
 
     private:
 
-        // collection of child nodes (potential or real)
-        std::vector<AsyncNode> _children;
-
         // internal, used to tell the pager where to attach newly loaded nodes
         osg::NodePath _nodePath;
 

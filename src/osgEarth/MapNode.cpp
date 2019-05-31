@@ -474,11 +474,14 @@ MapNode::open()
 
 MapNode::~MapNode()
 {
-    // Remove this node's map callback first:
-    _map->removeMapCallback( _mapCallback.get() );
+    if (_mapCallback.valid())
+    {
+        // Remove this node's map callback first:
+        _map->removeMapCallback( _mapCallback.get() );
 
-    // Then invoke "removed" on all the layers in a batch.
-    _mapCallback->invokeOnLayerRemoved(_map.get());
+        // Then invoke "removed" on all the layers in a batch.
+        _mapCallback->invokeOnLayerRemoved(_map.get());
+    }
 
     this->clearExtensions();
 

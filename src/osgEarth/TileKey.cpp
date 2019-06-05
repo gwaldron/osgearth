@@ -20,6 +20,8 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/StringUtils>
 
+#include <iostream>
+
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -47,7 +49,11 @@ TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, con
 
         _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
 
-        _key = Stringify() << _lod << "/" << _x << "/" << _y;
+        // Faster than the Stringify() stringstream. However, I am assuming
+        // 50 characters for the keyChars. The max I've seen is 19 characters.
+        // Tilekey also gets called a lot for some reason.
+        sprintf(_keyChars, "%u/%u/%u", _lod, _x, _y);
+        _key = _keyChars;
     }
     else
     {
@@ -64,7 +70,7 @@ _y(rhs._y),
 _profile( rhs._profile.get() ),
 _extent( rhs._extent )
 {
-    //NOP
+    memset(_keyChars, 0, sizeof(_keyChars));
 }
 
 const Profile*

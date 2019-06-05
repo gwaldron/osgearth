@@ -38,7 +38,7 @@ namespace osgEarth
         /**
          * Constructs an invalid TileKey.
          */
-        TileKey() : _lod(0), _x(0), _y(0) { }
+        TileKey() : _lod(0), _x(0), _y(0) { memset(_keyChars, 0, sizeof(_keyChars)); }
 
         /**
          * Creates a new TileKey with the given tile xy at the specified level of detail
@@ -190,6 +190,7 @@ namespace osgEarth
             unsigned minimumLOD =0) const;
 
     protected:
+        char _keyChars[50];
         std::string _key;
         unsigned int _lod;
         unsigned int _x;

@@ -20,7 +20,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/StringUtils>
 
-#include <iostream>
+#include <stdio.h>
 
 using namespace osgEarth;
 

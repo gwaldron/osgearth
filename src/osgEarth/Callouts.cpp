@@ -65,6 +65,7 @@ _maxMoveAttempts(32),
 _leaderColor(Color::Yellow),
 _drawConflictedRecords(false),
 _resetWhenViewChanges(false),
+_declutterIncrementally(false),
 _vpmChanged(false)
 {
     setCullingActive(false);
@@ -122,6 +123,12 @@ CalloutManager::setResetWhenViewChanges(bool value)
     _resetWhenViewChanges = value;
 }
 
+void
+CalloutManager::setAggressiveSorting(bool value)
+{
+    _declutterIncrementally = !value;
+}
+
 // cull traversal calls this to render a Callout
 void
 CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
@@ -153,10 +160,6 @@ CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
         osg::Matrix::translate(1, 1, 1) *
         osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
 
-    // track whether the position of the anchor point has changed since last time
-    rec._posChanged = rec._pos.x() != anchor.x() || rec._pos.y() != anchor.y();
-    rec._pos = anchor;
-
     // If it's a new track initialize the offset based on its screen position.
     // This forumula orients the label so its leader is pointing towards the
     // center of the viewport.
@@ -171,7 +174,6 @@ CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
         rec._moveRequested = false;
         rec._conflicted = false;
         rec._overlap = 1.0f;
-        rec._posChanged = false;
     }
     else if (_resetWhenViewChanges && _vpmChanged)
     {
@@ -216,7 +218,8 @@ CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
     rec._leaderBB.UR.set(osg::maximum(anchor.x(), labelpos.x()), osg::maximum(anchor.y(), labelpos.y()));
 
     // and update the colors of the leader line
-    if (getDrawObscuredItems() || !rec._conflicted)
+    if (!rec._conflicted ||
+        (getDrawObscuredItems() && rec._moveAttempts == 0u)) //|| !rec._conflicted)
     {
         Color color = 
             rec._node->getDrawMode() & osgText::Text::BOUNDINGBOX ?
@@ -248,8 +251,6 @@ CalloutManager::handleOverlap(CalloutRecord* lhs, const BBox& bbox)
             }
             
             lhs->_moveRequested = true;
-            //lhs->move(1);
-            //++lhs->_moveAttempts;
         }
         else
         {
@@ -363,43 +364,81 @@ CalloutManager::sort(osg::NodeVisitor& nv)
         }
     }
 #endif
+    _movesThisFrame = 0u;
 
-#if 1
-    // Next, declutter incrementally
-
-    if (_walker == _callouts.end())
-        _walker = _callouts.begin();
-
-    const int triesPerFrame = 10;
-    for (int tries = 0; tries < triesPerFrame && _walker != _callouts.end(); )
+    if (_declutterIncrementally)
     {
-        CalloutRecord& rec = _walker->second;
+        if (_walker == _callouts.end())
+            _walker = _callouts.begin();
 
-        if (frame - rec._frame <= 2)
+        const int triesPerFrame = 10;
+        for (int tries = 0; tries < triesPerFrame && _walker != _callouts.end(); )
         {
-            if (rec._conflicted && rec._moveRequested)
+            CalloutRecord& rec = _walker->second;
+
+            if (frame - rec._frame <= 2)
             {
-                rec.move(1);
-                rec._moveAttempts++;
-                rec._moveRequested = false;
-                ++tries;
+                if (rec._conflicted && rec._moveRequested)
+                {
+                    rec.move(1);
+                    rec._moveAttempts++;
+                    rec._moveRequested = false;
+                    tries++;
+                    _movesThisFrame++;
+                }
+                ++_walker;
             }
-            ++_walker;
-        }
 
-        else if (frame - rec._frame > 5 * 60 * 60) // expire after 5 minutes
-        {
-            Callouts::iterator temp = _walker;
-            ++_walker;
-            _callouts.erase(temp);
-        }
+            else if (frame - rec._frame > 5 * 60 * 60) // expire after 5 minutes
+            {
+                Callouts::iterator temp = _walker;
+                ++_walker;
+                _callouts.erase(temp);
+            }
 
-        else
-        {
-            ++_walker;
+            else
+            {
+                ++_walker;
+            }
         }
     }
-#endif
+
+    else
+    {
+        // declutter all callouts each frame
+        for (Callouts::reverse_iterator i = _callouts.rbegin();
+            i != _callouts.rend();
+            )
+        {
+            CalloutRecord& rec = i->second;
+
+            if (frame - rec._frame <= 2)
+            {
+                if (rec._conflicted && rec._moveRequested)
+                {
+                    rec.move(1);
+                    rec._moveAttempts++;
+                    rec._moveRequested = false;
+                    _movesThisFrame++;
+                }
+                ++i;
+            }
+
+            else if (frame - rec._frame > 5 * 60 * 60) // expire after 5 minutes
+            {
+                ++i;
+                _callouts.erase(i.base());
+                //Callouts::reverse_iterator temp = i;
+                //++i;
+                //_callouts.erase(temp);
+            }
+
+            else
+            {
+                ++i;
+            }
+        }
+    }
 }
 
 void
@@ -419,10 +458,25 @@ CalloutManager::drawImplementation(osg::RenderInfo& ri) const
     for (Callouts::const_iterator i = _callouts.begin(); i != _callouts.end(); ++i)
     {
         const CalloutRecord* rec = &i->second;
+        
+        // not passing cull? skip
         if (rec->_frame < ri.getState()->getFrameStamp()->getFrameNumber())
             continue;
-        if (rec->_conflicted && !getDrawObscuredItems())
-            continue;
+
+        // is this callout currently conflicting?
+        if (rec->_conflicted)
+        {
+            // skip if obscured:
+            if (!getDrawObscuredItems())
+                continue;
+
+            // skip if not stuck yet:
+            if (_movesThisFrame > 0u)
+                continue;
+        }
+
+        //if (rec->_conflicted && (!getDrawObscuredItems() || _movesThisFrame>0u))
+        //    continue;
 #else
 
     // render no-conflict
@@ -491,6 +545,16 @@ CalloutManager::drawImplementation(osg::RenderInfo& ri) const
     _leaders->setColor(osg::Vec4f(0, 0, 0, 0));
 }
 
+bool
+CalloutManager::isStuck(const CalloutRecord* rec) const
+{
+    // true if the record is conflicted but has reached its
+    // maximum allowable move attempts.
+    return
+        rec->_conflicted &&
+        rec->_moveAttempts >= _maxMoveAttempts;
+}
+
 
 CalloutManager::BBox::BBox(const osg::BoundingBox& bbox) :
 LL(bbox.xMin(), bbox.yMin()),
@@ -531,8 +595,7 @@ CalloutManager::CalloutRecord::CalloutRecord() :
     _bestVector(0,1,0),
     _moveAttempts(0),
     _moveRequested(false),
-    _overlap(1.0f),
-    _posChanged(true)
+    _overlap(1.0f)
 {
     //nop
 }

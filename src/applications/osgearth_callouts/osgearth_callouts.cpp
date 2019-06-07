@@ -23,6 +23,7 @@ struct App
     ButtonControl* _resetButton;
     CheckBoxControl* _drawObscuredCheck;
     CheckBoxControl* _resetWhenViewChangesCheck;
+    CheckBoxControl* _aggressiveSortingCheck;
 
     void resetPressed() {
         _cm->reset();
@@ -33,12 +34,16 @@ struct App
     void toggleResetWhenViewChanges() {
         _cm->setResetWhenViewChanges(_resetWhenViewChangesCheck->getValue());
     }
+    void toggleAggressiveSorting() {
+        _cm->setAggressiveSorting(_aggressiveSortingCheck->getValue());
+    }
 
 };
 
 OE_UI_HANDLER(resetPressed);
 OE_UI_HANDLER(toggleDrawObscured);
 OE_UI_HANDLER(toggleResetWhenViewChanges);
+OE_UI_HANDLER(toggleAggressiveSorting);
 
 Control* makeUI(App& app)
 {
@@ -53,6 +58,11 @@ Control* makeUI(App& app)
         HBox* hbox = vbox->addControl(new HBox());
         app._resetWhenViewChangesCheck = hbox->addControl(new CheckBoxControl(false, new toggleResetWhenViewChanges(app)));
         hbox->addControl(new LabelControl("Reset when view changes"));
+    }
+    {
+        HBox* hbox = vbox->addControl(new HBox());
+        app._aggressiveSortingCheck = hbox->addControl(new CheckBoxControl(true, new toggleAggressiveSorting(app)));
+        hbox->addControl(new LabelControl("Declutter aggressively"));
     }
     return vbox;
 }

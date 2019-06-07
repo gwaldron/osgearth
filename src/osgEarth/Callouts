@@ -73,6 +73,10 @@ namespace osgEarth { namespace Contrib
         //! Whether to reset the label positioning when the view changes
         void setResetWhenViewChanges(bool value);
 
+        //! Whether decluttering should be aggressive, thereby sorting
+        //! faster but using more resources
+        void setAggressiveSorting(bool value);
+
         // from osg::Drawable
         void drawImplementation(osg::RenderInfo& ri) const;
 
@@ -114,9 +118,6 @@ namespace osgEarth { namespace Contrib
             int _moveAttempts;
             float _overlap;
 
-            osg::Vec3d _pos;
-            bool _posChanged;
-
             bool operator < (const CalloutRecord& rhs) const;
             void move(float dir);
             void realign();
@@ -126,6 +127,8 @@ namespace osgEarth { namespace Contrib
         void sort(osg::NodeVisitor& nv);
 
         void handleOverlap(CalloutRecord* lhs, const BBox& bb);
+
+        bool isStuck(const CalloutRecord*) const;
 
 #ifdef USE_RTREE
         typedef RTree<CalloutRecord*, float, 2> SpatialIndex;
@@ -147,8 +150,10 @@ namespace osgEarth { namespace Contrib
         int _maxMoveAttempts;
         bool _drawConflictedRecords;
         bool _resetWhenViewChanges;
+        bool _declutterIncrementally;
         osg::Matrix _vpm;
         bool _vpmChanged;
+        unsigned _movesThisFrame;
 
         struct SortCallback : public osg::NodeCallback
         {

@@ -960,12 +960,14 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
             osg::Vec3 normal_sum(0,0,0);
             unsigned normal_count = 0u;
+            int contenderSize = contenders.size();
 
-            for(int i=0; i<contenders.size() && resolvedIndex<0; ++i)
+            for(int i=0; i<contenderSize && resolvedIndex<0; ++i)
             {
-                ElevationLayer* layer = contenders[i].layer.get();                
-                TileKey& contenderKey = contenders[i].key;
-                int index = contenders[i].index;
+                LayerData& currContend = contenders[i];
+                ElevationLayer* layer = currContend.layer.get();
+                TileKey& contenderKey = currContend.key;
+                int index = currContend.index;
 
                 // If there is a border, the edge points may not fall within the key extents 
                 // and we may need to fetch a neighboring key.

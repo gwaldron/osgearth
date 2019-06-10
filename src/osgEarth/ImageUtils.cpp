@@ -1197,11 +1197,12 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
         unsigned char* pDstData = result->data();
         int srcIndex = 0;
         int dstIndex = 0;
+        const int numPixels = image->t()*image->s()*image->r() - 1;
 
         // Convert all pixels except last one by reading 32bits chunks
-        for (int i=0; i<image->t()*image->s()*image->r()-1; i++)
+        for (int i=0; i<numPixels; ++i)
         {
-            unsigned int srcValue = *((const unsigned int*) (pSrcData + srcIndex)) | 0xFF000000;
+            const unsigned int srcValue = *((const unsigned int*) (pSrcData + srcIndex)) | 0xFF000000;
             *((unsigned int*) (pDstData + dstIndex)) = srcValue;
 
             srcIndex += 3;

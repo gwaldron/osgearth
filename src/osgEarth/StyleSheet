@@ -24,41 +24,57 @@
 #include <osgEarth/StyleSelector>
 #include <osgEarth/Skins>
 #include <osgEarth/ResourceLibrary>
+#include <osgEarth/Layer>
 
 namespace osgEarth
 {
+    typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
+
     /**
      * A complete definition of style information.
      */
-    class OSGEARTH_EXPORT StyleSheet : public osg::Referenced
+    class OSGEARTH_EXPORT StyleSheet : public Layer
     {
     public:
-      /**
-       * A simple representation of a script used locally
-       */
-      struct ScriptDef : osg::Referenced
-      {
-          ScriptDef() { }
-          ScriptDef(const std::string& code, const std::string& language="javascript", const std::string& name="") :
-            code(code), language(language), name(name) { }
+        // Simple representation of a script used locally
+        struct ScriptDef : osg::Referenced
+        {
+            ScriptDef() { }
+            ScriptDef(const std::string& code, const std::string& language = "javascript", const std::string& name = "") :
+                code(code), language(language), name(name) { }
 
-        std::string code;
-        std::string language;
-        std::string name;
-        std::string profile;
-        optional<URI> uri;
-      };
+            std::string code;
+            std::string language;
+            std::string name;
+            std::string profile;
+            optional<URI> uri;
+        };
 
     public:
-        /** Constructs an empty style sheet. */
-        StyleSheet();
+        class OSGEARTH_EXPORT Options : public Layer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, Layer::Options);
+            StyleMap& styles() { return _styles; }
+            const StyleMap& styles() const { return _styles; }
+            StyleSelectorList& selectors() { return _selectors; }
+            const StyleSelectorList& selectors() const { return _selectors; }
+            osg::ref_ptr<ScriptDef>& script() { return _script; }
+            const osg::ref_ptr<ScriptDef>& script() const { return _script; }
+            ResourceLibraries& libraries() { return _libraries; }
+            const ResourceLibraries& libraries() const { return _libraries; }
 
-        /** Constructs a new style sheet */
-        StyleSheet( const Config& conf );
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+            StyleMap _styles;
+            StyleSelectorList _selectors;
+            osg::ref_ptr<ScriptDef> _script;
+            ResourceLibraries _libraries;
+        };
 
-        /** Optional name of the style sheet */
-        optional<std::string>& name() { return _name; }
-        const optional<std::string>& name() const { return _name; }
+    public:
+        META_Layer(osgEarth, StyleSheet, Options, Layer, StyleSheet);
 
         /** Gets the context for relative path resolution */
         const URIContext& uriContext() const { return _uriContext; }
@@ -80,13 +96,13 @@ namespace osgEarth
         const Style* getDefaultStyle() const;
 
         /** Get access to styles for manual configuration */
-        StyleMap& styles() { return _styles; }
-        const StyleMap& styles() const { return _styles; }
+        StyleMap& getStyles();
+        const StyleMap& getStyles() const;
 
         /** Selectors pick a style from the sheet based on some criteria. */
-        StyleSelectorList& selectors() { return _selectors; }
-        const StyleSelectorList& selectors() const { return _selectors; }
-        const StyleSelector* getSelector( const std::string& name ) const;
+        StyleSelectorList& getSelectors();
+        const StyleSelectorList& getSelectors() const;
+        const StyleSelector* getSelector(const std::string& name) const;
 
         /** Adds a resource library. */
         void addResourceLibrary( ResourceLibrary* library );
@@ -99,33 +115,16 @@ namespace osgEarth
 
         /** Script accessors */
         void setScript( ScriptDef* script );
-        ScriptDef* script() const { return _script.get(); }
-
-    public: // serialization functions
-
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        ScriptDef* getScript() const;
 
     protected:
-        optional<std::string>        _name;
         URIContext                   _uriContext;
-        osg::ref_ptr<ScriptDef>      _script;
-        StyleSelectorList            _selectors;
-        StyleMap                     _styles;
         Style                        _emptyStyle;
-        
-        typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
-        ResourceLibraries          _resLibs;
         Threading::ReadWriteMutex  _resLibsMutex;
-
     };
-
-    namespace Symbology {
-        typedef osgEarth::StyleSheet StyleSheet;
-    }
 
 } // namespace osgEarth
 
-//OSGEARTH_SPECIALIZE_REF_CONFIG(osgEarth::StyleSheet);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::StyleSheet::Options);
 
 #endif // OSGEARTHSYMBOLOGY_STYLE_SHEET_H

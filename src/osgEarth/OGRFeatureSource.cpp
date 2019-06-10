@@ -402,7 +402,7 @@ OGRFeatureSource::Options::fromConfig(const Config& conf)
 
 //........................................................................
 
-REGISTER_OSGEARTH_LAYER(OGRFeatures, OGRFeatureSource);
+REGISTER_OSGEARTH_LAYER(ogrfeatures, OGRFeatureSource);
 
 OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(OGRFeatureSource, std::string, Connection, connection);

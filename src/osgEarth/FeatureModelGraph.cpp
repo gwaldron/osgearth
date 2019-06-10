@@ -232,12 +232,49 @@ namespace
 
 //---------------------------------------------------------------------------
 
-FeatureModelGraph::FeatureModelGraph(Session*                         session,
-                                     const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory,
-                                     SceneGraphCallbacks*             callbacks) :
+FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
+_options(options)
+{
+    //NOP
+}
+
+void
+FeatureModelGraph::setSession(Session* value)
+{
+    _session = value;
+}
+
+void
+FeatureModelGraph::setNodeFactory(FeatureNodeFactory* value)
+{
+    _factory = value;
+}
+
+void
+FeatureModelGraph::setStyleSheet(StyleSheet* value)
+{
+    _styleSheet = value;
+}
+
+void
+FeatureModelGraph::setMinRange(float value)
+{
+    _minRange = value;
+}
+
+void
+FeatureModelGraph::setMaxRange(float value)
+{
+    _maxRange = value;
+}
+
+#if 0
+FeatureModelGraph::FeatureModelGraph(Session*                     session,
+                                     const FeatureModelOptions&   featureOptions,
+                                     FeatureNodeFactory*          factory,
+                                     SceneGraphCallbacks*         callbacks) :
 _session            ( session ),
-_options            ( options ),
+_options            ( featureOptions ),
 _factory            ( factory ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
@@ -245,44 +282,53 @@ _sgCallbacks        ( callbacks )
 {
     ctor();
 }
+#endif
 
-FeatureModelGraph::FeatureModelGraph(Session*                         session,
-                                     const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory,
-                                     ModelSource*                     modelSource,
-                                     SceneGraphCallbacks*             callbacks) :
+#if 0
+const VisibleLayer::Options& layerOptions,
+FeatureModelGraph::FeatureModelGraph(Session*                   session,
+                                     const FeatureModelOptions& options,
+                                     const VisibleLayer::Options& layerOptions,
+                                     FeatureNodeFactory*        factory,
+                                     ModelSource*               modelSource,
+                                     SceneGraphCallbacks*       callbacks) :
 _session            ( session ),
 _options            ( options ),
 _factory            ( factory ),
 _modelSource        ( modelSource ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
-_sgCallbacks        (callbacks)
+_sgCallbacks        ( callbacks )
 {
     ctor();
 }
+#endif
 
-void
-FeatureModelGraph::ctor()
+Status
+FeatureModelGraph::open()
 {
     // So we can pass it to the pseudoloader
     setName(USER_OBJECT_NAME);
     
-    OE_TEST << LC << "ctor" << std::endl;
-
     _nodeCachingImageCache = new osgDB::ObjectCache();
 
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
 
+    if ( !_session.valid())
+    {
+        return Status(Status::ConfigurationError, "Missing required Session");
+    }
+
     // install the stylesheet in the session if it doesn't already have one.
     if ( !_session->styles() )
-        _session->setStyles( _options.styles().get() );
+    {
+        _session->setStyles(_styleSheet.get());
+    }
 
     if ( !_session->getFeatureSource() )
     {
-        OE_WARN << LC << "ILLEGAL: Session must have a feature source" << std::endl;
-        return;
+        return Status(Status::ConfigurationError, "ILLEGAL: Session must have a feature source");
     }
 
     // Set up a shared resource cache for the session. A session-wide cache means
@@ -300,7 +346,9 @@ FeatureModelGraph::ctor()
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
     osg::ref_ptr<const Map> map = _session->getMap();
     if (!map.valid())
-        return;
+    {
+        return Status(Status::ConfigurationError, "Session does not have a Map set");
+    }
 
     const Profile* mapProfile = map->getProfile();
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
@@ -308,8 +356,7 @@ FeatureModelGraph::ctor()
     // Bail out if the feature profile is bad
     if ( !featureProfile || !featureProfile->getExtent().isValid() )
     {
-        // warn or allow?
-        return;
+        return Status(Status::ConfigurationError, "Feature profile invalid or missing");
     }
 
     // the part of the feature extent that will fit on the map (in map coords):
@@ -336,14 +383,14 @@ FeatureModelGraph::ctor()
 
 
     // compute an appropriate tileSizeFactor for a tiled source if a max range was set but no tilesize factor
-    if (_options.layout().isSet() && (_options.layout()->maxRange().isSet() || _options.maxRange().isSet()))
+    if (_options.layout().isSet() && (_options.layout()->maxRange().isSet() || _maxRange.isSet()))
     {
         // select the max range either from the Layout or from the model layer options.
         float userMaxRange = FLT_MAX;
         if ( _options.layout()->maxRange().isSet() )
             userMaxRange = *_options.layout()->maxRange();
-        if ( _options.maxRange().isSet() )
-            userMaxRange = osg::minimum(userMaxRange, *_options.maxRange());
+        if (_maxRange.isSet())
+            userMaxRange = osg::minimum(userMaxRange, _maxRange.get());
         
         if ( featureProfile->getTiled() )
         {
@@ -388,7 +435,7 @@ FeatureModelGraph::ctor()
             _options.layout()->tileSize() > 0.0 )
         {
             float maxRange = FLT_MAX;
-            maxRange = _options.maxRange().getOrUse(maxRange);
+            maxRange = _maxRange.getOrUse(maxRange);
             maxRange = _options.layout()->maxRange().getOrUse(maxRange);
             maxRange = osg::minimum( maxRange, _options.layout()->getLevel(0)->maxRange().get() );
         
@@ -414,7 +461,6 @@ FeatureModelGraph::ctor()
                 << std::endl;
         }
     }
-
 
     // Compute the feature levels up front for tiled sources.
     if (featureProfile->getTiled() && _useTiledSource)
@@ -468,6 +514,8 @@ FeatureModelGraph::ctor()
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
+
+    return Status::OK();
 }
 
 FeatureModelGraph::~FeatureModelGraph()
@@ -475,22 +523,10 @@ FeatureModelGraph::~FeatureModelGraph()
     //nop
 }
 
-Session*
-FeatureModelGraph::getSession()
-{
-    return _session.get();
-}
-
 void
 FeatureModelGraph::setSceneGraphCallbacks(SceneGraphCallbacks* host)
 {
     _sgCallbacks = host;
-}
-
-void
-FeatureModelGraph::dirty()
-{
-    _dirty = true;
 }
 
 //std::ostream& operator << (std::ostream& in, const osg::Vec3d& v) { in << v.x() << ", " << v.y() << ", " << v.z(); return in; }
@@ -583,14 +619,14 @@ FeatureModelGraph::setupPaging()
 
     optional<float> maxRangeOverride;
 
-    if (_options.layout()->maxRange().isSet() || _options.maxRange().isSet())
+    if (_options.layout()->maxRange().isSet() || _maxRange.isSet())
     {
         // select the max range either from the Layout or from the model layer options.
         float userMaxRange = FLT_MAX;
         if ( _options.layout()->maxRange().isSet() )
             userMaxRange = *_options.layout()->maxRange();
-        if ( _options.maxRange().isSet() )
-            userMaxRange = osg::minimum(userMaxRange, *_options.maxRange());
+        if ( _maxRange.isSet() )
+            userMaxRange = osg::minimum(userMaxRange, _maxRange.get());
         
         if ( !featureProfile->getTiled() )
         {
@@ -612,7 +648,7 @@ FeatureModelGraph::setupPaging()
     // bulid the top level node:
     osg::Node* topNode;
 
-    if (options().layout()->paged() == true)
+    if (_options.layout()->paged() == true)
     {
         topNode = createPagedNode( 
             bs, 
@@ -622,12 +658,12 @@ FeatureModelGraph::setupPaging()
             _options.layout().get(),
             _sgCallbacks.get(),
             _defaultFileLocationCallback.get(),
-            getSession()->getDBOptions(),
+            _session->getDBOptions(),
             this);
     }
     else
     {
-        topNode = load(0, 0, 0, uri, getSession()->getDBOptions());
+        topNode = load(0, 0, 0, uri, _session->getDBOptions());
     }
 
     return topNode;
@@ -856,7 +892,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
 
                 osg::Node* childNode;
 
-                if (options().layout()->paged() == true)
+                if (_options.layout()->paged() == true)
                 {
                     childNode = createPagedNode( 
                         subtile_bs, 
@@ -1076,7 +1112,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         {
             Style defaultStyle;
 
-            if ( _session->styles()->selectors().size() == 0 )
+            if ( _session->styles()->getSelectors().size() == 0 )
             {
                 // attempt to glean the style from the feature source name:
                 defaultStyle = *_session->styles()->getStyle(_session->getFeatureSource()->getName());
@@ -1215,9 +1251,11 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 
         // if the stylesheet has selectors, use them to sort the features into style groups. Then create
         // a create a node for each style group.
-        if ( styles->selectors().size() > 0 )
+        if ( styles->getSelectors().size() > 0 )
         {
-            for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
+            for( StyleSelectorList::const_iterator i = styles->getSelectors().begin(); 
+                i != styles->getSelectors().end();
+                ++i )
             {
                 // pull the selected style...
                 const StyleSelector& sel = *i;
@@ -1592,21 +1630,7 @@ FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
-    //if ( nv.getVisitorType() == nv.EVENT_VISITOR )
-    //{
-    //    if (!_pendingUpdate && 
-    //         (_dirty ||
-    //          _session->getFeatureSource()->outOfSyncWith(_featureSourceRev) ||
-    //          (_modelSource.valid() && _modelSource->outOfSyncWith(_modelSourceRev))))
-    //    {
-    //        OE_TEST << LC << "out of sync - requesting update" << std::endl;
-
-    //        _pendingUpdate = true;
-    //        ADJUST_UPDATE_TRAV_COUNT( this, +1 );
-    //    }
-    //}
-    //else
-     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         if ( _pendingUpdate )
         {
@@ -1675,15 +1699,15 @@ FeatureModelGraph::redraw()
     }
 
     float minRange = -FLT_MAX;
-    if ( _options.minRange().isSet() ) 
-        minRange = osg::maximum(minRange, *_options.minRange());
+    if (_minRange.isSet())
+        minRange = osg::maximum(minRange, _minRange.get());
 
     if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
         minRange = osg::maximum(minRange, *_options.layout()->minRange());
 
     float maxRange = FLT_MAX;
-    if ( _options.maxRange().isSet() ) 
-        maxRange = osg::minimum(maxRange, *_options.maxRange());
+    if (_maxRange.isSet())
+        maxRange = osg::minimum(maxRange, _maxRange.get());
 
     if ( _options.layout().isSet() && _options.layout()->maxRange().isSet() )
         maxRange = osg::minimum(maxRange, *_options.layout()->maxRange());
@@ -1711,18 +1735,4 @@ FeatureModelGraph::redraw()
     }
 
     addChild( node );
-
-    //_session->getFeatureSource()->sync( _featureSourceRev );
-
-    //if ( _modelSource.valid() )
-    //    _modelSource->sync( _modelSourceRev );
-
-    _dirty = false;
-}
-
-void
-FeatureModelGraph::setStyles( StyleSheet* styles )
-{
-    _session->setStyles( styles );
-    dirty();
 }

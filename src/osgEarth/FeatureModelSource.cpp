@@ -54,9 +54,8 @@ _nodeCaching(false)
 void
 FeatureModelOptions::fromConfig(const Config& conf)
 {
-    //conf.get("features", _featureSource);
+    LayerClient<StyleSheet>::fromConfig(conf, "styles", _styleSheetLayer, _styleSheet);
 
-    conf.get( "styles",           _styles );
     conf.get( "layout",           _layout );
     conf.get( "fading",           _fading );
     conf.get( "feature_name",     _featureNameExpr );
@@ -71,23 +70,29 @@ FeatureModelOptions::fromConfig(const Config& conf)
     
     conf.get( "session_wide_resource_cache", _sessionWideResourceCache );
 
+#if 0
     // Support a singleton style (convenience)
-    optional<Style> style;
-    conf.get("style", style);
-    if (style.isSet())
+    if (!conf.hasChild("stylesheet"))
     {
-        if (_styles.valid() == false) _styles = new StyleSheet();
-        _styles->addStyle(style.get());
+        optional<Style> style;
+        conf.get("style", style);
+        if (style.isSet())
+        {
+            if (_styles.valid() == false) _styles = new StyleSheet();
+            _styles->addStyle(style.get());
+        }
     }
+#endif
 }
 
 Config
 FeatureModelOptions::getConfig() const
 {
     Config conf;
-    //conf.set("features", _featureSource);
 
-    conf.set( "styles",           _styles );
+    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+
+//    conf.set( "styles",           _styles );
     conf.set( "layout",           _layout );
     conf.set( "fading",           _fading );
     conf.set( "feature_name",     _featureNameExpr );
@@ -106,7 +111,7 @@ FeatureModelOptions::getConfig() const
 }
 
 //........................................................................
-
+#if 0
 FeatureModelSourceOptions::FeatureModelSourceOptions(const ConfigOptions& options) :
 ModelSourceOptions(options),
 FeatureModelOptions()
@@ -117,7 +122,8 @@ FeatureModelOptions()
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {    
-    conf.get( "styles",           _styles );
+    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    //conf.get( "styles",           _styles );
     conf.get( "layout",           _layout );
     conf.get( "fading",           _fading );
     conf.get( "feature_name",     _featureNameExpr );
@@ -138,7 +144,9 @@ FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
 
-    conf.set( "styles",           _styles );
+    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+
+    //conf.set( "styles",           _styles );
     conf.set( "layout",           _layout );
     conf.set( "fading",           _fading );
     conf.set( "feature_name",     _featureNameExpr );
@@ -271,7 +279,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
     // Session holds data that's shared across the life of the FMG
     Session* session = new Session( 
         map, 
-        _options.styles().get(), 
+        getStyleSheet(),
         _features.get(), 
         _readOptions.get() );
 
@@ -283,7 +291,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
 
     return graph;
 }
-
+#endif
 
 
 //------------------------------------------------------------------------

@@ -43,8 +43,8 @@ namespace osgEarth
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public VisibleLayer::Options,
-                                                public FeatureModelOptions,
-                                                public GeometryCompilerOptions
+                                        public FeatureModelOptions,
+                                        public GeometryCompilerOptions
         {
         public:
             // constructors
@@ -68,7 +68,7 @@ namespace osgEarth
 
         //! Stylesheet to apply to the features
         void setStyleSheet(StyleSheet* value);
-        StyleSheet* getStyleSheet() const { return _styleSheet.get(); }
+        StyleSheet* getStyleSheet() const;
 
         void setAlphaBlending(const bool& value);
         const bool& getAlphaBlending() const;
@@ -121,20 +121,16 @@ namespace osgEarth
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
     private:
-        LayerClient<FeatureSource> _client;
+        LayerClient<FeatureSource> _featureSource;
+        LayerClient<StyleSheet> _styleSheet;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
-        osg::ref_ptr<StyleSheet> _styleSheet;
         bool _graphDirty;
         osg::ref_ptr<CreateFeatureNodeFactoryCallback> _createFactoryCallback;
         
         void create();
         FeatureNodeFactory* createFeatureNodeFactory();
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureModelLayer FeatureModelLayer;
-    }
 
 } // namespace osgEarth
 

@@ -41,8 +41,9 @@ namespace osgEarth { namespace Splat
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION(std::string, featureSourceLayer);
             OE_OPTION(FeatureSource::Options, featureSource);
+            OE_OPTION(std::string, styleSheetLayer);
+            OE_OPTION(StyleSheet::Options, styleSheet);
             OE_OPTION(Distance, featureBufferWidth);
-            OE_OPTION_REFPTR(StyleSheet, styles);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -62,7 +63,7 @@ namespace osgEarth { namespace Splat
         
         //! Style for rendering the road
         void setStyleSheet(StyleSheet* value);
-        StyleSheet* getStyleSheet();
+        StyleSheet* getStyleSheet() const;
 
 
     public: // ImageLayer
@@ -94,7 +95,8 @@ namespace osgEarth { namespace Splat
     private:
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<TileRasterizer> _rasterizer;
-        LayerClient<FeatureSource> _client;
+        LayerClient<FeatureSource> _featureSource;
+        LayerClient<StyleSheet> _styleSheet;
     };
 
 } } // namespace osgEarth::Splat

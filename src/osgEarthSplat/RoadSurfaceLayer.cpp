@@ -41,8 +41,8 @@ RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.set("buffer_width", featureBufferWidth() );
-    conf.set("styles", _styles);
     return conf;
 }
 
@@ -50,8 +50,8 @@ void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
     LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.get("buffer_width", featureBufferWidth() );
-    conf.get("styles", _styles);
 }
 
 //........................................................................
@@ -79,9 +79,13 @@ const Status&
 RoadSurfaceLayer::open()
 {
     // assert a feature source:
-    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return setStatus(fsStatus);
+
+    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    if (ssStatus.isError())
+        return setStatus(ssStatus);
 
     return ImageLayer::open();
 }
@@ -93,17 +97,19 @@ RoadSurfaceLayer::addedToMap(const Map* map)
 
     // create a session for feature processing based in the Map,
     // but don't set the feature source yet.
-    _session = new Session(map, options().styles().get(), 0L, getReadOptions());
+    _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    _client.addedToMap(options().featureSourceLayer(), map);
+    _featureSource.addedToMap(options().featureSourceLayer(), map);
+    _styleSheet.addedToMap(options().styleSheetLayer(), map);
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _client.removedFromMap(map);
+    _featureSource.removedFromMap(map);
+    _styleSheet.removedFromMap(map);
     _session = 0L;
 }
 
@@ -119,7 +125,7 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 {
     if (getFeatureSource() != layer)
     {
-        _client.setLayer(layer);
+        _featureSource.setLayer(layer);
         if (layer && layer->getStatus().isError())
         {
             setStatus(layer->getStatus());
@@ -130,19 +136,19 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 FeatureSource*
 RoadSurfaceLayer::getFeatureSource() const
 {
-    return _client.getLayer();
+    return _featureSource.getLayer();
 }
 
 void
 RoadSurfaceLayer::setStyleSheet(StyleSheet* value)
 {
-    options().styles() = value;
+    _styleSheet.setLayer(value);
 }
 
 StyleSheet*
-RoadSurfaceLayer::getStyleSheet()
+RoadSurfaceLayer::getStyleSheet() const
 {
-    return options().styles().get();
+    return _styleSheet.getLayer();
 }
 
 namespace
@@ -180,9 +186,11 @@ namespace
         if ( styles == 0L )
             return;
 
-        if ( styles->selectors().size() > 0 )
+        if ( styles->getSelectors().size() > 0 )
         {
-            for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
+            for( StyleSelectorList::const_iterator i = styles->getSelectors().begin(); 
+                i != styles->getSelectors().end();
+                ++i )
             {
                 const StyleSelector& sel = *i;
 
@@ -352,7 +360,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         GeometryCompiler compiler;
 
         StyleToFeatures map;
-        sortFeaturesIntoStyleGroups(options().styles().get(), features, fc, map);
+        sortFeaturesIntoStyleGroups(getStyleSheet(), features, fc, map);
         osg::ref_ptr< osg::Group > group;
         if (!map.empty())
         {

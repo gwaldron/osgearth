@@ -23,6 +23,7 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Feature>
+#include <osgEarth/LayerListener>
 #include <osg/ClipPlane>
 
 namespace osgEarth { namespace Util
@@ -42,7 +43,8 @@ namespace osgEarth { namespace Util
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION(URI, sqidData);
             OE_OPTION(bool, useDefaultStyles);
-            OE_OPTION_REFPTR(StyleSheet, styleSheet);
+            OE_OPTION(StyleSheet::Options, styleSheet);
+            OE_OPTION(std::string, styleSheetLayer);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -66,8 +68,7 @@ namespace osgEarth { namespace Util
         //! You can set only certain levels if you wish in order to override
         //! the defaults.
         void setStyleSheet(StyleSheet* value);
-        StyleSheet* getStyleSheet();
-        const StyleSheet* getStyleSheet() const;
+        StyleSheet* getStyleSheet() const;
 
         //! Whether to apply default styles when you do not expressly
         //! set them for all levels. Defaults to true.
@@ -110,6 +111,7 @@ namespace osgEarth { namespace Util
 
         void loadGZDFeatures(const SpatialReference* srs, FeatureList& output) const;
 
+        LayerClient<StyleSheet> _styleSheet;
     };
 
 } }

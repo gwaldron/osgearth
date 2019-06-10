@@ -158,8 +158,8 @@ FeatureImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.set("gamma", gamma());
-    conf.set("styles", _styles);
     return conf;
 }
 
@@ -168,8 +168,8 @@ FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
     gamma().init(1.3);
     LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.get("gamma", gamma());
-    conf.get("styles", _styles);
 }
 
 //........................................................................
@@ -190,9 +190,13 @@ const Status&
 FeatureImageLayer::open()
 {
     // assert a feature source:
-    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return setStatus(fsStatus);
+
+    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    if (ssStatus.isError())
+        return setStatus(ssStatus);
 
     if (!getFeatureSource() && !options().featureSourceLayer().isSet())
         return setStatus(Status::ConfigurationError, "No features");
@@ -205,7 +209,9 @@ FeatureImageLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
-    _client.addedToMap(options().featureSourceLayer(), map);
+    _featureSource.addedToMap(options().featureSourceLayer(), map);
+
+    _styleSheet.addedToMap(options().styleSheetLayer(), map);
 
     _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
 
@@ -219,7 +225,8 @@ void
 FeatureImageLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _client.removedFromMap(map);
+    _featureSource.removedFromMap(map);
+    _styleSheet.removedFromMap(map);
 }
 
 void
@@ -227,7 +234,7 @@ FeatureImageLayer::setFeatureSource(FeatureSource* fs)
 {
     if (getFeatureSource() != fs)
     {
-        _client.setLayer(fs);
+        _featureSource.setLayer(fs);
         _featureProfile = 0L;
 
         if (fs)
@@ -273,7 +280,7 @@ FeatureImageLayer::establishSession()
         if (_session.valid())
         {
             _session->setFeatureSource(getFeatureSource());
-            _session->setStyles(options().styles().get());
+            _session->setStyles(getStyleSheet());
         }
     }
 }
@@ -328,7 +335,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     preProcess(image.get());
 
-    bool ok = render(key, _session.get(), options().styles().get(), image.get(), progress);
+    bool ok = render(key, _session.get(), getStyleSheet(), image.get(), progress);
 
     if (ok)
     {
@@ -680,12 +687,12 @@ FeatureImageRenderer::render(const TileKey& key,
             }
         }
     }
-    else if ( styles )
+    else if (styles)
     {
-        if ( styles->selectors().size() > 0 )
+        if (styles->getSelectors().size() > 0 )
         {
-            for(StyleSelectorList::const_iterator i = styles->selectors().begin();
-                i != styles->selectors().end();
+            for(StyleSelectorList::const_iterator i = styles->getSelectors().begin();
+                i != styles->getSelectors().end();
                 ++i)
             {
                 const StyleSelector& sel = *i;

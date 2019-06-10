@@ -53,11 +53,28 @@ namespace osgEarth { namespace Support
          * @param factory
          *      Node factory that will be invoked to compile feature data into nodes
          */
-        FeatureModelGraph(
-            Session*                         session,
-            const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory,
-            SceneGraphCallbacks*             callbacks);
+        FeatureModelGraph(const FeatureModelOptions& options);
+
+        //! Set a scene graph callback host for this FMG
+        void setSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
+
+        //! Sets the object that creates geometry nodes.
+        void setNodeFactory(FeatureNodeFactory* factory);
+
+        //! Sets the style sheet to use to render features 
+        void setStyleSheet(StyleSheet* styles);
+
+        //! Session associated with this feature graph.
+        void setSession(Session* session);
+
+        //! Min visible range
+        void setMinRange(float value);
+
+        //! Max visible range
+        void setMaxRange(float value);
+
+        //! Initialized the graph after setting all parameters.
+        Status open();
 
         /**
          * Constructs a new model graph.
@@ -71,12 +88,15 @@ namespace osgEarth { namespace Support
          * @param callbacks
          *      List of callbacks to invoke as nodes are created and merged into the scene graph.
          */
+#if 0
         FeatureModelGraph(
-            Session*                         session,
-            const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory,
-            ModelSource*                     modelSource,
-            SceneGraphCallbacks*             callbacks);
+            Session*                     session,
+            const FeatureModelOptions&   featureOptions,
+            const VisibleLayer::Options& layerOptions,
+            FeatureNodeFactory*          factory,
+            ModelSource*                 modelSource,
+            SceneGraphCallbacks*         callbacks);
+#endif
 
         /**
          * Loads and returns a subnode. Used internally for paging.
@@ -85,26 +105,6 @@ namespace osgEarth { namespace Support
             unsigned lod, unsigned tileX, unsigned tileY,
             const std::string& uri,
             const osgDB::Options* readOptions);
-
-        /**
-         * Set a scene graph callback host for this FMG
-         */
-        void setSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
-
-        /**
-         * Style sheet associated with this feature graph.
-         */
-        StyleSheet* getStyles() { return _session->styles(); }
-
-        /**
-         * Sets the style sheet to use to render features 
-         */
-        void setStyles( StyleSheet* styles );
-
-        /**
-         * Session associated with this feature graph.
-         */
-        Session* getSession();
 
         /**
          * Mark the feature graph dirty and in need of regeneration 
@@ -117,7 +117,7 @@ namespace osgEarth { namespace Support
         const std::vector<const FeatureLevel*>& getLevels() const { return _lodmap; };
 
         //! Options passed in.
-        const FeatureModelSourceOptions& options() const { return _options; }
+        //const FeatureModelOptions& options() const { return _featureOptions; }
 
     public: // osg::Node
 
@@ -146,7 +146,7 @@ namespace osgEarth { namespace Support
 
     private:
 
-        void ctor();
+        //void ctor();
         
         osg::Group* createStyleGroup(
             const Style&          style, 
@@ -200,9 +200,10 @@ namespace osgEarth { namespace Support
         void redraw();
 
     private:
-        FeatureModelSourceOptions        _options;
+        FeatureModelOptions              _options;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
+        osg::ref_ptr<StyleSheet>         _styleSheet;
         std::set<std::string>            _blacklist;
         Threading::ReadWriteMutex        _blacklistMutex;
         GeoExtent                        _usableFeatureExtent;
@@ -215,6 +216,8 @@ namespace osgEarth { namespace Support
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
         OpenThreads::ReentrantMutex      _redrawMutex;
+        optional<float> _minRange;
+        optional<float> _maxRange;
 
         OpenThreads::Atomic _cacheReads;
         OpenThreads::Atomic _cacheHits;

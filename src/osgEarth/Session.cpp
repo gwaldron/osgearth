@@ -180,14 +180,14 @@ Session::initScriptEngine()
     // Create a script engine for the StyleSheet
     if (_styles)
     {
-        if (_styles->script())
+        if (_styles->getScript())
         {
             _styleScriptEngine = ScriptEngineFactory::createWithProfile(
                 Script(
-                    _styles->script()->code, 
-                    _styles->script()->language, 
-                    _styles->script()->name ),
-                _styles->script()->profile );
+                    _styles->getScript()->code,
+                    _styles->getScript()->language,
+                    _styles->getScript()->name ),
+                    _styles->getScript()->profile );
         }
         else
         {

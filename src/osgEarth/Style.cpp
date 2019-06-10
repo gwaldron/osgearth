@@ -100,7 +100,7 @@ Style::Style( const Config& conf )
     mergeConfig( conf, 0L );
 }
 
-Style::Style( const Config& conf, const StyleSheet* sheet)
+Style::Style( const Config& conf, const StyleMap* sheet)
 {
     mergeConfig( conf, sheet );
 }
@@ -131,7 +131,7 @@ void Style::copySymbols(const Style& style)
 }
 
 void
-Style::fromSLD(const Config& sld, const StyleSheet* sheet)
+Style::fromSLD(const Config& sld, const StyleMap* sheet)
 {
     // check for style inheritance:
     std::string::size_type pos = sld.key().find(':');
@@ -146,10 +146,12 @@ Style::fromSLD(const Config& sld, const StyleSheet* sheet)
 
             if (sheet)
             {
-                const Style* parent = sheet->getStyle(tokens[1], false);
-                if (parent)
+                const StyleSheet::Options* sheetImpl = reinterpret_cast<const StyleSheet::Options*>(sheet);
+                StyleMap::const_iterator i = sheet->find(tokens[1]);
+                if (i != sheet->end())
                 {
-                    copySymbols(*parent);
+                    const Style& parent = i->second;
+                    copySymbols(parent);
                 }
             }
         }
@@ -169,7 +171,7 @@ Style::fromSLD(const Config& sld, const StyleSheet* sheet)
 }
 
 void
-Style::mergeConfig( const Config& conf, const StyleSheet* sheet )
+Style::mergeConfig( const Config& conf, const StyleMap* sheet )
 {
     if ( _name.empty() )
         _name = conf.value( "name" );

@@ -22,6 +22,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
 
 namespace osgEarth
 {
@@ -76,7 +77,8 @@ namespace osgEarth
             OE_OPTION(std::string, featureSourceLayer);
             OE_OPTION(FeatureSource::Options, featureSource);
             OE_OPTION(double, gamma);
-            OE_OPTION_REFPTR(StyleSheet, styles);
+            OE_OPTION(std::string, styleSheetLayer);
+            OE_OPTION(StyleSheet::Options, styleSheet);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -127,7 +129,8 @@ namespace osgEarth
         virtual ~FeatureImageLayer() { }
 
     private:
-        LayerClient<FeatureSource> _client;
+        LayerClient<FeatureSource> _featureSource;
+        LayerClient<StyleSheet> _styleSheet;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         optional<double> _gamma;
@@ -151,9 +154,9 @@ namespace osgEarth
 
     // template/inline impls .................................................
 
-    FeatureSource* FeatureImageLayer::getFeatureSource() const { return _client.getLayer(); }
-    void FeatureImageLayer::setStyleSheet(StyleSheet* value) { options().styles() = value; }
-    StyleSheet* FeatureImageLayer::getStyleSheet() const { return options().styles().get(); }
+    FeatureSource* FeatureImageLayer::getFeatureSource() const { return _featureSource.getLayer(); }
+    void FeatureImageLayer::setStyleSheet(StyleSheet* value) { _styleSheet.setLayer(value); }
+    StyleSheet* FeatureImageLayer::getStyleSheet() const { return _styleSheet.getLayer(); }
 
 
     namespace Features {

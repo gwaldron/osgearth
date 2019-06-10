@@ -114,7 +114,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
     if (getFeatureSource() != source)
     {
-        _client.setLayer(source);
+        _featureSource.setLayer(source);
 
         if (source && source->getStatus().isError())
         {
@@ -129,13 +129,23 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 FeatureSource*
 FeatureModelLayer::getFeatureSource() const
 {
-    return _client.getLayer();
+    return _featureSource.getLayer();
 }
 
 void
 FeatureModelLayer::setStyleSheet(StyleSheet* value)
 {
-    options().styles() = value;
+    if (getStyleSheet() != value)
+    {
+        _styleSheet.setLayer(value);
+        dirty();
+    }
+}
+
+StyleSheet*
+FeatureModelLayer::getStyleSheet() const
+{
+    return _styleSheet.getLayer();
 }
 
 void
@@ -159,9 +169,13 @@ FeatureModelLayer::getNode() const
 const Status&
 FeatureModelLayer::open()
 {
-    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return setStatus(fsStatus);
+
+    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    if (ssStatus.isError())
+        return setStatus(ssStatus);
 
     return VisibleLayer::open();
 }
@@ -183,18 +197,20 @@ FeatureModelLayer::addedToMap(const Map* map)
     OE_TEST << LC << "addedToMap" << std::endl;
     VisibleLayer::addedToMap(map);
 
+    _styleSheet.addedToMap(options().styleSheetLayer(), map);
+
     // Save a reference to the map since we'll need it to
     // create a new session object later.
     _session = new Session(
-        map, 
-        options().styles().get(), 
+        map,
+        getStyleSheet(),
         0L,  // feature source - will set later
         getReadOptions());
 
     // If we have a layer name but no feature source, fire up a
     // listener so we'll be notified when the named layer is 
     // added to the map.
-    _client.addedToMap(options().featureSourceLayer(), map);
+    _featureSource.addedToMap(options().featureSourceLayer(), map);
 
     // re-create the graph if necessary.
     create();
@@ -205,7 +221,8 @@ FeatureModelLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
 
-    _client.removedFromMap(map);
+    _featureSource.removedFromMap(map);
+    _styleSheet.removedFromMap(map);
     
     if (_root.valid())
     {
@@ -222,7 +239,7 @@ FeatureModelLayer::create()
 
     if (_graphDirty)
     {
-        if (getFeatureSource() && _session.valid())
+        if (getFeatureSource() && getStyleSheet() && _session.valid())
         {
             // connect the session to the features:
             _session->setFeatureSource(getFeatureSource());
@@ -231,19 +248,29 @@ FeatureModelLayer::create()
             FeatureNodeFactory* nodeFactory = createFeatureNodeFactory();
 
             // group that will build all the feature geometry:
-            FeatureModelGraph* fmg = new FeatureModelGraph(
-                _session.get(),
-                options(),
-                nodeFactory,
-                getSceneGraphCallbacks());
+            osg::ref_ptr<FeatureModelGraph> fmg = new FeatureModelGraph(options());
+            fmg->setSession(_session.get());
+            fmg->setNodeFactory(nodeFactory);
+            fmg->setSceneGraphCallbacks(getSceneGraphCallbacks());
+            fmg->setStyleSheet(getStyleSheet());
 
-            _root->removeChildren(0, _root->getNumChildren());
-            _root->addChild(fmg);
+            Status status = fmg->open();
 
-            // clear the dirty flag.
-            _graphDirty = false;
+            if (status.isError())
+            {
+                OE_WARN << LC << "INTERNAL ERROR intializing the FMG" << std::endl;
+                setStatus(status);
+            }
+            else
+            {
+                _root->removeChildren(0, _root->getNumChildren());
+                _root->addChild(fmg.get());
 
-            setStatus(Status::OK());
+                // clear the dirty flag.
+                _graphDirty = false;
+
+                setStatus(Status::OK());
+            }
         }
     }
 }

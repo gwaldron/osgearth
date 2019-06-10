@@ -37,8 +37,11 @@ namespace osgEarth
     {
     public: //properties
         
-        osg::ref_ptr<StyleSheet>& styles() { return _styles; }
-        const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
+        OE_OPTION(StyleSheet::Options, styleSheet);
+        OE_OPTION(std::string, styleSheetLayer);
+
+        //optional<StyleSheet::Options>& styleSheet() { return _styleSheet; }
+        //const optional<StyleSheet::Options>& styleSheet() const { return _styleSheet; }
 
         /** Maximum span of a generated edge, in degrees. For geocentric maps only */
         optional<double>& maxGranularity() { return _maxGranularity_deg; }
@@ -103,11 +106,10 @@ namespace osgEarth
         optional<FeatureSourceIndexOptions> _featureIndexing;
         optional<bool>                      _sessionWideResourceCache;
         optional<bool>                      _nodeCaching;
-        osg::ref_ptr<StyleSheet>            _styles;
     };
 
 
-
+#if 0
     class OSGEARTH_EXPORT FeatureModelSourceOptions : public ModelSourceOptions,
                                                       public FeatureModelOptions
     {
@@ -139,7 +141,7 @@ namespace osgEarth
 
         optional<FeatureSource::Options> _featureOptions;
     };
-
+#endif
 
     /**
      * Interface for a class that can create a Node from a set of features and
@@ -190,7 +192,7 @@ namespace osgEarth
         GeometryCompilerOptions _options;
     };
 
-
+#if 0
     /**
      * A ModelSource that renders Feature data from a FeatureSource.
      * @deprecated
@@ -258,14 +260,7 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options>       _readOptions;
 
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureModelOptions FeatureModelOptions;
-        typedef osgEarth::FeatureModelSourceOptions FeatureModelSourceOptions;
-        typedef osgEarth::FeatureNodeFactory FeatureNodeFactory;
-        typedef osgEarth::GeomFeatureNodeFactory GeomFeatureNodeFactory;
-        typedef osgEarth::FeatureModelSource FeatureModelSource;
-    }
+#endif
 
 } // namespace osgEarth
 

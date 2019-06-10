@@ -62,7 +62,7 @@ MGRSGraticule::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("sqid_data", sqidData() );
     conf.set("use_default_styles", useDefaultStyles() );
-    conf.set("styles", _styleSheet);
+    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
     return conf;
 }
 
@@ -71,11 +71,9 @@ MGRSGraticule::Options::fromConfig(const Config& conf)
 {
     useDefaultStyles().init(true);
     sqidData().init(URI("../data/mgrs_sqid.bin", conf.referrer()));
-    _styleSheet = new StyleSheet();
-
     conf.get("sqid_data", sqidData() );
     conf.get("use_default_styles", useDefaultStyles() );
-    conf.get("styles", _styleSheet);
+    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
 }
 
 //---------------------------------------------------------------------------
@@ -287,9 +285,18 @@ namespace
 
 OE_LAYER_PROPERTY_IMPL(MGRSGraticule, URI, SQIDDataURL, sqidData);
 OE_LAYER_PROPERTY_IMPL(MGRSGraticule, bool, UseDefaultStyles, useDefaultStyles);
-void MGRSGraticule::setStyleSheet(StyleSheet* value) { options().styleSheet() = value; }
-StyleSheet* MGRSGraticule::getStyleSheet() { return options().styleSheet().get(); }
 
+void
+MGRSGraticule::setStyleSheet(StyleSheet* value)
+{
+    _styleSheet.setLayer(value);
+}
+
+StyleSheet*
+MGRSGraticule::getStyleSheet() const
+{
+    return _styleSheet.getLayer();
+}
 
 void
 MGRSGraticule::dirty()
@@ -382,10 +389,10 @@ namespace
         osg::ref_ptr<Feature> _feature;
         Style _style;
         bool _hasChild;
-        const MGRSGraticule::Options* _options;
+        const MGRSGraticule* _parent;
     
         GeomCell(double size);
-        void setupData(Feature* feature, const MGRSGraticule::Options* options);
+        void setupData(Feature* feature, const MGRSGraticule* parent);
         osg::Node* loadChild();
         bool hasChild() const;
         osg::BoundingSphere getChildBound() const;
@@ -398,7 +405,7 @@ namespace
     struct GeomGrid : public PagedNode
     {
         double _size;
-        const MGRSGraticule::Options* _options;
+        const MGRSGraticule* _parent;
         osg::ref_ptr<Feature> _feature;
         Style _style;
         GeoExtent _extent;
@@ -412,12 +419,12 @@ namespace
             setAdditive(false);
         }
 
-        void setupData(Feature* feature, const MGRSGraticule::Options* options)
+        void setupData(Feature* feature, const MGRSGraticule* parent)
         {
             _feature = feature;
-            _options = options;
+            _parent = parent;
             std::string styleName = Stringify() << (int)(_size*0.1);
-            _style = *options->styleSheet()->getStyle(styleName, true);
+            _style = *parent->getStyleSheet()->getStyle(styleName, true);
             setNode(build());
         }
 
@@ -450,7 +457,7 @@ namespace
                         f->set("easting", x);
                         f->set("northing", y);
                         GeomCell* child = new GeomCell(interval);
-                        child->setupData(f.get(), _options);
+                        child->setupData(f.get(), _parent);
                         child->setupPaging();
                         group->addChild(child);
                     }                 
@@ -537,19 +544,19 @@ namespace
         setAdditive(true);
     }
 
-    void GeomCell::setupData(Feature* feature, const MGRSGraticule::Options* options)
+    void GeomCell::setupData(Feature* feature, const MGRSGraticule* parent)
     {
         _feature = feature;
-        _options = options;
+        _parent = parent;
         std::string styleName = Stringify() << (int)(_size);
-        _style = *options->styleSheet()->getStyle(styleName, true);
+        _style = *parent->getStyleSheet()->getStyle(styleName, true);
         setNode( build() );
     }
 
     osg::Node* GeomCell::loadChild()
     {
         GeomGrid* child = new GeomGrid(_size);
-        child->setupData(_feature.get(), _options);
+        child->setupData(_feature.get(), _parent);
         child->setupPaging();
         return child;
     }
@@ -557,13 +564,13 @@ namespace
     bool GeomCell::hasChild() const
     {
         std::string sizeStr = Stringify() << (int)(_size/10);
-        return _options->styleSheet()->getStyle(sizeStr, false) != 0L;
+        return _parent->getStyleSheet()->getStyle(sizeStr, false) != 0L;
     }
 
     osg::BoundingSphere GeomCell::getChildBound() const
     {
         osg::ref_ptr<GeomGrid> child = new GeomGrid(_size);
-        child->setupData(_feature.get(), _options);
+        child->setupData(_feature.get(), _parent);
         return child->getBound();
     }
 
@@ -589,7 +596,7 @@ namespace
     struct SQID100kmCell : public PagedNode
     {
         osg::ref_ptr<Feature> _feature;
-        const MGRSGraticule::Options* _options;
+        const MGRSGraticule* _parent;
         Style _style;
 
         SQID100kmCell(const std::string& name)
@@ -600,32 +607,32 @@ namespace
             setAdditive(true);
         }
 
-        void setupData(Feature* feature, const MGRSGraticule::Options* options)
+        void setupData(Feature* feature, const MGRSGraticule* parent)
         {
             _feature = feature;
-            _options = options;
+            _parent = parent;
             std::string styleName("100000");
-            _style = *options->styleSheet()->getStyle(styleName, true);
+            _style = *_parent->getStyleSheet()->getStyle(styleName, true);
             setNode( build() );
         }
 
         osg::Node* loadChild()
         {
             GeomGrid* child = new GeomGrid(100000.0);
-            child->setupData(_feature.get(), _options);
+            child->setupData(_feature.get(), _parent);
             child->setupPaging();
             return child;
         }
 
         bool hasChild() const
         {
-            return _options->styleSheet()->getStyle("10000", false) != 0L;
+            return _parent->getStyleSheet()->getStyle("10000", false) != 0L;
         }
 
         osg::BoundingSphere getChildBound() const
         {
             GeomGrid* child = new GeomGrid(100000.0);
-            child->setupData(_feature.get(), _options);
+            child->setupData(_feature.get(), _parent);
             return child->getBound();
         }
 
@@ -645,7 +652,7 @@ namespace
         osg::BoundingSphere _bs;
         FeatureList _sqidFeatures;
         Style _style;
-        const MGRSGraticule::Options* _options;
+        const MGRSGraticule* _parent;
 
         SQID100kmGrid(const std::string& name, const osg::BoundingSphere& bs)
         {
@@ -656,13 +663,13 @@ namespace
             setRange(3200);
         }
 
-        void setupData(const FeatureList& sqidFeatures, const MGRSGraticule::Options* options)
+        void setupData(const FeatureList& sqidFeatures, const MGRSGraticule* parent)
         {
             _sqidFeatures = sqidFeatures;
-            _options = options;
+            _parent = parent;
 
             std::string styleName("100000");
-            _style = *options->styleSheet()->getStyle(styleName, true);
+            _style = *_parent->getStyleSheet()->getStyle(styleName, true);
 
             // remove any text symbology; that gets built elsewhere.
             _style.remove<TextSymbol>();
@@ -678,7 +685,7 @@ namespace
             {
                 Feature* feature = f->get();
                 SQID100kmCell* geom = new SQID100kmCell(feature->getString("sqid"));
-                geom->setupData(feature, _options);
+                geom->setupData(feature, _parent);
                 geom->setupPaging();
                 group->addChild(geom);
                 
@@ -706,7 +713,7 @@ namespace
     {
         Style _sqidStyle;
         FeatureList _sqidFeatures;
-        const MGRSGraticule::Options* _options;
+        const MGRSGraticule* _parent;
 
         GZDGeom(const std::string& name)
         {
@@ -718,13 +725,13 @@ namespace
 
         bool hasChild() const
         {
-            return _options->styleSheet()->getStyle("100000", false) != 0L;
+            return _parent->getStyleSheet()->getStyle("100000", false) != 0L;
         }
 
         osg::Node* loadChild()
         {
             SQID100kmGrid* child = new SQID100kmGrid(getName(), getBound());
-            child->setupData(_sqidFeatures, _options);
+            child->setupData(_sqidFeatures, _parent);
             child->setupPaging();
             return child;
         }
@@ -736,11 +743,11 @@ namespace
 
         void setupData(const Feature* gzdFeature,
                        const FeatureList& sqidFeatures, 
-                       const MGRSGraticule::Options* options,
+                       const MGRSGraticule* parent,
                        const FeatureProfile* prof, 
                        const Map* map)
         {
-            _options = options;
+            _parent = parent;
             setNode(build(gzdFeature, prof, map));
             _sqidFeatures = sqidFeatures;
         }
@@ -750,7 +757,7 @@ namespace
             osg::Group* group = new osg::Group();
 
             // Extract just the line and altitude symbols:
-            const Style& gzdStyle = *_options->styleSheet()->getStyle("gzd");
+            const Style& gzdStyle = *_parent->getStyleSheet()->getStyle("gzd");
             Style lineStyle;
             lineStyle.add( const_cast<LineSymbol*>(gzdStyle.get<LineSymbol>()) );
             lineStyle.add( const_cast<AltitudeSymbol*>(gzdStyle.get<AltitudeSymbol>()) );
@@ -825,11 +832,11 @@ namespace
 
     struct SQIDTextGrid : public osg::Group
     {
-        SQIDTextGrid(const std::string& name, FeatureList& features, const MGRSGraticule::Options* options)
+        SQIDTextGrid(const std::string& name, FeatureList& features, const MGRSGraticule* parent)
         {
             setName(name);
 
-            const Style& style = *options->styleSheet()->getStyle("100000", true);
+            const Style& style = *parent->getStyleSheet()->getStyle("100000", true);
             if (style.has<TextSymbol>() == false)
                 return;
 
@@ -897,7 +904,7 @@ namespace
 
     struct GZDText : public PagedNode
     {
-        const MGRSGraticule::Options* _options;
+        const MGRSGraticule* _parent;
         FeatureList  _sqidFeatures;
         osg::BoundingSphere _bs;
 
@@ -912,13 +919,13 @@ namespace
 
         bool hasChild() const
         {
-            const Style* s = _options->styleSheet()->getStyle("100000", false);
+            const Style* s = _parent->getStyleSheet()->getStyle("100000", false);
             return s && s->has<TextSymbol>();
         }
 
         osg::Node* loadChild()
         {
-            return new SQIDTextGrid(getName(), _sqidFeatures, _options);
+            return new SQIDTextGrid(getName(), _sqidFeatures, _parent);
         }
 
         osg::BoundingSphere getChildBound() const
@@ -926,16 +933,16 @@ namespace
             return _bs;
         }
 
-        void setupData(const Feature* gzdFeature, const FeatureList& sqidFeatures, const MGRSGraticule::Options* options)
+        void setupData(const Feature* gzdFeature, const FeatureList& sqidFeatures, const MGRSGraticule* parent)
         {
-            _options = options;
+            _parent = parent;
             setNode(buildGZD(gzdFeature));
             _sqidFeatures = sqidFeatures;
         }
 
         osg::Node* buildGZD(const Feature* f)
         {
-            Style style = *_options->styleSheet()->getStyle("gzd", true);
+            Style style = *_parent->getStyleSheet()->getStyle("gzd", true);
 
             const TextSymbol* textSymPrototype = style.get<TextSymbol>();
 
@@ -1068,12 +1075,12 @@ MGRSGraticule::rebuild()
             if (!gzd.empty())
             {
                 GZDGeom* geom = new GZDGeom(gzd);
-                geom->setupData(feature.get(), table[gzd], &options(), _featureProfile.get(), map.get());
+                geom->setupData(feature.get(), table[gzd], this, _featureProfile.get(), map.get());
                 geom->setupPaging();
                 geomTop->addChild(geom);
 
                 GZDText* text = new GZDText(gzd, geom->getBound());
-                text->setupData(feature.get(), table[gzd], &options());
+                text->setupData(feature.get(), table[gzd], this);
                 text->setupPaging();
                 textTop->addChild(text);
 
@@ -1090,7 +1097,7 @@ MGRSGraticule::rebuild()
         _root->addChild(labeler);
 
         // Figure out the maximum labeling resolution
-        StyleSheet* ss = _options->styleSheet().get();
+        StyleSheet* ss = getStyleSheet();
         double maxRes = 100000.0;
         if (ss->getStyle("10000", false)) maxRes = 10000.0;
         if (ss->getStyle("1000", false)) maxRes = 1000.0;
@@ -1206,7 +1213,7 @@ MGRSGraticule::setUpDefaultStyles()
 {
     float alpha = 0.35f;
 
-    StyleSheet* styles = options().styleSheet().get();
+    StyleSheet* styles = getStyleSheet();
     if (styles)
     {
         // GZD

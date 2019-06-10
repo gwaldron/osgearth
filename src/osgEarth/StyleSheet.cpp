@@ -27,35 +27,177 @@
 
 using namespace osgEarth;
 
-//------------------------------------------------------------------------
+//...................................................................
 
-StyleSheet::StyleSheet()
+Config
+StyleSheet::Options::getConfig() const
 {
-    //nop
+    Config conf = Layer::Options::getConfig();
+
+    for (StyleSelectorList::const_iterator i = selectors().begin();
+        i != selectors().end();
+        ++i)
+    {
+        conf.add("selector", i->getConfig());
+    }
+
+    for (StyleMap::const_iterator i = styles().begin();
+        i != styles().end();
+        ++i)
+    {
+        conf.add("style", i->second.getConfig());
+    }
+
+    for (ResourceLibraries::const_iterator i = libraries().begin();
+        i != libraries().end(); ++i)
+    {
+        if (i->second.valid())
+        {
+            Config libConf = i->second->getConfig();
+            conf.add("library", libConf);
+        }
+    }
+
+    if (_script.valid())
+    {
+        Config scriptConf("script");
+
+        if (!_script->name.empty())
+            scriptConf.set("name", _script->name);
+        if (!_script->language.empty())
+            scriptConf.set("language", _script->language);
+        if (_script->uri.isSet())
+            scriptConf.set("url", _script->uri->base());
+        if (!_script->profile.empty())
+            scriptConf.set("profile", _script->profile);
+        else if (!_script->code.empty())
+            scriptConf.setValue(_script->code);
+
+        conf.add(scriptConf);
+    }
+
+    return conf;
 }
 
-StyleSheet::StyleSheet(const Config& conf)
+void
+StyleSheet::Options::fromConfig(const Config& conf)
 {
-    mergeConfig( conf );
+    //_uriContext = URIContext(conf.referrer());
+
+    // read in any resource library references
+    ConfigSet librariesConf = conf.children("library");
+    for (ConfigSet::iterator i = librariesConf.begin(); i != librariesConf.end(); ++i)
+    {
+        const Config& libConf = *i;
+        ResourceLibrary* resLib = new ResourceLibrary(libConf);
+        if (resLib && libConf.value("name").empty() == false)
+            resLib->setName(libConf.value("name"));
+
+        _libraries[resLib->getName()] = resLib;
+    }
+
+    // read in any scripts
+    const Config& scriptConf = conf.child("script");
+    if (!scriptConf.empty())
+    {
+        _script = new ScriptDef();
+
+        // load the code from a URI if there is one:
+        if (scriptConf.hasValue("url"))
+        {
+            _script->uri = URI(scriptConf.value("url"), conf.referrer());
+            OE_INFO << LC << "Loading script from \"" << _script->uri->full() << std::endl;
+            _script->code = _script->uri->getString();
+        }
+        else
+        {
+            _script->code = scriptConf.value();
+        }
+
+        // name is optional and unused at the moment
+        _script->name = scriptConf.value("name");
+
+        std::string lang = scriptConf.value("language");
+        _script->language = lang.empty() ? "javascript" : lang;
+
+        std::string profile = scriptConf.value("profile");
+        _script->profile = profile;
+    }
+
+    // read any style class definitions. either "class" or "selector" is allowed
+    ConfigSet selectors = conf.children("selector");
+    if (selectors.empty()) selectors = conf.children("class");
+    for (ConfigSet::iterator i = selectors.begin(); i != selectors.end(); ++i)
+    {
+        _selectors.push_back(StyleSelector(*i));
+    }
+
+    // read in the actual styles
+    ConfigSet stylesConf = conf.children("style");
+    for (ConfigSet::iterator i = stylesConf.begin();
+        i != stylesConf.end();
+        ++i)
+    {
+        const Config& styleConf = *i;
+
+        if (styleConf.value("type") == "text/css")
+        {
+            // for CSS data, there may be multiple styles in one CSS block. So
+            // parse them all out and add them to the stylesheet.
+
+            // read the inline data:
+            std::string cssString = styleConf.value();
+
+            // if there's a URL, read the CSS from the URL:
+            if (styleConf.hasValue("url"))
+            {
+                URI uri(styleConf.value("url"), styleConf.referrer());
+                cssString = uri.readString().getString();
+            }
+
+            // break up the CSS into multiple CSS blocks and parse each one individually.
+            std::vector<std::string> blocks;
+            CssUtils::split(cssString, blocks);
+
+            for (std::vector<std::string>::iterator i = blocks.begin(); i != blocks.end(); ++i)
+            {
+                Config blockConf(styleConf);
+                blockConf.setValue(*i);
+                //OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
+                Style style(blockConf, &styles());
+                _styles[style.getName()] = style;
+            }
+        }
+        else
+        {
+            Style style(styleConf);
+            _styles[style.getName()] = style;
+        }
+    }
 }
+
+//...................................................................
+
+REGISTER_OSGEARTH_LAYER(styles, StyleSheet);
+REGISTER_OSGEARTH_LAYER(stylesheet, StyleSheet);
 
 void
 StyleSheet::addStyle( const Style& style )
 {
-    _styles[ style.getName() ] = style;
+    options().styles()[ style.getName() ] = style;
 }
 
 void
 StyleSheet::removeStyle( const std::string& name )
 {
-    _styles.erase( name );
+    options().styles().erase( name );
 }
 
 Style*
 StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
 {
-    StyleMap::iterator i = _styles.find( name );
-    if ( i != _styles.end() ) {
+    StyleMap::iterator i = options().styles().find( name );
+    if ( i != options().styles().end() ) {
         return &i->second;
     }
     else if ( name.length() > 1 && name[0] == '#' ) {
@@ -73,8 +215,8 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
 const Style*
 StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
 {
-    StyleMap::const_iterator i = _styles.find( name );
-    if ( i != _styles.end() ) {
+    StyleMap::const_iterator i = options().styles().find( name );
+    if ( i != options().styles().end() ) {
         return &i->second;
     }
     else if ( name.length() > 1 && name[0] == '#' ) {
@@ -89,10 +231,36 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
     }
 }
 
+StyleMap&
+StyleSheet::getStyles()
+{
+    return options().styles();
+}
+
+const StyleMap&
+StyleSheet::getStyles() const
+{
+    return options().styles();
+}
+
+StyleSelectorList&
+StyleSheet::getSelectors()
+{
+    return options().selectors();
+}
+
+const StyleSelectorList&
+StyleSheet::getSelectors() const
+{
+    return options().selectors();
+}
+
 const StyleSelector*
 StyleSheet::getSelector( const std::string& name ) const
 {
-    for(StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
+    for(StyleSelectorList::const_iterator i = options().selectors().begin();
+        i != options().selectors().end();
+        ++i )
     {
         if ( i->name() == name )
         {
@@ -105,33 +273,37 @@ StyleSheet::getSelector( const std::string& name ) const
 Style*
 StyleSheet::getDefaultStyle()
 {
-    if ( _styles.find( "default" ) != _styles.end() ) {
-        return &_styles.find( "default" )->second;
+    StyleMap& styles = options().styles();
+
+    if (styles.find( "default" ) != styles.end() ) {
+        return &styles.find( "default" )->second;
     }
-    else if ( _styles.find( "" ) != _styles.end() ) {
-        return &_styles.find( "" )->second;
+    else if (styles.find( "" ) != styles.end() ) {
+        return &styles.find( "" )->second;
     }
-    if ( _styles.size() > 0 ) {
-        return &_styles.begin()->second;
+    if (styles.size() > 0 ) {
+        return &styles.begin()->second;
     }
     else {
         // insert the empty style and return it.
-        _styles["default"] = _emptyStyle;
-        return &_styles.begin()->second;
+        styles["default"] = _emptyStyle;
+        return &styles.begin()->second;
     }
 }
 
 const Style*
 StyleSheet::getDefaultStyle() const
 {
-    if ( _styles.size() == 1 ) {
-        return &_styles.begin()->second;
+    const StyleMap& styles = options().styles();
+
+    if (styles.size() == 1 ) {
+        return &styles.begin()->second;
     }
-    else if ( _styles.find( "default" ) != _styles.end() ) {
-        return &_styles.find( "default" )->second;
+    else if (styles.find( "default" ) != styles.end() ) {
+        return &styles.find( "default" )->second;
     }
-    else if ( _styles.find( "" ) != _styles.end() ) {
-        return &_styles.find( "" )->second;
+    else if (styles.find( "" ) != styles.end() ) {
+        return &styles.find( "" )->second;
     }
     else {
         return &_emptyStyle;
@@ -142,15 +314,15 @@ void
 StyleSheet::addResourceLibrary( ResourceLibrary* lib )
 {
     Threading::ScopedWriteLock exclusive( _resLibsMutex );
-    _resLibs[ lib->getName() ] = lib;
+    options().libraries()[ lib->getName() ] = lib;
 }
 
 ResourceLibrary*
 StyleSheet::getResourceLibrary( const std::string& name ) const
 {
     Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
-    ResourceLibraries::const_iterator i = _resLibs.find( name );
-    if ( i != _resLibs.end() )
+    ResourceLibraries::const_iterator i = options().libraries().find( name );
+    if ( i != options().libraries().end() )
         return i->second.get();
     else
         return 0L;
@@ -160,162 +332,20 @@ ResourceLibrary*
 StyleSheet::getDefaultResourceLibrary() const
 {
     Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
-    if ( _resLibs.size() > 0 )
-        return _resLibs.begin()->second.get();
+    if (options().libraries().size() > 0 )
+        return options().libraries().begin()->second.get();
     else
         return 0L;
 }
 
-
-void StyleSheet::setScript( ScriptDef* script )
-{
-  _script = script;
-}
-
-
-Config
-StyleSheet::getConfig() const
-{
-    Config conf;
-    conf.set("name", _name);
-
-    for( StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
-    {
-        conf.add( "selector", i->getConfig() );
-    }
-
-    for( StyleMap::const_iterator i = _styles.begin(); i != _styles.end(); ++i )
-    {
-        conf.add( "style", i->second.getConfig() );
-    }
-
-    {
-        Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
-
-        for( ResourceLibraries::const_iterator i = _resLibs.begin(); i != _resLibs.end(); ++i )
-        {
-            if ( i->second.valid() )
-            {
-                Config libConf = i->second->getConfig();
-                conf.add( "library", libConf );
-            }
-        }
-    }
-
-    if ( _script.valid() )
-    {
-        Config scriptConf("script");
-
-        if ( !_script->name.empty() )
-            scriptConf.set( "name", _script->name );
-        if ( !_script->language.empty() )
-            scriptConf.set( "language", _script->language );
-        if ( _script->uri.isSet() )
-            scriptConf.set( "url", _script->uri->base() );
-        if ( !_script->profile.empty() )
-            scriptConf.set( "profile", _script->profile );
-        else if ( !_script->code.empty() )
-            scriptConf.setValue(_script->code);
-
-        conf.add( scriptConf );
-    }
-
-    return conf;
-}
-
 void
-StyleSheet::mergeConfig( const Config& conf )
+StyleSheet::setScript( ScriptDef* script )
 {
-    conf.get("name", _name);
+    options().script() = script;
+}
 
-    _uriContext = URIContext( conf.referrer() );
-
-    // read in any resource library references
-    ConfigSet libraries = conf.children( "library" );
-    for( ConfigSet::iterator i = libraries.begin(); i != libraries.end(); ++i )
-    {
-        const Config& libConf = *i;
-        ResourceLibrary* resLib = new ResourceLibrary( libConf );
-        if (resLib && libConf.value("name").empty() == false)
-            resLib->setName(libConf.value("name"));
-
-        _resLibs[resLib->getName()] = resLib;
-    }
-
-    // read in any scripts
-    ConfigSet scripts = conf.children( "script" );
-    for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
-    {
-        _script = new ScriptDef();
-
-        // load the code from a URI if there is one:
-        if ( i->hasValue("url") )
-        {
-            _script->uri = URI( i->value("url"), _uriContext );
-            OE_INFO << LC << "Loading script from \"" << _script->uri->full() << std::endl;
-            _script->code = _script->uri->getString();
-        }
-        else
-        {
-            _script->code = i->value();
-        }
-
-        // name is optional and unused at the moment
-        _script->name = i->value("name");
-
-        std::string lang = i->value("language");
-        _script->language = lang.empty() ? "javascript" : lang;
-
-        std::string profile = i->value("profile");
-        _script->profile = profile;
-    }
-
-    // read any style class definitions. either "class" or "selector" is allowed
-    ConfigSet selectors = conf.children( "selector" );
-    if ( selectors.empty() ) selectors = conf.children( "class" );
-    for( ConfigSet::iterator i = selectors.begin(); i != selectors.end(); ++i )
-    {
-        _selectors.push_back( StyleSelector( *i ) );
-    }
-
-    // read in the actual styles
-    ConfigSet styles = conf.children( "style" );
-    for( ConfigSet::iterator i = styles.begin(); i != styles.end(); ++i )
-    {
-        const Config& styleConf = *i;
-
-        if ( styleConf.value("type") == "text/css" )
-        {
-            // for CSS data, there may be multiple styles in one CSS block. So
-            // parse them all out and add them to the stylesheet.
-
-            // read the inline data:
-            std::string cssString = styleConf.value();
-
-            // if there's a URL, read the CSS from the URL:
-            if ( styleConf.hasValue("url") )
-            {
-                URI uri( styleConf.value("url"), styleConf.referrer() );
-                cssString = uri.readString().getString();
-            }
-
-            // break up the CSS into multiple CSS blocks and parse each one individually.
-            std::vector<std::string> blocks;
-            CssUtils::split( cssString, blocks );
-
-            for( std::vector<std::string>::iterator i = blocks.begin(); i != blocks.end(); ++i )
-            {
-                Config blockConf( styleConf );
-                blockConf.setValue(*i);
-                //OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
-                Style style( blockConf, this );
-                _styles[ style.getName() ] = style;
-            }
-        }
-        else
-        {
-            Style style( styleConf );
-            _styles[ style.getName() ] = style;
-        }
-    }
+StyleSheet::ScriptDef*
+StyleSheet::getScript() const
+{
+    return options().script().get();
 }

@@ -40,7 +40,8 @@ using namespace osgEarth::Support;
 AsyncResult::AsyncResult(osg::Node* node) : 
 _node(node), _requestId(0u)
 {
-    //nop
+    // Do this so that the pager can properly pre-compile GL objects
+    addChild(node);
 }
 
 //........................................................................
@@ -123,12 +124,14 @@ void
 AsyncLOD::setCenter(const osg::Vec3d& center)
 {
     _userDefinedBound.set(center, _userDefinedBound.radius());
+    dirtyBound();
 }
 
 void
 AsyncLOD::setRadius(double radius)
 {
     _userDefinedBound.set(_userDefinedBound.center(), radius);
+    dirtyBound();
 }
 
 void

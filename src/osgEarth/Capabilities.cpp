@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Capabilities>
 #include <osgEarth/Version>
+#include <osgEarth/SpatialReference>
 #include <osg/FragmentProgram>
 #include <osg/GL2Extensions>
 #include <osg/Version>
@@ -185,26 +186,28 @@ _isCoreProfile          ( true )
     if ( gc != NULL )
 #endif
     {
+        OE_INFO << LC << "Capabilities: " << std::endl;
+
         const osg::GL2Extensions* GL2 = osg::GL2Extensions::Get( id, true );
 
-        OE_INFO << LC << "osgEarth Version:  " << osgEarthGetVersion() << std::endl;
+        OE_INFO << LC << "  osgEarth Version:  " << osgEarthGetVersion() << std::endl;
 
-        OE_INFO << LC << "OSG Version:       " << osgGetVersion() << std::endl;
+        OE_INFO << LC << "  OSG Version:       " << osgGetVersion() << std::endl;
 
 #ifdef GDAL_RELEASE_NAME
-        OE_INFO << LC << "GDAL Version:      " << GDAL_RELEASE_NAME << std::endl;
+        OE_INFO << LC << "  GDAL Version:      " << GDAL_RELEASE_NAME << std::endl;
 #endif
 
         _supportsGLSL = GL2->isGlslSupported;
 
         _vendor = std::string( reinterpret_cast<const char*>(glGetString(GL_VENDOR)) );
-        OE_INFO << LC << "GPU Vendor:        " << _vendor << std::endl;
+        OE_INFO << LC << "  GPU Vendor:        " << _vendor << std::endl;
 
         _renderer = std::string( reinterpret_cast<const char*>(glGetString(GL_RENDERER)) );
-        OE_INFO << LC << "GPU Renderer:      " << _renderer << std::endl;
+        OE_INFO << LC << "  GPU Renderer:      " << _renderer << std::endl;
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
-        OE_INFO << LC << "GL/Driver Version: " << _version << std::endl;
+        OE_INFO << LC << "  GL/Driver Version: " << _version << std::endl;
 
         // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
         if ( GL2->glVersion < 3.2f )
@@ -217,9 +220,7 @@ _isCoreProfile          ( true )
             glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profileMask);
             _isCoreProfile = ((profileMask & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
         }
-        OE_INFO << LC << "GL Core Profile:   " << SAYBOOL(_isCoreProfile) << std::endl;
-
-        OE_DEBUG << LC << "Detected hardware capabilities:" << std::endl;
+        OE_INFO << LC << "  GL Core Profile:   " << SAYBOOL(_isCoreProfile) << std::endl;
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );

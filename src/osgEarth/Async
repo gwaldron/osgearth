@@ -33,7 +33,7 @@ namespace osgEarth { namespace Support
     /**
      * Result returned from an asynchronous function
      */
-    class OSGEARTH_EXPORT AsyncResult : public osg::Node
+    class OSGEARTH_EXPORT AsyncResult : public osg::Group
     {
     public:
         AsyncResult(osg::Node* node);

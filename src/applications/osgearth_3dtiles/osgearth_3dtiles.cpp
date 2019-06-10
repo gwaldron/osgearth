@@ -22,38 +22,35 @@
 
 #include <osgViewer/Viewer>
 #include <osgDB/WriteFile>
-#include <osgUtil/Simplifier>
-#include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ViewFitter>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
+#include <osgEarth/ViewFitter>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TDTiles>
 #include <osgEarth/Random>
 #include <osgEarth/TileKey>
 #include <osgEarth/CullingUtils>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/FeatureModelLayer>
-#include <osgEarthFeatures/ResampleFilter>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/ResampleFilter>
+#include <osgEarth/OGRFeatureSource>
+#include <osgDB/FileUtils>
 #include <iostream>
 
 #define LC "[3dtiles test] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Drivers;
+using namespace osgEarth::Contrib;
 namespace ui = osgEarth::Util::Controls;
 
 struct App
 {
+    MapNode* _mapNode;
     ui::HSliderControl* _sse;
     TDTiles::ContentHandler* _handler;
     EarthManipulator* _manip;
@@ -73,7 +70,7 @@ struct App
         if (_tileset->getBound().valid())
         {
             const osg::BoundingSphere& bs = _tileset->getBound();
-
+            
             const SpatialReference* wgs84 = SpatialReference::get("wgs84");
 
             std::vector<GeoPoint> points;
@@ -87,6 +84,11 @@ struct App
 
             _manip->setViewpoint(vp);
         }
+    }
+
+    void apply()
+    {
+        changeSSE();
     }
 };
 
@@ -150,32 +152,50 @@ struct FeatureRenderer : public TDTiles::ContentHandler
     {
         osg::ref_ptr<osg::Node> node;
 
-        if (tile->content().isSet() && tile->content()->uri().isSet())
+        if (tile->content().isSet() && tile->content()->uri().isSet() && !tile->content()->uri()->empty())
         {
-            OE_INFO << "Rendering feature tile: " << tile->content()->uri()->base() << std::endl;
-        
-            OGRFeatureOptions ogr;
-            ogr.url() = tile->content()->uri().get();
-            osg::ref_ptr<FeatureSource> fs = FeatureSourceFactory::create(ogr);
-            if (fs.valid() && fs->open().isOK())
+            if (osgEarth::Strings::endsWith(tile->content()->uri()->base(), ".shp"))
             {
-                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(0L);
-                FeatureList features;
-                cursor->fill(features);
-                if (!features.empty())
+                OE_INFO << "Rendering: " << tile->content()->uri()->full() << std::endl;
+        
+                osg::ref_ptr<OGRFeatureSource> fs = new OGRFeatureSource();
+                fs->setURL(tile->content()->uri().get());
+                if (fs->open().isOK())
                 {
-                    Style style;
-                    osg::Vec4 color;
-                    if (_app._randomColors)
-                        color.set(_random.next(), _random.next(), _random.next(), 1.0f);
-                    else
-                        color.set(1.0, 0.6, 0.0, 1.0);
+                    Query query;
 
-                    style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
-                    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-                    style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-                    node = new FeatureNode(features, style);
+                    // Gather features whose centroid falls within the query bounds
+                    FeatureList features;
+                    osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(query, NULL);
+                    if (cursor.valid())
+                        cursor->fill(features);
+                    fs->close();
+
+                    if (!features.empty())
+                    {
+                        Style style;
+                        osg::Vec4 color;
+                        if (_app._randomColors)
+                            color.set(_random.next(), _random.next(), _random.next(), 1.0f);
+                        else
+                            color.set(1.0, 0.6, 0.0, 1.0);
+
+                        style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
+                        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                        //style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+                        ExtrusionSymbol* ext = style.getOrCreate<ExtrusionSymbol>();
+                        ext->heightExpression() = NumericExpression("[height]");
+
+                        FeatureNode* fn = new FeatureNode(features, style);
+                        fn->setMapNode(_app._mapNode);
+                        node = fn;
+                        osg::BoundingSphere bs = node->getBound();
+                    }
                 }
+            }
+            else
+            {
+                node = osgDB::readRefNodeFile(tile->content()->uri()->full());
             }
         }
         else
@@ -199,7 +219,7 @@ main_view(osg::ArgumentParser& arguments)
     bool readFeatures = arguments.read("--features");
     app._randomColors = arguments.read("--random-colors");
 
-    app._maxSSE = 7.0f;
+    app._maxSSE = 20.0f;
     arguments.read("--maxsse", app._maxSSE);
 
     // load the tile set:
@@ -225,6 +245,7 @@ main_view(osg::ArgumentParser& arguments)
         return usage("Failed to load an earth file");
 
     MapNode* mapNode = MapNode::get(node.get());
+    app._mapNode = mapNode;
 
     if (readFeatures)
         app._tileset = new TDTilesetGroup(new FeatureRenderer(app));
@@ -235,8 +256,6 @@ main_view(osg::ArgumentParser& arguments)
     app._sseGroup = new LODScaleGroup();
     app._sseGroup->addChild(app._tileset.get());
 
-    //app._handler = app._tileset->getContentHandler();
-
     ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
     app._tileset->setTileset(tileset);
@@ -245,6 +264,9 @@ main_view(osg::ArgumentParser& arguments)
     mapNode->addChild(app._sseGroup);
 
     viewer.setSceneData( node.get() );
+
+    app.apply();
+
     return viewer.run();
 }
 
@@ -293,6 +315,7 @@ createTile(osg::Node* node, const GeoExtent& extent, double error, const std::st
     return tile.release();
 }
 
+#if 0
 int
 main_build(osg::ArgumentParser& arguments)
 {
@@ -359,7 +382,7 @@ main_build(osg::ArgumentParser& arguments)
         return usage("Unable to get feature source from layer");
     if ( !fs->getStatus().isOK() )
         return usage(fs->getStatus().message());
-    if ( fs->open(0L).isError() )
+    if ( fs->open().isError() )
         return usage(fs->getStatus().message());
 
     const FeatureProfile* fp = fs->getFeatureProfile();
@@ -377,10 +400,6 @@ main_build(osg::ArgumentParser& arguments)
     StyleSheet* sheet = fml->options().styles().get();
     if (!sheet)
         return usage("Missing stylesheet");
-
-    // Make sure the b3dm plugin is loaded
-    std::string libname = osgDB::Registry::instance()->createLibraryNameForExtension("gltf");
-    osgDB::Registry::instance()->loadLibrary(libname);
 
     osg::ref_ptr<Session> session = new Session(map, sheet, fs, 0L);
     GeometryCompiler compiler(fml->options());
@@ -496,19 +515,97 @@ main_build(osg::ArgumentParser& arguments)
 
     return 0;
 }
+#endif
+
+int
+main_tile(osg::ArgumentParser& args)
+{
+    // 1. Load an earth file
+    // 2. Find the first FeatureSource Layer
+    // 3. Create a 3D-Tiles Tileset object from it
+    // 4. Write the tileset to disk.
+    std::string infile;
+    if (!args.read("--in", infile))
+        return usage("Missing required --in <earthfile>");
+
+    std::string outfile;
+    if (!args.read("--out", outfile))
+        return usage("Missing required --out tileset.json");
+
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(infile);
+    MapNode* mapnode = MapNode::get(node.get());
+    if (!mapnode)
+        return usage("Input file is not a valid earth file");
+
+    Map* map = mapnode->getMap();
+
+    OGRFeatureSource* fs = map->getLayer<OGRFeatureSource>();
+    if (!fs)
+        return usage("No feature source layer found in the earth file");
+
+    FeatureModelLayer* fml = map->getLayer<FeatureModelLayer>();
+    if (!fml)
+        return usage("No feature model layer found in the earth file (for the styles)");
+
+    StyleSheet* sheet = fml->getStyleSheet();
+    if (!sheet)
+        return usage("No stylesheet found in the FeatureModel layer");
+
+    const Style* style = sheet->getDefaultStyle();
+    if (!sheet)
+        return usage("No default style found in the stylesheet");
+
+    if (!map->getProfile())
+    {
+        const Profile* profile = map->calculateProfile();
+        map->setProfile(profile);
+    }
+
+    TDTiles::TilesetFactory factory;
+    factory.setMap(map);
+
+    factory.addStyle(100.0, *style);
+    factory.addStyle( 50.0, *style);
+    factory.addStyle(  1.0, *style);
+
+    Query query;
+    osg::ref_ptr<TDTiles::Tileset> tileset = factory.create(fs, query, NULL);
+    if (!tileset.valid())
+        return usage("Failed to create a tileset from the feature source");
+
+    std::ofstream fout(outfile);
+    Support::Json::Value json = tileset->getJSON();
+    Support::Json::StyledStreamWriter writer;
+    writer.write(fout, json);
+    fout.close();
+    OE_INFO << "Wrote tileset to " << outfile << std::endl;
+    
+    return 0;
+}
 
 int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc, argv);
 
+    // Make sure the b3dm plugin is loaded
+    std::string libname = osgDB::Registry::instance()->createLibraryNameForExtension("gltf");
+    osgDB::Registry::instance()->loadLibrary(libname);
+
     if (arguments.read("--help"))
         return usage("Help!");
 
+#if 0
     if (arguments.read("--build"))
         return main_build(arguments);
+#endif
+
+    else if (arguments.read("--tile"))
+        return main_tile(arguments);
+
     else if (arguments.read("--view"))
         return main_view(arguments);
+
     else
         return usage("Missing required --build or --view");
 }

@@ -393,7 +393,9 @@ SET(LIB_PUBLIC_HEADERS
     RectangleNode
     TrackNode
     
-    rtree.h
+    rtree.h    
+    
+    FileGDBFeatureSource
 )
 
 
@@ -413,6 +415,7 @@ IF (NOT TINYXML_FOUND)
         tinyxmlparser.cpp
     )
 ENDIF (NOT TINYXML_FOUND)
+
 
 
 SET(VERSION_GIT_SOURCE "")
@@ -719,6 +722,8 @@ set(TARGET_SRC
     PlaceNode.cpp
     TrackNode.cpp
     
+    FileGDBFeatureSource.cpp
+    
     ${SHADERS_CPP} 
 )
 
@@ -795,6 +800,13 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   ENDIF()  
   
   LINK_WITH_VARIABLES(${LIB_NAME} Protobuf_LIBRARIES)
+ENDIF()
+
+# ESRI FileGeodatabase?
+IF(FILEGDB_FOUND)
+    add_definitions(-DOSGEARTH_HAVE_FILEGDB)
+    include_directories(${FILEGDB_INCLUDE_DIR})
+    LINK_WITH_VARIABLES(${LIB_NAME} FILEGDB_LIBRARY)
 ENDIF()
 
 IF (WIN32)

@@ -21,9 +21,15 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
+#include <osgEarth/OGRFeatureSource>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/ResampleFilter>
+#include <osgEarth/FeatureNode>
 #include <osgDB/FileNameUtils>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 #define LC "[3DTiles] "
 
@@ -34,7 +40,7 @@ using namespace osgEarth;
 #define PSEUDOLOADER_EXTERNAL_TILESET_EXT "osgearth_3dtiles_external_tileset"
 #define TAG_INVOKER "osgEarth::TDTiles::Invoker"
 
-namespace osgEarth { namespace TDTiles
+namespace osgEarth { namespace Contrib { namespace TDTiles
 {
     //! Operation that loads all of a tilenode's children.
     struct LoadChildren : public AsyncFunction
@@ -121,7 +127,7 @@ namespace osgEarth { namespace TDTiles
             else return ReadResult();
         }
     };
-}}
+}}}
 
 //........................................................................
 
@@ -303,7 +309,7 @@ TDTiles::Tile::fromJSON(const Json::Value& value, LoadContext& uc)
 
     if (value.isMember("refine"))
     {
-        refine() = osgEarth::ciEquals(value["refine"].asString(), "add") ? REFINE_ADD : REFINE_REPLACE;
+        refine() = osgEarth::ciEquals(value["refine"].asString(), "ADD") ? REFINE_ADD : REFINE_REPLACE;
         uc._defaultRefine = refine().get();
     }
     else
@@ -350,7 +356,7 @@ TDTiles::Tile::getJSON() const
     if (geometricError().isSet())
         value["geometricError"] = geometricError().get();
     if (refine().isSet())
-        value["refine"] = (refine().get() == REFINE_ADD) ? "add" : "replace";
+        value["refine"] = (refine().get() == REFINE_ADD) ? "ADD" : "REPLACE";
     if (content().isSet())
         value["content"] = content()->getJSON();
 
@@ -440,10 +446,10 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
 
         // if both a transform and a region are set, assume the radius is
         // fine but the center point should be localized to the transform. -gw
-        // (just guessing)
         if (tile->transform().isSet() && tile->boundingVolume()->region().isSet())
         {
-            bs.center().set(0,0,0);
+            // (actually don't - this was the old way but not the new way)
+            //bs.center().set(0,0,0);
         }
     }
     // tag this object as the invoker of the paging request:
@@ -458,7 +464,6 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
 
     if (tile->refine() == REFINE_REPLACE)
     {
-        //osg::ref_ptr<GeometricErrorPagedLOD> plod = new GeometricErrorPagedLOD(_handler.get());
         osg::ref_ptr<AsyncLOD> lod = new AsyncLOD();
         lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
         lod->setPolicy(AsyncLOD::POLICY_REPLACE);
@@ -480,9 +485,8 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
             // Async children as a group. All must load before replacing child 0.
             // TODO: consider a way to load each child asyncrhonously but still
             // block the refinement until all are loaded.
-            lod->addChild(new LoadChildren(this), 0.0f, geometricError);
+            lod->addChild(new LoadChildren(this), 0.0f, geometricError);            
         }
-
         addChild(lod);
     }
 
@@ -658,10 +662,12 @@ TDTilesetGroup::loadRoot(TDTiles::Tileset* tileset) const
 
         // create the root tile node and defer loading of its content:
         osg::Node* tileNode = new TDTiles::TileNode(tileset->root().get(), _handler.get(), _readOptions.get());
+        tileNode->setName("Tileset Root");
 
         AsyncLOD* lod = new AsyncLOD();
         lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
         lod->addChild(tileNode, 0.0, maxMetersPerPixel);
+        lod->setName("Root ALOD");
 
         result = lod;
     }
@@ -695,6 +701,7 @@ TDTilesetGroup::setTilesetURL(const URI& location)
     lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
     lod->setName(location.base());
     lod->addChild(new TDTiles::LoadExternalTileset(this), 0.0, FLT_MAX);
+    lod->setName("Tileset Load ExternalTiles ALOD");
 
     addChild(lod);
 }
@@ -703,4 +710,366 @@ const URI&
 TDTilesetGroup::getTilesetURL() const
 {
     return _tilesetURI;
+}
+
+//........................................................................
+
+namespace osgEarth { namespace Contrib { namespace TDTiles
+{
+    struct Env
+    {
+        const Map* map;
+        osg::ref_ptr<const Profile> profile;
+        unsigned gridLOD;
+        osg::ref_ptr<OGRFeatureSource> input;
+        Query query;
+        std::vector<double> geometricError;
+        std::vector<Style> style;
+        unsigned maxDepth;
+        URIContext uriContext;
+        unsigned counter;
+        GeoExtent extent;
+        std::stringstream nameBuf;
+        unsigned maxPointsPerTile;
+    };
+
+    void buildContent(Env& env, const GeoExtent& dataExtent, const FeatureList& features, TDTiles::Tile* tile, int depth)
+    {
+        tile->boundingVolume()->region()->set(
+            osg::DegreesToRadians(dataExtent.xMin()), osg::DegreesToRadians(dataExtent.yMin()), 0.0,
+            osg::DegreesToRadians(dataExtent.xMax()), osg::DegreesToRadians(dataExtent.yMax()), 1.0);
+
+        tile->geometricError() = env.geometricError[depth];
+
+        std::string url = Stringify() << "data_" << env.counter++ << ".shp";
+
+        tile->content()->uri() = URI(url);
+
+        // TODO: get the "refine" right
+        tile->refine() = TDTiles::REFINE_ADD;
+
+        bool writeGLTF = true;
+        if (writeGLTF)
+        {
+            std::string u = Stringify() << url << ".b3dm";
+            tile->content()->uri() = URI(u);
+            Session* session = new Session(env.map);
+            FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
+            GeometryCompiler gc;
+            FeatureList copy = features; 
+            osg::ref_ptr<osg::Node> node = gc.compile(copy, env.style[depth], fc);
+            osgDB::writeNodeFile(*node.get(), tile->content()->uri()->full()); 
+        }
+
+        else
+        {
+            osg::ref_ptr<OGRFeatureSource> ogr = new OGRFeatureSource();
+            ogr->setURL(url);
+            ogr->setOpenWrite(true);
+            Status s = ogr->create(env.input->getFeatureProfile(), env.input->getSchema(), env.input->getGeometryType(), NULL);
+            if (s.isOK())
+            {
+                for(FeatureList::const_iterator i = features.begin(); i != features.end(); ++i)
+                {
+                    ogr->insertFeature(i->get());
+                }
+                ogr->close();
+            }
+            else
+            {
+                OE_WARN << s.message() << std::endl;
+            }
+        }
+
+        OE_INFO << "Wrote " << tile->content()->uri()->full() << std::endl;
+    }
+
+    void splitHorizontally(Env& env, const GeoExtent& dataExtent, TDTiles::Tile* parent)
+    {
+    }
+
+    void splitVertically(Env& env, const GeoExtent& dataExtent, TDTiles::Tile* parent)
+    {
+    }
+
+    void render(Env&, const GeoExtent&, TDTiles::Tile*, const FeatureList&, int);
+    void split(Env& env, const GeoExtent& dataExtent, TDTiles::Tile* parent, const FeatureList& features, int depth);
+    void populate(Env& env, const GeoExtent&, FeatureList&);
+    void populate(Env& env, const GeoExtent&, const FeatureList&, FeatureList&);
+
+    void split(Env& env, const GeoExtent& dataExtent, TDTiles::Tile* parent, const FeatureList& features, int depth)
+    {
+        if (features.empty())
+            return;
+
+        std::vector<double> xlist;
+        std::vector<double> ylist;
+
+        for(FeatureList::const_iterator i = features.begin(); i != features.end(); ++i)
+        {
+            const Feature* f = i->get();
+
+            // find tile key containing centroid:
+            const GeoExtent& ex = f->getExtent();
+            double x, y;
+            ex.getCentroid(x, y);
+
+            xlist.push_back(x);
+            ylist.push_back(y);
+        }
+
+        // sort the lists and find the medians.
+        int i = xlist.size() / 2;
+        std::sort(xlist.begin(), xlist.end());
+        double xmedian = ((xlist.size() & 0x1) == 0) ? 0.5*(xlist[i - 1] + xlist[i]) : xlist[i - 1];
+
+        i = ylist.size() / 2;
+        std::sort(ylist.begin(), ylist.end());
+        double ymedian = ((ylist.size() & 0x1) == 0) ? 0.5*(ylist[i - 1] + ylist[i]) : ylist[i - 1];
+
+        GeoExtent corners[4];
+        corners[0] = GeoExtent(dataExtent.getSRS(), dataExtent.west(), dataExtent.south(), xmedian, ymedian);
+        corners[1] = GeoExtent(dataExtent.getSRS(), xmedian, dataExtent.south(), dataExtent.east(), ymedian);
+        corners[2] = GeoExtent(dataExtent.getSRS(), dataExtent.west(), ymedian, xmedian, dataExtent.north());
+        corners[3] = GeoExtent(dataExtent.getSRS(), xmedian, ymedian, dataExtent.east(), dataExtent.north());
+
+        for (unsigned c = 0; c < 4; ++c)
+        {
+            FeatureList childFeatures;
+            populate(env, corners[c], features, childFeatures);
+            if (!childFeatures.empty())
+            {
+                TDTiles::Tile* tile = new TDTiles::Tile();
+                render(env, corners[c], tile, childFeatures, depth);
+                parent->children().push_back(tile);
+            }
+        }
+    }
+
+    struct TileMetadata
+    {
+        TileMetadata() : featureCount(0u), pointCount(0u) { }
+        GeoExtent boundingExtent;
+        unsigned featureCount;
+        unsigned pointCount;
+    };
+
+    bool sortByArea(const osg::ref_ptr<Feature>& lhs, const osg::ref_ptr<Feature>& rhs)
+    {
+        return lhs->getExtent().area() > rhs->getExtent().area();
+    };
+
+    // queries all features whose centroid falls within the dataExtent
+    // and populates a list of features transformed to geographic SRS.
+    void populate(Env& env, const GeoExtent& dataExtent, FeatureList& features)
+    {
+        Query query;
+        query.bounds() = dataExtent.transform(env.input->getFeatureProfile()->getSRS()).bounds();
+        osg::ref_ptr<FeatureCursor> cursor = env.input->createFeatureCursor(query, NULL);
+        while(cursor.valid() && cursor->hasMore())
+        {
+            Feature* f = cursor->nextFeature();
+            if (f->getGeometry() == NULL)
+                continue;
+
+            f->transform(dataExtent.getSRS());
+            osg::Vec3d c = f->getExtent().getCentroid();
+            if (dataExtent.contains(c.x(), c.y()))
+            {
+                features.push_back(f);
+            }
+        }
+        features.sort(sortByArea);
+    }
+
+    // queries all features whose centroid falls within the dataExtent
+    // and populates a list of features transformed to geographic SRS.
+    void populate(Env& env, const GeoExtent& dataExtent, const FeatureList& superset, FeatureList& subset)
+    {
+        for(FeatureList::const_iterator i = superset.begin(); i != superset.end(); ++i)
+        {
+            Feature* f = i->get();
+            double x, y;
+            f->getExtent().getCentroid(x, y);
+            if (dataExtent.contains(x, y))
+            {
+                subset.push_back(f);
+            }
+        }
+    }
+
+    void render(Env& env, const GeoExtent& dataExtent, TDTiles::Tile* tile, const FeatureList& features, int depth)
+    {
+        if (depth < env.geometricError.size()-1)
+        {
+            tile->geometricError() = env.geometricError[depth];
+
+            FeatureList thisFeatures;
+            FeatureList childFeatures;
+            int k=0;
+            //int num = features.size()/3;  
+            unsigned points = 0;
+            for(FeatureList::const_iterator i = features.begin();
+                i != features.end(); 
+                ++i, ++k)
+            {
+                if (points > env.maxPointsPerTile)
+                {
+                    childFeatures.push_back(i->get());
+                }
+                else
+                {
+                    thisFeatures.push_back(i->get());
+                    points += i->get()->getGeometry()->getTotalPointCount();
+                }
+            }
+
+            buildContent(env, dataExtent, thisFeatures, tile, depth);
+
+            if (!childFeatures.empty())
+            {
+                split(env, dataExtent, tile, childFeatures, depth+1);
+            }
+        }
+        else
+        {
+            buildContent(env, dataExtent, features, tile, depth);
+        }
+    }
+
+    // Build a grid of shapefiles at a particular profile LOD.
+    Status buildGrid(Env& env, TDTiles::Tile* parent)
+    {
+        typedef std::map<TileKey, osg::ref_ptr<OGRFeatureSource> > Sources;
+        typedef std::map<TileKey, TileMetadata> TileMetadataMap;
+
+        //Sources sources;
+        TileMetadataMap m;
+
+        env.extent = GeoExtent(env.profile->getSRS());
+
+        // Collect the TileKeys and bounding extents for the feature data.
+        // These are usually close but not necessarily exact. The bounding extent
+        // envelopes the true feature data and is used for culling; while the TileKey's
+        // extent is static and is used for query.
+        osg::ref_ptr<FeatureCursor> cursor = env.input->createFeatureCursor(Query(), 0L);
+        while (cursor.valid() && cursor->hasMore())
+        {
+            // read the next feature and transform to output srs:
+            Feature* feature = cursor->nextFeature();
+            feature->transform(env.profile->getSRS());
+
+            // find tile key containing centroid:
+            const GeoExtent& featureExtent = feature->getExtent();
+            double x, y;
+            featureExtent.getCentroid(x, y);
+            TileKey key = env.profile->createTileKey(x, y, env.gridLOD);
+
+            TileMetadata& metadata = m[key];
+            if (metadata.boundingExtent.isInvalid())
+            {
+                metadata.boundingExtent = GeoExtent(env.profile->getSRS());
+            }
+            metadata.boundingExtent.expandToInclude(featureExtent);
+            metadata.featureCount++;
+            metadata.pointCount += feature->getGeometry() ? feature->getGeometry()->getTotalPointCount() : 0;
+        }
+
+        // Now create a child Tile for each TileKey.
+        for(TileMetadataMap::const_iterator i = m.begin();
+            i != m.end();
+            ++i)
+        {
+            const TileKey& key = i->first;
+            const TileMetadata& metadata = i->second;
+
+            TDTiles::Tile* tile = new TDTiles::Tile();
+
+            tile->boundingVolume()->region()->set(
+                osg::DegreesToRadians(metadata.boundingExtent.xMin()), osg::DegreesToRadians(metadata.boundingExtent.yMin()), 0.0,
+                osg::DegreesToRadians(metadata.boundingExtent.xMax()), osg::DegreesToRadians(metadata.boundingExtent.yMax()), 1.0);
+
+            // TODO: get the "refine" right
+
+            parent->children().push_back(tile);
+
+            env.extent.expandToInclude(metadata.boundingExtent);
+
+            // Collect this cell's features to pass down the chain.
+            FeatureList features;
+            populate(env, key.getExtent(), features);
+            render(env, key.getExtent(), tile, features, 0); // depth=0
+        }
+
+        parent->geometricError() = 350.0; //TODO - arbitrary? Top-LOD Tile size?
+
+        parent->refine() = TDTiles::REFINE_ADD; // each tile will page in separately
+
+        parent->boundingVolume()->region()->set(
+            osg::DegreesToRadians(env.extent.xMin()), osg::DegreesToRadians(env.extent.yMin()), 0.0,
+            osg::DegreesToRadians(env.extent.xMax()), osg::DegreesToRadians(env.extent.yMax()), 1.0);
+
+        return Status::OK();
+    }
+}}}
+
+TDTiles::TilesetFactory::TilesetFactory()
+{
+}
+
+TDTiles::TilesetFactory::~TilesetFactory()
+{
+}
+
+void
+TDTiles::TilesetFactory::setMap(const Map* map)
+{
+    _map = map;
+}
+
+void
+TDTiles::TilesetFactory::addStyle(double geometricError, const Style& style)
+{
+    _styles[geometricError] = style;
+}
+
+TDTiles::Tileset*
+TDTiles::TilesetFactory::create(OGRFeatureSource* source, 
+                                const Query& query,
+                                ProgressCallback* progress) const
+{
+    if (!_map || !_map->getSRS())
+    {
+        OE_WARN << "No map or map not open" << std::endl;
+        return NULL;
+    }
+
+    osg::ref_ptr<TDTiles::Tile> root = new TDTiles::Tile();
+    root->geometricError() = 400.0;
+
+    URIContext uriContext;
+
+    Env env;
+    env.map = _map;
+    env.input = source;
+    env.counter = 0;
+    env.uriContext = uriContext;
+    env.profile = Profile::create("global-geodetic");
+    env.gridLOD = 12u;
+    env.maxPointsPerTile = 12500;
+
+    for(std::map<double,Style>::const_reverse_iterator i = _styles.rbegin();
+        i != _styles.rend();
+        ++i)
+    {
+        env.geometricError.push_back(i->first);
+        env.style.push_back(i->second);
+    }
+
+    buildGrid(env, root);
+
+    osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
+    tileset->root() = root.get();
+    tileset->asset()->version() = "1.0";
+    return tileset.release();
 }

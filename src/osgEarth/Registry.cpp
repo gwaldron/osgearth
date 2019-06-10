@@ -29,6 +29,7 @@
 #include <gdal_priv.h>
 
 #include <ogr_api.h>
+#include <cstdlib>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -80,6 +81,10 @@ _devicePixelRatio(1.0f)
 
     // global initialization for CURL (not thread safe)
     HTTPClient::globalInit();
+
+    // warn if GDAL_DATA is not set
+    if (::getenv("GDAL_DATA") == NULL)
+        OE_INFO << LC << "Note: GDAL_DATA environment variable is not set" << std::endl;
 
     // generates the basic shader code for the terrain engine and model layers.
     _shaderLib = new ShaderFactory();

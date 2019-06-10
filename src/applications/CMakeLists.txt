@@ -93,7 +93,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_magnify)
     ADD_SUBDIRECTORY(osgearth_eci)
     ADD_SUBDIRECTORY(osgearth_windows)
-    #ADD_SUBDIRECTORY(osgearth_3dtiles)
+    ADD_SUBDIRECTORY(osgearth_3dtiles)
     ADD_SUBDIRECTORY(osgearth_callouts)
 
     IF(SILVERLINING_FOUND)

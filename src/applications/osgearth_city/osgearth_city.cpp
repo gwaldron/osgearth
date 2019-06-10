@@ -235,8 +235,8 @@ void addStreets(Map* map)
     FeatureModelLayer* layer = new FeatureModelLayer();
     layer->setFeatureSource(data);
     layer->options().layout() = layout;
-    layer->options().styles() = new StyleSheet();
-    layer->options().styles()->addStyle( style );
+    layer->setStyleSheet(new StyleSheet());
+    layer->getStyleSheet()->addStyle(style);
 
     map->addLayer(layer);
 }
@@ -283,8 +283,8 @@ void addParks(Map* map)
     FeatureModelLayer* layer = new FeatureModelLayer();
     layer->setFeatureSource(data);
     layer->options().layout() = layout;
-    layer->options().styles() = new StyleSheet();
-    layer->options().styles()->addStyle( style );
+    layer->setStyleSheet(new StyleSheet());
+    layer->getStyleSheet()->addStyle(style);
 
     map->addLayer(layer);
 

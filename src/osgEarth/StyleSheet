@@ -29,6 +29,7 @@
 namespace osgEarth
 {
     typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
+    typedef std::map<std::string, StyleSelector> StyleSelectors;
 
     /**
      * A complete definition of style information.
@@ -57,8 +58,8 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, Layer::Options);
             StyleMap& styles() { return _styles; }
             const StyleMap& styles() const { return _styles; }
-            StyleSelectorList& selectors() { return _selectors; }
-            const StyleSelectorList& selectors() const { return _selectors; }
+            StyleSelectors& selectors() { return _selectors; }
+            const StyleSelectors& selectors() const { return _selectors; }
             osg::ref_ptr<ScriptDef>& script() { return _script; }
             const osg::ref_ptr<ScriptDef>& script() const { return _script; }
             ResourceLibraries& libraries() { return _libraries; }
@@ -68,13 +69,13 @@ namespace osgEarth
         private:
             void fromConfig(const Config& conf);
             StyleMap _styles;
-            StyleSelectorList _selectors;
+            StyleSelectors _selectors;
             osg::ref_ptr<ScriptDef> _script;
             ResourceLibraries _libraries;
         };
 
     public:
-        META_Layer(osgEarth, StyleSheet, Options, Layer, StyleSheet);
+        META_Layer(osgEarth, StyleSheet, Options, Layer, Styles);
 
         /** Gets the context for relative path resolution */
         const URIContext& uriContext() const { return _uriContext; }
@@ -100,8 +101,8 @@ namespace osgEarth
         const StyleMap& getStyles() const;
 
         /** Selectors pick a style from the sheet based on some criteria. */
-        StyleSelectorList& getSelectors();
-        const StyleSelectorList& getSelectors() const;
+        StyleSelectors& getSelectors();
+        const StyleSelectors& getSelectors() const;
         const StyleSelector* getSelector(const std::string& name) const;
 
         /** Adds a resource library. */

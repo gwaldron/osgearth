@@ -42,8 +42,8 @@ namespace osgEarth
     public: // properties
 
         /** Name of this style class. */
-        std::string& name() { return _name; }
-        const std::string& name() const { return _name; }
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
         /** Name of the style to select */
         optional<std::string>& styleName() { return _styleName; }
@@ -65,18 +65,11 @@ namespace osgEarth
         virtual Config getConfig() const;
 
     protected:
-        std::string                _name;
+        optional<std::string>      _name;
         optional<std::string>      _styleName;
         optional<StringExpression> _styleExpression;
         optional<Query>            _query;
     };
-
-    typedef std::list<StyleSelector>   StyleSelectorList;
-
-    namespace Symbology {
-        typedef osgEarth::StyleSelector StyleSelector;
-        typedef osgEarth::StyleSelectorList StyleSelectorList;
-    }
 
 } // namespace osgEarth
 

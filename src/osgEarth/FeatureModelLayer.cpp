@@ -56,8 +56,12 @@ Config
 FeatureModelLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
-    conf.merge(FeatureModelOptions::getConfig());
-    conf.merge(GeometryCompilerOptions::getConfig());
+
+    Config fmConf = FeatureModelOptions::getConfig();
+    conf.merge(fmConf);
+
+    Config gcConf = GeometryCompilerOptions::getConfig();
+    conf.merge(gcConf);
 
     LayerClient<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
 
@@ -244,13 +248,10 @@ FeatureModelLayer::create()
             // connect the session to the features:
             _session->setFeatureSource(getFeatureSource());
 
-            // the factory builds nodes for the model graph:
-            FeatureNodeFactory* nodeFactory = createFeatureNodeFactory();
-
             // group that will build all the feature geometry:
             osg::ref_ptr<FeatureModelGraph> fmg = new FeatureModelGraph(options());
             fmg->setSession(_session.get());
-            fmg->setNodeFactory(nodeFactory);
+            fmg->setNodeFactory(createFeatureNodeFactory());
             fmg->setSceneGraphCallbacks(getSceneGraphCallbacks());
             fmg->setStyleSheet(getStyleSheet());
 

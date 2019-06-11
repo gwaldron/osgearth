@@ -34,13 +34,15 @@ StyleSheet::Options::getConfig() const
 {
     Config conf = Layer::Options::getConfig();
 
-    for (StyleSelectorList::const_iterator i = selectors().begin();
+    conf.remove("selector");
+    for (StyleSelectors::const_iterator i = selectors().begin();
         i != selectors().end();
         ++i)
     {
-        conf.add("selector", i->getConfig());
+        conf.add("selector", i->second.getConfig());
     }
 
+    conf.remove("style");
     for (StyleMap::const_iterator i = styles().begin();
         i != styles().end();
         ++i)
@@ -48,6 +50,7 @@ StyleSheet::Options::getConfig() const
         conf.add("style", i->second.getConfig());
     }
 
+    conf.remove("library");
     for (ResourceLibraries::const_iterator i = libraries().begin();
         i != libraries().end(); ++i)
     {
@@ -58,6 +61,7 @@ StyleSheet::Options::getConfig() const
         }
     }
 
+    conf.remove("script");
     if (_script.valid())
     {
         Config scriptConf("script");
@@ -85,6 +89,7 @@ StyleSheet::Options::fromConfig(const Config& conf)
     //_uriContext = URIContext(conf.referrer());
 
     // read in any resource library references
+    _libraries.clear();
     ConfigSet librariesConf = conf.children("library");
     for (ConfigSet::iterator i = librariesConf.begin(); i != librariesConf.end(); ++i)
     {
@@ -97,6 +102,7 @@ StyleSheet::Options::fromConfig(const Config& conf)
     }
 
     // read in any scripts
+    _script = NULL;
     const Config& scriptConf = conf.child("script");
     if (!scriptConf.empty())
     {
@@ -125,14 +131,17 @@ StyleSheet::Options::fromConfig(const Config& conf)
     }
 
     // read any style class definitions. either "class" or "selector" is allowed
+    _selectors.clear();
     ConfigSet selectors = conf.children("selector");
-    if (selectors.empty()) selectors = conf.children("class");
     for (ConfigSet::iterator i = selectors.begin(); i != selectors.end(); ++i)
     {
-        _selectors.push_back(StyleSelector(*i));
+        StyleSelector s(*i);
+        std::string unique = Stringify() << s.name() << ":" << s.styleName();
+        _selectors[unique] = s;
     }
 
     // read in the actual styles
+    _styles.clear();
     ConfigSet stylesConf = conf.children("style");
     for (ConfigSet::iterator i = stylesConf.begin();
         i != stylesConf.end();
@@ -243,31 +252,29 @@ StyleSheet::getStyles() const
     return options().styles();
 }
 
-StyleSelectorList&
+StyleSelectors&
 StyleSheet::getSelectors()
 {
     return options().selectors();
 }
 
-const StyleSelectorList&
+const StyleSelectors&
 StyleSheet::getSelectors() const
 {
     return options().selectors();
 }
 
 const StyleSelector*
-StyleSheet::getSelector( const std::string& name ) const
+StyleSheet::getSelector(const std::string& name) const
 {
-    for(StyleSelectorList::const_iterator i = options().selectors().begin();
+    for(StyleSelectors::const_iterator i = options().selectors().begin();
         i != options().selectors().end();
-        ++i )
+        ++i)
     {
-        if ( i->name() == name )
-        {
-            return &(*i);
-        }
+        if (i->second.name().isSetTo(name))
+            return &i->second;
     }
-    return 0L;
+    return NULL;
 }
 
 Style*

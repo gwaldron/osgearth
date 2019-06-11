@@ -116,13 +116,6 @@ namespace osgEarth { namespace Support
          */
         const std::vector<const FeatureLevel*>& getLevels() const { return _lodmap; };
 
-        //! Options passed in.
-        //const FeatureModelOptions& options() const { return _featureOptions; }
-
-    public: // osg::Node
-
-        virtual void traverse(osg::NodeVisitor& nv);
-
     protected:
 
         virtual ~FeatureModelGraph();
@@ -211,9 +204,7 @@ namespace osgEarth { namespace Support
         GeoExtent                        _usableMapExtent;
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
-        osgEarth::Revision               _featureSourceRev, _modelSourceRev;
         bool                             _dirty;
-        bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
         OpenThreads::ReentrantMutex      _redrawMutex;
         optional<float> _minRange;

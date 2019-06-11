@@ -268,42 +268,6 @@ FeatureModelGraph::setMaxRange(float value)
     _maxRange = value;
 }
 
-#if 0
-FeatureModelGraph::FeatureModelGraph(Session*                     session,
-                                     const FeatureModelOptions&   featureOptions,
-                                     FeatureNodeFactory*          factory,
-                                     SceneGraphCallbacks*         callbacks) :
-_session            ( session ),
-_options            ( featureOptions ),
-_factory            ( factory ),
-_dirty              ( false ),
-_pendingUpdate      ( false ),
-_sgCallbacks        ( callbacks )
-{
-    ctor();
-}
-#endif
-
-#if 0
-const VisibleLayer::Options& layerOptions,
-FeatureModelGraph::FeatureModelGraph(Session*                   session,
-                                     const FeatureModelOptions& options,
-                                     const VisibleLayer::Options& layerOptions,
-                                     FeatureNodeFactory*        factory,
-                                     ModelSource*               modelSource,
-                                     SceneGraphCallbacks*       callbacks) :
-_session            ( session ),
-_options            ( options ),
-_factory            ( factory ),
-_modelSource        ( modelSource ),
-_dirty              ( false ),
-_pendingUpdate      ( false ),
-_sgCallbacks        ( callbacks )
-{
-    ctor();
-}
-#endif
-
 Status
 FeatureModelGraph::open()
 {
@@ -1253,12 +1217,12 @@ FeatureModelGraph::build(const Style&          defaultStyle,
         // a create a node for each style group.
         if ( styles->getSelectors().size() > 0 )
         {
-            for( StyleSelectorList::const_iterator i = styles->getSelectors().begin(); 
+            for( StyleSelectors::const_iterator i = styles->getSelectors().begin(); 
                 i != styles->getSelectors().end();
                 ++i )
             {
                 // pull the selected style...
-                const StyleSelector& sel = *i;
+                const StyleSelector& sel = i->second;
 
                 // if the selector uses an expression to select the style name, then we must perform the
                 // query and then SORT the features into style groups.
@@ -1531,8 +1495,6 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
                                     const osgDB::Options* readOptions,
                                     ProgressCallback*     progress)
 {
-    OE_TEST << LC << "createStyleGroup " << style.getName() << std::endl;
-
     osg::Group* styleGroup = 0L;
 
     // the profile of the features
@@ -1624,25 +1586,6 @@ FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
     applyRenderSymbology(style, styleGroup);
 
     return styleGroup;
-}
-
-
-void
-FeatureModelGraph::traverse(osg::NodeVisitor& nv)
-{
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
-    {
-        if ( _pendingUpdate )
-        {
-            OE_TEST << LC << "pending update detected" << std::endl;
-
-            redraw();
-            _pendingUpdate = false;
-            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-        }
-    }
-
-    osg::Group::traverse(nv);
 }
 
 void

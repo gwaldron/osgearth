@@ -20,6 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/StyleSelector>
+#include <osgEarth/StringUtils>
+#include <osgEarth/Registry>
 
 #define LC "[StyleSelector] "
 
@@ -35,13 +37,13 @@ StyleSelector::StyleSelector( const Config& conf )
 std::string
 StyleSelector::getSelectedStyleName() const 
 {
-    return _styleName.isSet() ? *_styleName : _name;
+    return _styleName.isSet() ? _styleName.get() : _name.get();
 }
 
 void
 StyleSelector::mergeConfig( const Config& conf )
 {
-    _name = conf.value( "name" );
+    conf.get( "name",       _name);
     conf.get( "style",      _styleName );
     conf.get( "class",      _styleName ); // alias
     conf.get( "style_expr", _styleExpression ); 

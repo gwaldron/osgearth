@@ -188,11 +188,11 @@ namespace
 
         if ( styles->getSelectors().size() > 0 )
         {
-            for( StyleSelectorList::const_iterator i = styles->getSelectors().begin(); 
+            for( StyleSelectors::const_iterator i = styles->getSelectors().begin(); 
                 i != styles->getSelectors().end();
                 ++i )
             {
-                const StyleSelector& sel = *i;
+                const StyleSelector& sel = i->second;
 
                 if ( sel.styleExpression().isSet() )
                 {

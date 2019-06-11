@@ -388,7 +388,7 @@ FeatureModelGraph::open()
     }
 
 
-    if ( _options.layout().isSet() && _options.layout()->getNumLevels() > 0 )
+    if ( _options.layout().isSet() ) //&& _options.layout()->getNumLevels() > 0 )
     {
         // the user provided a custom levels setup, so don't use the tiled source (which
         // provides its own levels setup)
@@ -401,12 +401,19 @@ FeatureModelGraph::open()
             float maxRange = FLT_MAX;
             maxRange = _maxRange.getOrUse(maxRange);
             maxRange = _options.layout()->maxRange().getOrUse(maxRange);
-            maxRange = osg::minimum( maxRange, _options.layout()->getLevel(0)->maxRange().get() );
+
+            if (_options.layout()->getNumLevels() > 0)
+                maxRange = osg::minimum( maxRange, _options.layout()->getLevel(0)->maxRange().get() );
         
             _options.layout()->tileSizeFactor() = maxRange / _options.layout()->tileSize().get();
 
             OE_INFO << LC << "Tile size = " << (*_options.layout()->tileSize()) << " ==> TRF = " << 
                 (*_options.layout()->tileSizeFactor()) << "\n";
+
+            if (_options.layout()->getNumLevels() == 0)
+            {
+                _options.layout()->addLevel(FeatureLevel(0.0f, maxRange));
+            }
         }
 
         // for each custom level, calculate the best LOD match and store it in the level

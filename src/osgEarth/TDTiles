@@ -38,6 +38,7 @@ using namespace osgEarth;
 namespace osgEarth {
     class Map;
     class OGRFeatureSource;
+    class StyleSheet;
 }
 
 /**
@@ -168,7 +169,9 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
         void setMap(const Map* map);
 
-        void addStyle(double geometricError, const Style& style);
+        void setStyleSheet(StyleSheet* sheet);
+
+        void setGeometryFormat(const std::string& format);
 
         Tileset* create(
             OGRFeatureSource* source,
@@ -177,7 +180,8 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
     private:
         const Map* _map;
-        std::map<double, Style> _styles;
+        osg::ref_ptr<StyleSheet> _sheet;
+        std::string _format;
     };
 } } }
 

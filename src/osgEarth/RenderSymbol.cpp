@@ -36,7 +36,8 @@ _renderBin(rhs._renderBin),
 _transparent(rhs._transparent),
 _decal(rhs._decal),
 _maxCreaseAngle(rhs._maxCreaseAngle),
-_maxAltitude(rhs._maxAltitude)
+_maxAltitude(rhs._maxAltitude),
+_geometricError(rhs._geometricError)
 {
 }
 
@@ -51,7 +52,8 @@ _minAlpha       ( 0.0f ),
 _transparent    ( false ),
 _decal          ( false ),
 _maxCreaseAngle ( 0.0 ),
-_maxAltitude    ( Distance(FLT_MAX, Units::METERS) )
+_maxAltitude    ( Distance(FLT_MAX, Units::METERS) ),
+_geometricError ( 0.0f )
 {
     mergeConfig(conf);
 }
@@ -73,6 +75,7 @@ RenderSymbol::getConfig() const
     conf.set( "decal",            _decal);
     conf.set( "max_crease_angle", _maxCreaseAngle);
     conf.set( "max_altitude",     _maxAltitude);
+    conf.set( "geometric_error",  _geometricError );
     return conf;
 }
 
@@ -91,6 +94,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.get( "decal",            _decal);
     conf.get( "max_crease_angle", _maxCreaseAngle);
     conf.get( "max_altitude",     _maxAltitude);
+    conf.get( "geometric_error",  _geometricError);
 }
 
 void
@@ -161,5 +165,10 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         float value; Units units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->maxAltitude() = Distance(value, units);
+    }
+    else if (match(c.key(), "render-geometric-error")) {
+        float value; Units units;
+        if (Units::parse(c.value(), value, units, Units::METERS))
+            style.getOrCreate<RenderSymbol>()->geometricError() = Distance(value, units);
     }
 }

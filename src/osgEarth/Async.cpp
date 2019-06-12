@@ -59,6 +59,7 @@ namespace osgEarth { namespace Support
             char buf[64];
             sprintf(buf, "%u." ASYNC_PSEUDOLOADER_EXT, _id);
             _pseudoloaderFilename = buf;
+            _priority = 0.5f;
         }
 
         bool _needy;
@@ -68,6 +69,7 @@ namespace osgEarth { namespace Support
         double _lastTimeWeMet;
         float _minValue;
         float _maxValue;
+        float _priority;
         osg::BoundingSphere _bound;
         osg::ref_ptr<osg::Referenced> _internalHandle;
         osg::ref_ptr<osgDB::Options> _options;
@@ -145,7 +147,10 @@ AsyncLOD::addChild(AsyncFunction* callback, float minValue, float maxValue)
     child->_lastTimeWeMet = DBL_MAX;
     child->_options = Registry::instance()->cloneOrCreateOptions(_readOptions.get());
     OptionsData<AsyncFunction>::set(child->_options.get(), TAG_ASYNC_CALLBACK, callback);
+    
+    _mutex.lock();
     _lookup[child->_id] = child;
+    _mutex.unlock();
 }
 
 void
@@ -163,6 +168,7 @@ void
 AsyncLOD::clear()
 {
     osg::Group::removeChildren(0, getNumChildren());
+
     _mutex.lock();
     _lookup.clear();
     _mutex.unlock();
@@ -224,6 +230,8 @@ AsyncLOD::computeBound() const
 void
 AsyncLOD::traverse(osg::NodeVisitor& nv)
 {
+    // ... TODO: check children for expiration! Maybe in accept?
+
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         // last child that already has a node to display:
@@ -307,10 +315,16 @@ AsyncLOD::traverse(osg::NodeVisitor& nv)
 void
 AsyncLOD::ask(AsyncNode& child, osg::NodeVisitor& nv)
 {
+    float priority = 
+        _mode == MODE_GEOMETRIC_ERROR? child._maxValue :
+        _mode == MODE_PIXEL_SIZE? child._maxValue :
+        _mode == MODE_RANGE? 1.0f/child._maxValue :
+        1.0f;
+
     nv.getDatabaseRequestHandler()->requestNodeFile(
         child._pseudoloaderFilename,        // pseudo name that will invoke AsyncNodePseudoLoader
         _nodePath,                          // parent of node to "add" when request completes
-        0.5f,                               // priority
+        priority,                           // priority (higher loads sooner)
         nv.getFrameStamp(),                 // frame stamp
         child._internalHandle,              // associates the request with a unique ID
         child._options.get()                // osgDB plugin options

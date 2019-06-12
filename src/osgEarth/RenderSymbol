@@ -89,6 +89,10 @@ namespace osgEarth
         optional<Distance>& maxAltitude() { return _maxAltitude; }
         const optional<Distance>& maxAltitude() const { return _maxAltitude; }
 
+        /** geometric error present when rendering */
+        optional<Distance>& geometricError() { return _geometricError; }
+        const optional<Distance>& geometricError() const { return _geometricError; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -107,6 +111,7 @@ namespace osgEarth
         optional<bool>               _decal;
         optional<Angle>              _maxCreaseAngle;
         optional<Distance>           _maxAltitude;
+        optional<Distance>           _geometricError;
         
         /** dtor */
         virtual ~RenderSymbol() { }

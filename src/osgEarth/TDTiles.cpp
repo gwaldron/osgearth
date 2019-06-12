@@ -25,6 +25,7 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/FeatureNode>
+#include <osgEarth/StyleSheet>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 
@@ -723,14 +724,16 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         unsigned gridLOD;
         osg::ref_ptr<OGRFeatureSource> input;
         Query query;
-        std::vector<double> geometricError;
-        std::vector<Style> style;
+        std::vector<float> geometricError;
+        osg::ref_ptr<StyleSheet> sheet;
+        std::vector<const Style*> style;
         unsigned maxDepth;
         URIContext uriContext;
         unsigned counter;
         GeoExtent extent;
         std::stringstream nameBuf;
         unsigned maxPointsPerTile;
+        std::string format;
     };
 
     void buildContent(Env& env, const GeoExtent& dataExtent, const FeatureList& features, TDTiles::Tile* tile, int depth)
@@ -751,13 +754,14 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         bool writeGLTF = true;
         if (writeGLTF)
         {
-            std::string u = Stringify() << url << ".b3dm";
+            std::string u = Stringify() << url << "." << env.format;
             tile->content()->uri() = URI(u);
             Session* session = new Session(env.map);
+            session->setStyles(env.sheet.get());
             FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
             GeometryCompiler gc;
             FeatureList copy = features; 
-            osg::ref_ptr<osg::Node> node = gc.compile(copy, env.style[depth], fc);
+            osg::ref_ptr<osg::Node> node = gc.compile(copy, *env.style[depth], fc);
             osgDB::writeNodeFile(*node.get(), tile->content()->uri()->full()); 
         }
 
@@ -1001,8 +1005,6 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
             render(env, key.getExtent(), tile, features, 0); // depth=0
         }
 
-        parent->geometricError() = 350.0; //TODO - arbitrary? Top-LOD Tile size?
-
         parent->refine() = TDTiles::REFINE_ADD; // each tile will page in separately
 
         parent->boundingVolume()->region()->set(
@@ -1013,7 +1015,8 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
     }
 }}}
 
-TDTiles::TilesetFactory::TilesetFactory()
+TDTiles::TilesetFactory::TilesetFactory() :
+_format("b3dm")
 {
 }
 
@@ -1028,9 +1031,17 @@ TDTiles::TilesetFactory::setMap(const Map* map)
 }
 
 void
-TDTiles::TilesetFactory::addStyle(double geometricError, const Style& style)
+TDTiles::TilesetFactory::setStyleSheet(StyleSheet* sheet)
 {
-    _styles[geometricError] = style;
+    _sheet = sheet;
+}
+
+void
+TDTiles::TilesetFactory::setGeometryFormat(const std::string& format)
+{
+    _format = format;
+    if (_format.empty())
+        _format = "b3dm";
 }
 
 TDTiles::Tileset*
@@ -1044,28 +1055,62 @@ TDTiles::TilesetFactory::create(OGRFeatureSource* source,
         return NULL;
     }
 
+    if (!_sheet.valid())
+    {
+        OE_WARN << "Missing required stylesheet" << std::endl;
+        return NULL;
+    }
+
     osg::ref_ptr<TDTiles::Tile> root = new TDTiles::Tile();
-    root->geometricError() = 400.0;
 
     URIContext uriContext;
 
     Env env;
     env.map = _map;
     env.input = source;
+    env.format = _format;
     env.counter = 0;
     env.uriContext = uriContext;
     env.profile = Profile::create("global-geodetic");
     env.gridLOD = 12u;
     env.maxPointsPerTile = 12500;
+    env.sheet = _sheet;
 
-    for(std::map<double,Style>::const_reverse_iterator i = _styles.rbegin();
-        i != _styles.rend();
+    // extract the selectors from the style sheet to find the style
+    // for each geometric error.
+    std::map<float,const Style*> styles;
+    for(StyleMap::const_iterator i = env.sheet->getStyles().begin();
+        i != env.sheet->getStyles().end();
+        ++i)
+    {
+        const Style& style = i->second;
+        const RenderSymbol* render = style.get<RenderSymbol>();
+        if (render && render->geometricError().isSet())
+        {
+            float error = render->geometricError()->as(Units::METERS);
+            styles[error] = &style;
+        }
+    }
+
+    if (styles.empty())
+    {
+        OE_WARN << "Found zero styles with a render-geometric-error" << std::endl;
+        return NULL;
+    }
+
+    // copy styles (in error-order) into the env object:
+    for(std::map<float,const Style*>::const_reverse_iterator i = styles.rbegin();
+        i != styles.rend();
         ++i)
     {
         env.geometricError.push_back(i->first);
         env.style.push_back(i->second);
+        OE_INFO << LC << "Added style \"" << i->second->getName() << "\" with geometric error " << i->first << std::endl;
     }
 
+    root->geometricError() = env.geometricError[0] * 3.0f;
+
+    // build the top-level grid of tiles:
     buildGrid(env, root);
 
     osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();

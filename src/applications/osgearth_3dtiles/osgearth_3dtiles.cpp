@@ -38,6 +38,7 @@
 #include <osgEarth/FeatureModelLayer>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/Registry>
 #include <osgDB/FileUtils>
 #include <iostream>
 
@@ -118,21 +119,17 @@ usage(const std::string& message)
         << "\n\n" << message
         << "\n\nUsage: osgearth_3dtiles"
         << "\n"
-        << "\n   --build [earthfile]          ; build a B3DM file"
-        << "\n     --extent <minLat> <minLon>"
-        << "\n              <maxLat> <maxLon> ; Extents to build (degrees)"
-        << "\n     --out <filename>           ; output file with .b3dm extension"
-        << "\n     --error <meters>           ; geometric error (meters) of data (default=100)"
-        << "\n     --resolution <meters>      ; downsample data to this resolution"
-        << "\n     --limit <n>                ; Only generate <n> tiles (for testing)"
+        << "\n   --tile                       ; build a tileset"
+        << "\n     --in <earthfile>           ; Earth file containing feature source and stylesheet"
+        << "\n     --out <tileset>            ; output JSON tileset"
+        << "\n     --format <format>          ; output geometry format (default = b3dm)"
         << "\n"
-        << "\n   --view                       ; view a 3dtiles dataset"
+        << "\n   --view <earthfile>           ; view a 3dtiles dataset"
         << "\n     --tileset <filename>       ; 3dtiles tileset JSON file to load"
         << "\n     --maxsse <n>               ; maximum screen space error in pixels for UI"
         << "\n     --features                 ; treat the 3dtiles content as feature data"
         << "\n     --random-colors            ; randomly color feature tiles (instead of one color)"
         << std::endl;
-        //<< MapNodeHelper().usage() << std::endl;
 
     return -1;
 }
@@ -349,18 +346,22 @@ main_tile(osg::ArgumentParser& args)
     if (!sheet)
         return usage("No default style found in the stylesheet");
 
+    std::string format("b3dm");
+    args.read("--format", format);
+
     if (!map->getProfile())
     {
         const Profile* profile = map->calculateProfile();
         map->setProfile(profile);
     }
 
+    // For bets optimization
+    Registry::instance()->setMaxNumberOfVertsPerDrawable(UINT_MAX);
+
     TDTiles::TilesetFactory factory;
     factory.setMap(map);
-
-    factory.addStyle(100.0, *style);
-    factory.addStyle( 50.0, *style);
-    factory.addStyle(  1.0, *style);
+    factory.setGeometryFormat(format);
+    factory.setStyleSheet(sheet);
 
     Query query;
     osg::ref_ptr<TDTiles::Tileset> tileset = factory.create(fs, query, NULL);

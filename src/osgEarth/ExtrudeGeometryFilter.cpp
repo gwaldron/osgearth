@@ -1271,7 +1271,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         cache->consolidateStateSets(group);
 
         osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.setTargetMaximumNumberOfVertices(65536);
+        mg.setTargetMaximumNumberOfVertices(UINT_MAX);
         group->accept(mg);
     }
 

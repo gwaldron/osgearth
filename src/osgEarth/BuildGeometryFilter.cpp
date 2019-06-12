@@ -33,6 +33,7 @@
 #include <osgEarth/PointDrawable>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/Registry>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineStipple>
@@ -420,7 +421,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         // Optimize the Geode
         osg::Geode* geode = itr->second.get();
         osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.setTargetMaximumNumberOfVertices(65536);
+        mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
         geode->accept(mg);
 
         if (_optimizeVertexOrdering == true)
@@ -1396,7 +1397,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         if ( geode->getNumDrawables() > 0 )
         {
             osgUtil::Optimizer::MergeGeometryVisitor mg;
-            mg.setTargetMaximumNumberOfVertices(65536);
+            mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
             geode->accept(mg);
 
             if (_optimizeVertexOrdering == true)

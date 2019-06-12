@@ -289,6 +289,14 @@ namespace osgEarth
         * This value is useful when running in high dpi environments on high resolution displays.
         */
         void setDevicePixelRatio(float devicePixelRatio);
+
+        /**
+         * Maximum number of vertices to allow in a single osg::Geometry drawable
+         * when performing optimization processing. This varies based on hardware
+         * capabilities. Default is 65535.
+         */
+        void setMaxNumberOfVertsPerDrawable(unsigned value);
+        unsigned getMaxNumberOfVertsPerDrawable() const;
         
         //! Release any resources held by the registry so it can be re-used
         void release();
@@ -377,6 +385,8 @@ namespace osgEarth
         typedef std::map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
         mutable SRSCache _srsCache;
         mutable Threading::Mutex _srsMutex;
+
+        unsigned _maxVertsPerDrawable;
     };
 }
 

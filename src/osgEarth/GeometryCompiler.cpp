@@ -538,7 +538,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         opt.optimize(resultGroup.get(), optimizations);
 
         osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.setTargetMaximumNumberOfVertices(65536);
+        mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
         resultGroup->accept(mg);
 
         OE_DEBUG << LC << "optimize complete" << std::endl;

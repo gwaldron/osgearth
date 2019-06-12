@@ -66,7 +66,8 @@ _terrainEngineDriver( "rex" ),
 _cacheDriver        ( "filesystem" ),
 _overrideCachePolicyInitialized( false ),
 _threadPoolSize(2u),
-_devicePixelRatio(1.0f)
+_devicePixelRatio(1.0f),
+_maxVertsPerDrawable(65535)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -756,6 +757,17 @@ Registry::setDevicePixelRatio(float devicePixelRatio)
     _devicePixelRatio = devicePixelRatio;
 }
 
+void
+Registry::setMaxNumberOfVertsPerDrawable(unsigned value)
+{
+    _maxVertsPerDrawable = value;
+}
+
+unsigned
+Registry::getMaxNumberOfVertsPerDrawable() const
+{
+    return _maxVertsPerDrawable;
+}
 
 namespace
 {

@@ -289,7 +289,7 @@ LineGroup::optimize()
     // Merge all non-dynamic drawables to reduce the total number of 
     // OpenGL calls.
     osgUtil::Optimizer::MergeGeometryVisitor mg;
-    mg.setTargetMaximumNumberOfVertices(65536);
+    mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
     accept(mg);
 }
 

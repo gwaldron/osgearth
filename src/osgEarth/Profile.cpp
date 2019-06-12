@@ -309,7 +309,7 @@ const Profile*
 Profile::create(const std::string& name)
 {
     // TODO: move the named profiles from Registry into here.
-    if ( ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
+    if ( ciEquals(name, "plate-carre") || ciEquals(name, "plate-carree") || ciEquals(name, "eqc-wgs84") )
     {
         // Yes I know this is not really Plate Carre but it will stand in for now.
         osg::Vec3d ex;

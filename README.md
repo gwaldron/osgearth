@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/gwaldron/osgearth.svg?branch=master)](https://travis-ci.org/gwaldron/osgearth)
 [![Coverity Status](https://scan.coverity.com/projects/9251/badge.svg)](https://scan.coverity.com/projects/gwaldron-osgearth)
+[![Open Source Helpers](https://www.codetriage.com/gwaldron/osgearth/badges/users.svg)](https://www.codetriage.com/gwaldron/osgearth)
 
 osgEarth - Geospatial SDK for OpenSceneGraph
 Copyright 2018 Pelican Mapping

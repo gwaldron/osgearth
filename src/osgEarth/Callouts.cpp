@@ -588,7 +588,7 @@ CalloutManager::BBox::overlap(const BBox& rhs) const
 
 CalloutManager::CalloutRecord::CalloutRecord() :
     _node(NULL),
-    _frame(NULL),
+    _frame(0u),
     _leaderLineIndex(INT_MAX),
     _conflicted(false),
     _offsetVector(0,1,0),

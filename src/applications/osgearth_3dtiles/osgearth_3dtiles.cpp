@@ -39,6 +39,7 @@
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/Registry>
+#include <osgEarth/Async>
 #include <osgDB/FileUtils>
 #include <iostream>
 
@@ -259,6 +260,8 @@ main_view(osg::ArgumentParser& arguments)
     app._tileset->setReadOptions(mapNode->getMap()->getReadOptions());
 
     mapNode->addChild(app._sseGroup);
+
+    mapNode->addChild(Registry::instance()->getAsyncMemoryManager());
 
     viewer.setSceneData( node.get() );
 

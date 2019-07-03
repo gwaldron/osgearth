@@ -160,6 +160,31 @@ namespace osgEarth { namespace Support
         // how child node should interact with each other
         Policy _policy;
     };
+
+    //! Object that tracks the usage of Async objects and removes
+    //! them from the scene graph when they expire. Once instance
+    //! may be shared by multiple cameras, graphs, etc.
+    class OSGEARTH_EXPORT AsyncMemoryManager : public osg::Node
+    {
+    public:
+        AsyncMemoryManager();
+
+        void push(AsyncNode* node, osg::NodeVisitor& nv);
+
+        void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        virtual ~AsyncMemoryManager();
+
+        typedef std::vector< osg::ref_ptr<AsyncNode> > RefNodeVector;
+        typedef std::set< osg::ref_ptr<AsyncNode> > RefNodeSet;
+        RefNodeSet _alive;
+        RefNodeSet _orphaned;
+        RefNodeSet _dead;
+        Threading::Mutex _mutex;
+
+        void cycle(osg::NodeVisitor& nv);
+    };
 } }
 
 #endif // OSGEARTH_ASYNC_H

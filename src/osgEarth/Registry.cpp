@@ -23,6 +23,7 @@
 #include <osgEarth/TaskService>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/Async>
 
 #include <osgText/Font>
 
@@ -167,6 +168,9 @@ _maxVertsPerDrawable(65535)
 
     // register the system stock Units.
     Units::registerAll( this );
+
+    // create an async mem mgr for AsyncLODs.
+    _asyncMemoryManager = new AsyncMemoryManager();
 }
 
 Registry::~Registry()
@@ -767,6 +771,12 @@ unsigned
 Registry::getMaxNumberOfVertsPerDrawable() const
 {
     return _maxVertsPerDrawable;
+}
+
+AsyncMemoryManager*
+Registry::getAsyncMemoryManager() const
+{
+    return _asyncMemoryManager.get();
 }
 
 namespace

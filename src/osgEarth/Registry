@@ -54,6 +54,7 @@ namespace osgEarth
     {
         class ShaderFactory;
         class TaskServiceManager;
+        class AsyncMemoryManager;
     }
 
     using namespace Support;
@@ -278,6 +279,8 @@ namespace osgEarth
         //! Access to the general-purpose async operations queue
         osg::OperationQueue* getAsyncOperationQueue() const { return _opQueue.get(); }
 
+        //! Access to the Async mem mgr
+        AsyncMemoryManager* getAsyncMemoryManager() const;
 
         /**
          * Gets the device pixel ratio.
@@ -387,6 +390,8 @@ namespace osgEarth
         mutable Threading::Mutex _srsMutex;
 
         unsigned _maxVertsPerDrawable;
+
+        osg::ref_ptr<AsyncMemoryManager> _asyncMemoryManager;
     };
 }
 

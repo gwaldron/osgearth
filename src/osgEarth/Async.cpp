@@ -19,6 +19,7 @@
 #include <osgEarth/Async>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+#include <osgEarth/NodeUtils>
 
 #include <osg/CullStack>
 #include <osgDB/ReaderWriter>
@@ -81,6 +82,29 @@ namespace osgEarth { namespace Support
                 return osg::Group::computeBound();
             else
                 return _bound;
+        }
+
+        void traverse(osg::NodeVisitor& nv)
+        {
+            if (nv.getVisitorType() == nv.CULL_VISITOR)
+            {
+                AsyncMemoryManager* mm = Registry::instance()->getAsyncMemoryManager();
+                if (mm)
+                    mm->push(this, nv);
+            }
+            osg::Group::traverse(nv);
+        }
+
+        //! Clear, making the node once again eligible for 
+        //! async loading.
+        void clear()
+        {
+            if (getNumChildren() > 0)
+            {
+                osg::releaseGLObjects(getChild(0));
+                removeChild(0, 1);
+                _needy = true;
+            }
         }
 
         static OpenThreads::Atomic _idgen;
@@ -371,6 +395,67 @@ AsyncLOD::isVisible(const AsyncNode& async, osg::NodeVisitor& nv) const
 
     return false;
 }
+
+//........................................................................
+
+AsyncMemoryManager::AsyncMemoryManager()
+{
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+}
+
+AsyncMemoryManager::~AsyncMemoryManager()
+{
+    //nop
+}
+
+void
+AsyncMemoryManager::push(AsyncNode* node, osg::NodeVisitor& nv)
+{
+    _mutex.lock();
+    _alive.insert(node);
+    _orphaned.erase(node);
+    _dead.erase(node);
+    _mutex.unlock();
+}
+
+void
+AsyncMemoryManager::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        //nop
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        cycle(nv);
+    }
+
+    osg::Node::traverse(nv);
+}
+
+void
+AsyncMemoryManager::cycle(osg::NodeVisitor& nv)
+{
+    _mutex.lock();
+    if (!_dead.empty())
+    {
+        unsigned count = _dead.size();
+        for (RefNodeSet::iterator i = _dead.begin();
+            i != _dead.end();
+            ++i)
+        {
+            AsyncNode* node = i->get();
+            node->clear();
+        }
+        _dead.clear();
+    }
+    _orphaned.swap(_dead);
+    _alive.swap(_orphaned);
+    _mutex.unlock();
+}
+
+//........................................................................
 
 namespace osgEarth { namespace Support
 {

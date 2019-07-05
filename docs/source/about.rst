@@ -129,7 +129,7 @@ Maintainers
 .. _@pelicanmapping:  https://twitter.com/pelicanmapping
 .. _Google+ Page:     https://plus.google.com/b/104014917856468748129/104014917856468748129/posts
 
-.. _support forum:    http://forum.osgearth.osg
+.. _support forum:    http://forum.osgearth.org
 .. _OSG Mailing List: http://lists.openscenegraph.org/listinfo.cgi/osg-users-openscenegraph.org
 .. _OSG Forum:        http://forum.openscenegraph.org
 .. _Contact us:       http://pelicanmapping.com/?page_id=2

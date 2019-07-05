@@ -1312,7 +1312,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
                                     const osgDB::Options* readOptions,
                                     ProgressCallback*     progress)
 {
-    OE_TEST << LC << "buildStyleGroups " << selector->name() << std::endl;
+    OE_TEST << LC << "buildStyleGroups " << selector->name()->c_str() << std::endl;
 
     // if the selector uses an expression to select the style name, then we must perform the
     // query and then SORT the features into style groups.

@@ -187,7 +187,7 @@ CalloutManager::push(Callout* node, osgUtil::CullVisitor& nv)
     }
 
     // create a leader line on demand
-    if (rec._leaderLineIndex == INT_MAX)
+    if (rec._leaderLineIndex == INT32_MAX)
     {
         rec._leaderLineIndex = _leaders->getNumVerts();
         _leaders->pushVertex(osg::Vec3f());
@@ -589,7 +589,7 @@ CalloutManager::BBox::overlap(const BBox& rhs) const
 CalloutManager::CalloutRecord::CalloutRecord() :
     _node(NULL),
     _frame(0u),
-    _leaderLineIndex(INT_MAX),
+    _leaderLineIndex(INT32_MAX),
     _conflicted(false),
     _offsetVector(0,1,0),
     _bestVector(0,1,0),

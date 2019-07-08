@@ -82,8 +82,6 @@ namespace
             "right mouse :",       "continuous zoom",
             "double-click :",      "zoom to point",
             "scroll wheel :",      "zoom in/out",
-            "arrows :",            "pan",
-            //"1-6 :",               "fly to preset viewpoints",
             "shift-left-mouse :",  "locked pan",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
@@ -95,6 +93,7 @@ namespace
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
             "L :",                 "toggle log depth buffer"
+            "arrows :",            "adjust tether offset",
         };
 
         Grid* g = new Grid();

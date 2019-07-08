@@ -81,6 +81,8 @@ namespace osgEarth { namespace Util
 
     public: // Layer
 
+        virtual const Status& open();
+
         virtual void addedToMap(const Map* map);
 
         virtual void removedFromMap(const Map* map);

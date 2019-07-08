@@ -28,7 +28,6 @@
 #include <osgEarth/Registry>
 #include <osgEarth/PagedNode>
 #include <osgEarth/Endian>
-#include <osgEarth/LineDrawable>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Text>
 
@@ -339,10 +338,21 @@ MGRSGraticule::init()
 
 }
 
+const Status&
+MGRSGraticule::open()
+{
+    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    if (ssStatus.isError())
+        return setStatus(ssStatus);
+
+    return VisibleLayer::open();
+}
+
 void
 MGRSGraticule::addedToMap(const Map* map)
 {
     VisibleLayer::addedToMap(map);
+    _styleSheet.addedToMap(options().styleSheetLayer(), map);
     _map = map;
     rebuild();
 }
@@ -351,6 +361,7 @@ void
 MGRSGraticule::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
+    _styleSheet.removedFromMap(map);
     _map = 0L;
 }
 
@@ -1012,6 +1023,9 @@ MGRSGraticule::rebuild()
     // clear everything out and start over
     _root->removeChildren( 0, _root->getNumChildren() );
 
+    if (getStyleSheet() == NULL)
+        return;
+
     // requires a geocentric map
     if ( !map->getSRS()->isGeographic() )
     {
@@ -1052,7 +1066,7 @@ MGRSGraticule::rebuild()
         }
 
         // Root of the geometry tree
-        osg::Group* geomTop = new LineGroup(); //osg::Group();
+        osg::Group* geomTop = new osg::Group();
         top->addChild(geomTop);
 
         // Root of the text tree

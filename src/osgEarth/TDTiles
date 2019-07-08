@@ -173,6 +173,8 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
         void setGeometryFormat(const std::string& format);
 
+        void setURIContext(const URIContext& value);
+
         Tileset* create(
             OGRFeatureSource* source,
             const Query& query,
@@ -182,6 +184,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         const Map* _map;
         osg::ref_ptr<StyleSheet> _sheet;
         std::string _format;
+        URIContext _uriContext;
     };
 } } }
 

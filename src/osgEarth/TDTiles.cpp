@@ -746,8 +746,6 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
         std::string url = Stringify() << "data_" << env.counter++ << ".shp";
 
-        tile->content()->uri() = URI(url);
-
         // TODO: get the "refine" right
         tile->refine() = TDTiles::REFINE_ADD;
 
@@ -755,7 +753,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         if (writeGLTF)
         {
             std::string u = Stringify() << url << "." << env.format;
-            tile->content()->uri() = URI(u);
+            tile->content()->uri() = URI(u, env.uriContext);
             Session* session = new Session(env.map);
             session->setStyles(env.sheet.get());
             FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
@@ -767,8 +765,10 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
         else
         {
+            URI uri(url, env.uriContext);
+            tile->content()->uri() = uri;
             osg::ref_ptr<OGRFeatureSource> ogr = new OGRFeatureSource();
-            ogr->setURL(url);
+            ogr->setURL(uri);
             ogr->setOpenWrite(true);
             Status s = ogr->create(env.input->getFeatureProfile(), env.input->getSchema(), env.input->getGeometryType(), NULL);
             if (s.isOK())
@@ -944,10 +944,11 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
     // Build a grid of shapefiles at a particular profile LOD.
     Status buildGrid(Env& env, TDTiles::Tile* parent)
     {
+        OE_INFO << LC << "Analyzing features and building grid..." << std::endl;
+
         typedef std::map<TileKey, osg::ref_ptr<OGRFeatureSource> > Sources;
         typedef std::map<TileKey, TileMetadata> TileMetadataMap;
 
-        //Sources sources;
         TileMetadataMap m;
 
         env.extent = GeoExtent(env.profile->getSRS());
@@ -980,6 +981,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         }
 
         // Now create a child Tile for each TileKey.
+        OE_INFO << LC << "Building tiles..." << std::endl;
         for(TileMetadataMap::const_iterator i = m.begin();
             i != m.end();
             ++i)
@@ -1044,6 +1046,12 @@ TDTiles::TilesetFactory::setGeometryFormat(const std::string& format)
         _format = "b3dm";
 }
 
+void
+TDTiles::TilesetFactory::setURIContext(const URIContext& value)
+{
+    _uriContext = value;
+}
+
 TDTiles::Tileset*
 TDTiles::TilesetFactory::create(OGRFeatureSource* source, 
                                 const Query& query,
@@ -1063,14 +1071,12 @@ TDTiles::TilesetFactory::create(OGRFeatureSource* source,
 
     osg::ref_ptr<TDTiles::Tile> root = new TDTiles::Tile();
 
-    URIContext uriContext;
-
     Env env;
     env.map = _map;
     env.input = source;
     env.format = _format;
     env.counter = 0;
-    env.uriContext = uriContext;
+    env.uriContext = _uriContext;
     env.profile = Profile::create("global-geodetic");
     env.gridLOD = 12u;
     env.maxPointsPerTile = 12500;

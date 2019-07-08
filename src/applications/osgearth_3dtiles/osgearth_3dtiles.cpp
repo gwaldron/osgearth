@@ -358,13 +358,14 @@ main_tile(osg::ArgumentParser& args)
         map->setProfile(profile);
     }
 
-    // For bets optimization
+    // For best optimization
     Registry::instance()->setMaxNumberOfVertsPerDrawable(UINT_MAX);
 
     TDTiles::TilesetFactory factory;
     factory.setMap(map);
     factory.setGeometryFormat(format);
     factory.setStyleSheet(sheet);
+    factory.setURIContext(URIContext(outfile));
 
     Query query;
     osg::ref_ptr<TDTiles::Tileset> tileset = factory.create(fs, query, NULL);

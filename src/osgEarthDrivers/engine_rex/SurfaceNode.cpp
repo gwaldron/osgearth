@@ -242,8 +242,11 @@ SurfaceNode::computeBound() const
 
 float
 SurfaceNode::getPixelSizeOnScreen(osg::CullStack* cull) const
-{
-    double R = _drawable->getRadius() / 1.4142;
+{     
+    // By using the width, the "apparent" pixel size will decrease as we
+    // near the poles.
+    double R = _drawable->getWidth()*0.5;
+    //double R = _drawable->getRadius() / 1.4142;
     return cull->clampedPixelSize(getMatrix().getTrans(), R) / cull->getLODScale();
 }
 

@@ -18,7 +18,6 @@
 */
 #include "RexTerrainEngineNode"
 #include "Shaders"
-#include "SelectionInfo"
 #include "TerrainCuller"
 #include "GeometryPool"
 
@@ -370,7 +369,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         0u, // always zero, not the terrain options firstLOD
         osg::minimum(options().maxLOD().get(), maxLOD ),
         map->getProfile(),
-        options().minTileRangeFactor().get() );
+        options().minTileRangeFactor().get(),
+        true); // restrict polar subdivision for geographic maps
 
     // set up the initial graph
     refresh();

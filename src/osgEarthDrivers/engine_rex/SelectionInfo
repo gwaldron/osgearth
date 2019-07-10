@@ -40,19 +40,26 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             double _visibilityRange;
             double _morphStart;
             double _morphEnd;
+            unsigned _minValidTY, _maxValidTY;
         };
 
     public:
         SelectionInfo() : _firstLOD(0) { }
 
         //! Initialize the selection into LODs
-        void initialize(unsigned firstLod, unsigned maxLod, const Profile* profile, double mtrf);
+        void initialize(unsigned firstLod, unsigned maxLod, const Profile* profile, double mtrf, bool restrictPolarSubdivision);
 
         //! Number of LODs
         unsigned getNumLODs(void) const { return _lods.size(); }
 
         //! Visibility and morphing information for a specific LOD
         const LOD& getLOD(unsigned lod) const;
+
+        //! Fetch the effective visibility range and morphing range for a key
+        void get(const TileKey& key, float& out_range, float& out_startMorphRange, float& out_endMorphRange) const;
+
+        //! Get just the visibility range for a TileKey.
+        float getRange(const TileKey& key) const;
 
     private:
         std::vector<LOD>    _lods;

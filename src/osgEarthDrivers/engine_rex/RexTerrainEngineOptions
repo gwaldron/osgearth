@@ -45,7 +45,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _morphTerrain           ( true ),
             _morphImagery           ( true ),
             _mergesPerFrame         ( 20 ),
-            _expirationRange        ( 0 )
+            _expirationRange        ( 0 ),
+            _adaptivePolarRangeFactor( true )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -108,6 +109,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<int>& mergesPerFrame() { return _mergesPerFrame; }
         const optional<int>& mergesPerFrame() const { return _mergesPerFrame; }
 
+        /**
+         * Whether to automatically adjust(reduce) the minTileRangeFactor with increase in
+         * latitude. This prevents overtessellation in the polar regions. Only works with
+         * a geocentric map. Defaults to true.
+         */
+        optional<bool>& adaptivePolarRangeFactor() { return _adaptivePolarRangeFactor; }
+        const optional<bool>& adaptivePolarRangeFactor() const { return _adaptivePolarRangeFactor; }
+
         /** Options for specific LODs */
         std::vector<LODOptions>& lods() { return _lods; }
         const std::vector<LODOptions>& lods() const { return _lods; }
@@ -125,6 +134,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.set( "morph_terrain", _morphTerrain );
             conf.set( "morph_imagery", _morphImagery );
             conf.set( "merges_per_frame", _mergesPerFrame );
+            conf.set( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
 
             if (!_lods.empty()) {
                 Config lodsConf("lods");
@@ -159,6 +169,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.get( "morph_terrain", _morphTerrain );
             conf.get( "morph_imagery", _morphImagery );
             conf.get( "merges_per_frame", _mergesPerFrame );
+            conf.get( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
 
             const Config* lods = conf.child_ptr("lods");
             if (lods) {
@@ -185,6 +196,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>     _morphTerrain;
         optional<bool>     _morphImagery;
         optional<int>      _mergesPerFrame;
+        optional<bool>     _adaptivePolarRangeFactor;
         std::vector<LODOptions> _lods;
     };
 

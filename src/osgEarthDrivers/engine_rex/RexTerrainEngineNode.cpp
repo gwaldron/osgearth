@@ -368,7 +368,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         0u, // always zero, not the terrain options firstLOD
         osg::minimum( _terrainOptions.maxLOD().get(), maxLOD ),
         map->getProfile(),
-        _terrainOptions.minTileRangeFactor().get() );
+        _terrainOptions.minTileRangeFactor().get(),
+        _terrainOptions.adaptivePolarRangeFactor().get() );
 
     // set up the initial graph
     refresh();

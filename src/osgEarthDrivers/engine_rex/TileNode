@@ -153,6 +153,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool                               _empty;
         bool                               _isRootTile;
         bool                               _imageUpdatesActive;
+        TileKey                            _subdivideTestKey;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;

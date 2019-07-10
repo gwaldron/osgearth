@@ -159,11 +159,17 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         -1.0f);
 
     // initialize all the per-tile uniforms the shaders will need:
-    float start = (float)context->getSelectionInfo().getLOD(_key.getLOD())._morphStart;
-    float end   = (float)context->getSelectionInfo().getLOD(_key.getLOD())._morphEnd;
-    float one_by_end_minus_start = end - start;
-    one_by_end_minus_start = 1.0f/one_by_end_minus_start;
-    _morphConstants.set( end * one_by_end_minus_start, one_by_end_minus_start );
+    float range, morphStart, morphEnd;
+    context->getSelectionInfo().get(_key, range, morphStart, morphEnd);
+
+    float one_over_end_minus_start = 1.0f/(morphEnd - morphStart);
+    _morphConstants.set(morphEnd * one_over_end_minus_start, one_over_end_minus_start);
+
+    // Make a tilekey to use for testing whether to subdivide.
+    if (_key.getTileY() <= th/2)
+        _subdivideTestKey = _key.createChildKey(0);
+    else
+        _subdivideTestKey = _key.createChildKey(3);
 
     // Initialize the data model by copying the parent's rendering data
     // and scale/biasing the matrices.
@@ -367,7 +373,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
         else
         {
-            float range = selectionInfo.getLOD(currLOD+1)._visibilityRange;
+            float range = context->getSelectionInfo().getRange(_subdivideTestKey);
 #if 1
             // slightly slower than the alternate block below, but supports a user overriding
             // CullVisitor::getDistanceToViewPoint -gw
@@ -375,7 +381,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
 #else
             return _surface->anyChildBoxIntersectsSphere(
                 culler->getViewPointLocal(), 
-                range*range/culler->getLODScale());
+                range*range / culler->getLODScale());
 #endif
         }
     }                 

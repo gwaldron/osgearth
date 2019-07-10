@@ -101,6 +101,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         float getRadius() const { return _bboxRadius; }
 
+        float getWidth() const { return getBoundingBox().xMax() - getBoundingBox().xMin(); }
+
     public: // osg::Drawable overrides
 
         // These methods defer functors (like stats collection) to the underlying

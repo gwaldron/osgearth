@@ -40,7 +40,7 @@ namespace osgEarth { namespace SimpleSky
                                public SkyNodeFactory
     {
     public:
-        META_OE_Extension(osgEarth, SimpleSkyExtension, simple_sky);
+        META_OE_Extension(osgEarth, SimpleSkyExtension, sky_simple);
 
         // CTORs
         SimpleSkyExtension() { }

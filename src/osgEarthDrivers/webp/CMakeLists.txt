@@ -1,7 +1,5 @@
 IF(WEBP_FOUND)
 
-find_package(WEBP REQUIRED)
-
 SET(TARGET_SRC
 	ReaderWriterWebP.cpp
 )

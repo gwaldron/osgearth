@@ -128,6 +128,7 @@ OPTION(OSGEARTH_ENABLE_GEOCODER "Enable the OGR-based geocoder" ON)
 
 FIND_PACKAGE(Triton QUIET)
 FIND_PACKAGE(SilverLining QUIET)
+FIND_PACKAGE(WebP QUIET)
 
 FIND_PACKAGE(Protobuf QUIET)
 SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")

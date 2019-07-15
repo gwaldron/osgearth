@@ -447,7 +447,13 @@ TileNode::cull(TerrainCuller* culler)
                 OE_START_TIMER(createChildren);
                 int initialNumChildren = _children.size();
                 createChildren( context );
-                culler->_numberChildrenCreated += (_children.size() - initialNumChildren);
+                if (OE_GET_TIMER(createChildren) > .002) {
+                   // out of time
+                   culler->_numberChildrenCreated += 4;
+                }
+                else {
+                   culler->_numberChildrenCreated += (_children.size() - initialNumChildren);
+                }
                 REPORT("TileNode::createChildren", createChildren);
 
                 if (_children.size() == 4) {
@@ -602,7 +608,7 @@ TileNode::createChildren(EngineContext* context)
         // Add to the scene graph.
         addChild( node );
         // 2 ms limit on tile splits
-        if (timer.elapsedTime_m() > 2.0 && quadrant != 3) {
+        if (timer.elapsedTime_m() > 2.0 ) {
            //osg::CVMarkerSeries series("Culling SubTasks");
            //series.write_alert("hit budget, %f", timer.elapsedTime_m());
            break;

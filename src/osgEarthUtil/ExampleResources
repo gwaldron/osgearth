@@ -172,6 +172,22 @@ namespace osgEarth { namespace Util
         Control* create(MapNode* mapNode) const;
     };
 
+
+    /**
+     * Toggles the main control canvas on and off.
+     */
+    class OSGEARTHUTIL_EXPORT ToggleCanvasEventHandler : public osgGA::GUIEventHandler
+    {
+    public:
+        ToggleCanvasEventHandler(osg::Node* canvas, char key);
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
+
+    private:
+        osg::observer_ptr<osg::Node> _canvas;
+        char _key;
+    };
+
 } } // namespace osgEarth::Util
 
 

@@ -20,7 +20,9 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgViewer/View>
+#include <osgViewer/Viewer>
+#include <osgEarthUtil/ExampleResources>
+#include <osgEarthSymbology/Color>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -36,6 +38,132 @@ using namespace osgEarth::Viewpoints;
 
 namespace
 {
+    class AddGuiOperation : public osg::Operation
+    {
+    public:
+
+        AddGuiOperation(MapNode* _mapNode)
+            : mapNode(_mapNode)
+        {
+        }
+
+        virtual void operator () (osg::Object* callingObject)
+        {
+            osgViewer::Viewer* view = dynamic_cast<osgViewer::Viewer*>(callingObject);
+
+            if(view)
+            {
+                //check if there is an instance of the ToggleCanvasEventHandler class, which indicates that the earth file was loaded with the osgearth_viewer
+                const osgViewer::View::EventHandlers& handlers = view->getEventHandlers();
+                for(osgViewer::View::EventHandlers::const_iterator it = handlers.begin(); it!=handlers.end(); it++)
+                {
+                    const ToggleCanvasEventHandler *canvasHandler = dynamic_cast<const ToggleCanvasEventHandler*>(it->get());
+                    if(canvasHandler!=0)
+                        return;
+                }
+
+                // Install a new Canvas for our UI controls, or use one that already exists.
+                ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
+
+                Container* mainContainer;
+                mainContainer = new VBox();
+                mainContainer->setAbsorbEvents( true );
+                mainContainer->setBackColor( Color(Color::Black, 0.8) );
+                mainContainer->setHorizAlign( Control::ALIGN_LEFT );
+                mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
+                canvas->addControl( mainContainer );
+
+                // Add an event handler to toggle the canvas with a key press;
+                view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
+                // install our default manipulator (do this before calling load)
+                EarthManipulator *manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+                if(!manip)
+                    view->setCameraManipulator( new EarthManipulator );
+
+                // Hook up the extensions!
+                for(std::vector<osg::ref_ptr<Extension> >::const_iterator eiter = mapNode->getExtensions().begin();
+                    eiter != mapNode->getExtensions().end();
+                    ++eiter)
+                {
+                    Extension* e = eiter->get();
+
+                    // Check for a View interface:
+                    ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get( e );
+                    if ( viewIF )
+                        viewIF->connect( view );
+
+                    // Check for a Control interface:
+                    ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
+                    if ( controlIF )
+                        controlIF->connect( mainContainer );
+                }
+            }
+        }
+    private:
+        osg::ref_ptr<MapNode> mapNode;
+    };
+
+
+    class RemoveEventHandler : public osg::Operation
+    {
+    public:
+
+        RemoveEventHandler(osg::Node *node, osgGA::GUIEventHandler *eventHandler)
+            : _node(node), _eventHandler(eventHandler)
+        {
+        }
+
+        virtual void operator () (osg::Object* callingObject)
+        {
+            osgViewer::Viewer* view = dynamic_cast<osgViewer::Viewer*>(callingObject);
+
+            if(view)
+            {
+                _node->removeEventCallback(_eventHandler);
+            }
+        }
+        osg::ref_ptr<osgGA::GUIEventHandler> _eventHandler;
+        osg::ref_ptr<osg::Node> _node;
+    };
+
+
+    struct AddGuiEventHandler : public osgGA::GUIEventHandler
+    {
+        AddGuiEventHandler(osg::Node* node)
+            : _node(node)
+        {
+        }
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        {
+            osgViewer::Viewer* viewer = static_cast<osgViewer::Viewer*>(&aa);
+
+            if(viewer)
+            {
+                switch (ea.getEventType())
+                {
+                    case osgGA::GUIEventAdapter::FRAME:
+                    {
+                        MapNode *mapNode = MapNode::get(_node);
+                        if(mapNode)
+                        {
+                            viewer->addUpdateOperation(new AddGuiOperation(mapNode));
+                            viewer->addUpdateOperation(new RemoveEventHandler(_node.get(), this));
+                        }
+                        return false;
+                    }
+                    break;
+                    default:
+                        break;
+                }
+                return false;
+            }
+            return false;
+        }
+        osg::ref_ptr<osg::Node> _node;
+    };
+
+
     void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp, float t)
     {
         Viewpoint currentVP = manip->getViewpoint();
@@ -241,5 +369,16 @@ bool
 ViewpointsExtension::disconnect(Control* control)
 {
     // TODO: remove the UI
+    return true;
+}
+
+bool ViewpointsExtension::connect(MapNode *mapnode)
+{
+    mapnode->addEventCallback(new AddGuiEventHandler(mapnode));
+    return true;
+}
+
+bool ViewpointsExtension::disconnect(MapNode *mapnode)
+{
     return true;
 }

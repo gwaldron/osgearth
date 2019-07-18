@@ -21,6 +21,7 @@
 
 #include <osgEarth/Extension>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/MapNode>
 #include <osgEarthUtil/Controls>
 #include <osgGA/GUIEventAdapter>
 #include <osg/View>
@@ -38,6 +39,7 @@ namespace osgEarth { namespace Viewpoints
     class ViewpointsExtension : public Extension,
                                 public ExtensionInterface<osg::View>,
                                 public ExtensionInterface<Control>,
+                                public ExtensionInterface<MapNode>,
                                 public ConfigOptions
     {
     public:
@@ -71,6 +73,12 @@ namespace osgEarth { namespace Viewpoints
         bool connect(Control* control);
 
         bool disconnect(Control* control);
+
+    public: // ExtensionInterface<MapNode>
+
+        bool connect(MapNode *mapnode);
+
+        bool disconnect(MapNode *mapnode);
 
     private:
         osg::ref_ptr<const osgDB::Options>   _dbOptions;

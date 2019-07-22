@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,11 +36,11 @@
 #if defined(OSG_GLES2_AVAILABLE)
 #    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
-#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
+#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;\nprecision highp int;"
 #elif defined(OSG_GLES3_AVAILABLE)
 #    define GLSL_VERSION                 300
 #    define GLSL_VERSION_STR             "300 es"
-#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
+#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;\nprecision highp int;"
 #elif defined(OSG_GL3_AVAILABLE)
 #    define GLSL_VERSION                 330
 #    define GLSL_VERSION_STR             "330"
@@ -93,6 +93,7 @@ namespace osgEarth
         /**
          * Callback that accepts a user-injected shader function (set with
          * setFunction) for inclusing in the program at render time.
+         * @deprecated (remove after user support)
          */
         class AcceptCallback : public osg::Referenced
         {
@@ -107,10 +108,9 @@ namespace osgEarth
         struct Function
         {
             std::string                  _name;
-            osg::ref_ptr<AcceptCallback> _accept;
-            optional<float>              _minRange;
-            optional<float>              _maxRange;
+            osg::ref_ptr<AcceptCallback> _accept; // @deprecated (remove after user support)
             
+            // @dperecated (remove after user support)
             bool accept(const osg::State& state) const {
                 return (!_accept.valid()) || (_accept->operator()(state) == true);
             }
@@ -208,19 +208,63 @@ namespace osgEarth
         osg::ref_ptr<osg::Shader>    _geomShader;
         osg::ref_ptr<osg::Shader>    _tessevalShader;
 
-        // shader source before running thru the preprocessor. Keep this around so that
-        // someone can call VirtualProgram::getShaders and have access to code that has
-        // not been set up for ShaderFactory.
-        //std::string                  _originalSource;
-
         bool                         _dirty;
 
         static Threading::Mutex _cacheMutex;
-        static std::map<ShaderDesc, osg::ref_ptr<PolyShader> > _shaderCache;
+        typedef std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > PolyShaderCache;
+        static PolyShaderCache _polyShaderCache;
 
     };
 
-    typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
+    //typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
+    typedef std::vector<PolyShader*> ProgramKey;
+
+
+    class /*internal*/ ProgramRepo : public osg::Referenced
+    {
+    public:
+
+        // Referenced, b/c more than one ProgramKey can point to the same Entry
+        // (shared program)
+        struct Entry : public osg::Referenced
+        {
+            osg::ref_ptr<osg::Program> _program;
+            unsigned                   _frameLastUsed;
+            std::set<UID>              _users;
+        };
+
+        typedef std::map<ProgramKey, osg::ref_ptr<Entry> > ProgramMap;
+
+        //! Exclusive lock on the repo - enclose any calls to this object
+        //! with a lock/unlock pair
+        void lock();
+
+        //! unlock the repo
+        void unlock();
+
+        //! Search for a program matching the key and return it, adding the user
+        //! to its users list and updating the frame number.
+        osg::ref_ptr<osg::Program> use(const ProgramKey& key, unsigned frameNumber, UID user);
+
+        //! Insert a new program into the repo
+        void add(const ProgramKey& key, osg::ref_ptr<osg::Program>& inOut, unsigned frameNumber, UID user);
+
+        //! Release anything used by this user
+        void release(UID user, osg::State* state);
+
+        //! Prune expired data
+        void prune(unsigned frameNumber, osg::State* state);
+
+        void resizeGLObjectBuffers(unsigned maxSize);
+
+        void releaseGLObjects(osg::State* state) const;
+
+        ~ProgramRepo();
+
+    private:
+        mutable ProgramMap _db;
+        mutable Threading::Mutex _m;
+    };
 
 
     /**
@@ -296,14 +340,10 @@ namespace osgEarth
             ShaderComp::AcceptCallback*  acceptCallback,
             float                        order =1.0f );
 
-        /**
-         * Sets the minimum active range for a named function. The function must already
-         * exist in the VirtualProgram. For this to work, there must to a uniform in the
-         * scene graph that conveys the current range; use the VirtualProgramRangeCallback
-         * to activate this.
-         */
+        /** @deprecated and NOOP (remove after 2.10) */
         void setFunctionMinRange(const std::string& name, float minRange);
 
+        /** @deprecated and NOOP (remove after 2.10) */
         void setFunctionMaxRange(const std::string& name, float maxRange);
 
         /**
@@ -365,9 +405,7 @@ namespace osgEarth
             osg::Shader*                       shader,
             osg::StateAttribute::OverrideValue ov         =osg::StateAttribute::ON );
 
-        /**
-         * Removes a shader from the local VP.
-         */
+        /** Removes a shader from the local VP. */
         void removeShader( const std::string& shaderID );
 
         /** Add an attribute location binding. */
@@ -387,13 +425,15 @@ namespace osgEarth
         /** Enable logging to the console, for debugging. */
         void setShaderLogging( bool log );
 
-        /** Enable logging to a file, for deugging. */
+        /** Enable logging to a file, for debugging. */
         void setShaderLogging( bool log, const std::string& filepath );
 
-        /** Gets whether the accept callbacks vary per frame */
+        /** Gets whether the accept callbacks vary per frame
+          * @deprecated (remove after user support */
         bool getAcceptCallbacksVaryPerFrame() const;
 
-        /** Sets whether the accept callbacks vary per frame */
+        /** Sets whether the accept callbacks vary per frame
+          * @deprecated (remove after user support) */
         void setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame);
 
         /** Inheritance mask */
@@ -423,14 +463,8 @@ namespace osgEarth
             bool accept(const osg::State& state) const;
             osg::ref_ptr<PolyShader>                 _shader;
             osg::StateAttribute::OverrideValue       _overrideValue;
-            osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
+            osg::ref_ptr<ShaderComp::AcceptCallback> _accept; // @deprecated
             bool operator < (const ShaderEntry& rhs) const;
-        };
-
-        struct ProgramEntry
-        {
-            osg::ref_ptr<osg::Program> _program;
-            unsigned                   _frameLastUsed;
         };
 
         typedef unsigned                              ShaderID;
@@ -440,7 +474,7 @@ namespace osgEarth
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias >            AttribAliasVector;
 
-        typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
+        //typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
         typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
         typedef std::vector< AttributePair > AttrStack;
 
@@ -514,9 +548,6 @@ namespace osgEarth
         // The program cache holds an osg::Program instance for each collection of shaders
         // that comprises this VP. There can be multiple programs in the cache if the VP is
         // shared in the scene graph.
-        mutable ProgramMap       _programCache;
-        mutable Threading::Mutex _programCacheMutex;
-
         mutable optional<bool> _active;
         bool _inheritSet;
 
@@ -525,9 +556,13 @@ namespace osgEarth
 
         bool _isAbstract;
 
+        UID _id;
+
         AttribAliasMap _attribAliases;
 
         bool _acceptCallbacksVaryPerFrame;
+
+        mutable osg::buffered_object< osg::ref_ptr<osg::Program> > _lastUsedProgram;
 
         // Mechnism for remembering whether a VP has been applied during the same frame
         // and with the same attribute stack.
@@ -562,15 +597,6 @@ namespace osgEarth
             AttribBindingList& accumAttribBindings,
             AttribAliasMap&    accumAttribAliases,
             bool&              acceptCallbacksPresent);
-        
-        bool readProgramCache(
-            const ProgramKey& key,
-            unsigned frameNumber,
-            osg::ref_ptr<osg::Program>& program);
-
-        void removeExpiredProgramsFromCache(
-            osg::State& state,
-            unsigned frameNumber);
 
         bool checkSharing();
     };

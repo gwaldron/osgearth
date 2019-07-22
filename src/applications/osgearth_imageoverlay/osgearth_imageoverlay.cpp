@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/FileUtils>
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
@@ -196,8 +197,8 @@ main(int argc, char** argv)
     bool moveVert = arguments.read("--vert");
 
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
-    if (!earthNode)
+    osg::ref_ptr<osg::Node> earthNode = osgDB::readNodeFiles( arguments );
+    if (!earthNode.valid())
         return usage( "Unable to load earth model." );
 
     osgViewer::Viewer viewer(arguments);
@@ -206,14 +207,14 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( manip );
 
     osg::Group* root = new osg::Group();
-    root->addChild( earthNode );
+    root->addChild( earthNode.get() );
 
     //Create the control panel
     root->addChild( createControlPanel(&viewer) );
 
     viewer.setSceneData( root );
     
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode.get() );
     if ( mapNode )
     {
 
@@ -221,10 +222,10 @@ main(int argc, char** argv)
         {
             std::string imageFile = imageFiles[i];
             //Read the image file and play it if it's a movie
-            osg::Image* image = osgDB::readImageFile(imageFile);
-            if (image)
+            osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile(imageFile);
+            if (image.valid())
             {
-                osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image);
+                osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image.get());
                 if (is)
                 {
                     is->play();
@@ -234,19 +235,19 @@ main(int argc, char** argv)
             //Create a new ImageOverlay and set it's bounds
             //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
             ImageOverlay* overlay = new ImageOverlay(mapNode);
-            overlay->setImage( image );
+            overlay->setImage( image.get() );
             overlay->setBounds(imageBounds[i]);
             
-            root->addChild( overlay );
+            mapNode->addChild( overlay );
 
 
             //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
             osg::Node* editor = new ImageOverlayEditor( overlay, moveVert);
             editor->setNodeMask( 0 );
-            root->addChild( editor );      
+            mapNode->addChild( editor );      
             
             // Add an image preview
-            ImageControl* imageCon = new ImageControl( image );
+            ImageControl* imageCon = new ImageControl( image.get() );
             imageCon->setSize( 64, 64 );
             imageCon->setVertAlign( Control::ALIGN_CENTER );
             s_layerBox->setControl( 0, i, imageCon );            
@@ -285,6 +286,6 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
     viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
-
+        
     return viewer.run();
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/Units>
 #include <osg/Group>
 #include <osg/Program>
 #include <osg/Uniform>
@@ -51,8 +52,8 @@
 namespace osgEarth
 {
     /**
-    * Depth Offsetting options.
-    */
+     * Depth Offsetting options.
+     */
     class OSGEARTH_EXPORT DepthOffsetOptions
     {
     public:
@@ -64,20 +65,20 @@ namespace osgEarth
         const optional<bool>& enabled() const { return _enabled; }
 
         /** depth bias (in meters) applied at the minimum camera range. */
-        optional<float>& minBias() { return _minBias; }
-        const optional<float>& minBias() const { return _minBias; }
+        optional<Distance>& minBias() { return _minBias; }
+        const optional<Distance>& minBias() const { return _minBias; }
 
         /** depth bias (in meters) applied at the maximum camera range. */
-        optional<float>& maxBias() { return _maxBias; }
-        const optional<float>& maxBias() const { return _maxBias; }
+        optional<Distance>& maxBias() { return _maxBias; }
+        const optional<Distance>& maxBias() const { return _maxBias; }
 
         /** camera range (in meters) at which to apply the minimum depth bias. */
-        optional<float>& minRange() { return _minRange; }
-        const optional<float>& minRange() const { return _minRange; }
+        optional<Distance>& minRange() { return _minRange; }
+        const optional<Distance>& minRange() const { return _minRange; }
 
         /** camera range (in meters) at which to apply the maximum depth bias. */
-        optional<float>& maxRange() { return _maxRange; }
-        const optional<float>& maxRange() const { return _maxRange; }
+        optional<Distance>& maxRange() { return _maxRange; }
+        const optional<Distance>& maxRange() const { return _maxRange; }
 
         /** automatic calculation of the minRange based on geometry analysis */
         optional<bool>& automatic() { return _auto; }
@@ -88,14 +89,18 @@ namespace osgEarth
 
     private:
         optional<bool>  _enabled;
-        optional<float> _minBias;
-        optional<float> _maxBias;
-        optional<float> _minRange;
-        optional<float> _maxRange;
+        optional<Distance> _minBias;
+        optional<Distance> _maxBias;
+        optional<Distance> _minRange;
+        optional<Distance> _maxRange;
         optional<bool>  _auto;
     };
+}
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::DepthOffsetOptions);
 
+namespace osgEarth
+{
     /**
      * Interface for adding depth offset methods to anothe class without
      * disturbing the class hierarchy. Use this in conjuction with the
@@ -142,10 +147,7 @@ namespace osgEarth
         bool                         _supported;
         bool                         _dirty;
         osg::observer_ptr<osg::Node> _graph;
-        //osg::ref_ptr<osg::Uniform>   _biasUniform;
-        //osg::ref_ptr<osg::Uniform>   _rangeUniform;
-        osg::ref_ptr<osg::Uniform>   _minBiasUniform, _maxBiasUniform;
-        osg::ref_ptr<osg::Uniform>   _minRangeUniform, _maxRangeUniform;
+        osg::ref_ptr<osg::Uniform>   _paramsUniform;
         DepthOffsetOptions           _options;
     };
 

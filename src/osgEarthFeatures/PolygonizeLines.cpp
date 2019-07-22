@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
  */
 #include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Utils>
@@ -156,11 +156,10 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
     // Set up the normals array
     if ( !normals )
     {
-        normals = new osg::Vec3Array(verts->size());
+        normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
         normals->assign( normals->size(), osg::Vec3(0,0,1) );
     }
     geom->setNormalArray( normals );
-    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     // run the callback on the initial spine.
     if (callback)
@@ -175,8 +174,6 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
     {
         spine = new osg::Vec3Array( *verts );
         geom->setVertexAttribArray    ( ATTR_LOCATION, spine );
-        geom->setVertexAttribBinding  ( ATTR_LOCATION, osg::Geometry::BIND_PER_VERTEX );
-        geom->setVertexAttribNormalize( ATTR_LOCATION, false );
     }
 
     // initialize the texture coordinates.
@@ -465,10 +462,9 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
 
     // generate colors
     {
-        osg::Vec4Array* colors = new osg::Vec4Array( verts->size() );
+        osg::Vec4Array* colors = new osg::Vec4Array( osg::Array::BIND_PER_VERTEX, verts->size() );
         colors->assign( colors->size(), _stroke.color() );
         geom->setColorArray( colors );
-        geom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
 
     return geom;

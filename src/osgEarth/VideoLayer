@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -70,19 +70,21 @@ namespace osgEarth
     class OSGEARTH_EXPORT VideoLayer : public osgEarth::ImageLayer
     {
     public:
-        META_Layer(osgEarth, VideoLayer, VideoLayerOptions);
+        META_Layer(osgEarth, VideoLayer, VideoLayerOptions, video);
 
         VideoLayer();        
         
         VideoLayer( const VideoLayerOptions& options );
 
+        osg::Texture2D* getTexture() const { return _texture.get(); }
+
+    public: // ImageLayer:
+
+        void init();
+
         const Status& open();
 
-        virtual bool createTextureSupported() const { return true; }
-
         virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix);
-
-        osg::Texture2D* getTexture() const { return _texture.get(); }
 
     protected:
 

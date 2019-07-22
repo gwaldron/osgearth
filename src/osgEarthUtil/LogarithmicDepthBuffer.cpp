@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,78 +21,20 @@
 */
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarthUtil/Shaders>
-#include <osgEarth/CullingUtils>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderUtils>
-#include <osgUtil/CullVisitor>
-#include <osg/Uniform>
-#include <osg/buffered_value>
-#include <cmath>
 
 #define LC "[LogarithmicDepthBuffer] "
-
-#define LOG2(X) (::log((double)(X))/::log(2.0))
-#define FC_UNIFORM "oe_logDepth_FC"
-
-// This is only used in the "precise" variant.
-#define NEAR_RES_COEFF 0.001  // a.k.a. "C"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-//------------------------------------------------------------------------
-
-namespace
-{
-    // Callback to set the "far plane" uniform just before drawing.
-    struct SetFarPlaneUniformCallback : public osg::Camera::DrawCallback
-    {
-        osg::ref_ptr<osg::Uniform>              _uniform;
-        osg::ref_ptr<osg::Camera::DrawCallback> _next;
-        float                                   _coeff;
-
-        SetFarPlaneUniformCallback(osg::Uniform*              uniform,
-                                   osg::Camera::DrawCallback* next )
-        {
-            _uniform = uniform;
-            _next    = next;
-            _coeff   = 1.0f;
-        }
-
-        void operator () (osg::RenderInfo& renderInfo) const
-        {
-            const osg::Matrix& proj = renderInfo.getCurrentCamera()->getProjectionMatrix();
-
-            // perspective only. the LDB will automatically disable in orthograhpic.
-            if ( osg::equivalent(proj(3,3), 0.0) )
-            {
-                float vfov, ar, n, f;
-                proj.getPerspective(vfov, ar, n, f);
-                float fc = (float)(2.0/LOG2(_coeff*f+1.0));
-                _uniform->set( fc );
-            }
-
-            if ( _next.valid() )
-            {
-                _next->operator()( renderInfo );
-            }
-        }
-    };
-}
-
-//------------------------------------------------------------------------
 
 LogarithmicDepthBuffer::LogarithmicDepthBuffer() :
 _useFragDepth(false)
 {
     _supported = Registry::capabilities().supportsGLSL();
-    if ( _supported )
-    {
-        _FCUniform = new osg::Uniform(FC_UNIFORM, (float)0.0f);
-    }
-    else
+    if ( !_supported )
     {
         OE_WARN << LC << "Not supported on this platform (no GLSL)" << std::endl;
     }
@@ -113,6 +55,7 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         osg::StateSet* stateset = camera->getOrCreateStateSet();
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
+        vp->setName("Log Depth Buffer");
         Shaders pkg;
 
         if ( _useFragDepth )
@@ -124,14 +67,6 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         {
             pkg.load( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
         }
-
-        osg::ref_ptr<osg::Camera::DrawCallback> next = camera->getPreDrawCallback();
-        if ( dynamic_cast<SetFarPlaneUniformCallback*>(next.get()) )
-            next = static_cast<SetFarPlaneUniformCallback*>(next.get())->_next.get();
-        
-        stateset->addUniform( _FCUniform.get() );
-
-        camera->setPreDrawCallback( new SetFarPlaneUniformCallback(_FCUniform.get(), next.get()) );
     }
 }
 
@@ -140,13 +75,6 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
 {
     if ( camera && _supported )
     {
-        SetFarPlaneUniformCallback* dc = dynamic_cast<SetFarPlaneUniformCallback*>(camera->getPreDrawCallback());
-        if ( dc )
-        {
-            osg::ref_ptr<osg::Camera::DrawCallback> next = dc->_next.get();
-            camera->setPreDrawCallback( next.get() );
-        }
-
         osg::StateSet* stateset = camera->getStateSet();
         if ( stateset )
         {
@@ -158,8 +86,6 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
                 pkg.unload( vp, pkg.LogDepthBuffer_VertFile );
                 pkg.unload( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
             }
-
-            stateset->removeUniform( FC_UNIFORM );
         }
     }
 }

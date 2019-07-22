@@ -26,6 +26,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/Version>
 #include <osgEarthAnnotation/AnnotationNode>
 
 #include <osg/MatrixTransform>
@@ -112,9 +113,34 @@ namespace osgEarth { namespace QtGui
   {
     LayerManagerMapCallback(LayerManagerWidget* manager) : _manager(manager) { }
 
-    //void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
+#if OSGEARTH_VERSION_GREATER_OR_EQUAL(2,10,0)
 
-    //void onMapModelChanged( const MapModelChange& change );
+    void onLayerAdded(Layer* layer, unsigned index)
+    {
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
+        if (imageLayer)
+            _manager->addImageLayerItem(imageLayer, index);
+
+        ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+        if (elevationLayer)
+            _manager->addElevationLayerItem(elevationLayer, index);
+
+        ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
+        if (modelLayer)
+            _manager->addModelLayerItem(modelLayer, index);
+    }
+
+    void onLayerRemoved(Layer* layer)
+    {
+        _manager->removeLayerItem(layer);
+    }
+
+    void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
+    {
+        _manager->moveLayerItem(layer, oldIndex, newIndex);
+    }
+
+#else
 
     void onImageLayerAdded(ImageLayer* layer, unsigned int index)
     {
@@ -163,6 +189,7 @@ namespace osgEarth { namespace QtGui
 
     //void onMaskLayerAdded( MaskLayer* mask ) { }
     //void onMaskLayerRemoved( MaskLayer* mask ) { }
+#endif
 
     LayerManagerWidget* _manager;
   };
@@ -381,7 +408,7 @@ void ElevationLayerControlWidget::onEnabledCheckStateChanged(int state)
 void ElevationLayerControlWidget::onRemoveClicked(bool checked)
 {
   if (_parent && _parent->getMap())
-    _parent->getMap()->removeLayer(_layer);
+    _parent->getMap()->removeLayer(_layer.get());
 }
 
 void ElevationLayerControlWidget::setLayerVisible(bool visible)
@@ -497,7 +524,7 @@ void ImageLayerControlWidget::onSliderValueChanged(int value)
 void ImageLayerControlWidget::onRemoveClicked(bool checked)
 {
   if (_parent && _parent->getMap())
-    _parent->getMap()->removeLayer(_layer);
+    _parent->getMap()->removeLayer(_layer.get());
 }
 
 void ImageLayerControlWidget::setLayerVisible(bool visible)
@@ -597,7 +624,7 @@ void ModelLayerControlWidget::onEnabledCheckStateChanged(int state)
 void ModelLayerControlWidget::onRemoveClicked(bool checked)
 {
   if (_parent && _parent->getMap())
-    _parent->getMap()->removeLayer(_layer);
+    _parent->getMap()->removeLayer(_layer.get());
 }
 
 void ModelLayerControlWidget::setLayerVisible(bool visible)
@@ -619,7 +646,7 @@ Action* ModelLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 {
   if (!_doubleClick.valid() && _layer.valid() && _map.valid())
   {
-    osg::ref_ptr<osg::Node> temp = _layer->getOrCreateSceneGraph( _map.get(), _map->getReadOptions(), 0L );
+    osg::ref_ptr<osg::Node> temp = _layer->getNode();
     if (temp.valid())
     {
       osg::NodePathList nodePaths = temp->getParentalNodePaths();
@@ -751,21 +778,21 @@ void LayerManagerWidget::refresh()
     osgEarth::ImageLayerVector layers;
     _map->getLayers(layers);
     for (osgEarth::ImageLayerVector::const_iterator it = layers.begin(); it != layers.end(); ++it)
-      addImageLayerItem(*it);
+      addImageLayerItem(it->get());
   }
   else if (_type == MODEL_LAYERS)
   {
     osgEarth::ModelLayerVector layers;
     _map->getLayers(layers);
     for (osgEarth::ModelLayerVector::const_iterator it = layers.begin(); it != layers.end(); ++it)
-      addModelLayerItem(*it);
+      addModelLayerItem(it->get());
   }
   else if (_type == ELEVATION_LAYERS)
   {
     osgEarth::ElevationLayerVector layers;
     _map->getLayers(layers);
     for (osgEarth::ElevationLayerVector::const_iterator it = layers.begin(); it != layers.end(); ++it)
-      addElevationLayerItem(*it);
+      addElevationLayerItem(it->get());
   }
 }
 
@@ -812,7 +839,7 @@ void LayerManagerWidget::addModelLayerItem(osgEarth::ModelLayer* layer, int inde
   if (_type != MODEL_LAYERS)
     return;
 
-  ModelLayerControlWidget* itemWidget = new ModelLayerControlWidget(layer, this, _map);
+  ModelLayerControlWidget* itemWidget = new ModelLayerControlWidget(layer, this, _map.get());
   _stack->insertWidget(index, itemWidget);
   connect(itemWidget, SIGNAL(doubleClicked()), this, SLOT(onItemDoubleClicked()));
 }

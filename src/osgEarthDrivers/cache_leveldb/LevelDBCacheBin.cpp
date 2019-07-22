@@ -59,7 +59,7 @@ namespace
         for(unsigned i=0; i<paddedSize/4; ++i, ++ptr)
             (*ptr) ^= prng.next(INT_MAX);
         data = std::string(buf, data.size());
-        delete buf;
+        delete [] buf;
     }
 
     void unblend(std::string& data, unsigned seed)

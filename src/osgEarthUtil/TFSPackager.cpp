@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,10 +21,11 @@
 */
 #include <osgEarthUtil/TFSPackager>
 
-#include <osgEarth/Registry>
-#include <osgDB/FileNameUtils>
-#include <osgDB/FileUtils>
 #include <osgEarth/FileUtils>
+
+#include <osgEarthFeatures/FeatureCursor>
+
+#include <osgDB/FileUtils>
 
 #define LC "[TFSPackager] "
 
@@ -236,9 +237,9 @@ public:
                   if (f)
                   {
                       //Reproject the feature to the dest SRS if it's not already
-                      if (!f->getSRS()->isEquivalentTo( _srs ) )
+                      if (!f->getSRS()->isEquivalentTo( _srs.get() ) )
                       {
-                          f->transform( _srs );
+                          f->transform( _srs.get() );
                       }
                       features.push_back( f );
                   }
@@ -299,7 +300,7 @@ _firstLevel( 0 ),
 }
 
 void
-    TFSPackager::package( FeatureSource* features, const std::string& destination, const std::string& layername, const std::string& description )
+TFSPackager::package( FeatureSource* features, const std::string& destination, const std::string& layername, const std::string& description )
 {   
     if (!_destSRSString.empty())
     {
@@ -323,12 +324,12 @@ void
     osg::ref_ptr< const osgEarth::Profile > profile = osgEarth::Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1);
 
 
-    TileKey rootKey = TileKey(0, 0, 0, profile );    
+    TileKey rootKey = TileKey(0, 0, 0, profile.get() );    
 
 
     osg::ref_ptr< FeatureTile > root = new FeatureTile( rootKey );
     //Loop through all the features and try to insert them into the quadtree
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor( _query );
+    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor( _query, 0L ); // TODO: progress.
     int added = 0;
     int failed = 0;
     int skipped = 0;
@@ -339,9 +340,9 @@ void
         osg::ref_ptr< Feature > feature = cursor->nextFeature();
 
         //Reproject the feature to the dest SRS if it's not already
-        if (!feature->getSRS()->isEquivalentTo( _srs ) )
+        if (!feature->getSRS()->isEquivalentTo( _srs.get() ) )
         {
-            feature->transform( _srs );
+            feature->transform( _srs.get() );
         }
 
         if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->isValid())
@@ -376,13 +377,13 @@ void
     // Print the width of tiles at each level
     for (int i = 0; i <= highestLevel; ++i)
     {
-        TileKey tileKey(i, 0, 0, profile);
+        TileKey tileKey(i, 0, 0, profile.get());
         GeoExtent tileExtent = tileKey.getExtent();
         OE_NOTICE << "Level " << i << " tile size: " << tileExtent.width() << std::endl;
     }
 #endif
 
-    WriteFeaturesVisitor write(features, destination, _method, _srs);
+    WriteFeaturesVisitor write(features, destination, _method, _srs.get());
     root->accept( &write );
 
     //Write out the meta doc

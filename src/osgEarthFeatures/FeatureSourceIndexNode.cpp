@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -53,16 +53,16 @@ FeatureSourceIndexOptions::FeatureSourceIndexOptions(const Config& conf) :
 _enabled      ( true ),
 _embedFeatures( false )
 {
-    conf.getIfSet( "enabled",        _enabled );
-    conf.getIfSet( "embed_features", _embedFeatures );
+    conf.get( "enabled",        _enabled );
+    conf.get( "embed_features", _embedFeatures );
 }
 
 Config
 FeatureSourceIndexOptions::getConfig() const
 {
     Config conf("feature_indexing");
-    conf.addIfSet( "enabled",        _enabled );
-    conf.addIfSet( "embed_features", _embedFeatures );
+    conf.set( "enabled",        _enabled );
+    conf.set( "embed_features", _embedFeatures );
     return conf;
 }
 
@@ -264,8 +264,10 @@ FeatureSourceIndexNode* FeatureSourceIndexNode::get(osg::Node* graph)
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-namespace
+namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNodeClass
 {
+    using namespace osgEarth::Features;
+
     bool checkFIDMap(const FeatureSourceIndexNode& node)
     {
         return !node.getFIDMap().empty();
@@ -310,23 +312,6 @@ namespace
         return true;
     }
 
-#if 0
-    bool checkEmbeddedFeatures(const FeatureSourceIndexNode& node)
-    {
-        return false; //todo
-    }
-
-    bool writeEmbeddedFeatures(osgDB::OutputStream& os, const FeatureSourceIndexNode& node)
-    {
-        return true;
-    }
-
-    bool readEmbeddedFeatures(osgDB::InputStream& is, FeatureSourceIndexNode& node)
-    {
-        return true;
-    }
-#endif
-
     REGISTER_OBJECT_WRAPPER(
         FeatureSourceIndexNode,
         new osgEarth::Features::FeatureSourceIndexNode,
@@ -335,7 +320,8 @@ namespace
     {
         ADD_USER_SERIALIZER(FIDMap);
     }
-}
+
+} } }
 
 //-----------------------------------------------------------------------------
 

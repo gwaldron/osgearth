@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -39,6 +39,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT MetaImage
     {
     public:
+        //! Construct a new Metatiled image
         MetaImage() { }
 
         //! Sets the data elevation at location (x,y), where (0,0) is the center.

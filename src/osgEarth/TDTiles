@@ -1,0 +1,196 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TDTILES_H
+#define OSGEARTH_TDTILES_H
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/URI>
+#include <osgEarth/JsonUtils>
+#include <osgEarth/GeoData>
+#include <osg/Group>
+#include <osg/LOD>
+#include <osg/PagedLOD>
+#include <osg/MatrixTransform>
+#include <osgDB/Options>
+
+using namespace osgEarth;
+
+/**
+ * 3D Tiles
+ * https://github.com/AnalyticalGraphicsInc/3d-tiles
+ * EXPERIMENTAL
+ */
+namespace osgEarth { namespace TDTiles
+{
+    enum RefinePolicy
+    {
+        REFINE_REPLACE,
+        REFINE_ADD
+    };
+
+    struct LoadContext
+    {
+        URIContext _uc;
+        RefinePolicy _defaultRefine;
+    };
+
+    class OSGEARTH_EXPORT Asset
+    {
+        OE_OPTION(std::string, version);
+        OE_OPTION(std::string, tilesetVersion);
+
+        Asset() { }
+        Asset(const Json::Value& value) { fromJSON(value); }
+        void fromJSON(const Json::Value&);
+        Json::Value getJSON() const;
+    };
+
+    class OSGEARTH_EXPORT BoundingVolume
+    {
+        OE_OPTION(osg::BoundingBox, box);
+        OE_OPTION(osg::BoundingBox, region);
+        OE_OPTION(osg::BoundingSphere, sphere);
+
+        BoundingVolume() { }
+        BoundingVolume(const Json::Value& value) { fromJSON(value); }
+        void fromJSON(const Json::Value&);
+        Json::Value getJSON() const;
+
+        osg::BoundingSphere asBoundingSphere() const;
+    };
+
+    class OSGEARTH_EXPORT TileContent
+    {
+        OE_OPTION(BoundingVolume, boundingVolume);
+        OE_OPTION(URI, uri);
+
+        TileContent() { }
+        TileContent(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext&);
+        Json::Value getJSON() const;
+    };
+
+    class OSGEARTH_EXPORT Tile : public osg::Referenced
+    {
+    public:
+        OE_OPTION(BoundingVolume, boundingVolume);
+        OE_OPTION(BoundingVolume, viewerRequestVolume);
+        OE_OPTION(double, geometricError);
+        OE_OPTION(RefinePolicy, refine);
+        OE_OPTION(osg::Matrix, transform);
+        OE_OPTION(TileContent, content);
+        OE_OPTION_VECTOR(osg::ref_ptr<Tile>, children);
+
+        Tile() : _refine(REFINE_ADD) { }
+        Tile(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext& uc);
+        Json::Value getJSON() const;
+    };
+
+    class OSGEARTH_EXPORT Tileset : public osg::Referenced
+    {
+    public:
+        OE_OPTION(Asset, asset);
+        OE_OPTION(BoundingVolume, boundingVolume);
+        //todo: properties
+        OE_OPTION(double, geometricError);
+        OE_OPTION_REFPTR(Tile, root);
+
+        Tileset() { }
+        Tileset(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
+        void fromJSON(const Json::Value&, LoadContext& uc);
+        Json::Value getJSON() const;
+
+        static Tileset* create(const std::string& tilesetJSON, const URIContext& uc);
+    };
+
+    //! Object that takes a Tile and generates a node.
+    //! This object is installed by default, but you can subclass it
+    //! and replace it if you want.
+    class OSGEARTH_EXPORT ContentHandler : public osg::Referenced
+    {
+    public:
+        ContentHandler();
+        virtual osg::ref_ptr<osg::Node> createNode(Tile* tile, const osgDB::Options*) const;
+    protected:
+        virtual ~ContentHandler() { }
+    };
+
+    class OSGEARTH_EXPORT TileNode : public osg::MatrixTransform
+    {
+    public:
+        META_Node(osgEarth, TileNode);
+
+        TileNode(Tile* tile, ContentHandler* factory, const osgDB::Options*);
+        osg::ref_ptr<TDTiles::Tile> _tile;
+        osg::ref_ptr<ContentHandler> _handler;
+        osg::ref_ptr<const osgDB::Options> _readOptions;
+        osg::ref_ptr<osg::Node> loadContent() const;
+        osg::ref_ptr<osg::Node> loadChild(unsigned i) const;
+        osg::ref_ptr<osg::Node> loadChildren() const;
+
+    protected:
+        TileNode() { }
+        TileNode(const TileNode& rhs, const osg::CopyOp& op) { }
+        virtual ~TileNode() { }
+    };
+} }
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT TDTilesetGroup : public osg::Group
+    {
+    public:
+        META_Node(osgEarth, TDTilesetGroup);
+
+        TDTilesetGroup();
+
+        TDTilesetGroup(TDTiles::ContentHandler* handler);
+
+        //! Read options for this group and its children
+        void setReadOptions(const osgDB::Options*);
+        const osgDB::Options* getReadOptions() const;
+
+        //! Content handler for 3DTiles data.
+        TDTiles::ContentHandler* getContentHandler() const;
+
+        //! Assign tile set to this group
+        void setTileset(TDTiles::Tileset* tileset);
+
+        //! Sets the URL of the root tileset to load.
+        void setTilesetURL(const URI& location);
+        const URI& getTilesetURL() const;
+
+    public:
+        // internal
+        osg::ref_ptr<osg::Node> loadRoot(TDTiles::Tileset*) const;
+
+    protected:
+        TDTilesetGroup(const TDTilesetGroup& rhs, const osg::CopyOp& op) { }
+        virtual ~TDTilesetGroup() { }
+
+        osg::ref_ptr<TDTiles::ContentHandler> _handler;
+        osg::ref_ptr<const osgDB::Options> _readOptions;
+        URI _tilesetURI;
+    };
+}
+
+#endif // OSGEARTH_TDTILES_H

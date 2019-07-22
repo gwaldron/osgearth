@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -79,18 +79,6 @@ namespace osgEarth
             tryApply( dynamic_cast<MapNodeObserver*>(node.getUpdateCallback()) );
             tryApply( dynamic_cast<MapNodeObserver*>(node.getCullCallback()) );
             traverse( node );
-        }
-
-        void apply( osg::Geode& geode )
-        {
-            for(unsigned d=0; d<geode.getNumDrawables(); ++d )
-            {
-                osg::Drawable* drawable = geode.getDrawable(d);
-                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getEventCallback()) );
-                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getUpdateCallback()) );
-                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getCullCallback()) );
-            }
-            traverse( geode );
         }
     };
 

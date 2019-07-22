@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FilterContext>
 
 #define LC "[viewer] "
 
@@ -43,16 +44,16 @@ public:
     {
         if (conf.key() == "change_attribute")
         {
-            conf.getIfSet("key", _key);
-            conf.getIfSet("value", _value);
+            conf.get("key", _key);
+            conf.get("value", _value);
         }
     }
 
     virtual Config getConfig() const
     {
         Config config("change_attribute");
-        config.addIfSet("key", _key);
-        config.addIfSet("value", _value);
+        config.set("key", _key);
+        config.set("value", _value);
         return config;
     }
 
@@ -81,10 +82,8 @@ OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(change_attribute, ChangeAttributeFilter);
 int
 main(int argc, char** argv)
 {    
-    //Run this example with the the feature_custom_filters.earth file in the tests directory for a simple example
+    //Run this example with the feature_custom_filters.earth file in the tests directory for a simple example
     osg::ArgumentParser arguments(&argc,argv);
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);

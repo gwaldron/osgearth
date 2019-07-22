@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,14 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Sky>
-#include <osgEarthUtil/Ephemeris>
-#include <osgEarth/Registry>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/ShaderUtils>
-#include <osgEarth/Extension>
 #include <osgEarth/MapNode>
-#include <osgEarth/Lighting>
-#include <osgDB/ReadFile>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -106,14 +100,11 @@ void
 SkyNode::setLighting(osg::StateAttribute::OverrideValue value)
 {
     _lightingValue = value;
-    //_lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
-    //    GL_LIGHTING, value );
-    //this->getOrCreateStateSet()->addUniform( _lightingUniform.get(), value );
 
     if (value & osg::StateAttribute::INHERIT)
-        this->getOrCreateStateSet()->removeDefine(OE_LIGHTING_DEFINE);
+        GLUtils::remove(this->getStateSet(), GL_LIGHTING);
     else
-        this->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, value);
+        GLUtils::setLighting(this->getOrCreateStateSet(), value);
 }
 
 void
@@ -146,24 +137,18 @@ SkyNode::setAtmosphereVisible(bool value)
 
 //------------------------------------------------------------------------
 
-#define MAPNODE_TAG     "__osgEarth::MapNode"
 #define SKY_OPTIONS_TAG "__osgEarth::Util::SkyOptions"
 
 SkyNode*
-SkyNode::create(const SkyOptions& options, MapNode* mapNode)
+SkyNode::create(const SkyOptions& options)
 {
-    if ( !mapNode ) {
-        OE_WARN << LC << "Internal error; null map node passed to SkyNode::Create\n";
-        return 0L;
-    }
-
     std::string driverName = osgEarth::trim(options.getDriver());
     if ( driverName.empty() )
         driverName = "simple";
 
     std::string extensionName = std::string("sky_") + driverName;
 
-    osg::ref_ptr<Extension> extension = Extension::create( extensionName, options );
+    osg::ref_ptr<Extension> extension = Extension::create(extensionName, options);
     if ( !extension.valid() ) {
         OE_WARN << LC << "Failed to load extension for sky driver \"" << driverName << "\"\n";
         return 0L;
@@ -175,24 +160,23 @@ SkyNode::create(const SkyOptions& options, MapNode* mapNode)
         return 0L;
     }
 
-    osg::ref_ptr<SkyNode> result = factory->createSkyNode(mapNode->getMap()->getProfile());
-
+    osg::ref_ptr<SkyNode> result = factory->createSkyNode();
     return result.release();
 }
 
 SkyNode*
-SkyNode::create(MapNode* mapNode)
+SkyNode::create()
 {
     SkyOptions options;
-    return create(options, mapNode);
+    return create(options);
 }
 
 SkyNode*
-SkyNode::create(const std::string& driver, MapNode* mapNode)
+SkyNode::create(const std::string& driver)
 {
     SkyOptions options;
     options.setDriver( driver );
-    return create( options, mapNode );
+    return create(options);
 }
 
 
@@ -204,12 +188,4 @@ SkyDriver::getSkyOptions(const osgDB::Options* options) const
     static SkyOptions s_default;
     const void* data = options->getPluginData(SKY_OPTIONS_TAG);
     return data ? *static_cast<const SkyOptions*>(data) : s_default;
-}
-
-
-MapNode*
-SkyDriver::getMapNode(const osgDB::Options* options) const
-{
-    return const_cast<MapNode*>(
-        static_cast<const MapNode*>( options->getPluginData(MAPNODE_TAG) ) );
 }

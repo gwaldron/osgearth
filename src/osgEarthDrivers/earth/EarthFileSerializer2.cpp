@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
  */
 #include "EarthFileSerializer"
 #include <osgEarth/FileUtils>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Extension>
 #include <osgEarth/StringUtils>
 #include <osgEarth/FileUtils>
@@ -181,7 +180,7 @@ namespace
         {
             _rewriteAbsolutePaths = false;
             _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
-            _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+            _newReferrerFolder  = osgDB::getFilePath( _newReferrerAbsPath );
         }
 
         /** Whether to make absolute paths into relative paths if possible */
@@ -218,7 +217,7 @@ namespace
                 std::string newValue = resolve(inputURI);
                 if ( newValue != input.value() )
                 {
-                    input.value() = newValue;
+                    input.setValue(newValue);
                     input.setReferrer( _newReferrerAbsPath );
                 }
 
@@ -275,7 +274,7 @@ namespace
 
 			// Definition: an "element" is a part between slashes. Ex: "/a/b" has two elements ("a" and "b").
 			// Algorithm:
-			// 1. If paths are neither both absolute nor both relative, then we cannot do anything (we need to make them absolute, but need additionnal info on how to make it). Return.
+			// 1. If paths are neither both absolute nor both relative, then we cannot do anything (we need to make them absolute, but need additional info on how to make it). Return.
 			// 2. If both paths are absolute and root isn't the same (for Windows only, as roots are of the type "C:", "D:"), then the operation is impossible. Return.
 			// 3. Iterate over two paths elements until elements are equal
 			// 4. For each remaining element in "from", add ".." to result
@@ -333,8 +332,7 @@ namespace
 
     bool addLayer(const Config& conf, Map* map)
     {
-        std::string name = conf.key();
-        Layer* layer = Layer::create(name, conf);
+        Layer* layer = Layer::create(conf);
         if (layer)
         {
             map->addLayer(layer);
@@ -418,12 +416,12 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         {
             Config temp = *i;
             temp.key() = "elevation";
-            addLayer(temp, map);
+            addLayer(temp, map.get());
         }
 
         else if ( i->key() == "elevation" ) // || i->key() == "heightfield" )
         {
-            addLayer(*i, map);
+            addLayer(*i, map.get());
         }
     }
 
@@ -438,23 +436,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             // nop - handled earlier
         }
 
-#if 0
-        else if ( i->key() == "image" )
-        {
-            addImageLayer( *i, map );
-        }
-
-        else */if ( i->key() == "model" )
-        {
-            addModelLayer( *i, map );
-        }
-
-        else if ( i->key() == "mask" )
-        {
-            addMaskLayer( *i, map );
-        }
-#endif
-
         else if ( i->key() == "external" || i->key() == "extensions" )
         {
             externalConfig = *i;
@@ -464,14 +445,13 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
                 Extension* extension = loadExtension(*e);
                 if (extension)
                     extensions.push_back(extension);
-                //addExtension( *e, mapNode.get() );
             }
         }
 
         else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
             // try to add as a plugin Layer first:
-            bool addedLayer = addLayer(*i, map); 
+            bool addedLayer = addLayer(*i, map.get()); 
 
             // failing that, try to load as an extension:
             if ( !addedLayer )
@@ -487,13 +467,13 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     map->endUpdate();
 
     // If any errors occurred, report them now.
-    reportErrors(map);
+    reportErrors(map.get());
 
     // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
     MapNodeOptions mapNodeOptions( conf.child("options") );
 
     // Create a map node.
-    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
+    osg::ref_ptr<MapNode> mapNode = new MapNode( map.get(), mapNodeOptions );
 
     // Apply the external conf if there is one.
     if (!externalConfig.empty())

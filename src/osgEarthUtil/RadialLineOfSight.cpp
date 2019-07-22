@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,10 +21,7 @@
 */
 #include <osgEarthUtil/RadialLineOfSight>
 #include <osgEarth/TerrainEngineNode>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgSim/LineOfSight>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -269,11 +266,10 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
     verts->reserve(_numSpokes * 5);
     geometry->setVertexArray( verts );
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
     colors->reserve( _numSpokes * 5 );
 
     geometry->setColorArray( colors );
-    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
     osg::Vec3d previousEnd;
     osg::Vec3d firstEnd;
@@ -371,7 +367,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geometry );
 
-    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    GLUtils::setLighting(getOrCreateStateSet(), osg::StateAttribute::OFF);
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
     mt->setMatrix(osg::Matrixd::translate(_centerWorld));
@@ -415,11 +411,10 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
     verts->reserve(_numSpokes * 2);
     geometry->setVertexArray( verts );
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
     colors->reserve( _numSpokes * 2 );
 
     geometry->setColorArray( colors );
-    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
     osg::ref_ptr<osgUtil::IntersectorGroup> ivGroup = new osgUtil::IntersectorGroup();
 
@@ -562,7 +557,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geometry );
 
-    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    GLUtils::setLighting(getOrCreateStateSet(), osg::StateAttribute::OFF);
     getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
@@ -677,7 +672,7 @@ RadialLineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
         if ( los->getMapNode() )
         {
-            osg::Vec3d worldCenter = getNodeCenter( _node );
+            osg::Vec3d worldCenter = getNodeCenter( _node.get() );
 
             //Convert center to mappoint since that is what LOS expects
             GeoPoint mapCenter;
@@ -747,7 +742,7 @@ _los(los)
 {
 
     _dragger  = new osgEarth::Annotation::SphereDragger(_los->getMapNode());
-    _dragger->addPositionChangedCallback(new RadialLOSDraggerCallback(_los ) );    
+    _dragger->addPositionChangedCallback(new RadialLOSDraggerCallback(_los.get() ) );    
     static_cast<osgEarth::Annotation::SphereDragger*>(_dragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_dragger);    
 

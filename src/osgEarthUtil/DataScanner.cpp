@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 #include <osgEarthUtil/DataScanner>
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgDB/FileUtils>
-#include <osgDB/FileNameUtils>
 
 #define LC "[DataScanner] "
 

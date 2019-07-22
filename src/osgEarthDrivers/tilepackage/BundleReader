@@ -1,0 +1,101 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUNDLEREADER_H
+#define OSGEARTH_BUNDLEREADER_H 1
+
+#include <fstream>
+#include <vector>
+#include <sstream>
+
+#include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
+
+#include <osgEarth/Notify>
+#include <osgEarth/StringUtils>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/TileKey>
+
+using namespace osgEarth;
+
+#define INDEX_HEADER_SIZE 16
+#define INDEX_SIZE 5
+
+namespace
+{
+    unsigned int  computeOffset(const std::vector<char>& buffer) {
+        unsigned int sum = 0;
+        for (unsigned int i = 0; i < buffer.size(); i++) {
+            char v = buffer[i];
+            sum += ((unsigned int)v & 0xff) * pow(2.0, 8.0 * i);
+        }
+        return sum;
+    }
+
+    unsigned int hexFromString(const std::string& input)
+    {
+        unsigned int result;
+        std::stringstream ss;
+        ss << std::hex << input;
+        ss >> result;
+        return result;
+    }
+
+    std::string toHex(unsigned int value)
+    {
+        std::stringstream ss;
+        ss << std::hex << value;
+        return ss.str();
+    }
+}
+
+
+class BundleReader
+{
+public:
+    BundleReader(const std::string& bundleFile, unsigned int bundleSize);
+
+    void init();
+
+    /**
+    * Reads the index of a bundle file.
+    */
+    void readIndex(const std::string& filename, std::vector<int>& index);
+
+    osg::Image* readImage(const TileKey& key);
+
+    osg::Image* readImage(unsigned int index);
+
+protected:
+    std::string _bundleFile;
+    std::string _indexFile;
+    unsigned int _bundleSize;
+
+    std::ifstream _in;
+
+    std::vector< int > _index;
+
+    unsigned int _lod;
+    unsigned int _rowOffset;
+    unsigned int _colOffset;
+};
+
+
+
+#endif // OSGEARTH_BUNDLEREADER_H
+

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #include "FeatureCursorOGR"
 #include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/Registry>
 #include <osg/Math>
 #include <algorithm>
@@ -74,7 +75,9 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH              dsHandle,
                                    const FeatureSource*        source,
                                    const FeatureProfile*       profile,
                                    const Symbology::Query&     query,
-                                   const FeatureFilterList&    filters) :
+                                   const FeatureFilterChain*   filters,
+                                   ProgressCallback*           progress) :
+FeatureCursor     ( progress ),
 _source           ( source ),
 _dsHandle         ( dsHandle ),
 _layerHandle      ( layerHandle ),
@@ -241,18 +244,38 @@ FeatureCursorOGR::readChunk()
             OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
             if ( handle )
             {
+                /*
+                // Crop the geometry by the spatial filter.  Could be useful for tiling.
+                if (_spatialFilter)
+                {
+                    OGRGeometryH geomRef = OGR_F_GetGeometryRef(handle);
+                    OGRGeometryH intersection = OGR_G_Intersection(geomRef, _spatialFilter);
+                    OGR_F_SetGeometry(handle, intersection);
+                }
+                */
                 osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get() );
 
-                if (feature.valid() && !_source->isBlacklisted(feature->getFID()))
+                if (feature.valid())
                 {
-                    if (validateGeometry( feature->getGeometry() ))
+                    if (!_source->isBlacklisted(feature->getFID()))
                     {
-                        filterList.push_back( feature.release() );
+                        if (validateGeometry( feature->getGeometry() ))
+                        {
+                            filterList.push_back( feature.release() );
+                        }
+                        else
+                        {
+                            OE_DEBUG << LC << "Invalid geometry found at feature " << feature->getFID() << std::endl;
+                        }
                     }
                     else
                     {
-                        OE_DEBUG << LC << "Invalid geometry found at feature " << feature->getFID() << std::endl;
+                        OE_DEBUG << LC << "Blacklisted feature " << feature->getFID() << " skipped" << std::endl;
                     }
+                }
+                else
+                {
+                    OE_DEBUG << LC << "Skipping NULL feature" << std::endl;
                 }
                 OGR_F_Destroy( handle );
             }
@@ -263,7 +286,7 @@ FeatureCursorOGR::readChunk()
         }
 
         // preprocess the features using the filter list:
-        if ( !_filters.empty() )
+        if ( _filters.valid() && !_filters->empty() )
         {
             FilterContext cx;
             cx.setProfile( _profile.get() );
@@ -276,7 +299,7 @@ FeatureCursorOGR::readChunk()
                 cx.extent() = _profile->getExtent();
             }
 
-            for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
+            for( FeatureFilterChain::const_iterator i = _filters->begin(); i != _filters->end(); ++i )
             {
                 FeatureFilter* filter = i->get();
                 cx = filter->push( filterList, cx );

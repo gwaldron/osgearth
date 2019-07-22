@@ -34,6 +34,8 @@ FeatureRasterizerFactory::create(const std::string& driver,
                                  const Config& driverConf,
                                  const osgDB::ReaderWriter::Options* globalOptions )
 {
+    osg::ref_ptr<FeatureRasterizer> rasterizer;
+
     osg::ref_ptr<PluginOptions> pluginOptions = globalOptions?
         new PluginOptions( *globalOptions ) :
         new PluginOptions();
@@ -41,16 +43,18 @@ FeatureRasterizerFactory::create(const std::string& driver,
     // Setup the plugin options for the source
     pluginOptions->config() = driverConf;
 
-	//Load the source from the a plugin.  The "." prefix causes OSG to select the correct plugin.
+    std::string driverExt = std::string(".osgearth_rasterizer_") + driver;
+
+    //Load the source from the a plugin.  The "." prefix causes OSG to select the correct plugin.
     //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
-    osg::ref_ptr<FeatureRasterizer> rasterizer = dynamic_cast<FeatureRasterizer*>(
-        osgDB::readObjectFile( ".osgearth_rasterizer_" + driver, pluginOptions.get()));
+    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile(driverExt , pluginOptions.get()));
+    rasterizer = dynamic_cast<FeatureRasterizer*>(object.release());
 
-	if ( !rasterizer.valid() )
-	{
-		osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load Rasterizer for driver "  << driver << std::endl;
-	}
+    if ( !rasterizer.valid() )
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load Rasterizer for driver "  << driver << std::endl;
+    }
 
-	return rasterizer.release();
+    return rasterizer.release();
 }
 

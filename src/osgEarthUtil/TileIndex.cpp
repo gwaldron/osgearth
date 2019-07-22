@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,10 +22,14 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+
 #include <osgEarthUtil/TileIndex>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <ogr_api.h>
+
 #include <osgEarthFeatures/OgrUtils>
+#include <osgEarthFeatures/FeatureCursor>
+
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
@@ -117,7 +121,7 @@ TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string 
 
     GeoExtent transformed = extent.transform( _features->getFeatureProfile()->getSRS() );
     query.bounds() = transformed.bounds();
-    osg::ref_ptr< osgEarth::Features::FeatureCursor> cursor = _features->createFeatureCursor( query );
+    osg::ref_ptr< osgEarth::Features::FeatureCursor> cursor = _features->createFeatureCursor( query, 0L );
 
     while (cursor->hasMore())
     {
@@ -139,7 +143,7 @@ bool TileIndex::add( const std::string& filename, const GeoExtent& extent )
     polygon->push_back( osg::Vec3d(extent.bounds().xMin(), extent.bounds().yMax(), 0) );
     polygon->push_back( osg::Vec3d(extent.bounds().xMin(), extent.bounds().yMin(), 0) );
    
-    osg::ref_ptr< Feature > feature = new Feature( polygon, extent.getSRS()  );
+    osg::ref_ptr< Feature > feature = new Feature( polygon.get(), extent.getSRS()  );
     feature->set("location", filename );
     
     const SpatialReference* wgs84 = SpatialReference::create("epsg:4326");

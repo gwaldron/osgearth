@@ -6,7 +6,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.6
 
-#pragma import_defines(OE_SIMPLE_OCEAN_USE_TEXTURE, OE_SIMPLE_OCEAN_USE_MASK)
+#pragma import_defines(OE_SIMPLE_OCEAN_USE_TEXTURE)
+#pragma import_defines(OE_SIMPLE_OCEAN_USE_MASK)
 
 // clamps a value to the vmin/vmax range, then re-maps it to the r0/r1 range:
 float ocean_remap( float val, float vmin, float vmax, float r0, float r1 )  

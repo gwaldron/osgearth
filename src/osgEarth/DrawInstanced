@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,8 +24,12 @@
 #include <osgEarth/Containers>
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
-#include <osg/Geode>
+#include <osg/Drawable>
 #include <osg/TextureBuffer>
+
+namespace osg {
+    class TextureBuffer;
+}
 
 /**
  * Some utilities to support *DrawInstanced rendering.
@@ -64,18 +68,25 @@ namespace osgEarth
                 unsigned                numInstances,
                 const osg::BoundingBox& bbox,
                 bool                    optimize,
-                osg::TextureBuffer *    tbo);
+                osg::TextureBuffer*     tbo,
+                int                     firstTboUnit);
 
-            void apply(osg::Geode&);
+            void apply(osg::Drawable&);
             void apply(osg::LOD&);
+            void apply(osg::Node&);
+
+        public:
+            int getTextureImageUnit() const { return _tboUnit; }
 
         protected:
             unsigned _numInstances;
             osg::BoundingBox _bbox;
             bool _optimize;
             std::list<osg::PrimitiveSet*> _primitiveSets;
-            osg::TextureBuffer * _tbo;
-         };
+            osg::TextureBuffer* _tbo;
+            int _tboUnit;
+            osg::ref_ptr<osg::Drawable::ComputeBoundingBoxCallback> _bboxComputer;
+        };
 
 
         /**

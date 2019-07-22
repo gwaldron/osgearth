@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,6 @@
 #define OSGEARTH_TERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Terrain>
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/TerrainTileModelFactory>
@@ -28,11 +27,12 @@
 #include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/TilePatchCallback>
 #include <osgEarth/Progress>
+#include <osgEarth/TileKey>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
+#include <osg/BoundingBox>
 #include <osgUtil/RenderBin>
 #include <set>
 
@@ -83,7 +83,7 @@ namespace osgEarth
          * @param progress Optional progress/stats tracking callback
          */
         virtual TerrainTileModel* createTileModel(
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             ProgressCallback*            progress ) =0;
@@ -171,12 +171,6 @@ namespace osgEarth
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
-        /** @deprecated Adds a tile patch callback. */
-        virtual void addTilePatchCallback(TilePatchCallback*);
-
-        /** @deprecated Removes a tile patch callback. */
-        virtual void removeTilePatchCallback(TilePatchCallback*);
-
         /** Gets the ComputeRangeCallback for this TerrainEngineNode */
         ComputeRangeCallback* getComputeRangeCallback() const;
 
@@ -186,12 +180,20 @@ namespace osgEarth
         // Request that the terrain tiles be rebuilt.
         virtual void dirtyTerrain();
 
+    public:
+        class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
+        {
+        public:
+            virtual void modifyBoundingBox(const TileKey& key, osg::BoundingBox& box) const =0;
+        };
 
+        void addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
+        void removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
 
     public: // TerrainEngine
 
         TerrainTileModel* createTileModel(
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             ProgressCallback*            progress);
@@ -228,17 +230,6 @@ namespace osgEarth
         bool parentTexturesRequired() const { return _requireParentTextures; }
         bool elevationBorderRequired() const { return _requireElevationBorder; }
         bool fullDataAtFirstLodRequired() const { return _requireFullDataAtFirstLOD; }
-            
-
-    public: // Runtime properties
-
-        /** Sets the scale factor to apply to elevation height values. Default is 1.0
-          * @deprecated */
-        void setVerticalScale( float value );
-
-        /** Gets the scale factor to apply to elevation height values.
-          * @deprecated */
-        float getVerticalScale() const { return _verticalScale; }
 
     protected:
         TerrainEngineNode();
@@ -247,13 +238,6 @@ namespace osgEarth
     public: // osg::Node overrides
         virtual osg::BoundingSphere computeBound() const;
         virtual void traverse( osg::NodeVisitor& );
-
-    protected: // implementation events
-
-        /** @deprecated */
-        virtual void onVerticalScaleChanged() { }
-        /** @deprecated */
-        virtual void onElevationSamplingRatioChanged() { }
 
     protected:
         friend class MapNode;
@@ -275,6 +259,8 @@ namespace osgEarth
         bool _requireParentTextures;
         bool _requireElevationBorder;
         bool _requireFullDataAtFirstLOD;
+        
+        osg::ref_ptr<const Map> _map;
 
         osg::ref_ptr<const Map> _map;
 
@@ -332,11 +318,10 @@ namespace osgEarth
         
         struct ImageLayerController : public ImageLayerCallback
         {
-            ImageLayerController( const Map* map, TerrainEngineNode* engine );
+            ImageLayerController( TerrainEngineNode* engine );
             void onColorFiltersChanged( ImageLayer* layer ); 
 
         private:
-            MapFrame           _mapf;
             TerrainEngineNode* _engine;
             friend class TerrainEngineNode;
         };
@@ -365,14 +350,17 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<CreateTileModelCallback> > CreateTileModelCallbacks;
         CreateTileModelCallbacks _createTileModelCallbacks;
         mutable Threading::ReadWriteMutex _createTileModelCallbacksMutex;
+        
+        typedef std::vector<osg::ref_ptr<ModifyTileBoundingBoxCallback> > ModifyTileBoundingBoxCallbacks;
+        ModifyTileBoundingBoxCallbacks _modifyTileBoundingBoxCallbacks;
 
         osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
 
         osg::ref_ptr<ComputeRangeCallback> _computeRangeCallback;
 
-    protected:
+    public:
 
-        TilePatchCallbacks _tilePatchCallbacks;
+        void fireModifyTileBoundingBoxCallbacks(const TileKey& key, osg::BoundingBox& box);
 
     public:
 

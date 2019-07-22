@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -40,8 +40,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Set up the map layers before culling the terrain */
         void setup(const Map* map, const RenderBindings& bindings, unsigned frameNum, osgUtil::CullVisitor* cv);
 
-        /** Optimize for best state sharing (when using geometry pooling) */
-        void sortDrawCommands();
+        /** Optimize for best state sharing (when using geometry pooling). Returns total tile count. */
+        unsigned sortDrawCommands();
 
         /** Add a Drawable for a layer. Add these in the order you wish to render them. */
         LayerDrawable* addLayerDrawable(const Layer*);

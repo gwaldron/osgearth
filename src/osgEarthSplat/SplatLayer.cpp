@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -27,6 +27,7 @@
 #include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
+#include <osg/Drawable>
 #include <cstdlib> // getenv
 
 #define LC "[SplatLayer] " << getName() << ": "
@@ -48,7 +49,6 @@ Config
 SplatLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
-    conf.key() = "splat_imagery";
     conf.set("land_cover_layer", _landCoverLayerName);
 
     Config zones("zones");
@@ -58,14 +58,14 @@ SplatLayerOptions::getConfig() const
             zones.add(zone);
     }
     if (!zones.empty())
-        conf.update(zones);
+        conf.set(zones);
     return conf;
 }
 
 void
 SplatLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("land_cover_layer", _landCoverLayerName);
+    conf.get("land_cover_layer", _landCoverLayerName);
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {
@@ -73,6 +73,54 @@ SplatLayerOptions::fromConfig(const Config& conf)
         for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i) {
             _zones.push_back(ZoneOptions(*i));
         }
+    }
+}
+
+//........................................................................
+
+void
+SplatLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) const
+{
+    if (nv->getVisitorType() == nv->CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+
+        // If we have zones, select the current one and apply its state set.
+        if (_layer->_zones.size() > 0)
+        {
+            int zoneIndex = 0;
+            osg::Vec3d vp = cv->getViewPoint();
+
+            for(int z=_layer->_zones.size()-1; z > 0 && zoneIndex == 0; --z)
+            {
+                if ( _layer->_zones[z]->contains(vp) )
+                {
+                    zoneIndex = z;
+                }
+            }
+
+            osg::StateSet* zoneStateSet = 0L;
+            Surface* surface = _layer->_zones[zoneIndex]->getSurface();
+            if (surface)
+            {
+                zoneStateSet = surface->getStateSet();
+            }
+
+            if (zoneStateSet == 0L)
+            {
+                OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
+            }
+            else
+            {            
+                cv->pushStateSet(zoneStateSet);
+                traverse(node, nv);
+                cv->popStateSet();
+            }
+        }
+    }
+    else
+    {
+        traverse(node, nv);
     }
 }
 
@@ -112,6 +160,8 @@ SplatLayer::init()
         osg::ref_ptr<Zone> zone = new Zone(*i);
         _zones.push_back(zone.get());
     }
+
+    setCullCallback(new ZoneSelector(this));
 }
 
 void
@@ -163,6 +213,8 @@ SplatLayer::removedFromMap(const Map* map)
 void
 SplatLayer::setTerrainResources(TerrainResources* res)
 {
+    VisibleLayer::setTerrainResources(res);
+
     if (res)
     {
         // TODO.
@@ -197,42 +249,6 @@ SplatLayer::setTerrainResources(TerrainResources* res)
             buildStateSets();
         }
     }
-}
-
-bool
-SplatLayer::cull(const osgUtil::CullVisitor* cv,
-                 osg::State::StateSetStack& stateSetStack) const
-{
-    if (Layer::cull(cv, stateSetStack) == false)
-        return false;
-
-    // If we have zones, select the current one and apply its state set.
-    if (_zones.size() > 0)
-    {
-        int zoneIndex = 0;
-        osg::Vec3d vp = cv->getViewPoint();
-
-        for(int z=_zones.size()-1; z > 0 && zoneIndex == 0; --z)
-        {
-            if ( _zones[z]->contains(vp) )
-            {
-                zoneIndex = z;
-            }
-        }
-
-        osg::StateSet* zoneStateSet = 0L;
-        Surface* surface = _zones[zoneIndex]->getSurface();
-        if (surface)
-        {
-            zoneStateSet = surface->getStateSet();
-        }
-
-        if (zoneStateSet)
-        {
-            stateSetStack.push_back(zoneStateSet);
-        }
-    }
-    return true;
 }
 
 void
@@ -313,18 +329,14 @@ SplatLayer::buildStateSets()
         osg::ref_ptr<osg::Texture> noiseTexture = noise.create(256u, 1u);
         stateset->setTextureAttribute(_noiseBinding.unit(), noiseTexture.get());
         stateset->addUniform(new osg::Uniform(NOISE_SAMPLER, _noiseBinding.unit()));
-        stateset->setDefine("OE_SPLAT_HAVE_NOISE_SAMPLER");
+        stateset->setDefine("OE_SPLAT_NOISE_SAMPLER", NOISE_SAMPLER);
     }
 
     osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, landCoverLayer->shareImageUnit().get());
     stateset->addUniform(lcTexUniform);
 
     stateset->addUniform(new osg::Uniform("oe_splat_scaleOffsetInt", 0));
-    stateset->addUniform(new osg::Uniform("oe_splat_warp", 0.0f));
-    stateset->addUniform(new osg::Uniform("oe_splat_blur", 1.0f));
-    stateset->addUniform(new osg::Uniform("oe_splat_useBilinear", 1.0f));
     stateset->addUniform(new osg::Uniform("oe_splat_noiseScale", 12.0f));
-
     stateset->addUniform(new osg::Uniform("oe_splat_detailRange", 100000.0f));
 
     if (_editMode)
@@ -343,6 +355,7 @@ SplatLayer::buildStateSets()
 
     SplattingShaders splatting;
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    vp->setName("SplatLayer");
     splatting.load(vp, splatting.VertModel);
     splatting.load(vp, splatting.VertView);
     splatting.load(vp, splatting.Frag);

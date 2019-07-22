@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -132,7 +132,7 @@ RoadSurfaceLayer::removedFromMap(const Map* map)
 }
 
 osg::Node*
-RoadSurfaceLayer::getOrCreateNode()
+RoadSurfaceLayer::getNode() const
 {
     // adds the Rasterizer to the scene graph so we can rasterize tiles
     return _rasterizer.get();
@@ -329,7 +329,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
             if (cursor.valid())
             {
                 cursor->fill(features);
@@ -343,7 +343,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         query.bounds() = queryExtent.bounds();
 
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
         if (cursor.valid())
         {
             cursor->fill(features);
@@ -367,7 +367,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         GeometryCompiler compiler;
 
         StyleToFeatures map;
-        sortFeaturesIntoStyleGroups(options().styles(), features, fc, map);
+        sortFeaturesIntoStyleGroups(options().styles().get(), features, fc, map);
         osg::ref_ptr< osg::Group > group;
         if (!map.empty())
         {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,12 +21,15 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/URI>
+
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/BufferFilter>
-#include <osgEarthFeatures/ScaleFilter>
-#include <osgEarthUtil/WFS>
+#include <osgEarthFeatures/FilterContext>
+#include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/OgrUtils>
+
+#include <osgEarthUtil/WFS>
+
 #include <osg/Notify>
 #include <osg/ConcurrencyViewerMacros>
 #include <osgDB/FileNameUtils>
@@ -328,24 +331,20 @@ public:
         return str;
     }
 
-    FeatureCursor* createFeatureCursor( const Symbology::Query& query )
+    FeatureCursor* createFeatureCursor( const Symbology::Query& query, ProgressCallback* progress )
     {
        osg::CVMarkerSeries series("SubloadTask");
        osg::CVSpan UpdateTick(series, 5, "createFeatureCursor");
 
         FeatureCursor* result = 0L;
 
-        std::string url = createURL( query );        
-
-        // check the blacklist:
-        if ( Registry::instance()->isBlacklisted(url) )
-            return 0L;
+        std::string url = createURL( query );
 
         OE_DEBUG << LC << url << std::endl;
-        URI uri(url);
+        URI uri(url, _options.url()->context());
 
         // read the data:
-        ReadResult r = uri.readString( _readOptions.get() );
+        ReadResult r = uri.readString( _readOptions.get(), progress );
 
         const std::string& buffer = r.getString();
         const Config&      meta   = r.metadata();
@@ -366,19 +365,15 @@ public:
         }
 
         //If we have any filters, process them here before the cursor is created
-        if (!getFilters().empty())
+        if (getFilters() && !getFilters()->empty() && !features.empty())
         {
-            // preprocess the features using the filter list:
-            if ( features.size() > 0 )
-            {
-                FilterContext cx;
-                cx.setProfile( getFeatureProfile() );
+            FilterContext cx;
+            cx.setProfile( getFeatureProfile() );
 
-                for( FeatureFilterList::const_iterator i = getFilters().begin(); i != getFilters().end(); ++i )
-                {
-                    FeatureFilter* filter = i->get();
-                    cx = filter->push( features, cx );
-                }
+            for( FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i )
+            {
+                FeatureFilter* filter = i->get();
+                cx = filter->push( features, cx );
             }
         }
 
@@ -393,11 +388,7 @@ public:
             }
         }
 
-        //result = new FeatureListCursor(features);
         result = dataOK ? new FeatureListCursor( features ) : 0L;
-
-        if ( !result )
-            Registry::instance()->blacklist( url );
 
         return result;
     }

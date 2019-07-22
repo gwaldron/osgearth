@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,10 +19,12 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/SubstituteModelFilterNode>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthSymbology/MeshConsolidator>
+
 #include <osgEarthSymbology/MeshFlattener>
+#include <osgEarthSymbology/StyleSheet>
+
 #include <osgEarth/ECEF>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
@@ -37,11 +39,13 @@
 #include <osg/Geode>
 #include <osg/MatrixTransform>
 #include <osg/NodeVisitor>
-#include <osg/ShapeDrawable>
-#include <osg/AlphaFunc>
 #include <osg/Billboard>
 
 #define LC "[SubstituteModelFilter] "
+
+#ifndef GL_CLIP_DISTANCE0
+#define GL_CLIP_DISTANCE0 0x3000
+#endif
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -66,14 +70,13 @@ namespace
 
 //------------------------------------------------------------------------
 
-SubstituteModelFilter::SubstituteModelFilter(const Style& style) :
-_style(style),
-_cluster(false),
-_useDrawInstanced(false),
-_merge(true),
-_normalScalingRequired(false),
-_instanceCache(false),     // cache per object so MT not required
-_filterUsage(FILTER_USAGE_NORMAL)
+SubstituteModelFilter::SubstituteModelFilter( const Style& style ) :
+_style                ( style ),
+_cluster              ( false ),
+_useDrawInstanced     ( true ),
+_merge                ( true ),
+_normalScalingRequired( false ),
+_instanceCache        ( false )     // cache per object so MT not required
 {
    //NOP
 }
@@ -134,6 +137,7 @@ FilterContext&               context)
    // factor to any AutoTransforms directly (cloning them as necessary)
    std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
 
+/* MERGE: Instancing, clustering no longer?
    SubstituteModelFilterNode* substituteModelFilterNode = 0;
 
    if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
@@ -156,6 +160,7 @@ FilterContext&               context)
          substituteModelFilterNode->setClustered(clustering);
       }
    }
+   */
 
    // URI cache speeds up URI creation since it can be slow.
    osgEarth::fast_map<std::string, URI> uriCache;
@@ -248,41 +253,41 @@ FilterContext&               context)
       std::pair<URI, float> key(instanceURI, iconSymbol ? scale : 1.0f); //use 1.0 for models, since we don't want unique models based on scaling
 
       // cache nodes per instance.
-      osg::ref_ptr<osg::Node> model;
-
-      if (_filterUsage == FILTER_USAGE_NORMAL)
+      osg::ref_ptr<osg::Node>& model = uniqueModels[key];
+        
+      if ( !model.valid() )
       {
          //This is a not so obvious way of writing to the map.
          // Notice the & in the definition of modeRefOfRefPtr
-         osg::ref_ptr<osg::Node>& modelRefOfRefPtr = uniqueModels[key];
+         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         
          if (!modelRefOfRefPtr.valid())
          {
             // Always clone the cached instance so we're not processing data that's
             // already in the scene graph. -gw
-            context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), modelRefOfRefPtr, context.getDBOptions());
+            context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), model, context.getDBOptions());
 
             // if icon decluttering is off, install an AutoTransform.
             if (iconSymbol)
             {
                if (iconSymbol->declutter() == true)
                {
-                  ScreenSpaceLayout::activate(modelRefOfRefPtr->getOrCreateStateSet());
+                  ScreenSpaceLayout::activate(model->getOrCreateStateSet());
                }
-               else if (dynamic_cast<osg::AutoTransform*>(modelRefOfRefPtr.get()) == 0L)
+               else if (dynamic_cast<osg::AutoTransform*>(model.get()) == 0L)
                {
                   osg::AutoTransform* at = new osg::AutoTransform();
                   at->setAutoRotateMode(osg::AutoTransform::ROTATE_TO_SCREEN);
                   at->setAutoScaleToScreen(true);
-                  at->addChild(modelRefOfRefPtr);
-                  modelRefOfRefPtr = at;
+                  at->addChild(model);
+                  model = at;
                }
             }
          }
          model = modelRefOfRefPtr.get();
       }
 
-      if ((_filterUsage == FILTER_USAGE_NORMAL && model.valid()) || (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED))
+      if ( model.valid() )
       {
          GeometryIterator gi(input->getGeometry(), false);
          while (gi.hasMore())
@@ -336,24 +341,26 @@ FilterContext&               context)
                   rotationMatrix.makeRotate(osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1)));
                }
 
-               osg::Vec3d point = (*geom)[i];
-               if (makeECEF)
-               {
-                  // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
-                  // could take a shortcut and just use the current extent's local2world matrix for this,
-                  // but if the tile is big enough the up vectors won't be quite right.
-                  osg::Matrixd rotation;
-                  ECEF::transformAndGetRotationMatrix(point, context.profile()->getSRS(), point, targetSRS, rotation);
-                  mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate(point);
-               }
-               else
-               {
-                  mat = scaleMatrix * rotationMatrix *  osg::Matrixd::translate(point);
-               }
+                    if ( modelSymbol && modelSymbol->heading().isSet() )
+                    {
+                        float heading = input->eval(headingEx, &context);
+                        rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+                    }
 
-               if (_filterUsage == FILTER_USAGE_NORMAL)
-               {
-                  mat = mat*_world2local;
+                    osg::Vec3d point = (*geom)[i];
+                    if ( makeECEF )
+                    {
+                        // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
+                        // could take a shortcut and just use the current extent's local2world matrix for this,
+                        // but if the tile is big enough the up vectors won't be quite right.
+                        osg::Matrixd rotation;
+                        ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, targetSRS, rotation );
+                        mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate( point ) * _world2local;
+                    }
+                    else
+                    {
+                        mat = scaleMatrix * rotationMatrix * osg::Matrixd::translate( point ) * _world2local;
+                    }
 
                   osg::MatrixTransform* xform = new osg::MatrixTransform();
                   xform->setMatrix(mat);
@@ -397,13 +404,16 @@ FilterContext&               context)
          ScreenSpaceLayout::activate(attachPoint->getOrCreateStateSet());
       }
 
-      // activate horizon culling if we are in geocentric space
-      if (context.getSession() && context.getSession()->getMapInfo().isGeocentric())
-      {
-         //TODO: re-evaluate this; use Horizon?
-         HorizonCullingProgram::install(attachPoint->getOrCreateStateSet());
-      }
-   }
+        // activate horizon culling if we are in geocentric space
+        if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
+        {
+            // should this use clipping, or a horizon cull callback?
+
+            //HorizonCullingProgram::install( attachPoint->getOrCreateStateSet() );
+
+            attachPoint->getOrCreateStateSet()->setMode(GL_CLIP_DISTANCE0, 1);
+        }
+    }
 
    // active DrawInstanced if required:
    if (_filterUsage == FILTER_USAGE_NORMAL && _useDrawInstanced)
@@ -482,18 +492,11 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
    osg::ref_ptr<const InstanceSymbol> symbol = _style.get<InstanceSymbol>();
 
-   // check for deprecated MarkerSymbol type.
-   if (!symbol.valid())
-   {
-      if (_style.has<MarkerSymbol>())
-         symbol = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
-   }
-
-   if (!symbol.valid())
-   {
-      OE_WARN << LC << "No appropriate symbol found in stylesheet; aborting." << std::endl;
-      return 0L;
-   }
+    if ( !symbol.valid() )
+    {
+        OE_WARN << LC << "No appropriate symbol found in stylesheet; aborting." << std::endl;
+        return 0L;
+    }
 
    // establish the resource library, if there is one:
    _resourceLib = 0L;
@@ -524,6 +527,9 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
    osg::ref_ptr< osg::Group > attachPoint = new osg::Group;
    attachPoint->setName("SubstituteModelFilter::attachPoint");
+   
+   // Process the feature set, using clustering if requested
+   bool ok = true;
 
    osg::ref_ptr<osg::Group> oqn;
    if (OcclusionQueryNodeFactory::_occlusionFactory) {
@@ -539,48 +545,26 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
       group->addChild(attachPoint.get());
    }
 
-   // Process the feature set, using clustering if requested
-   bool ok = true;
+    process( features, symbol.get(), context.getSession(), attachPoint.get(), newContext );
+    if (_cluster)
+    {
+        // Extract the unclusterable things
+        osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint.get());
 
-   process(features, symbol, context.getSession(), attachPoint.get(), newContext);
-   if (_filterUsage == FILTER_USAGE_NORMAL && _cluster)
-   {
-      // Extract the unclusterable things
-      osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint);
-      unclusterables.get()->setName("Unclusterables");
+        // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
+        MeshFlattener::run(attachPoint.get());
 
-      // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
-      MeshFlattener::run(attachPoint);
-
-      // Add the unclusterables back to the attach point after the rest of the graph was flattened.
-      if (unclusterables.valid())
-      {
-         attachPoint->addChild(unclusterables);
-      }
-   }
-
-   // return proper context
-   context = newContext;
-
-#if 0
-   // TODO: OBE due to shader pipeline
-   // see if we need normalized normals
-   if ( _normalScalingRequired )
-   {
-      // TODO: carefully test for this, since GL_NORMALIZE hurts performance in 
-      // FFP mode (RESCALE_NORMAL is faster for uniform scaling); and I think auto-normal-scaling
-      // is disabled entirely when using shaders. For now I believe we are dropping to FFP
-      // when not using instancing ...so just check for that
-      if ( !_useDrawInstanced )
-      {
-         group->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON);
-}
+        // Add the unclusterables back to the attach point after the rest of the graph was flattened.
+        if (unclusterables.valid())
+        {
+           attachPoint->addChild(unclusterables);
+        }
     }
-#endif
+    
+    // return proper context
+    context = newContext;
 
-   //osgDB::writeNodeFile(*group, "c:/temp/clustered.osg");
-
-   return group;
+    return group;
 }
 
 

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -21,6 +21,7 @@
 #include "TileNodeRegistry"
 
 #include <osgEarth/Metrics>
+#include <osgEarth/NodeUtils>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
@@ -71,7 +72,7 @@ UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
 _tiles(tiles),
 _threshold( INT_MAX )
 {
-    this->setNumChildrenRequiringUpdateTraversal( 1u );
+    ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 void
@@ -86,7 +87,7 @@ UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
 void
 UnloaderGroup::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {        
         if ( _parentKeys.size() > _threshold )
         {

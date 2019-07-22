@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,14 +21,8 @@
 */
 
 #include <osgEarthUtil/ClampCallback>
-#include <osgEarth/Notify>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/NodeUtils>
-#include <OpenThreads/ScopedLock>
 #include <osg/MatrixTransform>
 
-#include <osg/io_utils>
 
 using namespace osg;
 using namespace osgEarth;
@@ -107,7 +101,11 @@ bool ClampCallback::clampGeometry(osg::Geometry* geom, const osg::Matrixd& local
         }
     }
     geom->dirtyBound();
+#if OSG_VERSION_LESS_THAN(3,6,0)
     geom->dirtyDisplayList();
+#else
+    geom->dirtyGLObjects();
+#endif
 
     return true;
 }

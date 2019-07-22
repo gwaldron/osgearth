@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
  */
 #include <osgEarth/LandCover>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/Registry>
 
 #define LC "[LandCover] "
 
@@ -99,7 +98,7 @@ Config
 LandCoverDictionaryOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
-    conf.key() = "land_cover_dictionary";
+
     if (!classes().empty())
     {
         Config classes("classes");
@@ -220,16 +219,16 @@ _lcClassName(className)
 void
 LandCoverValueMapping::fromConfig(const Config& conf)
 {
-    conf.getIfSet("value", _value);
-    conf.getIfSet("class", _lcClassName);
+    conf.get("value", _value);
+    conf.get("class", _lcClassName);
 }
 
 Config
 LandCoverValueMapping::getConfig() const
 {
     Config conf("mapping");
-    conf.addIfSet("value", _value);
-    conf.addIfSet("class", _lcClassName);
+    conf.set("value", _value);
+    conf.set("class", _lcClassName);
     return conf;
 }
 
@@ -242,6 +241,14 @@ LandCoverCoverageLayerOptions::LandCoverCoverageLayerOptions(const ConfigOptions
 ImageLayerOptions(co),
 _warp(0.0f)
 {
+    // By default, a CoverageLayer must disable all interpolation
+    // since the values contain actual data.
+    // (TODO: because of an architectural vestige, both the ImageLayerOptions
+    // and the TileSourceOptions have a "coverage" property -- so we must set
+    // them both. Someday fix this.)
+    coverage().init(true);
+    driver()->coverage().init(true);
+
     fromConfig(_conf);
 }
 
@@ -255,7 +262,7 @@ LandCoverCoverageLayerOptions::fromConfig(const Config& conf)
         _valueMappings.push_back(mapping.get());
     }
 
-    conf.getIfSet("warp", _warp);
+    conf.get("warp", _warp);
 }
 
 Config
@@ -263,15 +270,18 @@ LandCoverCoverageLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
     conf.key() = "coverage";
-    Config mappings("land_cover_mappings");
-    conf.update(mappings);
-    for(LandCoverValueMappingVector::const_iterator i = _valueMappings.begin();
-        i != _valueMappings.end();
-        ++i)
-    {
-        LandCoverValueMapping* mapping = i->get();
-        if (mapping)
-            mappings.add(mapping->getConfig());
+    if (conf.hasChild("land_cover_mappings") == false)
+    {   
+        Config mappings("land_cover_mappings");
+        conf.add(mappings); //.update(mappings);
+        for(LandCoverValueMappingVector::const_iterator i = _valueMappings.begin();
+            i != _valueMappings.end();
+            ++i)
+        {
+            LandCoverValueMapping* mapping = i->get();
+            if (mapping)
+                mappings.add(mapping->getConfig());
+        }
     }
     conf.set("warp", _warp);
     return conf;

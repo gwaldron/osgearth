@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BufferFilter>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Style>
 //TODO: replace this with GeometryRasterizer
 #include <osgEarthSymbology/AGG.h>
@@ -188,13 +189,21 @@ public:
 
                 if ( masterLine || f->get()->style()->has<LineSymbol>() )
                 {
-                    Feature* newFeature = new Feature( *f->get() );
-                    if ( !newFeature->getGeometry()->isLinear() )
+                    // Use the GeometryIterator to get all the geometries so we can clone them as rings
+                    GeometryIterator gi(f->get()->getGeometry());
+                    while (gi.hasMore())
                     {
-                        newFeature->setGeometry( newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING) );
+                        Geometry* geom = gi.next();
+                        // Create a new feature for each geometry
+                        Feature* newFeature = new Feature(*f->get());
+                        newFeature->setGeometry(geom);
+                        if (!newFeature->getGeometry()->isLinear())
+                        {
+                            newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
+                        }
+                        lines.push_back( newFeature );
+                        hasLine = true;
                     }
-                    lines.push_back( newFeature );
-                    hasLine = true;
                 }
 
                 // if there are no geometry symbols but there is a coverage symbol, default to polygons.
@@ -321,12 +330,31 @@ public:
         // extend just outside the actual extents so we don't get edge artifacts:
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);
+        double cropXMin, cropYMin, cropXMax, cropYMax;
+        cropExtent.getBounds(cropXMin, cropYMin, cropXMax, cropYMax);
+
+        // GEOS crop won't abide by weird extents, so if we're in geographic space
+        // we must clamp the scaled extent back to a legal range.
+        if (cropExtent.crossesAntimeridian())
+        {
+            osg::Vec3d centroid = imageExtent.getCentroid();
+            if (centroid.x() < 0.0) // tile is east of antimeridian
+            {
+                cropXMin = -180.0;
+                cropXMax = cropExtent.east();
+            }
+            else
+            {
+                cropXMin = cropExtent.west();
+                cropXMax = 180.0;
+            }
+        }
 
         osg::ref_ptr<Symbology::Polygon> cropPoly = new Symbology::Polygon( 4 );
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMin(), 0 ));
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMin(), 0 ));
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMax(), 0 ));
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
+        cropPoly->push_back( osg::Vec3d(cropXMin, cropYMin, 0) );
+        cropPoly->push_back( osg::Vec3d(cropXMax, cropYMin, 0) );
+        cropPoly->push_back( osg::Vec3d(cropXMax, cropYMax, 0) );
+        cropPoly->push_back( osg::Vec3d(cropXMin, cropYMax, 0) );
 
         // If there's a coverage symbol, make a copy of the expressions so we can evaluate them
         optional<NumericExpression> covValue;

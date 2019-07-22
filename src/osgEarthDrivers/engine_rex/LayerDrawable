@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -29,6 +29,8 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class TerrainRenderData;
+
     /**
      * Drawable for single "Layer" i.e. rendering pass. 
      * It is important that LayerDrawables be rendered in the order in which
@@ -57,7 +59,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
-        int _order;
+        int _drawOrder;
 
         // The last layer to render will have this flag set, which will
         // prompt the render to dirty the osg::State to prevent corruption.
@@ -78,6 +80,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // All LayerDrawables share the common terrain bounds.
         osg::BoundingSphere computeBound() const { return _drawState->_bs; }
         osg::BoundingBox computeBoundingBox() const { return _drawState->_box; }
+
+    protected:
+        // overriden to prevent OSG from releasing GL objects on an attached stateset.
+        virtual ~LayerDrawable();
     };
 
 

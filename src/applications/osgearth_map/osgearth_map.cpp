@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,25 +20,79 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
-#include <osgGA/GUIEventHandler>
-#include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ModelLayer>
 #include <osgEarth/GeoTransform>
+#include <osgEarth/CompositeTileSource>
+
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
-#include <osgEarthSymbology/Color>
+#include <osgEarthUtil/ExampleResources>
+#include <osgEarthUtil/AutoScaleCallback>
+
 #include <osgEarthDrivers/tms/TMSOptions>
 #include <osgEarthDrivers/wms/WMSOptions>
 #include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarthDrivers/osg/OSGOptions>
+#include <osgEarthDrivers/xyz/XYZOptions>
+#include <osgEarthDrivers/debug/DebugOptions>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+
+#include <osgEarthFeatures/FeatureMaskLayer>
+
+#include <osg/PositionAttitudeTransform>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
+using namespace osgEarth::Features;
+
+int
+usage(int argc, char** argv)
+{
+    OE_NOTICE 
+        << "\n" << argv[0]
+        << "\n    [--out outFile] : write map node to outFile before exit"
+        << std::endl;
+
+    return 0;
+}
+
+// Demonstrates how to subclass ImageLayer to directly create textures
+// for use in a layer.
+class MyTextureLayer : public ImageLayer
+{
+public:
+    osg::ref_ptr<osg::Texture2D> _tex;
+
+    MyTextureLayer(const char* path)
+    {
+        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile(path);
+        if (image.valid())
+            _tex = new osg::Texture2D(image.get());
+
+        // Establish a profile for the layer:
+        setProfile(Profile::create("global-geodetic"));
+
+        // Direct the layer to call createTexture:
+        setUseCreateTexture();
+
+        // Restrict the data extents of this layer to LOD 0 (in this case)
+        dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, 0));
+    }
+
+    osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)
+    {
+        // Set the texture matrix corresponding to the tile key:
+        key.getExtent().createScaleBias(getProfile()->getExtent(), textureMatrix);
+
+        return _tex.get();
+    }
+};
 
 /**
  * How to create a simple osgEarth map and display it.
@@ -47,6 +101,8 @@ int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
+    if (arguments.read("--help"))
+        return usage(argc, argv);
 
     // create the empty map.
     Map* map = new Map();
@@ -60,6 +116,19 @@ main(int argc, char** argv)
     TMSOptions elevation;
     elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/116/";
     map->addLayer( new ElevationLayer("ReadyMap Elevation", elevation) );
+
+    // add a semi-transparent XYZ layer:
+    XYZOptions xyz;
+    xyz.url() = "http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png";
+    xyz.profile()->namedProfile() = "spherical-mercator";
+    ImageLayer* imageLayer = new ImageLayer("OSM", xyz);
+    imageLayer->setOpacity(0.5f);
+    map->addLayer(imageLayer);
+
+    // a custom layer that displays a user texture:
+    MyTextureLayer* texLayer = new MyTextureLayer("../data/grid2.png");
+    texLayer->setOpacity(0.5f);
+    map->addLayer(texLayer);  
     
     // add a local GeoTIFF inset layer:
     GDALOptions gdal;
@@ -78,31 +147,74 @@ main(int argc, char** argv)
     wmsLayerOptions.cachePolicy() = CachePolicy::NO_CACHE;
     map->addLayer(new ImageLayer(wmsLayerOptions));
 
+    // add a local simple image as a layer using the OSG driver:
+    OSGOptions osg;
+    osg.url() = "../data/osgearth.gif";
+    osg.profile()->srsString() = "wgs84";
+    osg.profile()->bounds()->set(-90.0, 10.0, -80.0, 15.0);
+    map->addLayer(new ImageLayer("Simple image", osg));
+
+    // create a composite image layer that combines two other sources:
+    GDALOptions c1;
+    c1.url() = "../data/boston-inset-wgs84.tif";
+
+    GDALOptions c2;
+    c2.url() = "../data/nyc-inset-wgs84.tif";
+
+    CompositeTileSourceOptions composite;
+    composite.add(ImageLayerOptions(c1));
+    composite.add(ImageLayerOptions(c2));
+
+    ImageLayerOptions compLayerOptions("My Composite Layer", composite);
+    map->addLayer(new ImageLayer(compLayerOptions));
+
+    // mask layer
+    OGRFeatureOptions maskOptions;
+    maskOptions.geometry() = new Polygon();
+    maskOptions.geometry()->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-111.0467, 40.9979, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-109.0501, 41.0007, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-109.0452, 36.9991, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-114.0506, 37.0004, 0));
+    maskOptions.geometry()->push_back(osg::Vec3d(-114.0417, 41.9937, 0));
+    maskOptions.profile() = ProfileOptions("global-geodetic");
+    FeatureMaskLayerOptions maskLayerOptions;
+    maskLayerOptions.name() = "Mask layer";
+    maskLayerOptions.featureSource() = maskOptions;
+    map->addLayer(new FeatureMaskLayer(maskLayerOptions));
+
+    // put a model on the map atop Pike's Peak, Colorado, USA
+    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("cow.osgt.(0,0,3).trans.osgearth_shadergen");
+    if (model.valid())
+    {
+        osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform();
+        pat->addCullCallback(new AutoScaleCallback<osg::PositionAttitudeTransform>(5.0));
+        pat->addChild(model.get());
+
+        GeoTransform* xform = new GeoTransform();
+        xform->setPosition(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
+        xform->addChild(pat);
+
+        map->addLayer(new ModelLayer("Model", xform));
+    }
+
     // make the map scene graph:
     MapNode* node = new MapNode( map );
 
-    // put a model on the map atop Pike's Peak, Colorado, USA
-    osg::Node* model = osgDB::readNodeFile("../data/red_flag.osg.10000.scale.osgearth_shadergen");
-    if (model)
-    {
-        GeoTransform* xform = new GeoTransform();
-        xform->addChild(model);
-        xform->setPosition(GeoPoint(map->getSRS()->getGeographicSRS(), -105.042292, 38.840829));
-        node->addChild(xform);
-    }
-
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
-    viewer.setCameraManipulator( new EarthManipulator );
+    viewer.setCameraManipulator( new EarthManipulator() );
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.setSceneData( node );
 
     // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgViewer::ThreadingHandler());
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
+    MapNodeHelper().configureView(&viewer);
 
-    return viewer.run();
+    int r = viewer.run();
+
+    std::string outFile;
+    if (arguments.read("--out", outFile))
+        osgDB::writeNodeFile(*node, outFile);
+
+    return r;
 }

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -41,23 +41,9 @@ _enableCancel(true)
     _engine = context->getEngine();
 }
 
-namespace
-{
-    struct MyProgress : public ProgressCallback {
-        LoadTileData* _req;
-        MyProgress(LoadTileData* req) : _req(req) {}
-        bool isCanceled() {
-           if (_canceled == false && _req->isIdle())
-              _canceled = true;
-           return ProgressCallback::isCanceled();
-        }
-    };
-}
-
-
 // invoke runs in the background pager thread.
 void
-LoadTileData::invoke()
+LoadTileData::invoke(ProgressCallback* progress)
 {
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
@@ -71,21 +57,18 @@ LoadTileData::invoke()
     if (!_map.lock(map))
         return;
 
-    // Only use a progress callback if cancellation is enabled.    
-    osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
-
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
-        tilenode->getKey(),           
+        tilenode->getKey(),
         _filter,
-        progress.get() );
+        _enableCancel? progress : 0L);
 
-    // if the operation was canceled, set the request to idle and delete any existing data.
-    if (progress && (progress->isCanceled() || progress->needsRetry()))
+    // if the operation was canceled, set the request to idle and delete the tile model.
+    if (progress && progress->isCanceled())
     {
-       _dataModel = 0L;
-       setState(Request::IDLE);
+        _dataModel = 0L;
+        setState(Request::IDLE);
     }
 }
 
@@ -137,57 +120,4 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
         // Delete the model immediately
         _dataModel = 0L;
     }
-}
-
-namespace
-{
-    // Fake attribute that compiles everything in the TerrainTileModel
-    // when the ICO is active.
-    struct ModelCompilingAttribute : public osg::Texture2D
-    {
-        osg::observer_ptr<TerrainTileModel> _dataModel;
-        
-        // the ICO calls apply() directly instead of compileGLObjects
-        void apply(osg::State& state) const
-        {
-            osg::ref_ptr<TerrainTileModel> dataModel;
-            if (_dataModel.lock(dataModel))
-                dataModel->compileGLObjects(state);
-        }
-
-        // no need to override release or resize since this is a temporary object
-        // that exists only to service the ICO.
-
-        META_StateAttribute(osgEarth, ModelCompilingAttribute, osg::StateAttribute::TEXTURE);
-        int compare(const StateAttribute& sa) const { return 0; }
-        ModelCompilingAttribute() { }
-        ModelCompilingAttribute(const ModelCompilingAttribute& rhs, const osg::CopyOp& copy) { }
-    };
-}
-
-osg::StateSet*
-LoadTileData::createStateSet() const
-{
-    osg::ref_ptr<osg::StateSet> out;
-    
-    osg::ref_ptr<EngineContext> context;
-    if (!_context.lock(context))
-        return NULL;
-
-    osg::ref_ptr<const Map> map;
-    if (!_map.lock(map))
-        return NULL;
-
-    if (_dataModel.valid() && map.valid() &&
-        _dataModel->getRevision() == map->getDataModelRevision())
-    {
-        // This stateset contains a "fake" attribute that the ICO will
-        // try to GL-compile, thereby GL-compiling everything in the TerrainTileModel.
-        out = new osg::StateSet();
-        ModelCompilingAttribute* mca = new ModelCompilingAttribute();
-        mca->_dataModel = _dataModel.get();
-        out->setTextureAttribute(0, mca, 1);
-    }
-
-    return out.release();
 }

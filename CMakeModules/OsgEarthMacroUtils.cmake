@@ -88,48 +88,28 @@ ENDMACRO(DETECT_OSG_VERSION)
 #  full path of the library name. in order to differentiate release and debug, this macro get the
 #  NAME of the variables, so the macro gets as arguments the target name and the following list of parameters
 #  is intended as a list of variable names each one containing  the path of the libraries to link to
-#  The existance of a variable name with _DEBUG appended is tested and, in case it' s value is used
+#  The existence of a variable name with _DEBUG appended is tested and, in case it's value is used
 #  for linking to when in debug mode
 #  the content of this library for linking when in debugging
 #######################################################################################################
-
 
 MACRO(LINK_WITH_VARIABLES TRGTNAME)
     FOREACH(varname ${ARGN})
     message("${TRGTNAME} ${varname}")
         IF(${varname}_DEBUG)
-            message(STATUS "${TRGTNAME}: varname_debug exists")
-            IF(${varname})
+            IF(${varname}_RELEASE)
+                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}_RELEASE}" debug "${${varname}_DEBUG}")
+            ELSE(${varname}_RELEASE)
                 TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}}" debug "${${varname}_DEBUG}")
-                message(STATUS "${TRGTNAME}: TARGET_LINK_LIBRARIES(${TRGTNAME} optimized ${${varname}} debug ${${varname}_DEBUG})")
-            ELSE(${varname})
-                TARGET_LINK_LIBRARIES(${TRGTNAME} debug "${${varname}_DEBUG}")
-                message(STATUS "${TRGTNAME}: TARGET_LINK_LIBRARIES(${TRGTNAME} debug ${${varname}_DEBUG})")
-            ENDIF(${varname})
+            ENDIF(${varname}_RELEASE)
         ELSE(${varname}_DEBUG)
-            TARGET_LINK_LIBRARIES(${TRGTNAME} "${${varname}}" )
-            message(STATUS "${${varname}}")
+            TARGET_LINK_LIBRARIES(${TRGTNAME} ${${varname}} )
         ENDIF(${varname}_DEBUG)
     ENDFOREACH(varname)
 ENDMACRO(LINK_WITH_VARIABLES TRGTNAME)
 
 MACRO(LINK_INTERNAL TRGTNAME)
-    IF("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" GREATER 2.4)
-        TARGET_LINK_LIBRARIES(${TRGTNAME} ${ARGN})
-    ELSE("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" GREATER 2.4)
-        FOREACH(LINKLIB ${ARGN})
-            IF(MSVC AND OSG_MSVC_VERSIONED_DLL)
-                #when using versioned names, the .dll name differ from .lib name, there is a problem with that:
-                #CMake 2.4.7, at least seem to use PREFIX instead of IMPORT_PREFIX  for computing linkage info to use into projects,
-                # so we full path name to specify linkage, this prevent automatic inferencing of dependencies, so we add explicit depemdencies
-                #to library targets used
-                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${OUTPUT_LIBDIR}/${LINKLIB}${CMAKE_RELEASE_POSTFIX}.lib" debug "${OUTPUT_LIBDIR}/${LINKLIB}${CMAKE_DEBUG_POSTFIX}.lib")
-                ADD_DEPENDENCIES(${TRGTNAME} ${LINKLIB})
-            ELSE(MSVC AND OSG_MSVC_VERSIONED_DLL)
-                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${LINKLIB}${CMAKE_RELEASE_POSTFIX}" debug "${LINKLIB}${CMAKE_DEBUG_POSTFIX}")
-            ENDIF(MSVC AND OSG_MSVC_VERSIONED_DLL)
-        ENDFOREACH(LINKLIB)
-    ENDIF("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" GREATER 2.4)
+    TARGET_LINK_LIBRARIES(${TRGTNAME} ${ARGN})
 ENDMACRO(LINK_INTERNAL TRGTNAME)
 
 MACRO(LINK_EXTERNAL TRGTNAME)
@@ -193,12 +173,13 @@ MACRO(SETUP_LINK_LIBRARIES)
 #    ENDFOREACH(LINKLIB)
     LINK_INTERNAL(${TARGET_TARGETNAME} ${TARGET_LIBRARIES})
 
+    IF(TARGET_LIBRARIES_VARS)
+            LINK_WITH_VARIABLES(${TARGET_TARGETNAME} ${TARGET_LIBRARIES_VARS})
+    ENDIF(TARGET_LIBRARIES_VARS)
+
     FOREACH(LINKLIB ${TARGET_EXTERNAL_LIBRARIES})
             TARGET_LINK_LIBRARIES(${TARGET_TARGETNAME} ${LINKLIB})
     ENDFOREACH(LINKLIB)
-        IF(TARGET_LIBRARIES_VARS)
-            LINK_WITH_VARIABLES(${TARGET_TARGETNAME} ${TARGET_LIBRARIES_VARS})
-        ENDIF(TARGET_LIBRARIES_VARS)
 ENDMACRO(SETUP_LINK_LIBRARIES)
 
 ############################################################################################
@@ -260,6 +241,10 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
 		ENDIF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 		
     ENDIF(WIN32)
+
+    IF(OSG_BUILD_PLATFORM_IPHONE)
+        SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+    ENDIF()
 
     # install the shader source files
     if(OSGEARTH_INSTALL_SHADERS)
@@ -353,6 +338,10 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
             FILES ${TARGET_GLSL} 
             DESTINATION resources/shaders )
     endif(OSGEARTH_INSTALL_SHADERS)
+
+    IF(OSG_BUILD_PLATFORM_IPHONE)
+        SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+    ENDIF()
     
 #finally, set up the solution folder -gw
     SET_PROPERTY(TARGET ${TARGET_TARGETNAME} PROPERTY FOLDER "Extensions")    
@@ -418,6 +407,10 @@ MACRO(SETUP_EXE IS_COMMANDLINE_APP)
     SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES RELEASE_OUTPUT_NAME "${TARGET_NAME}${CMAKE_RELEASE_POSTFIX}")
     SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES RELWITHDEBINFO_OUTPUT_NAME "${TARGET_NAME}${CMAKE_RELWITHDEBINFO_POSTFIX}")
     SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES MINSIZEREL_OUTPUT_NAME "${TARGET_NAME}${CMAKE_MINSIZEREL_POSTFIX}")
+
+    IF(OSG_BUILD_PLATFORM_IPHONE)
+        SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+    ENDIF()
 
     SETUP_LINK_LIBRARIES()
 

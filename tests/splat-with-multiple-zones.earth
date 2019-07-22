@@ -26,6 +26,7 @@
         <coverages>
             <coverage name="ESA GLOBCOVER" driver="gdal">
                 <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <profile>global-geodetic</profile>
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
                 <warp>0.05</warp>
             </coverage>

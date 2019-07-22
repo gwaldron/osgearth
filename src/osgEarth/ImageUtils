@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <osg/Texture>
 #include <osg/GL>
 #include <osg/NodeVisitor>
+#include <osgDB/ReaderWriter>
 #include <vector>
 
 //These formats were not added to OSG until after 2.8.3 so we need to define them to use them.
@@ -349,6 +350,18 @@ namespace osgEarth
         static void activateMipMaps(osg::Image* texture);
 
         /**
+         * Gets an osgDB::ReaderWriter for the given input stream.
+         * Returns NULL if no ReaderWriter can be found.
+         */
+        static osgDB::ReaderWriter* getReaderWriterForStream(std::istream& stream);
+
+        /**
+         * Reads an osg::Image from the given input stream.         
+         * Returns NULL if the image could not be read.
+         */
+        static osg::Image* readStream(std::istream& stream, const osgDB::Options* options);
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader
@@ -536,8 +549,6 @@ namespace osgEarth
 
     public: // osg::NodeVisitor
         virtual void apply(osg::Node& node);
-        virtual void apply(osg::Geode& geode);
-        virtual void apply(osg::Drawable& drawable);
         virtual void apply(osg::StateSet& stateSet);
     };
 }

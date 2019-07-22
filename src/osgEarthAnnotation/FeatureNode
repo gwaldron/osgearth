@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/GeometryClamper>
-#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/StyleSheet>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osg/Polytope>
@@ -49,7 +49,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Construct a new FeatureNode from a single Feature.
          */
-        FeatureNode( 
+        FeatureNode(
             Feature* feature,
             const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions(),
@@ -61,7 +61,7 @@ namespace osgEarth { namespace Annotation
         FeatureNode(
             const FeatureList& features,
             const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions(), 
+            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
             StyleSheet* styleSheet = 0);
 
          /**
@@ -90,39 +90,23 @@ namespace osgEarth { namespace Annotation
         void setStyleSheet(StyleSheet* styleSheet);
 
         /**
+         * Gets the FeatureIndexBuilder
+         */
+        FeatureIndexBuilder* getIndex();
+
+        /**
+        * Sets the FeatureIndexBuilder
+        */
+        void setIndex(FeatureIndexBuilder* index);
+
+        /**
          * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
          * call this function to rebuild the node.
          */
-        void init();
-        void dirty() { init(); }
+        void dirty();
 
-    public: // older constructors that take a MapNode
-
-        /**
-         * Constructs a new FeatureNode from a single Feature and a MapNode.
-         * You can use this variant if you the FeatureNode will not be a
-         * descendant of the MapNode.
-         * NOTE: candidate for deprecation
-         */
-        FeatureNode( 
-            MapNode* mapNode, 
-            Feature* feature,
-            const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
-            StyleSheet* styleSheet = 0);
-
-        /**
-         * Constructs a new FeatureNode from a FeatureList and a MapNode.
-         * You can use this variant if you the FeatureNode will not be a
-         * descendant of the MapNode.
-         * NOTE: candidate for deprecation
-         */
-        FeatureNode( 
-            MapNode* mapNode, 
-            const FeatureList& features,
-            const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions(), 
-            StyleSheet* styleSheet = 0);
+        //! @deprecated backwards compatiblity (remove after 2.10)
+        void init() { dirty(); }
 
     public: // AnnotationNode
 
@@ -132,7 +116,7 @@ namespace osgEarth { namespace Annotation
         virtual const Style& getStyle() const;
 
         /**
-         * Sets the style for this FeatureNode.  
+         * Sets the style for this FeatureNode.
          * Note:  Do NOT use embedded feature styles if you need to change the style of the FeatureNode at runtime using this method.
          *        You will need to set the style of the features themselves and call init on this FeatureNode if you use embedded styles.
          */
@@ -148,7 +132,7 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        FeatureNode(MapNode* mapNode, const Config& conf, const osgDB::Options* options);
+        FeatureNode(const Config& conf, const osgDB::Options* options);
         virtual Config getConfig() const;
 
     protected:
@@ -166,23 +150,28 @@ namespace osgEarth { namespace Annotation
         typedef TerrainCallbackAdapter<FeatureNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
         bool _clampDirty;
+        GeometryClamper::LocalData _clamperData;
 
         osg::ref_ptr< osg::Node >    _compiled;
 
         osg::ref_ptr< StyleSheet >   _styleSheet;
 
+        FeatureIndexBuilder* _index;
+
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
-        
+
         void clamp(osg::Node* graph, const Terrain* terrain);
 
         void build();
 
+        //void construct();
+
     public:
 
         void onTileAdded(
-            const TileKey&          key, 
-            osg::Node*              graph, 
+            const TileKey&          key,
+            osg::Node*              graph,
             TerrainCallbackContext& context);
     };
 

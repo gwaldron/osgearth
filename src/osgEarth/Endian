@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -81,18 +81,18 @@
 
 #elif defined(__WINDOWS__)
 
-#	include <winsock2.h>
+#	include <windows.h>
 
 #	if BYTE_ORDER == LITTLE_ENDIAN
 
-#		define htobe16(x) htons(x)
+#		define htobe16(x) _byteswap_ushort(x)
 #		define htole16(x) (x)
-#		define be16toh(x) ntohs(x)
+#		define be16toh(x) _byteswap_ushort(x)
 #		define le16toh(x) (x)
  
-#		define htobe32(x) htonl(x)
+#		define htobe32(x) _byteswap_ulong(x)
 #		define htole32(x) (x)
-#		define be32toh(x) ntohl(x)
+#		define be32toh(x) _byteswap_ulong(x)
 #		define le32toh(x) (x)
 
 #		if defined(htonll) && defined(ntohll)
@@ -174,5 +174,23 @@ inline double OE_DECODE_DOUBLE(uint64_t x) {
     return r;
 }
 
+namespace osgEarth
+{
+    inline void byteSwapInPlace(uint32_t x) {
+        unsigned char* p = (unsigned char*)&x;
+        std::swap(p[0], p[3]);
+        std::swap(p[1], p[2]);
+    }
+    inline void byteSwapInPlace(uint16_t x) {
+        unsigned char* p = (unsigned char*)&x;
+        std::swap(p[0], p[1]);
+    }
+}
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    #define OE_IS_LITTLE_ENDIAN
+#else
+    #define OE_IS_BIG_ENDIAN
+#endif
 
 #endif // OSGEARTH_PORTABLE_ENDIAN_H__

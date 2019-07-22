@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,12 +19,7 @@
 #include <osgEarthUtil/FlatteningLayer>
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Map>
-#include <osgEarth/Progress>
-#include <osgEarth/Utils>
 #include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthSymbology/Query>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -60,7 +55,7 @@ namespace
     // clamp "a" to [lo..hi].
     double inline clamp(double a, double lo, double hi)
     {
-        return std::max(std::min(a, hi), lo);
+        return osg::maximum(osg::minimum(a, hi), lo);
     }
 
     typedef osg::Vec3d POINT;
@@ -89,7 +84,7 @@ namespace
     // This will not always work with polygons that contain holes,
     // so we need to come up with a different algorithm if this becomes a problem.
     // Maybe try a random point generator and profile it.
-    osg::Vec3d inline getInternalPoint(const Polygon* p)
+    osg::Vec3d inline getInternalPoint(const Symbology::Polygon* p)
     {
         // Simple test: if the centroid is in the polygon, use it.
         osg::Vec3d centroid = p->getBounds().center();
@@ -157,7 +152,7 @@ namespace
         return p->getBounds().center();
     }
 
-    double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Polygon* poly)
+    double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Symbology::Polygon* poly)
     {        
         double Dmin = DBL_MAX;
         ConstSegmentIterator segIter(poly, true);
@@ -232,16 +227,16 @@ namespace
                 double minD2 = DBL_MAX;//bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
                 double bufferWidth = 0.0;
 
-                const Polygon* bestPoly = 0L;
+                const Symbology::Polygon* bestPoly = 0L;
 
                 for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
                 {
-                    Geometry* component = geom->getComponents()[geomIndex];
+                    Geometry* component = geom->getComponents()[geomIndex].get();
                     Widths width = widths[geomIndex];
                     ConstGeometryIterator giter(component, false);
                     while (giter.hasMore() && !done)
                     {
-                        const Polygon* polygon = dynamic_cast<const Polygon*>(giter.next());
+                        const Symbology::Polygon* polygon = dynamic_cast<const Symbology::Polygon*>(giter.next());
                         if (polygon)
                         {
                             // Does the point P fall within the polygon?
@@ -447,7 +442,7 @@ namespace
                     const double outerRadius = innerRadius + w.bufferWidth;
                     const double outerRadius2 = outerRadius * outerRadius;
 
-                    const Geometry* component = geomColl[geomIndex];
+                    const Geometry* component = geom->getComponents()[geomIndex].get();
                     // Search for line segments.
                     ConstGeometryIterator giter(component);
                     while (giter.hasMore())
@@ -877,7 +872,7 @@ FlatteningLayer::createImplementation(const TileKey& key,
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
+            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query, progress);
             while (cursor.valid() && cursor->hasMore())
             {
                 Feature* feature = cursor->nextFeature();
@@ -887,13 +882,13 @@ FlatteningLayer::createImplementation(const TileKey& key,
                 if (options().lineWidth().isSet())
                 {
                     NumericExpression lineWidthExpr(options().lineWidth().get());
-                    lineWidth = feature->eval(lineWidthExpr, session);
+                    lineWidth = feature->eval(lineWidthExpr, session.get());
                 }
 
                 if (options().bufferWidth().isSet())
                 {
                     NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                    bufferWidth = feature->eval(bufferWidthExpr, session);
+                    bufferWidth = feature->eval(bufferWidthExpr, session.get());
                 }
 
                 // Transform the feature geometry to our working (projected) SRS.
@@ -925,7 +920,7 @@ FlatteningLayer::createImplementation(const TileKey& key,
         query.bounds() = queryExtent.bounds();
 
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
+        osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query, progress);
         while (cursor.valid() && cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();
@@ -935,13 +930,13 @@ FlatteningLayer::createImplementation(const TileKey& key,
             if (options().lineWidth().isSet())
             {
                 NumericExpression lineWidthExpr(options().lineWidth().get());
-                lineWidth = feature->eval(lineWidthExpr, session);
+                lineWidth = feature->eval(lineWidthExpr, session.get());
             }
 
             if (options().bufferWidth().isSet())
             {
                 NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                bufferWidth = feature->eval(bufferWidthExpr, session);
+                bufferWidth = feature->eval(bufferWidthExpr, session.get());
             }
 
             // Transform the feature geometry to our working (projected) SRS.
@@ -990,6 +985,6 @@ FlatteningLayer::createImplementation(const TileKey& key,
 
         bool fill = (options().fill() == true);     
         
-        integrate(key, hf, &geoms, workingSRS, widths, envelope, fill, progress);
+        integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
     }
 }

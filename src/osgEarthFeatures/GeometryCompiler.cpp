@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "GeometryCompiler"
+
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/AltitudeFilter>
@@ -27,20 +28,21 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osgEarthFeatures/Session>
-#include <osgEarth/OEAssert>
+
 #include <osgEarth/Utils>
-#include <osgEarth/AutoScale>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Utils>
+
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 
+#include <cstdlib>
 
 #define LC "[GeometryCompiler] "
 
@@ -65,19 +67,21 @@ GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
 _maxGranularity_deg    ( 10.0 ),
 _mergeGeometry         ( true ),
 _clustering            ( false ),
-_instancing            ( false ),
-_filterUsage           (FILTER_USAGE_NORMAL),
+_instancing            ( true ),
 _ignoreAlt             ( false ),
-_useVertexBufferObjects( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
 _optimize              ( false ),
 _optimizeVertexOrdering( true ),
 _validate              ( false ),
-_maxPolyTilingAngle    ( 45.0f )
+_maxPolyTilingAngle    ( 45.0f ),
+_useGPULines           ( false )
 {
-   //nop
+    if (::getenv("OSGEARTH_GPU_SCREEN_SPACE_LINES") != 0L)
+    {
+        _useGPULines.init(true);
+    }
 }
 
 //-----------------------------------------------------------------------
@@ -89,14 +93,14 @@ _clustering            ( s_defaults.clustering().value() ),
 _instancing            ( s_defaults.instancing().value() ),
 _filterUsage           ( s_defaults.filterUsage().value()),
 _ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
-_useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
 _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
 _optimize              ( s_defaults.optimize().value() ),
 _optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
 _validate              ( s_defaults.validate().value() ),
-_maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() )
+_maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
+_useGPULines           ( s_defaults.useGPUScreenSpaceLines().value() )
 {
     fromConfig(conf.getConfig());
 }
@@ -104,55 +108,48 @@ _maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() )
 void
 GeometryCompilerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet   ( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet   ( "merge_geometry",   _mergeGeometry );
-    conf.getIfSet   ( "clustering",       _clustering );
-    conf.getIfSet   ( "instancing",       _instancing );
-    conf.getObjIfSet( "feature_name",     _featureNameExpr );
-    conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
-    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
-    conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
-    conf.getIfSet   ( "optimize", _optimize );
-    conf.getIfSet   ("optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.getIfSet   ( "validate", _validate );
-    conf.getIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.get( "max_granularity",  _maxGranularity_deg );
+    conf.get( "merge_geometry",   _mergeGeometry );
+    conf.get( "clustering",       _clustering );
+    conf.get( "instancing",       _instancing );
+    conf.get( "feature_name",     _featureNameExpr );
+    conf.get( "ignore_altitude",  _ignoreAlt );
+    conf.get( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.get( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.get( "optimize_state_sharing", _optimizeStateSharing );
+    conf.get( "optimize", _optimize );
+    conf.get( "optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.get( "validate", _validate );
+    conf.get( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.get( "use_gpu_screen_space_lines", _useGPULines );
 
-    conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
-
-    conf.getIfSet("filter_usage", "filter_usage_normal", _filterUsage, FILTER_USAGE_NORMAL);
-    conf.getIfSet("filter_usage", "filter_usage_zero_work_callback_based", _filterUsage, FILTER_USAGE_ZERO_WORK_CALLBACK_BASED);
+    conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.get( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 }
 
 Config
 GeometryCompilerOptions::getConfig() const
 {
     Config conf;
-    conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
-    conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
-    conf.addIfSet   ( "clustering",       _clustering );
-    conf.addIfSet   ( "instancing",       _instancing );
-    conf.addObjIfSet( "feature_name",     _featureNameExpr );
-    conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
-    conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
-    conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
-    conf.addIfSet   ( "optimize", _optimize );
-    conf.addIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.addIfSet   ( "validate", _validate );
-    conf.addIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.set( "max_granularity",  _maxGranularity_deg );
+    conf.set( "merge_geometry",   _mergeGeometry );
+    conf.set( "clustering",       _clustering );
+    conf.set( "instancing",       _instancing );
+    conf.set( "feature_name",     _featureNameExpr );
+    conf.set( "ignore_altitude",  _ignoreAlt );
+    conf.set( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.set( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.set( "optimize_state_sharing", _optimizeStateSharing );
+    conf.set( "optimize", _optimize );
+    conf.set( "optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.set( "validate", _validate );
+    conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.set( "use_gpu_screen_space_lines", _useGPULines );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
     conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
-
-    conf.addIfSet("filter_usage", "filter_usage_normal", _filterUsage, FILTER_USAGE_NORMAL);
-    conf.addIfSet("filter_usage", "filter_usage_zero_work_callback_based", _filterUsage, FILTER_USAGE_ZERO_WORK_CALLBACK_BASED);
-
     return conf;
 }
 
@@ -262,7 +259,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
-    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();    // to be deprecated
     const IconSymbol*      icon      = style.get<IconSymbol>();
     const ModelSymbol*     model     = style.get<ModelSymbol>();
     const RenderSymbol*    render    = style.get<RenderSymbol>();
@@ -272,7 +268,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         if ( line->tessellation().isSet() )
         {
-            TemplateFeatureFilter<TessellateOperator> filter;
+            TessellateOperator filter;
             filter.setNumPartitions( *line->tessellation() );
             filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );
@@ -280,7 +276,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
         else if ( line->tessellationSize().isSet() )
         {
-            TemplateFeatureFilter<TessellateOperator> filter;
+            TessellateOperator filter;
             filter.setMaxPartitionSize( *line->tessellationSize() );
             filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );
@@ -290,7 +286,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // if the style was empty, use some defaults based on the geometry type of the
     // first feature.
-    if ( !point && !line && !polygon && !marker && !extrusion && !text && !model && !icon && workingSet.size() > 0 )
+    if ( !point && !line && !polygon && !extrusion && !text && !model && !icon && workingSet.size() > 0 )
     {
         Feature* first = workingSet.begin()->get();
         Geometry* geom = first->getGeometry();
@@ -338,65 +334,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
             altitude->verticalOffset().isSet() ||
             altitude->verticalScale().isSet() ||
-            altitude->script().isSet() );
-
-    // marker substitution -- to be deprecated in favor of model/icon
-    if ( marker )
-    {
-        if ( trackHistory ) history.push_back( "marker" );
-
-        // use a separate filter context since we'll be munging the data
-        FilterContext markerCX = sharedCX;
-
-        if ( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM   ||
-             marker->placement() == MarkerSymbol::PLACEMENT_INTERVAL )
-        {
-            ScatterFilter scatter;
-            scatter.setDensity( *marker->density() );
-            scatter.setRandom( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM );
-            scatter.setRandomSeed( *marker->randomSeed() );
-            markerCX = scatter.push( workingSet, markerCX );
-            if ( trackHistory ) history.push_back( "scatter" );
-        }
-        else if ( marker->placement() == MarkerSymbol::PLACEMENT_CENTROID )
-        {
-            CentroidFilter centroid;
-            markerCX = centroid.push( workingSet, markerCX );  
-            if ( trackHistory ) history.push_back( "centroid" );
-        }
-
-        if ( altRequired )
-        {
-            AltitudeFilter clamp;
-            clamp.setPropertiesFromStyle( style );
-            markerCX = clamp.push( workingSet, markerCX );
-            if ( trackHistory ) history.push_back( "altitude" );
-
-            // don't set this; we changed the input data.
-            //altRequired = false;
-        }
-
-        SubstituteModelFilter sub( style );
-
-        sub.setClustering( *_options.clustering() );
-
-        sub.setUseDrawInstanced( *_options.instancing() );
-
-        sub.setFilterUsage(*_options.filterUsage());
-
-        if ( _options.featureName().isSet() )
-            sub.setFeatureNameExpr( *_options.featureName() );
-
-        osg::Node* node = sub.push( workingSet, markerCX );
-        if ( node )
-        {
-            if ( trackHistory ) history.push_back( "substitute" );
-            resultGroup->addChild( node );
-        }
-    }
+            altitude->script().isSet() );    
 
     // instance substitution (replaces marker)
-    else if ( model )
+    if ( model )
     {
         const InstanceSymbol* instance = (const InstanceSymbol*)model;
 
@@ -451,12 +392,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             if ( trackHistory ) history.push_back( "substitute" );
 
             resultGroup->addChild( node );
-
-            // enable auto scaling on the group?
-            if ( model && model->autoScale() == true )
-            {
-                resultGroup->getOrCreateStateSet()->setRenderBinDetails(0, osgEarth::AUTO_SCALE_BIN );
-            }
         }
     }
 
@@ -508,8 +443,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         BuildGeometryFilter filter( style );
+
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
+        filter.shaderPolicy()   = *_options.shaderPolicy();
 
         if (_options.maxPolygonTilingAngle().isSet())
             filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
@@ -533,7 +470,14 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if ( text || icon )
     {
-        if ( altRequired )
+        // Only clamp annotation types when the technique is 
+        // explicity set to MAP. Otherwise, the annotation subsystem
+        // will automatically use SCENE clamping.
+        bool altRequiredForAnnotations =
+            altRequired &&
+            altitude->technique().isSetTo(altitude->TECHNIQUE_MAP);
+
+        if ( altRequiredForAnnotations )
         {
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
@@ -558,7 +502,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             // no ss cache because we will optimize later.
             Registry::shaderGenerator().run( 
                 resultGroup.get(),
-                "osgEarth.GeomCompiler" );
+                "GeometryCompiler shadergen" );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
         {
@@ -621,7 +565,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     
 
     //test: dump the tile to disk
-    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
+    //OE_WARN << "Writing GC node file to out.osgt..." << std::endl;
+    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osgt" );
 
 #ifdef PROFILING
     static double totalTime = 0.0;

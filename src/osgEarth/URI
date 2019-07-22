@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Containers>
 #include <osgEarth/IOTypes>
+#include <osgEarth/HTTPClient>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
@@ -53,13 +54,13 @@ namespace osgEarth
     {
     public:
         /** Creates an empty context. */
-        URIContext() { }
+        URIContext();
 
         /** Creates a context that specifies a referring object. */
-        URIContext( const std::string& referrer ) : _referrer(referrer) { }
+        URIContext(const std::string& referrer);
 
         /** Copy constructor. */
-        URIContext( const URIContext& rhs ) : _referrer(rhs._referrer) { }
+        URIContext(const URIContext& rhs);
 
         /** dtor */
         virtual ~URIContext() { }
@@ -88,9 +89,20 @@ namespace osgEarth
         /** creates a string suitable for passing to an osgDB::ReaderWriter implementation */
         std::string getOSGPath( const std::string& target ) const;
 
+        //! Add a header name/value pair to use when requesting a remote URL
+        void addHeader(const std::string& name, const std::string& value);
+
+        //! Headers in this URIContext
+        const Headers& getHeaders() const;
+
+        //! Headers in this URIContext
+        Headers& getHeaders();
+
+
     private:
         friend class URI;
         std::string _referrer;
+        Headers _headers;
     };
 
 //--------------------------------------------------------------------
@@ -101,7 +113,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT URIStream
     {
     public:
-        URIStream( const URI& uri );
+        URIStream(const URI& uri, std::ios_base::openmode mode =std::ios_base::in);
 
         virtual ~URIStream();
 
@@ -111,8 +123,7 @@ namespace osgEarth
 
     protected:
         friend class URI;
-        std::istream*     _fileStream;
-        std::stringstream _bufStream;
+        std::istream* _instream;
     };
 
 //--------------------------------------------------------------------
@@ -199,7 +210,6 @@ namespace osgEarth
         /** Sets a cache key. By default the cache key is the full URI, but you can override that. */
         void setCacheKey( const std::string& key ) { _cacheKey = key; }
 
-
     public: // read methods return a ReadResult object
 
         ReadResult readObject(
@@ -255,19 +265,9 @@ namespace osgEarth
 
     public: // config methods
 
-        Config getConfig() const
-        {
-            Config conf("uri", base());
-            conf.addIfSet("option_string", _optionString);
-            conf.setReferrer( context().referrer() );
-            conf.setIsLocation( true );
-            return conf;
-        }
+        Config getConfig() const;
 
-        void mergeConfig(const Config& conf)
-        {
-            conf.getIfSet("option_string", _optionString);
-        }
+        void mergeConfig(const Config& conf);
 
     public: // Static convenience methods
 
@@ -416,38 +416,33 @@ namespace osgEarth
 
     // Config specialization for URI:
 
-    template <> inline
-    void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
-        if ( opt.isSet() ) {
-            Config c = opt->getConfig();
-            c.key() = key;
-            add( c );
-        }
-    }
-
     template<> inline
-    void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
+    void Config::set<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
             remove(key);
-            add( key, opt->getConfig() );
+            set( key, opt->getConfig() );
         }
     }
 
     template<> inline
-    bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
-        if ( hasValue(key) ) {
-            output = URI( value(key), referrer(key) );
-            output->mergeConfig(*this);
-            return true;
+    bool Config::get<URI>( const std::string& key, optional<URI>& output ) const {
+        if ( hasChild(key) ) {
+            const Config& uriconf = child(key);
+            if (!uriconf.value().empty()) {
+                output = URI(uriconf.value(), uriconf.referrer());
+                output->mergeConfig(uriconf);
+                return true;
+            }
+            else return false;
         }
-        else
-            return false;
+        else return false;
     }
 
     // Config specialization for URIAliasMap
 
     template <> inline
-    void Config::addIfSet<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
+    void Config::set<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
+        remove( key );
         if ( map.isSet() ) {
             Config conf( key );
             for( std::map<std::string,std::string>::const_iterator i = map->_map.begin(); i != map->_map.end(); ++i ) {
@@ -456,20 +451,12 @@ namespace osgEarth
                 alias.add( "target", i->second );
                 conf.add( alias );
             }
-            add(conf);
+            set(conf);
         }
     }
 
     template <> inline
-    void Config::updateIfSet<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
-        if ( map.isSet() ) {
-            remove( key );
-            addIfSet( key, map );
-        }
-    }
-
-    template <> inline
-    bool Config::getIfSet<URIAliasMap>( const std::string& key, optional<URIAliasMap>& output ) const {
+    bool Config::get<URIAliasMap>( const std::string& key, optional<URIAliasMap>& output ) const {
         Config alias = child(key);
         if ( !alias.empty() ) {
             for( ConfigSet::const_iterator i = alias.children().begin(); i != alias.children().end(); ++i ) {

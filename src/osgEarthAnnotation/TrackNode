@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -69,7 +69,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Schema that maps field names to field definitions.
      */
-    typedef fast_map<std::string, TrackNodeField> TrackNodeFieldSchema;
+    typedef std::map<std::string, TrackNodeField> TrackNodeFieldSchema;
 
     /** 
      * TrackNode is a movable, single-point entity represented by an icon,
@@ -93,7 +93,6 @@ namespace osgEarth { namespace Annotation
          * @param fieldSchema Schema for track label fields
          */
         TrackNode(
-            MapNode*                    mapNode,
             const GeoPoint&             position,
             osg::Image*                 image,
             const TrackNodeFieldSchema& fieldSchema );
@@ -106,7 +105,6 @@ namespace osgEarth { namespace Annotation
          * @param fieldSchema Schema for track label fields
          */
         TrackNode(
-            MapNode*                    mapNode,
             const GeoPoint&             position,
             const Style&                style,
             const TrackNodeFieldSchema& fieldSchema );
@@ -134,26 +132,18 @@ namespace osgEarth { namespace Annotation
          * DYNAMIC data variance so it will be thread-safe.
          */
         osg::Drawable* getDrawable( const std::string& name ) const;
-
-    public:
+        
+    public: // AnnotationNode
 
         virtual void setPriority(float value);
+        
+    protected: // AnnotationNode override
+
+        virtual bool supportsRenderBinDetails() const { return false; }
 
     protected:
 
         virtual ~TrackNode() { }
-
-        Style             _style;
-        class osg::Geode* _geode;
-
-        typedef fast_map<std::string, osg::Drawable*> NamedDrawables;
-        NamedDrawables _namedDrawables;
-
-        void init( const TrackNodeFieldSchema& schema );
-
-    protected: // AnnotationNode override
-        
-        virtual bool supportsRenderBinDetails() const { return false; }
 
     private:
         // required by META_Node, but this object is not cloneable
@@ -162,6 +152,21 @@ namespace osgEarth { namespace Annotation
 
         void updateLayoutData();
 
+        void construct();       
+        
+        static osg::observer_ptr<osg::StateSet> s_geodeStateSet;
+        static osg::observer_ptr<osg::StateSet> s_imageStateSet;
+
+        osg::ref_ptr<osg::StateSet> _imageStateSet;
+
+        Style             _style;
+        class osg::Geode* _geode;
+        TrackNodeFieldSchema _fieldSchema;
+
+        typedef fast_map<std::string, osg::Drawable*> NamedDrawables;
+        NamedDrawables _namedDrawables;
+
+        void compile();
     };
 
 } } // namespace osgEarth::Annotation

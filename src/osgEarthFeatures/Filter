@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -71,7 +71,11 @@ namespace osgEarth { namespace Features
         virtual ~FeatureFilter();
     };
 
-    typedef std::list< osg::ref_ptr<FeatureFilter> > FeatureFilterList;
+    //! Vector of feature filters (ref counted)
+    class FeatureFilterChain : public osg::Referenced,
+                               public osg::MixinVector<osg::ref_ptr<FeatureFilter> >
+    {
+    };
 
     /**
      * A Factory that can create a FeatureFilter from a Config
@@ -156,20 +160,6 @@ namespace osgEarth { namespace Features
         const ConfigOptions& getConfigOptions(const osgDB::Options* options) const;
     };
 
-    //--------------------------------------------------------------------
-
-    template<typename T>
-    class TemplateFeatureFilter : public Filter, public T
-    {
-    public:
-        FilterContext push( FeatureList& input, FilterContext& context ) {
-            for( FeatureList::iterator i = input.begin(); i != input.end(); ++i ) {
-                T::operator()( i->get(), context );
-            }
-            return context;
-        }
-    };
-
     /**
      * Base class for a filter that converts features into an osg Node.
      */
@@ -223,7 +213,6 @@ namespace osgEarth { namespace Features
             const osg::Matrixd&            world2local,
             bool                           toECEF );
 
-        void applyLineSymbology(osg::StateSet*, const class LineSymbol*);
         void applyPointSymbology(osg::StateSet*, const class PointSymbol*);
 
         osg::Matrixd _world2local, _local2world;   // for coordinate localization

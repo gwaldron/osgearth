@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -28,7 +28,7 @@
 #include <osgEarth/ResourceReleaser>
 #include <osg/Geometry>
 
-#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+#if OSG_MIN_VERSION_REQUIRED(3,5,9)
 #define SUPPORTS_VAO 1
 #endif
 
@@ -62,6 +62,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Array* getNeighborArray() { return _neighborArray.get(); }
         const osg::Array* getNeighborArray() const { return _neighborArray.get(); }
 
+        void setNeighborNormalArray(osg::Array* array) { _neighborNormalArray = array; }
+        osg::Array* getNeighborNormalArray() { return _neighborNormalArray.get(); }
+        const osg::Array* getNeighborNormalArray() const { return _neighborNormalArray.get(); }
+
         void setDrawElements(osg::DrawElements* array) { _drawElements = array; }
         osg::DrawElements* getDrawElements() { return _drawElements.get(); }
         const osg::DrawElements* getDrawElements() const { return _drawElements.get(); }
@@ -70,39 +74,34 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::DrawElements* getMaskElements() { return _maskElements.get(); }
         const osg::DrawElements* getMaskElements() const { return _maskElements.get(); }
 
-#ifdef SUPPORTS_VAO
-        osg::VertexArrayState* createVertexArrayState(osg::RenderInfo& renderInfo) const;
-#endif
-
-        void compileGLObjects(osg::RenderInfo& renderInfo) const;
-
-        void render(GLenum primitiveType, osg::RenderInfo& renderInfo) const;
-
-        void resizeGLObjectBuffers(unsigned int maxSize);
-        void releaseGLObjects(osg::State* state) const;
-        
-        virtual bool supports(const osg::Drawable::AttributeFunctor&) const { return true; }
-        virtual void accept(osg::Drawable::AttributeFunctor&);
-
-        virtual bool supports(const osg::Drawable::ConstAttributeFunctor&) const { return true; }
-        virtual void accept(osg::Drawable::ConstAttributeFunctor&) const;
-
-        virtual bool supports(const osg::PrimitiveFunctor&) const { return true; }
-        virtual void accept(osg::PrimitiveFunctor&) const;
-
-        virtual bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
-        virtual void accept(osg::PrimitiveIndexFunctor&) const;
-
-    public:
-
-        // internal function for testing
-        void drawImplementation(osg::RenderInfo& ri) const { render(GL_TRIANGLES, ri); }
-
         // convert to a "real" geometry object
         osg::Geometry* makeOsgGeometry();
 
         // whether this geometry contains anything
         bool empty() const;
+
+    public: // osg::Drawable
+
+#ifdef SUPPORTS_VAO
+        osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const;
+#endif
+
+        void drawImplementation(osg::RenderInfo& renderInfo) const;
+
+        void resizeGLObjectBuffers(unsigned int maxSize);
+        void releaseGLObjects(osg::State* state) const;
+        
+        bool supports(const osg::Drawable::AttributeFunctor&) const { return true; }
+        void accept(osg::Drawable::AttributeFunctor&);
+
+        bool supports(const osg::Drawable::ConstAttributeFunctor&) const { return true; }
+        void accept(osg::Drawable::ConstAttributeFunctor&) const;
+
+        bool supports(const osg::PrimitiveFunctor&) const { return true; }
+        void accept(osg::PrimitiveFunctor&) const;
+
+        bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
+        void accept(osg::PrimitiveIndexFunctor&) const;
 
     protected:
 
@@ -113,8 +112,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Array>        _colorArray;
         osg::ref_ptr<osg::Array>        _texcoordArray;
         osg::ref_ptr<osg::Array>        _neighborArray;
+        osg::ref_ptr<osg::Array>        _neighborNormalArray;
         osg::ref_ptr<osg::DrawElements> _drawElements;
         osg::ref_ptr<osg::DrawElements> _maskElements;
+
+    private:
+
+        friend struct DrawTileCommand;
+        mutable osg::buffered_object<GLenum> _ptype;
     };
 
     /**

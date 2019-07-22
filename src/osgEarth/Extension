@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
@@ -29,6 +29,11 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 
+    
+#define META_OE_Extension(NS, CLASS, SLUG) \
+    META_Object(NS, CLASS); \
+    CLASS (const CLASS & rhs, const osg::CopyOp& op) { } \
+    virtual const char* getConfigKey() const { return #SLUG ; }
 
 namespace osgEarth
 {
@@ -62,6 +67,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT Extension : public osg::Object // header-only
     {
     public:
+        META_OE_Extension(osgEarth, Extension, extension);
+
         /**
          * Sets DB options that this extension should use when doing IO operations.
          */
@@ -128,17 +135,10 @@ namespace osgEarth
         }
     };
 
-    // convenience define for extensions
-#define META_osgEarth_Extension(CLASS) \
-    META_Object(osgEarth,CLASS); \
-    CLASS () { } \
-    CLASS (const CLASS & rhs, const osg::CopyOp& op) { } \
-    virtual ~ CLASS() { }
-
 } // namespace osgEarth
 
-#define REGISTER_OSGEARTH_EXTENSION(NAME,CLASS) \
-    extern "C" void osgdb_##NAME(void) {} \
-    static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Extension> > g_proxy_##CLASS_##NAME( #NAME );
+#define REGISTER_OSGEARTH_EXTENSION(PLUGINNAME, CLASS) \
+    extern "C" void osgdb_##PLUGINNAME(void) {} \
+    static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Extension> > g_proxy_##CLASS_##PLUGINNAME( #PLUGINNAME );
 
 #endif

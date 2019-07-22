@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Skins>
 #include <osgEarth/Utils>
+#include <osgEarth/Lighting>
 
 #include <osg/ArgumentParser>
 #include <osgDB/FileUtils>
@@ -211,8 +212,8 @@ show(osg::ArgumentParser& arguments)
             osgDB::getFileExtension(atlasFile);
     }
 
-    osg::Image* image = osgDB::readImageFile(atlasFile);
-    if ( !image )
+    osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile(atlasFile);
+    if (!image.valid())
         return usage("Failed to load atlas image");
 
     if ( layer > image->r()-1 )
@@ -220,10 +221,10 @@ show(osg::ArgumentParser& arguments)
 
     // geometry for the image layer:
     std::vector<osg::ref_ptr<osg::Image> > images;
-    osgEarth::ImageUtils::flattenImage(image, images);
+    osgEarth::ImageUtils::flattenImage(image.get(), images);
     osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
 
-    const osg::BoundingBox& bbox = osgEarth::Utils::getBoundingBox(geode->getDrawable(0));
+    const osg::BoundingBox& bbox = geode->getDrawable(0)->getBoundingBox();
     float width = bbox.xMax() - bbox.xMin();
     float height = bbox.zMax() - bbox.zMin();
 
@@ -233,10 +234,9 @@ show(osg::ArgumentParser& arguments)
     geode2->addDrawable(geom);
     osg::Vec3Array* v = new osg::Vec3Array();
     geom->setVertexArray( v );
-    osg::Vec4Array* c = new osg::Vec4Array(1);
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0].set(1,1,0,1);
     geom->setColorArray(c);
-    geom->setColorBinding(geom->BIND_OVERALL);
     osgEarth::Symbology::SkinResourceVector skins;
     lib->getSkins(skins);
     OE_WARN << "num = " << skins.size() << "\n";
@@ -276,7 +276,7 @@ show(osg::ArgumentParser& arguments)
     root->addChild( geode );
     root->addChild( geode2 );
 
-    root->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
+    Lighting::set(root->getOrCreateStateSet(), 0);
     root->getOrCreateStateSet()->setMode(GL_CULL_FACE, 0);
 
     osgViewer::Viewer viewer;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,17 +26,14 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ModelLayer>
 
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
 #include <osgEarthFeatures/FeatureModelLayer>
 
 #include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 #include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
@@ -53,7 +50,7 @@ using namespace osgEarth::Util;
 #define RESOURCE_LIB_URL "../data/resources/textures_us/catalog.xml"
 #define STREETS_URL      "../data/boston-scl-utm19n-meters.shp"
 #define PARKS_URL        "../data/boston-parks.shp"
-#define TREE_MODEL_URL   "../data/loopix/tree4.osgb"
+#define TREE_MODEL_URL   "../data/tree.osg"
 
 // forward declarations.
 void addImagery  (Map* map);
@@ -92,13 +89,8 @@ main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
 
-    // Pick a terrain engine expressly:
-    RexTerrainEngine::RexTerrainEngineOptions terrainOptions;
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.setTerrainOptions(terrainOptions);
-
     // make the map scene graph:
-    MapNode* mapNode = new MapNode(map, mapNodeOptions);
+    MapNode* mapNode = new MapNode(map);
     root->addChild( mapNode );
 
     // zoom to a good startup position
@@ -191,7 +183,7 @@ void addBuildings(Map* map)
     // the visibility range combine to determine the tile size, such that
     // tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 52.0;
+    layout.tileSize() = 500;
     layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
     FeatureModelLayer* layer = new FeatureModelLayer();
@@ -243,8 +235,8 @@ void addStreets(Map* map)
     // Set up a paging layout. The tile size factor and the visibility range combine
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 7.5f;
-    layout.maxRange()       = 5000.0f;
+    layout.tileSize() = 500;
+    layout.maxRange() = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureModelLayerOptions streets;
@@ -275,18 +267,16 @@ void addParks(Map* map)
     // data are polygons, the PLACEMENT_RANDOM directive below will scatter
     // points within the polygon boundary at the specified density.
     ModelSymbol* model = style.getOrCreate<ModelSymbol>();
-    //model->url()->setLiteral(TREE_MODEL_URL);
-    model->scale()->setLiteral( 0.2 );
+    model->url()->setLiteral(TREE_MODEL_URL);
     model->placement() = model->PLACEMENT_RANDOM;
-    model->density() = 3000.0f; // instances per sqkm
-    model->setModel(osgDB::readNodeFile(TREE_MODEL_URL));
+    model->density() = 6000.0f; // instances per sqkm
     
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
 
     // Since the tree model contains alpha components, we will discard any data
-    // that's sufficiently transparent; this will prevent depth-sorting anomolies
+    // that's sufficiently transparent; this will prevent depth-sorting anomalies
     // common when rendering lots of semi-transparent objects.
     RenderSymbol* render = style.getOrCreate<RenderSymbol>();
     render->transparent() = true;
@@ -296,7 +286,7 @@ void addParks(Map* map)
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 650;
-    layout.maxRange() = 2000.0f;
+    layout.addLevel(FeatureLevel(0.0f, 2000.0f, "parks"));
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureModelLayerOptions parks;
@@ -306,8 +296,11 @@ void addParks(Map* map)
     parks.styles() = new StyleSheet();
     parks.styles()->addStyle( style );
 
-    parks.instancing() = true;
-    parks.clusterCulling() = false;
+    Layer* parksLayer = new FeatureModelLayer(parks);
+    map->addLayer(parksLayer);
 
-    map->addLayer(new FeatureModelLayer(parks));
+    if (parksLayer->getStatus().isError())
+    {
+        OE_WARN << parksLayer->getStatus().message() << std::endl;
+    }
 }

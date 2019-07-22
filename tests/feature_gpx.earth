@@ -26,7 +26,8 @@ Note:  You must have GDAL built with Expat support to read GPX files
         <styles>
             <style type="text/css">
                 routes {
-                   stroke: #ffff00;                   
+                   stroke: #ffff00; 
+                   render-depth-offset: true;
                 }                    
             </style>
         </styles>

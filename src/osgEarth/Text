@@ -1,0 +1,51 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_TEXT_H
+#define OSGEARTH_TEXT_H 1
+
+#include <osgEarth/Common>
+#include <osgText/Text>
+
+namespace osgEarth
+{
+    /**
+     * Text implementaiton that handles differences between pre-3.6 and post-3.6
+     * osgText and adds support for virtual program composition
+     */
+    class OSGEARTH_EXPORT Text : public osgText::Text
+    {
+    public:
+        Text();
+        Text(const Text& rhs, const osg::CopyOp& copy =osg::CopyOp::SHALLOW_COPY);
+        Text(const std::string& str);
+        
+        virtual osg::Object* cloneType() const { return new osgEarth::Text(); }
+        virtual osg::Object* clone(const osg::CopyOp& copyop) const { return new osgEarth::Text(*this,copyop); }
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const osgEarth::Text*>(obj)!=NULL; }
+        virtual const char* libraryName() const { return "osgEarth"; }
+        
+        virtual void setFont(osg::ref_ptr<osgText::Font>); // <= OSG 3.5.7
+
+    protected:
+        virtual ~Text();
+        virtual osg::StateSet* createStateSet(); // >= OSG 3.5.8
+    };
+}
+
+#endif // OSGEARTH_TEXT_H

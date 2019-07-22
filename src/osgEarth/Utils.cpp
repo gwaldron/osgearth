@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,25 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
-#include <osgEarth/ECEF>
-#include <osgEarth/CullingUtils>
-#include <osg/Version>
-#include <osg/CoordinateSystemNode>
-#include <osg/MatrixTransform>
 #include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
-
-//------------------------------------------------------------------------
-
-void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler)
-{
-    osgViewer::View::EventHandlers::iterator itr = std::find(view->getEventHandlers().begin(), view->getEventHandlers().end(), handler);
-    if (itr != view->getEventHandlers().end())
-    {
-        view->getEventHandlers().erase(itr);
-    }
-}
 
 //------------------------------------------------------------------------
 
@@ -64,6 +48,8 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
     if ( !nv.validNodeMask(*this) )
         return;
 
+    bool resetLodScale = false;
+    double oldLodScale = 1.0;
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         // re-activate culling now that the first cull traversal has taken place.
@@ -295,13 +281,27 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
             _dirty = false;
 
             // update the LOD Scale based on the auto-scale.
-            cv->setLODScale( 1.0/getScale().x() );
+            const double xScale = getScale().x();
+            if (xScale != 1.0 && xScale != 0.0)
+            {
+                oldLodScale = cv->getLODScale();
+                resetLodScale = true;
+                cv->setLODScale( 1.0/xScale );
+            }
 
         } // if (cv)
     } // if is cull visitor
 
     // finally, skip AT's accept and do Transform.
     Transform::accept(nv);
+
+    // Reset the LOD scale if we changed it
+    if (resetLodScale)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        if ( cv )
+            cv->setLODScale( oldLodScale );
+    }
 }
 
 void
@@ -325,38 +325,35 @@ osg::NodeVisitor( TRAVERSE_ALL_CHILDREN )
 }
 
 void
-VertexCacheOptimizer::apply(osg::Geode& geode)
+VertexCacheOptimizer::apply(osg::Drawable& drawable)
 {
-    if (geode.getDataVariance() == osg::Object::DYNAMIC)
+    if (drawable.getDataVariance() == osg::Object::DYNAMIC)
         return;
 
-    for(unsigned i=0; i<geode.getNumDrawables(); ++i )
+    osg::Geometry* geom = drawable.asGeometry();
+
+    if ( geom )
     {
-        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+        if ( geom->getDataVariance() == osg::Object::DYNAMIC )
+            return;
 
-        if ( geom )
+        // vertex cache optimizations currently only support surface geometries.
+        // all or nothing in the geode.
+        osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
+        for( osg::Geometry::PrimitiveSetList::iterator i = psets.begin(); i != psets.end(); ++i )
         {
-            if ( geom->getDataVariance() == osg::Object::DYNAMIC )
-                return;
-
-            // vertex cache optimizations currently only support surface geometries.
-            // all or nothing in the geode.
-            osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
-            for( osg::Geometry::PrimitiveSetList::iterator i = psets.begin(); i != psets.end(); ++i )
+            switch( (*i)->getMode() )
             {
-                switch( (*i)->getMode() )
-                {
-                case GL_TRIANGLES:
-                case GL_TRIANGLE_FAN:
-                case GL_TRIANGLE_STRIP:
-                case GL_QUADS:
-                case GL_QUAD_STRIP:
-                case GL_POLYGON:
-                    break;
+            case GL_TRIANGLES:
+            case GL_TRIANGLE_FAN:
+            case GL_TRIANGLE_STRIP:
+            case GL_QUADS:
+            case GL_QUAD_STRIP:
+            case GL_POLYGON:
+                break;
 
-                default:
-                    return;
-                }
+            default:
+                return;
             }
         }
     }
@@ -365,14 +362,14 @@ VertexCacheOptimizer::apply(osg::Geode& geode)
 
     // passed the test; run the optimizer.
     osgUtil::VertexCacheVisitor vcv;
-    geode.accept( vcv );
+    drawable.accept( vcv );
     vcv.optimizeVertices();
 
     osgUtil::VertexAccessOrderVisitor vaov;
-    geode.accept( vaov );
+    drawable.accept( vaov );
     vaov.optimizeOrder();
 
-    traverse( geode );
+    traverse( drawable );
 }
 
 //-----------------------------------------------------------------------------
@@ -388,16 +385,10 @@ _value( value )
 }
 
 void
-SetDataVarianceVisitor::apply(osg::Geode& geode)
+SetDataVarianceVisitor::apply(osg::Drawable& drawable)
 {
-    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-    {
-        osg::Drawable* d = geode.getDrawable(i);
-        if ( d )
-            d->setDataVariance( _value );
-    }
-
-    traverse(geode);
+    drawable.setDataVariance(_value);
+    traverse(drawable);
 }
 
 //-----------------------------------------------------------------------------
@@ -556,19 +547,18 @@ GeometryValidator::apply(osg::Geometry& geom)
 }
 
 void
-GeometryValidator::apply(osg::Geode& geode)
+GeometryValidator::apply(osg::Group& group)
 {
-    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    for(unsigned i=0; i<group.getNumChildren(); ++i)
     {
-        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+        osg::Geometry* geom = group.getChild(i)->asGeometry();
         if ( geom )
         {
             apply( *geom );
-
             if ( geom->getVertexArray() == 0L )
             {
                 OE_NOTICE << "removing " << geom->getName() << " b/c of null vertex array\n";
-                geode.removeDrawable( geom );
+                group.removeChild(geom);
                 --i;
             }
         }
@@ -584,20 +574,17 @@ AllocateAndMergeBufferObjectsVisitor::AllocateAndMergeBufferObjectsVisitor()
 }
 
 void
-AllocateAndMergeBufferObjectsVisitor::apply(osg::Geode& geode)
+AllocateAndMergeBufferObjectsVisitor::apply(osg::Drawable& drawable)
 {
-    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    osg::Geometry* geom = drawable.asGeometry();
+    if ( geom )
     {
-        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-        if ( geom )
-        {
-            // We disable vbo's and then re-enable them to enable sharing of all the arrays.
-            geom->setUseDisplayList( false );
-            geom->setUseVertexBufferObjects( false );
-            geom->setUseVertexBufferObjects( true );
-        }
+        // We disable vbo's and then re-enable them to enable sharing of all the arrays.
+        geom->setUseDisplayList( false );
+        geom->setUseVertexBufferObjects( false );
+        geom->setUseVertexBufferObjects( true );
     }
-    traverse(geode);
+    traverse(drawable);
 }
 
 

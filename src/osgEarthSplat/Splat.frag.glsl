@@ -12,7 +12,11 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma include Splat.types.glsl
 
 // statset defines
-#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER, OE_SPLAT_EDIT_MODE, OE_SPLAT_GPU_NOISE, OE_TERRAIN_RENDER_NORMAL_MAP, OE_TERRAIN_BLEND_IMAGERY)
+#pragma import_defines(OE_SPLAT_NOISE_SAMPLER)
+#pragma import_defines(OE_SPLAT_EDIT_MODE)
+#pragma import_defines(OE_SPLAT_GPU_NOISE)
+#pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
+#pragma import_defines(OE_TERRAIN_BLEND_IMAGERY)
 
 // Uncomment this to use textureGather() in the oe_splat_bilinear function,
 // but read the comments there first!
@@ -32,7 +36,7 @@ in vec2 oe_splat_covtc;                     // coverage texture coords
 in float oe_splat_range;                    // distance from camera to vertex
 flat in float oe_splat_coverageTexSize;     // size of coverage texture
 
-in float oe_layer_rangeOpacity;
+in float oe_layer_opacity;
 
 // from SplatLayerFactory:
 uniform sampler2D oe_splat_coverageTex;
@@ -190,7 +194,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
 
 #ifdef USE_TEXTURE_GATHER
 
-    // A wee bit faster, but causes a rendering anomaly -- lines of
+    // A wee bit faster, but causes a rendering anomaly -- lines of 
     // incorrectly splatted textures appear at higher resolutions.
     // Problem may be in the bilinear weight calculation but not sure
 
@@ -201,15 +205,14 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     float value_nw = value.x;
 
 #else
-
-    //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
+        //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
     vec2 tc = oe_splat_covtc;
 
     float pixelWidth = 1.0/size;
     float halfPixelWidth = pixelWidth * 0.5;
     float pixelWidth2 = pixelWidth * pixelWidth;
 
-    // Find the four quantized coverage coordinates that form a box around the actual
+     // Find the four quantized coverage coordinates that form a box around the actual
     // coverage coordinates, where each quantized coord is at the center of a coverage texel.
     vec2 rem = mod(tc, pixelWidth);
     vec2 sw;
@@ -230,14 +233,14 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     float ne_weight = max(pixelWidth2-dot(dne,dne),0.0);
     float nw_weight = max(pixelWidth2-dot(dnw,dnw),0.0);
 
-    // normalize the weights so they total 1.0
+     // normalize the weights so they total 1.0
     float invTotalWeight = 1.0/(sw_weight+se_weight+ne_weight+nw_weight);
     sw_weight *= invTotalWeight;
     se_weight *= invTotalWeight;
     ne_weight *= invTotalWeight;
     nw_weight *= invTotalWeight;
 
-    // Sample coverage values using quantized corner coords:
+     // Sample coverage values using quantized corner coords:
     float value_sw = texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
     float value_se = texture(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
     float value_ne = texture(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
@@ -300,11 +303,11 @@ vec4 oe_splat_getNoise(in vec2 tc)
 
 #else // !SPLAT_GPU_NOISE
 
-#ifdef OE_SPLAT_HAVE_NOISE_SAMPLER
-uniform sampler2D oe_splat_noiseTex;
+#ifdef OE_SPLAT_NOISE_SAMPLER
+uniform sampler2D OE_SPLAT_NOISE_SAMPLER;
 vec4 oe_splat_getNoise(in vec2 tc)
 {
-    return texture(oe_splat_noiseTex, tc.st);
+    return texture(OE_SPLAT_NOISE_SAMPLER, tc.st);
 }
 #else
 vec4 oe_splat_getNoise(in vec2 tc)
@@ -339,9 +342,7 @@ void oe_splat_simple(inout vec4 color)
     color = oe_splat_bilinear(tc, env);
     //color = oe_splat_nearest(tc, env);
 
-    //color = mix(color, vec4(tc.s, tc.t, 0.0, 1.0), 0.5);
-
-    color.a *= oe_layer_rangeOpacity;
+    color.a *= oe_layer_opacity;
 }
 
 //............................................................................
@@ -383,28 +384,23 @@ void oe_splat_complex(inout vec4 color)
     // Blend the two samples based on LOD factor:
     vec4 texel = mix(texel0, texel1, lodBlend);
 
-#if 0
-    color = mix(color, texel, texel.a);
-    color.a = oe_layer_order > 0 ? texel.a : 1.0;
-    
-#else
+
+    // incorporate the layer's opacity:
+    texel.a *= oe_layer_opacity;
 
 #ifdef OE_TERRAIN_BLEND_IMAGERY
-
+    // If this is a first image layer, blend with the incoming terrain color.
+    // Otherwise, apply directly and let GL blending do the rest.
     if (oe_layer_order == 0)
     {
         color.rgb = texel.rgb*texel.a + color.rgb*(1.0-texel.a);
-        color.a = max(color.a, texel.a);
     }
     else
-#endif
     {
-        color = mix(color, texel, texel.a);
-        color.a = texel.a;
+        color = texel;
     }
-#endif
-    // uncomment to visualize slope, noise, etc.
-    //color.rgba = vec4(env.noise.x,0,0,1);
-	
-    color.a *= oe_layer_rangeOpacity;
+#else
+    // No blending? The output is just the texel value.
+    color = texel;
+#endif // OE_TERRAIN_BLEND_IMAGERY
 }

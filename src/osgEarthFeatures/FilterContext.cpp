@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,11 +17,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FilterContext>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+
+FilterContext::FilterContext() :
+_session(0L),
+_profile(0L),
+_isGeocentric(false),
+_index(0L),
+_shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
+{
+    //nop
+}
 
 FilterContext::FilterContext(Session*               session,
                              const FeatureProfile*  profile,
@@ -42,7 +53,7 @@ _shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
         }
         else
         {
-            _resourceCache = new ResourceCache(); // session->getDBOptions() );
+            _resourceCache = new ResourceCache();
         }
     }
 
@@ -85,10 +96,33 @@ _outputSRS            ( rhs._outputSRS.get() )
     //nop
 }
 
+FilterContext::~FilterContext()
+{
+    //nop
+}
+
 void
 FilterContext::setProfile(const FeatureProfile* value)
 {
     _profile = value;
+}
+
+Session*
+FilterContext::getSession()
+{
+    return _session.get();
+}
+
+const Session*
+FilterContext::getSession() const
+{
+    return _session.get();
+}
+
+bool
+FilterContext::isGeoreferenced() const
+{ 
+    return _session.valid() && _profile.valid();
 }
 
 const SpatialReference*

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,12 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/GeometryClamper>
-
-#include <osgUtil/IntersectionVisitor>
-
-#include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/UserDataContainer>
 
 #define LC "[GeometryClamper] "
 
@@ -32,11 +27,13 @@ using namespace osgEarth;
 
 //-----------------------------------------------------------------------
 
-GeometryClamper::GeometryClamper() :
+GeometryClamper::GeometryClamper(GeometryClamper::LocalData& localData) :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-_preserveZ      ( false ),
-_scale          ( 1.0f ),
-_offset         ( 0.0f )
+_localData(localData),
+_useVertexZ(true),
+_revert(false),
+_scale( 1.0f ),
+_offset( 0.0f )
 {
     this->setNodeMaskOverride( ~0 );
     _lsi = new osgUtil::LineSegmentIntersector(osg::Vec3d(0,0,0), osg::Vec3d(0,0,0));
@@ -56,11 +53,24 @@ GeometryClamper::apply(osg::Transform& xform)
 void
 GeometryClamper::apply(osg::Drawable& drawable)
 {
-    if ( !_terrainSRS.valid() )
-        return;
-
     osg::Geometry* geom = drawable.asGeometry();
     if ( !geom )
+        return;
+
+    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+
+    if (_revert)
+    {
+        GeometryData& data = _localData[verts];
+        if (data._verts.valid() && verts->size() == data._verts->size())
+        {
+            std::copy(data._verts->begin(), data._verts->end(), verts->begin());
+            verts->dirty();
+        }
+        return;
+    }
+    
+    if ( !_terrainSRS.valid() )
         return;
 
     const osg::Matrixd& local2world = _matrixStack.back();
@@ -74,34 +84,22 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
     osgUtil::IntersectionVisitor iv( _lsi.get() );
 
-    double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
+    double r = osg::minimum( em->getRadiusEquator(), em->getRadiusPolar() );
 
     unsigned count = 0;
 
     bool geomDirty = false;
-    osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
-    osg::FloatArray* zOffsets = 0L;
 
-    // if preserve-Z is on, check for our elevations array. Create it if is doesn't
-    // already exist.
-    bool buildZOffsets = false;
-    if ( _preserveZ )
+    GeometryData& data = _localData[verts];
+    
+    bool storeAltitudes = false;
+
+    if (!data._verts.valid() || data._verts->size() != verts->size())
     {
-        osg::UserDataContainer* udc = geom->getOrCreateUserDataContainer();
-        unsigned n = udc->getUserObjectIndex( ZOFFSETS_NAME );
-        if ( n < udc->getNumUserObjects() )
-        {
-            zOffsets = dynamic_cast<osg::FloatArray*>(udc->getUserObject(n));
-        }
-
-        else
-        {
-            zOffsets = new osg::FloatArray();
-            zOffsets->setName( ZOFFSETS_NAME );
-            zOffsets->reserve( verts->size() );
-            udc->addUserObject( zOffsets );
-            buildZOffsets = true;
-        }
+        data._verts = osg::clone(verts, osg::CopyOp::DEEP_COPY_ALL);
+        data._altitudes = new osg::FloatArray();
+        data._altitudes->reserve(verts->size());
+        storeAltitudes = true;
     }
 
     for( unsigned k=0; k<verts->size(); ++k )
@@ -114,27 +112,22 @@ GeometryClamper::apply(osg::Drawable& drawable)
             // normal to the ellipsoid:
             n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
 
-            // if we need to build to z-offsets array, calculate the z offset now:
-            if ( buildZOffsets || _scale != 1.0 )
+            // if we need to store the original altitudes:
+            if (storeAltitudes)
             {
-                double lat,lon,hae;
-                em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, hae);
-
-                if ( buildZOffsets )
-                {
-                    zOffsets->push_back( hae ); //(*verts)[k].z() );
-                }
-
-                if ( _scale != 1.0 )
-                {
-                    msl = vw - n_vector*hae;
-                }
+                // should really be the alt along the n_vector but leave for now
+                // since most scene-clamped geometry will be in relative to a
+                // local tangent plane anyway -gw
+                data._altitudes->push_back( (*verts)[k].z() );
             }
         }
 
-        else if ( buildZOffsets ) // flat map
+        else
         {
-            zOffsets->push_back( float(vw.z()) );
+            if (storeAltitudes)
+            {
+                data._altitudes->push_back( float(vw.z()) - _offset);
+            }
         }
 
         _lsi->reset();
@@ -147,18 +140,20 @@ GeometryClamper::apply(osg::Drawable& drawable)
         if ( _lsi->containsIntersections() )
         {
             osg::Vec3d fw = _lsi->getFirstIntersection().getWorldIntersectPoint();
-            if ( _scale != 1.0 )
-            {
-                osg::Vec3d delta = fw - msl;
-                fw += delta*_scale;
-            }
+            //if ( _scale != 1.0 )
+            //{
+            //    osg::Vec3d delta = fw - msl;
+            //    fw += delta*_scale;
+            //}
+
             if ( _offset != 0.0 )
             {
                 fw += n_vector*_offset;
             }
-            if ( _preserveZ && (zOffsets != 0L) )
+
+            if (_useVertexZ)
             {
-                fw += n_vector * (*zOffsets)[k];
+                fw += n_vector * (*data._altitudes)[k];
             }
 
             (*verts)[k] = (fw * world2local);
@@ -177,7 +172,11 @@ GeometryClamper::apply(osg::Drawable& drawable)
         }
         else
         {
+#if OSG_VERSION_LESS_THAN(3,6,0)
             geom->dirtyDisplayList();
+#else
+            geom->dirtyGLObjects();
+#endif
         }
 
         OE_DEBUG << LC << "clamped " << count << " verts." << std::endl;

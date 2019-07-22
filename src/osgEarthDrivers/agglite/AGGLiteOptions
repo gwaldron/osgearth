@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -75,8 +75,8 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "optimize_line_sampling", _optimizeLineSampling );
-            conf.getIfSet( "gamma", _gamma );
+            conf.get( "optimize_line_sampling", _optimizeLineSampling );
+            conf.get( "gamma", _gamma );
         }
 
         optional<bool>   _optimizeLineSampling;

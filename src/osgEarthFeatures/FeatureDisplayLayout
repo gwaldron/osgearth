@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -193,5 +193,9 @@ namespace osgEarth { namespace Features
     };
 
 } } // namespace osgEarth::Features
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureLevel);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureDisplayLayout);
+
 
 #endif // OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H

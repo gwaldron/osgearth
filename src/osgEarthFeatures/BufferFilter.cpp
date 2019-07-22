@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BufferFilter>
+#include <osgEarthFeatures/FilterContext>
 
 #define LC "[BufferFilter] "
 
@@ -65,14 +66,14 @@ _capStyle   ( Stroke::LINECAP_SQUARE )
 {
     if (conf.key() == "buffer")
     {
-        conf.getIfSet( "distance", _distance );
+        conf.get( "distance", _distance );
     }
 }
 
 Config BufferFilter::getConfig() const
 {
     Config config( "buffer" );
-    config.addIfSet( "distance", _distance);
+    config.set( "distance", _distance);
     return config;
 }
 

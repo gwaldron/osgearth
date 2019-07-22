@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2010 Pelican Mapping
 * http://osgearth.org
 *
@@ -174,7 +174,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         getMetaData( "profile", profileStr );
 
         // The data format (e.g., png, jpg, etc.). Any format passed in
-        // in the options is superceded by the one in the database metadata.
+        // in the options is superseded by the one in the database metadata.
         std::string metaDataFormat;
         getMetaData( "format", metaDataFormat );
         if ( !metaDataFormat.empty() )
@@ -192,10 +192,6 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         // By this point, we require a valid tile format.
         if ( _tileFormat.empty() )
             return Status::Error(Status::ConfigurationError, "Required format not in metadata, nor specified in the options.");
-
-        _rw = getReaderWriter( _tileFormat );
-        if ( !_rw.valid() )
-            return Status::Error(Status::ServiceUnavailable, "No plugin to load format \"" + _tileFormat + "\"");
 
         // check for compression.
         std::string compression;
@@ -361,7 +357,10 @@ MBTilesTileSource::createImage(const TileKey&    key,
             std::string value;
             if ( !_compressor->decompress(inputStream, value) )
             {
-                OE_WARN << LC << "Decompression failed" << std::endl;
+                if ( _options.filename().isSet() )
+                    OE_WARN << LC << "Decompression failed: " << _options.filename()->base() << std::endl;
+                else
+                    OE_WARN << LC << "Decompression failed" << std::endl;
                 valid = false;
             }
             else
@@ -374,11 +373,7 @@ MBTilesTileSource::createImage(const TileKey&    key,
         if ( valid )
         {
             std::istringstream inputStream(dataBuffer);
-            osgDB::ReaderWriter::ReadResult rr = _rw->readImage( inputStream, _dbOptions.get() );
-            if (rr.validImage())
-            {
-                result = rr.takeImage();
-            }
+            result = ImageUtils::readStream(inputStream, _dbOptions.get());
         }
     }
     else

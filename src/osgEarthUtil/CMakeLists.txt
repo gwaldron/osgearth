@@ -10,26 +10,29 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
     ActivityMonitorTool
-    AnnotationEvents
     AutoClipPlaneHandler
+    AutoScaleCallback
     ArcGIS
     AtlasBuilder
+    ClipSpace
     Common
     Controls
     ContourMap
     ClampCallback
+    ClusterNode
     DataScanner
     EarthManipulator
     Ephemeris
     ExampleResources
     Export
-    FeatureQueryTool
     FlatteningLayer
     Fog
     Formatter
     FractalElevationLayer
     GARSGraticule
     GeodeticGraticule
+    GeodeticLabelingEngine
+    GraticuleLabelingEngine
     HTM
     LatLongFormatter
     LineOfSight
@@ -41,9 +44,7 @@ SET(HEADERS_ROOT
     MGRSGraticule
     MouseCoordsTool
     MultiElevationLayer
-    ObjectLocator
     Ocean
-    PolyhedralLineOfSight
     RadialLineOfSight
     RTTPicker
     Shaders
@@ -89,7 +90,8 @@ set(TARGET_GLSL
     Shadowing.vert.glsl
     Shadowing.frag.glsl
     SimpleOceanLayer.vert.glsl
-    SimpleOceanLayer.frag.glsl)
+    SimpleOceanLayer.frag.glsl
+    RTTPicker.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)
@@ -102,23 +104,25 @@ configure_shaders(
 
 SET(SOURCES_ROOT
     ActivityMonitorTool.cpp
-    AnnotationEvents.cpp
     ArcGIS.cpp
     AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
+    ClipSpace.cpp
+    ClusterNode.cpp
     Controls.cpp
     ContourMap.cpp
     DataScanner.cpp
     EarthManipulator.cpp
     Ephemeris.cpp
     ExampleResources.cpp
-    FeatureQueryTool.cpp
     FlatteningLayer.cpp
     Fog.cpp
     FractalElevationLayer.cpp
     GARSGraticule.cpp
     GeodeticGraticule.cpp
+    GeodeticLabelingEngine.cpp
+    GraticuleLabelingEngine.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
@@ -129,9 +133,7 @@ SET(SOURCES_ROOT
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
-    ObjectLocator.cpp
     Ocean.cpp
-    PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     RTTPicker.cpp
     Shadowing.cpp

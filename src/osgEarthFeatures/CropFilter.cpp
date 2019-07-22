@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -91,16 +91,16 @@ CropFilter::push( FeatureList& input, FilterContext& context )
             if ( featureGeom && featureGeom->isValid() )
             {
                 // test for trivial acceptance:
-                const Bounds bounds = featureGeom->getBounds();
-                if ( !bounds.isValid() )
+                GeoExtent featureExtent = feature->getExtent();
+                if (featureExtent.isInvalid())
                 {
                     //nop
                 }
 
-                else if ( extent.contains( bounds ) )
+                else if ( extent.contains(featureExtent) )
                 {
                     keepFeature = true;
-                    newExtent.expandToInclude( bounds );
+                    newExtent.expandToInclude(featureExtent);
                 }
 
                 // then move on to the cropping operation:
@@ -122,7 +122,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                         {
                             feature->setGeometry( croppedGeometry.get() );
                             keepFeature = true;
-                            newExtent.expandToInclude( croppedGeometry->getBounds() );
+                            newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), croppedGeometry->getBounds()));
                         }
                     }
                 }

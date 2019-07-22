@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -67,7 +67,7 @@ KML_NetworkLink::build( xml_node<>* node, KMLContext& cx )
         double x, y;
         llaExtent.getCentroid( x, y );
         osg::Vec3d lodCenter;
-        llaExtent.getSRS()->transform( osg::Vec3d(x,y,0), geoSRS->getECEF(), lodCenter );
+        llaExtent.getSRS()->transform( osg::Vec3d(x,y,0), geoSRS->getGeocentricSRS(), lodCenter );
         //llaExtent.getSRS()->transformToECEF( osg::Vec3d(x,y,0), lodCenter );
 
         // figure the tile radius:

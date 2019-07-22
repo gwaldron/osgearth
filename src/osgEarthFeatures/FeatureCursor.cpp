@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/Filter>
+#include <osgEarth/Progress>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -24,8 +26,19 @@ using namespace OpenThreads;
 
 //---------------------------------------------------------------------------
 
+FeatureCursor::FeatureCursor(ProgressCallback* progress) :
+_progress(progress)
+{
+    //nop
+}
+
+FeatureCursor::~FeatureCursor()
+{
+    //nop
+}
+
 void
-FeatureCursor::fill( FeatureList& list )
+FeatureCursor::fill(FeatureList& list)
 {
     while( hasMore() )
     {
@@ -36,10 +49,16 @@ FeatureCursor::fill( FeatureList& list )
 //---------------------------------------------------------------------------
 
 FeatureListCursor::FeatureListCursor(const FeatureList& features) :
+FeatureCursor(0L),
 _features( features ),
 _clone   ( false )
 {
     _iter = _features.begin();
+}
+
+FeatureListCursor::~FeatureListCursor()
+{
+    //nop
 }
 
 bool
@@ -59,6 +78,7 @@ FeatureListCursor::nextFeature()
 //---------------------------------------------------------------------------
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom) :
+FeatureCursor(NULL),
 _geom( geom )
 {
     //nop
@@ -66,10 +86,16 @@ _geom( geom )
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
                                              const FeatureProfile* fp,
-                                             const FeatureFilterList& filters) :
+                                             const FeatureFilterChain* filters) :
+FeatureCursor(NULL),
 _geom          ( geom ),
 _featureProfile( fp ),
-_filters       ( filters )
+_filterChain   ( filters )
+{
+    //nop
+}
+
+GeometryFeatureCursor::~GeometryFeatureCursor()
 {
     //nop
 }
@@ -96,9 +122,12 @@ GeometryFeatureCursor::nextFeature()
         FeatureList list;
         list.push_back( _lastFeature.get() );
 
-        for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
+        if (_filterChain.valid())
         {
-            cx = i->get()->push( list, cx );
+            for( FeatureFilterChain::const_iterator i = _filterChain->begin(); i != _filterChain->end(); ++i )
+            {
+                cx = i->get()->push( list, cx );
+            }
         }
 
         if ( list.empty() )

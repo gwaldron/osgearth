@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,13 +21,19 @@
 #include <osgEarth/Registry>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/Progress>
+
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
 #include <osgEarthFeatures/MVT>
 #include <osgEarthFeatures/OgrUtils>
+#include <osgEarthFeatures/FeatureCursor>
+
 #include <osgEarthUtil/TFS>
+
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -112,7 +118,7 @@ public:
             fp->setTiled( true );
             fp->setFirstLevel( *_options.minLevel() );
             fp->setMaxLevel( *_options.maxLevel() );
-            fp->setProfile( profile );
+            fp->setProfile( profile.get() );
             if ( _options.geoInterp().isSet() )
                 fp->geoInterp() = _options.geoInterp().get();
         }
@@ -235,7 +241,7 @@ public:
     {     
         if (query.tileKey().isSet())
         {
-            const TileKey &key = query.tileKey().get();
+            const TileKey& key = query.tileKey().get();
             unsigned int tileX = key.getTileX();
             unsigned int tileY = key.getTileY();
             unsigned int level = key.getLevelOfDetail();
@@ -245,12 +251,12 @@ public:
             const FeatureProfile* fp = getFeatureProfile();
             if (fp && fp->getTiled())
             {
-               if (fp->getFirstLevel() > level || fp->getMaxLevel() < level)
-               {
-                  return "";
-               }
+                if (fp->getFirstLevel() > level || fp->getMaxLevel() < level)
+                {
+                    return "";
+                }
             }
-            
+
             // TFS follows the same protocol as TMS, with the origin in the lower left of the profile.
             // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.            
             if (_options.invertY() == false)
@@ -271,22 +277,21 @@ public:
         return "";                       
     }
 
-    FeatureCursor* createFeatureCursor(const Symbology::Query& query)
+    FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
     {
         FeatureCursor* result = 0L;
 
         std::string url = createURL( query );
-        if (url.empty()) return 0;
 
-        // check the blacklist:
-        if ( Registry::instance()->isBlacklisted(url) )
+        // the URL wil lbe empty if it was invalid or outside the level bounds of the layer.
+        if (url.empty())
             return 0L;
 
         OE_DEBUG << LC << url << std::endl;
-        URI uri(url);
+        URI uri(url, _options.url()->context());
 
         // read the data:
-        ReadResult r = uri.readString( _readOptions.get() );
+        ReadResult r = uri.readString(_readOptions.get(), progress);
 
         const std::string& buffer = r.getString();
         const Config&      meta   = r.metadata();
@@ -314,20 +319,16 @@ public:
         }
 
         //If we have any filters, process them here before the cursor is created
-        if (!getFilters().empty())
+        if (getFilters() && !getFilters()->empty() && !features.empty())
         {
-            // preprocess the features using the filter list:
-            if ( features.size() > 0 )
-            {
-                FilterContext cx;
-                cx.setProfile( getFeatureProfile() );
-                cx.extent() = query.tileKey()->getExtent();
+            FilterContext cx;
+            cx.setProfile(getFeatureProfile());
+            cx.extent() = query.tileKey()->getExtent();
 
-                for( FeatureFilterList::const_iterator i = getFilters().begin(); i != getFilters().end(); ++i )
-                {
-                    FeatureFilter* filter = i->get();
-                    cx = filter->push( features, cx );
-                }
+            for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
+            {
+                FeatureFilter* filter = i->get();
+                cx = filter->push(features, cx);
             }
         }
 
@@ -342,12 +343,7 @@ public:
             }
         }
 
-        //result = new FeatureListCursor(features);
-        result = dataOK ? new FeatureListCursor( features ) : 0L;
-
-        if ( !result )
-            Registry::instance()->blacklist( url );
-
+        result = new FeatureListCursor(features);
         return result;
     }
 

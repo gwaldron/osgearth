@@ -10,6 +10,16 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
     </image>  
     
     <gars_graticule name="GARS" visible="false">
+        <style type="text/css">
+                default {
+                    stroke: #ffff0059;
+                    stroke-width: 3px;
+                    stroke-tessellation-segments: 10;
+                    text-size: 28;
+                    text-fill: #ffffff7f;
+                    text-align: left_bottom;
+                }        
+        </style>
     </gars_graticule>  
     
     <mgrs_graticule name="MGRS" visible="true">
@@ -19,7 +29,7 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                 gzd {
                     stroke: #ff000059;
                     stroke-width: 4px;
-                    stroke-tessellation: 20;
+                    stroke-tessellation-segments: 10;
                     text-fill: #7f7f7fff;
                     text-align: left_bottom;
                 }
@@ -61,19 +71,22 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                 gzd {
                     stroke: #ffffff59;
                     stroke-width: 3px;
-                    stroke-tessellation: 20;
+                    stroke-tessellation-segments: 10;
                     text-fill: #7f7f7fff;
                     text-align: left_bottom;
                 }        
             </style>
         </styles>
     </mgrs_graticule>
-    
+            
     <geodetic_graticule name="Geodetic" visible="false">
         <color>#ffff007f</color>
         <label_color>#ffffffff</label_color>
         <grid_lines>10</grid_lines>
         <resolutions>10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125</resolutions>
+        <grid_lines_visible>true</grid_lines_visible>
+        <grid_labels_visible>true</grid_labels_visible>
+        <edge_labels_visible>true</edge_labels_visible>
     </geodetic_graticule>
     
 </map>

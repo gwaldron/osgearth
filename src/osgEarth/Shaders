@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -31,12 +31,16 @@ namespace osgEarth
     public:
         Shaders();
 
-        std::string AlphaEffectFragment;
+        std::string CascadeDraping;
+        std::string ClipPlane;
         std::string DepthOffsetVertex;
         std::string DrapingVertex, DrapingFragment;
         std::string GPUClampingVertex, GPUClampingFragment, GPUClampingVertexLib;
         std::string InstancingVertex;
+        std::string LineDrawable;
+        std::string PointDrawable;
         std::string PhongLightingVertex, PhongLightingFragment;
+        std::string TextVertex, TextFragment, TextLegacy;
 	};	
 
 } // namespace osgEarth

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,9 +18,7 @@
  */
 #include <osgEarth/IOTypes>
 #include <osgEarth/URI>
-#include <osgEarth/XmlUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReaderWriter>
 #include <osgDB/Registry>
 
 using namespace osgEarth;
@@ -69,7 +67,7 @@ URIReadCallback::~URIReadCallback()
  * that means that StringObject instances can be read/written to an .osgb
  * file. We use this for caching string data (XML, JSON files for example).
  */
-namespace
+namespace osgEarth { namespace Serializers { namespace StringObject
 {
     REGISTER_OBJECT_WRAPPER(StringObject,
                             new osgEarth::StringObject,
@@ -78,7 +76,7 @@ namespace
     {
         ADD_STRING_SERIALIZER( String, "" );  // _str
     }
-}
+} } }
 
 //------------------------------------------------------------------------
 

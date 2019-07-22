@@ -26,11 +26,12 @@ Demonstrates how to select a style name using javascript.
         
         <styles>        
             <style type="text/css">
-                p1 { fill: #ffffff9f; altitude-clamping: terrain-drape; }       
-                p2 { fill: #cccccc9f; altitude-clamping: terrain-drape; }       
-                p3 { fill: #9999999f; altitude-clamping: terrain-drape; }       
-                p4 { fill: #6666669f; altitude-clamping: terrain-drape; }       
-                p5 { fill: #3333339f; altitude-clamping: terrain-drape; }       
+                p { altitude-clamping: terrain-drape; } 
+                p1 : p { fill: #ffffff9f; }
+                p2 : p { fill: #cccccc9f; }
+                p3 : p { fill: #9999999f; }
+                p4 : p { fill: #6666669f; }
+                p5 : p { fill: #3333339f; }
             </style>
             
             <script language="javascript">

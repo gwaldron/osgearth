@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -44,10 +44,12 @@ namespace osgEarth { namespace GLSky
                            public GLSkyOptions
     {
     public:
-        META_Object( osgEarth, GLSkyExtension );
+        META_OE_Extension( osgEarth, GLSkyExtension, sky_gl );
 
         GLSkyExtension() { }
         GLSkyExtension(const GLSkyOptions& options);
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
 
     public: // ExtensionInterface<MapNode>
 
@@ -66,10 +68,9 @@ namespace osgEarth { namespace GLSky
 
     public: // SkyNodeFactory
 
-        SkyNode* createSkyNode(const Profile* profile);
+        SkyNode* createSkyNode();
 
     protected:
-        GLSkyExtension(const GLSkyExtension&, const osg::CopyOp&) { }
         virtual ~GLSkyExtension() { }
 
         osg::ref_ptr<ui::Control> _ui;
@@ -96,7 +97,16 @@ GLSkyOptions(options)
 bool
 GLSkyExtension::connect(MapNode* mapNode)
 {
-    _skyNode = createSkyNode(mapNode->getMap()->getProfile());
+    _skyNode = createSkyNode();
+
+    // Projected map? Set up a reference point at the center of the map
+    if (mapNode->getMapSRS()->isProjected())
+    {
+        GeoPoint refPoint;
+        mapNode->getMap()->getProfile()->getExtent().getCentroid(refPoint);
+        _skyNode->setReferencePoint(refPoint);
+    }
+
     osgEarth::insertParent(_skyNode.get(), mapNode);
     return true;
 }
@@ -138,7 +148,8 @@ GLSkyExtension::disconnect(ui::Control* control)
 }
 
 SkyNode*
-GLSkyExtension::createSkyNode(const Profile* profile)
+GLSkyExtension::createSkyNode()
 {
-    return new GLSkyNode(profile, *this);
+    GLSkyNode* sky = new GLSkyNode(*this);
+    return sky;
 }

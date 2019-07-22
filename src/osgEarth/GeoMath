@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -100,16 +100,6 @@ namespace osgEarth
         static void midpoint(double lat1Rad, double lon1Rad,
             double lat2Rad, double lon2Rad,
             double &out_latRad, double &out_lonRad);
-
-        /**
-         * Computes a great-circle interpolation from one lat/long to another,
-         * where t => [0..1].
-         */
-        static void interpolate(
-            double lat1Rad, double lon1Rad,
-            double lat2Rad, double lon2Rad,
-            double t,
-            double& out_latRad, double& out_lonRad );
 
         /**
          * Computes the destination point given a start point, a bearing and a distance

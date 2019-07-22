@@ -306,17 +306,17 @@ private:
       if (_controller)
       {
         // create a second catalog widget for viewpoints
-        osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(_manager, osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
+        osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(_manager.get(), osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
         vpCatalog->setActiveViews(_views);
         _vpDock->setWidget(vpCatalog);
 
         // create layer manager widget and add as a docked widget on the right
-        osgEarth::QtGui::LayerManagerWidget* elevLayerManager = new osgEarth::QtGui::LayerManagerWidget(_manager, osgEarth::QtGui::LayerManagerWidget::ELEVATION_LAYERS);
+        osgEarth::QtGui::LayerManagerWidget* elevLayerManager = new osgEarth::QtGui::LayerManagerWidget(_manager.get(), osgEarth::QtGui::LayerManagerWidget::ELEVATION_LAYERS);
         elevLayerManager->setActiveViews(_views);
         _elevLayersDock->setWidget(elevLayerManager);
 
         // create layer manager widget and add as a docked widget on the right
-        osgEarth::QtGui::LayerManagerWidget* imgLayerManager = new osgEarth::QtGui::LayerManagerWidget(_manager, osgEarth::QtGui::LayerManagerWidget::IMAGE_LAYERS);
+        osgEarth::QtGui::LayerManagerWidget* imgLayerManager = new osgEarth::QtGui::LayerManagerWidget(_manager.get(), osgEarth::QtGui::LayerManagerWidget::IMAGE_LAYERS);
         imgLayerManager->setActiveViews(_views);
         _imgLayersDock->setWidget(imgLayerManager);
       }

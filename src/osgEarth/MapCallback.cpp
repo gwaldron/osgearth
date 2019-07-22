@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,10 +18,6 @@
  */
 #include <osgEarth/MapCallback>
 #include <osgEarth/MapModelChange>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <osgEarth/ModelLayer>
-#include <osgEarth/MaskLayer>
 #include <osgEarth/Map>
 
 #define LC "[MapCallback] "
@@ -44,6 +40,22 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
     case MapModelChange::MOVE_LAYER:
         onLayerMoved(change.getLayer(), change.getFirstIndex(), change.getSecondIndex());
         break;
+
+    case MapModelChange::ENABLE_LAYER:
+        onLayerEnabled(change.getLayer());
+        break;
+
+    case MapModelChange::DISABLE_LAYER:
+        onLayerDisabled(change.getLayer());
+        break;
+
+    case MapModelChange::BEGIN_BATCH_UPDATE:
+	onBeginUpdate();
+	break;
+
+    case MapModelChange::END_BATCH_UPDATE:
+	onEndUpdate();
+	break;
 
     default: 
         break;
@@ -78,41 +90,4 @@ MapCallback::invokeOnLayerRemoved(const Map* map)
             onLayerRemoved(i->get(), index++);
         onEndUpdate();
     }
-}
-
-void
-MapCallback::onLayerAdded(Layer* layer, unsigned index)
-{
-    if (dynamic_cast<ImageLayer*>(layer))
-        onImageLayerAdded(static_cast<ImageLayer*>(layer), index);
-    else if (dynamic_cast<ElevationLayer*>(layer))
-        onElevationLayerAdded(static_cast<ElevationLayer*>(layer), index);
-    else if (dynamic_cast<ModelLayer*>(layer))
-        onModelLayerAdded(static_cast<ModelLayer*>(layer), index);
-    else if (dynamic_cast<MaskLayer*>(layer))
-        onMaskLayerAdded(static_cast<MaskLayer*>(layer));
-}
-
-void 
-MapCallback::onLayerRemoved(Layer* layer, unsigned index)
-{
-    if (dynamic_cast<ImageLayer*>(layer))
-        onImageLayerRemoved(static_cast<ImageLayer*>(layer), index);
-    else if (dynamic_cast<ElevationLayer*>(layer))
-        onElevationLayerRemoved(static_cast<ElevationLayer*>(layer), index);
-    else if (dynamic_cast<ModelLayer*>(layer))
-        onModelLayerRemoved(static_cast<ModelLayer*>(layer), index);
-    else if (dynamic_cast<MaskLayer*>(layer))
-        onMaskLayerRemoved(static_cast<MaskLayer*>(layer));
-}
-
-void
-MapCallback::onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
-{
-    if (dynamic_cast<ImageLayer*>(layer))
-        onImageLayerMoved(static_cast<ImageLayer*>(layer), oldIndex, newIndex);
-    else if (dynamic_cast<ElevationLayer*>(layer))
-        onElevationLayerMoved(static_cast<ElevationLayer*>(layer), oldIndex, newIndex);
-    else if (dynamic_cast<ModelLayer*>(layer))
-        onModelLayerMoved(static_cast<ModelLayer*>(layer), oldIndex, newIndex);
 }

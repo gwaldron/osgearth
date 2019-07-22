@@ -1,0 +1,50 @@
+<!--
+osgEarth Sample : gdal_interp.earth
+
+Shows the difference between all the available intepolation modes for the gdal driver.
+
+Because the world.tif file is very slow resolution, we increase the max_data_level to force additional tiles to be generated
+to show off the effect of the interpolation.
+
+Run with osgearth_toc to see the differences in interpolation
+
+Note, gdal image interpolation is only available if your GDAL version is 2.0 or higher.
+-->
+
+<map name="gdal_interp" type="geocentric" version="2">
+
+    <options lighting="false">
+        <cache_policy usage="no_cache"/>        
+    </options>
+
+    <image name="nearest" driver="gdal">
+        <url>../data/world.tif</url>
+        <max_data_level_override>19</max_data_level_override>
+        <interpolation>nearest</interpolation>
+    </image>
+
+    <image name="bilinear" driver="gdal">
+        <url>../data/world.tif</url>
+        <interpolation>bilinear</interpolation>
+        <max_data_level_override>19</max_data_level_override>
+    </image>
+
+    <image name="average" driver="gdal">
+        <url>../data/world.tif</url>
+        <interpolation>average</interpolation>
+        <max_data_level_override>19</max_data_level_override>
+    </image>
+
+    <image name="cubic" driver="gdal">
+        <url>../data/world.tif</url>
+        <interpolation>cubic</interpolation>
+        <max_data_level_override>19</max_data_level_override>
+    </image>
+
+    <image name="cubicspline" driver="gdal">
+        <url>../data/world.tif</url>
+        <interpolation>cubicspline</interpolation>
+        <max_data_level_override>19</max_data_level_override>
+    </image>
+
+</map>

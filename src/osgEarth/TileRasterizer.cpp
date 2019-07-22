@@ -1,30 +1,31 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Registry>
-#include <osg/MatrixTransform>
-#include <osg/FrameBufferObject>
-#include <osgDB/ReadFile>
+#include <osgEarth/GLUtils>
 
 #define LC "[TileRasterizer] "
+
+#ifndef GL_ANY_SAMPLES_PASSED
+#define GL_ANY_SAMPLES_PASSED 0x8C2F
+#endif
 
 using namespace osgEarth;
 
@@ -71,7 +72,7 @@ TileRasterizer::TileRasterizer() :
 osg::Camera()
 {
     // active an update traversal.
-    setNumChildrenRequiringUpdateTraversal(1);
+    ADJUST_EVENT_TRAV_COUNT(this, +1);
     setCullingActive(false);
 
     // set up the RTT camera.
@@ -92,9 +93,9 @@ osg::Camera()
     osg::StateSet* ss = getOrCreateStateSet();
 
     ss->setMode(GL_BLEND, 1);
-    ss->setMode(GL_LIGHTING, 0);
     ss->setMode(GL_CULL_FACE, 0);
-
+    GLUtils::setLighting(ss, 0);
+    
     this->setPreDrawCallback(new PreDrawRouter<TileRasterizer>(this));
     this->setPostDrawCallback(new PostDrawRouter<TileRasterizer>(this));
 
@@ -116,6 +117,7 @@ osg::Camera()
     setReadBuffer(GL_FRONT);
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->setName("TileRasterizer");
     vp->setInheritShaders(false);
 
     // Someday we might need this to undistort rasterizer cells. We'll see
@@ -206,7 +208,7 @@ TileRasterizer::accept(osg::NodeVisitor& nv)
 void
 TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.EVENT_VISITOR)
     {
         Threading::ScopedMutexLock lock(_mutex);
 
@@ -221,7 +223,7 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
             else
                 job._imagePromise.resolve(0L);
 
-            _finishedJobs.pop();
+            _finishedJobs.pop(); 
             detach(osg::Camera::COLOR_BUFFER);
             dirtyAttachmentMap();
         }
@@ -298,7 +300,7 @@ TileRasterizer::preDraw(osg::RenderInfo& ri) const
             }
 
             // allocate a query on demand for this GC:
-            osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+            osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(),true);
             GLuint& query = _samplesQuery[ri.getContextID()];
             if (query == INT_MAX)
             {

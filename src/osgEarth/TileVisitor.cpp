@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,13 +20,20 @@
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/FileUtils>
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,10)
+#include <osg/os_utils>
+#define OS_SYSTEM osg_system
+#else
+#define OS_SYSTEM system
+#endif
+
 using namespace osgEarth;
 
 TileVisitor::TileVisitor():
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(5)
+_maxLevel(99)
 {
 }
 
@@ -36,7 +43,7 @@ _tileHandler( handler ),
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(5)
+_maxLevel(99)
 {
 }
 
@@ -103,7 +110,7 @@ void TileVisitor::estimate()
     CacheEstimator est;
     est.setMinLevel( _minLevel );
     est.setMaxLevel( _maxLevel );
-    est.setProfile( _profile ); 
+    est.setProfile( _profile.get() ); 
     for (unsigned int i = 0; i < _extents.size(); i++)
     {                
         est.addExtent( _extents[ i ] );
@@ -270,7 +277,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 bool MultithreadedTileVisitor::handleTile( const TileKey& key )        
 {    
     // Add the tile to the task queue.
-    _taskService->add( new HandleTileTask(_tileHandler, this, key ) );
+    _taskService->add( new HandleTileTask(_tileHandler.get(), this, key ) );
     return true;
 }
 
@@ -297,7 +304,7 @@ bool TaskList::load( const std::string &filename)
                 as<unsigned int>(parts[0], 0u), 
                 as<unsigned int>(parts[1], 0u), 
                 as<unsigned int>(parts[2], 0u),
-                _profile ) );
+                _profile.get() ) );
         }
     }
 
@@ -424,7 +431,7 @@ public:
 
       virtual void operator()(ProgressCallback* progress )
       {         
-          system(_command.c_str());     
+          OS_SYSTEM(_command.c_str());     
 
           // Cleanup the temp files and increment the progress on the visitor.
           cleanupTempFiles();
@@ -470,7 +477,7 @@ void MultiprocessTileVisitor::processBatch()
     // Add the task file as a temp file to the task to make sure it gets deleted
     task->addTempFile( filename );
 
-    _taskService->add(task);
+    _taskService->add(task.get());
     _batch.clear();
 }
 

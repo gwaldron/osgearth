@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -22,6 +22,7 @@
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
 #include <osgEarth/MapInfo>
+#include <osgEarth/ModelLayer>
 #include <osgEarthSymbology/Geometry>
 
 #include <osgUtil/DelaunayTriangulator>
@@ -164,6 +165,18 @@ _key( key ), _tileSize(tileSize)
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
             setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+        }
+
+        // add masks from model layers with embedded masks?
+        ModelLayerVector modelLayers;
+        map->getLayers(modelLayers);
+        for(ModelLayerVector::const_iterator i = modelLayers.begin(); i != modelLayers.end(); ++i)
+        {
+            ModelLayer* layer = i->get();
+            if (layer->getMaskSource() && layer->getMaskMinLevel() <= key.getLevelOfDetail())
+            {
+                setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary(1.0f, key.getExtent().getSRS(), (ProgressCallback*)0L) );
+            }
         }
     }
 }
@@ -624,7 +637,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
             neighbors->push_back( local );  
 
         // set up text coords
-        texCoords->push_back(osg::Vec3f(it->x(), it->y(), isBoundary ? VERTEX_MARKER_BOUNDARY : VERTEX_MARKER_PATCH));
+        texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? VERTEX_MARKER_BOUNDARY : VERTEX_MARKER_PATCH) );
     }
 
     // Get triangles from triangulator and add as primitive set to the geometry
@@ -695,14 +708,14 @@ MaskGenerator::getMarker(float nx, float ny) const
 
         if (i > min_i && i < max_i && j > min_j && j < max_j)
         {
-           marker = VERTEX_MARKER_DISCARD; // contained by patch
+            marker = VERTEX_MARKER_DISCARD; // contained by patch
         }
         else if ((i == min_i && j >= min_j && j <= max_j) ||
                  (i == max_i && j >= min_j && j <= max_j) ||
                  (j == min_j && i >= min_i && i <= max_i) ||
                  (j == max_j && i >= min_i && i <= max_i))
         {
-           marker = VERTEX_MARKER_PATCH;
+            marker = VERTEX_MARKER_PATCH;
         }
     }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,9 +19,6 @@
 
 #include <osgEarth/Units>
 #include <osgEarth/Registry>
-#include <osg/Math>
-#include <algorithm>
-#include <cctype>
 
 using namespace osgEarth;
 
@@ -166,6 +163,7 @@ Units::registerAll(Registry* r)
     r->registerUnits( &Units::RADIANS );
     r->registerUnits( &Units::BAM );
     r->registerUnits( &Units::NATO_MILS );
+    r->registerUnits( &Units::DECIMAL_HOURS );
 
     r->registerUnits( &Units::DAYS );
     r->registerUnits( &Units::HOURS );
@@ -209,6 +207,7 @@ const Units Units::DEGREES           ( "degrees",        "\xb0",Units::TYPE_ANGU
 const Units Units::RADIANS           ( "radians",        "rad", Units::TYPE_ANGULAR, 1.0 );
 const Units Units::BAM               ( "BAM",            "bam", Units::TYPE_ANGULAR, 6.283185307179586476925286766559 );
 const Units Units::NATO_MILS         ( "mils",           "mil", Units::TYPE_ANGULAR, 9.8174770424681038701957605727484e-4 );
+const Units Units::DECIMAL_HOURS     ( "hours",          "h",   Units::TYPE_ANGULAR, 15.0*0.017453292519943295 );
 
 // Factor convert unit into SECONDS:
 const Units Units::DAYS              ( "days",           "d",   Units::TYPE_TEMPORAL, 86400.0 );

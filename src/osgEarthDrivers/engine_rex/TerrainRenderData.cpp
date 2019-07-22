@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -19,6 +19,7 @@
 #include "TerrainRenderData"
 #include "TileNode"
 #include "SurfaceNode"
+#include <osgEarth/ClampableNode>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
@@ -26,13 +27,18 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 #define LC "[TerrainRenderData] "
 
 
-void
+unsigned
 TerrainRenderData::sortDrawCommands()
 {
+    unsigned total = 0;
     for (LayerDrawableList::iterator i = _layerList.begin(); i != _layerList.end(); ++i)
     {
-        i->get()->_tiles.sort();
+        //TODO: review and benchmark list vs. vector vs. unsorted here.
+        DrawTileCommands& cmds = i->get()->_tiles;
+        std::sort(cmds.begin(), cmds.end());
+        total += i->get()->_tiles.size();
     }
+    return total;
 }
 
 void
@@ -50,14 +56,12 @@ TerrainRenderData::setup(const Map* map,
     
     // Is this a depth camera? Because if it is, we don't need any color layers.
     const osg::Camera* cam = cv->getCurrentCamera();
-    bool isDepthCamera =
-        cam &&
-        (cam->getClearMask() & GL_COLOR_BUFFER_BIT) == 0u &&
-        (cam->getClearMask() & GL_DEPTH_BUFFER_BIT) != 0u;
+    bool isDepthCamera = ClampableNode::isDepthCamera(cam);
 
     // Make a drawable for each rendering pass (i.e. each render-able map layer).
     LayerVector layers;
     map->getLayers(layers);
+
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
         Layer* layer = i->get();
@@ -109,7 +113,6 @@ TerrainRenderData::setup(const Map* map,
 
     // Include a "blank" layer for missing data.
     LayerDrawable* blank = addLayerDrawable(0L);
-    blank->getOrCreateStateSet()->setDefine("OE_TERRAIN_RENDER_IMAGERY", osg::StateAttribute::OFF);
 }
 
 namespace
@@ -129,22 +132,28 @@ namespace
 LayerDrawable*
 TerrainRenderData::addLayerDrawable(const Layer* layer)
 {
-    UID uid = layer ? layer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();
     if (layer) {
        ld->setName(layer->getName());
     }
-    _layerList.push_back(ld);
-    _layerMap[uid] = ld;
-    ld->_layer = layer;
-    ld->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
-    ld->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
-    ld->_order = _layerList.size() - 1;
-    ld->_drawState = _drawState.get();
+    drawable->_drawOrder = _layerList.size();
+    _layerList.push_back(drawable);
+
+    drawable->_drawState = _drawState.get();
+
     if (layer)
     {
-        ld->setStateSet(layer->getStateSet());
-        ld->_renderType = layer->getRenderType();
+        _layerMap[layer->getUID()] = drawable;
+        drawable->_layer = layer;
+        drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
+        drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
+        drawable->setStateSet(layer->getStateSet());
+        drawable->_renderType = layer->getRenderType();
     }
-    return ld;
+    else
+    {
+        _layerMap[-1] = drawable;
+    }
+
+    return drawable;
 }

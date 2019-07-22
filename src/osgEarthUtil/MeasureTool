@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -47,7 +47,7 @@ namespace osgEarth { namespace Util
         typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
 
 
-        MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
+        MeasureToolHandler( MapNode* mapNode );        
         virtual ~MeasureToolHandler();
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );        
@@ -67,7 +67,7 @@ namespace osgEarth { namespace Util
         void setIsPath( bool path );
         bool getIsPath() const;
 
-        /** Sets the style of the measurment line (to something other than the default) */
+        /** Sets the style of the measurement line (to something other than the default) */
         void setLineStyle( const Style& style );
         const Style& getLineStyle() const { return _feature->style().value(); }
 
@@ -90,7 +90,7 @@ namespace osgEarth { namespace Util
         bool _mouseDown;
         float _mouseDownX, _mouseDownY;
         int _mouseButton;
-        osg::ref_ptr< osg::Group > _group;
+        osg::ref_ptr< osg::Group > _root;
 
         osg::ref_ptr< osgEarth::Annotation::FeatureNode > _featureNode;
         osg::ref_ptr< osgEarth::Features::Feature >  _feature;

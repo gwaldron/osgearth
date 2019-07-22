@@ -110,20 +110,20 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
 
 
   // create map point draggers
-  _p1Dragger  = new LOSIntersectingDragger( _mapNode );
-  _p1Dragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map, this, P2P_START));
+  _p1Dragger  = new LOSIntersectingDragger( _mapNode.get() );
+  _p1Dragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map.get(), this, P2P_START));
   _p1Dragger->setColor(osg::Vec4(0,1,1,0));
   _p1Dragger->setPickColor(osg::Vec4(1,0,1,0));
   _p1BaseAlt = 0.0;
 
-  _p2Dragger  = new LOSIntersectingDragger(_mapNode);
-  _p2Dragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map, this, P2P_END));    
+  _p2Dragger  = new LOSIntersectingDragger(_mapNode.get());
+  _p2Dragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map.get(), this, P2P_END));    
   _p2Dragger->setColor(osg::Vec4(0,1,1,0));
   _p2Dragger->setPickColor(osg::Vec4(1,0,1,0));
   _p2BaseAlt = 0.0;
 
-  _radDragger  = new LOSIntersectingDragger(_mapNode);
-  _radDragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map, this, RADIAL_CENTER));    
+  _radDragger  = new LOSIntersectingDragger(_mapNode.get());
+  _radDragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map.get(), this, RADIAL_CENTER));    
   _radDragger->setColor(osg::Vec4(0,1,1,0));
   _radDragger->setPickColor(osg::Vec4(1,0,1,0));
   _radBaseAlt = 0.0;
@@ -484,7 +484,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
       else
         _p1Dragger->setHeightAboveTerrain(0.0);
 
-      updateDragger(_p1Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), _p1BaseAlt, ALTMODE_RELATIVE));
+      updateDragger(_p1Dragger.get(), GeoPoint(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), _p1BaseAlt, ALTMODE_RELATIVE));
       break;
     case P2P_END:
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
@@ -492,7 +492,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
       else
         _p2Dragger->setHeightAboveTerrain(0.0);
 
-      updateDragger(_p2Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), _p2BaseAlt, ALTMODE_RELATIVE));
+      updateDragger(_p2Dragger.get(), GeoPoint(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), _p2BaseAlt, ALTMODE_RELATIVE));
       break;
     case RADIAL_CENTER:
       if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
@@ -500,7 +500,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
       else
         _radDragger->setHeightAboveTerrain(0.0);
 
-      updateDragger(_radDragger, GeoPoint(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), _radBaseAlt, ALTMODE_RELATIVE));
+      updateDragger(_radDragger.get(), GeoPoint(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), _radBaseAlt, ALTMODE_RELATIVE));
       break;
   }
 }
@@ -654,7 +654,7 @@ void LOSCreationDialog::updateLOSNodes(bool updateAll)
       p.altitudeMode() = ALTMODE_ABSOLUTE;
       _p2p->setStart( p );
       //_p2p->setStartAltitudeMode(ALTMODE_ABSOLUTE);
-      p1Node = _annotations[_ui.p1NodeCombo->currentIndex()];
+      p1Node = _annotations[_ui.p1NodeCombo->currentIndex()].get();
       p1Set = true;
     }
 
@@ -681,7 +681,7 @@ void LOSCreationDialog::updateLOSNodes(bool updateAll)
       p.altitudeMode() = ALTMODE_ABSOLUTE;
       _p2p->setEnd( p );
       //_p2p->setEndAltitudeMode(ALTMODE_ABSOLUTE);
-      p2Node = _annotations[_ui.p2NodeCombo->currentIndex()];
+      p2Node = _annotations[_ui.p2NodeCombo->currentIndex()].get();
       p2Set = true;
     }
 
@@ -728,7 +728,7 @@ void LOSCreationDialog::updateLOSNodes(bool updateAll)
       p.altitudeMode() = ALTMODE_ABSOLUTE;
       _radial->setCenter( p );
       //_radial->setAltitudeMode(ALTMODE_ABSOLUTE);
-      _radial->setUpdateCallback(new osgEarth::Util::RadialLineOfSightTether(_annotations[_ui.radNodeCombo->currentIndex()]));
+      _radial->setUpdateCallback(new osgEarth::Util::RadialLineOfSightTether(_annotations[_ui.radNodeCombo->currentIndex()].get()));
     }
   }
 }
@@ -847,19 +847,19 @@ void LOSCreationDialog::onRadMapButtonClicked(bool checked)
 void LOSCreationDialog::onP1FindNodeButtonClicked(bool checked)
 {
   if (_ui.p1NodeCombo->currentIndex() >= 0 && (int)_annotations.size() > _ui.p1NodeCombo->currentIndex())
-    centerMapOnNode(_annotations[_ui.p1NodeCombo->currentIndex()]);
+    centerMapOnNode(_annotations[_ui.p1NodeCombo->currentIndex()].get());
 }
 
 void LOSCreationDialog::onP2FindNodeButtonClicked(bool checked)
 {
   if (_ui.p2NodeCombo->currentIndex() >= 0 && (int)_annotations.size() > _ui.p2NodeCombo->currentIndex())
-    centerMapOnNode(_annotations[_ui.p2NodeCombo->currentIndex()]);
+    centerMapOnNode(_annotations[_ui.p2NodeCombo->currentIndex()].get());
 }
 
 void LOSCreationDialog::onRadFindNodeButtonClicked(bool checked)
 {
   if (_ui.radNodeCombo->currentIndex() >= 0 && (int)_annotations.size() > _ui.radNodeCombo->currentIndex())
-    centerMapOnNode(_annotations[_ui.radNodeCombo->currentIndex()]);
+    centerMapOnNode(_annotations[_ui.radNodeCombo->currentIndex()].get());
 }
 
 void LOSCreationDialog::onLocationValueChanged(double d)

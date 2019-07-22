@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,8 +29,8 @@ namespace
 {
     void rgb2hsv( osg::Vec4f& c )
     {
-        float minval = std::min( c.r(), std::min( c.g(), c.b() ) );
-        float maxval = std::max( c.r(), std::max( c.g(), c.b() ) );
+        float minval = osg::minimum( c.r(), osg::minimum( c.g(), c.b() ) );
+        float maxval = osg::maximum( c.r(), osg::maximum( c.g(), c.b() ) );
         float delta = maxval - minval;
         float h = 0.0f, s = 0.0, v = maxval;
         if ( delta != 0.0f )
@@ -140,7 +140,7 @@ Color::Color( const std::string& input, Format format )
         c.g() |= t[e+3]<='9' ? (t[e+3]-'0')    : (10+(t[e+3]-'a'));
         c.b() |= t[e+4]<='9' ? (t[e+4]-'0')<<4 : (10+(t[e+4]-'a'))<<4;
         c.b() |= t[e+5]<='9' ? (t[e+5]-'0')    : (10+(t[e+5]-'a'));
-        if ( t.length() >= 8 ) {
+        if ( len >= 8 ) {
             c.a() = 0;
             c.a() |= t[e+6]<='9' ? (t[e+6]-'0')<<4 : (10+(t[e+6]-'a'))<<4;
             c.a() |= t[e+7]<='9' ? (t[e+7]-'0')    : (10+(t[e+7]-'a'));
@@ -202,4 +202,19 @@ Color::as( Format format ) const
             (((unsigned)(g()*255.0)) << 8 ) |
             (((unsigned)(r()*255.0)));
     }
+}
+
+osg::Vec4f
+Color::asHSL() const
+{
+    osg::Vec4f out = *this;
+    rgb2hsv(out);
+    return out;
+}
+
+void
+Color::fromHSL(const osg::Vec4f& hsla)
+{
+    *this = hsla;
+    hsv2rgb(*this);
 }

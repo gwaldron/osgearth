@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -44,7 +44,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "join";
-            conf.addObjIfSet( "features", _features );
+            conf.set( "features", _features );
             return conf;
         }
 
@@ -56,7 +56,7 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getObjIfSet( "features", _features );
+            conf.get( "features", _features );
         }
 
         optional<FeatureSourceOptions> _features;

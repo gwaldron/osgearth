@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,8 +18,8 @@
  */
 
 #include <osgEarth/StringUtils>
-#include <osgDB/FileNameUtils>
 #include <cctype>
+
 #include <cstring>
 
 using namespace osgEarth;
@@ -151,31 +151,31 @@ const std::string osgEarth::EMPTY_STRING;
 std::string
 osgEarth::toLegalFileName(const std::string& input, bool allowSubdirs)
 {
-   // See: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
-   // We omit '-' so we can use it for the HEX identifier.
-   static const std::string legalWithoutSubdirs("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz0123456789_.");
-   static const std::string legalWithDirs("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz0123456789_./");
+    // See: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
+    // We omit '-' so we can use it for the HEX identifier.
+    static const std::string legalWithoutSubdirs("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz0123456789_.");
+    static const std::string legalWithDirs      ("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz0123456789_./");
 
+    
+    std::size_t pos = input.find("://");
+    pos = pos == std::string::npos ? 0 : pos+3;
 
-   std::size_t pos = input.find("://");
-   pos = pos == std::string::npos ? 0 : pos + 3;
+    const std::string& legal = allowSubdirs? legalWithDirs : legalWithoutSubdirs;
 
-   const std::string& legal = allowSubdirs ? legalWithDirs : legalWithoutSubdirs;
+    std::stringstream buf;
+    for( ; pos < input.size(); ++pos )
+    {
+        std::string::const_reference c = input[pos];
+        if (legal.find(c) != std::string::npos)
+            buf << c;
+        else
+            buf << "-" << std::hex << static_cast<unsigned>(c) << "-";
+    }
 
-   std::stringstream buf;
-   for (; pos < input.size(); ++pos)
-   {
-      std::string::const_reference c = input[pos];
-      if (legal.find(c) != std::string::npos)
-         buf << c;
-      else
-         buf << "-" << std::hex << static_cast<unsigned>(c) << "-";
-   }
+    std::string result;
+    result = buf.str();
 
-   std::string result;
-   result = buf.str();
-
-   return result;
+    return result;
 }
 
 /** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
@@ -388,6 +388,33 @@ osgEarth::trim(const std::string& in)
    return str;
 }
 
+std::string
+osgEarth::trimAndCompress(const std::string& in)
+{
+    bool inwhite = true;
+    std::stringstream buf;
+    for (unsigned i = 0; i < in.length(); ++i)
+    {
+        char c = in[i];
+        if (::isspace(c))
+        {
+            if (!inwhite)
+            {
+                buf << ' ';
+                inwhite = true;
+            }
+        }
+        else
+        {
+            inwhite = false;
+            buf << c;
+        }
+    }
+    std::string r;
+    r = buf.str();
+    trim2(r);
+    return r;
+}
 
 std::string
 osgEarth::joinStrings(const StringVector& input, char delim)

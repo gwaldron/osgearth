@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
@@ -47,13 +48,13 @@ FeatureSourceOptions::fromConfig(const Config& conf)
 {
     unsigned numResamples = 0;
 
-    conf.getIfSet   ( "open_write",   _openWrite );
-    conf.getIfSet   ( "name",         _name );
-    conf.getObjIfSet( "profile",      _profile );
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
-    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.getIfSet   ( "fid_attribute", _fidAttribute );
+    conf.get( "open_write",   _openWrite );
+    conf.get( "name",         _name );
+    conf.get( "profile",      _profile );
+    conf.get( "cache_policy", _cachePolicy );
+    conf.get( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.get( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.get( "fid_attribute", _fidAttribute );
 
     // For backwards-compatibility (before adding the "filters" block)
     // TODO: Remove at some point in the distant future.
@@ -74,13 +75,13 @@ FeatureSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
 
-    conf.updateIfSet   ( "open_write",   _openWrite );
-    conf.updateIfSet   ( "name",         _name );
-    conf.setObj( "profile",      _profile );
-    conf.setObj( "cache_policy", _cachePolicy );
-    conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.updateIfSet   ( "fid_attribute", _fidAttribute );
+    conf.set( "open_write",   _openWrite );
+    conf.set( "name",         _name );
+    conf.set( "profile",      _profile );
+    conf.set( "cache_policy", _cachePolicy );
+    conf.set( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.set( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.set( "fid_attribute", _fidAttribute );
 
     if ( !_filterOptions.empty() )
     {
@@ -89,7 +90,7 @@ FeatureSourceOptions::getConfig() const
         {
             filters.add( _filterOptions[i].getConfig() );
         }
-        conf.update( "filters", filters );
+        conf.set( "filters", filters );
     }
 
     return conf;
@@ -97,12 +98,16 @@ FeatureSourceOptions::getConfig() const
 
 //------------------------------------------------------------------------
 
-FeatureSource::FeatureSource(const ConfigOptions&  options,
-                             const osgDB::Options* readOptions) :
-_options( options )
+
+FeatureSource::FeatureSource()
 {    
-    _readOptions  = readOptions;
-    _uriContext  = URIContext( _readOptions.get() );
+    //nop
+}
+
+FeatureSource::FeatureSource(const ConfigOptions&  options) :
+_options( options )
+{
+    //nop
 }
 
 FeatureSource::~FeatureSource()
@@ -110,12 +115,23 @@ FeatureSource::~FeatureSource()
     //nop
 }
 
+void
+FeatureSource::setReadOptions(const osgDB::Options* readOptions)
+{
+    _readOptions = readOptions;
+    _uriContext = URIContext(_readOptions.get());
+}
+
 const Status&
 FeatureSource::open(const osgDB::Options* readOptions)
 {
-    if ( readOptions )
-        _readOptions = readOptions;
-    
+    setReadOptions(readOptions);
+    return open();
+}
+
+const Status&
+FeatureSource::open()
+{    
     // Create and initialize the filters.
     for(unsigned i=0; i<_options.filters().size(); ++i)
     {
@@ -123,12 +139,26 @@ FeatureSource::open(const osgDB::Options* readOptions)
         FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
         if ( filter )
         {
-            _filters.push_back( filter );
-            filter->initialize( _readOptions );
+            if (_filters.valid() == false)
+                _filters = new FeatureFilterChain();
+
+            _filters->push_back( filter );
+            filter->initialize(_readOptions.get());
         }
     }
 
-    _status = initialize(_readOptions);
+    _status = initialize(_readOptions.get());
+    return _status;
+}
+
+const Status&
+FeatureSource::create(
+    const FeatureProfile* profile,
+    const FeatureSchema& schema,
+    const Geometry::Type& geometryType,
+    const osgDB::Options* readOptions)
+{
+    _status = Status::Error(Status::ResourceUnavailable, "Driver does not support create");
     return _status;
 }
 
@@ -138,10 +168,16 @@ FeatureSource::setFeatureProfile(const FeatureProfile* fp)
     _featureProfile = fp;
 }
 
-const FeatureFilterList&
+const FeatureFilterChain*
 FeatureSource::getFilters() const
 {
-    return _filters;
+    return _filters.get();
+}
+
+FeatureCursor*
+FeatureSource::createFeatureCursor(ProgressCallback* progress)
+{
+    return createFeatureCursor(Symbology::Query(), progress);
 }
 
 const FeatureSchema&
@@ -183,12 +219,12 @@ void
 FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) const
 {
     // apply filters before returning.
-    if ( !getFilters().empty() )
+    if (_filters.valid() && _filters->empty() == false)
     {
         FilterContext cx;
         cx.setProfile( getFeatureProfile() );
         cx.extent() = extent;
-        for(FeatureFilterList::const_iterator filter = getFilters().begin(); filter != getFilters().end(); ++filter)
+        for(FeatureFilterChain::const_iterator filter = _filters->begin(); filter != _filters->end(); ++filter)
         {
             cx = filter->get()->push( features, cx );
         }
@@ -204,7 +240,7 @@ FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) cons
 FeatureSource*
 FeatureSourceFactory::create( const FeatureSourceOptions& options )
 {
-    FeatureSource* featureSource = 0L;
+    osg::ref_ptr<FeatureSource> source;
 
     if ( !options.getDriver().empty() )
     {
@@ -213,13 +249,14 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( FEATURE_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
-        if ( featureSource )
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
+        source = dynamic_cast<FeatureSource*>( object.release() );
+        if ( source )
         {
             if ( options.name().isSet() )
-                featureSource->setName( *options.name() );
+                source->setName( *options.name() );
             else
-                featureSource->setName( options.getDriver() );
+                source->setName( options.getDriver() );
         }
         else
         {
@@ -231,7 +268,7 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
         OE_WARN << LC << "ILLEGAL null feature driver name" << std::endl;
     }
 
-    return featureSource;
+    return source.release();
 }
 
 //------------------------------------------------------------------------

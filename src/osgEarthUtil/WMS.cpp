@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,6 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 
-#include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -136,12 +135,12 @@ WMSCapabilities::getLayerByName(const std::string &name)
 }
 
 WMSCapabilities* 
-WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
+WMSCapabilitiesReader::read( const URI& location, const osgDB::ReaderWriter::Options* options )
 {
     WMSCapabilities *caps = NULL;
-    if ( osgDB::containsServerAddress( location ) )
+    if (location.isRemote())
     {
-        ReadResult rr = URI(location).readString( options );
+        ReadResult rr = location.readString( options );
         if ( rr.succeeded() )
         {
             std::istringstream in( rr.getString() );
@@ -150,9 +149,9 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
     }
     else
     {
-        if ((osgDB::fileExists(location)) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
+        if ((osgDB::fileExists(location.full())) && (osgDB::fileType(location.full()) == osgDB::REGULAR_FILE))
         {
-            std::ifstream in( location.c_str() );
+            std::ifstream in( location.full().c_str() );
             caps = read( in );
         }
     }
@@ -256,6 +255,13 @@ readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
                 minY = as<double>(e_gbb->getSubElementText( ATTR_SOUTHLAT ), 0);
                 maxX = as<double>(e_gbb->getSubElementText( ATTR_EASTLON ), 0);
                 maxY = as<double>(e_gbb->getSubElementText( ATTR_NORTHLAT ), 0);
+                layer->setLatLonExtents(minX, minY, maxX, maxY);
+            }
+            else if (parentLayer)
+            {
+                // inherit the LL BB from the parent layer if there was one
+                double minX, minY, maxX, maxY;
+                parentLayer->getLatLonExtents(minX, minY, maxX, maxY);
                 layer->setLatLonExtents(minX, minY, maxX, maxY);
             }
         }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,20 +18,13 @@
  */
 
 #include <osgEarth/ImageUtils>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Random>
-#include <osgEarth/GeoCommon>
-#include <osg/Notify>
-#include <osg/Texture>
-#include <osg/ImageSequence>
-#include <osg/Timer>
-#include <osg/ValueObject>
 #include <osgDB/Registry>
 #include <osg/ConcurrencyViewerMacros>
-#include <string.h>
-#include <memory.h>
+
+#include <osg/ValueObject>
 
 #define LC "[ImageUtils] "
 
@@ -235,7 +228,7 @@ ImageUtils::resizeImage(const osg::Image* input,
         {
             output->allocateImage( out_s, out_t, input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
             output->setInternalTextureFormat( input->getInternalTextureFormat() );
-            markAsNormalized(output, isNormalized(input));
+            markAsNormalized(output.get(), isNormalized(input));
         }
         else
         {
@@ -258,11 +251,6 @@ ImageUtils::resizeImage(const osg::Image* input,
     {
         PixelReader read( input );
         PixelWriter write( output.get() );
-
-        unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
-
-        unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
-        unsigned int   dataRowSizeBytes = output->getRowSizeInBytes() >> mipmapLevel;
 
         for( unsigned int output_row=0; output_row < out_t; output_row++ )
         {
@@ -327,11 +315,11 @@ ImageUtils::resizeImage(const osg::Image* input,
                         // nearest neighbor:
                         int col = (input_col-(int)input_col) <= (ceil(input_col)-input_col) ?
                             (int)input_col :
-                            std::min( 1+(int)input_col, (int)in_s-1 );
+                            osg::minimum( 1+(int)input_col, (int)in_s-1 );
 
                         int row = (input_row-(int)input_row) <= (ceil(input_row)-input_row) ?
                             (int)input_row :
-                            std::min( 1+(int)input_row, (int)in_t-1 );
+                            osg::minimum( 1+(int)input_row, (int)in_t-1 );
 
                         color = read(col, row, layer); // read pixel from mip level 0.
 
@@ -368,9 +356,7 @@ ImageUtils::flattenImage(osg::Image*                             input,
         layer->setPixelAspectRatio(input->getPixelAspectRatio());
         markAsNormalized(layer, isNormalized(input));
 
-#if OSG_MIN_VERSION_REQUIRED(3,1,0)
         layer->setRowLength(input->getRowLength());
-#endif
         layer->setOrigin(input->getOrigin());
         layer->setFileName(input->getFileName());
         layer->setWriteHint(input->getWriteHint());
@@ -434,8 +420,8 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
         for (int t = 0; t < target->t(); )
         {
             int offset = (s-1) % stride; // the minus1 accounts for the border
-            int s0 = std::max(s - offset, 0);
-            int s1 = std::min(s0 + (int)stride, target->s()-1);
+            int s0 = osg::maximum(s - offset, 0);
+            int s1 = osg::minimum(s0 + (int)stride, target->s()-1);
             double mu = (double)offset / (double)(s1-s0);
             osg::Vec4 p1 = readTarget(s0, t);
             osg::Vec4 p2 = readTarget(s1, t);
@@ -453,8 +439,8 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
         for (int t = 2; t<target->t()-2; t += 2)
         {
             int offset = (t-1) % stride; // the minus1 accounts for the border
-            int t0 = std::max(t - offset, 0);
-            int t1 = std::min(t0 + (int)stride, target->t()-1);
+            int t0 = osg::maximum(t - offset, 0);
+            int t1 = osg::minimum(t0 + (int)stride, target->t()-1);
             double mu = (double)offset / double(t1-t0);
 
             osg::Vec4 p1 = readTarget(s, t0);
@@ -473,12 +459,12 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
         for (int t = 2; t<target->t()-2; t += 2)
         {
             int s_offset = (s-1) % stride;
-            int s0 = std::max(s - s_offset, 0);
-            int s1 = std::min(s0 + (int)stride, target->s()-1);
+            int s0 = osg::maximum(s - s_offset, 0);
+            int s1 = osg::minimum(s0 + (int)stride, target->s()-1);
 
             int t_offset = (t-1) % stride;
-            int t0 = std::max(t - t_offset, 0);
-            int t1 = std::min(t0 + (int)stride, target->t()-1);
+            int t0 = osg::maximum(t - t_offset, 0);
+            int t1 = osg::minimum(t0 + (int)stride, target->t()-1);
 
             double mu, mu2;
 
@@ -499,90 +485,6 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
             writeTarget(v, s, t);
         }
     }
-
-
-#if 0
-    // first copy and expand the source quadrant by copying every
-    // even-numbered pixel.
-    for (int s=0; s<=source->s()/2; ++s)
-    {
-        for (int t=0; t<=source->t()/2; ++t)
-        {
-            osg::Vec4 value = readSource(s_off+s, t_off+t);
-            unsigned out_s = s*2, out_t = t*2;
-            writeTarget(value, s*2, t*2);
-        }
-    }
-
-    // next interpolate the odd numbered columns, based on the stride.
-    for (int s = 1; s<target->s()-1; s += 2)
-    {
-        for (int t = 0; t < target->t(); t += 2)
-        {
-            int offset = s % stride;
-            int s0 = std::max(s - offset, 0);
-            int s1 = std::min(s0 + (int)stride, target->s()-1);
-            float mu = (float)offset / (float)(s1-s0);
-
-            osg::Vec4 p1 = readTarget(s0, t);
-            osg::Vec4 p2 = readTarget(s1, t);
-            float mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
-            osg::Vec4 v = (p1*(1.0-mu2)) + (p2*mu2);
-            writeTarget(v, s, t);
-        }
-    }
-
-    // next interpolate the odd numbered rows
-    for (int s = 0; s < target->s(); s += 2)
-    {
-        for (int t = 1; t<target->t()-1; t += 2)
-        {
-            int offset = t % stride;
-            int t0 = std::max(t - offset, 0);
-            int t1 = std::min(t0 + (int)stride, target->t()-1);
-            float mu = (float)offset / float(t1-t0);
-
-            osg::Vec4 p1 = readTarget(s, t0);
-            osg::Vec4 p2 = readTarget(s, t1);
-            float mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
-            osg::Vec4 v = (p1*(1.0-mu2)) + (p2*mu2);
-            writeTarget(v, s, t);
-        }
-    }
-
-    // then interpolate the centers
-    for (int s = 1; s<target->s()-1; s += 2)
-    {
-        for (int t = 1; t<target->t()-1; t += 2)
-        {
-            int s_offset = s % stride;
-            int s0 = std::max(s - s_offset, 0);
-            int s1 = std::min(s0 + (int)stride, target->s()-1);
-
-            int t_offset = t % stride;
-            int t0 = std::max(t - t_offset, 0);
-            int t1 = std::min(t0 + (int)stride, target->t()-1);
-
-            float mu, mu2;
-
-            osg::Vec4 p1 = readTarget(s0, t);
-            osg::Vec4 p2 = readTarget(s1, t);
-            mu = (float)s_offset / (float)(s1-s0);
-            mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
-            osg::Vec4 v1 = (p1*(1.0-mu2)) + (p2*mu2);
-            
-            osg::Vec4 p3 = readTarget(s, t0);
-            osg::Vec4 p4 = readTarget(s, t1);
-            mu = (float)t_offset / (float)(t1-t0);
-            mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
-            osg::Vec4 v2 = (p3*(1.0-mu2)) + (p4*mu2);
-
-            osg::Vec4 v = (v1+v2)*0.5;
-
-            writeTarget(v, s, t);
-        }
-    }
-#endif
     
     return true;
 }
@@ -630,8 +532,8 @@ ImageUtils::buildNearestNeighborMipmaps(const osg::Image* input)
     for( int level=0; level<numMipmapLevels; ++level )
     {
         osg::ref_ptr<osg::Image> temp;
-        ImageUtils::resizeImage(input2, level_s, level_t, result, level, false);
-        ImageUtils::resizeImage(input2, level_s, level_t, temp, 0, false);
+        ImageUtils::resizeImage(input2.get(), level_s, level_t, result, level, false);
+        ImageUtils::resizeImage(input2.get(), level_s, level_t, temp, 0, false);
         level_s >>= 1;
         level_t >>= 1;
         input2 = temp.get();
@@ -693,6 +595,82 @@ ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Imag
     }
 
     return result.release();
+}
+
+osgDB::ReaderWriter*
+ImageUtils::getReaderWriterForStream(std::istream& stream) {
+    // Modified from https://oroboro.com/image-format-magic-bytes/
+
+    // Get the length of the stream
+    stream.seekg(0, std::ios::end);
+    unsigned int len = stream.tellg();
+    stream.seekg(0, std::ios::beg);
+
+    if (len < 16) return 0;
+
+    //const char* data = input.c_str();
+    // Read a 16 byte header
+    char data[16];
+    stream.read(data, 16);
+    // Reset reading
+    stream.seekg(0, std::ios::beg);
+
+    // .jpg:  FF D8 FF
+    // .png:  89 50 4E 47 0D 0A 1A 0A
+    // .gif:  GIF87a      
+    //        GIF89a
+    // .tiff: 49 49 2A 00
+    //        4D 4D 00 2A
+    // .bmp:  BM 
+    // .webp: RIFF ???? WEBP 
+    // .ico   00 00 01 00
+    //        00 00 02 00 ( cursor files )
+    switch (data[0])
+    {
+    case '\xFF':
+        return (!strncmp((const char*)data, "\xFF\xD8\xFF", 3)) ?
+            osgDB::Registry::instance()->getReaderWriterForExtension("jpg") : 0;
+
+    case '\x89':
+        return (!strncmp((const char*)data,
+            "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8)) ?
+            osgDB::Registry::instance()->getReaderWriterForExtension("png") : 0;
+
+    case 'G':
+        return (!strncmp((const char*)data, "GIF87a", 6) ||
+            !strncmp((const char*)data, "GIF89a", 6)) ?
+            osgDB::Registry::instance()->getReaderWriterForExtension("gif") : 0;
+
+    case 'I':
+        return (!strncmp((const char*)data, "\x49\x49\x2A\x00", 4)) ?
+            osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
+
+    case 'M':
+        return (!strncmp((const char*)data, "\x4D\x4D\x00\x2A", 4)) ?
+            osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
+
+    case 'B':
+        return ((data[1] == 'M')) ?
+            osgDB::Registry::instance()->getReaderWriterForExtension("bmp") : 0;
+
+    default:
+        return 0;
+    }
+}
+
+osg::Image*
+ImageUtils::readStream(std::istream& stream, const osgDB::Options* options) {
+
+    osgDB::ReaderWriter* rw = getReaderWriterForStream(stream);
+    if (!rw) {
+        return 0;
+    }
+
+    osgDB::ReaderWriter::ReadResult rr = rw->readImage(stream, options);
+    if (rr.validImage()) {
+        return rr.takeImage();
+    }
+    return 0;
 }
 
 namespace
@@ -929,7 +907,6 @@ ImageUtils::upSampleNN(const osg::Image* src, int quadrant)
     int seed = *(int*)dst->data(0,0);
 
     Random rng(seed+quadrant);
-    int c = 0;
 
     for(int t=0; t<dst->t(); t+=2)
     {
@@ -1060,7 +1037,7 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
 
     const Capabilities& caps = Registry::capabilities();
 
-#if defined(OSG_GLES2_AVAILABLE) && defined(OSG_GLES3_AVAILABLE)
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
 
     if (image->getPixelFormat() == GL_RGBA && image->getPixelSizeInBits() == 32) 
     {
@@ -1368,10 +1345,14 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
    }
    // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
-    if (minFilter == tex->LINEAR_MIPMAP_LINEAR ||
+
+    bool needsMipmaps =
+        minFilter == tex->LINEAR_MIPMAP_LINEAR ||
         minFilter == tex->LINEAR_MIPMAP_NEAREST ||
         minFilter == tex->NEAREST_MIPMAP_LINEAR ||
-        minFilter == tex->NEAREST_MIPMAP_NEAREST)
+        minFilter == tex->NEAREST_MIPMAP_NEAREST;
+
+    if (needsMipmaps && tex->getNumImages() > 0)
     {
         // See if we have a CPU mipmap generator:
         osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
@@ -1976,6 +1957,8 @@ namespace
             return &ColorReader<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::read;
         case GL_UNSIGNED_BYTE_3_3_2:
             return &ColorReader<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::read;
+        case GL_UNSIGNED_INT_8_8_8_8_REV:
+            return &ColorReader<GLFormat, GLubyte>::read;
         default:
             return &ColorReader<0, GLbyte>::read;
         }
@@ -2067,12 +2050,12 @@ ImageUtils::PixelReader::operator()(double u, double v, int r, int m) const
          double s = u * sizeS;
          double t = v * sizeT;
 
-         double s0 = std::max(floorf(s), 0.0f);
-         double s1 = std::min(s0+1.0f, sizeS);
+         double s0 = osg::maximum(floorf(s), 0.0f);
+         double s1 = osg::minimum(s0+1.0f, sizeS);
          double smix = s0 < s1 ? (s-s0)/(s1-s0) : 0.0f;
 
-         double t0 = std::max(floorf(t), 0.0f);
-         double t1 = std::min(t0+1.0f, sizeT);
+         double t0 = osg::maximum(floorf(t), 0.0f);
+         double t1 = osg::minimum(t0+1.0f, sizeT);
          double tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
 
          osg::Vec4 UL = (*_reader)(this, (int)s0, (int)t0, r, m); // upper left
@@ -2222,30 +2205,6 @@ TextureAndImageVisitor::apply(osg::Node& node)
         apply(*node.getStateSet());
 
     traverse(node);
-}
-
-void
-TextureAndImageVisitor::apply(osg::Geode& geode)
-{
-    if (geode.getStateSet())
-        apply(*geode.getStateSet());
-
-    for (unsigned i = 0; i < geode.getNumDrawables(); ++i) {
-        apply(*geode.getDrawable(i));
-        //if (geode.getDrawable(i) && geode.getDrawable(i)->getStateSet())
-        //    apply(*geode.getDrawable(i)->getStateSet());
-    }
-
-    //traverse(geode);
-}
-
-void
-TextureAndImageVisitor::apply(osg::Drawable& drawable)
-{
-    if (drawable.getStateSet())
-        apply(*drawable.getStateSet());
-
-    //traverse(drawable);
 }
 
 void

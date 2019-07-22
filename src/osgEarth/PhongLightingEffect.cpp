@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,16 +22,8 @@
 #include <osgEarth/PhongLightingEffect>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/StringUtils>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/Lighting>
-
-// GL_LIGHTING is not always defined on GLES so define it.
-#ifndef GL_LIGHTING
-    #define GL_LIGHTING 0x0B50
-#endif
 
 using namespace osgEarth;
 
@@ -51,21 +43,7 @@ void
 PhongLightingEffect::init()
 {
     _supported = Registry::capabilities().supportsGLSL();
-    // Replaced with setDefine
-    //if ( _supported )
-    //{
-    //    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
-    //}
 }
-
-//void
-//PhongLightingEffect::setCreateLightingUniform(bool value)
-//{
-//    if ( !value )
-//    {        
-//        _lightingUniform = 0L;
-//    }
-//}
 
 PhongLightingEffect::~PhongLightingEffect()
 {
@@ -87,9 +65,6 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
 
         stateset->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
         stateset->setDefine("OE_NUM_LIGHTS", "1");
-
-        //if ( _lightingUniform.valid() )
-        //    stateset->addUniform( _lightingUniform.get() );
     }
 }
 
@@ -103,7 +78,7 @@ PhongLightingEffect::detach()
             osg::ref_ptr<osg::StateSet> stateset;
             if ( (*it).lock(stateset) )
             {
-                detach( stateset );
+                detach(stateset.get());
                 (*it) = 0L;
             }
         }

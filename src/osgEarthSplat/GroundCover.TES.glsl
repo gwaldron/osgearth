@@ -63,15 +63,15 @@ void oe_GroundCover_tessellate()
             skipVertex = true;
         }
     }
-	
+
     VP_Interpolate3();
     // Must re-normalize the normal vector since interpolation was linear?
 	//vp_Normal = normalize(vp_Normal);
-	
-	if (skipVertex)
+
+    if (skipVertex)
     {
         oe_terrain_vertexMarker = VERTEX_MARKER_DISCARD;
     }
-	
+
     VP_EmitVertex();
 }

@@ -38,7 +38,8 @@ ENDIF(WIN32)
 SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
-    AlphaEffect.frag.glsl
+    CascadeDraping.glsl
+    ClipPlane.glsl
     DepthOffset.vert.glsl
     Draping.vert.glsl
     Draping.frag.glsl
@@ -46,8 +47,14 @@ set(TARGET_GLSL
     GPUClamping.vert.lib.glsl
     GPUClamping.frag.glsl
     Instancing.vert.glsl
+    LineDrawable.glsl
     PhongLighting.vert.glsl
-    PhongLighting.frag.glsl)
+    PhongLighting.frag.glsl
+    PointDrawable.glsl
+    Text.vert.glsl
+    Text.frag.glsl
+    Text_legacy.glsl
+    )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -62,8 +69,7 @@ configure_shaders(
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS
-    AlphaEffect
-    AutoScale
+    Async
     Bounds
     Cache
     CacheEstimator
@@ -71,6 +77,7 @@ SET(LIB_PUBLIC_HEADERS
     CachePolicy
     CacheSeed
     Capabilities
+    CascadeDrapingDecorator
     Clamping
     ClampableNode
     ClampingTechnique
@@ -93,6 +100,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationLOD
     ElevationPool
     ElevationQuery
+    EllipsoidIntersector
     Endian
     Export
     Extension
@@ -105,8 +113,10 @@ SET(LIB_PUBLIC_HEADERS
     GeoTransform
     GeometryClamper
     GLSLChunker
+    GLUtils
     HeightFieldUtils
     Horizon
+    HorizonClipPlane
     HTTPClient
     ImageLayer
     ImageMosaic
@@ -119,7 +129,9 @@ SET(LIB_PUBLIC_HEADERS
     LandCoverLayer
     Layer
     LayerListener
+    LayerShader
     Lighting
+    LineDrawable
     LineFunctor
     Locators
     LocalTangentPlane
@@ -133,7 +145,6 @@ SET(LIB_PUBLIC_HEADERS
     MapNodeOptions
     MapOptions
     MaskLayer
-    MaskNode
     MaskSource
     Memory
     MemCache
@@ -147,17 +158,15 @@ SET(LIB_PUBLIC_HEADERS
     optional
     ObjectIndex
     OverlayDecorator
-    OverlayNode
     PagedNode
     PatchLayer
     PhongLightingEffect
     Picker
     PluginLoader
+    PointDrawable
     PrimitiveIntersector
     Profile
-    Profiler
     Progress
-    QuadTree
     Random
     Registry
     ResourceReleaser
@@ -168,15 +177,15 @@ SET(LIB_PUBLIC_HEADERS
     ShaderFactory
     ShaderGenerator
     ShaderLoader
+    ShaderMerger
     ShaderUtils
     Shadowing
-    SharedSARepo
     SimplexNoise
     SpatialReference
     StateSetCache
-    StateSetLOD
     Status
     StringUtils
+    #TDTiles
     TaskService
     Terrain
     TerrainEffect
@@ -188,9 +197,8 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileModel
     TerrainTileModelFactory
     TerrainTileNode
-    TileKeyDataStore
-    TilePatchCallback
     Tessellator
+    Text
     TileKey
     TileHandler
     TileRasterizer
@@ -208,7 +216,6 @@ SET(LIB_PUBLIC_HEADERS
     Viewpoint
     VirtualProgram
     VisibleLayer
-    WrapperLayer
     XmlUtils
 )
 
@@ -245,8 +252,7 @@ IF (OSGEARTH_EMBED_GIT_SHA)
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 set(TARGET_SRC
-    AlphaEffect.cpp
-    AutoScale.cpp
+    Async.cpp
     Bounds.cpp
     Cache.cpp
     CacheBin.cpp
@@ -254,6 +260,7 @@ set(TARGET_SRC
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
+    CascadeDrapingDecorator.cpp
     Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
@@ -274,6 +281,7 @@ set(TARGET_SRC
     ElevationLOD.cpp
     ElevationPool.cpp
     ElevationQuery.cpp
+    EllipsoidIntersector.cpp
     Extension.cpp
     FadeEffect.cpp
     FileUtils.cpp
@@ -283,8 +291,10 @@ set(TARGET_SRC
     GeoTransform.cpp
     GeometryClamper.cpp
     GLSLChunker.cpp
+    GLUtils.cpp
     HeightFieldUtils.cpp
     Horizon.cpp
+    HorizonClipPlane.cpp
     HTTPClient.cpp
     ImageLayer.cpp
     ImageMosaic.cpp
@@ -296,7 +306,9 @@ set(TARGET_SRC
     LandCover.cpp
     LandCoverLayer.cpp
     Layer.cpp
+    LayerShader.cpp
     Lighting.cpp
+    LineDrawable.cpp
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp
@@ -307,7 +319,6 @@ set(TARGET_SRC
     MapNodeOptions.cpp
     MapOptions.cpp
     MaskLayer.cpp
-    MaskNode.cpp
     MaskSource.cpp
     MemCache.cpp
     Memory.cpp
@@ -320,15 +331,13 @@ set(TARGET_SRC
     Notify.cpp
     ObjectIndex.cpp
     OverlayDecorator.cpp
-    OverlayNode.cpp
     PagedNode.cpp
     PatchLayer.cpp
     PhongLightingEffect.cpp
+    PointDrawable.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
-    Profiler.cpp
     Progress.cpp
-    QuadTree.cpp
     Random.cpp
     Registry.cpp
     ResourceReleaser.cpp
@@ -338,15 +347,16 @@ set(TARGET_SRC
     ShaderFactory.cpp
     ShaderGenerator.cpp
     ShaderLoader.cpp
+    ShaderMerger.cpp
     ShaderUtils.cpp
     Shadowing.cpp
     SimplexNoise.cpp
     SpatialReference.cpp
     StateSetCache.cpp
-    StateSetLOD.cpp
     Status.cpp
     StringUtils.cpp
     TaskService.cpp
+    #TDTiles.cpp
     Terrain.cpp
     TerrainLayer.cpp
     TerrainOptions.cpp
@@ -355,10 +365,10 @@ set(TARGET_SRC
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp
     Tessellator.cpp
+    Text.cpp
     TextureBufferSerializer.cpp
     TileKey.cpp
     TileHandler.cpp
-    TilePatchCallback.cpp
     TileRasterizer.cpp
     TileVisitor.cpp
     TileSource.cpp
@@ -403,9 +413,9 @@ ENDIF(WIN32)
 
 OPTION(NRL_STATIC_LIBRARIES "Link osgEarth against static GDAL and cURL, including static OpenSSL, Proj4, JPEG, PNG, and TIFF." OFF)
 if(NOT NRL_STATIC_LIBRARIES)
-  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY ZLIB_LIBRARY OSGMANIPULATOR_LIBRARY)
+  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY OSGMANIPULATOR_LIBRARY)
 else(NOT NRL_STATIC_LIBRARIES)
-  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY ZLIB_LIBRARY OSGMANIPULATOR_LIBRARY SSL_EAY_RELEASE LIB_EAY_RELEASE TIFF_LIBRARY PROJ4_LIBRARY PNG_LIBRARY JPEG_LIBRARY)
+  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY OSGMANIPULATOR_LIBRARY SSL_EAY_RELEASE LIB_EAY_RELEASE TIFF_LIBRARY PROJ4_LIBRARY PNG_LIBRARY JPEG_LIBRARY)
 endif(NOT NRL_STATIC_LIBRARIES)
 
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})

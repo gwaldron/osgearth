@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Viewpoint>
-#include <sstream>
 
 using namespace osgEarth;
 
@@ -53,10 +52,10 @@ Viewpoint::Viewpoint(const char* name, double lon, double lat, double z, double 
 
 Viewpoint::Viewpoint(const Config& conf)
 {
-    conf.getIfSet( "name",    _name );
-    conf.getIfSet( "heading", _heading );
-    conf.getIfSet( "pitch",   _pitch );
-    conf.getIfSet( "range",   _range );
+    conf.get( "name",    _name );
+    conf.get( "heading", _heading );
+    conf.get( "pitch",   _pitch );
+    conf.get( "range",   _range );
 
     // piecewise point.
     std::string horiz = conf.value("srs");
@@ -97,6 +96,14 @@ Viewpoint::Viewpoint(const Config& conf)
     }
 }
 
+osg::ref_ptr<osg::Node>
+Viewpoint::getNode() const
+{
+    osg::ref_ptr<osg::Node> node;
+    _node.lock(node);
+    return node;
+}
+
 #define CONF_STR Stringify() << std::fixed << std::setprecision(4)
 
 Config
@@ -104,10 +111,10 @@ Viewpoint::getConfig() const
 {
     Config conf( "viewpoint" );
 
-    conf.addIfSet( "name",    _name );
-    conf.addIfSet( "heading", _heading );
-    conf.addIfSet( "pitch",   _pitch );
-    conf.addIfSet( "range",   _range );
+    conf.set( "name",    _name );
+    conf.set( "heading", _heading );
+    conf.set( "pitch",   _pitch );
+    conf.set( "range",   _range );
     
     if ( _point.isSet() )
     {

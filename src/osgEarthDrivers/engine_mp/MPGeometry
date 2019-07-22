@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -153,7 +153,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 #endif
 
     protected:
-#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+#if OSG_MIN_VERSION_REQUIRED(3,5,9)
+        virtual osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const;
+#elif OSG_MIN_VERSION_REQUIRED(3,5,6)
         virtual osg::VertexArrayState* createVertexArrayState(osg::RenderInfo& renderInfo) const;
 #endif
 

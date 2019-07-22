@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -116,6 +116,15 @@ main(int argc, char** argv)
     MouseCoordsTool* tool = new MouseCoordsTool( mapNode );
     tool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
     viewer.addEventHandler( tool );
+
+
+    // disable the small-feature culling
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    // set a near/far ratio that is smaller than the default. This allows us to get
+    // closer to the ground without near clipping. If you need more, use --logdepth
+    viewer.getCamera()->setNearFarRatio(0.0001);
+
 
     // finalize setup and run.
     viewer.setSceneData( root );

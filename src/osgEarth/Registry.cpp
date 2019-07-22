@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,30 +19,16 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderFactory>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/TaskService>
-#include <osgEarth/IOTypes>
-#include <osgEarth/ColorFilter>
-#include <osgEarth/StateSetCache>
-#include <osgEarth/HTTPClient>
-#include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
 
-#include <osgEarth/Units>
-#include <osg/Notify>
-#include <osg/Version>
-#include <osgDB/Registry>
-#include <osgDB/Options>
 #include <osgText/Font>
 
 #include <gdal_priv.h>
+
 #include <ogr_api.h>
-#include <cpl_error.h>
-#include <stdlib.h>
-#include <locale>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -70,7 +56,7 @@ _numGdalMutexGets   ( 0 ),
 _uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
-_terrainEngineDriver( "mp" ),
+_terrainEngineDriver( "rex" ),
 _cacheDriver        ( "filesystem" ),
 _overrideCachePolicyInitialized( false ),
 _threadPoolSize(2u),
@@ -114,6 +100,7 @@ _devicePixelRatio(1.0f)
     //osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml; charset=utf8", "kml");
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
@@ -146,23 +133,26 @@ _devicePixelRatio(1.0f)
     const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");
     if ( envFont )
     {
-        _defaultFont = osgText::readFontFile( std::string(envFont) );
+        _defaultFont = osgText::readRefFontFile( std::string(envFont) );
         OE_INFO << LC << "Default font set from environment: " << envFont << std::endl;
     }
     if ( !_defaultFont.valid() )
     {
 #ifdef WIN32
-        _defaultFont = osgText::readFontFile("arial.ttf");
+        _defaultFont = osgText::readRefFontFile("arial.ttf");
 #else
         _defaultFont = osgText::Font::getDefaultFont();
 #endif
     }
+
+#if OSG_VERSION_LESS_THAN(3,5,8)
     if ( _defaultFont.valid() )
     {
         // mitigates mipmapping issues that cause rendering artifacts
         // for some fonts/placement
         _defaultFont->setGlyphImageMargin( 2 );
     }
+#endif
 
     // register the system stock Units.
     Units::registerAll( this );
@@ -170,28 +160,60 @@ _devicePixelRatio(1.0f)
 
 Registry::~Registry()
 {
+    OE_DEBUG << LC << "Registry shutting down...\n";
+    _srsMutex.lock();
+    _srsCache.clear();
+    _srsMutex.unlock();
+    _global_geodetic_profile = 0L;
+    _spherical_mercator_profile = 0L;
+    _cube_profile = 0L;
+    OE_DEBUG << LC << "Registry shutdown complete.\n";
+
     // pop the custom error handler
     CPLPopErrorHandler();
 }
 
 Registry*
-Registry::instance(bool erase)
+Registry::instance(bool reset)
 {
+    // Make sure the gdal mutex is created before the Registry so it will still be around when the registry is destroyed statically.
+    // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
+    osgEarth::getGDALMutex();
+
     static osg::ref_ptr<Registry> s_registry = new Registry;
 
-    if (erase)
+    if (reset)
     {
-        s_registry->destruct();
-        s_registry = 0;
+        s_registry->release();
+        s_registry = new Registry();
     }
 
     return s_registry.get(); // will return NULL on erase
 }
 
 void
-Registry::destruct()
+Registry::release()
 {
-    //nop
+    // Clear out the state set cache
+    if (_stateSetCache.valid())
+    {
+        _stateSetCache->releaseGLObjects(NULL);
+        _stateSetCache->clear();
+    }
+
+    // Clear out the VirtualProgram shared program repository
+    _programRepo.lock();
+    _programRepo.releaseGLObjects(NULL);
+    _programRepo.unlock();
+    
+    // SpatialReference cache
+    _srsMutex.lock();
+    _srsCache.clear();
+    _srsMutex.unlock();
+
+    // Shared object index
+    if (_objectIndex.valid())
+        _objectIndex = new ObjectIndex();
 }
 
 OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()
@@ -251,21 +273,6 @@ Registry::getSphericalMercatorProfile() const
 }
 
 const Profile*
-Registry::getCubeProfile() const
-{
-    if ( !_cube_profile.valid() )
-    {
-        GDAL_SCOPED_LOCK;
-
-        if ( !_cube_profile.valid() ) // double-check pattern
-        {
-            const_cast<Registry*>(this)->_cube_profile = new UnifiedCubeProfile();
-        }
-    }
-    return _cube_profile.get();
-}
-
-const Profile*
 Registry::getNamedProfile( const std::string& name ) const
 {
     if ( name == STR_GLOBAL_GEODETIC )
@@ -274,10 +281,32 @@ Registry::getNamedProfile( const std::string& name ) const
         return getGlobalMercatorProfile();
     else if ( name == STR_SPHERICAL_MERCATOR )
         return getSphericalMercatorProfile();
-    else if ( name == STR_CUBE )
-        return getCubeProfile();
     else
         return NULL;
+}
+
+SpatialReference*
+Registry::getOrCreateSRS(const SpatialReference::Key& key)
+{
+    Threading::ScopedMutexLock exclusiveLock(_srsMutex);
+    
+    SpatialReference* srs;
+
+    SRSCache::iterator i = _srsCache.find(key);
+    if (i != _srsCache.end())
+    {
+        srs = i->second.get();
+    }
+    else
+    {
+        srs = SpatialReference::create(key);
+        if (srs)
+        {
+            _srsCache[key] = srs;
+        }
+    }
+
+    return srs;
 }
 
 void
@@ -609,10 +638,10 @@ Registry::getStateSetCache() const
     return _stateSetCache.get();
 }
 
-ProgramSharedRepo*
-Registry::getProgramSharedRepo()
+ProgramRepo&
+Registry::getProgramRepo()
 {
-    return &_programRepo;
+    return _programRepo;
 }
 
 ObjectIndex*

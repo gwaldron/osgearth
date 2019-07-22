@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Camera>
 #include <osg/ObserverNodePath>
 
@@ -33,13 +34,10 @@ namespace osgEarth
     /**
      * Culling set for tracking groups whose contents should be "draped",
      * i.e. rendered to a texture and projected onto the terrain.
+     * Internal object - do not use directly. Use a DrapeableNode instead.
      */
-    class OSGEARTH_EXPORT DrapingCullSet
+    class OSGEARTH_INTERNAL DrapingCullSet
     {
-    public:
-        /** Gets the per-thread cull set associated with a camera. */
-        static DrapingCullSet& get(const osg::Camera*);
-
     public:
         struct Entry
         {            
@@ -69,6 +67,20 @@ namespace osgEarth
         std::vector<Entry>  _entries;
         osg::BoundingSphere _bs;
         bool                _frameCulled;
+    };
+
+    /**
+     * Houses all the active DrapingCullSets under an osgEarth TerrainEngine.
+     * Internal node - so not use directly.
+     */
+    class OSGEARTH_INTERNAL DrapingManager
+    {
+    public:
+        //! Gets the draping cull set associated with a camera.
+        DrapingCullSet& get(const osg::Camera*);
+
+    private:
+        PerObjectFastMap<const osg::Camera*, DrapingCullSet> _sets;
     };
 
 } // namespace osgEarth

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,7 +26,6 @@
 #include <osgEarth/Registry>
 
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/ExampleResources>
 
@@ -166,7 +165,7 @@ main(int argc, char** argv)
     
     osg::ref_ptr<CullNodeByDateTimeRange> callback = new CullNodeByDateTimeRange;
     
-    AssignCullCallbakVisitor assignVisitor(callback);
+    AssignCullCallbakVisitor assignVisitor(callback.get());
     assignVisitor.setNodeMaskOverride(~0);
     node->accept(assignVisitor);
 
@@ -178,7 +177,7 @@ main(int argc, char** argv)
     slider->setBackColor(.6, 0, 0, 1);
     slider->setHeight(25);
     slider->setWidth(300);    
-    slider->addEventHandler(new TimeSliderHandler(callback, collectVisitor.range));
+    slider->addEventHandler(new TimeSliderHandler(callback.get(), collectVisitor.range));
     slider->setValue(0.0);
     cs->addControl(slider);
 

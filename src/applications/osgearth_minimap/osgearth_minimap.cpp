@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -81,7 +81,8 @@ osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
         Style style;
         style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Yellow;
         feature->style() = style;
-        FeatureNode* featureNode = new FeatureNode(mapNode, feature);
+        FeatureNode* featureNode = new FeatureNode(feature);
+        featureNode->setMapNode(mapNode);
 
         featureNode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
         return featureNode;
@@ -148,7 +149,6 @@ osgEarth::GeoExtent getExtent(osgViewer::View* view)
     double maxLat = osg::clampBelow(center.y() + radiusDegrees, 90.0);
 
     osgEarth::GeoExtent extent(srs, minLon, minLat, maxLon, maxLat);
-//    extent.normalize();
 
     return extent;
 }
@@ -157,8 +157,6 @@ int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     //Setup a CompositeViewer
     osgViewer::CompositeViewer viewer(arguments);
@@ -186,7 +184,7 @@ main(int argc, char** argv)
     
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load( arguments, mainView );
+    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
         MapNode* mapNode = MapNode::findMapNode(node);
@@ -200,7 +198,7 @@ main(int argc, char** argv)
         MapNode* miniMapNode = makeMiniMapNode();        
         miniMapGroup->addChild( miniMapNode );
        
-        //Get the main MapNode so we can do tranformations between it and our minimap
+        //Get the main MapNode so we can do transformations between it and our minimap
         MapNode* mainMapNode = MapNode::findMapNode( node );
                                
         //Set the scene data for the minimap
@@ -209,7 +207,8 @@ main(int argc, char** argv)
         //Add a marker we can move around with the main view's eye point
         Style markerStyle;
         markerStyle.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
-        PlaceNode* eyeMarker = new PlaceNode(miniMapNode, GeoPoint(miniMapNode->getMapSRS(), 0, 0), "", markerStyle);
+        PlaceNode* eyeMarker = new PlaceNode("", markerStyle);
+        eyeMarker->setPosition(GeoPoint(miniMapNode->getMapSRS(), 0, 0));
         miniMapGroup->addChild( eyeMarker );        
         miniMapGroup->getOrCreateStateSet()->setRenderBinDetails(100, "RenderBin");
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@ namespace osgEarth { namespace Annotation
 {    
     /**
      * AddPointHandler is a GUIEventHandler that allows you to append points to a Feature's Geometry
+     * @deprecated (remove or refactor as example after 2.10)
      */
     struct OSGEARTHANNO_EXPORT AddPointHandler : public osgGA::GUIEventHandler 
     {
@@ -73,6 +74,7 @@ namespace osgEarth { namespace Annotation
     
     /**
      * Node you can add to your scene graph to edit the verts of a Feature's Geometry
+     * @deprecated (remove or refactor as example after 2.10)
      */
     class OSGEARTHANNO_EXPORT FeatureEditor : public AnnotationEditor
     {

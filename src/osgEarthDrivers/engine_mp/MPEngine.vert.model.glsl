@@ -17,7 +17,7 @@ void oe_mp_vertModel(inout vec4 vertexModel)
     oe_layer_texc  = gl_MultiTexCoord$MP_PRIMARY_UNIT;
     oe_layer_tilec = gl_MultiTexCoord$MP_SECONDARY_UNIT;
 
-    oe_UpVectorView = gl_NormalMatrix * oe_terrain_attr.xyz;
+    oe_UpVectorView = normalize(gl_NormalMatrix * oe_terrain_attr.xyz);
 
     // internal variable to support the oe_terrain_getElevation() SDK method
     // in the fragment shader stage

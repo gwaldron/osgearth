@@ -1,5 +1,5 @@
 
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2016 Pelican Mapping
  * http://osgearth.org
  *
@@ -17,12 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationPool>
-#include <osgEarth/TileKey>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Map>
 #include <osgEarth/Metrics>
-#include <osgEarth/Registry>
-#include <osg/Shape>
 
 using namespace osgEarth;
 
@@ -98,7 +94,7 @@ ElevationPool::GetElevationOp::operator()(osg::Object*)
 }
 
 bool
-ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
+ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& layers, Tile* tile)
 {
     tile->_loadTime = osg::Timer::instance()->tick();
 
@@ -114,13 +110,13 @@ ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
         bool ok;
         if (_layers.empty())
         {
-            OE_TEST << LC << "Populating from FULL MAP (" << keyToUse.str() << ")\n";
-            ok = frame.populateHeightField(hf, keyToUse, false /*heightsAsHAE*/, 0L);
+            OE_TEST << LC << "Populating from envelope (" << keyToUse.str() << ")\n";
+            ok = layers.populateHeightFieldAndNormalMap(hf.get(), 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
         }
         else
         {
             OE_TEST << LC << "Populating from layers (" << keyToUse.str() << ")\n";
-            ok = _layers.populateHeightFieldAndNormalMap(hf, 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
+            ok = _layers.populateHeightFieldAndNormalMap(hf.get(), 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
         }
 
         if (ok)
@@ -158,7 +154,7 @@ ElevationPool::popMRU()
 }
 
 bool
-ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& out)
+ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& out)
 {
     // first see whether the tile is available
     _tilesMutex.lock();
@@ -197,7 +193,7 @@ ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& 
         tile->_status.exchange(STATUS_IN_PROGRESS);
         _tilesMutex.unlock();
 
-        bool ok = fetchTileFromMap(key, frame, tile.get());
+        bool ok = fetchTileFromMap(key, layers, tile.get());
         tile->_status.exchange( ok ? STATUS_AVAILABLE : STATUS_FAIL );
         
         out = ok ? tile.get() : 0L;
@@ -254,24 +250,13 @@ ElevationPool::clearImpl()
 }
 
 bool
-ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<ElevationPool::Tile>& output)
-{
-    // Synchronize the MapFrame to its Map; if there's an update,
-    // clear out the internal cache and MRU.
-    if ( frame.needsSync() )
-    {
-        if (frame.sync())
-        {
-            // Probably unnecessary because the Map itself will clear the pool.
-            clear();
-        }
-    }
-   
+ElevationPool::getTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<ElevationPool::Tile>& output)
+{   
     OE_START_TIMER(get);
 
     const double timeout = 30.0;
     osg::ref_ptr<Tile> tile;
-    while( tryTile(key, frame, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
+    while( tryTile(key, layers, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
     {
         // condition: another thread is working on fetching the tile from the map,
         // so wait and try again later. Do this until we succeed or time out.
@@ -281,7 +266,7 @@ ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Elevati
     if ( !tile.valid() && OE_GET_TIMER(get) >= timeout )
     {
         // this means we timed out trying to fetch the map tile.
-        OE_TEST << LC << "Timout fetching tile " << key.str() << std::endl;
+        OE_TEST << LC << "Timeout fetching tile " << key.str() << std::endl;
     }
 
     if ( tile.valid() )
@@ -304,12 +289,27 @@ ElevationEnvelope*
 ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
     ElevationEnvelope* e = new ElevationEnvelope();
-    e->_inputSRS = srs;
-    osg::ref_ptr<const osg::Referenced> map;
-    if (_map.lock(map))
-        e->_frame.setMap(static_cast<const Map*>(map.get()));
+    e->_inputSRS = srs; 
     e->_lod = lod;
     e->_pool = this;
+    
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+    {
+        if (_layers.size() > 0)
+        {
+            // user-specified layers
+            e->_layers = _layers;
+        }
+        else
+        {
+            // all elevation layers
+            map->getLayers(e->_layers);
+        }
+
+        e->_mapProfile = map->getProfile();
+    }
+
     return e;
 }
 
@@ -334,10 +334,9 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
     out_resolution = 0.0f;
     bool foundTile = false;
 
-    GeoPoint p(_inputSRS, x, y, 0.0f, ALTMODE_ABSOLUTE);
-    //VRV_PATCH: start
-    //VRV_PATCH: end
-    if (_frame.getProfile() && _frame.getProfile()->getSRS() && p.transformInPlace(_frame.getProfile()->getSRS()))
+    GeoPoint p(_inputSRS.get(), x, y, 0.0f, ALTMODE_ABSOLUTE);
+
+    if (p.transformInPlace(_mapProfile->getSRS()))
     {
         // find the tile containing the point:
         for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
@@ -364,9 +363,12 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         // for the tile so we can add it to the query set.
         if (!foundTile)
         {
-            TileKey key = _frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
+            TileKey key = _mapProfile->createTileKey(p.x(), p.y(), _lod);
             osg::ref_ptr<ElevationPool::Tile> tile;
-            if (_pool && _pool->getTile(key, _frame, tile))
+
+            osg::ref_ptr<ElevationPool> pool;
+
+            if (_pool.lock(pool) && pool->getTile(key, _layers, tile))
             {
                 // Got the new tile; put it in the query set:
                 _tiles.insert(tile.get());
@@ -428,17 +430,6 @@ ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
             ++count;
     }
 
-    if (count < input.size())
-    {
-        OE_WARN << LC << "Issue: Envelope had failed samples" << std::endl;
-        for (ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin(); tile_ref != _tiles.end(); ++tile_ref)
-        {
-            ElevationPool::Tile* tile = tile_ref->get();
-            OE_WARN << LC << " ... tile " << tile->_bounds.toString() << std::endl;
-        }
-        OE_WARN << LC << std::endl;
-    }
-
     return count;
 }
 
@@ -450,8 +441,6 @@ ElevationEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
         return false;
 
     min = FLT_MAX, max = -FLT_MAX;
-
-    unsigned count = 0;
 
     osg::Vec3d centroid;
 

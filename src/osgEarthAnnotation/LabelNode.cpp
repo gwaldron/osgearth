@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,11 +26,12 @@
 #include <osgEarthAnnotation/BboxDrawable>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/BBoxSymbol>
-#include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
 #include <osgEarth/Utils>
 #include <osgEarth/ScreenSpaceLayout>
+#include <osgEarth/Lighting>
+#include <osgEarth/Shaders>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -45,91 +46,81 @@ using namespace osgEarth::Symbology;
 
 //-------------------------------------------------------------------
 
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const GeoPoint&     position,
-                     const std::string&  text,
-                     const Style&        style ) :
+// Globally shared stateset for LabelNode geometry
+osg::observer_ptr<osg::StateSet> LabelNode::s_geodeStateSet;
 
-GeoPositionNode( mapNode ),
-_text             ( text ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+LabelNode::LabelNode() :
+GeoPositionNode()
 {
-    init( style );
-    setPosition( position );
+    construct();
+    compile();
 }
 
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const GeoPoint&     position,
-                     const std::string&  text,
-                     const TextSymbol*   symbol ) :
-
-GeoPositionNode( mapNode ),
-_text             ( text ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+LabelNode::LabelNode(const std::string& text,
+                     const Style& style) :
+GeoPositionNode()
 {
-    Style style;
-    style.add( const_cast<TextSymbol*>(symbol) );
-    init( style );
-    setPosition( position );
+    construct();
+
+    _text = text;
+    _style = style;
+
+    compile();
 }
 
-LabelNode::LabelNode(const std::string&  text,
-                     const Style&        style ) :
-GeoPositionNode(),
-_text             ( text ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+LabelNode::LabelNode(const GeoPoint& position,
+                     const std::string& text,
+                     const Style& style) :
+GeoPositionNode()
 {
-    init( style );
-}
+    construct();
 
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const GeoPoint&     position,
-                     const Style&        style ) :
-GeoPositionNode   ( mapNode ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
-{
-    init( style );
-    setPosition( position );
-}
+    _text = text;
+    _style = style;
+    setPosition(position);
 
-LabelNode::LabelNode(MapNode*            mapNode,
-                     const Style&        style ) :
-GeoPositionNode   ( mapNode, GeoPoint::INVALID ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
-{
-    init( style );
-}
-
-LabelNode::LabelNode(const LabelNode& rhs, const osg::CopyOp& op) :
-GeoPositionNode(rhs, op),
-_labelRotationRad(0.),
-_followFixedCourse(false)
-{
-    //nop - unused
+    compile();
 }
 
 void
-LabelNode::init( const Style& style )
+LabelNode::construct()
 {
-    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
+    _labelRotationRad = 0.0f;
+    _followFixedCourse = false;
+
+    // This class makes its own shaders
+    ShaderGenerator::setIgnoreHint(this, true);
+
+    // Initialize the shared stateset as necessary
+    osg::ref_ptr<osg::StateSet> geodeStateSet;
+    if (s_geodeStateSet.lock(geodeStateSet) == false)
+    {
+        static Threading::Mutex s_mutex;
+        Threading::ScopedMutexLock lock(s_mutex);
+
+        if (s_geodeStateSet.lock(geodeStateSet) == false)
+        {
+            s_geodeStateSet = geodeStateSet = new osg::StateSet();
+
+            // draw in the screen-space bin
+            ScreenSpaceLayout::activate(geodeStateSet.get());
+
+            // completely disable depth buffer
+            geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
+
+            // Disable lighting for place label bbox
+            geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+        }
+    }
 
     _geode = new osg::Geode();
+    _geode->setStateSet(geodeStateSet.get());
 
     // ensure that (0,0,0) is the bounding sphere control/center point.
     // useful for things like horizon culling.
     _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
 
     getPositionAttitudeTransform()->addChild( _geode.get() );
-
-    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
-    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );    
-
-    setStyle( style );
 }
 
 void
@@ -141,9 +132,9 @@ LabelNode::setText( const std::string& text )
         return;
     }
 
-    for (unsigned int i=0; i < _geode->getNumDrawables(); i++)
+    for (unsigned int i=0; i < _geode->getNumChildren(); i++)
     {
-        osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(i));
+        osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getChild(i));
         if ( d )
         {
             const TextSymbol* symbol = _style.get<TextSymbol>();
@@ -156,7 +147,6 @@ LabelNode::setText( const std::string& text )
 
             d->setText(text, textEncoding);
 
-            d->dirtyDisplayList();
             _text = text;
             return;
         }
@@ -164,17 +154,9 @@ LabelNode::setText( const std::string& text )
 }
 
 void
-LabelNode::setStyle( const Style& style )
+LabelNode::compile()
 {
-    if ( !_dynamic && getNumParents() > 0 )
-    {
-        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
-        return;
-    }
-
-    _geode->removeDrawables( 0, _geode->getNumDrawables() );
-
-    _style = style;
+    _geode->removeChildren(0, _geode->getNumChildren());
 
     const TextSymbol* symbol = _style.get<TextSymbol>();
 
@@ -204,24 +186,40 @@ LabelNode::setStyle( const Style& style )
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
     if ( bboxsymbol && text )
     {
-        osg::Drawable* bboxGeom = new BboxDrawable( Utils::getBoundingBox(text), *bboxsymbol );
-        _geode->addDrawable(bboxGeom);
+        osg::Drawable* bboxGeom = new BboxDrawable(text->getBoundingBox(), *bboxsymbol );
+        if (bboxGeom)
+        {
+            _geode->addDrawable(bboxGeom);
+        }
     }
 
-    _geode->addDrawable(text);
-    _geode->setCullingActive(false);
+    if (text)
+    {
+        if (_dynamic)
+        {
+            text->setDataVariance(osg::Object::DYNAMIC);
+        }
+        _geode->addDrawable(text);
+    }
 
     applyStyle( _style );
 
-    setLightingIfNotSet( false );
-
-    Registry::shaderGenerator().run(
-        this,
-        "osgEarth.LabelNode",
-        Registry::stateSetCache() );
-
     updateLayoutData();
     dirty();
+}
+
+void
+LabelNode::setStyle( const Style& style )
+{
+    if ( !_dynamic && getNumParents() > 0 )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+
+    _style = style;
+
+    compile();
 }
 
 void
@@ -247,9 +245,9 @@ LabelNode::updateLayoutData()
     }
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for (unsigned i = 0; i < _geode->getNumDrawables(); ++i)
+    for (unsigned i = 0; i < _geode->getNumChildren(); ++i)
     {
-        _geode->getDrawable(i)->setUserData(_dataLayout.get());
+        _geode->getChild(i)->setUserData(_dataLayout.get());
     }
     
     _dataLayout->setPriority(getPriority());
@@ -299,11 +297,17 @@ LabelNode::setDynamic( bool dynamic )
 {
     GeoPositionNode::setDynamic( dynamic );
 
-    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
-    if ( d )
+    if (_geode.valid())
     {
-        d->setDataVariance( dynamic ? osg::Object::DYNAMIC : osg::Object::STATIC );
-    }    
+        for(unsigned i=0; i<_geode->getNumChildren(); ++i)
+        {
+            osg::Node* node = _geode->getChild(i);
+            if (node)
+            {
+                node->setDataVariance(dynamic ? osg::Object::DYNAMIC : osg::Object::STATIC);
+            }
+        }
+    }
 }
 
 //-------------------------------------------------------------------
@@ -311,29 +315,24 @@ LabelNode::setDynamic( bool dynamic )
 OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::Annotation::LabelNode );
 
 
-LabelNode::LabelNode(MapNode*              mapNode,
-                     const Config&         conf,
+LabelNode::LabelNode(const Config&         conf,
                      const osgDB::Options* dbOptions ) :
-GeoPositionNode( mapNode, conf ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+GeoPositionNode( conf, dbOptions )
 {
-    optional<Style> style;
+    construct();
 
-    conf.getObjIfSet( "style", style );
-    conf.getIfSet   ( "text",  _text );
+    conf.get("style", _style);
+    conf.get("text", _text);
 
-    init( *style );
-
-    setPosition(getPosition());
+    compile();
 }
 
 Config
 LabelNode::getConfig() const
 {
-    Config conf( "label" );
-    conf.add   ( "text",   _text );
-    conf.addObj( "style",  _style );
-
+    Config conf = GeoPositionNode::getConfig();
+    conf.key() = "label";
+    conf.set( "text",   _text );
+    conf.set( "style",  _style );
     return conf;
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,6 +46,10 @@ namespace osgEarth { namespace Symbology
 
     public: // properties
 
+        //! URL or the top image
+        optional<StringExpression>& topURL() { return _topURL; }
+        const optional<StringExpression>& topURL() const { return _topURL; }
+
         /** Width of the billboard image in meters */
         optional<float>& width() { return _width; }
         const optional<float>& width() const { return _width; }
@@ -58,8 +62,11 @@ namespace osgEarth { namespace Symbology
     public: // non-serialized properties (for programmatic use only)
 
         /** Explicit model to use for model placement */
-        void setImage(osg::Image* image) { _image = image; }
-        const osg::Image* getImage() const { return _image.get(); }
+        void setSideImage(osg::Image* value) { _sideImage = value; }
+        osg::Image* getSideImage() const { return _sideImage.get(); }
+
+        void setTopImage(osg::Image* value) { _topImage = value; }
+        osg::Image* getTopImage() const { return _topImage.get(); }
 
     public:
         virtual Config getConfig() const;
@@ -72,9 +79,11 @@ namespace osgEarth { namespace Symbology
         virtual InstanceResource* createResource() const;
 
     protected:
+        optional<StringExpression> _topURL;
         optional<float> _width;
         optional<float> _height;
-        osg::ref_ptr<osg::Image> _image;
+        osg::ref_ptr<osg::Image> _sideImage;
+        osg::ref_ptr<osg::Image> _topImage;
     };
 
 } } // namespace osgEarth::Symbology

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -34,7 +34,8 @@ using namespace osgEarth;
 TileNodeRegistry::TileNodeRegistry(const std::string& name) :
 _name              ( name ),
 _revisioningEnabled( false ),
-_frameNumber       ( 0u )
+_frameNumber       ( 0u ),
+_notifyNeighbors   ( false )
 {
     //nop
 }
@@ -46,6 +47,11 @@ TileNodeRegistry::setRevisioningEnabled(bool value)
     _revisioningEnabled = value;
 }
 
+void
+TileNodeRegistry::setNotifyNeighbors(bool value)
+{
+    _notifyNeighbors = value;
+}
 
 void
 TileNodeRegistry::setMapRevision(const Revision& rev,
@@ -101,35 +107,38 @@ void
 TileNodeRegistry::addSafely(TileNode* tile)
 {
     _tiles.insert( tile->getKey(), tile );
-
+    
     if ( _revisioningEnabled )
         tile->setMapRevision( _maprev );
     
     // Start waiting on our neighbors
-    startListeningFor(tile->getKey().createNeighborKey(1, 0), tile);
-    startListeningFor(tile->getKey().createNeighborKey(0, 1), tile);
-
-    // check for tiles that are waiting on this tile, and notify them!
-    TileKeyOneToMany::iterator notifier = _notifiers.find( tile->getKey() );
-    if ( notifier != _notifiers.end() )
+    if (_notifyNeighbors)
     {
-        TileKeySet& listeners = notifier->second;
+        startListeningFor(tile->getKey().createNeighborKey(1, 0), tile);
+        startListeningFor(tile->getKey().createNeighborKey(0, 1), tile);
 
-        for(TileKeySet::iterator listener = listeners.begin(); listener != listeners.end(); ++listener)
+        // check for tiles that are waiting on this tile, and notify them!
+        TileKeyOneToMany::iterator notifier = _notifiers.find( tile->getKey() );
+        if ( notifier != _notifiers.end() )
         {
-            TileNode* listenerTile = _tiles.find( *listener );
-            if ( listenerTile )
-            {
-                listenerTile->notifyOfArrival( tile );
-            }
-        }
-        _notifiers.erase( notifier );
-    }
+            TileKeySet& listeners = notifier->second;
 
-    OE_DEBUG << LC << _name 
-        << ": tiles=" << _tiles.size()
-        << ", notifiers=" << _notifiers.size()
-        << std::endl;
+            for(TileKeySet::iterator listener = listeners.begin(); listener != listeners.end(); ++listener)
+            {
+                TileNode* listenerTile = _tiles.find( *listener );
+                if ( listenerTile )
+                {
+                    listenerTile->notifyOfArrival( tile );
+                }
+            }
+            _notifiers.erase( notifier );
+        }
+
+        OE_DEBUG << LC << _name 
+            << ": tiles=" << _tiles.size()
+            << ", notifiers=" << _notifiers.size()
+            << std::endl;
+    }
 
     Metrics::counter("RexStats", "Tiles", _tiles.size());
 }
@@ -140,9 +149,12 @@ TileNodeRegistry::removeSafely(const TileKey& key)
     TileNode* tile = _tiles.find(key);
     if (tile)
     {
-        // remove neighbor listeners:
-        stopListeningFor(key.createNeighborKey(1, 0), tile);
-        stopListeningFor(key.createNeighborKey(0, 1), tile);
+        if (_notifyNeighbors)
+        {
+            // remove neighbor listeners:
+            stopListeningFor(key.createNeighborKey(1, 0), tile);
+            stopListeningFor(key.createNeighborKey(0, 1), tile);
+        }
 
         // remove the tile.
         _tiles.erase( key );

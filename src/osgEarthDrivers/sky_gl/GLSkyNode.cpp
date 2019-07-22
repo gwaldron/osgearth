@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -38,25 +38,16 @@ using namespace osgEarth::GLSky;
 
 //---------------------------------------------------------------------------
 
-GLSkyNode::GLSkyNode(const Profile* profile) :
-SkyNode()
-{
-    initialize(profile);
-}
-
-GLSkyNode::GLSkyNode(const Profile*      profile,
-                     const GLSkyOptions& options) :
+GLSkyNode::GLSkyNode(const GLSkyOptions& options) :
 SkyNode ( options ),
 _options( options )
 {
-    initialize(profile);
+    construct();
 }
 
 void
-GLSkyNode::initialize(const Profile* profile)
+GLSkyNode::construct()
 {
-    _profile = profile;
-    //_light = new osg::Light(0);
     _light = new LightGL3(0);
     _light->setDataVariance(_light->DYNAMIC);
     _light->setAmbient(osg::Vec4(0.1f, 0.1f, 0.1f, 1.0f));
@@ -73,7 +64,6 @@ GLSkyNode::initialize(const Profile* profile)
     osg::StateSet* stateset = this->getOrCreateStateSet();
 
     _lighting = new PhongLightingEffect();
-    //_lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
 
     // install the Sun as a lightsource.
@@ -108,30 +98,22 @@ GLSkyNode::onSetReferencePoint()
 void
 GLSkyNode::onSetDateTime()
 {
-    if ( !getSunLight() || !_profile.valid() )
+    if ( !getSunLight() )
         return;
 
-    const DateTime& dt = getDateTime();
-    osg::Vec3d sunPosECEF = getEphemeris()->getSunPositionECEF( dt );
+    CelestialBody sun = getEphemeris()->getSunPosition(getDateTime());   
 
-    if ( _profile->getSRS()->isGeographic() )
-    {
-        sunPosECEF.normalize();
-        _light->setPosition(osg::Vec4(sunPosECEF, 0.0)); // directional light
-    }
-    else
+    // If the user set a projected-map reference point, assume we are using
+    // a projected map and set the sun position acordingly.
+    if (getReferencePoint().isValid())
     {
         // pull the ref point:
         GeoPoint refpoint = getReferencePoint();
-        if ( !refpoint.isValid() )
-        {
-            // not found; use the center of the profile:
-            _profile->getExtent().getCentroid(refpoint);
-        }
 
         // convert to lat/long:
         GeoPoint refLatLong;
-        refpoint.transform(_profile->getSRS()->getGeographicSRS(), refLatLong);
+        osg::ref_ptr<const SpatialReference> wgs84 = SpatialReference::get("wgs84");
+        refpoint.transform(wgs84.get(), refLatLong);
 
         // Matrix to convert the ECEF sun position to the local tangent plane
         // centered on our reference point:
@@ -139,10 +121,24 @@ GLSkyNode::onSetDateTime()
         refLatLong.createWorldToLocal(world2local);
 
         // convert the sun position:
-        osg::Vec3d sunPosLocal = sunPosECEF * world2local;
+        osg::Vec3d sunPosLocal = sun.geocentric * world2local;
         sunPosLocal.normalize();
 
         getSunLight()->setPosition( osg::Vec4(sunPosLocal, 0.0) );
+    }
+
+    else if (_options.coordinateSystem() == SkyOptions::COORDSYS_ECEF)
+    {
+        osg::Vec3d pos = sun.geocentric;
+        pos.normalize();
+        _light->setPosition(osg::Vec4(pos, 0.0)); // directional light
+    }
+
+    else if (_options.coordinateSystem() == SkyOptions::COORDSYS_ECI)
+    {
+        osg::Vec3d pos = sun.eci;
+        pos.normalize();
+        _light->setPosition(osg::Vec4(pos, 0.0)); // directional light
     }
 }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 #include <osgEarth/XmlUtils>
 
 #include <osgDB/FileNameUtils>
-#include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

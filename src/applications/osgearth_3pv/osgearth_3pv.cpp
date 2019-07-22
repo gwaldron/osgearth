@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,16 +21,14 @@
 */
 
 #include <osgViewer/Viewer>
-#include <osgEarth/Notify>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/Controls>
 
-#include <osgEarth/Units>
-#include <osgEarth/Viewpoint>
 #include <osgEarth/Horizon>
 #include <osgEarth/TraversalData>
+#include <osgEarth/Lighting>
+#include <osgEarth/GLUtils>
 
 #include <osgEarthAnnotation/PlaceNode>
 
@@ -39,8 +37,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
-namespace ui = osgEarth::Util::Controls;
-
 
 #include <osg/Geometry>
 #include <osg/Depth>
@@ -51,7 +47,7 @@ namespace ui = osgEarth::Util::Controls;
 #include <osgDB/ReadFile>
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
-
+#include <cstdlib> // for putenv
 
 struct PlacerCallback : public MouseCoordsTool::Callback
 {
@@ -80,27 +76,29 @@ struct PlacerCallback : public MouseCoordsTool::Callback
     }
 };
 
+struct CaptureFrustum : public osg::NodeCallback
+{
+    osg::Matrix& _proj;
+
+    CaptureFrustum(osg::Matrix& proj) : _proj(proj) { }
+
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        traverse(node, nv);
+
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+        double N = cv->getCalculatedNearPlane();
+        double F = cv->getCalculatedFarPlane();
+        _proj = cv->getCurrentCamera()->getProjectionMatrix();
+        cv->clampProjectionMatrix(_proj, N, F);
+    }
+};
 
 // Given a Camera, create a wireframe representation of its
 // view frustum. Create a default representation if camera==NULL.
 osg::Node*
-makeFrustumFromCamera( osg::Camera* camera )
+makeFrustumFromMVP(const osg::Matrix& mv, const osg::Matrix& proj)
 {
-    // Projection and ModelView matrices
-    osg::Matrixd proj;
-    osg::Matrixd mv;
-    if (camera)
-    {
-        proj = camera->getProjectionMatrix();
-        mv = camera->getViewMatrix();
-    }
-    else
-    {
-        // Create some kind of reasonable default Projection matrix.
-        proj.makePerspective( 30., 1., 1., 10. );
-        // leave mv as identity
-    }
-
     // Get near and far from the Projection matrix.
     const double near = proj(3,2) / (proj(2,2)-1.0);
     const double far = proj(3,2) / (1.0+proj(2,2));
@@ -135,10 +133,9 @@ makeFrustumFromCamera( osg::Camera* camera )
     geom->setUseDisplayList( false );
     geom->setVertexArray( v );
 
-    osg::Vec4Array* c = new osg::Vec4Array;
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL);
     c->push_back( osg::Vec4( 1., 1., 0., 1. ) );
     geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     GLushort idxLines[8] = {
         0, 5, 0, 6, 0, 7, 0, 8 };
@@ -152,10 +149,9 @@ makeFrustumFromCamera( osg::Camera* camera )
 
     osg::Geode* geode = new osg::Geode;
     geode->addDrawable( geom );
-
-    geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-    geode->getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(2.0f), 1);
-
+    osg::StateSet* gss = geode->getOrCreateStateSet();
+    Lighting::set(gss, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    GLUtils::setLineWidth(gss, 2.0f, 1);
 
     // Create parent MatrixTransform to transform the view volume by
     // the inverse ModelView matrix.
@@ -164,10 +160,11 @@ makeFrustumFromCamera( osg::Camera* camera )
     mt->addChild( geode );
 
     osg::Group* g0 = new osg::Group();
+    osg::StateSet* g0ss = g0->getOrCreateStateSet();
     g0->addChild(mt);
-    g0->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1);
-    g0->getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(1, 0x000F), 1);
-    g0->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
+    g0ss->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1);
+    GLUtils::setLineStipple(g0ss, 1, 0xFF, 1);
+    g0ss->setRenderBinDetails(2, "RenderBin");
 
     osg::Group* g1 = new osg::Group();
     g1->addChild(mt);
@@ -185,6 +182,8 @@ makeFrustumFromCamera( osg::Camera* camera )
 int
 main( int argc, char** argv )
 {
+    putenv("OSGEARTH_REX_DEBUG=1");
+
     osg::ArgumentParser arguments( &argc, argv );
 
     osg::ref_ptr< osg::Group > root = new osg::Group;
@@ -194,7 +193,7 @@ main( int argc, char** argv )
 
     // Child 0: We'll replace this every frame with an updated representation
     //   of the view frustum.
-    root->addChild( makeFrustumFromCamera( NULL ) );
+    root->addChild( makeFrustumFromMVP(osg::Matrix::identity(), osg::Matrix::identity()));
 
     osg::Group* scene = new osg::Group();
     root->addChild( scene );
@@ -224,7 +223,7 @@ main( int argc, char** argv )
     }
 
     MapNodeHelper helper;
-    osg::ref_ptr<osg::Node> node = helper.load(arguments, viewer.getView(0));
+    osg::ref_ptr<osg::Node> node = helper.load(arguments, &viewer);
     if (!node.valid())
     {
         return -1;
@@ -236,8 +235,10 @@ main( int argc, char** argv )
 
     MapNode* mapNode = MapNode::get(node.get());
 
-    osg::ref_ptr<osg::Image> icon = osgDB::readImageFile("../data/placemark32.png");
-    PlaceNode* place = new PlaceNode(mapNode, GeoPoint::INVALID, icon.get(), "");
+    osg::ref_ptr<osg::Image> icon = osgDB::readRefImageFile("../data/placemark32.png");
+    PlaceNode* place = new PlaceNode();
+    place->setIconImage(icon.get());
+    place->setMapNode(mapNode);
     place->getOrCreateStateSet()->setRenderBinDetails(10, "DepthSortedBin");
     place->setDynamic(true);
     place->setNodeMask(0);
@@ -249,13 +250,20 @@ main( int argc, char** argv )
 
     mapNode->addChild(new HorizonNode());
 
-    viewer.getView(1)->getCamera()->setCullCallback( new VisitorData::Install("osgEarth.Stealth") );
+    osg::Matrix proj;
+    viewer.getView(0)->getCamera()->addCullCallback(new CaptureFrustum(proj));
+
+    viewer.getView(1)->getCamera()->setName("Spy");
+    viewer.getView(1)->getCamera()->setCullCallback( new VisitorData::Install("osgEarth.Spy") );
 
     while (!viewer.done())
     {
         // Update the wireframe frustum
         root->removeChild( 0, 1 );
-        root->insertChild( 0, makeFrustumFromCamera( viewer.getView( 0 )->getCamera() ) );
+
+        root->insertChild(0, makeFrustumFromMVP(
+            viewer.getView(0)->getCamera()->getViewMatrix(),
+            proj));
 
         viewer.frame();
     }

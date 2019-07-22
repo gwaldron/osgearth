@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -199,6 +199,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                     }
                     
                     Registry::instance()->endActivity(uri);
+
+                    if (progress && progress->isCanceled())
+                    {
+                        OE_DEBUG << LC << "Tile " << key.str() << " : canceled!" << std::endl;
+                        return ReadResult(0L);
+                    }
 
                     // Deal with failed loads.
                     if ( !node.valid() )

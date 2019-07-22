@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,9 +18,7 @@
  */
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
-#include <osg/Notify>
 #include <osgDB/ReadFile>
-#include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -47,11 +45,11 @@ ModelSourceOptions::~ModelSourceOptions()
 void
 ModelSourceOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet<float>( "min_range", _minRange );
-    conf.getIfSet<float>( "max_range", _maxRange );
-    conf.getIfSet<int>( "render_order", _renderOrder );
-    conf.getIfSet("render_bin", _renderBin );
-    conf.getIfSet<bool>( "depth_test_enabled", _depthTestEnabled );
+    conf.get<float>( "min_range", _minRange );
+    conf.get<float>( "max_range", _maxRange );
+    conf.get<int>( "render_order", _renderOrder );
+    conf.get("render_bin", _renderBin );
+    conf.get<bool>( "depth_test_enabled", _depthTestEnabled );
 }
 
 void
@@ -110,6 +108,7 @@ ModelSource::createNode(const Map*        map,
         getSceneGraphCallbacks()->firePreMergeNode(node);
         getSceneGraphCallbacks()->firePostMergeNode(node);
     }
+
     return node;
 }
 
@@ -127,7 +126,7 @@ ModelSourceFactory::~ModelSourceFactory()
 ModelSource*
 ModelSourceFactory::create( const ModelSourceOptions& options )
 {
-    ModelSource* modelSource = 0L;
+    osg::ref_ptr<ModelSource> source;
 
     if ( !options.getDriver().empty() )
     {
@@ -136,14 +135,15 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
+        source = dynamic_cast<ModelSource*>( object.release() );
     }
     else
     {
         OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return modelSource;
+    return source.release();
 }
 
 //------------------------------------------------------------------------

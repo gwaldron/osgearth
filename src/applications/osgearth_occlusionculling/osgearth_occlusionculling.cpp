@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,6 @@
 #include <osgEarth/ECEF>
 
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/ExampleResources>
 
@@ -107,7 +106,7 @@ main(int argc, char** argv)
 
     //Create a bunch of placemarks around Mt Rainer so we can actually get some elevation
     {
-        osg::Image* pin = osgDB::readImageFile( "../data/placemark32.png" );
+        osg::ref_ptr<osg::Image> pin = osgDB::readRefImageFile( "../data/placemark32.png" );
 
         double centerLat =  46.840866;
         double centerLon = -121.769846;
@@ -122,7 +121,9 @@ main(int argc, char** argv)
         {
             double lat = minLat + height * (rand() * 1.0)/(RAND_MAX-1);
             double lon = minLon + width * (rand() * 1.0)/(RAND_MAX-1);        
-            PlaceNode* place = new PlaceNode(mapNode, GeoPoint(geoSRS, lon, lat), pin, "Placemark", placeStyle);
+            PlaceNode* place = new PlaceNode("Placemark", placeStyle, pin.get());
+            place->setMapNode(mapNode);
+            place->setPosition(GeoPoint(geoSRS, lon, lat));
             //Enable occlusion culling.  This will hide placemarks that are hidden behind terrain.
             //This makes use of the OcclusionCullingCallback in CullingUtils.
             place->setOcclusionCulling( true );

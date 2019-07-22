@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/VirtualFeatureSource>
+#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/Filter>
 
 #define LC "[VirtualFeatureSource] "
 
@@ -33,11 +35,11 @@ namespace
      */
     struct VirtualFeatureCursor : public FeatureCursor
     {
-        VirtualFeatureCursor( const FeatureSourceMappingVector& sources, const Query& query ) :
-          _sources(sources), _query(query)
+        VirtualFeatureCursor( const FeatureSourceMappingVector& sources, const Query& query, ProgressCallback* progress) :
+          FeatureCursor(progress), _sources(sources), _query(query)
         {
-            _si = _sources.begin();
             advance();
+            _si = _sources.begin();
         }
 
         bool hasMore() const
@@ -70,7 +72,7 @@ namespace
                 // if we're at the beginning, create the first cursor:
                 if ( _si == _sources.begin() && !_si_cursor.valid() )
                 {
-                    _si_cursor = _si->_source->createFeatureCursor( _query );
+                    _si_cursor = _si->_source->createFeatureCursor( _query, _progress.get() );
                 }
 
                 while ( !_si_cursor.valid() || !_si_cursor->hasMore() )
@@ -81,7 +83,7 @@ namespace
                         return;
 
                     // make a cursor for the next source
-                    _si_cursor = _si->_source->createFeatureCursor( _query );
+                    _si_cursor = _si->_source->createFeatureCursor( _query, _progress.get() );
                 }
 
                 // here, we have a valid cursor with pending data:
@@ -100,10 +102,30 @@ namespace
         osg::ref_ptr<FeatureCursor>          _si_cursor; // cursor into current source
         osg::ref_ptr<Feature>                _nextFeature;
         osg::ref_ptr<Feature>                _lastFeatureReturned; // to manage references during iteration
+        bool                                 _needsInit;
     };
 }
 
 //------------------------------------------------------------------------
+
+FeatureSourceMapping::FeatureSourceMapping(FeatureSource* fs, FeaturePredicate* fp) :
+_source(fs), _predicate(fp)
+{
+    //nop
+}
+
+//------------------------------------------------------------------------
+
+VirtualFeatureSource::VirtualFeatureSource() :
+FeatureSource()
+{
+    //nop
+}
+
+VirtualFeatureSource::~VirtualFeatureSource()
+{
+    //nop
+}
 
 void
 VirtualFeatureSource::add( FeatureSource* source, FeaturePredicate* predicate )
@@ -116,22 +138,19 @@ VirtualFeatureSource::add( FeatureSource* source, FeaturePredicate* predicate )
 }
 
 FeatureCursor* 
-VirtualFeatureSource::createFeatureCursor( const Query& query )
+VirtualFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {
-    return new VirtualFeatureCursor( _sources, query );
+    return new VirtualFeatureCursor(_sources, query, progress);
 }
 
 Status 
 VirtualFeatureSource::initialize( const osgDB::Options* readOptions )
 {
-    //FeatureSource::initialize( dbOptions );
-
     for( FeatureSourceMappingVector::iterator i = _sources.begin(); i != _sources.end(); ++i )
     {
         const Status& sourceStatus = i->_source->open(readOptions);
         if (sourceStatus.isError())
             return sourceStatus;
-        //i->_source->initialize( dbOptions );
     }
 
     return Status::OK();

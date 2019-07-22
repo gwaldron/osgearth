@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -47,7 +47,6 @@ Config
 MultiElevationLayerOptions::getConfig() const
 {
     Config conf = ElevationLayerOptions::getConfig();
-    conf.key() = "multi_elevation";
     Config layers("layers");
     for (std::vector<ConfigOptions>::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
         layers.add(i->getConfig());

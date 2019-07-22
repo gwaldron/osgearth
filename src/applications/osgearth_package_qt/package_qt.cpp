@@ -107,7 +107,7 @@ int main(int argc, char** argv)
   osg::ref_ptr<osg::Group> root = new osg::Group();
 
   //create ViewWidget and get views collection
-  osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
+  osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget( root.get() );
   osgEarth::QtGui::ViewVector views;
   viewerWidget->getViews( views );
 
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
   //globe will be loaded
   osg::ArgumentParser args(&argc,argv);
   std::string earthFile = findArgumentWithExtension(args, ".earth");
-  SceneController controller(root, mainView, earthFile);
+  SceneController controller(root.get(), mainView.get(), earthFile);
 
   //create the TMSExporter and main window
   TMSExporter exporter;

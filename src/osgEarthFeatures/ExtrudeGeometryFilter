@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 #define OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/FilterUsage>
 #include <osgEarthSymbology/Expression>
@@ -30,13 +29,19 @@
 #include <vector>
 #include <list>
 
+namespace osgEarth {
+    namespace Symbology {
+        class ResourceLibrary;
+    }
+}
+
 namespace osgEarth { namespace Features 
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
     
     class FeatureSourceIndex;
-
+    class FeatureIndexBuilder;
 
     /**
      * Extrudes footprint geometry into 3D geometry
@@ -152,6 +157,7 @@ namespace osgEarth { namespace Features
         // their texture usage
         typedef std::map<osg::StateSet*, osg::ref_ptr<osg::Geode> > SortedGeodeMap;
         SortedGeodeMap                 _geodes;
+        SortedGeodeMap                 _lineGroups;
         osg::ref_ptr<osg::StateSet>    _noTextureStateSet;
 
         bool                           _mergeGeometry;
@@ -168,6 +174,7 @@ namespace osgEarth { namespace Features
         bool                           _gpuClamping;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
+        osg::ref_ptr<const PolygonSymbol>   _polySymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;
         osg::ref_ptr<const PolygonSymbol>   _wallPolygonSymbol;
         osg::ref_ptr<const SkinSymbol>      _roofSkinSymbol;
@@ -209,10 +216,7 @@ namespace osgEarth { namespace Features
                                const osg::Vec4&     roofColor,
                                const SkinResource*  roofSkin);
 
-        bool buildOutlineGeometry(const Structure&  structure,
-                                  osg::Geometry*    outline,
-                                  const osg::Vec4&  outlineColor,
-                                  float             minCreaseAngleDeg);
+        osg::Drawable* buildOutlineGeometry(const Structure& structure);
     };
 
 } } // namespace osgEarth::Features

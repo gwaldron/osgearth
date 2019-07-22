@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -79,17 +79,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         GLint _tileKeyUL;
         GLint _parentTextureExistsUL;
         GLint _layerUidUL;
-        GLint _layerOpacityUL;
         GLint _layerOrderUL;
-        GLint _layerMinRangeUL;
-        GLint _layerMaxRangeUL;
         GLint _elevTexelCoeffUL;
         GLint _morphConstantsUL;
 
-        optional<int>        _layerOrder;
         optional<osg::Vec2f> _elevTexelCoeff;
         optional<osg::Vec2f> _morphConstants;
         optional<bool>       _parentTextureExists;
+        optional<int>        _layerOrder;
 
         const osg::Program::PerContextProgram* _pcp;
 
@@ -101,10 +98,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _tileKeyUL(-1),
             _parentTextureExistsUL(-1),
             _layerUidUL(-1),
-            _layerOpacityUL(-1),
             _layerOrderUL(-1),
-            _layerMinRangeUL(-1),
-            _layerMaxRangeUL(-1),
             _elevTexelCoeffUL(-1),
             _morphConstantsUL(-1),
             _ext(0L),

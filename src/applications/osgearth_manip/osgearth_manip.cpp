@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osg/Notify>
 #include <osg/Timer>
 #include <osg/ShapeDrawable>
+#include <osg/Depth>
 #include <osg/PositionAttitudeTransform>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
@@ -36,7 +37,6 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
@@ -85,7 +85,7 @@ namespace
             "scroll wheel :",      "zoom in/out",
             "arrows :",            "pan",
             //"1-6 :",               "fly to preset viewpoints",
-            "shift-right-mouse :", "locked panning",
+            "shift-left-mouse :",  "locked pan",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
             "8 :",                 "Tether to thing 1",
@@ -95,8 +95,7 @@ namespace
             "a :",                 "toggle viewpoint arcing",
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
-            "L :",                 "toggle log depth buffer",
-            ") :",                 "toggle sceen space layout"
+            "L :",                 "toggle log depth buffer"
         };
 
         Grid* g = new Grid();
@@ -202,16 +201,8 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                if ( !_installed )
-                {
-                    ScreenSpaceLayout::activate(_group->getOrCreateStateSet());
-                }
-                else
-                {
-                    ScreenSpaceLayout::deactivate(_group->getOrCreateStateSet());
-                }
-
                 _installed = !_installed;
+                ScreenSpaceLayout::setDeclutteringEnabled(_installed);
                 return true;
             }
             return false;
@@ -262,7 +253,7 @@ namespace
 
 
     /**
-     * Handler to toggle "viewpoint transtion arcing", which causes the camera to "arc"
+     * Handler to toggle "viewpoint transition arcing", which causes the camera to "arc"
      * as it travels from one viewpoint to another.
      */
     struct ToggleArcViewpointTransitionsHandler : public osgGA::GUIEventHandler
@@ -372,15 +363,15 @@ namespace
                 EarthManipulator::TetherMode mode = _manip->getSettings()->getTetherMode();
                 if ( mode == _manip->TETHER_CENTER ) {
                     _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_HEADING );
-                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_HEADING\n";
+                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_HEADING" << std::endl;
                 }
                 else if ( mode == _manip->TETHER_CENTER_AND_HEADING ) {
                     _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_ROTATION );
-                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_ROTATION\n";
+                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_ROTATION" << std::endl;
                 }
                 else {
                     _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER );
-                    OE_NOTICE << "Tether mode = CENTER\n";
+                    OE_NOTICE << "Tether mode = CENTER" << std::endl;
                 }
 
                 aa.requestRedraw();
@@ -571,15 +562,15 @@ namespace
     struct Simulator : public osgGA::GUIEventHandler
     {
         Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode, osg::Node* model, const char* name, char key)
-            : _manip(manip), _mapnode(mapnode), _model(model), _name(name), _key(key)
+            : _manip(manip), _mapnode(mapnode), _model(model), _name(name), _key(key), _varyAngles(false)
         {
             if ( !model )
             { 
                 _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1));
             }
 
-            _geo = new GeoPositionNode(mapnode);
-            _geo->getPositionAttitudeTransform()->addChild(_model);
+            _attachPoint = new osg::Group();
+            _attachPoint->addChild(_model);
 
             Style style;
             TextSymbol* text = style.getOrCreate<TextSymbol>();
@@ -590,10 +581,12 @@ namespace
             _label = new LabelNode(_name, style);
             _label->setDynamic( true );
             _label->setHorizonCulling(false);
+            _attachPoint->addChild(_label);
 
-            _geo->getPositionAttitudeTransform()->addChild(_label);
+            _geo = new GeoPositionNode();
+            _geo->getPositionAttitudeTransform()->addChild(_attachPoint);
 
-            root->addChild(_geo.get());
+            mapnode->addChild(_geo.get());
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -602,14 +595,18 @@ namespace
             {
                 double t0 = osg::Timer::instance()->time_s();
                 double t = fmod( t0, 6000.0 ) / 6000.0;
-                double lat, lon;
-                GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
-                GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
-                double bearing = GeoMath::bearing(D2R*_lat0, D2R*_lon0, lat, lon);
+                GeoPoint p = _start.interpolate(_end, t);
+                double bearing = GeoMath::bearing(_start.y(), _start.x(), p.y(), p.x());
 
-                float a = sin(t0*0.2);
-                //bearing += a * 0.5 * osg::PI;
                 float pitch = 0.0;
+
+                if (_varyAngles)
+                {
+                    float a = sin(t0*0.2);
+                    float b = 0.4 * cos(t0*0.5);
+                    bearing += a;
+                    pitch += b;
+                }
 
                 _geo->setPosition(p);
 
@@ -622,8 +619,7 @@ namespace
                 if ( ea.getKey() == _key )
                 {                                
                     Viewpoint vp = _manip->getViewpoint();
-                    //vp.setNode( _pat.get() );
-                    vp.setNode(_model);
+                    vp.setNode(_label);
                     vp.range() = 25000.0;
                     vp.pitch() = -45.0;
                     _manip->setViewpoint(vp, 2.0);
@@ -637,13 +633,110 @@ namespace
         char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
-        double                             _lat0, _lon0, _lat1, _lon1;
+        GeoPoint                           _start, _end;
         LabelNode*                         _label;
         osg::Node*                         _model;
         float                              _heading;
         float                              _pitch;
-
         osg::ref_ptr<GeoPositionNode>      _geo;
+        osg::Group*                        _attachPoint;
+        bool                               _varyAngles;
+    };
+
+    /**
+     * Place an X at the sim entity position, in screen space.
+     * The point of this is to test the EarthManipulator::UpdateCameraCallback
+     * which provides a frame-synched camera matrix (post-update traversal)
+     */
+    struct CalculateWindowCoords : public osgGA::GUIEventHandler
+                                   
+    {
+        CalculateWindowCoords(char key, EarthManipulator* manip, Simulator* sim)
+            : _key(key), _active(false), _sim(sim), _xform(0L)
+        {
+            //nop
+        }
+
+        void onUpdateCamera(const osg::Camera* cam)
+        {
+            if (_active)
+            {
+                if (!_xform)
+                {
+                    osg::Geometry* geom = new osg::Geometry();
+                    osg::Vec3Array* verts = new osg::Vec3Array();
+                    verts->push_back(osg::Vec3(-10000, 0, 0));
+                    verts->push_back(osg::Vec3( 10000, 0, 0));
+                    verts->push_back(osg::Vec3( 0, -10000, 0));
+                    verts->push_back(osg::Vec3( 0,  10000, 0));
+                    verts->push_back(osg::Vec3( 0, 0, -10000));
+                    verts->push_back(osg::Vec3( 0, 0,  10000));
+                    geom->setVertexArray(verts);
+                    osg::Vec4Array* colors = new osg::Vec4Array();
+                    colors->push_back(osg::Vec4(1, 1, 0, 1));
+                    colors->setBinding(colors->BIND_OVERALL);
+                    geom->setColorArray(colors);
+                    geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, 6));
+                    geom->setCullingActive(false);
+                    geom->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, true), 1);
+
+                    _xform = new osg::MatrixTransform();
+                    _xform->addChild(geom);
+
+                    osg::View* view = const_cast<osg::View*>(cam->getView());
+                    ControlCanvas::getOrCreate(view)->addChild(_xform);
+                }
+
+                GeoPoint p = _sim->_geo->getPosition();
+
+                osg::Vec3d world;
+                p.toWorld(world);
+
+                osg::Matrix worldToWindow =
+                    cam->getViewMatrix() *
+                    cam->getProjectionMatrix() *
+                    cam->getViewport()->computeWindowMatrix();
+
+                osg::Vec3d win = world * worldToWindow;
+
+                _xform->setMatrix(osg::Matrix::translate(win));
+            }
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                _active = !_active;
+                aa.requestRedraw();
+                return true;
+            }
+            
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Show Window Coords"));
+        }
+
+        osg::MatrixTransform* _xform;
+        Simulator* _sim;
+        bool _active;
+        char _key;
+    };
+
+    struct CameraUpdater : public EarthManipulator::UpdateCameraCallback
+    {
+        CalculateWindowCoords* _calc;
+
+        CameraUpdater(CalculateWindowCoords* calc) : _calc(calc) { }
+        
+        void onUpdateCamera(const osg::Camera* cam)
+        {
+            _calc->onUpdateCamera(cam);
+        }
     };
 }
 
@@ -681,28 +774,27 @@ int main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
 
     // user model?
-    osg::Node* model = 0L;
+    osg::ref_ptr<osg::Node> model;
     std::string modelFile;
     if (arguments.read("--model", modelFile))
-        model = osgDB::readNodeFile(modelFile + ".osgearth_shadergen");
+        model = osgDB::readRefNodeFile(modelFile + ".osgearth_shadergen");
 
     osg::Group* sims = new osg::Group();
     root->addChild( sims );
 
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+
     // Simulator for tethering:
-    Simulator* sim1 = new Simulator(sims, manip, mapNode, model, "Thing 1", '8');
-    sim1->_lat0 = 55.0;
-    sim1->_lon0 = 45.0;
-    sim1->_lat1 = -55.0;
-    sim1->_lon1 = -45.0;
+    Simulator* sim1 = new Simulator(sims, manip, mapNode, model.get(), "Thing 1", '8');
+    sim1->_start = GeoPoint(wgs84, 45.0, 55.0, 10000);
+    sim1->_end = GeoPoint(wgs84, -45, -55.0, 10000);
+    sim1->_varyAngles = false;
     viewer.addEventHandler(sim1);
 
-    Simulator* sim2 = new Simulator(sims, manip, mapNode, model, "Thing 2", '9');
-    sim2->_name = "Thing 2";
-    sim2->_lat0 = 54.0;
-    sim2->_lon0 = 45.0;
-    sim2->_lat1 = -54.0;
-    sim2->_lon1 = -44.0;
+    Simulator* sim2 = new Simulator(sims, manip, mapNode, model.get(), "Thing 2", '9');
+    sim2->_start = GeoPoint(wgs84, 45.0, 54.0, 10000);
+    sim2->_end = GeoPoint(wgs84, -44.0, -54.0, 10000);
+    sim2->_varyAngles = true;
     viewer.addEventHandler(sim2);
 
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
@@ -724,6 +816,11 @@ int main(int argc, char** argv)
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
 
+    manip->getSettings()->bindMouseClick(
+        EarthManipulator::ACTION_GOTO,
+        osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
+        osgGA::GUIEventAdapter::MODKEY_SHIFT);
+
     manip->getSettings()->setArcViewpointTransitions( true );    
 
     manip->setTetherCallback( new TetherCB() );
@@ -739,8 +836,11 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new SetPositionOffset(manip));
     viewer.addEventHandler(new ToggleLDB('L'));
     viewer.addEventHandler(new ToggleSSL(sims, ')'));
-
     viewer.addEventHandler(new FitViewToPoints('j', manip, mapNode->getMapSRS()));
+    
+    CalculateWindowCoords* calc = new CalculateWindowCoords('W', manip, sim1);
+    viewer.addEventHandler(calc);
+    manip->setUpdateCameraCallback(new CameraUpdater(calc));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,8 +24,9 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/Clamping>
 
-#define OSGEARTH_CLAMPING_BIN           "osgEarth::ClampingBin"
+#define OSGEARTH_CLAMPING_BIN "osgEarth::ClampingBin"
 
 namespace osgEarth
 {
@@ -59,8 +60,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ClampingTechnique : public OverlayTechnique
     {
     public:
-        typedef osg::Group* (*TechniqueProvider)(class MapNode*);
-        static TechniqueProvider Provider;
+        //typedef osg::Group* (*TechniqueProvider)(class MapNode*);
+        //static TechniqueProvider Provider;
 
     public:
         ClampingTechnique();
@@ -93,6 +94,9 @@ namespace osgEarth
         void onInstall( TerrainEngineNode* engine );
 
         void onUninstall( TerrainEngineNode* engine );
+        
+        const osg::BoundingSphere& getBound(
+            OverlayDecorator::TechRTTParams& params) const;
 
     protected:
         virtual ~ClampingTechnique() { }
@@ -101,6 +105,10 @@ namespace osgEarth
         int                _textureUnit;
         optional<int>      _textureSize;
         TerrainEngineNode* _engine;
+
+        mutable ClampingManager _clampingManager;
+        ClampingManager& getClampingManager() { return _clampingManager; }
+        friend class MapNode;
 
     private:
         void setUpCamera(OverlayDecorator::TechRTTParams& params);

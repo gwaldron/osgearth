@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -58,6 +58,9 @@ namespace osgEarth
 
     /**
      * MaskSource is a plugin object that generates a masking goemetry
+     *
+     * TODO: there is only one kind of mask source (FeatureMaskSource) so
+     * consider removing this and just having a single MaskLayer type. -gw
      */
     class OSGEARTH_EXPORT MaskSource : public osg::Object, public Revisioned
     {

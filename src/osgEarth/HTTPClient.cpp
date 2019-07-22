@@ -1,38 +1,26 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 #include <osgEarth/HTTPClient>
-#include <osgEarth/Registry>
-#include <osgEarth/Version>
 #include <osgEarth/Progress>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Metrics>
 #include <osgDB/ReadFile>
-#include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
-#include <osg/Notify>
-#include <osg/Timer>
-#include <string.h>
-#include <sstream>
-#include <fstream>
-#include <iterator>
-#include <iostream>
-#include <algorithm>
 #include <curl/curl.h>
 
 // Whether to use WinInet instead of cURL - CMAKE option
@@ -240,7 +228,13 @@ HTTPRequest::getHeaders() const
 	return _headers;
 }
 
-void HTTPRequest::setLastModified(const DateTime &lastModified)
+Headers&
+HTTPRequest::getHeaders()
+{
+    return _headers;
+}
+
+void HTTPRequest::setLastModified( const DateTime &lastModified)
 {
 	addHeader("If-Modified-Since", lastModified.asRFC1123());
 }
@@ -295,6 +289,18 @@ HTTPResponse::getCode() const {
 	return _response_code;
 }
 
+unsigned
+HTTPResponse::getCodeCategory() const 
+{
+    return
+        getCode() < 100 ? CATEGORY_UNKNOWN :
+        getCode() < 200 ? CATEGORY_INFORMATIONAL :
+        getCode() < 300 ? CATEGORY_SUCCESS :
+        getCode() < 400 ? CATEGORY_REDIRECTION :
+        getCode() < 500 ? CATEGORY_CLIENT_ERROR :
+                          CATEGORY_SERVER_ERROR;
+}
+
 bool
 HTTPResponse::isOK() const {
 	return _response_code == 200L && !isCancelled();
@@ -326,10 +332,11 @@ HTTPResponse::getPartStream(unsigned int n) const {
 }
 
 std::string
-HTTPResponse::getPartAsString(unsigned int n) const {
-	std::string streamStr;
-	streamStr = _parts[n]->_stream.str();
-	return streamStr;
+HTTPResponse::getPartAsString( unsigned int n ) const {
+    std::string streamStr;
+    if (n < _parts.size())
+        streamStr = _parts[n]->_stream.str();
+    return streamStr;
 }
 
 const std::string&
@@ -430,12 +437,13 @@ HTTPClient::initializeImpl()
 		OE_WARN << LC << "Simulating a network error with Response Code = " << _simResponseCode << std::endl;
 	}
 
-	// Check to HTTP disabling (for testing)
-	const char* disable = getenv("OSGEARTH_HTTP_DISABLE");
-	if (disable)
-	{
-		_simResponseCode = 503L; // SERVICE UNAVAILABLE
-	}
+    // Check to HTTP disabling (for testing)
+    const char* disable = getenv("OSGEARTH_HTTP_DISABLE");
+    if (disable)
+    {
+        _simResponseCode = 503L; // SERVICE UNAVAILABLE
+        OE_WARN << LC << "HTTP traffic disabled" << std::endl;
+    }
 
 	// Dumps out HTTP request/response info
 	if (::getenv("OSGEARTH_HTTP_DEBUG"))
@@ -491,9 +499,15 @@ HTTPClient::~HTTPClient()
 }
 
 void
-HTTPClient::setProxySettings(const ProxySettings& proxySettings)
+HTTPClient::setProxySettings( const optional<ProxySettings> & proxySettings )
 {
 	s_proxySettings = proxySettings;
+}
+
+const optional<ProxySettings> & 
+HTTPClient::getProxySettings()
+{
+    return s_proxySettings;
 }
 
 const std::string& HTTPClient::getUserAgent()
@@ -1171,10 +1185,9 @@ ProgressCallback*     progress) const
 			curlConfigHandler->onGet(_curl_handle);
 		}
 
-		res = curl_easy_perform(_curl_handle);
-
-		curl_easy_setopt(_curl_handle, CURLOPT_WRITEDATA, (void*)0);
-		curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
+        res = curl_easy_perform(_curl_handle);
+        curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
+        curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
 
 		if (!proxy_addr.empty())
 		{
@@ -1216,116 +1229,88 @@ ProgressCallback*     progress) const
 	}
 
 	// read the file time:
-	response._lastModified = getCurlFileTime(_curl_handle);
+	response._lastModified = getCurlFileTime( _curl_handle );
 
-	if (res == CURLE_OK)
-	{
-		// check for multipart content
-		if (response._mimeType.length() > 9 &&
-			::strstr(response._mimeType.c_str(), "multipart") == response._mimeType.c_str())
-		{
-			OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
+    if (res == CURLE_OK)
+    {
+        // check for multipart content
+        if (response._mimeType.length() > 9 &&
+            ::strstr( response._mimeType.c_str(), "multipart" ) == response._mimeType.c_str() )
+        {
+            OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
 
-			//TODO: parse out the "wcs" -- this is WCS-specific
-			if (!decodeMultipartStream("wcs", part.get(), response._parts))
-			{
-				// error decoding an invalid multipart stream.
-				// should we do anything, or just leave the response empty?
-			}
-		}
-		else
-		{
-			for (Headers::iterator itr = sp._headers.begin(); itr != sp._headers.end(); ++itr)
-			{
-				part->_headers[itr->first] = itr->second;
-			}
+            //TODO: parse out the "wcs" -- this is WCS-specific
+            if ( !decodeMultipartStream( "wcs", part.get(), response._parts ) )
+            {
+                // error decoding an invalid multipart stream.
+                // should we do anything, or just leave the response empty?
+            }
+        }
+        else
+        {
+            for (Headers::iterator itr = sp._headers.begin(); itr != sp._headers.end(); ++itr)
+            {
+                part->_headers[itr->first] = itr->second;
+            }
 
-			// Write the headers to the metadata
-			response._parts.push_back(part.get());
-		}
-	}
+            // Write the headers to the metadata
+            response._parts.push_back( part.get() );
+        }
+    }
 
-	else if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT)
-	{
-		//If we were aborted by a callback, then it was cancelled by a user
-		response._cancelled = true;
-	}
+    else if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT)
+    {
+        //If we were aborted by a callback, then it was cancelled by a user
+        response._cancelled = true;
+    }
 
-	else
-	{
-		response._message = curl_easy_strerror(res);
+    else
+    {
+        response._message = curl_easy_strerror(res);
 
-		if (res == CURLE_GOT_NOTHING)
-		{
-			OE_WARN << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
-		}
-	}
+        if (res == CURLE_GOT_NOTHING)
+        {
+            OE_DEBUG << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
+        }
+    }
 
-#if 0
-	// upon success, parse the data:
-	if (res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT)
-	{
-		// check for multipart content
-		if (response._mimeType.length() > 9 &&
-			::strstr(response._mimeType.c_str(), "multipart") == response._mimeType.c_str())
-		{
-			OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
+    response._duration_s = OE_STOP_TIMER(get_duration);
 
-			//TODO: parse out the "wcs" -- this is WCS-specific
-			if (!decodeMultipartStream("wcs", part.get(), response._parts))
-			{
-				// error decoding an invalid multipart stream.
-				// should we do anything, or just leave the response empty?
-			}
-		}
-		else
-		{
-			for (Headers::iterator itr = sp._headers.begin(); itr != sp._headers.end(); ++itr)
-			{
-				part->_headers[itr->first] = itr->second;
-			}
+    if ( progress )
+    {
+        progress->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
+        progress->stats()["http_get_count"] += 1;
+        if ( response._cancelled )
+            progress->stats()["http_cancel_count"] += 1;
+    }
 
-			// Write the headers to the metadata
-			response._parts.push_back(part.get());
-		}
-	}
-	else  /*if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT) */
-	{
-		//If we were aborted by a callback, then it was cancelled by a user
-		response._cancelled = true;
-	}
-#endif
+    if ( s_HTTP_DEBUG )
+    {
+        TimeStamp filetime = getCurlFileTime(_curl_handle);
 
-	response._duration_s = OE_STOP_TIMER(get_duration);
+        OE_NOTICE << LC
+            << "GET(" << response_code << ") " << response._mimeType << ": \""
+            << url << "\" (" << DateTime(filetime).asRFC1123() << ") t="
+            << std::setprecision(4) << response.getDuration() << "s" << std::endl;
 
-	if (progress)
-	{
-		progress->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
-		progress->stats()["http_get_count"] += 1;
-		if (response._cancelled)
-			progress->stats()["http_cancel_count"] += 1;
-	}
+        for(HTTPRequest::Parameters::const_iterator itr = request.getHeaders().begin();
+            itr != request.getHeaders().end(); 
+            ++itr)
+        {
+            OE_NOTICE << LC << "    Header: " << itr->first << " = " << itr->second << std::endl;
+        }
 
-	if (s_HTTP_DEBUG)
-	{
-		TimeStamp filetime = getCurlFileTime(_curl_handle);
+        {
+            Threading::ScopedMutexLock lock(s_HTTP_DEBUG_mutex);
+            s_HTTP_DEBUG_request_count++;
+            s_HTTP_DEBUG_total_duration += response.getDuration();
 
-		OE_NOTICE << LC
-			<< "GET(" << response_code << ") " << response._mimeType << ": \""
-			<< url << "\" (" << DateTime(filetime).asRFC1123() << ") t="
-			<< std::setprecision(4) << response.getDuration() << "s" << std::endl;
-
-		{
-			Threading::ScopedMutexLock lock(s_HTTP_DEBUG_mutex);
-			s_HTTP_DEBUG_request_count++;
-			s_HTTP_DEBUG_total_duration += response.getDuration();
-
-			if (s_HTTP_DEBUG_request_count % 60 == 0)
-			{
-				OE_NOTICE << LC << "Average duration = " << s_HTTP_DEBUG_total_duration / (double)s_HTTP_DEBUG_request_count
-					<< std::endl;
-			}
-		}
+            if ( s_HTTP_DEBUG_request_count % 60 == 0 )
+            {
+                OE_NOTICE << LC << "Average duration = " << s_HTTP_DEBUG_total_duration/(double)s_HTTP_DEBUG_request_count
+                    << std::endl;
+            }
+        }
 
 #if 0
 		// time details - almost 100% of the time is spent in
@@ -1379,10 +1364,17 @@ HTTPClient::doDownload(const std::string& url, const std::string& filename)
 	// download the data
 	HTTPResponse response = this->doGet(HTTPRequest(url));
 
-	if (response.isOK())
-	{
-		unsigned int part_num = response.getNumParts() > 1 ? 1 : 0;
-		std::istream& input_stream = response.getPartStream(part_num);
+    if ( response.isOK() )
+    {
+        unsigned int part_num = response.getNumParts() > 1? 1 : 0;
+        std::istream& input_stream = response.getPartStream( part_num );
+    if ( response.isOK() )
+    {
+        if (response.getNumParts() < 1)
+            return false;
+
+        unsigned int part_num = response.getNumParts() > 1? 1 : 0;
+        std::istream& input_stream = response.getPartStream( part_num );
 
 		std::ofstream fout;
 		fout.open(filename.c_str(), std::ios::out | std::ios::binary);
@@ -1436,11 +1428,11 @@ namespace
 				<< ext << "; mime-type=" << response.getMimeType()
 				<< ")" << std::endl;
 
-			if (endsWith(response.getMimeType(), "xml", false))
-			{
-				OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
-			}
-		}
+            if ( endsWith(response.getMimeType(), "xml", false) && response.getNumParts() > 0 )
+            {
+                OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
+            }
+        }
 
 		return reader;
 	}
@@ -1465,58 +1457,67 @@ ProgressCallback*     callback)
 			result = ReadResult(ReadResult::RESULT_NO_READER);
 		}
 
-		else
-		{
-			osgDB::ReaderWriter::ReadResult rr = reader->readImage(response.getPartStream(0), options);
-			if (rr.validImage())
-			{
-				result = ReadResult(rr.takeImage());
-			}
-			else
-			{
-				if (s_HTTP_DEBUG)
-				{
-					OE_WARN << LC << reader->className()
-						<< " failed to read image from " << request.getURL()
-						<< "; message = " << rr.message()
-						<< std::endl;
-				}
-				result = ReadResult(ReadResult::RESULT_READER_ERROR);
-				result.setErrorDetail(rr.message());
-			}
-		}
+        else
+        {
+            osgDB::ReaderWriter::ReadResult rr;
+
+            if (response.getNumParts() > 0)
+                rr = reader->readImage(response.getPartStream(0), options);
+
+            if ( rr.validImage() )
+            {
+                result = ReadResult(rr.takeImage());
+            }
+            else
+            {
+                if ( s_HTTP_DEBUG )
+                {
+                    OE_WARN << LC << reader->className()
+                        << " failed to read image from " << request.getURL()
+                        << "; message = " << rr.message()
+                        <<  std::endl;
+                }
+                result = ReadResult(ReadResult::RESULT_READER_ERROR);
+                result.setErrorDetail( rr.message() );
+            }
+        }
 
 		// last-modified (file time)
 		result.setLastModifiedTime(response._lastModified); //getCurlFileTime(_curl_handle) );
 
-		// Time of query
-		result.setDuration(response.getDuration());
-	}
-	else
-	{
-		result = ReadResult(
-			response.isCancelled() ? ReadResult::RESULT_CANCELED :
-			response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
-			response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
-			response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
-			ReadResult::RESULT_UNKNOWN_ERROR);
+        // Time of query
+        result.setDuration( response.getDuration() );
+    }
+    else
+    {
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
+            response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR);
 
-		//If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
-		if (HTTPClient::isRecoverable(result.code()))
-		{
-			if (callback)
-			{
-				if (s_HTTP_DEBUG)
-				{
-					if (response.isCancelled())
-						OE_NOTICE << LC << "Request was cancelled" << std::endl;
-					else
-                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
-				}
-				callback->setNeedsRetry(true);
-			}
-		}
-	}
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
+        {
+            if (callback)
+            {
+                callback->cancel();
+
+                if ( s_HTTP_DEBUG )
+                {
+                    if (response.isCancelled())
+                    {
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    }
+                    else
+                    {
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
+                    }
+                }
+            }
+        }
+    }
 
 	// encode headers
 	result.setMetadata(response.getHeadersAsConfig());
@@ -1547,55 +1548,64 @@ ProgressCallback*     callback)
 			result = ReadResult(ReadResult::RESULT_NO_READER);
 		}
 
-		else
-		{
-			osgDB::ReaderWriter::ReadResult rr = reader->readNode(response.getPartStream(0), options);
-			if (rr.validNode())
-			{
-				result = ReadResult(rr.takeNode());
-			}
-			else
-			{
-				if (s_HTTP_DEBUG)
-				{
-					OE_WARN << LC << reader->className()
-						<< " failed to read node from " << request.getURL()
-						<< "; message = " << rr.message()
-						<< std::endl;
-				}
-				result = ReadResult(ReadResult::RESULT_READER_ERROR);
-				result.setErrorDetail(rr.message());
-			}
-		}
+        else
+        {
+            osgDB::ReaderWriter::ReadResult rr;
+            
+            if (response.getNumParts() > 0)
+                rr = reader->readNode(response.getPartStream(0), options);
 
-		// last-modified (file time)
-		result.setLastModifiedTime(response._lastModified); //getCurlFileTime(_curl_handle) );
-	}
-	else
-	{
-		result = ReadResult(
-			response.isCancelled() ? ReadResult::RESULT_CANCELED :
-			response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
-			response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
-			response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
-			ReadResult::RESULT_UNKNOWN_ERROR);
+            if ( rr.validNode() )
+            {
+                result = ReadResult(rr.takeNode());
+            }
+            else
+            {
+                if ( s_HTTP_DEBUG )
+                {
+                    OE_WARN << LC << reader->className()
+                        << " failed to read node from " << request.getURL()
+                        << "; message = " << rr.message()
+                        <<  std::endl;
+                }
+                result = ReadResult(ReadResult::RESULT_READER_ERROR);
+                result.setErrorDetail( rr.message() );
+            }
+        }
 
-		//If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
-		if (HTTPClient::isRecoverable(result.code()))
-		{
-			if (callback)
-			{
-				if (s_HTTP_DEBUG)
-				{
-					if (response.isCancelled())
-						OE_NOTICE << LC << "Request was cancelled" << std::endl;
-					else
-                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
-				}
-				callback->setNeedsRetry(true);
-			}
-		}
-	}
+        // last-modified (file time)
+        result.setLastModifiedTime( response._lastModified ); //getCurlFileTime(_curl_handle) );
+    }
+    else
+    {
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
+            response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR);
+
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
+        {
+            if (callback)
+            {
+                callback->cancel();
+
+                if ( s_HTTP_DEBUG )
+                {
+                    if (response.isCancelled())
+                    {
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    }
+                    else
+                    {
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
+                    }
+                }
+            }
+        }
+    }
 
 	// encode headers
 	result.setMetadata(response.getHeadersAsConfig());
@@ -1622,55 +1632,64 @@ ProgressCallback*     callback)
 			result = ReadResult(ReadResult::RESULT_NO_READER);
 		}
 
-		else
-		{
-			osgDB::ReaderWriter::ReadResult rr = reader->readObject(response.getPartStream(0), options);
-			if (rr.validObject())
-			{
-				result = ReadResult(rr.takeObject());
-			}
-			else
-			{
-				if (s_HTTP_DEBUG)
-				{
-					OE_WARN << LC << reader->className()
-						<< " failed to read object from " << request.getURL()
-						<< "; message = " << rr.message()
-						<< std::endl;
-				}
-				result = ReadResult(ReadResult::RESULT_READER_ERROR);
-				result.setErrorDetail(rr.message());
-			}
-		}
+        else
+        {
+            osgDB::ReaderWriter::ReadResult rr;
+            
+            if (response.getNumParts() > 0 )
+                rr = reader->readObject(response.getPartStream(0), options);
 
-		// last-modified (file time)
-		result.setLastModifiedTime(response._lastModified); //getCurlFileTime(_curl_handle) );
-	}
-	else
-	{
-		result = ReadResult(
-			response.isCancelled() ? ReadResult::RESULT_CANCELED :
-			response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
-			response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
-			response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
-			ReadResult::RESULT_UNKNOWN_ERROR);
+            if ( rr.validObject() )
+            {
+                result = ReadResult(rr.takeObject());
+            }
+            else
+            {
+                if ( s_HTTP_DEBUG )
+                {
+                    OE_WARN << LC << reader->className()
+                        << " failed to read object from " << request.getURL()
+                        << "; message = " << rr.message()
+                        <<  std::endl;
+                }
+                result = ReadResult(ReadResult::RESULT_READER_ERROR);
+                result.setErrorDetail( rr.message() );
+            }
+        }
 
-		//If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
-		if (HTTPClient::isRecoverable(result.code()))
-		{
-			if (callback)
-			{
-				if (s_HTTP_DEBUG)
-				{
-					if (response.isCancelled())
-						OE_NOTICE << LC << "Request was cancelled" << std::endl;
-					else
-                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
-				}
-				callback->setNeedsRetry(true);
-			}
-		}
-	}
+        // last-modified (file time)
+        result.setLastModifiedTime( response._lastModified ); //getCurlFileTime(_curl_handle) );
+    }
+    else
+    {
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
+            response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR);
+
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
+        {
+            if (callback)
+            {
+                callback->cancel();
+
+                if ( s_HTTP_DEBUG )
+                {
+                    if (response.isCancelled())
+                    {
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    }
+                    else
+                    {
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
+                    }
+                }
+            }
+        }
+    }
 
 	result.setMetadata(response.getHeadersAsConfig());
 
@@ -1687,52 +1706,54 @@ ProgressCallback*     callback)
 
 	ReadResult result;
 
-	HTTPResponse response = this->doGet(request, options, callback);
-	if (response.isOK())
-	{
-		result = ReadResult(new StringObject(response.getPartAsString(0)));
-	}
+    HTTPResponse response = this->doGet( request, options, callback );
+    if ( response.isOK() && response.getNumParts() > 0 )
+    {
+        result = ReadResult( new StringObject(response.getPartAsString(0)) );
+    }
+    else
+    {
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
+            response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR);
+        
+        // for request errors, return an error result with the part data intact
+        // so the user can parse it as needed. We only do this for readString.
+        if (response.getNumParts() > 0u)
+        {
+            result.setErrorDetail(response.getPartAsString(0));
+        }
 
-	else if (response.getCode() >= 400 && response.getCode() < 500 && response.getCode() != 404)
-	{
-		// for request errors, return an error result with the part data intact
-		// so the user can parse it as needed. We only do this for readString.
-		result = ReadResult(
-			ReadResult::RESULT_SERVER_ERROR,
-			new StringObject(response.getPartAsString(0)));
-	}
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
+        {
+            if (callback)
+            {
+                callback->cancel();
 
-	else
-	{
-		result = ReadResult(
-			response.isCancelled() ? ReadResult::RESULT_CANCELED :
-			response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
-			response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
-			response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
-			ReadResult::RESULT_UNKNOWN_ERROR);
-
-		//If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
-		if (HTTPClient::isRecoverable(result.code()))
-		{
-			if (callback)
-			{
-				if (s_HTTP_DEBUG)
-				{
-					if (response.isCancelled())
-                  OE_NOTICE << LC << "HTTP request was cancelled" << std::endl;
-					else
-                  OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
-				}
-				callback->setNeedsRetry(true);
-			}
-		}
-	}
+                if ( s_HTTP_DEBUG )
+                {
+                    if (response.isCancelled())
+                    {
+                        OE_NOTICE << LC << "HTTP request was cancelled" << std::endl;
+                    }
+                    else
+                    {
+                        OE_NOTICE << LC << "Recoverable error in HTTPClient for " << request.getURL() << std::endl;
+                    }
+                }
+            }
+        }
+    }
 
 	// encode headers
 	result.setMetadata(response.getHeadersAsConfig());
 
-	// last-modified (file time)
-	result.setLastModifiedTime(response._lastModified); //getCurlFileTime(_curl_handle) );
+    // last-modified (file time)
+    result.setLastModifiedTime( response._lastModified );
 
 	return result;
 }

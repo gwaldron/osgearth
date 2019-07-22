@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,11 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ModelLayer>
-#include <osgEarth/Map>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/Lighting>
+#include <osgEarth/GLUtils>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] Layer \"" << getName() << "\" "
@@ -34,28 +30,12 @@ namespace osgEarth {
 
 //------------------------------------------------------------------------
 
-namespace
+ModelLayerOptions::ModelLayerOptions() :
+VisibleLayerOptions()
 {
-    /**
-     * Most basic of model sources; used to support the osg::Node* constructor to ModelLayer.
-     */
-    struct NodeModelSource : public ModelSource
-    {
-        NodeModelSource( osg::Node* node ) : _node(node) { }
-
-        Status initialize(const osgDB::Options* readOptions) {
-            return Status::OK();
-        }
-
-        osg::Node* createNodeImplementation(const Map* map, ProgressCallback* progress) {
-            return _node.get();
-        }
-
-        osg::ref_ptr<osg::Node> _node;
-    };
+    setDefaults();
+    fromConfig(_conf);
 }
-
-//------------------------------------------------------------------------
 
 ModelLayerOptions::ModelLayerOptions(const ConfigOptions& options) :
 VisibleLayerOptions( options )
@@ -73,50 +53,28 @@ VisibleLayerOptions()
     name() = in_name;
 }
 
-ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
-VisibleLayerOptions(rhs)
-{
-    _driver = optional<ModelSourceOptions>(rhs._driver);
-    _lighting = optional<bool>(rhs._lighting);
-    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
-    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
-    _terrainPatch = optional<bool>(rhs._terrainPatch);
-}
-
-ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
-{
-    VisibleLayerOptions::operator =(rhs);
-    _driver = optional<ModelSourceOptions>(rhs._driver);
-    _lighting = optional<bool>(rhs._lighting);
-    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
-    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
-    _terrainPatch = optional<bool>(rhs._terrainPatch);
-
-    return *this;
-}
-
 void
 ModelLayerOptions::setDefaults()
 {
     _lighting.init    ( true );
     _maskMinLevel.init( 0 );
-    _terrainPatch.init( false );
 }
 
 Config
 ModelLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
-    conf.key() = "model";
 
     conf.set( "name",           _name );
     conf.set( "lighting",       _lighting );
     conf.set( "mask_min_level", _maskMinLevel );
-    conf.set( "patch",          _terrainPatch );  
 
     // Merge the MaskSource options
     if ( mask().isSet() )
         conf.set( "mask", mask()->getConfig() );
+
+    if ( driver().isSet() )
+        conf.merge(driver()->getConfig());
 
     return conf;
 }
@@ -124,9 +82,8 @@ ModelLayerOptions::getConfig() const
 void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "lighting",       _lighting );
-    conf.getIfSet( "mask_min_level", _maskMinLevel );
-    conf.getIfSet( "patch",          _terrainPatch );
+    conf.get( "lighting",       _lighting );
+    conf.get( "mask_min_level", _maskMinLevel );
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -179,10 +136,15 @@ _modelSource( source )
 ModelLayer::ModelLayer(const std::string& name, osg::Node* node) :
 VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
-_optionsConcrete(ModelLayerOptions(name)),
-_modelSource( new NodeModelSource(node) )
+_optionsConcrete(ModelLayerOptions())
 {
+    options().name() = name;
     init();
+    if (node)
+    {
+        _root->addChild(node);
+        setStatus(Status::OK());
+    }
 }
 
 ModelLayer::~ModelLayer()
@@ -190,26 +152,19 @@ ModelLayer::~ModelLayer()
     //nop
 }
 
-Config
-ModelLayer::getConfig() const
-{
-    Config layerConf = Layer::getConfig(); //getModelLayerOptions().getConfig();
-    layerConf.set("name", getName()); // redundant?
-    layerConf.set("driver", options().driver()->getDriver());
-    layerConf.key() = "model";
-    return layerConf;
-}
-
 void
 ModelLayer::init()
 {
     VisibleLayer::init();
+    installDefaultOpacityShader();
+    _root = new osg::Group();
+    _root->setName(getName());
 }
 
 const Status&
 ModelLayer::open()
 {
-    if ( !_modelSource.valid() && options().driver().isSet() )
+    if ( VisibleLayer::open().isOK() && !_modelSource.valid() && options().driver().isSet() )
     {
         std::string driverName = options().driver()->getDriver();
 
@@ -259,53 +214,6 @@ ModelLayer::open()
     return getStatus();
 }
 
-#if 0
-void
-ModelLayer::setReadOptions(const osgDB::Options* readOptions)
-{
-    Layer::setReadOptions(readOptions);
-
-    // Create some local cache settings for this layer:
-    CacheSettings* oldSettings = CacheSettings::get(readOptions);
-    _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
-
-    // bring in the new policy for this layer if there is one:
-    _cacheSettings->integrateCachePolicy(options().cachePolicy());
-
-    // if caching is a go, install a bin.
-    if (_cacheSettings->isCacheEnabled())
-    {
-        std::string binID;
-        if (options().cacheId().isSet() && !options().cacheId()->empty())
-        {
-            binID = options().cacheId().get();
-        }
-        else
-        {
-            Config conf = options().driver()->getConfig();
-            binID = hashToString(conf.toJSON(false));
-        }
-
-        // make our cacheing bin!
-        CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
-        if (bin)
-        {
-            OE_INFO << LC << "Cache bin is [" << binID << "]\n";
-            _cacheSettings->setCacheBin( bin );
-        }
-        else
-        {
-            // failed to create the bin, so fall back on no cache mode.
-            OE_WARN << LC << "Failed to open a cache bin [" << binID << "], disabling caching\n";
-            _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
-        }
-    }
-
-    // Store it for further propagation!
-    _cacheSettings->store(_readOptions.get());
-}
-#endif
-
 std::string
 ModelLayer::getCacheID() const
 {
@@ -323,42 +231,27 @@ ModelLayer::getCacheID() const
     return binID;
 }
 
-osg::Node*
-ModelLayer::getSceneGraph(const UID& mapUID) const
-{
-    Threading::ScopedMutexLock lock(_mutex);
-    Graphs::const_iterator i = _graphs.find( mapUID );
-    return i == _graphs.end() ? 0L : i->second.get();
-}
-
-osg::Node*
-ModelLayer::getOrCreateSceneGraph(const Map*        map,
-                                  ProgressCallback* progress )
+void
+ModelLayer::addedToMap(const Map* map)
 {
     if (getStatus().isError())
-        return 0L;
-
-    // exclusive lock for cache lookup/update.
-    Threading::ScopedMutexLock lock( _mutex );
-
-    // There can be one node graph per Map. See if it already exists
-    // and if so, return it.
-    Graphs::iterator i = _graphs.find(map->getUID());
-    if ( i != _graphs.end() && i->second.valid() )
-        return i->second.get();
-
-    // need to create it.
-    osg::Node* node = 0L;
+        return;
 
     if ( _modelSource.valid() )
     {
+        // reset the scene graph.
+        while (_root->getNumChildren() > 0)
+        {
+            getSceneGraphCallbacks()->fireRemoveNode(_root->getChild(0));
+            _root->removeChildren(0, 1);
+        }
+
         // Share the scene graph callbacks with the model source:
         _modelSource->setSceneGraphCallbacks(getSceneGraphCallbacks());
 
-        // Create the scene graph:
-        node = _modelSource->createNode( map, progress );
-
-        if ( node )
+        // Create the scene graph from the mode source:
+        osg::ref_ptr<osg::Node> node = _modelSource->createNode(map, 0L);
+        if (node.valid())
         {
             if ( options().lightingEnabled().isSet() )
             {
@@ -367,47 +260,51 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
 
             _modelSource->sync( _modelSourceRev );
 
-
-            // add a parent group for shaders/effects to attach to without overwriting any model programs directly
-            osg::Group* group = new osg::Group();
-            group->addChild(node);
-
-            // assign the layer's stateset to the group.
-            osg::StateSet* groupSS = getOrCreateStateSet();
-            group->setStateSet(groupSS);
-
-            node = group;
-
-            // Toggle visibility if necessary
-            if ( options().visible().isSet() )
-            {
-                node->setNodeMask( options().visible().get() ? ~0 : 0 );
-            }
-
             // Handle disabling depth testing
             if ( _modelSource->getOptions().depthTestEnabled() == false )
             {
                 osg::StateSet* ss = node->getOrCreateStateSet();
-                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
-              
+                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );              
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
 
-            // save it.
-            _graphs[map->getUID()] = node;
+            // enfore a rendering bin if necessary:
+            if (_modelSource->getOptions().renderOrder().isSet())
+            {
+                osg::StateSet* ss = node->getOrCreateStateSet();
+                ss->setRenderBinDetails(
+                    _modelSource->getOptions().renderOrder().value(),
+                    ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName());
+            }
+
+            if (_modelSource->getOptions().renderBin().isSet())
+            {
+                osg::StateSet* ss = node->getOrCreateStateSet();
+                ss->setRenderBinDetails(
+                    ss->getBinNumber(),
+                    _modelSource->getOptions().renderBin().get());
+            }
+
+            _root->addChild(node.get());
         }
     }
+}
 
-    return node;
+void
+ModelLayer::removedFromMap(const Map* map)
+{
+    // dispose of the scene graph.
+    while (_root->getNumChildren() > 0)
+    {
+        getSceneGraphCallbacks()->fireRemoveNode(_root->getChild(0));
+        _root->removeChildren(0, 1);
+    }
 }
 
 osg::Node*
-ModelLayer::getOrCreateNode()
+ModelLayer::getNode() const
 {
-    if (!_graphs.empty())
-        return _graphs.begin()->second.get();
-    else
-        return 0L;
+    return _root.get();
 }
 
 void
@@ -428,14 +325,10 @@ ModelLayer::setLightingEnabledNoLock(bool value)
         {
             osg::StateSet* stateset = i->second->getOrCreateStateSet();
 
-            stateset->setMode( 
-                GL_LIGHTING, value ? osg::StateAttribute::ON : 
+            GLUtils::setLighting(
+                stateset,
+                value ? osg::StateAttribute::ON : 
                 (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
-
-            if ( Registry::capabilities().supportsGLSL() )
-            {
-                stateset->setDefine(OE_LIGHTING_DEFINE, value);
-            }
         }
     }
 }

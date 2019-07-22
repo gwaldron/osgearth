@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -104,7 +104,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
         {
             if ( !_options.format().isSet() )
             {
-                return Status::Error(Status::ConfigurationError, "Cannot create new repo with required [format] property");
+                return Status::Error(Status::ConfigurationError, "Missing required \"format\" property: e.g. png, jpg");
             }
 
             TMS::TileMapReaderWriter::write( _tileMap.get(), tmsURI.full() );
@@ -155,27 +155,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
             {
                 this->getDataExtents().push_back(*itr);
             }
-        }
-        else
-        {
-            
-            GeoExtent extent;
-
-            // Push back a single area that covers the "bounds" present in the TMS dataset.
-            if (_tileMap.valid())
-            {
-                double minX, minY, maxX, maxY;
-                _tileMap->getExtents(minX, minY, maxX, maxY);
-                extent = GeoExtent(profile->getSRS(), minX, minY, maxX, maxY);
-            }
-
-            // If the extent isn't valid, use the profile's extent.
-            if (!extent.isValid() || extent.width() <= 0.0 || extent.height() <= 0.0 )
-            {
-                extent = profile->getExtent();
-            }
-            this->getDataExtents().push_back(DataExtent(extent, 0, _tileMap->getMaxLevel()));
-        }
+        }        
     }
     return STATUS_OK;
 }
@@ -218,8 +198,9 @@ TMSTileSource::createImage(const TileKey&    key,
 
         osg::ref_ptr<osg::Image> image;
         if (!image_url.empty())
-        {
-            image = URI(image_url).readImage( _dbOptions.get(), progress ).getImage();
+        {     
+            URI uri(image_url, _options.url()->context());
+            image = uri.readImage( _dbOptions.get(), progress ).getImage();
         }
 
         if (!image.valid())
@@ -238,8 +219,8 @@ TMSTileSource::createImage(const TileKey&    key,
         
         if (image.valid() && _options.coverage() == true)
         {
-            image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
-            ImageUtils::markAsUnNormalized(image, true);
+            image->setInternalTextureFormat(GL_R16F);
+            ImageUtils::markAsUnNormalized(image.get(), true);
         }
 
         return image.release();

@@ -4,9 +4,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_bumpmap_vertexView
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
-#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_IS_PICK_CAMERA)
+#pragma import_defines(OE_IS_DEPTH_CAMERA, OE_IS_PICK_CAMERA)
 
-#if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_PICK_CAMERA)
+#if defined(OE_IS_DEPTH_CAMERA) || defined(OE_IS_PICK_CAMERA)
 
 void oe_bumpmap_vertexView(inout vec4 vertexView) { } 
 

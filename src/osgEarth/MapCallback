@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,10 +28,6 @@ namespace osgEarth
 {
     class MapInfo;
     class Layer;
-    class ImageLayer;
-    class ElevationLayer;
-    class ModelLayer;
-    class MaskLayer;
     struct MapModelChange;
 
     /**
@@ -39,33 +35,36 @@ namespace osgEarth
      */
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
+        //! Invoked when a Map first establishes a valid profile.
         virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
 
-        // callbacks for begin/end batch update operations.
+        //! Invoked when a batch operation begins.
         virtual void onBeginUpdate() { }
+
+        //! Invoked when a batch operation ends.
         virtual void onEndUpdate() { }
 
-        virtual void onMapModelChanged( const MapModelChange& change );
+        //! Invoked whenever a layer is added, removed, or moved from a Map.
+        //! The default implementation in turn calls onLayerAdded, onLayerRemoved,
+        //! or onLayerMoved, respectively.
+        virtual void onMapModelChanged(const MapModelChange& change);
 
-        virtual void onLayerAdded(Layer* layer, unsigned index);
-        virtual void onLayerRemoved(Layer* layer, unsigned index);
-        virtual void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
+        //! Invoked when a layer is added to a Map.
+        virtual void onLayerAdded(Layer* layer, unsigned index) { }
 
-        virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
-        virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }
-        virtual void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        //! Invoked when a layer is removed from a Map.
+        virtual void onLayerRemoved(Layer* layer, unsigned index) { }
 
-        virtual void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) { }
-        virtual void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) { }
-        virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        //! Invoked when a layer is re-ordered within a Map.
+        virtual void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex) { }
 
-        virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
-        virtual void onModelLayerRemoved( ModelLayer* layer, unsigned int index ) { }
-        virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        //! Invoked when a layer is enabled
+        virtual void onLayerEnabled(Layer* layer) { }
 
-        virtual void onMaskLayerAdded( MaskLayer* mask ) { }
-        virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
+        //! Invoked when a layer is disabled
+        virtual void onLayerDisabled(Layer* layer) { }
 
+    public:
         /** dtor */
         virtual ~MapCallback() { }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -194,7 +194,7 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         {
             // Run MERGE_GEOMETRY so that it will merge all the primitive sets
             osgUtil::Optimizer::MergeGeometryVisitor mg;
-            mg.setTargetMaximumNumberOfVertices(std::max(_maxVertsPerCluster, 1000u));
+            mg.setTargetMaximumNumberOfVertices(osg::maximum(_maxVertsPerCluster, 1000u));
             result->accept( mg );
 
             // Remove any empty geoetries. For some reason the MergeGeometryVisitor sometimes 

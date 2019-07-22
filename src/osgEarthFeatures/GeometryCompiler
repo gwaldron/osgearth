@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <osgEarthFeatures/FilterUsage>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/GeoMath>
+#include <osgEarth/ShaderUtils>
 
 namespace osgEarth { namespace Features
 {
@@ -85,10 +86,6 @@ namespace osgEarth { namespace Features
         optional<double>& resampleMaxLength() { return _resampleMaxLength; }
         const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
 
-        /** @deprecated Whether to use VBOs in geometry */
-        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
-        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
-
         /** Whether to generate shader components on compiled geometry */
         optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
         const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
@@ -105,15 +102,19 @@ namespace osgEarth { namespace Features
         optional<bool>& optimizeVertexOrdering() { return _optimizeVertexOrdering; }
         const optional<bool>& optimizeVertexOrdering() const { return _optimizeVertexOrdering; }
 
-        /** Whether to run a geometry validation pass on teh resulting group. This is for debugging
+        /** Whether to run a geometry validation pass on the resulting group. This is for debugging
         purposes and will dump issues to the console. */
         optional<bool>& validate() { return _validate; }
         const optional<bool>& validate() const { return _validate; }
 
         /** Maximum size (angle, degrees) of a polygon tile, when breaking up a large polygon for tessellation;
-        only applies to geocentric maps - detault = 5.0 */
+        only applies to geocentric maps (detault = 5.0) */
         optional<float>& maxPolygonTilingAngle() { return _maxPolyTilingAngle; }
         const optional<float>& maxPolygonTilingAngle() const { return _maxPolyTilingAngle; }
+
+        /** Whether to use GPU-generated geometry for screen-space (pixel) width lines (default=false) */
+        optional<bool>& useGPUScreenSpaceLines() { return _useGPULines; }
+        const optional<bool>& useGPUScreenSpaceLines() const { return _useGPULines; }
 
     public:
         Config getConfig() const;
@@ -132,13 +133,13 @@ namespace osgEarth { namespace Features
         optional<ResampleFilter::ResampleMode> _resampleMode;
         optional<double>               _resampleMaxLength;
         optional<bool>                 _ignoreAlt;
-        optional<bool>                 _useVertexBufferObjects;
         optional<ShaderPolicy>         _shaderPolicy;
         optional<bool>                 _optimizeStateSharing;
         optional<bool>                 _optimize;
         optional<bool>                 _optimizeVertexOrdering;
         optional<bool>                 _validate;
         optional<float>                _maxPolyTilingAngle;
+        optional<bool>                 _useGPULines;
 
 
         static GeometryCompilerOptions s_defaults;

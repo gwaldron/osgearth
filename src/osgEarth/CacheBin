@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -163,12 +163,7 @@ namespace osgEarth
          * If key-hashing is enabled, this method returns the hashed key
          * corresponding to a raw input key.
          */
-         //virtual std::string getHashedKey(const std::string& key) const =0;
-
-    public: //deprecated
-
-        /** @deprecated - use clear */
-        bool purge() { return clear(); } // backwards compatibility
+        //virtual std::string getHashedKey(const std::string& key) const =0;
 
 
     protected:

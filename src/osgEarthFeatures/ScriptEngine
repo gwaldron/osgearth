@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -91,12 +91,6 @@ namespace osgEarth { namespace Features
     virtual ScriptResult run(Script* script, Feature const* feature=0L, FilterContext const* context=0L)
     {
         return script ? run(script->getCode(), feature, context) : ScriptResult("", false);
-    }
-
-    /** deprecated */
-    virtual ScriptResult call(const std::string& function, Feature const* feature=0L, FilterContext const* context=0L)
-    {
-        return ScriptResult("", false, "ScriptResult::call not implemented");
     }
 
   public:

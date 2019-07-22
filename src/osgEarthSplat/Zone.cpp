@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -52,10 +52,10 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
         
         GeoExtent extent(
             SpatialReference::get("wgs84"),
-            osg::clampBetween(box.xMin(), -180.0f, 180.0f),
-            osg::clampBetween(box.yMin(),  -90.0f,  90.0f),
-            osg::clampBetween(box.xMax(), -180.0f, 180.0f),
-            osg::clampBetween(box.yMax(),  -90.0f,  90.0f));
+            osg::clampBetween(static_cast<float>(box.xMin()), -180.0f, 180.0f),
+            osg::clampBetween(static_cast<float>(box.yMin()),  -90.0f,  90.0f),
+            osg::clampBetween(static_cast<float>(box.xMax()), -180.0f, 180.0f),
+            osg::clampBetween(static_cast<float>(box.yMax()),  -90.0f,  90.0f));
 
         extent.createPolytope( b.tope );
         b.zmin2 = box.zMin() > -FLT_MAX ? box.zMin()*box.zMin() : box.zMin();
@@ -150,7 +150,7 @@ Zone::releaseGLObjects(osg::State* state) const
 void
 ZoneOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("name", _name);
+    conf.get("name", _name);
     const Config* boundaries = conf.child_ptr("boundaries");
     if ( boundaries ) {
         for(ConfigSet::const_iterator i = boundaries->children().begin(); i != boundaries->children().end(); ++i) {
@@ -159,15 +159,15 @@ ZoneOptions::fromConfig(const Config& conf)
                 i->value("xmax",  FLT_MAX), i->value("ymax",  FLT_MAX), i->value("zmax",  FLT_MAX)));
         }
     }
-    conf.getObjIfSet( "surface",    _surface );
-    conf.getObjIfSet( "groundcover", _groundCover);
+    conf.get( "surface",     _surface );
+    conf.get( "groundcover", _groundCover);
 }
 
 Config
 ZoneOptions::getConfig() const
 {
     Config conf("zone");
-    conf.addIfSet("name", _name);
+    conf.set("name", _name);
     if ( _boundaries.size() > 0 ) {
         Config regions("boundaries");
         for(int i=0; i<_boundaries.size(); ++i) {
@@ -180,10 +180,10 @@ ZoneOptions::getConfig() const
             if ( _boundaries[i].zMax() <  FLT_MAX ) region.set("zmax", _boundaries[i].zMax());
             regions.add(region);
         }
-        conf.add(regions);
+        conf.set(regions);
     }
-    conf.setObj( "surface",    _surface );
-    conf.setObj( "groundcover", _groundCover );
+    conf.set( "surface",     _surface );
+    conf.set( "groundcover", _groundCover );
     return conf;
 }
 

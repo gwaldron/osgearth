@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
  */
 #include "LandUseTileSource"
 #include <osgEarth/ImageLayer>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/SimplexNoise>
@@ -246,7 +245,7 @@ LandUseTileSource::createImage(const TileKey&    key,
                     continue;
 
                 if ( !layer.image.valid() )
-                    layer.load(key, _imageLayers[L], _warps[L], progress);
+                    layer.load(key, _imageLayers[L].get(), _warps[L], progress);
 
                 if ( !layer.valid )
                     continue;

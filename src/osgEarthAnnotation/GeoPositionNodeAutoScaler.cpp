@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -45,28 +45,52 @@ GeoPositionNodeAutoScaler::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osgUtil::CullVisitor* cs = static_cast<osgUtil::CullVisitor*>(nv);
 
     osg::Camera* cam = cs->getCurrentCamera();
-    osg::Viewport* vp = 0;
-    float viewPortScale = 1.0;
 
-    // If this is an RTT camera see if we have a reference camera so we can scale the viewport.
-    if (cam && cam->isRenderToTextureCamera())
+    // If this is an RTT camera, we need to use it's "parent"
+    // to calculate the proper scale factor.
+    if (cam->isRenderToTextureCamera() &&
+        cam->getView() &&
+        cam->getView()->getCamera() &&
+        cam->getView()->getCamera() != cam)
     {
-        vp = cam->getViewport();
-        osg::Camera* refCam = dynamic_cast<osg::Camera*>(cam->getUserData());
-        if ( refCam && refCam->getViewport() )
-        {
-            viewPortScale = vp->width() / refCam->getViewport()->width();
-        }
+        cam = cam->getView()->getCamera();
     }
 
-    double size = 1.0/(cs->pixelSize( node->getBound().center(), 0.5f ));
-    size *= viewPortScale;
-    if (size < _minScale)
-        size = _minScale;
-    else if (size>_maxScale)
-        size = _maxScale;
-    geo->getPositionAttitudeTransform()->setScale( osg::componentMultiply(_baseScale, osg::Vec3d(size,size,size)) );
+    if (cam->getViewport())
+    {
+        // Reset the scale so we get a proper bound
+        geo->getPositionAttitudeTransform()->setScale(_baseScale);
+        const osg::BoundingSphere& bs = node->getBound();
+
+        // transform centroid to VIEW space:
+        osg::Vec3d centerView = bs.center() * cam->getViewMatrix();
+
+        // Set X coordinate to the radius so we can use the resulting CLIP
+        // distance to calculate meters per pixel:
+        centerView.x() = bs.radius();
+
+        // transform the CLIP space:
+        osg::Vec3d centerClip = centerView * cam->getProjectionMatrix();
+        
+        // caluclate meters per pixel:
+        double mpp = (centerClip.x()*0.5) * cam->getViewport()->width();
+
+        // and the resulting scale we need to auto-scale.
+        double scale = bs.radius() / mpp;
+
+        if (scale < _minScale)
+            scale = _minScale;
+        else if (scale>_maxScale)
+            scale = _maxScale;
+
+        geo->getPositionAttitudeTransform()->setScale(
+            osg::componentMultiply(_baseScale, osg::Vec3d(scale, scale, scale)));
+    }
+
     if (node->getCullingActive() == false)
+    {
         node->setCullingActive(true);
+    }
+
     traverse(node, nv);
 }

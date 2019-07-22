@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -160,7 +160,7 @@ private:
 
 /**
  * This driver defers loading of the source data to the appropriate OSG plugin. You
- * must explicity set an override profile when using this driver.
+ * must explicitly set an override profile when using this driver.
  *
  * For example, use this driver to load a simple jpeg file; then set the profile to
  * tell osgEarth its projection.

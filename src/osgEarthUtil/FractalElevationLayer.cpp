@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,10 +18,7 @@
  */
 #include <osgEarthUtil/FractalElevationLayer>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Map>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/SimplexNoise>
-#include <cstdlib> // for getenv
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -84,12 +81,12 @@ ElevationLayerOptions(co)
 void
 FractalElevationLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("base_lod", _baseLOD);
-    conf.getIfSet("amplitude", _amplitude);
-    conf.getIfSet("frequency", _frequency);
-    conf.getIfSet("persistence", _persistence);
-    conf.getIfSet("lacunarity", _lacunarity);
-    conf.getIfSet("noise_image", _noiseImageURI);
+    conf.get("base_lod", _baseLOD);
+    conf.get("amplitude", _amplitude);
+    conf.get("frequency", _frequency);
+    conf.get("persistence", _persistence);
+    conf.get("lacunarity", _lacunarity);
+    conf.get("noise_image", _noiseImageURI);
 
     const ConfigSet& lcmap = conf.child("land_cover_mappings").children();
     for (ConfigSet::const_iterator i = lcmap.begin(); i != lcmap.end(); ++i)
@@ -97,7 +94,7 @@ FractalElevationLayerOptions::fromConfig(const Config& conf)
         const Config& mapping = *i;
         FractalElevationLayerLandCoverMapping m;
         m.className = mapping.value("class");
-        mapping.getIfSet("amplitude", m.amplitude);
+        mapping.get("amplitude", m.amplitude);
         if (!m.className.empty() && m.amplitude.isSet())
             _lcMap[m.className] = m;
     }
@@ -107,13 +104,12 @@ Config
 FractalElevationLayerOptions::getConfig() const
 {
     Config conf = ElevationLayerOptions::getConfig();
-    conf.key() = "fractal_elevation";
-    conf.addIfSet("base_lod", _baseLOD);
-    conf.addIfSet("amplitude", _amplitude);
-    conf.addIfSet("frequency", _frequency);
-    conf.addIfSet("persistence", _persistence);
-    conf.addIfSet("lacunarity", _lacunarity);
-    conf.addIfSet("noise_image", _noiseImageURI);
+    conf.set("base_lod", _baseLOD);
+    conf.set("amplitude", _amplitude);
+    conf.set("frequency", _frequency);
+    conf.set("persistence", _persistence);
+    conf.set("lacunarity", _lacunarity);
+    conf.set("noise_image", _noiseImageURI);
 
     if (!_lcMap.empty())
     {
@@ -125,7 +121,7 @@ FractalElevationLayerOptions::getConfig() const
             mapping.set("amplitude", i->second.amplitude.get());
             mappings.add(mapping);
         }
-        conf.add(mappings);
+        conf.set(mappings);
     }
 
     return conf;
@@ -336,10 +332,10 @@ FractalElevationLayer::createImplementation(const TileKey& key,
             if (_debug)
             {
                 h_mean += hf->getHeight(s, t);
-                min_n = std::min(min_n, n);
-                max_n = std::max(max_n, n);
-                min_h = std::min(min_h, (double)hf->getHeight(s, t));
-                max_h = std::max(max_h, (double)hf->getHeight(s, t));
+                min_n = osg::minimum(min_n, n);
+                max_n = osg::maximum(max_n, n);
+                min_h = osg::minimum(min_h, (double)hf->getHeight(s, t));
+                max_h = osg::maximum(max_h, (double)hf->getHeight(s, t));
             }
         }
     }

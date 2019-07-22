@@ -1,27 +1,25 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 #include <osgEarth/LandCoverLayer>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osgEarth/SimplexNoise>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
@@ -77,41 +75,40 @@ namespace
 		return n;
 	}
 
+    typedef std::vector<int> CodeMap;
 
-	typedef std::vector<int> CodeMap;
-
-	struct ILayer
-	{
-		GeoImage  image;
-		float     scale;
-		osg::Vec2 bias;
-		bool      valid;
-		float     warp;
-		ImageUtils::PixelReader* read;
-		unsigned* codeTable;
-		unsigned loads;
+    struct ILayer 
+    {
+        GeoImage  image;
+        float     scale;
+        osg::Vec2 bias;
+        bool      valid;
+        float     warp;
+        ImageUtils::PixelReader* read;
+        unsigned* codeTable;
+        unsigned loads;
 
 		ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f), loads(0), codeTable(NULL) { }
-
+		
 		~ILayer() { if (read) delete read; }
 
-		void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
-		{
-			if (sourceLayer->getEnabled() &&
-				sourceLayer->isKeyInLegalRange(key) &&
-				sourceLayer->mayHaveDataInExtent(key.getExtent()))
-			{
-				for (TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
-				{
-					image = sourceLayer->createImage(k, progress);
+        void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
+        {
+            if (sourceLayer->getEnabled() && 
+                sourceLayer->isKeyInLegalRange(key) &&
+                sourceLayer->mayHaveData(key))
+            {
+                for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
+                {
+                    image = sourceLayer->createImage(k, progress);
 
-					// check for cancelation:
-					if (progress && progress->isCanceled())
-					{
-						break;
-					}
-				}
-			}
+                    // check for cancelation:
+                    if (progress && progress->isCanceled())
+                    {
+                        break;
+                    }
+                } 
+            }
 
 			valid = image.valid();
 
@@ -204,23 +201,22 @@ namespace
 
 		// todo
 		std::vector<float> _warps;
+		
+        osg::ref_ptr<osgDB::Options> _readOptions;  
 
-		osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<LandCoverDictionary> _lcDictionary;
 
-		osg::ref_ptr<LandCoverDictionary> _lcDictionary;
+        friend class LandCoverLayer;
+    };
 
-		friend class LandCoverLayer;
-	};
-
-
-	LandCoverTileSource::LandCoverTileSource(const LandCoverLayerOptions& options) :
-		TileSource(options),
-		_options(&options)
-	{
-		// Increase the L2 cache size since the parent LandCoverLayer is going to be
-		// using meta-tiling to create mosaics for warping
-		setDefaultL2CacheSize(64);
-	}
+    LandCoverTileSource::LandCoverTileSource(const LandCoverLayerOptions& options) :
+        TileSource(options),
+        _options(&options)
+    {
+        // Increase the L2 cache size since the parent LandCoverLayer is going to be
+        // using meta-tiling to create mosaics for warping
+        setDefaultL2CacheSize(64);
+    }
 
 	Status
 		LandCoverTileSource::initialize(const osgDB::Options* readOptions)
@@ -232,13 +228,15 @@ namespace
 			setProfile(profile);
 		}
 
-		for (unsigned i = 0; i<options().coverages().size(); ++i)
-		{
-			LandCoverCoverageLayerOptions coverageOptions = options().coverages()[i];
-			if (coverageOptions.enabled() == false)
-				continue;
+        for(unsigned i=0; i<options().coverages().size(); ++i)
+        {
+            LandCoverCoverageLayerOptions coverageOptions = options().coverages()[i];
+            if (coverageOptions.enabled() == false)
+                continue;
 
-			coverageOptions.cachePolicy() = CachePolicy::NO_CACHE; // TODO: yes? no?
+            // We never want to cache data from a coverage, because the "parent" layer
+            // will be caching the entire result of a multi-coverage composite.
+            coverageOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
 			// Create the coverage layer:
 			LandCoverCoverageLayer* layer = new LandCoverCoverageLayer(coverageOptions);
@@ -258,141 +256,154 @@ namespace
 				OE_WARN << "Layer \"" << layer->getName() << "\": " << s.toString() << std::endl;
 			}
 
-			// Integrate data extents into this tile source.
-			const DataExtentList& de = layer->getDataExtents();
-			for (DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
-			{
-				getDataExtents().push_back(*dei);
-			}
-		}
+            // Integrate data extents into this tile source.
+            const DataExtentList& de = layer->getDataExtents();
+            for(DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
+            {
+                if (!profile || dei->getSRS()->isHorizEquivalentTo(profile->getSRS()))
+                {
+                    getDataExtents().push_back(*dei);
+                }
+                else
+                {
+                    // Transform the data extents to the layer profile
+                    GeoExtent ep = dei->transform(profile->getSRS());
+                    DataExtent de(ep);
+                    if (dei->minLevel().isSet())
+                        de.minLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->minLevel().get());
+                    if (dei->maxLevel().isSet())
+                        de.maxLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->maxLevel().get());
+                    getDataExtents().push_back(de);
+                }
+            }
+        }
 
-		return STATUS_OK;
-	}
+        return STATUS_OK;
+    }
 
-	void
-		LandCoverTileSource::setDictionary(LandCoverDictionary* lcd)
-	{
-		_lcDictionary = lcd;
+    void
+    LandCoverTileSource::setDictionary(LandCoverDictionary* lcd)
+    {
+        _lcDictionary = lcd;
 
-		for (unsigned i = 0; i<_coverages.size(); ++i)
-		{
-			_coverages[i]->setDictionary(lcd);
-			buildCodeMap(_coverages[i].get(), _codemaps[i]);
-		}
-	}
+        for (unsigned i = 0; i<_coverages.size(); ++i)
+        {
+            _coverages[i]->setDictionary(lcd);
+            buildCodeMap(_coverages[i].get(), _codemaps[i]);
+        }
+    }
 
-	//TODO: overriding createImage directly like this will bypass caching.
-	//      This is a temporary solution; need to refactor.
-	osg::Image*
-		LandCoverTileSource::createImage(const TileKey& key, ProgressCallback* progress)
-	{
-		if (_coverages.empty())
-			return 0L;
+    //TODO: overriding createImage directly like this will bypass caching.
+    //      This is a temporary solution; need to refactor.
+    osg::Image*
+    LandCoverTileSource::createImage(const TileKey& key, ProgressCallback* progress)
+    {
+        if ( _coverages.empty() )
+            return 0L;
 
-		std::vector<ILayer> layers(_coverages.size());
+        std::vector<ILayer> layers(_coverages.size());
 
-		// Allocate the new coverage image; it will contain unnormalized values.
-		osg::ref_ptr<osg::Image> out = new osg::Image();
-		ImageUtils::markAsUnNormalized(out.get(), true);
+        // Allocate the new coverage image; it will contain unnormalized values.
+        osg::ref_ptr<osg::Image> out = new osg::Image();
+        ImageUtils::markAsUnNormalized(out.get(), true);
 
-		// Allocate a suitable format:
-		GLint internalFormat = GL_LUMINANCE32F_ARB;
+        // Allocate a suitable format:
+        GLint internalFormat = GL_R16F;
 
-		int tilesize = getPixelsPerTile();
+        int tilesize = getPixelsPerTile();
 
-		out->allocateImage(tilesize, tilesize, 1, GL_RGB, GL_FLOAT);
-		out->setInternalTextureFormat(internalFormat);
+        out->allocateImage(tilesize, tilesize, 1, GL_RGB, GL_FLOAT);
+        out->setInternalTextureFormat(internalFormat);
 
-		osg::Vec2 cov;    // coverage coordinates
+        osg::Vec2 cov;    // coverage coordinates
 
-		ImageUtils::PixelWriter write(out);
+        ImageUtils::PixelWriter write( out.get() );
 
-		float du = 1.0f / (float)(out->s() - 1);
-		float dv = 1.0f / (float)(out->t() - 1);
+        float du = 1.0f / (float)(out->s()-1);
+        float dv = 1.0f / (float)(out->t()-1);
 
-		osg::Vec4 nodata;
-		if (internalFormat == GL_LUMINANCE16F_ARB)
-			nodata.set(-32768, -32768, -32768, -32768);
-		else
-			nodata.set(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
+        osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
 
-		unsigned pixelsWritten = 0u;
+        unsigned pixelsWritten = 0u;
 
-		for (float u = 0.0f; u <= 1.0f; u += du)
-		{
-			for (float v = 0.0f; v <= 1.0f; v += dv)
-			{
-				bool wrotePixel = false;
-				for (int L = layers.size() - 1; L >= 0 && !wrotePixel; --L)
-				{
-					if (progress && progress->isCanceled())
-						return 0L;
+        for(float u=0.0f; u<=1.0f; u+=du)
+        {
+            for(float v=0.0f; v<=1.0f; v+=dv)
+            {
+                bool wrotePixel = false;
+                for(int L = layers.size()-1; L >= 0 && !wrotePixel; --L)
+                {
+                    if (progress && progress->isCanceled())
+                    {
+                        OE_DEBUG << LC << key.str() << " canceled" << std::endl;
+                        return 0L;
+                    }
 
-					ILayer& layer = layers[L];
-					if (!layer.valid)
-						continue;
+                    ILayer& layer = layers[L];
+                    if ( !layer.valid )
+                        continue;
 
-					if (!layer.image.valid())
-						layer.load(key, _coverages[L].get(), progress);
+                    if ( !layer.image.valid() )
+                        layer.load(key, _coverages[L].get(), progress);
 
-					if (!layer.valid)
-						continue;
+                    if (!layer.valid)
+                        continue;
 
-					osg::Vec2 cov(layer.scale*u + layer.bias.x(), layer.scale*v + layer.bias.y());
+                    osg::Vec2 cov(layer.scale*u + layer.bias.x(), layer.scale*v + layer.bias.y());
 
-					if (cov.x() >= 0.0f && cov.x() <= 1.0f && cov.y() >= 0.0f && cov.y() <= 1.0f)
-					{
-						osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
+                    if ( cov.x() >= 0.0f && cov.x() <= 1.0f && cov.y() >= 0.0f && cov.y() <= 1.0f )
+                    {
+                        osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
 
-						if (texel.r() != NO_DATA_VALUE)
-						{
-							// store the warp factor in the green channel
-							texel.g() = layer.warp;
+                        if ( texel.r() != NO_DATA_VALUE )
+                        {
+                            // store the warp factor in the green channel
+                            texel.g() = layer.warp;
 
-							// store the layer index in the blue channel
-							texel.b() = (float)L;
+                            // store the layer index in the blue channel
+                            texel.b() = (float)L;
 
-							if (texel.r() < 1.0f)
-							{
-								// normalized code; convert
-								int code = (int)(texel.r()*255.0f);
-								if (code < _codemaps[L].size())
-								{
-									int value = _codemaps[L][code];
-									if (value >= 0)
-									{
-										texel.r() = (float)value;
-										write.f(texel, u, v);
-										wrotePixel = true;
-										pixelsWritten++;
-									}
-								}
-							}
-							else
-							{
-								// unnormalized
-								int code = (int)texel.r();
-								if (code < _codemaps[L].size() && _codemaps[L][code] >= 0)
-								{
-									texel.r() = (float)_codemaps[L][code];
-									write.f(texel, u, v);
-									wrotePixel = true;
-									pixelsWritten++;
-								}
-							}
-						}
-					}
-				}
+                            if (texel.r() < 1.0f)
+                            {
+                                // normalized code; convert
+                                int code = (int)(texel.r()*255.0f);
+                                if (code < _codemaps[L].size())
+                                {
+                                    int value = _codemaps[L][code];
+                                    if (value >= 0)
+                                    {
+                                        texel.r() = (float)value;
+                                        write.f(texel, u, v);
+                                        wrotePixel = true;
+                                        pixelsWritten++;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // unnormalized
+                                int code = (int)texel.r();
+                                if (code < _codemaps[L].size() && _codemaps[L][code] >= 0)
+                                {
+                                    texel.r() = (float)_codemaps[L][code];
+                                    write.f(texel, u, v);
+                                    wrotePixel = true;
+                                    pixelsWritten++;
+                                }
+                            }
+                        }
+                    }
+                }
 
-				if (!wrotePixel)
-				{
-					write.f(nodata, u, v);
-				}
-			}
-		}
+                if ( !wrotePixel )
+                {
+                    write.f(nodata, u, v);
+                }
+            }
+        }
 
-		return pixelsWritten > 0u ? out.release() : 0L;
-	}
+        return pixelsWritten > 0u? out.release() : 0L;
+    }
 }
 
 //........................................................................
@@ -411,8 +422,8 @@ _warp(0.0f)
 void
 LandCoverLayerOptions::fromConfig(const Config& conf)
 {
-	conf.getIfSet("warp", _warp);
-	conf.getIfSet("noise_lod", _noiseLOD);
+    conf.getIfSet("warp", _warp);
+    conf.getIfSet("noise_lod", _noiseLOD);
 
 	ConfigSet layerConfs = conf.child("coverages").children("coverage");
 	for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
@@ -424,23 +435,23 @@ LandCoverLayerOptions::fromConfig(const Config& conf)
 Config
 LandCoverLayerOptions::getConfig() const
 {
-	Config conf = ImageLayerOptions::getConfig();
-	conf.key() = "land_cover";
+    Config conf = ImageLayerOptions::getConfig();
+    conf.key() = "land_cover";
 
-	conf.addIfSet("warp", _warp);
-	conf.addIfSet("noise_lod", _noiseLOD);
+    conf.addIfSet("warp", _warp);
+    conf.addIfSet("noise_lod", _noiseLOD);
 
-	if (_coverages.size() > 0)
-	{
-		Config images("coverages");
-		for (std::vector<LandCoverCoverageLayerOptions>::const_iterator i = _coverages.begin();
-			i != _coverages.end();
-			++i)
-		{
-			images.add("coverage", i->getConfig());
-		}
-		conf.update(images);
-	}
+    if (_coverages.size() > 0)
+    {
+        Config images("coverages");
+        for (std::vector<LandCoverCoverageLayerOptions>::const_iterator i = _coverages.begin();
+            i != _coverages.end();
+            ++i)
+        {
+            images.add("coverage", i->getConfig());
+        }
+        conf.update(images);
+    }
 
 	return conf;
 }
@@ -503,17 +514,18 @@ LandCoverLayer::createTileSource()
 bool
 LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u, double v, osg::Vec4f& output, ProgressCallback* progress)
 {
+    if (true) // warping enabled
     // Find the key containing the uv coordinates.
     int x = int(floor(u));
     int y = int(floor(v));
-    TileKey actualKey = (x != 0 || y != 0) ? key.createNeighborKey(x, -y) : key;
+    TileKey actualKey = (x != 0 || y != 0)? key.createNeighborKey(x, -y) : key;
 
     if (actualKey.valid())
     {
         // Transform the uv to be relative to the tile it's actually in.
         // Don't forget: stupid computer requires us to handle negatives by hand.
-        u = u >= 0.0 ? fmod(u, 1.0) : 1.0 + fmod(u, 1.0);
-        v = v >= 0.0 ? fmod(v, 1.0) : 1.0 + fmod(v, 1.0);
+        u = u >= 0.0 ? fmod(u, 1.0) : 1.0+fmod(u, 1.0);
+        v = v >= 0.0 ? fmod(v, 1.0) : 1.0+fmod(v, 1.0);
 
         MetaImageComponent* comp = 0L;
 
@@ -573,7 +585,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (!readMetaImage(metaImage, getBestAvailableTileKey(key), 0.5, 0.5, dummy, progress))
         return GeoImage::INVALID;
     osg::Image* mainImage = metaImage.begin()->second.image.get();
-
+        
     // Allocate the output image:
     osg::ref_ptr<osg::Image> output = new osg::Image();
     output->allocateImage(
@@ -601,7 +613,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     osg::Vec4 pixel;
     osg::Vec4 warpedPixel;
     osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
-
+        
     // scales the key's LOD to the noise function's LOD:
     float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
 
@@ -656,8 +668,8 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
             if (!wrotePixel)
             {
                 write(nodata, s, t);
-            }
-
+            }            
+                
             if (progress && progress->isCanceled())
             {
                 OE_DEBUG << LC << key.str() << " canceled" << std::endl;

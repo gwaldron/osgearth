@@ -26,7 +26,7 @@
             }
 
             function getBufferWidth() {
-                return 12.0;
+                return 24.0;
             }
         ]]>
         </script>
@@ -162,10 +162,6 @@
 
     <!-- Land cover dictionary -->
     <xi:include href="../data/land_cover_dictionary.xml"/>
-    
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
 
     <!-- Land cover layer -->
     <land_cover name="LandCover" max_data_level="15">

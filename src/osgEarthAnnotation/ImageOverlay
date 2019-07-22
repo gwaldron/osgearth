@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/Units>
 #include <osgEarth/URI>
 #include <osgEarth/Terrain>
+#include <osgEarth/VirtualProgram>
 
 #include <osgEarthFeatures/Feature>
 
@@ -36,6 +37,9 @@ namespace osgEarth { namespace Annotation
 {
     using namespace osgEarth;
 
+    /**
+     * ImageOverlay drapes a rectangular texture on the terrain.
+     */
     class OSGEARTHANNO_EXPORT ImageOverlay : public AnnotationNode
     {
     public:
@@ -58,7 +62,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Construcs an image overlay annotation from a serialized representation
          */
-        ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions);
+        ImageOverlay(const Config& conf, const osgDB::Options* dbOptions);
 
         virtual ~ImageOverlay() { }
 
@@ -130,9 +134,6 @@ namespace osgEarth { namespace Annotation
         /** Serialize the contents of this node */
         Config getConfig() const;
 
-    public: // AnnotationNode
-        
-        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
 
     public: // MapNodeObserver
 
@@ -153,14 +154,13 @@ namespace osgEarth { namespace Annotation
     private:
         void fireCallback(ImageOverlay::ControlPoint point, const osg::Vec2d& location);
 
-        void postCTOR();
-        void init();
+        void construct();
+        void compile();
         void clampLatitudes();
 
         void updateFilters();
 
-        osg::Node* createNode(osgEarth::Features::Feature* feature);
-
+        osg::Node* createNode(osgEarth::Features::Feature* feature, bool split);
 
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
@@ -182,15 +182,16 @@ namespace osgEarth { namespace Annotation
         optional<float> _alpha;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
+        optional<bool> _draped;
 
         bool _updateScheduled;
 
-        osg::ref_ptr< TerrainCallbackAdapter<ImageOverlay> > _clampCallback;
-        
-        void clamp(osg::Node* patch, const Terrain* terrain);
 
         ImageOverlay() { }
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }
+
+    private:
+        static osg::ref_ptr<VirtualProgram> _program;
     };
 
 } } // namespace osgEarth::Annotation

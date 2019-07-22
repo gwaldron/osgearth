@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarth/MapNode>
@@ -36,18 +37,35 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+RectangleNode::RectangleNode() :
+GeoPositionNode()
+{
+    construct();
 
-RectangleNode::RectangleNode(MapNode*          mapNode,
-                             const GeoPoint&   position,
+}
+
+RectangleNode::RectangleNode(const GeoPoint&   position,
                              const Linear&     width,
                              const Linear&     height,
                              const Style&      style) :
-GeoPositionNode    ( mapNode, position ),
-_width       ( width ),
-_height      ( height ),
-_style       ( style )
+GeoPositionNode()
 {
-    rebuild();
+    construct();
+
+    _width = width;
+    _height = height;
+    _style = style;
+
+    setPosition(position);
+
+    compile();
+}
+
+void
+RectangleNode::construct()
+{
+    _width.set(1.0, Units::KILOMETERS);
+    _height.set(1.0, Units::KILOMETERS);
 }
 
 const Linear&
@@ -81,7 +99,7 @@ RectangleNode::setSize( const Linear& width, const Linear& height)
     {
         _width = width;
         _height = height;
-        rebuild();
+        compile();
     }
 }
 
@@ -95,7 +113,7 @@ void
 RectangleNode::setStyle( const Style& style )
 {
     _style = style;
-    rebuild();
+    compile();
 }
 
 
@@ -333,9 +351,11 @@ RectangleNode::setCorner( Corner corner, const GeoPoint& location)
 
 
 void
-RectangleNode::rebuild()
+RectangleNode::compile()
 {    
-    osgEarth::clearChildren( getPositionAttitudeTransform() );
+    // clear out old node:
+    osg::Group* pat = getPositionAttitudeTransform();
+    pat->removeChildren(0, pat->getNumChildren());
 
     // construct a local-origin circle.
     GeometryFactory factory;    
@@ -343,15 +363,16 @@ RectangleNode::rebuild()
     if ( geom )
     {
         GeometryCompiler compiler;
-        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext(0L) );
+        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext() );
         if ( node )
         {
             node = AnnotationUtils::installOverlayParent( node.get(), _style );
             getPositionAttitudeTransform()->addChild( node.get() );
         }
 
+        setDefaultLighting( false );
+
         applyRenderSymbology( _style );
-        setLightingIfNotSet( false );
     }
 }
 
@@ -362,16 +383,17 @@ RectangleNode::rebuild()
 OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
 
 
-RectangleNode::RectangleNode(MapNode*              mapNode,
-                             const Config&         conf,
+RectangleNode::RectangleNode(const Config&         conf,
                              const osgDB::Options* dbOptions) :
-GeoPositionNode( mapNode, conf )
+GeoPositionNode(conf, dbOptions)
 {
-    conf.getObjIfSet( "width", _width );
-    conf.getObjIfSet( "height", _height );
-    conf.getObjIfSet( "style",  _style );
+    construct();
 
-    rebuild();
+    conf.get( "width", _width );
+    conf.get( "height", _height );
+    conf.get( "style",  _style );
+
+    compile();
 }
 
 Config
@@ -380,9 +402,9 @@ RectangleNode::getConfig() const
     Config conf = GeoPositionNode::getConfig();
     conf.key() = "rectangle";
 
-    conf.addObj( "width",  _width );
-    conf.addObj( "height", _height );
-    conf.addObj( "style",  _style );
+    conf.set( "width",  _width );
+    conf.set( "height", _height );
+    conf.set( "style",  _style );
 
     return conf;
 }

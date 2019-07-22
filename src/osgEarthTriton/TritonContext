@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #define OSGEARTH_TRITON_CONTEXT_H
 
 #include <Triton.h>
+#include <Camera.h> // Triton
 #include "Common"
 #include "TritonOptions"
 #include "TritonAPIWrapper"
@@ -60,7 +61,7 @@ namespace osgEarth { namespace Triton
 
         void initialize(osg::RenderInfo& renderInfo);
 
-        void update(double simTime);
+        bool intersect(const osg::Vec3d& start, const osg::Vec3d& dir, float& out_height, osg::Vec3f& out_normal) const;
 
         ::Triton::Environment* getEnvironment() { return _environment; }
         Environment& getEnvironmentWrapper() const { return *_environmentWrapper; }
@@ -75,6 +76,8 @@ namespace osgEarth { namespace Triton
         const std::string& getMaskLayerName() const;
 
     public: // osg::Object
+
+        void resizeGLObjectBuffers(unsigned maxSize);
 
         /** If State is non-zero, this function releases any associated OpenGL objects for
            * the specified graphics context. Otherwise, releases OpenGL objects

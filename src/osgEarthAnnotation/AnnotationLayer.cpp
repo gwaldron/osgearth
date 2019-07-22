@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -44,18 +44,27 @@ void
 AnnotationLayer::init()
 {
     VisibleLayer::init();
+
+    _root = new osg::Group();
+    deserialize();
 }
 
 osg::Node*
-AnnotationLayer::getOrCreateNode()
+AnnotationLayer::getNode() const
 {
-    if (_root.valid() == false)
-    {
-        _root = new osg::Group();
-        deserialize();
-    }
-
     return _root.get();
+}
+
+osg::Group*
+AnnotationLayer::getGroup() const
+{
+    return _root.get();
+}
+
+void
+AnnotationLayer::addChild(AnnotationNode* node)
+{
+    _root->addChild(node);
 }
 
 void

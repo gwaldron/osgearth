@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -89,9 +89,10 @@ namespace osgEarth
           * also takes care of global (registry) override policy. */
         void integrateCachePolicy(const optional<CachePolicy>& policy);
 
-        /** Get/Set the settings in a read-options structure. */
+        /** Extracts the settings from a read-options structure. */
         static CacheSettings* get(const osgDB::Options* readOptions);
-        //static bool lock(const osgDB::Options* readOptions, osg::ref_ptr<CacheSettings>& output);
+
+        /** Stores this instance in an Options data container. Extract using get(). */
         void store(osgDB::Options* readOptions);
 
         /** for debugging */
@@ -139,9 +140,14 @@ namespace osgEarth
             //future
         }
     };
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CacheOptions);
 
 //--------------------------------------------------------------------
 
+namespace osgEarth
+{
     typedef PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
 
 
@@ -213,7 +219,7 @@ namespace osgEarth
         virtual bool clear() { return false; }
 
         //! Make a legal cache key with an optional prefix
-        static std::string makeCacheKey(const std::string& input, const std::string& prefix = "");
+        static std::string makeCacheKey(const std::string& input, const std::string& prefix="");
 
     protected:
         bool                   _ok;

@@ -183,7 +183,7 @@ namespace osgEarth
 
         virtual void releaseGLObjects(osg::State* state) const;
 
-		/** VRV_PATCH for faster shader creation */
+	/** VRV_PATCH for faster shader creation */
         typedef std::pair<std::string, std::pair<std::string, ShaderComp::FunctionLocation> > ShaderDesc;
 
         static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);

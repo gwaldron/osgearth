@@ -90,6 +90,8 @@ namespace osgEarth
         /** Clears any cached tiles from the elevation pool. */
         void clear();
         
+        void stopThreading();
+	
     protected:
 
         osg::observer_ptr<const Map> _map;
@@ -169,6 +171,10 @@ namespace osgEarth
             void operator()(osg::Object*);
         };
         friend struct GetElevationOp;
+        osg::ref_ptr<osg::OperationQueue> _opQueue;
+        std::vector< osg::ref_ptr<osg::OperationThread> > _opThreads;
+
+        virtual ~ElevationPool();
 
     protected:
 

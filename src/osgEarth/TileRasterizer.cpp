@@ -76,7 +76,7 @@ osg::Camera()
     setCullingActive(false);
 
     // set up the RTT camera.
-    setClearColor(osg::Vec4(0, 0, 0, 0));
+    setClearColor(osg::Vec4(0,0,0,0));
     setClearMask(GL_COLOR_BUFFER_BIT);
     setReferenceFrame(ABSOLUTE_RF);
     //setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
@@ -86,7 +86,7 @@ osg::Camera()
     setSmallFeatureCullingPixelSize(0.0f);
     setViewMatrix(osg::Matrix::identity());
 
-    //default viewport that is offscreen. This prevents this camera from
+    // default viewport that is offscreen. This prevents this camera from
     // clearing the framebuffer when this is not actually drawing anything.
     setViewport(-1, -1, 1, 1);
 
@@ -150,8 +150,8 @@ TileRasterizer::push(osg::Node* node, osg::Texture* texture, const GeoExtent& ex
 
 void
 TileRasterizer::ReadbackImage::readPixels(
-int x, int y, int width, int height,
-GLenum pixelFormat, GLenum type, int packing)
+    int x, int y, int width, int height,
+    GLenum pixelFormat, GLenum type, int packing)
 {
     OE_DEBUG << LC << "ReadPixels in context " << _ri->getContextID() << std::endl;
 
@@ -173,7 +173,7 @@ GLenum pixelFormat, GLenum type, int packing)
 
 Threading::Future<osg::Image>
 TileRasterizer::push(osg::Node* node, unsigned size, const GeoExtent& extent)
-{
+{    
     Threading::ScopedMutexLock lock(_mutex);
 
     _pendingJobs.push(Job());

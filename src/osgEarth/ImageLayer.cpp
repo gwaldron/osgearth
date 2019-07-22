@@ -637,12 +637,12 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     // map profile, we can try this first.
     if ( cacheBin && policy.isCacheReadable() )
     {
-       osg::CVSpan UpdateTick(series, 5, "readImage");
+        osg::CVSpan UpdateTick(series, 5, "readImage");
         ReadResult r = cacheBin->readImage(cacheKey, 0L);
         if ( r.succeeded() )
         {
-           series.write_message("successfully loaded %s:%s",getName().c_str(), cacheKey.c_str());
-           cachedImage = r.releaseImage();
+            series.write_message("successfully loaded %s:%s",getName().c_str(), cacheKey.c_str());
+            cachedImage = r.releaseImage();
             cachedImage->setName(cacheKey);
             ImageUtils::fixInternalFormat( cachedImage.get() );            
             bool expired = policy.isExpired(r.lastModifiedTime());
@@ -707,19 +707,19 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         cacheBin        && 
         policy.isCacheWriteable())
     {
-       series.write_message(cacheKey.c_str());
-       if (key.getExtent() != result.getExtent())
+        series.write_message(cacheKey.c_str());
+        if ( key.getExtent() != result.getExtent() )
         {
             OE_INFO << LC << "WARNING! mismatched extents." << std::endl;
         }
-       if (result.getImage()->getInternalTextureFormat() != GL_LUMINANCE32F_ARB &&
-          result.getImage()->getInternalTextureFormat() != GL_LUMINANCE16F_ARB)
-       {
-          osg::CVSpan UpdateTick(series, 2, "mipMapImagePreSave");
-          ImageUtils::activateMipMaps(result.getImage());
-       }
-       osg::CVSpan UpdateTick(series, 4, "saveImage");
-       cacheBin->write(cacheKey, result.getImage(), 0L);
+        if (result.getImage()->getInternalTextureFormat() != GL_LUMINANCE32F_ARB &&
+           result.getImage()->getInternalTextureFormat() != GL_LUMINANCE16F_ARB)
+        {
+           osg::CVSpan UpdateTick(series, 2, "mipMapImagePreSave");
+           ImageUtils::activateMipMaps(result.getImage());
+        }
+        osg::CVSpan UpdateTick(series, 4, "saveImage");
+        cacheBin->write(cacheKey, result.getImage(), 0L);
     }
 
     if ( result.valid() )

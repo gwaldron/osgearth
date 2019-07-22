@@ -26,6 +26,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/GeoCommon>
 #include <osg/Texture>
+#include <osg/LOD>
 
 namespace osgEarth
 {    

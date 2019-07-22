@@ -37,68 +37,68 @@ using namespace osgEarth;
 TileBlacklist::TileBlacklist() :
 _tiles(true, 1024)
 {
-	//NOP
+    //NOP
 }
 
 void
 TileBlacklist::add(const TileKey& key)
 {
-	_tiles.insert(key, true);
-	OE_DEBUG << "Added " << key.str() << " to blacklist" << std::endl;
+    _tiles.insert(key, true);
+    OE_DEBUG << "Added " << key.str() << " to blacklist" << std::endl;
 }
 
 void
 TileBlacklist::remove(const TileKey& key)
 {
-	_tiles.erase(key);
-	OE_DEBUG << "Removed " << key.str() << " from blacklist" << std::endl;
+    _tiles.erase(key);
+    OE_DEBUG << "Removed " << key.str() << " from blacklist" << std::endl;
 }
 
 void
 TileBlacklist::clear()
 {
-	_tiles.clear();
-	OE_DEBUG << "Cleared blacklist" << std::endl;
+    _tiles.clear();
+    OE_DEBUG << "Cleared blacklist" << std::endl;
 }
 
 bool
 TileBlacklist::contains(const TileKey& key) const
 {
-	return _tiles.has(key);
+    return _tiles.has(key);
 }
 
 TileBlacklist*
 TileBlacklist::read(std::istream &in)
 {
-	osg::ref_ptr< TileBlacklist > result = new TileBlacklist();
+    osg::ref_ptr< TileBlacklist > result = new TileBlacklist();
 
-	while (!in.eof())
-	{
-		std::string line;
-		std::getline(in, line);
-		if (!line.empty())
-		{
-			int z, x, y;
-			if (sscanf(line.c_str(), "%d %d %d", &z, &x, &y) == 3)
-			{
-				result->add(TileKey(z, x, y, 0L));
-			}
+    while (!in.eof())
+    {
+        std::string line;
+        std::getline(in, line);
+        if (!line.empty())
+        {
+            int z, x, y;
+            if (sscanf(line.c_str(), "%d %d %d", &z, &x, &y) == 3)
+            {
+                result->add(TileKey(z, x, y, 0L));
+            }
 
-		}
-	}
+        }
+    }
 
-	return result.release();
+    return result.release();
 }
 
 TileBlacklist*
 TileBlacklist::read(const std::string &filename)
 {
-	if (osgDB::fileExists(filename) && (osgDB::fileType(filename) == osgDB::REGULAR_FILE))
-	{
-		std::ifstream in(filename.c_str());
-		return read(in);
-	}
-	return NULL;
+    if (osgDB::fileExists(filename) && (osgDB::fileType(filename) == osgDB::REGULAR_FILE))
+    {
+        std::ifstream in( filename.c_str() );
+        return read( in );
+    }
+    return NULL;
 }
 
 void
@@ -115,20 +115,20 @@ TileBlacklist::write(const std::string &filename) const
 }
 
 namespace {
-	struct WriteFunctor : public LRUCache<TileKey, bool>::Functor {
-		std::ostream& _out;
-		WriteFunctor(std::ostream& out) : _out(out) { }
-		void operator()(const TileKey& key, const bool& value) {
-			_out << key.getLOD() << ' ' << key.getTileX() << ' ' << key.getTileY() << std::endl;
-		}
-	};
+    struct WriteFunctor : public LRUCache<TileKey,bool>::Functor {
+        std::ostream& _out;
+        WriteFunctor(std::ostream& out) : _out(out) { }
+        void operator()(const TileKey& key, const bool& value) {
+            _out << key.getLOD() << ' ' << key.getTileX() << ' ' << key.getTileY() << std::endl;
+        }
+    };
 }
 
 void
 TileBlacklist::write(std::ostream &output) const
 {
-	WriteFunctor writer(output);
-	_tiles.iterate(writer);
+    WriteFunctor writer(output);
+    _tiles.iterate(writer);
 }
 
 
@@ -160,15 +160,15 @@ TileSourceOptions::getConfig() const
 
 
 void
-TileSourceOptions::mergeConfig(const Config& conf)
+TileSourceOptions::mergeConfig( const Config& conf )
 {
-	DriverConfigOptions::mergeConfig(conf);
-	fromConfig(conf);
+    DriverConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
 }
 
 
 void
-TileSourceOptions::fromConfig(const Config& conf)
+TileSourceOptions::fromConfig( const Config& conf )
 {
     conf.get( "blacklist_filename", _blacklistFilename);
     conf.get( "l2_cache_size", _L2CacheSize );
@@ -185,20 +185,20 @@ TileSourceOptions::fromConfig(const Config& conf)
 
 const char* TileSource::INTERFACE_NAME = "osgEarth::TileSource";
 
-const TileSource::Mode TileSource::MODE_READ = 0x01;
-const TileSource::Mode TileSource::MODE_WRITE = 0x02;
+const TileSource::Mode TileSource::MODE_READ   = 0x01;
+const TileSource::Mode TileSource::MODE_WRITE  = 0x02;
 const TileSource::Mode TileSource::MODE_CREATE = 0x04;
 
 
 TileSource::TileSource(const TileSourceOptions& options) :
-_options(options),
-_status(Status::Error("Not initialized")),
-_mode(0),
-_openCalled(false),
+_options( options ),
+_status ( Status::Error("Not initialized") ),
+_mode   ( 0 ),
+_openCalled( false ),
 _tileSize(256),
-_noDataValue((float)SHRT_MIN),
-_minValidValue(-32000.0f),
-_maxValidValue(32000.0f)
+_noDataValue( (float)SHRT_MIN ),
+_minValidValue( -32000.0f ),
+_maxValidValue(  32000.0f )
 {
     if (_options.blacklistFilename().isSet())
     {
@@ -224,18 +224,9 @@ _maxValidValue(32000.0f)
 
 TileSource::~TileSource()
 {
-	if (_blacklist.valid() && !_blacklistFilename.empty())
-	{
-		_blacklist->write(_blacklistFilename);
-	}
-}
-
-void
-TileSource::setDefaultL2CacheSize(int size)
-{
-    if (_options.L2CacheSize().isSet() == false)
+    if (_blacklist.valid() && !_blacklistFilename.empty())
     {
-        _options.L2CacheSize().init(size);
+        _blacklist->write(_blacklistFilename);
     }
 }
 
@@ -309,13 +300,13 @@ TileSource::open(const Mode&           openMode,
 int
 TileSource::getPixelsPerTile() const
 {
-	return _tileSize;
+    return _tileSize;
 }
 
 void
 TileSource::setPixelsPerTile(unsigned size)
 {
-	_tileSize = size;
+    _tileSize = size;
 }
 
 osg::Image*
@@ -376,14 +367,6 @@ TileSource::createHeightField(const TileKey&        key,
     }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
-    
-    // Check for cancelation. The TileSource implementation should do this
-    // internally but we check here once last time just in case the 
-    // implementation does not.
-    if (progress && progress->isCanceled())
-    {
-        return 0L;
-    }
 
     // Check for cancelation. The TileSource implementation should do this
     // internally but we check here once last time just in case the
@@ -406,17 +389,17 @@ TileSource::createHeightField(const TileKey&        key,
 
 osg::Image*
 TileSource::createImage(const TileKey&    key,
-ProgressCallback* progress)
+                        ProgressCallback* progress)
 {
-	return 0L;
+    return 0L;
 }
 
 osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
-ProgressCallback*     progress)
+                              ProgressCallback*     progress)
 {
-	if (getStatus().isError())
-		return 0L;
+    if (getStatus().isError())
+        return 0L;
 
     osg::ref_ptr<osg::Image> image = createImage(key, progress);
     osg::HeightField* hf = 0;
@@ -433,46 +416,46 @@ TileSource::storeHeightField(const TileKey&     key,
                              const osg::HeightField*  hf,
                              ProgressCallback* progress)
 {
-	if (getStatus().isError() || hf == 0L)
-		return 0L;
+    if (getStatus().isError() || hf == 0L )
+        return 0L;
 
-	ImageToHeightFieldConverter conv;
-	osg::ref_ptr<osg::Image> image = conv.convert(hf, 32);
-	if (image.valid())
-	{
-		return storeImage(key, image.get(), progress);
-	}
-	return false;
+    ImageToHeightFieldConverter conv;
+    osg::ref_ptr<osg::Image> image = conv.convert(hf, 32);
+    if (image.valid())
+    {
+        return storeImage(key, image.get(), progress);
+    }
+    return false;
 }
 
 bool
 TileSource::isOK() const
 {
-	return _status.isOK();
+    return _status.isOK();
 }
 
 void
-TileSource::setProfile(const Profile* profile)
+TileSource::setProfile( const Profile* profile )
 {
-	_profile = profile;
+    _profile = profile;
 }
 
 const Profile*
 TileSource::getProfile() const
 {
-	return _profile.get();
+    return _profile.get();
 }
 
 TileBlacklist*
 TileSource::getBlacklist()
 {
-	return _blacklist.get();
+    return _blacklist.get();
 }
 
 const TileBlacklist*
 TileSource::getBlacklist() const
 {
-	return _blacklist.get();
+    return _blacklist.get();
 }
 
 //------------------------------------------------------------------------
@@ -487,16 +470,16 @@ TileSourceFactory::create(const TileSourceOptions& options)
 {
     osg::ref_ptr<TileSource> source;
 
-	std::string driver = options.getDriver();
-	if (driver.empty())
-	{
-		OE_WARN << LC << "ILLEGAL- no driver set for tile source" << std::endl;
-		return 0L;
-	}
+    std::string driver = options.getDriver();
+    if ( driver.empty() )
+    {
+        OE_WARN << LC << "ILLEGAL- no driver set for tile source" << std::endl;
+        return 0L;
+    }
 
-	osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
-	dbopt->setPluginData(TILESOURCE_OPTIONS_TAG, (void*)&options);
-	dbopt->setPluginStringData(TILESOURCE_INTERFACE_TAG, TileSource::INTERFACE_NAME);
+    osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
+    dbopt->setPluginData      ( TILESOURCE_OPTIONS_TAG,   (void*)&options );
+    dbopt->setPluginStringData( TILESOURCE_INTERFACE_TAG, TileSource::INTERFACE_NAME );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;
     osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, dbopt.get() );
@@ -527,15 +510,15 @@ TileSourceFactory::create(const TileSourceOptions& options)
 //------------------------------------------------------------------------
 
 const TileSourceOptions&
-TileSourceDriver::getTileSourceOptions(const osgDB::Options* dbopt) const
+TileSourceDriver::getTileSourceOptions(const osgDB::Options* dbopt ) const
 {
-	static TileSourceOptions s_default;
-	const void* data = dbopt->getPluginData(TILESOURCE_OPTIONS_TAG);
-	return data ? *static_cast<const TileSourceOptions*>(data) : s_default;
+    static TileSourceOptions s_default;
+    const void* data = dbopt->getPluginData(TILESOURCE_OPTIONS_TAG);
+    return data ? *static_cast<const TileSourceOptions*>(data) : s_default;
 }
 
 const std::string
 TileSourceDriver::getInterfaceName(const osgDB::Options* dbopt) const
 {
-	return dbopt->getPluginStringData(TILESOURCE_INTERFACE_TAG);
+    return dbopt->getPluginStringData(TILESOURCE_INTERFACE_TAG);
 }

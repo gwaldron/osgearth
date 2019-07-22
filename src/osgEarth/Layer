@@ -129,7 +129,7 @@ namespace osgEarth
      */
     struct LayerCallback : public osg::Referenced
     {
-        // This was NOP with 'shadow changes from Glen' so check with shadows
+        // MERGE: This was NOP with 'shadow changes from Glen' so check with shadows
         //! Called after Layer::setEnabled changes the enabled state
         virtual void onEnabledChanged(class Layer* layer) { }
 
@@ -213,11 +213,6 @@ namespace osgEarth
         //! SceneGraphCallbacks that one can use to detect scene graph changes
         SceneGraphCallbacks* getSceneGraphCallbacks() const;
 
-//VRV_PATCH: start
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-
-        virtual void releaseGLObjects(osg::State* state) const;
-//VRV_PATCH: end
     public:
 
         //! Layer's stateset, creating it is necessary

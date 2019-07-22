@@ -167,7 +167,7 @@ _tboUnit(defaultUnit)
     _bboxComputer = new StaticBBox(bbox);
 }
 
-// I think this is the right mapping, we want the geodes, but osgEarth
+// MERGE: I think this is the right mapping, we want the geodes, but osgEarth
 // changed the functios to deal with drawables, so just process the
 // geode and then call apply on the drawables
 void 
@@ -394,7 +394,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
         // sampler that will hold the instance matrices:
         osg::Image* image = new osg::Image();
-        image->setName("osgearth.InstancedTBO");
+        image->setName("osgearth.drawinstanced.postex");
 		image->allocateImage( tboSize*4, 1, 1, GL_RGBA, GL_FLOAT );
 
 		// could use PixelWriter but we know the format.

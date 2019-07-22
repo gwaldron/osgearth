@@ -1012,7 +1012,7 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
     }
     _lastUsedProgram.setAllElementsTo(NULL);
 
-/* Hm, the shader cache stuff is different in 2.10.2 -  see USE_POLYSHADER_CACHE
+/* MERGE: Hm, the shader cache stuff is different in 2.10.2 -  see USE_POLYSHADER_CACHE
     for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
     {
        if (i->data()._shader.valid())
@@ -2021,21 +2021,20 @@ PolyShader::lookUpShader(const std::string& functionName, const std::string& sha
 
 void PolyShader::clearShaderCache()
 {
-    /* hm, we need to redo this for glen's changes
+    /* MERGE: does this compile? hm, we need to redo this for glen's changes */
     _cacheMutex.lock();
     // Erase our PolyShaders from the static
     // _shaderCache
     std::map<ShaderDesc, osg::ref_ptr<PolyShader> >::iterator shadeEnd 
-        = _shaderCache.end();
+        = _polyShaderCache.end();
     std::map<ShaderDesc, osg::ref_ptr<PolyShader> >::iterator shadeItr
-        = _shaderCache.begin();
+        = _polyShaderCache.begin();
 
     for (; shadeItr != shadeEnd; ++shadeItr)
     {
         shadeItr->second = NULL;
     }
     _cacheMutex.unlock();
-    */
 }
 
 //.......................................................................

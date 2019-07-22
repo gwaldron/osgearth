@@ -395,7 +395,7 @@ _is_user_defined( false ),
 _is_ltp         ( false ),
 _is_plate_carre ( false ),
 _is_spherical_mercator( false ),
-_ellipsoidId(0u)
+_ellipsoidId( 0u )
 {
     //nop
 }

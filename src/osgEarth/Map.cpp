@@ -645,7 +645,7 @@ Map::clear()
         newRevision = ++_dataModelRevision;
     }
     
-        // a separate block b/c we don't need the mutex
+    // a separate block b/c we don't need the mutex
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {
         i->get()->onBeginUpdate();

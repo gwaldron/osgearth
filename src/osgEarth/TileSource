@@ -50,52 +50,52 @@ namespace osgEarth
     class ProgressCallback;
     class Map;
 
-	/**
-	* Configuration options for a tile source driver.
-	*/
-	class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions
-	{
-	public:
+    /**
+     * Configuration options for a tile source driver.
+     */
+    class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions
+    {
+    public:
 
-		/** File in which to store a tile blacklist. */
-		optional<std::string>& blacklistFilename() { return _blacklistFilename; }
-		const optional<std::string>& blacklistFilename() const { return _blacklistFilename; }
+        /** File in which to store a tile blacklist. */
+        optional<std::string>& blacklistFilename() { return _blacklistFilename; }
+        const optional<std::string>& blacklistFilename() const { return _blacklistFilename; }
 
-		/** Define a profile for this source, overriding the one reported by the source. */
-		optional<ProfileOptions>& profile() { return _profileOptions; }
-		const optional<ProfileOptions>& profile() const { return _profileOptions; }
+        /** Define a profile for this source, overriding the one reported by the source. */
+        optional<ProfileOptions>& profile() { return _profileOptions; }
+        const optional<ProfileOptions>& profile() const { return _profileOptions; }
 
-		/** Size of the in-memory cache (in entries; default=16) */
-		optional<int>& L2CacheSize() { return _L2CacheSize; }
-		const optional<int>& L2CacheSize() const { return _L2CacheSize; }
+        /** Size of the in-memory cache (in entries; default=16) */
+        optional<int>& L2CacheSize() { return _L2CacheSize; }
+        const optional<int>& L2CacheSize() const { return _L2CacheSize; }
 
-		/** Whether to use bilinear sampling when reprojecting data from this source
-		*  (default = true) */
-		optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
-		const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
+        /** Whether to use bilinear sampling when reprojecting data from this source
+         *  (default = true) */
+        optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
+        const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
 
-		/** Whether to rasterize into coverage data, which contains discrete non-interpolable values. */
-		optional<bool>& coverage() { return _coverage; }
-		const optional<bool>& coverage() const { return _coverage; }
+        /** Whether to rasterize into coverage data, which contains discrete non-interpolable values. */
+        optional<bool>& coverage() { return _coverage; }
+        const optional<bool>& coverage() const { return _coverage; }
 
-		/** osgDB::Options option string to pass through to osgDB reader/writers. */
-		optional<std::string>& osgOptionString() { return _osgOptionString; }
-		const optional<std::string>& osgOptionString() const { return _osgOptionString; }
+        /** osgDB::Options option string to pass through to osgDB reader/writers. */
+        optional<std::string>& osgOptionString() { return _osgOptionString; }
+        const optional<std::string>& osgOptionString() const { return _osgOptionString; }
 
-	public:
-		TileSourceOptions(const ConfigOptions& options = ConfigOptions());
+    public:
+        TileSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
-		/** dtor */
-		virtual ~TileSourceOptions() { }
+        /** dtor */
+        virtual ~TileSourceOptions() { }
 
-	public:
-		virtual Config getConfig() const;
+    public:
+        virtual Config getConfig() const;
 
-	protected:
-		virtual void mergeConfig(const Config& conf);
+    protected:
+        virtual void mergeConfig( const Config& conf );
 
-	private:
-		void fromConfig(const Config& conf);
+    private:
+        void fromConfig( const Config& conf );
 
         optional<ProfileOptions> _profileOptions;
         optional<std::string>    _blacklistFilename;
@@ -120,48 +120,48 @@ namespace osgEarth
          */
         TileBlacklist();
 
-		/** dtor */
-		virtual ~TileBlacklist() { }
+        /** dtor */
+        virtual ~TileBlacklist() { }
 
-		/**
-		*Adds the given tile to the blacklist
-		*/
-		void add(const TileKey& key);
+        /**
+         *Adds the given tile to the blacklist
+         */
+        void add(const TileKey& key);
 
-		/**
-		*Removes the given tile from the blacklist
-		*/
-		void remove(const TileKey& key);
+        /**
+         *Removes the given tile from the blacklist
+         */
+        void remove(const TileKey& key);
 
-		/**
-		*Removes all tiles from the blacklist
-		*/
-		void clear();
+        /**
+         *Removes all tiles from the blacklist
+         */
+        void clear();
 
-		/**
-		*Returns whether the given tile is in the blacklist
-		*/
-		bool contains(const TileKey& key) const;
+        /**
+         *Returns whether the given tile is in the blacklist
+         */
+        bool contains(const TileKey& key) const;
 
-		/**
-		*Reads a TileBlacklist from the given istream
-		*/
-		static TileBlacklist* read(std::istream &in);
+        /**
+         *Reads a TileBlacklist from the given istream
+         */
+        static TileBlacklist* read(std::istream &in);
 
-		/**
-		*Reads a TileBlacklist from the given filename
-		*/
-		static TileBlacklist* read(const std::string &filename);
+        /**
+         *Reads a TileBlacklist from the given filename
+         */
+        static TileBlacklist* read(const std::string &filename);
 
-		/**
-		*Writes this TileBlacklist to the given ostream
-		*/
-		void write(std::ostream &output) const;
+        /**
+         *Writes this TileBlacklist to the given ostream
+         */
+        void write(std::ostream &output) const;
 
-		/**
-		*Writes this TileBlacklist to the given filename
-		*/
-		void write(const std::string &filename) const;
+        /**
+         *Writes this TileBlacklist to the given filename
+         */
+        void write(const std::string &filename) const;
 
     private:
         mutable LRUCache<TileKey, bool> _tiles; // using as a set (value unused)
@@ -420,34 +420,34 @@ namespace osgEarth
     };
 
 
-	typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
+    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
 
-	//--------------------------------------------------------------------
+    //--------------------------------------------------------------------
 
-	class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
-	{
-	protected:
-		const TileSourceOptions& getTileSourceOptions(const osgDB::Options* options) const;
+    class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const TileSourceOptions& getTileSourceOptions(const osgDB::Options* options) const;
 
-		const std::string getInterfaceName(const osgDB::Options* options) const;
+        const std::string getInterfaceName(const osgDB::Options* options) const;
 
-		TileSource::Mode getOpenMode(const osgDB::Options* options) const;
-	};
+        TileSource::Mode getOpenMode(const osgDB::Options* options) const;
+    };
 
-	//--------------------------------------------------------------------
+    //--------------------------------------------------------------------
 
-	/**
-	* Creates TileSource instances.
-	*/
-	class OSGEARTH_EXPORT TileSourceFactory
-	{
-	public:
-		/**
-		* Creates a TileSource instance by loading the driver plugin
-		* specified in the options.
-		*/
-		static TileSource* create(const TileSourceOptions& options);
-	};
+    /**
+     * Creates TileSource instances.
+     */
+    class OSGEARTH_EXPORT TileSourceFactory
+    {
+    public:
+        /**
+         * Creates a TileSource instance by loading the driver plugin
+         * specified in the options.
+         */
+        static TileSource* create(const TileSourceOptions& options);
+    };
 }
 
 #endif // OSGEARTH_TILE_SOURCE_H

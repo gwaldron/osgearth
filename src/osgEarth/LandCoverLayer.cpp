@@ -30,50 +30,51 @@ REGISTER_OSGEARTH_LAYER(land_cover, LandCoverLayer);
 
 namespace
 {
-	osg::Vec2 getSplatCoords(const TileKey& key, float baseLOD, const osg::Vec2& covUV)
-	{
-		osg::Vec2 out;
+    osg::Vec2 getSplatCoords(const TileKey& key, float baseLOD, const osg::Vec2& covUV)
+    {
+        osg::Vec2 out;
 
-		float dL = (float)key.getLOD() - baseLOD;
-		float factor = pow(2.0f, dL);
-		float invFactor = 1.0 / factor;
-		out.set(covUV.x()*invFactor, covUV.y()*invFactor);
+        float dL = (float)key.getLOD() - baseLOD;
+        float factor = pow(2.0f, dL);
+        float invFactor = 1.0/factor;
+        out.set( covUV.x()*invFactor, covUV.y()*invFactor ); 
 
-		// For upsampling we need to calculate an offset as well
-		if (factor >= 1.0)
-		{
-			unsigned wide, high;
-			key.getProfile()->getNumTiles(key.getLOD(), wide, high);
+        // For upsampling we need to calculate an offset as well
+        if ( factor >= 1.0 )
+        {
+            unsigned wide, high;
+            key.getProfile()->getNumTiles(key.getLOD(), wide, high);
 
-			float tileX = (float)key.getTileX();
-			float tileY = (float)(wide - 1 - key.getTileY()); // swap Y. (not done in the shader version.)
+            float tileX = (float)key.getTileX();
+            float tileY = (float)(wide-1-key.getTileY()); // swap Y. (not done in the shader version.)
 
-			osg::Vec2 a(floor(tileX*invFactor), floor(tileY*invFactor));
-			osg::Vec2 b(a.x()*factor, a.y()*factor);
-			osg::Vec2 c((a.x() + 1.0f)*factor, (a.y() + 1.0f)*factor);
-			osg::Vec2 offset((tileX - b.x()) / (c.x() - b.x()), (tileY - b.y()) / (c.y() - b.y()));
+            osg::Vec2 a( floor(tileX*invFactor), floor(tileY*invFactor) );
+            osg::Vec2 b( a.x()*factor, a.y()*factor );
+            osg::Vec2 c( (a.x()+1.0f)*factor, (a.y()+1.0f)*factor );
+            osg::Vec2 offset( (tileX-b.x())/(c.x()-b.x()), (tileY-b.y())/(c.y()-b.y()) );
 
-			out += offset;
-		}
+            out += offset;
+        }
 
-		return out;
-	}
+        return out;
+    }
 
-	osg::Vec2 warpCoverageCoords(const osg::Vec2& covIn, float noise, float warp)
-	{
-		float n1 = 2.0 * noise - 1.0;
-		return osg::Vec2(
-			covIn.x() + sin(n1*osg::PI*2.0) * warp,
-			covIn.y() + sin(n1*osg::PI*2.0) * warp);
-	}
+    osg::Vec2 warpCoverageCoords(const osg::Vec2& covIn, float noise, float warp)
+    {
+        float n1 = 2.0 * noise - 1.0;
+        return osg::Vec2(
+            covIn.x() + sin(n1*osg::PI*2.0) * warp,
+            covIn.y() + sin(n1*osg::PI*2.0) * warp);
+    }
 
-	float getNoise(SimplexNoise& noiseGen, const osg::Vec2& uv)
-	{
-		// TODO: check that u and v are 0..s and not 0..s-1
-		double n = noiseGen.getTiledValue(uv.x(), uv.y());
-		n = osg::clampBetween(n, 0.0, 1.0);
-		return n;
-	}
+    float getNoise(SimplexNoise& noiseGen, const osg::Vec2& uv)
+    {
+        // TODO: check that u and v are 0..s and not 0..s-1
+        double n = noiseGen.getTiledValue(uv.x(), uv.y());
+        n = osg::clampBetween(n, 0.0, 1.0);
+        return n;
+    }
+
 
     typedef std::vector<int> CodeMap;
 
@@ -89,8 +90,8 @@ namespace
         unsigned loads;
 
 		ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f), loads(0), codeTable(NULL) { }
-		
-		~ILayer() { if (read) delete read; }
+
+        ~ILayer() { if (read) delete read; }
 
         void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
         {
@@ -110,104 +111,104 @@ namespace
                 } 
             }
 
-			valid = image.valid();
+            valid = image.valid();
 
-			if (valid)
-			{
-				scale = key.getExtent().width() / image.getExtent().width();
-				bias.x() = (key.getExtent().xMin() - image.getExtent().xMin()) / image.getExtent().width();
-				bias.y() = (key.getExtent().yMin() - image.getExtent().yMin()) / image.getExtent().height();
+            if ( valid )
+            {
+                scale = key.getExtent().width() / image.getExtent().width();
+                bias.x() = (key.getExtent().xMin() - image.getExtent().xMin()) / image.getExtent().width();
+                bias.y() = (key.getExtent().yMin() - image.getExtent().yMin()) / image.getExtent().height();
 
-				read = new ImageUtils::PixelReader(image.getImage());
+                read = new ImageUtils::PixelReader(image.getImage());
 
-				// cannot interpolate coverage data:
-				read->setBilinear(false);
+                // cannot interpolate coverage data:
+                read->setBilinear( false );
 
-				warp = sourceLayer->options().warp().get();
-			}
-		}
-	};
+                warp = sourceLayer->options().warp().get();
+            }
+        }
+    };
 
-	// Constructs a code map (int to int) for a coverage layer. We will use this
-	// code map to map coverage layer codes to dictionary codes.
-	void buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& codemap)
-	{
-		if (!coverage) {
-			OE_WARN << LC << "ILLEGAL: coverage not passed to buildCodeMap\n";
-			return;
-		}
-		if (!coverage->getDictionary()) {
-			OE_WARN << LC << "ILLEGAL: coverage dictionary not set in buildCodeMap\n";
-			return;
-		}
+    // Constructs a code map (int to int) for a coverage layer. We will use this
+    // code map to map coverage layer codes to dictionary codes.
+    void buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& codemap)
+    {
+        if (!coverage) {
+            OE_WARN << LC << "ILLEGAL: coverage not passed to buildCodeMap\n";
+            return;
+        }
+        if (!coverage->getDictionary()) {
+            OE_WARN << LC << "ILLEGAL: coverage dictionary not set in buildCodeMap\n";
+            return;
+        }
 
-		int highestValue = 0;
+        int highestValue = 0;
 
-		for (LandCoverValueMappingVector::const_iterator k = coverage->getMappings().begin();
-			k != coverage->getMappings().end();
-			++k)
-		{
-			const LandCoverValueMapping* mapping = k->get();
-			int value = mapping->getValue();
-			if (value > highestValue)
-				highestValue = value;
-		}
+        for (LandCoverValueMappingVector::const_iterator k = coverage->getMappings().begin();
+            k != coverage->getMappings().end();
+            ++k)
+        {
+            const LandCoverValueMapping* mapping = k->get();
+            int value = mapping->getValue();
+            if (value > highestValue)
+                highestValue = value;
+        }
 
-		codemap.assign(highestValue + 1, -1);
+        codemap.assign(highestValue+1, -1);
 
-		for (LandCoverValueMappingVector::const_iterator k = coverage->getMappings().begin();
-			k != coverage->getMappings().end();
-			++k)
-		{
-			const LandCoverValueMapping* mapping = k->get();
-			int value = mapping->getValue();
-			const LandCoverClass* lcClass = coverage->getDictionary()->getClassByName(mapping->getLandCoverClassName());
-			if (lcClass)
-			{
-				codemap[value] = lcClass->getValue();
-			}
-		}
-	}
+        for (LandCoverValueMappingVector::const_iterator k = coverage->getMappings().begin();
+            k != coverage->getMappings().end();
+            ++k)
+        {
+            const LandCoverValueMapping* mapping = k->get();
+            int value = mapping->getValue();
+            const LandCoverClass* lcClass = coverage->getDictionary()->getClassByName(mapping->getLandCoverClassName());
+            if (lcClass)
+            {
+                codemap[value] = lcClass->getValue();
+            }
+        }
+    }
 
-	typedef std::vector<osg::ref_ptr<LandCoverCoverageLayer> > LandCoverCoverageLayerVector;
+    typedef std::vector<osg::ref_ptr<LandCoverCoverageLayer> > LandCoverCoverageLayerVector;
 
-	/*
-	* TileSource that provides GeoImage's to the LandCoverLayer.
-	*/
-	class LandCoverTileSource : public TileSource
-	{
-	public:
-		LandCoverTileSource(const LandCoverLayerOptions& options);
+    /*
+     * TileSource that provides GeoImage's to the LandCoverLayer.
+     */
+    class LandCoverTileSource : public TileSource
+    {
+    public:
+        LandCoverTileSource(const LandCoverLayerOptions& options);
 
-	public: // TileSource
-		Status initialize(const osgDB::Options* readOptions);
+    public: // TileSource
+        Status initialize(const osgDB::Options* readOptions);
 
-		osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
-
+        osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
 		virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const {
-			return CachePolicy::NO_CACHE;
-		}
+            return CachePolicy::NO_CACHE;
+        }
 
-		const LandCoverLayerOptions* _options;
-		const LandCoverLayerOptions& options() const { return *_options; }
+        const LandCoverLayerOptions* _options;
+        const LandCoverLayerOptions& options() const { return *_options; }
 
-		void setDictionary(LandCoverDictionary*);
+        void setDictionary(LandCoverDictionary*);
+        
+        // image layers, one per data source
+        LandCoverCoverageLayerVector _coverages;
 
-		// image layers, one per data source
-		LandCoverCoverageLayerVector _coverages;
+        // code maps (vector index is the source code; value is the destination code)
+        std::vector<CodeMap> _codemaps;
 
-		// code maps (vector index is the source code; value is the destination code)
-		std::vector<CodeMap> _codemaps;
+        // todo
+        std::vector<float> _warps;
 
-		// todo
-		std::vector<float> _warps;
-		
         osg::ref_ptr<osgDB::Options> _readOptions;  
 
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
 
         friend class LandCoverLayer;
     };
+
 
     LandCoverTileSource::LandCoverTileSource(const LandCoverLayerOptions& options) :
         TileSource(options),
@@ -218,15 +219,15 @@ namespace
         setDefaultL2CacheSize(64);
     }
 
-	Status
-		LandCoverTileSource::initialize(const osgDB::Options* readOptions)
-	{
-		const Profile* profile = getProfile();
-		if (!profile)
-		{
-			profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-			setProfile(profile);
-		}
+    Status
+    LandCoverTileSource::initialize(const osgDB::Options* readOptions)
+    {
+        const Profile* profile = getProfile();
+        if ( !profile )
+        {
+            profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+            setProfile( profile );
+        }
 
         for(unsigned i=0; i<options().coverages().size(); ++i)
         {
@@ -238,23 +239,23 @@ namespace
             // will be caching the entire result of a multi-coverage composite.
             coverageOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
-			// Create the coverage layer:
-			LandCoverCoverageLayer* layer = new LandCoverCoverageLayer(coverageOptions);
+            // Create the coverage layer:
+            LandCoverCoverageLayer* layer = new LandCoverCoverageLayer( coverageOptions );
 
-			// Set up and open it.
-			layer->setTargetProfileHint(profile);
-			layer->setReadOptions(readOptions);
-			const Status& s = layer->open();
-			if (s.isOK())
-			{
-				_coverages.push_back(layer);
-				_codemaps.resize(_codemaps.size() + 1);
-				OE_INFO << LC << "Opened coverage \"" << layer->getName() << "\"\n";
-			}
-			else
-			{
-				OE_WARN << "Layer \"" << layer->getName() << "\": " << s.toString() << std::endl;
-			}
+            // Set up and open it.
+            layer->setTargetProfileHint( profile );
+            layer->setReadOptions(readOptions);
+            const Status& s = layer->open();
+            if (s.isOK())
+            {
+                _coverages.push_back(layer);
+                _codemaps.resize(_codemaps.size()+1);
+                OE_INFO << LC << "Opened coverage \"" << layer->getName() << "\"\n";
+            }
+            else
+            {
+                OE_WARN << "Layer \"" << layer->getName() << "\": " << s.toString() << std::endl;
+            }
 
             // Integrate data extents into this tile source.
             const DataExtentList& de = layer->getDataExtents();
@@ -292,7 +293,7 @@ namespace
             buildCodeMap(_coverages[i].get(), _codemaps[i]);
         }
     }
-
+    
     //TODO: overriding createImage directly like this will bypass caching.
     //      This is a temporary solution; need to refactor.
     osg::Image*
@@ -416,30 +417,32 @@ ImageLayerOptions(options),
 _noiseLOD(12u),
 _warp(0.0f)
 {
-	fromConfig(_conf);
+    fromConfig(_conf);
 }
 
 void
 LandCoverLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("warp", _warp);
-    conf.getIfSet("noise_lod", _noiseLOD);
+    conf.get("warp", _warp);
+    conf.get("noise_lod", _noiseLOD);
 
-	ConfigSet layerConfs = conf.child("coverages").children("coverage");
-	for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
-	{
-		_coverages.push_back(LandCoverCoverageLayerOptions(*i));
-	}
+    ConfigSet layerConfs = conf.child("coverages").children("coverage");
+    for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
+    {
+        _coverages.push_back(LandCoverCoverageLayerOptions(*i));
+    }
+
 }
 
 Config
 LandCoverLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
-    conf.key() = "land_cover";
+    // MERGE: This was from VTMAK github, needed?
+	conf.key() = "land_cover";
 
-    conf.addIfSet("warp", _warp);
-    conf.addIfSet("noise_lod", _noiseLOD);
+    conf.set("warp", _warp);
+    conf.set("noise_lod", _noiseLOD);
 
     if (_coverages.size() > 0)
     {
@@ -450,10 +453,10 @@ LandCoverLayerOptions::getConfig() const
         {
             images.add("coverage", i->getConfig());
         }
-        conf.update(images);
+        conf.set(images);
     }
 
-	return conf;
+    return conf;
 }
 
 //...........................................................................
@@ -466,7 +469,7 @@ LandCoverLayer::LandCoverLayer() :
 ImageLayer(&_optionsConcrete),
 _options(&_optionsConcrete)
 {
-	init();
+    init();
 }
 
 LandCoverLayer::LandCoverLayer(const LandCoverLayerOptions& options) :
@@ -474,47 +477,46 @@ ImageLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options)
 {
-	init();
+    init();
 }
 
 void
 LandCoverLayer::init()
 {
-	options().coverage() = true;
-	options().visible() = false;
-	options().shared() = true;
-	ImageLayer::init();
+    options().coverage() = true;
+    options().visible() = false;
+    options().shared() = true;
+    ImageLayer::init();
 }
 
 void
 LandCoverLayer::addedToMap(const Map* map)
 {
-	// Find a land cover dictionary if there is one.
-	// There had better be one, or we are not going to get very far!
-	// This is called after createTileSource, so the TileSource should exist at this point.
-	// Note. If the land cover dictionary isn't already in the Map...this will fail! (TODO)
-	// Consider a LayerListener. (TODO)
-	_lcDictionary = map->getLayer<LandCoverDictionary>();
-	if (_lcDictionary.valid() && getTileSource())
-	{
-		static_cast<LandCoverTileSource*>(getTileSource())->setDictionary(_lcDictionary.get());
-	}
-	else
-	{
-		OE_WARN << LC << "Did not find a LandCoverDictionary in the Map!\n";
-	}
+    // Find a land cover dictionary if there is one.
+    // There had better be one, or we are not going to get very far!
+    // This is called after createTileSource, so the TileSource should exist at this point.
+    // Note. If the land cover dictionary isn't already in the Map...this will fail! (TODO)
+    // Consider a LayerListener. (TODO)
+    _lcDictionary = map->getLayer<LandCoverDictionary>();
+    if (_lcDictionary.valid() && getTileSource())
+    {
+        static_cast<LandCoverTileSource*>(getTileSource())->setDictionary(_lcDictionary.get());
+    }
+    else
+    {
+        OE_WARN << LC << "Did not find a LandCoverDictionary in the Map!\n";
+    }
 }
 
 TileSource*
 LandCoverLayer::createTileSource()
 {
-	return new LandCoverTileSource(options());
+    return new LandCoverTileSource(options());
 }
 
 bool
 LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u, double v, osg::Vec4f& output, ProgressCallback* progress)
 {
-    if (true) // warping enabled
     // Find the key containing the uv coordinates.
     int x = int(floor(u));
     int y = int(floor(v));
@@ -684,15 +686,15 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 const LandCoverClass*
 LandCoverLayer::getClassByUV(const GeoImage& tile, double u, double v) const
 {
-	if (!tile.valid())
-		return 0L;
+    if (!tile.valid())
+        return 0L;
 
-	if (!_lcDictionary.valid())
-		return 0L;
+    if (!_lcDictionary.valid())
+        return 0L;
 
-	ImageUtils::PixelReader read(tile.getImage());
-	read.setBilinear(false); // nearest neighbor only!
-	float value = read(u, v).r();
+    ImageUtils::PixelReader read(tile.getImage());
+    read.setBilinear(false); // nearest neighbor only!
+    float value = read(u, v).r();
 
-	return _lcDictionary->getClassByValue((int)value);
+    return _lcDictionary->getClassByValue((int)value);
 }

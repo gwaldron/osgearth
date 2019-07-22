@@ -42,7 +42,7 @@ _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
 _debug( false ),
 _binNumber( 0 ),
-_castShadows(false),
+_castShadows(false), // MERGE: 2.10.2 has _castShadows(true)
 _rangeMode(osg::LOD::DISTANCE_FROM_EYE_POINT),
 _tilePixelSize(256)
 {
@@ -59,6 +59,7 @@ TerrainOptions::getConfig() const
     conf.set( "vertical_scale", _verticalScale );
     conf.set( "vertical_offset", _verticalOffset );
     conf.set( "min_tile_range_factor", _minTileRangeFactor );
+    conf.set( "range_factor", _minTileRangeFactor );  
     conf.set( "max_lod", _maxLOD );
     conf.set( "min_lod", _minLOD );
     conf.set( "first_lod", _firstLOD );

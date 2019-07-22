@@ -78,7 +78,7 @@ namespace
             traverse(node);
         }
 
-        /* 2.10.2 got rid of this
+        /* MERGE: 2.10.2 got rid of this
         void apply(osg::Geode& geode)
         {
             for (unsigned i = 0; i < geode.getNumDrawables(); ++i)
@@ -91,7 +91,7 @@ namespace
 
         void apply(osg::Drawable& drawable)
         {
-            apply(drawable->getStateSet());
+            apply(drawable.getStateSet());
             //applyUserData(*drawable);
             
             osg::Geometry* geom = drawable.asGeometry();

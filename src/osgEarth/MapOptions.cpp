@@ -51,6 +51,7 @@ Config
 MapOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
+	// MERGE: Is this needed? (not in 2.10.2)
     conf.key() = "map";
 
     conf.set( "name",         _name );

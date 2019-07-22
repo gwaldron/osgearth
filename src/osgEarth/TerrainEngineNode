@@ -262,8 +262,6 @@ namespace osgEarth
         
         osg::ref_ptr<const Map> _map;
 
-        osg::ref_ptr<const Map> _map;
-
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.
         virtual void notifyExistingNodes(TerrainEngine::NodeCallback* cb) { }

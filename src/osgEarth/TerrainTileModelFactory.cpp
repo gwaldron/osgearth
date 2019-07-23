@@ -321,10 +321,12 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
-  
+   // Get layers earlier for VRV_PATCH
+   ElevationLayerVector layers;
+   map->getLayers(layers);
+
    // VRV_PATCH
    CacheBin* cacheBin = 0;
-   const ElevationLayerVector& layers = frame.elevationLayers();
    std::string hfCacheKey;
    std::string normalCacheKey;
    // GNP previously we did this at the map level using frame.getMapOptions().name().get() 
@@ -336,12 +338,10 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
       normalCacheKey = "normalGPU/" + key.str();
       osg::ref_ptr< osg::HeightField > cachedHF;
       osg::ref_ptr< NormalMap > cachedNormalMap;
-      const Map * map = frame.getMap();
       if (map && map->getCache())
       {
          cacheBin = map->getCache()->addBin(layers[0]->getName());
       }
-
 
       if (cacheBin)
       {
@@ -414,9 +414,6 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);
     }
 
-    ElevationLayerVector layers;
-    map->getLayers(layers);
-
     bool populated = layers.populateHeightFieldAndNormalMap(
         out_hf.get(),
         out_normalMap.get(),
@@ -426,7 +423,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         progress );
 
 #ifdef TREAT_ALL_ZEROS_AS_MISSING_TILE
-    // check for a real tile with all zeros and treat it the same as non-existant data.
+    // check for a real tile with all zeros and treat it the same as non-existent data.
     if ( populated )
     {
         bool isEmpty = true;

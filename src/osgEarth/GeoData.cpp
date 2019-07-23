@@ -1192,7 +1192,7 @@ GeoExtent::expandToInclude(double x, double y)
         clamp();
     }
 }
-
+/*
 void
 GeoExtent::expandToInclude(const Bounds& rhs)
 {
@@ -1200,6 +1200,7 @@ GeoExtent::expandToInclude(const Bounds& rhs)
     expandToInclude( rhs.xMin(), rhs.yMin() );
     expandToInclude( rhs.xMax(), rhs.yMax() );
 }
+*/
 
 bool
 GeoExtent::expandToInclude(const GeoExtent& rhs)

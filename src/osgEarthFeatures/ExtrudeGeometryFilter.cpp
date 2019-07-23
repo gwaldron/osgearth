@@ -30,6 +30,7 @@
 #include <osgEarth/Tessellator>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/CullingUtils>
 
 #include <osg/Geode>
 #include <osg/Geometry>

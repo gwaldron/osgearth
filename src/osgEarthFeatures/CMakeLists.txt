@@ -13,6 +13,15 @@ SET(LIB_NAME osgEarthFeatures)
 set(TARGET_GLSL
 )
 
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+set(TARGET_IN
+    Shaders.cpp.in)
+
+configure_shaders(
+    Shaders.cpp.in
+    ${SHADERS_CPP}
+    ${TARGET_GLSL} )
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
     AltitudeFilter
@@ -38,7 +47,6 @@ SET(LIB_PUBLIC_HEADERS
     FeatureSourceLayer
     FeatureTileSource
     Filter
-	FilterUsage
     FilterContext
     GeometryCompiler
     GeometryUtils
@@ -54,13 +62,12 @@ SET(LIB_PUBLIC_HEADERS
     Script
     ScriptEngine
     ScriptFilter
+    Shaders
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
     TransformFilter
     VirtualFeatureSource
-	SubstituteModelFilterNode
-	ExtrudeGeometryFilterNode
 )
 
 SET(TARGET_SRC
@@ -71,8 +78,7 @@ SET(TARGET_SRC
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
-    ExtrudeGeometryFilter.cpp
-    ExtrudeGeometryFilterNode.cpp    
+    ExtrudeGeometryFilter.cpp  
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
@@ -101,11 +107,11 @@ SET(TARGET_SRC
     ScriptEngine.cpp
     ScriptFilter.cpp
     SubstituteModelFilter.cpp
-    SubstituteModelFilterNode.cpp
     TessellateOperator.cpp
     TextSymbolizer.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp    
+    ${SHADERS_CPP}
 )
 
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
@@ -131,10 +137,14 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
 
 ENDIF()
 
-ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
+ADD_LIBRARY(${LIB_NAME}
+    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TARGET_SRC}
+    ${TARGET_GLSL}
+    ${TARGET_IN}
 )
+
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR})
 

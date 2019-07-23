@@ -85,8 +85,7 @@ _mergeGeometry         ( true ),
 _wallAngleThresh_deg   ( 60.0 ),
 _styleDirty            ( true ),
 _makeStencilVolume     ( false ),
-_gpuClamping(false),
-_filterUsage(FILTER_USAGE_NORMAL)
+_gpuClamping(false)
 {
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
 }

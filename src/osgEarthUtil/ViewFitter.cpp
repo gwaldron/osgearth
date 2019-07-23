@@ -34,7 +34,7 @@ namespace
         osg::Vec4d Ptemp = Pclip * projMatrixInv;
         Pview.set(Ptemp.x() / Ptemp.w(), Ptemp.y() / Ptemp.w(), Ptemp.z() / Ptemp.w());
     }
-    
+
     double mix(double a, double b, double t)
     {
         return a*(1.0-t) + b*t;

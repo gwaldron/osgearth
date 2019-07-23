@@ -175,7 +175,6 @@ namespace
                             }
                         }
                     }
-                    }
 
                     //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";
                 }

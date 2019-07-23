@@ -713,6 +713,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
 #ifdef SUPPORTS_VAO
     osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+    
     if (!state.useVertexArrayObject(_useVertexArrayObject) || vas->getRequiresSetArrays())
     {
         vas->lazyDisablingOfVertexAttributes();

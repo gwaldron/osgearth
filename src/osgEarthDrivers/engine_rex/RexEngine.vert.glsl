@@ -18,8 +18,8 @@ flat out int oe_terrain_vertexMarker;
 
 void oe_rexEngine_vert_model(inout vec4 vertexModel)
 {
-   // Texture coordinate for the tile (always 0..1)
-   oe_layer_tilec = gl_MultiTexCoord0;
+    // Texture coordinate for the tile (always 0..1)
+    oe_layer_tilec = gl_MultiTexCoord0;
 
     // Color of the underlying map geometry (untextured)
     vp_Color = oe_terrain_color;

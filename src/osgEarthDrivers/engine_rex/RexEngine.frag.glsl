@@ -65,12 +65,12 @@ void oe_rexEngine_frag(inout vec4 color)
 
     // if this is a picking camera, reset the color to all zeros:
 #ifdef OE_IS_PICK_CAMERA
-   color = vec4(0);
+    color = vec4(0);
 #else
 
     // If imagery rendering is disabled, we're done:
 #ifndef OE_TERRAIN_RENDER_IMAGERY
-   return;
+    return;
 #endif
 
     // whether this layer contains texel color (UID<0 means no texture)

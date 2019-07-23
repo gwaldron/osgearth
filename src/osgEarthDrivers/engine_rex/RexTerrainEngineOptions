@@ -121,11 +121,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::vector<LODOptions>& lods() { return _lods; }
         const std::vector<LODOptions>& lods() const { return _lods; }
 
-        /** Mode to use when calculating LOD switching distances */
-        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
-        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
-
-    protected:
+    public:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.set( "skirt_ratio", _skirtRatio );
@@ -155,6 +151,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return conf;
         }
 
+    protected:
         virtual void mergeConfig( const Config& conf ) {
             TerrainOptions::mergeConfig( conf );
             fromConfig( conf );

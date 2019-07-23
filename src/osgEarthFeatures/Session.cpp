@@ -105,7 +105,8 @@ Session::getDBOptions() const
     // local options if they were set:
     if (_dbOptions.valid())
         return _dbOptions.get();
- 
+
+    // otherwise get them from the map if possible:
     osg::ref_ptr<const Map> map;
     if (_map.lock(map))
     {

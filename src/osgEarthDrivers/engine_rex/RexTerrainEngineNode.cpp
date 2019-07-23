@@ -1044,8 +1044,6 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
 
     // group to hold all the tiles
     osg::Group* group = new osg::Group();
-    
-    MapInfo mapInfo(getMap());
 
     maskGenerator = 0L;
 

@@ -27,7 +27,7 @@
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
-    /* is this needed?
+    /* MERGE: is this needed?
     struct VisParameters
     {
         double _visibilityRange;

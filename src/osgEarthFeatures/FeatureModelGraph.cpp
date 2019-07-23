@@ -522,8 +522,8 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
     workingExtent.getCentroid( center.x(), center.y() );
     
     //VRV_PATCH: start
-    //VRV_PATCH: end
     if ( mapf && mapf->getProfile() && mapf->getProfile()->getSRS() )
+    //VRV_PATCH: end
     {
         // Use an appropriate resolution for this extents width
         double resolution = workingExtent.width();

@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
-#include <osgEarthFeatures/SubstituteModelFilterNode>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryUtils>
@@ -55,17 +54,17 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-   static osg::Node* s_defaultModel = 0L;
+    static osg::Node* s_defaultModel =0L;
 
-   struct SetSmallFeatureCulling : public osg::NodeCallback
-   {
-      bool _value;
-      SetSmallFeatureCulling(bool value) : _value(value) { }
-      void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-         Culling::asCullVisitor(nv)->setSmallFeatureCullingPixelSize(-1.0f);
-         traverse(node, nv);
-      }
-   };
+    struct SetSmallFeatureCulling : public osg::NodeCallback
+    {
+        bool _value;
+        SetSmallFeatureCulling(bool value) : _value(value) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            Culling::asCullVisitor(nv)->setSmallFeatureCullingPixelSize(-1.0f);
+            traverse(node, nv);
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -83,60 +82,60 @@ _instanceCache        ( false )     // cache per object so MT not required
 
 bool
 SubstituteModelFilter::findResource(const URI&            uri,
-const InstanceSymbol* symbol,
-FilterContext&        context,
-std::set<URI>&        missing,
-osg::ref_ptr<InstanceResource>& output)
+                                    const InstanceSymbol* symbol,
+                                    FilterContext&        context, 
+                                    std::set<URI>&        missing,
+                                    osg::ref_ptr<InstanceResource>& output )
 {
-   // be careful about refptrs here since _instanceCache is an LRU.
+    // be careful about refptrs here since _instanceCache is an LRU.
 
-   InstanceCache::Record rec;
-   if (_instanceCache.get(uri, rec))
-   {
-      // found it in the cache:
-      output = rec.value().get();
-   }
-   else if (_resourceLib.valid())
-   {
-      // look it up in the resource library:
-      output = _resourceLib->getInstance(uri.base(), context.getDBOptions());
-   }
-   else
-   {
-      // create it on the fly:
-      output = symbol->createResource();
-      output->uri() = uri;
-      _instanceCache.insert(uri, output.get());
-   }
+    InstanceCache::Record rec;
+    if ( _instanceCache.get(uri, rec) )
+    {
+        // found it in the cache:
+        output = rec.value().get();
+    }
+    else if ( _resourceLib.valid() )
+    {
+        // look it up in the resource library:
+        output = _resourceLib->getInstance( uri.base(), context.getDBOptions() );
+    }
+    else
+    {
+        // create it on the fly:
+        output = symbol->createResource();
+        output->uri() = uri;
+        _instanceCache.insert( uri, output.get() );
+    }
 
-   // failed to find the instance.
-   if (!output.valid())
-   {
-      if (missing.find(uri) == missing.end())
-      {
-         missing.insert(uri);
-         OE_WARN << LC << "Failed to locate resource: " << uri.full() << std::endl;
-      }
-   }
+    // failed to find the instance.
+    if ( !output.valid() )
+    {
+        if ( missing.find(uri) == missing.end() )
+        {
+            missing.insert(uri);
+            OE_WARN << LC << "Failed to locate resource: " << uri.full() << std::endl;
+        }
+    }
 
-   return output.valid();
+    return output.valid();
 }
 
 bool
 SubstituteModelFilter::process(const FeatureList&           features,
-const InstanceSymbol*        symbol,
-Session*                     session,
-osg::Group*                  attachPoint,
-FilterContext&               context)
+                               const InstanceSymbol*        symbol,
+                               Session*                     session,
+                               osg::Group*                  attachPoint,
+                               FilterContext&               context )
 {
-   // Establish SRS information:
-   bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
-   const SpatialReference* targetSRS = context.getSession()->getMapInfo().getSRS();
+    // Establish SRS information:
+    bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
+    const SpatialReference* targetSRS = context.getSession()->getMapInfo().getSRS();
 
-   // first, go through the features and build the model cache. Apply the model matrix' scale
-   // factor to any AutoTransforms directly (cloning them as necessary)
-   std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
-
+    // first, go through the features and build the model cache. Apply the model matrix' scale
+    // factor to any AutoTransforms directly (cloning them as necessary)
+    std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
+	
 /* MERGE: Instancing, clustering no longer?
    SubstituteModelFilterNode* substituteModelFilterNode = 0;
 
@@ -162,54 +161,55 @@ FilterContext&               context)
    }
    */
 
-   // URI cache speeds up URI creation since it can be slow.
-   osgEarth::fast_map<std::string, URI> uriCache;
+    // URI cache speeds up URI creation since it can be slow.
+    osgEarth::fast_map<std::string, URI> uriCache;
 
-   // keep track of failed URIs so we don't waste time or warning messages on them
-   std::set< URI > missing;
+    // keep track of failed URIs so we don't waste time or warning messages on them
+    std::set< URI > missing;
 
-   StringExpression  uriEx = *symbol->url();
-   NumericExpression scaleEx = *symbol->scale();
+    StringExpression  uriEx    = *symbol->url();
+    NumericExpression scaleEx  = *symbol->scale();
 
-   const ModelSymbol* modelSymbol = dynamic_cast<const ModelSymbol*>(symbol);
-   const IconSymbol*  iconSymbol = dynamic_cast<const IconSymbol*> (symbol);
+    const ModelSymbol* modelSymbol = dynamic_cast<const ModelSymbol*>(symbol);
+    const IconSymbol*  iconSymbol  = dynamic_cast<const IconSymbol*> (symbol);
 
-   NumericExpression headingEx;
-   NumericExpression scaleXEx;
-   NumericExpression scaleYEx;
-   NumericExpression scaleZEx;
+    NumericExpression headingEx;    
+    NumericExpression scaleXEx;
+    NumericExpression scaleYEx;
+    NumericExpression scaleZEx;
 
-   if (modelSymbol)
-   {
-      headingEx = *modelSymbol->heading();
-      scaleXEx = *modelSymbol->scaleX();
-      scaleYEx = *modelSymbol->scaleY();
-      scaleZEx = *modelSymbol->scaleZ();
-   }
+    if ( modelSymbol )
+    {
+        headingEx = *modelSymbol->heading();
+        scaleXEx  = *modelSymbol->scaleX();
+        scaleYEx  = *modelSymbol->scaleY();
+        scaleZEx  = *modelSymbol->scaleZ();
+    }
 
-   for (FeatureList::const_iterator f = features.begin(); f != features.end(); ++f)
-   {
-      Feature* input = f->get();
+    for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
+    {
+        Feature* input = f->get();
 
-      // Run a feature pre-processing script.
-      if (symbol->script().isSet())
-      {
-         StringExpression scriptExpr(symbol->script().get());
-         input->eval(scriptExpr, &context);
-      }
+        // Run a feature pre-processing script.
+        if ( symbol->script().isSet() )
+        {
+            StringExpression scriptExpr(symbol->script().get());
+            input->eval( scriptExpr, &context );
+        }
 
-      // evaluate the instance URI expression:
-      const std::string& st = input->eval(uriEx, &context);
-      URI& instanceURI = uriCache[st];
-      if (instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
-      {
-         instanceURI = URI(st, uriEx.uriContext());
-      }
+		// evaluate the instance URI expression:
+		const std::string& st = input->eval(uriEx, &context);
+		URI& instanceURI = uriCache[st];
+		if(instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
+		{
+			instanceURI = URI( st, uriEx.uriContext() );
+		}
 
-      // find the corresponding marker in the cache
-      osg::ref_ptr<InstanceResource> instance;
-      if (!findResource(instanceURI, symbol, context, missing, instance))
-         continue;
+        // find the corresponding marker in the cache
+        osg::ref_ptr<InstanceResource> instance;
+        if ( !findResource(instanceURI, symbol, context, missing, instance) )
+            continue;
+
 
       // evalute the scale expression (if there is one)
       float scale = 1.0f;
@@ -335,12 +335,6 @@ FilterContext&               context)
 
                scaleMatrix = osg::Matrix::scale(scaleVec);
 
-               if (modelSymbol->heading().isSet())
-               {
-                  float heading = input->eval(headingEx, &context);
-                  rotationMatrix.makeRotate(osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1)));
-               }
-
                     if ( modelSymbol && modelSymbol->heading().isSet() )
                     {
                         float heading = input->eval(headingEx, &context);
@@ -382,27 +376,17 @@ FilterContext&               context)
                         xform->setName(name);
                   }
                }
-               else if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
-               {
-                  osg::Vec3d modelPoint = point;
-
-                  substituteModelFilterNode->modelSymbolList().push_back(SubstituteModelFilterNode::ModelSymbol());
-                  SubstituteModelFilterNode::ModelSymbol& symbol = substituteModelFilterNode->modelSymbolList().back();
-                  symbol.instanceURI = instanceURI;
-                  symbol.xform = mat;
-               }
             }
          }
       }
-   }
 
-   if (iconSymbol)
-   {
-      // activate decluttering for icons if requested
-      if (iconSymbol->declutter() == true)
-      {
-         ScreenSpaceLayout::activate(attachPoint->getOrCreateStateSet());
-      }
+    if ( iconSymbol )
+    {
+        // activate decluttering for icons if requested
+        if ( iconSymbol->declutter() == true )
+        {
+            ScreenSpaceLayout::activate(attachPoint->getOrCreateStateSet());
+        }
 
         // activate horizon culling if we are in geocentric space
         if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
@@ -415,15 +399,17 @@ FilterContext&               context)
         }
     }
 
-   // active DrawInstanced if required:
-   if (_filterUsage == FILTER_USAGE_NORMAL && _useDrawInstanced)
-   {
-      DrawInstanced::convertGraphToUseDrawInstanced(attachPoint);
-      // install a shader program to render draw-instanced.
-      DrawInstanced::install(attachPoint->getOrCreateStateSet());
-   }
+    // active DrawInstanced if required:
+    if ( _useDrawInstanced )
+    {
+        DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
 
-   return true;
+        // install a shader program to render draw-instanced.
+        DrawInstanced::install( attachPoint->getOrCreateStateSet() );
+    }
+
+    return true;
+
 }
 
 
@@ -431,66 +417,67 @@ FilterContext&               context)
 
 namespace
 {
-   /**
-    * Extracts unclusterable things like lightpoints and billboards from the given scene graph and copies them into a cloned scene graph
-    * This actually just removes all geodes from the scene graph, so this could be applied to any other type of node that you want to keep
-    * The geodes will be clustered together in the flattened graph.
-    */
-   osg::Node* extractUnclusterables(osg::Node* node)
-   {
-      // Clone the scene graph
-      osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
+    /**
+     * Extracts unclusterable things like lightpoints and billboards from the given scene graph and copies them into a cloned scene graph
+     * This actually just removes all geodes from the scene graph, so this could be applied to any other type of node that you want to keep
+     * The geodes will be clustered together in the flattened graph.
+     */
+    osg::Node* extractUnclusterables(osg::Node* node)
+    {
+        // Clone the scene graph
+        osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
+       
+        // Now remove any geodes
+        osgEarth::FindNodesVisitor<osg::Geode> findGeodes;
+        clone->accept(findGeodes);
+        for (unsigned int i = 0; i < findGeodes._results.size(); i++)
+        {
+            osg::ref_ptr< osg::Geode > geode = findGeodes._results[i];
+            
 
-      // Now remove any geodes
-      osgEarth::FindNodesVisitor<osg::Geode> findGeodes;
-      clone->accept(findGeodes);
-      for (unsigned int i = 0; i < findGeodes._results.size(); i++)
-      {
-         osg::ref_ptr< osg::Geode > geode = findGeodes._results[i];
+            // Special check for billboards.  Me want to keep them in this special graph of 
+            // unclusterable stuff.
+            osg::Billboard* billboard = dynamic_cast< osg::Billboard* >( geode.get() );
+            
 
-
-         // Special check for billboards.  Me want to keep them in this special graph of 
-         // unclusterable stuff.
-         osg::Billboard* billboard = dynamic_cast<osg::Billboard*>(geode.get());
-
-
-         if (geode->getNumParents() > 0 && !billboard)
-         {
-            // Get all the parents for the geode and remove it from them.
-            std::vector< osg::ref_ptr< osg::Group > > parents;
-            for (unsigned int j = 0; j < geode->getNumParents(); j++)
+            if (geode->getNumParents() > 0 && !billboard)
             {
-               parents.push_back(geode->getParent(j));
+                // Get all the parents for the geode and remove it from them.
+                std::vector< osg::ref_ptr< osg::Group > > parents;
+                for (unsigned int j = 0; j < geode->getNumParents(); j++)
+                {
+                    parents.push_back(geode->getParent(j));
+                }
+
+                for (unsigned int j = 0; j < parents.size(); j++)
+                {
+                    parents[j]->removeChild(geode);
+                }
             }
+            
+        }
 
-            for (unsigned int j = 0; j < parents.size(); j++)
-            {
-               parents[j]->removeChild(geode);
-            }
-         }
+        return clone.release();
+    };
 
-      }
-
-      return clone.release();
-   };
 }
 
 osg::Node*
 SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 {
-   if (!isSupported())
-   {
-      OE_WARN << "SubstituteModelFilter support not enabled" << std::endl;
-      return 0L;
-   }
+    if ( !isSupported() )
+    {
+        OE_WARN << "SubstituteModelFilter support not enabled" << std::endl;
+        return 0L;
+    }
 
-   if (_style.empty())
-   {
-      OE_WARN << LC << "Empty style; cannot process features" << std::endl;
-      return 0L;
-   }
+    if ( _style.empty() )
+    {
+        OE_WARN << LC << "Empty style; cannot process features" << std::endl;
+        return 0L;
+    }
 
-   osg::ref_ptr<const InstanceSymbol> symbol = _style.get<InstanceSymbol>();
+    osg::ref_ptr<const InstanceSymbol> symbol = _style.get<InstanceSymbol>();
 
     if ( !symbol.valid() )
     {
@@ -498,31 +485,32 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         return 0L;
     }
 
-   // establish the resource library, if there is one:
-   _resourceLib = 0L;
+    // establish the resource library, if there is one:
+    _resourceLib = 0L;
 
-   const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
+    const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
-   if (sheet && symbol->library().isSet())
-   {
-      _resourceLib = sheet->getResourceLibrary(symbol->library()->expr());
+    if ( sheet && symbol->library().isSet() )
+    {
+        _resourceLib = sheet->getResourceLibrary( symbol->library()->expr() );
 
-      if (!_resourceLib.valid())
-      {
-         OE_WARN << LC << "Unable to load resource library '" << symbol->library()->expr() << "'"
-            << "; may not find instance models." << std::endl;
-      }
-   }
+        if ( !_resourceLib.valid() )
+        {
+            OE_WARN << LC << "Unable to load resource library '" << symbol->library()->expr() << "'"
+                << "; may not find instance models." << std::endl;
+        }
+    }
 
-   // reset this marker:
-   _normalScalingRequired = false;
+    // reset this marker:
+    _normalScalingRequired = false;
 
-   // Compute localization info:
-   FilterContext newContext(context);
+    // Compute localization info:
+    FilterContext newContext( context );
 
-   computeLocalizers(context);
+    computeLocalizers( context );
 
-   osg::Group* group = createDelocalizeGroup();
+    osg::Group* group = createDelocalizeGroup();
+
    group->setName("SubstituteModelFilter::Delocalizer");
 
    osg::ref_ptr< osg::Group > attachPoint = new osg::Group;
@@ -557,7 +545,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         // Add the unclusterables back to the attach point after the rest of the graph was flattened.
         if (unclusterables.valid())
         {
-           attachPoint->addChild(unclusterables);
+            attachPoint->addChild(unclusterables);
         }
     }
     

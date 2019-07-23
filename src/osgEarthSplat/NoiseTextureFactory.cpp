@@ -121,7 +121,8 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     
     //VRV Patch
     // removed this call since the nvtt mipmapper does not handle GL_LUMINANCE 
-    //ImageUtils::activateMipMaps(tex);
+	// MERGE: I think this is ok since luminance is out R16F is the new format
+    ImageUtils::activateMipMaps(tex);
     //END VRV Patch
 
     return tex;

@@ -23,7 +23,6 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
-#include <osgEarthFeatures/ExtrudeGeometryFilterNode>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
@@ -91,7 +90,6 @@ _maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
 _mergeGeometry         ( s_defaults.mergeGeometry().value() ),
 _clustering            ( s_defaults.clustering().value() ),
 _instancing            ( s_defaults.instancing().value() ),
-_filterUsage           ( s_defaults.filterUsage().value()),
 _ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
@@ -147,9 +145,10 @@ GeometryCompilerOptions::getConfig() const
     conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
     conf.set( "use_gpu_screen_space_lines", _useGPULines );
 
-    conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+    conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.set( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+
     return conf;
 }
 
@@ -230,8 +229,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     osg::Timer_t p_start = osg::Timer::instance()->tick();
     unsigned p_features = workingSet.size();
 #endif
-
-    osg::ref_ptr<osg::Group> extrusionGroup;
 
     // for debugging/validation.
     std::vector<std::string> history;
@@ -379,8 +376,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         // activate draw-instancing
         sub.setUseDrawInstanced( *_options.instancing() );
 
-        sub.setFilterUsage(*_options.filterUsage());
-
         // activate feature naming
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
@@ -417,16 +412,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( _options.mergeGeometry().isSet() )
             extrude.setMergeGeometry( *_options.mergeGeometry() );
 
-        extrude.setFilterUsage(*_options.filterUsage());
-
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
         {
             if ( trackHistory ) history.push_back( "extrude" );
             resultGroup->addChild( node );
 
-            extrusionGroup = dynamic_cast<osg::Group*>(node);
-            ASSERT_PREDICATE(extrusionGroup.get());
         }
     }
 
@@ -595,34 +586,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         osgEarth::GeometryValidator validator;
         resultGroup->accept(validator);
         OE_NOTICE << LC << "-- End Debugging --\n";
-    }
-
-    if(extrusion)
-    {
-       if (*_options.filterUsage() == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED && extrusionGroup.get())
-       {
-          // remove the extrusion result from the result group
-          resultGroup->removeChild(extrusionGroup);
-
-          osg::Matrixd xform = osg::Matrixd::identity();
-          osg::MatrixTransform* matixTransform = dynamic_cast<osg::MatrixTransform*>(extrusionGroup.get());
-          if (matixTransform)
-          {
-             xform = matixTransform->getMatrix();
-             matixTransform->setMatrix(osg::Matrixd::identity());
-          }
-
-          // make a new attach point so that the filter node is found along with it
-          osg::Group* attachPoint = new osg::Group();
-          attachPoint->setName("extrude_geometry_attach_point");
-          // add the attach point to the result group, so that the attach point itself can be found
-          resultGroup->addChild(attachPoint);
-
-          // make a filter node with the extrusion group as the data
-          ExtrudeGeometryFilterNode* extrudeGeometryFilterNode = new ExtrudeGeometryFilterNode(extrusionGroup, xform);
-
-          attachPoint->setUserData(extrudeGeometryFilterNode);
-       }
     }
 
     return resultGroup.release();

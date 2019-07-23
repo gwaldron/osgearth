@@ -208,7 +208,7 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
                          const RenderBindings& bindings,
                          TileDrawable*         drawable)
 {
-   setName(tilekey.str());
+    setName(tilekey.str());
     _tileKey = tilekey;
 
     _drawable = drawable;

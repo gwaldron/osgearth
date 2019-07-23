@@ -23,7 +23,6 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/ResampleFilter>
-#include <osgEarthFeatures/FilterUsage>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/GeoMath>
 #include <osgEarth/ShaderUtils>
@@ -71,9 +70,6 @@ namespace osgEarth { namespace Features
         /** Whether to enabled draw-instancing for model substitution */
         optional<bool>& instancing() { return _instancing; }
         const optional<bool>& instancing() const { return _instancing; }
-
-        optional<FilterUsage>& filterUsage() { return _filterUsage; }
-        const optional<FilterUsage>& filterUsage() const { return _filterUsage; }
 
         /** Whether to ignore the altitude filter (e.g. if you plan to do auto-clamping layer) */
         optional<bool>& ignoreAltitudeSymbol() { return _ignoreAlt; }
@@ -129,7 +125,6 @@ namespace osgEarth { namespace Features
         optional<StringExpression>     _featureNameExpr;
         optional<bool>                 _clustering;
         optional<bool>                 _instancing;
-        optional<FilterUsage>          _filterUsage;
         optional<ResampleFilter::ResampleMode> _resampleMode;
         optional<double>               _resampleMaxLength;
         optional<bool>                 _ignoreAlt;

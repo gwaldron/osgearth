@@ -65,7 +65,7 @@ float
 TerrainCuller::getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const
 {
     // pass through, in case developer has overridden the method in the prototype CV
-    // this is the 2.10.2 way, do we still need VRV PATCH changes?
+    // MERGE: this is the 2.10.2 way, do we still need VRV PATCH changes?
     // return _cv->getDistanceToViewPoint(pos, withLODScale);
     
    //VRV PATCH

@@ -34,8 +34,6 @@ _orphanedPassesDetected(0u),
 _cv(cullVisitor),
 _context(context),
 _numberChildrenCreated(0),
-_currentTileDrawCommands(0),
-_firstTileDrawCommandForTile(NULL),
 _layerExtents(NULL)
 {
     setVisitorType(CULL_VISITOR);

@@ -97,8 +97,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void resizeGLObjectBuffers(unsigned maxSize);
 
-        void releaseGLObjects(osg::State* state) const;
-
     public: // MapCallback adapter functions
 
         void onMapModelChanged( const MapModelChange& change ); // not virtual!

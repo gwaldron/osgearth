@@ -395,13 +395,14 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
             */
             
             // MERGE: Is this right or the one from 2.10.2 (above)
+
             // simulate a focal point so we can call getDistanceToViewPoint() to get the
             // actual visibility range to use. We do this so that you can still override
             // getDistanceToViewPoint() and get a correct result.
-            if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods() - 1)
+            //if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs() - 1)
             {
-                float range = selectionInfo.visParameters(currLOD + 1)._visibilityRange;
-                float effectiveRange = range / culler->getRangeScale();
+                float range = context->getSelectionInfo().getLOD(currLOD + 1)._visibilityRange;
+                float effectiveRange = range / culler->getLODScale(); // MERGE: This is the new getRangeScale?
                 float range2 = effectiveRange * effectiveRange;
 
                 return _surface->anyChildBoxIntersectsSphere(
@@ -1059,7 +1060,7 @@ TileNode::load(TerrainCuller* culler)
 {    
     const SelectionInfo& si = _context->getSelectionInfo();
     int lod     = getKey().getLOD();
-    int numLods = si.numLods();
+    int numLods = si.getNumLODs();
     
     // LOD priority is in the range [0..numLods]
     float lodPriority = (float)lod;
@@ -1074,7 +1075,7 @@ TileNode::load(TerrainCuller* culler)
     // xiaohang:        float maxRange = si.visParameters(0)._visibilityRange * culler->getRangeScale();
     // osgearth 2.10.2: float maxRange = si.getLOD(0)._visibilityRange;
     // MERGE: my proposed way
-    float maxRange = si.getLOD(0)._visibilityRange * culler->getRangeScale();
+    float maxRange = si.getLOD(0)._visibilityRange * culler->getLODScale(); // MERGE: This is the new getRangeScale?
     float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority

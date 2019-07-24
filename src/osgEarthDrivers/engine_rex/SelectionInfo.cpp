@@ -19,6 +19,8 @@
 #include "SelectionInfo"
 #include <osgEarth/TileKey>
 
+#include <osg/CullStack>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -36,9 +38,9 @@ float SelectionInfo::computeRangeScale(osg::NodeVisitor* nv) const
    const osg::Vec3 viewLocal = cs.getViewPointLocal();
    osg::Vec3 viewVector = cs.getLookVectorLocal();
    viewVector.normalize();
-   osg::Vec3 point = viewLocal + viewVector*visParameters(0)._visibilityRange;
+   osg::Vec3 point = viewLocal + viewVector*_lods[0]._visibilityRange;
    float distance = nv->getDistanceToViewPoint(point, true);
-   return distance / visParameters(0)._visibilityRange;
+   return distance / _lods[0]._visibilityRange;
 }
 
 const SelectionInfo::LOD&

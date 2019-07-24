@@ -194,41 +194,6 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     OE_DEBUG << LC << "~RexTerrainEngineNode\n";
 }
 
-
-void RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
-{
-//VRV_PATCH: start
-   if (_terrain)
-   {
-      _terrain->releaseGLObjects(state);
-   }
-   
-   if (_imageLayerStateSet)
-   {
-      _imageLayerStateSet->releaseGLObjects(state);
-   }
-
-    // TODO: where should this live? MapNode?
-   LayerVector layers;
-   if (getMap())
-   {
-      getMap()->getLayers(layers);
-   }
-   for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
-   {
-      // This is done via MapNode::releaseGLObjects in latest osg earth
-      (*i)->releaseGLObjects(state);
-   }
-
-   if (_geometryPool)
-   {
-      _geometryPool->clear();
-   }
-   
-   TerrainEngineNode::releaseGLObjects(state);
-//VRV_PATCH: end
-}
-
 void
 RexTerrainEngineNode::resizeGLObjectBuffers(unsigned maxSize)
 {
@@ -254,15 +219,30 @@ RexTerrainEngineNode::resizeGLObjectBuffers(unsigned maxSize)
 void
 RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 {
+    // MERGE: Needed?
     //getStateSet()->releaseGLObjects(state);
-
+    // MERGE: Is this the right way to releaseGLObject for terrain
+    //        (vs. the code below in the vrv patch)
     //_terrain->getStateSet()->releaseGLObjects(state);
 
-    _imageLayerStateSet.get()->releaseGLObjects(state);
+    //VRV_PATCH: start
+    if (_terrain)
+    {
+        _terrain->releaseGLObjects(state);
+    }
 
-    _geometryPool->clear();
+    if (_imageLayerStateSet.get())
+    {
+        _imageLayerStateSet.get()->releaseGLObjects(state);
+    }
+
+    if (_geometryPool)
+    {
+        _geometryPool->clear();
+    }
 
     TerrainEngineNode::releaseGLObjects(state);
+    //VRV_PATCH: end
 }
 
 void
@@ -916,22 +896,22 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     // Dimension of each tile in vertices
     unsigned tileSize = getEngineContext()->getOptions().tileSize().get();
 
-    optional<bool> hasMasks(false);
-
-    // Trivial rejection test for masking geometry. Check at the top level and
-    // if there's not mask there, there's no mask at the reference LOD either.
-    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(model->getKey(), tileSize, getMap());
-
+    // MERGE: So this merge here is complicated, I ended up taking from
+    //        Dan Komisar's changes
     bool includeTilesWithMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITH_MASKS) != 0;
     bool includeTilesWithoutMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS) != 0;
 
-    if (maskGenerator->hasMasks() == false && includeTilesWithoutMasks == false)
-        return 0L;
+    TileKey rootkey = area.valid() ? area : model->getKey();
+    const SpatialReference* srs = rootkey.getExtent().getSRS();
 
-    // If the ref LOD is higher than the key LOD, build a list of tile keys at the
-    // ref LOD that match up with the main tile key in the model.
-    std::vector<TileKey> keys;
-    if (referenceLOD > model->getKey().getLOD())
+    // Find the axis aligned bounding box of the mask boundary for each layer
+    MaskLayerVector maskLayers;
+    getMap()->getLayers(maskLayers);
+
+    struct MinMax { osg::Vec3d min, max; };
+    std::vector<MinMax> boundaryMinMaxes;
+
+    for (MaskLayerVector::iterator iLayer = maskLayers.begin(); iLayer != maskLayers.end(); ++iLayer)
     {
        MaskLayer* layer = iLayer->get();
        osg::Vec3dArray* boundary = layer->getOrCreateMaskBoundary(1.0, srs, (ProgressCallback*)0L);
@@ -1045,14 +1025,12 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     // group to hold all the tiles
     osg::Group* group = new osg::Group();
 
-    maskGenerator = 0L;
-
     MapInfo mapInfo(getMap());
 
     for (std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
     {
         // Mask generator creates geometry from masking boundaries when they exist.
-        maskGenerator = new MaskGenerator(*key, tileSize, getMap());
+        osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(*key, tileSize, getMap());
 
         if (maskGenerator->hasMasks() == true && includeTilesWithMasks == false)
             continue;

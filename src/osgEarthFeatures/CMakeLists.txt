@@ -47,6 +47,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureSourceLayer
     FeatureTileSource
     Filter
+    FilterUsage
     FilterContext
     GeometryCompiler
     GeometryUtils
@@ -68,6 +69,8 @@ SET(LIB_PUBLIC_HEADERS
     TextSymbolizer
     TransformFilter
     VirtualFeatureSource
+    SubstituteModelFilterNode
+    ExtrudeGeometryFilterNode
 )
 
 SET(TARGET_SRC
@@ -78,7 +81,8 @@ SET(TARGET_SRC
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
-    ExtrudeGeometryFilter.cpp  
+    ExtrudeGeometryFilter.cpp
+    ExtrudeGeometryFilterNode.cpp     
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
@@ -107,6 +111,7 @@ SET(TARGET_SRC
     ScriptEngine.cpp
     ScriptFilter.cpp
     SubstituteModelFilter.cpp
+    SubstituteModelFilterNode.cpp
     TessellateOperator.cpp
     TextSymbolizer.cpp
     TransformFilter.cpp

@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthFeatures/SubstituteModelFilter>
+#include <osgEarthFeatures/SubstituteModelFilterNode>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryUtils>
@@ -75,7 +76,8 @@ SubstituteModelFilter::SubstituteModelFilter(const Style& style) :
     _useDrawInstanced(true),
     _merge(true),
     _normalScalingRequired(false),
-    _instanceCache(false)     // cache per object so MT not required
+    _instanceCache(false),     // cache per object so MT not required
+    _filterUsage(FILTER_USAGE_NORMAL)
 {
     //NOP
 }
@@ -136,30 +138,28 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
 
-    /* MERGE: Instancing, clustering no longer?
     SubstituteModelFilterNode* substituteModelFilterNode = 0;
 
     if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
     {
-    if (attachPoint->getUserData() == 0)
-    {
-    substituteModelFilterNode = new SubstituteModelFilterNode();
-    attachPoint->setUserData(substituteModelFilterNode);
+        if (attachPoint->getUserData() == 0)
+        {
+            substituteModelFilterNode = new SubstituteModelFilterNode();
+            attachPoint->setUserData(substituteModelFilterNode);
 
-    bool instancing = getUseDrawInstanced() == true && getClustering() == false;
-    bool clustering = getClustering() == true && getUseDrawInstanced() == false;
-    if (!(instancing || clustering))
-    {
-    // prefer instancing over clustering
-    instancing = true;
-    clustering = false;
-    }
+            bool instancing = getUseDrawInstanced() == true && getClustering() == false;
+            bool clustering = getClustering() == true && getUseDrawInstanced() == false;
+            if (!(instancing || clustering))
+            {
+                // prefer instancing over clustering
+                instancing = true;
+                clustering = false;
+            }
 
-    substituteModelFilterNode->setInstanced(instancing);
-    substituteModelFilterNode->setClustered(clustering);
+            substituteModelFilterNode->setInstanced(instancing);
+            substituteModelFilterNode->setClustered(clustering);
+        }
     }
-    }
-    */
 
     // URI cache speeds up URI creation since it can be slow.
     osgEarth::fast_map<std::string, URI> uriCache;
@@ -248,39 +248,46 @@ SubstituteModelFilter::process(const FeatureList&           features,
             rotationMatrix.makeRotate(osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1)));
         }
 
-
         // how that we have a marker source, create a node for it
         std::pair<URI, float> key(instanceURI, iconSymbol ? scale : 1.0f); //use 1.0 for models, since we don't want unique models based on scaling
 
-                                                                           // cache nodes per instance.
-                                                                           // This is a not so obvious way of writing to the map.
-                                                                           // Notice the & in the definition of model
-        osg::ref_ptr<osg::Node>& model = uniqueModels[key];
-        if (!model.valid())
-        {
-            // Always clone the cached instance so we're not processing data that's
-            // already in the scene graph. -gw
-            context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), model, context.getDBOptions());
+        // MERGE: Taking VTMAK's code here
+        // cache nodes per instance.
+        osg::ref_ptr<osg::Node> model;
 
-            // if icon decluttering is off, install an AutoTransform.
-            if (iconSymbol)
+        if (_filterUsage == FILTER_USAGE_NORMAL)
+        {
+            //This is a not so obvious way of writing to the map.
+            // Notice the & in the definition of modeRefOfRefPtr
+            osg::ref_ptr<osg::Node>& modelRefOfRefPtr = uniqueModels[key];
+
+            if (!modelRefOfRefPtr.valid())
             {
-                if (iconSymbol->declutter() == true)
+                // Always clone the cached instance so we're not processing data that's
+                // already in the scene graph. -gw
+                context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), modelRefOfRefPtr, context.getDBOptions());
+
+                // if icon decluttering is off, install an AutoTransform.
+                if (iconSymbol)
                 {
-                    ScreenSpaceLayout::activate(model->getOrCreateStateSet());
-                }
-                else if (dynamic_cast<osg::AutoTransform*>(model.get()) == 0L)
-                {
-                    osg::AutoTransform* at = new osg::AutoTransform();
-                    at->setAutoRotateMode(osg::AutoTransform::ROTATE_TO_SCREEN);
-                    at->setAutoScaleToScreen(true);
-                    at->addChild(model);
-                    model = at;
+                    if (iconSymbol->declutter() == true)
+                    {
+                        ScreenSpaceLayout::activate(modelRefOfRefPtr->getOrCreateStateSet());
+                    }
+                    else if (dynamic_cast<osg::AutoTransform*>(modelRefOfRefPtr.get()) == 0L)
+                    {
+                        osg::AutoTransform* at = new osg::AutoTransform();
+                        at->setAutoRotateMode(osg::AutoTransform::ROTATE_TO_SCREEN);
+                        at->setAutoScaleToScreen(true);
+                        at->addChild(modelRefOfRefPtr);
+                        modelRefOfRefPtr = at;
+                    }
                 }
             }
+            model = modelRefOfRefPtr.get();
         }
 
-        if (model.valid())
+        if ((_filterUsage == FILTER_USAGE_NORMAL && model.valid()) || (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED))
         {
             GeometryIterator gi(input->getGeometry(), false);
             while (gi.hasMore())
@@ -293,11 +300,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     context.profile()->getSRS()->transform(geom->asVector(), targetSRS);
                 }
 
-                for (unsigned i = 0; i<geom->size(); ++i)
+                for (unsigned i = 0; i < geom->size(); ++i)
                 {
                     osg::Matrixd mat;
 
-                    // need to recalcluate expression-based data per-point, not just per-feature!
+                    // need to recalculate expression-based data per-point, not just per-feature!
                     float scale = 1.0f;
                     osg::Vec3d scaleVec(1.0, 1.0, 1.0);
                     osg::Matrixd scaleMatrix;
@@ -328,7 +335,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
                     scaleMatrix = osg::Matrix::scale(scaleVec);
 
-
                     if (modelSymbol && modelSymbol->heading().isSet())
                     {
                         float heading = input->eval(headingEx, &context);
@@ -347,33 +353,46 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     }
                     else
                     {
-                        mat = scaleMatrix * rotationMatrix * osg::Matrixd::translate(point) * _world2local;
+                        mat = scaleMatrix * rotationMatrix *  osg::Matrixd::translate(point)* _world2local;
                     }
 
-                    osg::MatrixTransform* xform = new osg::MatrixTransform();
-                    xform->setMatrix(mat);
-                    xform->setDataVariance(osg::Object::STATIC);
-                    xform->addChild(model.get());
-                    attachPoint->addChild(xform);
-
-                    // Only tag nodes if we aren't using clustering.
-                    if (context.featureIndex() && !_cluster)
+                    if (_filterUsage == FILTER_USAGE_NORMAL)
                     {
-                        context.featureIndex()->tagNode(xform, input);
+                        mat = mat*_world2local;
+
+                        osg::MatrixTransform* xform = new osg::MatrixTransform();
+                        xform->setMatrix(mat);
+                        xform->setDataVariance(osg::Object::STATIC);
+                        xform->addChild(model.get());
+                        attachPoint->addChild(xform);
+
+                        // Only tag nodes if we aren't using clustering.
+                        if (context.featureIndex() && !_cluster)
+                        {
+                            context.featureIndex()->tagNode(xform, input);
+                        }
+
+                        // name the feature if necessary
+                        if (!_featureNameExpr.empty())
+                        {
+                            const std::string& name = input->eval(_featureNameExpr, &context);
+                            if (!name.empty())
+                                xform->setName(name);
+                        }
                     }
-
-                    // name the feature if necessary
-                    if (!_featureNameExpr.empty())
+                    else if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
                     {
-                        const std::string& name = input->eval(_featureNameExpr, &context);
-                        if (!name.empty())
-                            xform->setName(name);
+                        osg::Vec3d modelPoint = point;
+
+                        substituteModelFilterNode->modelSymbolList().push_back(SubstituteModelFilterNode::ModelSymbol());
+                        SubstituteModelFilterNode::ModelSymbol& symbol = substituteModelFilterNode->modelSymbolList().back();
+                        symbol.instanceURI = instanceURI;
+                        symbol.xform = mat;
                     }
                 }
             }
         }
     }
-
 
     if (iconSymbol)
     {
@@ -526,12 +545,12 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     }
 
     process(features, symbol.get(), context.getSession(), attachPoint.get(), newContext);
-    if (_cluster)
+    if (_filterUsage == FILTER_USAGE_NORMAL && _cluster)
     {
         // Extract the unclusterable things
         osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint.get());
 
-        // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
+        // We run on the attachPoint instead of the main group so that we don't lose the double precision delocalizer transform.
         MeshFlattener::run(attachPoint.get());
 
         // Add the unclusterables back to the attach point after the rest of the graph was flattened.

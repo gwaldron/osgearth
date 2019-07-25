@@ -1,0 +1,55 @@
+#pragma once
+
+#include <osgEarthFeatures/Common>
+#include <osgEarth/URI>
+
+#include <osg/Object>
+#include <osg/Matrixd>
+
+namespace osgEarth {
+   namespace Features
+   {
+      class OSGEARTHFEATURES_EXPORT SubstituteModelFilterNode : public osg::Object
+      {
+      public:
+       
+         struct ModelSymbol
+         {
+            URI instanceURI;
+            osg::Matrixd xform;
+         };
+
+         SubstituteModelFilterNode();
+       
+         SubstituteModelFilterNode(const SubstituteModelFilterNode& rhs, const osg::CopyOp& copyop);
+
+         virtual ~SubstituteModelFilterNode()
+         {
+
+         }
+         
+         META_Object(osgEarth::Features, SubstituteModelFilterNode);
+
+
+         typedef std::list<ModelSymbol> ModelSymbolList;
+
+         ModelSymbolList& modelSymbolList()
+         {
+            return _modelSymbolList;
+         }
+         const ModelSymbolList& modelSymbolList() const
+         {
+            return _modelSymbolList;
+         }
+         bool getInstanced(void) const { return _instanced; }
+         void setInstanced(bool instanced) { _instanced = instanced; }
+
+         bool getClustered(void) const { return _clustered; }
+         void setClustered(bool clustered) { _clustered = clustered; }
+      private:
+         bool _instanced;
+         bool _clustered;
+         ModelSymbolList _modelSymbolList;
+      };
+   }
+}

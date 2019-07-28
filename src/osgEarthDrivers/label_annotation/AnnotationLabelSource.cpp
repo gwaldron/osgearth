@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/BarNode>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/StateSetCache>
@@ -50,13 +51,14 @@ public:
         const Style&         style,
         FilterContext&       context )
     {
-        if ( style.get<TextSymbol>() == 0L && style.get<IconSymbol>() == 0L )
+        if ( style.get<TextSymbol>() == 0L && style.get<IconSymbol>() == 0L && style.get<BarSymbol>() == 0L)
             return 0L;
 
         // copy the style so we can (potentially) modify the text symbol.
         Style styleCopy = style;
         TextSymbol* text = styleCopy.get<TextSymbol>();
         IconSymbol* icon = styleCopy.get<IconSymbol>();
+        BarSymbol* bar = styleCopy.get<BarSymbol>();
         AltitudeSymbol* alt = styleCopy.get<AltitudeSymbol>();
 
         osg::Group* group = new osg::Group();
@@ -70,6 +72,10 @@ public:
         NumericExpression iconScaleExpr   ( icon ? *icon->scale()    : NumericExpression() );
         NumericExpression iconHeadingExpr ( icon ? *icon->heading()  : NumericExpression() );
         NumericExpression vertOffsetExpr  ( alt  ? *alt->verticalOffset() : NumericExpression() );
+        NumericExpression barValueExpr    ( bar  ? *bar->value() : NumericExpression());
+        NumericExpression barMinValueExpr ( bar  ? *bar->minimumValue() : NumericExpression());
+        NumericExpression barMaxValueExpr ( bar  ? *bar->maximumValue() : NumericExpression());
+        NumericExpression barWidthExpr    ( bar  ? *bar->width() : NumericExpression());
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
@@ -127,13 +133,37 @@ public:
                 if ( icon->heading().isSet() )
                     tempStyle.get<IconSymbol>()->heading()->setLiteral( feature->eval(iconHeadingExpr, &context) );
             }
-            
-            PlaceNode* node = makePlaceNode(
-                context,
-                feature,
-                tempStyle);
 
-            if ( node )
+            if( bar )
+            {
+                if (bar->value().isSet())
+                    tempStyle.get<BarSymbol>()->value()->setLiteral(feature->eval(barValueExpr, &context));
+                if (bar->minimumValue().isSet())
+                    tempStyle.get<BarSymbol>()->minimumValue()->setLiteral(feature->eval(barMinValueExpr, &context));
+                if (bar->maximumValue().isSet())
+                    tempStyle.get<BarSymbol>()->maximumValue()->setLiteral(feature->eval(barMaxValueExpr, &context));
+                if (bar->width().isSet())
+                    tempStyle.get<BarSymbol>()->width()->setLiteral(feature->eval(barWidthExpr, &context));
+            }
+            
+            GeoPositionNode* node = 0L;
+            GeoPositionNode* barNode = 0L;
+            if (bar)
+            {
+                barNode = makeBarNode(
+                    context,
+                    feature,
+                    tempStyle);
+            }
+            if (text || icon)
+            {
+                node = makePlaceNode(
+                    context,
+                    feature,
+                    tempStyle);
+            }
+
+            if (node)
             {
                 if (!textPriorityExpr.empty())
                 {
@@ -153,7 +183,28 @@ public:
                     context.featureIndex()->tagNode(node, feature);
                 }
 
-                group->addChild( node );
+                group->addChild(node);
+            }
+            if(barNode)
+            {
+                if (!textPriorityExpr.empty())
+                {
+                    float val = feature->eval(textPriorityExpr, &context);
+                    barNode->setPriority(val >= 0.0f ? val : FLT_MAX);
+                }
+
+                if (alt && alt->technique() == alt->TECHNIQUE_SCENE && !vertOffsetExpr.empty())
+                {
+                    float val = feature->eval(vertOffsetExpr, &context);
+                    const osg::Vec3d& off = barNode->getLocalOffset();
+                    barNode->setLocalOffset(osg::Vec3d(off.x(), off.y(), val));
+                }
+
+                if (context.featureIndex())
+                {
+                    context.featureIndex()->tagNode(barNode, feature);
+                }
+                group->addChild(barNode);
             }
         }
 
@@ -200,6 +251,50 @@ public:
 
         PlaceNode* node = new PlaceNode();
         node->setStyle(style, context.getDBOptions());
+        node->setPosition(point);
+
+        return node;
+    }
+
+    BarNode* makeBarNode(FilterContext& context,
+        Feature* feature,
+        const Style& style)
+    {
+        osg::Vec3d center = feature->getGeometry()->getBounds().center();
+
+        //AltitudeMode mode = ALTMODE_ABSOLUTE;        
+        osg::Vec3d localOffset;
+
+        GeoPoint point;
+
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+
+        // If the symbol asks for map-clamping, disable any auto-scene-clamping on the annotation:
+        if (alt != NULL &&
+            alt->clamping() != alt->CLAMP_NONE &&
+            alt->technique().isSetTo(alt->TECHNIQUE_MAP))
+        {
+            point.set(feature->getSRS(), center.x(), center.y(), center.z(), ALTMODE_ABSOLUTE);
+        }
+
+        // If the symbol says clamp to terrain (but not using the map), zero out the 
+        // Z value and dynamically clamp to the surface:
+        else if (
+            alt != NULL &&
+            alt->clamping() == alt->CLAMP_TO_TERRAIN &&
+            !alt->technique().isSetTo(alt->TECHNIQUE_MAP))
+        {
+            point.set(feature->getSRS(), center.x(), center.y(), 0.0, ALTMODE_RELATIVE);
+        }
+
+        // By default, use terrain-relative scene clamping Zm above the terrain.
+        else
+        {
+            point.set(feature->getSRS(), center.x(), center.y(), center.z(), ALTMODE_RELATIVE);
+        }
+
+        BarNode* node = new BarNode();
+        node->setStyle(style);
         node->setPosition(point);
 
         return node;

@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_BAR_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_BAR_SYMBOL_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Fill>
+#include <osgEarthSymbology/Expression>
+
+namespace osgEarth { namespace Symbology
+{
+    using namespace osgEarth;
+
+    class Fill;
+
+    /**
+     * Symbol that directs the GeometryCompiler to create extruded 3D geometry
+     * from 2D vector data.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT BarSymbol : public Symbol
+    {
+    public:
+        META_Object(osgEarthSymbology, BarSymbol);
+
+        BarSymbol(const BarSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+        BarSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~BarSymbol() { }
+
+        /** value of the bar (shown as height) */
+        optional<NumericExpression>& value() { return _value; }
+        const optional<NumericExpression>& value() const { return _value; }
+
+        /** Width of the bar */
+        optional<NumericExpression>& width() { return _width; }
+        const optional<NumericExpression>& width() const { return _width; }
+
+        optional<NumericExpression>& minimumValue() { return _minimumValue; }
+        const optional<NumericExpression>& minimumValue() const { return _minimumValue; }
+
+        optional<NumericExpression>& maximumValue() { return _maximumValue; }
+        const optional<NumericExpression>& maximumValue() const { return _maximumValue; }
+
+        /** Text fill color. */
+        optional<Fill>& minimumColor() { return _minimumColor; }
+        const optional<Fill>& minimumColor() const { return _minimumColor; }
+
+        optional<Fill>& maximumColor() { return _maximumColor; }
+        const optional<Fill>& maximumColor() const { return _maximumColor; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+        optional<NumericExpression> _value;
+        optional<NumericExpression> _width;
+        optional<NumericExpression> _minimumValue;
+        optional<NumericExpression> _maximumValue;
+        optional<Fill> _minimumColor;
+        optional<Fill> _maximumColor;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_BAR_SYMBOL_H

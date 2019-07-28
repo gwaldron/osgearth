@@ -1,0 +1,105 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ANNOTATION_BAR_NODE_H
+#define OSGEARTH_ANNOTATION_BAR_NODE_H 1
+
+#include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarthSymbology/Style>
+#include <osgEarth/MapNode>
+#include <osgEarth/Units>
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Circle annotation.
+     */
+    class OSGEARTHANNO_EXPORT BarNode : public GeoPositionNode
+    {
+    public:
+        META_AnnotationNode( osgEarthAnnotation, BarNode );
+
+        BarNode();
+
+        /**
+         * Constructs a circle node from its serialized form
+         */
+        BarNode(
+            const Config&         conf,
+            const osgDB::Options* dbOptions);
+
+        virtual ~BarNode() { }
+
+        struct Value {
+            float value;
+            float totalHeight;
+            Fill minimumValueColor;
+            Fill maximumValueColor;
+        };
+        typedef std::vector<Value> ValueList;
+
+        /**
+         * add one value to the bar
+         */
+        void addValue(const Value & v);
+
+        /**
+         * add one value to the bar
+         */
+        void addValue(const float & value, const float & totalHeight, const Fill & minimumValueColor, const Fill & maximumValueColor);
+
+        /**
+         * remove all values
+         */
+        void clear();
+
+        void setStyle(const Style& style );
+
+    public: // AnnotationNode overrides
+
+        virtual Config getConfig() const;
+
+    protected:
+        void applyStyle(const Style& style);
+
+    private:
+        BarNode(const BarNode& rhs, const osg::CopyOp& op) { }
+
+        void construct();
+
+        void compile();
+
+        void buildGeometry();
+
+    protected:
+        Style _style;
+        osg::ref_ptr<osg::Geometry> _geom;
+        ValueList _values;
+        Distance _width;
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNOTATION_BAR_NODE_H

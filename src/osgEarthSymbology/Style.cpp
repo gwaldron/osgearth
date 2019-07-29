@@ -131,6 +131,23 @@ void Style::copySymbols(const Style& style)
     }
 }
 
+namespace
+{
+    void convertDeprecatedSymbols(Config& c)
+    {
+        static const std::string model("model");
+
+        if (c.key() == "marker")
+        {
+            c.key() = "model";
+        }
+        else if (c.key().length() > 6 && c.key().substr(0,6)=="marker")
+        {
+            c.key() = model + c.key().substr(6);
+        }
+    }
+}
+
 void
 Style::fromSLD(const Config& sld, const StyleSheet* sheet)
 {
@@ -164,7 +181,8 @@ Style::fromSLD(const Config& sld, const StyleSheet* sheet)
 
     for( ConfigSet::const_iterator kid = sld.children().begin(); kid != sld.children().end(); ++kid )
     {
-        const Config& p = *kid;
+        Config p = *kid;
+        convertDeprecatedSymbols(p);
 		SymbolRegistry::instance()->parseSLD(p, *this);
     }
 }

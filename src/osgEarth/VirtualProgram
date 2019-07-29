@@ -220,7 +220,7 @@ namespace osgEarth
     typedef std::vector<PolyShader*> ProgramKey;
 
 
-    class /*internal*/ ProgramRepo : public osg::Referenced
+    class OSGEARTH_EXPORT ProgramRepo : public osg::Referenced
     {
     public:
 

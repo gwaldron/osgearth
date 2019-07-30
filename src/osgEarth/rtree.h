@@ -79,7 +79,7 @@ public:
 public:
 
   RTree();
-  //RTree(const RTree& other);
+  RTree(const RTree& other);
   virtual ~RTree();
   
   /// Insert entry
@@ -478,11 +478,29 @@ RTREE_QUAL::RTree()
 }
 
 
-//RTREE_TEMPLATE
-//RTREE_QUAL::RTree(const RTree& other) : RTree()
-//{
-//	CopyRec(m_root, other.m_root);
-//}
+RTREE_TEMPLATE
+RTREE_QUAL::RTree(const RTree& other)
+{
+    ASSERT(MAXNODES > MINNODES);
+    ASSERT(MINNODES > 0);
+
+    // Precomputed volumes of the unit spheres for the first few dimensions
+    const float UNIT_SPHERE_VOLUMES[] = {
+      0.000000f, 2.000000f, 3.141593f, // Dimension  0,1,2
+      4.188790f, 4.934802f, 5.263789f, // Dimension  3,4,5
+      5.167713f, 4.724766f, 4.058712f, // Dimension  6,7,8
+      3.298509f, 2.550164f, 1.884104f, // Dimension  9,10,11
+      1.335263f, 0.910629f, 0.599265f, // Dimension  12,13,14
+      0.381443f, 0.235331f, 0.140981f, // Dimension  15,16,17
+      0.082146f, 0.046622f, 0.025807f, // Dimension  18,19,20 
+    };
+
+    m_root = AllocNode();
+    m_root->m_level = 0;
+    m_unitSphereVolume = (ELEMTYPEREAL)UNIT_SPHERE_VOLUMES[NUMDIMS];
+
+	CopyRec(m_root, other.m_root);
+}
 
 
 RTREE_TEMPLATE
@@ -850,7 +868,7 @@ RTREE_TEMPLATE
 void RTREE_QUAL::RemoveAllRec(Node* a_node)
 {
   ASSERT(a_node);
-  ASSERT(a_node->m_level >= 0);
+  //ASSERT(a_node->m_level >= 0);
 
   if(a_node->IsInternalNode()) // This is an internal node in the tree
   {

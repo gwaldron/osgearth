@@ -23,7 +23,11 @@
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Extension>
-#include <osgText/Text>
+#include <osgEarth/Text>
+#include <osgEarth/Color>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/GLUtils>
+#include "rtree.h"
 
 #define LC "[ScreenSpaceLayout] "
 
@@ -219,6 +223,644 @@ namespace
     };
 
     /**
+    * Custom RenderLeaf sorting algorithm for deconflicting drawables
+    * as callouts.
+    */
+    struct /*internal*/ CalloutImplementation : public osgUtil::RenderBin::SortCallback
+    {
+        struct BBox
+        {
+            BBox() { }
+            BBox(const osg::BoundingBox& bbox);
+            bool overlaps(const BBox& rhs) const;
+            double overlap(const BBox& rhs) const;
+            osg::Vec2d LL, UR;
+        };
+
+        struct Element
+        {
+            osg::Drawable* _drawable;
+            osgEarth::Text* _text;
+            osgUtil::RenderLeaf* _leaf;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
+            unsigned _frame;
+            osg::Vec3d _anchor;
+            BBox _vpbbox;
+            BBox _leaderbbox;
+            osg::Vec3d _offsetVector;
+            osg::Vec3d _bestVector;
+            unsigned _leaderLineIndex;
+            bool _conflicted;
+            bool _moveRequested;
+            int _moveAttempts;
+            float _overlap;
+
+            Element();
+            bool operator < (const Element&) const; // comparator
+            void move(float dir);
+            void realign();
+        };
+
+        typedef std::map<osg::Drawable*, Element> Elements;
+        typedef RTree<Element*, float, 2> SpatialIndex;
+
+        struct CameraLocal 
+        {
+            CameraLocal();
+            const osg::Camera* _camera;      // camera associated with the data structure
+            unsigned _frame;
+            osg::Matrix _scalebias;          // scale bias matrix for the viewport
+            osgUtil::RenderBin::RenderLeafList _leaves;
+            Elements _elements;
+            mutable SpatialIndex _elementIndex;
+            mutable SpatialIndex _leaderIndex;     
+            osg::Matrix _vpm;
+            bool _vpmChanged;
+            osg::ref_ptr<LineDrawable> _leaders;
+            bool _leadersDirty;
+            Color _leaderColor;
+            //osg::ref_ptr<osgUtil::StateGraph> _leadersStateGraph;
+            //osg::ref_ptr<osgUtil::RenderLeaf> _leadersLeaf;
+        };
+
+        ScreenSpaceLayoutContext* _context;
+        DeclutterSortFunctor* _customSortFunctor;
+        PerObjectFastMap<const osg::Camera*, CameraLocal> _cameraLocal;
+        double _maxOverlap;
+        int _maxMoveAttempts;
+        bool _drawConflictedRecords;
+        bool _resetWhenViewChanges;
+        bool _declutterIncrementally;
+        unsigned _movesThisFrame;
+        double _leaderLen;
+        bool _drawObscuredItems;
+
+        //! Constructor
+        CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f);
+
+        //! Override from SortCallback
+        void CalloutImplementation::sortImplementation(osgUtil::RenderBin*);
+
+        void push(osgUtil::RenderLeaf* leaf, CameraLocal& local);
+
+        void sort(CameraLocal& local);
+
+        bool handleOverlap(Element*, const BBox&);
+    };
+
+    CalloutImplementation::BBox::BBox(const osg::BoundingBox& bbox) :
+        LL(bbox.xMin(), bbox.yMin()),
+        UR(bbox.xMax(), bbox.yMax())
+    {
+        //nop
+    }
+
+    bool
+    CalloutImplementation::BBox::overlaps(const BBox& rhs) const
+    {
+        return overlap(rhs) > 0.0;
+    }
+
+    double
+    CalloutImplementation::BBox::overlap(const BBox& rhs) const
+    {
+        double xmin = osg::maximum(LL.x(), rhs.LL.x());
+        double xmax = osg::minimum(UR.x(), rhs.UR.x());
+        if (xmin >= xmax) return 0.0;
+
+        double ymin = osg::maximum(LL.y(), rhs.LL.y());
+        double ymax = osg::minimum(UR.y(), rhs.UR.y());
+        if (ymin >= ymax) return 0.0;
+
+        double area = (UR.x() - LL.x())*(UR.y() - LL.y());
+        double overlapArea = (xmax - xmin)*(ymax - ymin);
+
+        return overlapArea / area;
+    }
+
+
+    CalloutImplementation::Element::Element() :
+        _drawable(NULL),
+        _text(NULL),
+        _frame(0u),
+        _leaderLineIndex(INT_MAX),
+        _conflicted(false),
+        _offsetVector(0,1,0),
+        _bestVector(0,1,0),
+        _moveAttempts(0),
+        _moveRequested(false),
+        _overlap(1.0f)
+    {
+        //todo
+    }
+
+    bool
+    CalloutImplementation::Element::operator<(const Element& rhs) const
+    {
+        return ((intptr_t)_drawable < (intptr_t)rhs._drawable);
+    }
+
+    void
+    CalloutImplementation::Element::move(float dir)
+    {
+        // rotate little more than 1/4 turn:
+        const double rotation = osg::PI / 16; //1.7; //osg::PI / 32; //1.6;
+        const osg::Quat q(dir*rotation, osg::Vec3d(0, 0, 1));
+        _offsetVector = q * _offsetVector;
+        realign();        
+    }
+
+    void
+    CalloutImplementation::Element::realign()
+    {
+        if (!_text)
+        {
+            return;
+        }
+
+        if (_offsetVector.x() >= 0.5)
+        {
+            if (_offsetVector.y() >= 0.5)
+                _text->setAlignment(osgEarth::Text::LEFT_BOTTOM);
+            else if (_offsetVector.y() <= -0.5)
+                _text->setAlignment(osgEarth::Text::LEFT_TOP);
+            else
+                _text->setAlignment(osgEarth::Text::LEFT_CENTER);
+        }
+        else if (_offsetVector.x() <= -0.5)
+        {
+            if (_offsetVector.y() >= 0.5)
+                _text->setAlignment(osgEarth::Text::RIGHT_BOTTOM);
+            else if (_offsetVector.y() <= -0.5)
+                _text->setAlignment(osgEarth::Text::RIGHT_TOP);
+            else
+                _text->setAlignment(osgEarth::Text::RIGHT_CENTER);
+        }
+        else if (_offsetVector.y() >= 0.0)
+        {
+            _text->setAlignment(osgEarth::Text::CENTER_BOTTOM);
+        }
+        else if (_offsetVector.y() <= 0.0)
+        {
+            _text->setAlignment(osgEarth::Text::CENTER_TOP);
+        }        
+    }
+
+    CalloutImplementation::CameraLocal::CameraLocal() :
+        _camera(0), 
+        _frame(0), 
+        _vpmChanged(true),
+        _leadersDirty(false)
+    {
+        _leaders = new LineDrawable(GL_LINES);
+        _leaders->setCullingActive(false);
+        _leaders->setDataVariance(osg::Object::DYNAMIC);
+        _leaders->setColor(osg::Vec4f(1, 1, 0, 1));
+        _leaders->setLineWidth(1.5f);
+        _leaders->setLineSmooth(true);
+        GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+
+        //_leadersStateGraph = new osgUtil::StateGraph(
+        //    0L, _leaders->getStateSet()
+        //);
+
+        //_leadersLeaf = new osgUtil::RenderLeaf(
+        //    _leaders.get(), 
+        //    0L,
+        //    new osg::RefMatrix(),
+        //    1.0f,
+        //    0u);
+
+        //_leadersLeaf->_parent = _leadersStateGraph.get();
+    }
+
+    CalloutImplementation::CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f) :
+        _context(context),
+        _customSortFunctor(f),
+        _maxOverlap(0.0),
+        _maxMoveAttempts(31),
+        _drawObscuredItems(false),
+        _declutterIncrementally(false),
+        _leaderLen(40),
+        _resetWhenViewChanges(false)
+    {
+        //nop
+    }
+
+    void
+    CalloutImplementation::push(osgUtil::RenderLeaf* leaf, CameraLocal& local)
+    {
+        static Element prototype;
+        const osg::Vec3d zero(0,0,0);
+
+        osg::Drawable* drawable = leaf->_drawable.get();
+        std::pair<Elements::iterator,bool> result = local._elements.insert(std::make_pair(drawable,prototype));
+        Element& element = result.first->second;
+
+        bool isNew = 
+            (result.second == true) ||
+            (local._frame - element._frame > 1);
+
+        element._frame = local._frame;
+
+        element._leaf = leaf;
+
+        if (element._drawable == NULL)
+        {
+            element._drawable = drawable;
+            element._text = dynamic_cast<osgEarth::Text*>(drawable);
+            element._text->setDataVariance(osg::Object::DYNAMIC);
+        }
+
+        element._anchor = 
+            zero * 
+            (*leaf->_modelview) * 
+            (*leaf->_projection) * 
+            local._scalebias;
+
+        const osg::Viewport* vp = local._camera->getViewport();
+
+        if (isNew)
+        {
+            element._offsetVector = element._anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
+            element._offsetVector.normalize();
+            element._bestVector = element._offsetVector;
+            element.realign();
+            element._moveAttempts = 0;
+            element._moveRequested = false;
+            element._conflicted = false;
+            element._overlap = 1.0f;
+        }
+        else if (_resetWhenViewChanges && local._vpmChanged)
+        {
+            element._offsetVector = element._anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
+            element._offsetVector.normalize();
+            element._bestVector = element._offsetVector;
+            element.realign();
+            element._moveAttempts = 0;
+            element._moveRequested = false;
+            element._overlap = 1.0f;
+        }
+
+        if (element._leaderLineIndex == INT_MAX)
+        {
+            element._leaderLineIndex = local._leaders->getNumVerts();
+            local._leaders->pushVertex(osg::Vec3f());
+            local._leaders->pushVertex(osg::Vec3f());
+            local._leadersDirty = true;
+        }
+
+        osg::Vec3d pos = element._anchor + element._offsetVector*_leaderLen;
+        const osg::BoundingBox& b = drawable->getBoundingBox();
+        element._vpbbox.LL.set(pos.x() + b.xMin(), pos.y() + b.yMin());
+        element._vpbbox.UR.set(pos.x() + b.xMax(), pos.y() + b.yMax());
+
+        leaf->_modelview->makeTranslate(pos);
+        leaf->_depth = 0.0f; //1.0f; // alpha
+
+        // and update the leader line endpoints
+        if (element._anchor != local._leaders->getVertex(element._leaderLineIndex))
+        {
+            local._leaders->setVertex(element._leaderLineIndex, element._anchor);
+        }
+        if (pos != local._leaders->getVertex(element._leaderLineIndex + 1))
+        {
+            local._leaders->setVertex(element._leaderLineIndex + 1, pos);
+        }
+
+        // create the leader line bounding box
+        element._leaderbbox.LL.set(osg::minimum(element._anchor.x(), pos.x()), osg::minimum(element._anchor.y(), pos.y()));
+        element._leaderbbox.UR.set(osg::maximum(element._anchor.x(), pos.x()), osg::maximum(element._anchor.y(), pos.y()));
+
+        // and update the colors of the leader line
+        if (element._text)
+        {
+            if (!element._conflicted ||
+                (_drawObscuredItems && element._moveAttempts == 0u)) //|| !rec._conflicted)
+            {
+                Color color =
+                    element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ?
+                    element._text->getBoundingBoxColor() :
+                    local._leaderColor;
+
+                local._leaders->setColor(element._leaderLineIndex, color);
+                local._leaders->setColor(element._leaderLineIndex + 1, color);
+            }
+
+            //if (element._text->getText().createUTF8EncodedString()=="Wahiawa")
+            //{
+            //    OE_INFO 
+            //        << "F="<<element._frame
+            //        <<", C="<<element._conflicted 
+            //        //<<", MA=" <<element._moveAttempts
+            //        //<<", MR=" <<element._moveRequested
+            //        <<", OV=" <<element._overlap
+            //        <<", D=" << element._leaf->_depth
+            //        <<", A=" << osg::RadiansToDegrees(atan2(element._offsetVector.y(), element._offsetVector.x()))
+            //        <<", New=" << isNew
+            //        <<std::endl;
+            //}
+        }
+    }
+
+    bool
+    CalloutImplementation::handleOverlap(Element* lhs, const BBox& bbox)
+    {
+        float overlap = lhs->_vpbbox.overlap(bbox); // 0..1
+
+        if (overlap > _maxOverlap) // allow for some overlap..
+        {
+            lhs->_conflicted = true;
+            lhs->_overlap = overlap;
+            lhs->move(1);
+            
+#if 0
+            // do we still have some attempts left to deconflict this callout?
+            if (lhs->_moveAttempts < _maxMoveAttempts)
+            {
+                // is the current overlap better than the best-so-far?
+                if (overlap < lhs->_overlap)
+                {
+                    lhs->_overlap = overlap;
+                    lhs->_bestVector = lhs->_offsetVector;
+                }
+
+                lhs->_moveRequested = true;
+            }
+            else
+            {
+                // ran out of move attempts.. accept the overlap.
+                lhs->_offsetVector = lhs->_bestVector;
+            }
+#endif
+
+            return true;
+        }
+
+        return false;
+    }
+
+    void
+    CalloutImplementation::sort(CameraLocal& local)
+    {
+        if (local._elements.empty())
+            return;
+
+        if (_resetWhenViewChanges && local._camera)
+        {
+            osg::Matrix VPM = local._camera->getViewMatrix() * local._camera->getProjectionMatrix();
+            local._vpmChanged = VPM != local._vpm;
+            local._vpm = VPM;
+        }
+
+        local._elementIndex.RemoveAll();
+        local._leaderIndex.RemoveAll();
+
+        float a_min[2], a_max[2];
+        float b_min[2], b_max[2];
+
+        std::vector<Element*> hits;
+
+        for (Elements::reverse_iterator i = local._elements.rbegin();
+            i != local._elements.rend();
+            ++i)
+        {
+            hits.clear();
+
+            Element& rec = i->second;
+
+            if (local._frame == rec._frame)
+            //if (local._frame - rec._frame <= 1)
+            {
+                a_min[0] = rec._vpbbox.LL.x(), a_min[1] = rec._vpbbox.LL.y();
+                a_max[0] = rec._vpbbox.UR.x(), a_max[1] = rec._vpbbox.UR.y();
+
+                b_min[0] = rec._leaderbbox.LL.x(), b_min[1] = rec._leaderbbox.LL.y();
+                b_max[0] = rec._leaderbbox.UR.x(), b_max[1] = rec._leaderbbox.UR.y();
+
+                // does the label conflict with another label?
+                if (local._elementIndex.Search(a_min, a_max, &hits, 1) > 0)
+                {
+                    // yes; do something about it
+                    rec._conflicted = handleOverlap(&rec, (*hits.begin())->_vpbbox);
+                }
+
+                // does the label conflict with another leader?
+                else if (local._leaderIndex.Search(a_min, a_max, &hits, 1) > 0)
+                {
+                    // yes; do something about it
+                    rec._conflicted = handleOverlap(&rec, (*hits.begin())->_leaderbbox);
+                }
+
+                else
+                {
+                    // If the track was conflicting but now is not, reset its state.
+                    if (rec._conflicted)
+                    {
+                        rec._conflicted = false;
+                        rec._moveAttempts = 0;
+                        rec._moveRequested = false;
+                        rec._overlap = 1.0f;
+                    }
+                }
+
+                // record the areas of both the label and the leader.
+                if (_drawObscuredItems || !rec._conflicted)
+                {
+                    local._elementIndex.Insert(a_min, a_max, &rec);   // label
+                    local._leaderIndex.Insert(b_min, b_max, &rec);  // leader
+                }
+
+                rec._leaf->_depth = rec._conflicted ? 0.0f : 1.0f;
+                //if (rec._conflicted)
+                //{
+                //    rec._leaf->_depth = 0.0f;
+                //}
+            }
+            else
+            {
+                rec._leaf->_depth = 0.0f;
+            }
+        }
+
+#if 0
+        _movesThisFrame = 0u;
+
+        if (_declutterIncrementally)
+        {
+            if (_walker == _callouts.end())
+                _walker = _callouts.begin();
+
+            const int triesPerFrame = 10;
+            for (int tries = 0; tries < triesPerFrame && _walker != _callouts.end(); )
+            {
+                CalloutRecord& rec = _walker->second;
+
+                if (frame - rec._frame <= 2)
+                {
+                    if (rec._conflicted && rec._moveRequested)
+                    {
+                        rec.move(1);
+                        rec._moveAttempts++;
+                        rec._moveRequested = false;
+                        tries++;
+                        _movesThisFrame++;
+                    }
+                    ++_walker;
+                }
+
+                else if (frame - rec._frame > 5 * 60 * 60) // expire after 5 minutes
+                {
+                    Callouts::iterator temp = _walker;
+                    ++_walker;
+                    _callouts.erase(temp);
+                }
+
+                else
+                {
+                    ++_walker;
+                }
+            }
+        }
+
+        else
+#endif
+
+        {
+            // declutter all callouts each frame
+            for (Elements::reverse_iterator i = local._elements.rbegin();
+                i != local._elements.rend();
+                )
+            {
+                Element& element = i->second;
+
+#if 0
+                if (local._frame - element._frame <= 2)
+                {
+                    if (element._conflicted && element._moveRequested)
+                    {
+                        element.move(1);
+                        element._moveAttempts++;
+                        element._moveRequested = false;
+                        _movesThisFrame++;
+                    }
+                    ++i;
+                }
+
+                else
+#endif
+                    
+                if (local._frame - element._frame > 5 * 60 * 60) // expire after 5 minutes
+                {
+                    ++i;
+                    local._elements.erase(i.base());
+
+                    //Callouts::reverse_iterator temp = i;
+                    //++i;
+                    //_callouts.erase(temp);
+                }
+
+                else
+                {
+                    ++i;
+                }
+            }
+        }
+    }
+
+    // runs in CULL thread after culling completes
+    void
+    CalloutImplementation::sortImplementation(osgUtil::RenderBin* bin)
+    {
+        const ScreenSpaceLayoutOptions& options = _context->_options;
+
+        bin->copyLeavesFromStateGraphListToRenderLeafList();
+
+        osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
+
+        // first, sort the leaves:
+        if (_customSortFunctor && s_declutteringEnabledGlobally)
+        {
+            // if there's a custom sorting function installed
+            std::sort(leaves.begin(), leaves.end(), SortContainer(*_customSortFunctor));
+        }
+        else if (options.sortByDistance() == true)
+        {
+            // default behavior:
+            std::sort(leaves.begin(), leaves.end(), SortFrontToBackPreservingGeodeTraversalOrder());
+        }
+
+        // nothing to sort? bail out
+        if (leaves.empty())
+            return;
+
+        // access the per-camera persistent data:
+        osg::Camera* cam = bin->getStage()->getCamera();
+
+        // bail out if this camera is a master camera with no GC
+        // (e.g., in a multi-screen layout)
+        if (cam == NULL || (cam->getGraphicsContext() == NULL && !cam->isRenderToTextureCamera()))
+            return;
+
+        CameraLocal& local = _cameraLocal.get(cam);
+        local._camera = cam;
+
+        static osg::Vec4f invisible(1,0,0,0.5);
+        local._leaders->setColor(invisible);
+
+        osg::GraphicsContext* gc = cam->getGraphicsContext();
+        local._frame = gc && gc->getState() && gc->getState()->getFrameStamp() ?
+            gc->getState()->getFrameStamp()->getFrameNumber() : 0u;
+
+        const osg::Viewport* vp = cam->getViewport();
+        local._scalebias =
+            osg::Matrix::translate(1, 1, 1) *
+            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
+
+        for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
+            i != leaves.end();
+            ++i)
+        {
+            push(*i, local);
+        }
+
+        sort(local);
+
+#if 0
+        for (osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
+            i != leaves.end();
+            ++i)
+        {
+            (*i)->_depth = 1.0f;
+        }
+#endif
+
+#if 0
+        for (Elements::iterator i = local._elements.begin();
+            i != local._elements.end();
+            ++i)
+        {
+            Element& element = i->second;
+
+            if (element._frame < local._frame)
+            {
+                element._leaf->_depth = 0.0f;
+            }
+
+            if (element._conflicted)
+            {
+                if (!_drawObscuredItems)
+                    element._leaf->_depth = 0.0f;
+                else if (_movesThisFrame > 0u)
+                    element._leaf->_depth = 0.0f;
+            }
+        }
+#endif
+    }
+
+    //....................................................................
+
+    /**
      * A custom RenderLeaf sorting algorithm for decluttering objects.
      *
      * First we sort the leaves front-to-back so that objects closer to the camera
@@ -235,7 +877,7 @@ namespace
      * soon as one passes the occlusion test, all its siblings will automatically
      * pass as well.
      */
-    struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
+    struct /*internal*/ DeclutterImplementation : public osgUtil::RenderBin::SortCallback
     {
         DeclutterSortFunctor* _customSortFunctor;
         ScreenSpaceLayoutContext* _context;
@@ -247,7 +889,7 @@ namespace
          * @param f Custom declutter sorting predicate. Pass NULL to use the
          *          default sorter (sort by distance-to-camera).
          */
-        DeclutterSort( ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f = 0L )
+        DeclutterImplementation( ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f = 0L )
             : _context(context), _customSortFunctor(f)
         {
             //nop
@@ -660,9 +1302,16 @@ namespace
      */
     struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
     {
-        ScreenSpaceLayoutContext*                  _context;
+        ScreenSpaceLayoutContext*                 _context;
         PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
         osg::ref_ptr<osg::Uniform>                _fade;
+
+        struct RunningState
+        {
+            RunningState() : lastFade(-1.0f), lastPCP(NULL) { }
+            float lastFade;
+            const osg::Program::PerContextProgram* lastPCP;
+        };
 
         /**
          * Constructs the decluttering draw callback.
@@ -710,6 +1359,9 @@ namespace
                 state.applyProjectionMatrix( m.get() );
             }
 
+            // initialize the fading uniform
+            RunningState rs;
+
             // render the list
             osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
 
@@ -718,8 +1370,11 @@ namespace
                 ++rlitr)
             {
                 osgUtil::RenderLeaf* rl = *rlitr;
-                renderLeaf( rl, renderInfo, previous );
-                previous = rl;
+                if ( rl->_depth > 0.0f)
+                {
+                    renderLeaf( rl, renderInfo, previous, rs);
+                    previous = rl;
+                }
             }
 
             if ( bin->getStateSet() )
@@ -735,7 +1390,7 @@ namespace
          * Most of this code is copied from RenderLeaf::draw() -- but I removed all the code
          * dealing with nested bins, since decluttering does not support them.
          */
-        void renderLeaf( osgUtil::RenderLeaf* leaf, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous )
+        void renderLeaf( osgUtil::RenderLeaf* leaf, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous, RunningState& rs)
         {
             osg::State& state = *renderInfo.getState();
 
@@ -785,10 +1440,200 @@ namespace
             const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
             if ( pcp )
             {
-                // todo: find a way to optimize this..?
-                _fade->set( s_declutteringEnabledGlobally ? leaf->_depth : 1.0f );
-                pcp->apply( *_fade.get() );
+                if (pcp != rs.lastPCP || leaf->_depth != rs.lastFade)
+                {
+                    rs.lastFade = s_declutteringEnabledGlobally ? leaf->_depth : 1.0f;
+                    _fade->set( rs.lastFade );
+                    pcp->apply( *_fade.get() );
+                }
             }
+            rs.lastPCP = pcp;
+
+            // draw the drawable
+            leaf->_drawable->draw(renderInfo);
+
+            if (leaf->_dynamic)
+            {
+                state.decrementDynamicObjectCount();
+            }
+        }
+    };
+
+
+    /**
+     * Custom draw routine for our declutter render bin.
+     */
+    struct CalloutDraw : public osgUtil::RenderBin::DrawCallback
+    {
+        ScreenSpaceLayoutContext*                 _context;
+        PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
+        osg::ref_ptr<osg::Uniform>                _fade;
+        CalloutImplementation*                    _sortCallback;
+
+        struct RunningState
+        {
+            RunningState() : lastFade(-1.0f), lastPCP(NULL) { }
+            float lastFade;
+            const osg::Program::PerContextProgram* lastPCP;
+        };
+
+        /**
+         * Constructs the decluttering draw callback.
+         * @param context A shared context among all decluttering objects.
+         */
+        CalloutDraw(ScreenSpaceLayoutContext* context)
+            : _context(context)
+        {
+            // create the fade uniform.
+            _fade = new osg::Uniform(osg::Uniform::FLOAT, FADE_UNIFORM_NAME);
+            _fade->set(1.0f);
+        }
+
+        /**
+         * Draws a bin. Most of this code is copied from osgUtil::RenderBin::drawImplementation.
+         * The modifications are (a) skipping code to render child bins, (b) setting a bin-global
+         * projection matrix in orthographic space, and (c) calling our custom "renderLeaf()" method
+         * instead of RenderLeaf::render()
+         */
+        void drawImplementation(osgUtil::RenderBin* bin, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous)
+        {
+            osg::State& state = *renderInfo.getState();
+
+            unsigned int numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
+            if (numToPop > 1) --numToPop;
+            unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
+
+            if (bin->getStateSet())
+            {
+                state.insertStateSet(insertStateSetPosition, bin->getStateSet());
+            }
+
+            // apply a window-space projection matrix.
+            const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
+            if (vp)
+            {
+                //TODO see which is faster
+
+                osg::ref_ptr<osg::RefMatrix>& m = _ortho2D.get();
+                if (!m.valid())
+                    m = new osg::RefMatrix();
+
+                //m->makeOrtho2D( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1 );
+                m->makeOrtho(vp->x(), vp->x() + vp->width() - 1, vp->y(), vp->y() + vp->height() - 1, -1000, 1000);
+                state.applyProjectionMatrix(m.get());
+            }
+
+            // initialize the fading uniform
+            RunningState rs;
+
+            // render the list
+            osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
+
+            for (osgUtil::RenderBin::RenderLeafList::reverse_iterator rlitr = leaves.rbegin();
+                rlitr != leaves.rend();
+                ++rlitr)
+            {
+                osgUtil::RenderLeaf* rl = *rlitr;
+                if (rl->_depth > 0.0f)
+                {
+                    renderLeaf(rl, renderInfo, previous, rs);
+                    previous = rl;
+                }
+            }
+
+            if (bin->getStateSet())
+            {
+                state.removeStateSet(insertStateSetPosition);
+            }
+
+            // the leader lines
+            CalloutImplementation::CameraLocal& local = _sortCallback->_cameraLocal.get(renderInfo.getCurrentCamera());
+                
+            if (local._leadersDirty)
+            {
+                local._leaders->dirty();
+                local._leadersDirty = false;
+            }
+
+            renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
+
+            renderInfo.getState()->apply(local._leaders->getStateSet());
+            renderInfo.getState()->apply(local._leaders->getGPUStateSet());
+            glDepthFunc(GL_ALWAYS);
+            glDepthMask(GL_FALSE);
+            glEnable(GL_BLEND);
+
+            if (renderInfo.getState()->getUseModelViewAndProjectionUniforms())
+                renderInfo.getState()->applyModelViewAndProjectionUniformsIfRequired();
+
+            local._leaders->draw(renderInfo);
+        }
+
+        /**
+         * Renders a single leaf. We already applied the projection matrix, so here we only
+         * need to apply a modelview matrix that specifies the ortho offset of the drawable.
+         *
+         * Most of this code is copied from RenderLeaf::draw() -- but I removed all the code
+         * dealing with nested bins, since decluttering does not support them.
+         */
+        void renderLeaf(osgUtil::RenderLeaf* leaf, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous, RunningState& rs)
+        {
+            osg::State& state = *renderInfo.getState();
+
+            // don't draw this leaf if the abort rendering flag has been set.
+            if (state.getAbortRendering())
+            {
+                //cout << "early abort"<<endl;
+                return;
+            }
+
+            state.applyModelViewMatrix(leaf->_modelview.get());
+
+            if (previous)
+            {
+                // apply state if required.
+                osgUtil::StateGraph* prev_rg = previous->_parent;
+                osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+                osgUtil::StateGraph* rg = leaf->_parent;
+                if (prev_rg_parent != rg->_parent)
+                {
+                    osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
+
+                    // send state changes and matrix changes to OpenGL.
+                    state.apply(rg->getStateSet());
+
+                }
+                else if (rg != prev_rg)
+                {
+                    // send state changes and matrix changes to OpenGL.
+                    state.apply(rg->getStateSet());
+                }
+            }
+            else
+            {
+                // apply state if required.
+                osgUtil::StateGraph::moveStateGraph(state, NULL, leaf->_parent->_parent);
+
+                state.apply(leaf->_parent->getStateSet());
+            }
+
+            // if we are using osg::Program which requires OSG's generated uniforms to track
+            // modelview and projection matrices then apply them now.
+            if (state.getUseModelViewAndProjectionUniforms())
+                state.applyModelViewAndProjectionUniformsIfRequired();
+
+            // apply the fading uniform
+            const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+            if (pcp)
+            {
+                if (pcp != rs.lastPCP || leaf->_depth != rs.lastFade)
+                {
+                    rs.lastFade = s_declutteringEnabledGlobally ? leaf->_depth : 1.0f;
+                    _fade->set(rs.lastFade);
+                    pcp->apply(*_fade.get());
+                }
+            }
+            rs.lastPCP = pcp;
 
             // draw the drawable
             leaf->_drawable->draw(renderInfo);
@@ -820,14 +1665,11 @@ namespace
             this->setName( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN );
             _context = new ScreenSpaceLayoutContext();
             clearSortingFunctor();
-            setDrawCallback( new DeclutterDraw(_context.get()) );
+            //setDrawCallback( new DeclutterDraw(_context.get()) );
 
             // needs its own state set for special magic.
             osg::StateSet* stateSet = new osg::StateSet();
             this->setStateSet( stateSet );
-
-            //VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-            //vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
         }
 
         osgEarthScreenSpaceLayoutRenderBin(const osgEarthScreenSpaceLayoutRenderBin& rhs, const osg::CopyOp& copy)
@@ -859,12 +1701,24 @@ namespace
         void setSortingFunctor( DeclutterSortFunctor* f )
         {
             _f = f;
-            setSortCallback( new DeclutterSort(_context.get(), f) );
+            //setSortCallback(new DeclutterImplementation(_context.get(), f));
+            CalloutImplementation* impl = new CalloutImplementation(_context.get(), f);
+            setSortCallback(impl);
+
+            CalloutDraw* draw = new CalloutDraw(_context.get());
+            draw->_sortCallback = impl;
+            setDrawCallback(draw);
         }
 
         void clearSortingFunctor()
         {
-            setSortCallback( new DeclutterSort(_context.get()) );
+            //setSortCallback(new DeclutterImplementation(_context.get()));
+            CalloutImplementation* impl = new CalloutImplementation(_context.get(), 0L);
+            setSortCallback(impl);
+
+            CalloutDraw* draw = new CalloutDraw(_context.get());
+            draw->_sortCallback = impl;
+            setDrawCallback(draw);
         }
 
         osg::ref_ptr<DeclutterSortFunctor> _f;

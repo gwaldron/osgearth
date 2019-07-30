@@ -342,6 +342,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     }
 
                     osg::Vec3d point = (*geom)[i];
+
                     if (makeECEF)
                     {
                         // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
@@ -349,11 +350,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
                         ECEF::transformAndGetRotationMatrix(point, context.profile()->getSRS(), point, targetSRS, rotation);
-                        mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate(point) * _world2local;
+                        mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate(point); // * _world2local;
                     }
                     else
                     {
-                        mat = scaleMatrix * rotationMatrix *  osg::Matrixd::translate(point)* _world2local;
+                        mat = scaleMatrix * rotationMatrix *  osg::Matrixd::translate(point); //* _world2local;
                     }
 
                     if (_filterUsage == FILTER_USAGE_NORMAL)
@@ -382,7 +383,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     }
                     else if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
                     {
-                        osg::Vec3d modelPoint = point;
+                        //osg::Vec3d modelPoint = point;
 
                         substituteModelFilterNode->modelSymbolList().push_back(SubstituteModelFilterNode::ModelSymbol());
                         SubstituteModelFilterNode::ModelSymbol& symbol = substituteModelFilterNode->modelSymbolList().back();

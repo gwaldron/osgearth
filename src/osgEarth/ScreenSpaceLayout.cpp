@@ -36,6 +36,8 @@
 #define JCV_FLT_MAX 1.7976931348623157E+308
 #include "jc_voronoi.h"
 
+#include <stdlib.h> // getenv
+
 #define LC "[ScreenSpaceLayout] "
 
 #define FADE_UNIFORM_NAME "oe_declutter_fade"
@@ -124,6 +126,12 @@ namespace
     struct ScreenSpaceLayoutContext : public osg::Referenced
     {
         ScreenSpaceLayoutOptions _options;
+        bool _debug;
+
+        ScreenSpaceLayoutContext()
+        {
+            _debug = (::getenv("OSGEARTH_DECLUTTER_DEBUG") != NULL);
+        }
     };
 
     // records information about each drawable.
@@ -210,6 +218,8 @@ ScreenSpaceLayoutOptions::getConfig() const
 
 //----------------------------------------------------------------------------
 
+
+
 namespace
 {
     template<typename T>
@@ -238,7 +248,8 @@ namespace
     struct jcv_point_comparator {
         bool operator()(const jcv_point& a, const jcv_point& b) const {
             if (a.x < b.x) return true;
-            return a.y < b.y;
+            else if (a.x > b.x) return false;
+            else return a.y < b.y;
         }
     };
 
@@ -275,6 +286,7 @@ namespace
             bool _moveRequested;
             int _moveAttempts;
             float _overlap;
+            jcv_point _lastPos;
 
             Element();
             bool operator < (const Element&) const; // comparator
@@ -291,17 +303,17 @@ namespace
             const osg::Camera* _camera;      // camera associated with the data structure
             unsigned _frame;
             osg::Matrix _scalebias;          // scale bias matrix for the viewport
-            //osgUtil::RenderBin::RenderLeafList _leaves;
             Elements _elements;
-            //mutable SpatialIndex _elementIndex;
-            //mutable SpatialIndex _leaderIndex;     
             osg::Matrix _vpm;
             bool _vpmChanged;
             osg::ref_ptr<LineDrawable> _leaders;
             bool _leadersDirty;
             Color _leaderColor;
             std::vector<jcv_point> _points;
-            std::map<jcv_point,Element*,jcv_point_comparator> _lookup;
+            std::map<jcv_point, Element*, jcv_point_comparator> _lookup;
+            osg::ref_ptr<LineDrawable> _voronoi;
+
+            void initDebug();
         };
 
         ScreenSpaceLayoutContext* _context;
@@ -454,6 +466,16 @@ namespace
         GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
     }
 
+    void CalloutImplementation::CameraLocal::initDebug()
+    {
+        _voronoi = new LineDrawable(GL_LINES);
+        _voronoi->setCullingActive(false);
+        _voronoi->setDataVariance(osg::Object::DYNAMIC);
+        _voronoi->setColor(osg::Vec4f(1, 0, 0, 0.75));
+        _voronoi->setLineWidth(1.0f);
+        GLUtils::setLighting(_voronoi->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+    }
+
     CalloutImplementation::CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f) :
         _context(context),
         _customSortFunctor(f),
@@ -600,17 +622,20 @@ namespace
         if (local._elements.empty())
             return;
 
-        if (_resetWhenViewChanges && local._camera)
-        {
-            osg::Matrix VPM = local._camera->getViewMatrix() * local._camera->getProjectionMatrix();
-            local._vpmChanged = VPM != local._vpm;
-            local._vpm = VPM;
-        }
+        //if (local._camera)
+        //{
+        //    osg::Matrix VPM = local._camera->getViewMatrix() * local._camera->getProjectionMatrix();
+        //    local._vpmChanged = VPM != local._vpm;
+        //    local._vpm = VPM;
+        //}
 
         const osg::Viewport* vp = local._camera->getViewport();
 
         local._points.clear();
         local._lookup.clear();
+       
+        // enable voronoi relaxation (LLoyd's algorithm)
+        bool relax = false; //local._vpmChanged;
 
         for (Elements::reverse_iterator i = local._elements.rbegin();
             i != local._elements.rend();
@@ -626,64 +651,20 @@ namespace
                     element._leaf->_depth = 1.0f;
 
                     local._points.resize(local._points.size()+1);
+
                     jcv_point& back = local._points.back();
-                    back.x = element._anchor.x();
-                    back.y = element._anchor.y();
-                    local._lookup[back] = &element;
 
-#if 0
-                    a_min[0] = rec._vpbbox.LL.x(), a_min[1] = rec._vpbbox.LL.y();
-                    a_max[0] = rec._vpbbox.UR.x(), a_max[1] = rec._vpbbox.UR.y();
-
-                    b_min[0] = rec._leaderbbox.LL.x(), b_min[1] = rec._leaderbbox.LL.y();
-                    b_max[0] = rec._leaderbbox.UR.x(), b_max[1] = rec._leaderbbox.UR.y();
-
-                    // does the label conflict with another label?
-                    if (local._elementIndex.Search(a_min, a_max, &hits, 1) > 0)
+                    if (relax)
                     {
-                        // yes; do something about it
-                        rec._conflicted = handleOverlap(&rec, (*hits.begin())->_vpbbox);
+                        back.x = element._lastPos.x;
+                        back.y = element._lastPos.y;
                     }
-
-                    // does the label conflict with another leader?
-                    else if (local._leaderIndex.Search(a_min, a_max, &hits, 1) > 0)
-                    {
-                        // yes; do something about it
-                        rec._conflicted = handleOverlap(&rec, (*hits.begin())->_leaderbbox);
-                    }
-
                     else
                     {
-                        // If the track was conflicting but now is not, reset its state.
-                        if (rec._conflicted)
-                        {
-                            rec._conflicted = false;
-                            rec._moveAttempts = 0;
-                            rec._moveRequested = false;
-                            rec._overlap = 1.0f;
-                        }
+                        back.x = element._anchor.x();
+                        back.y = element._anchor.y();
                     }
-
-                    // record the areas of both the label and the leader.
-                    if (_drawObscuredItems || !rec._conflicted)
-                    {
-                        local._elementIndex.Insert(a_min, a_max, &rec);   // label
-                        local._leaderIndex.Insert(b_min, b_max, &rec);  // leader
-                    }
-
-                    rec._leaf->_depth = rec._conflicted ? 0.0f : 1.0f;
-                    //if (rec._conflicted)
-                    //{
-                    //    rec._leaf->_depth = 0.0f;
-                    //}
-#endif
-                }
-                else
-                {
-                    //if(element._text->getText().createUTF8EncodedString()=="Honolulu")
-                    //  OE_WARN << " ***  : E=" << element._frame << ", F=" << local._frame << std::endl;
-
-                    element._leaf->_depth = 0.0f; // shouldn't happen
+                    local._lookup[back] = &element;
                 }
             }
         }
@@ -694,9 +675,15 @@ namespace
         jcv_diagram diagram;
         ::memset(&diagram, 0, sizeof(jcv_diagram));
         jcv_rect bounds;
-        bounds.min.x = vp->x(), bounds.min.y = vp->y();
-        bounds.max.x = vp->x() + vp->width(), bounds.max.y = vp->y() + vp->height();
+        const double K = 0;
+        bounds.min.x = vp->x()+K, bounds.min.y = vp->y()+K;
+        bounds.max.x = vp->x() + vp->width()-K*2, bounds.max.y = vp->y() + vp->height()-K*2;
         jcv_diagram_generate(local._points.size(), &local._points[0], &bounds, &diagram);
+
+        if (local._voronoi.valid())
+        {
+            local._voronoi->clear();
+        }
 
         const jcv_site* sites = jcv_diagram_get_sites(&diagram);
         for(int i=0; i<diagram.numsites; ++i)
@@ -706,117 +693,60 @@ namespace
             Element* element = local._lookup[site->p];
             if (element)
             {
-                // calculate the centroid of the site
-                jcv_point sum;
-                sum.x = 0, sum.y = 0;
-                int count = 0;
+                // find a "center location" of the site.
+                jcv_point centroid;
+                centroid.x = 0, centroid.y = 0;
+                double count = 0.0;
+
+                osg::BoundingSphered bs;
+
+                // in "relaxation" mode we are adjusting the voronoi cells each frame
+                // to equalize their sizes on screen.
+                if (relax)
+                {
+                    centroid = site->p;
+                    count = 1.0;
+                }
 
                 const jcv_graphedge* edge = site->edges;
                 while(edge)
                 {
-                    sum.x += edge->pos[0].x;
-                    sum.y += edge->pos[0].y;
-                    ++count;
+                    bs.expandBy(osg::Vec3d(edge->pos[0].x, edge->pos[0].y, 0));
+
+                    centroid.x += edge->pos[0].x;
+                    centroid.y += edge->pos[1].y;
+                    count += 1.0;
+
+                    if (local._voronoi.valid())
+                    {
+                        local._voronoi->pushVertex(osg::Vec3(edge->pos[0].x, edge->pos[0].y, 0));
+                        local._voronoi->pushVertex(osg::Vec3(edge->pos[1].x, edge->pos[1].y, 0));
+                    }
+
                     edge = edge->next;
                 }
-                sum.x /= (jcv_real)count;
-                sum.y /= (jcv_real)count;
 
-                element->_offsetVector = osg::Vec3d(sum.x, sum.y, 0) - element->_anchor;
+                centroid.x /= count;
+                centroid.y /= count;
+
+                if (relax)
+                    element->_offsetVector = osg::Vec3d(centroid.x, centroid.y, 0.0) - element->_anchor;
+                else
+                    element->_offsetVector = bs.center() - element->_anchor;
+
                 element->_offsetLength = element->_offsetVector.length();
                 element->_offsetVector.normalize();  
                 element->realign();
+
+                element->_lastPos = centroid;
             }
         }
         jcv_diagram_free(&diagram);
 
-#if 0
-        _movesThisFrame = 0u;
-
-        if (_declutterIncrementally)
+        if (local._voronoi.valid())
         {
-            if (_walker == _callouts.end())
-                _walker = _callouts.begin();
-
-            const int triesPerFrame = 10;
-            for (int tries = 0; tries < triesPerFrame && _walker != _callouts.end(); )
-            {
-                CalloutRecord& rec = _walker->second;
-
-                if (frame - rec._frame <= 2)
-                {
-                    if (rec._conflicted && rec._moveRequested)
-                    {
-                        rec.move(1);
-                        rec._moveAttempts++;
-                        rec._moveRequested = false;
-                        tries++;
-                        _movesThisFrame++;
-                    }
-                    ++_walker;
-                }
-
-                else if (frame - rec._frame > 5 * 60 * 60) // expire after 5 minutes
-                {
-                    Callouts::iterator temp = _walker;
-                    ++_walker;
-                    _callouts.erase(temp);
-                }
-
-                else
-                {
-                    ++_walker;
-                }
-            }
+            local._voronoi->finish();
         }
-
-        else
-#endif
-
-#if 0
-        {
-            // declutter all callouts each frame
-            for (Elements::reverse_iterator i = local._elements.rbegin();
-                i != local._elements.rend();
-                )
-            {
-                Element& element = i->second;
-
-#if 0
-                if (local._frame - element._frame <= 2)
-                {
-                    if (element._conflicted && element._moveRequested)
-                    {
-                        element.move(1);
-                        element._moveAttempts++;
-                        element._moveRequested = false;
-                        _movesThisFrame++;
-                    }
-                    ++i;
-                }
-
-                else
-#endif
-                    
-#if 0
-                if (local._frame - element._frame > 5 * 60 * 60) // expire after 5 minutes
-                {
-                    ++i;
-                    local._elements.erase(i.base());
-
-                    //Callouts::reverse_iterator temp = i;
-                    //++i;
-                    //_callouts.erase(temp);
-                }
-
-                else
-#endif
-                {
-                    ++i;
-                }
-            }
-        }
-#endif
     }
 
     // runs in CULL thread after culling completes
@@ -859,6 +789,9 @@ namespace
         static osg::Vec4f invisible(1,0,0,0);
         local._leaders->setColor(invisible);
 
+        if (_context->_debug && !local._voronoi.valid())
+            local.initDebug();
+
         osg::GraphicsContext* gc = cam->getGraphicsContext();
         local._frame = gc && gc->getState() && gc->getState()->getFrameStamp() ?
             gc->getState()->getFrameStamp()->getFrameNumber() : 0u;
@@ -877,15 +810,6 @@ namespace
 
         sort(local);
 
-#if 0
-        for (osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
-            i != leaves.end();
-            ++i)
-        {
-            (*i)->_depth = 1.0f;
-        }
-#endif
-
         // clear out the RenderLeaf pointers (since they change each frame)
         for (Elements::iterator i = local._elements.begin();
             i != local._elements.end();
@@ -894,28 +818,6 @@ namespace
             Element& element = i->second;
             element._leaf = NULL;
         }
-
-#if 0
-        for (Elements::iterator i = local._elements.begin();
-            i != local._elements.end();
-            ++i)
-        {
-            Element& element = i->second;
-
-            if (element._frame < local._frame)
-            {
-                element._leaf->_depth = 0.0f;
-            }
-
-            if (element._conflicted)
-            {
-                if (!_drawObscuredItems)
-                    element._leaf->_depth = 0.0f;
-                else if (_movesThisFrame > 0u)
-                    element._leaf->_depth = 0.0f;
-            }
-        }
-#endif
     }
 
     //....................................................................
@@ -1627,6 +1529,11 @@ namespace
                 renderInfo.getState()->applyModelViewAndProjectionUniformsIfRequired();
 
             local._leaders->draw(renderInfo);
+
+            if (local._voronoi.valid())
+            {
+                local._voronoi->draw(renderInfo);
+            }
         }
 
         /**

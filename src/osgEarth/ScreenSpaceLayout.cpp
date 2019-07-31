@@ -425,7 +425,8 @@ namespace
             _text->setAlignment(osgEarth::Text::CENTER_TOP);
         }
         
-        else if(_offsetVector.y() >= 0.0)
+        // Note: remove this "else" to adjust horizontal alignment.
+        if(_offsetVector.y() >= 0.0)
         {
             _text->setAlignment(osgEarth::Text::CENTER_BOTTOM);
         }

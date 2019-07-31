@@ -76,6 +76,7 @@ namespace
 osgText::Text*
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
+                                    const BBoxSymbol* bbox,
                                     const osg::BoundingBox& box)
 {
     osgText::Text* drawable = new osgEarth::Text();
@@ -93,6 +94,22 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     // osgText::Text turns on depth writing by default, even if you turned it off.
     drawable->setEnableDepthWrites( false );
+
+    if (bbox)
+    {
+        int mask = drawable->getDrawMode();
+        if (bbox->fill().isSet())
+        {
+            mask |= osgText::Text::FILLEDBOUNDINGBOX;
+            drawable->setBoundingBoxColor(bbox->fill()->color());
+            drawable->setBoundingBoxMargin(2.0f);
+        }
+        if (bbox->border().isSet())
+        {
+            mask |= osgText::Text::BOUNDINGBOX;
+        }
+        drawable->setDrawMode(mask);
+    }
     
     return drawable;
 }

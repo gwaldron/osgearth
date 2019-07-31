@@ -55,14 +55,31 @@ namespace osgEarth
         static osgText::Text* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
+            const BBoxSymbol*  bbox,
             const osg::BoundingBox& alignmentBox);
+
+        static osgText::Text* createTextDrawable(
+            const std::string& text,
+            const TextSymbol*  symbol,
+            const osg::BoundingBox& alignmentBox)
+        {
+            return createTextDrawable(text, symbol, 0L, alignmentBox);
+        }
         
         static osg::Drawable* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
             const osg::Vec3&   pos )
         {
-            return createTextDrawable(text, symbol, osg::BoundingBox(pos,pos));
+            return createTextDrawable(text, symbol, 0L, osg::BoundingBox(pos,pos));
+        }
+        static osg::Drawable* createTextDrawable(
+            const std::string& text,
+            const TextSymbol*  symbol,
+            const BBoxSymbol*  bbox,
+            const osg::Vec3&   pos)
+        {
+            return createTextDrawable(text, symbol, bbox, osg::BoundingBox(pos, pos));
         }
 
         /**

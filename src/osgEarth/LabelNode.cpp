@@ -177,17 +177,21 @@ LabelNode::compile()
         }
     }
 
-    osg::Drawable* text = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
+    osg::Drawable* text = AnnotationUtils::createTextDrawable( 
+        _text, 
+        symbol, 
+        _style.get<BBoxSymbol>(),
+        osg::Vec3(0,0,0) );
 
-    const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
-    if ( bboxsymbol && text )
-    {
-        osg::Drawable* bboxGeom = new BboxDrawable(text->getBoundingBox(), *bboxsymbol );
-        if (bboxGeom)
-        {
-            _geode->addDrawable(bboxGeom);
-        }
-    }
+    //const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
+    //if ( bboxsymbol && text )
+    //{
+    //    osg::Drawable* bboxGeom = new BboxDrawable(text->getBoundingBox(), *bboxsymbol );
+    //    if (bboxGeom)
+    //    {
+    //        _geode->addDrawable(bboxGeom);
+    //    }
+    //}
 
     if (text)
     {

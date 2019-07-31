@@ -310,14 +310,15 @@ PlaceNode::compile()
     _textDrawable = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
+            _style.get<BBoxSymbol>(),
             imageBox );
 
-    const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
-    if ( bboxsymbol && _textDrawable )
-    {
-        _bboxDrawable = new BboxDrawable( _textDrawable->getBoundingBox(), *bboxsymbol );
-        _geode->addChild(_bboxDrawable);
-    }
+    //const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
+    //if ( bboxsymbol && _textDrawable )
+    //{
+    //    _bboxDrawable = new BboxDrawable( _textDrawable->getBoundingBox(), *bboxsymbol );
+    //    _geode->addChild(_bboxDrawable);
+    //}
 
     if ( _textDrawable )
     {

@@ -197,6 +197,7 @@ public:
         }
 
         PlaceNode* node = new PlaceNode();
+        //LabelNode* node = new LabelNode();
         node->setStyle(style, context.getDBOptions());
         node->setPosition(point);
 

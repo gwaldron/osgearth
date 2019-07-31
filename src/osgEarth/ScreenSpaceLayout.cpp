@@ -29,6 +29,13 @@
 #include <osgEarth/GLUtils>
 #include "rtree.h"
 
+// https://github.com/JCash/voronoi
+#define JC_VORONOI_IMPLEMENTATION
+#define JCV_REAL_TYPE double
+#define JCV_ATAN2 atan2
+#define JCV_FLT_MAX 1.7976931348623157E+308
+#include "jc_voronoi.h"
+
 #define LC "[ScreenSpaceLayout] "
 
 #define FADE_UNIFORM_NAME "oe_declutter_fade"
@@ -177,6 +184,9 @@ ScreenSpaceLayoutOptions::fromConfig( const Config& conf )
     conf.get( "snap_to_pixel",       _snapToPixel );
     conf.get( "max_objects",         _maxObjects );
     conf.get( "render_order",        _renderBinNumber );
+    conf.get( "technique", "labels", _technique, TECHNIQUE_LABELS );
+    conf.get( "technique", "callouts", _technique, TECHNIQUE_CALLOUTS );
+    conf.get( "max_leader_length", _maxLeaderLen );
 }
 
 Config
@@ -192,6 +202,9 @@ ScreenSpaceLayoutOptions::getConfig() const
     conf.set( "snap_to_pixel",       _snapToPixel );
     conf.set( "max_objects",         _maxObjects );
     conf.set( "render_order",        _renderBinNumber );
+    conf.set( "technique", "labels", _technique, TECHNIQUE_LABELS);
+    conf.set( "technique", "callouts", _technique, TECHNIQUE_CALLOUTS);
+    conf.set("max_leader_length", _maxLeaderLen);
     return conf;
 }
 
@@ -222,6 +235,13 @@ namespace
         }
     };
 
+    struct jcv_point_comparator {
+        bool operator()(const jcv_point& a, const jcv_point& b) const {
+            if (a.x < b.x) return true;
+            return a.y < b.y;
+        }
+    };
+
     /**
     * Custom RenderLeaf sorting algorithm for deconflicting drawables
     * as callouts.
@@ -248,6 +268,7 @@ namespace
             BBox _vpbbox;
             BBox _leaderbbox;
             osg::Vec3d _offsetVector;
+            double _offsetLength;
             osg::Vec3d _bestVector;
             unsigned _leaderLineIndex;
             bool _conflicted;
@@ -270,17 +291,17 @@ namespace
             const osg::Camera* _camera;      // camera associated with the data structure
             unsigned _frame;
             osg::Matrix _scalebias;          // scale bias matrix for the viewport
-            osgUtil::RenderBin::RenderLeafList _leaves;
+            //osgUtil::RenderBin::RenderLeafList _leaves;
             Elements _elements;
-            mutable SpatialIndex _elementIndex;
-            mutable SpatialIndex _leaderIndex;     
+            //mutable SpatialIndex _elementIndex;
+            //mutable SpatialIndex _leaderIndex;     
             osg::Matrix _vpm;
             bool _vpmChanged;
             osg::ref_ptr<LineDrawable> _leaders;
             bool _leadersDirty;
             Color _leaderColor;
-            //osg::ref_ptr<osgUtil::StateGraph> _leadersStateGraph;
-            //osg::ref_ptr<osgUtil::RenderLeaf> _leadersLeaf;
+            std::vector<jcv_point> _points;
+            std::map<jcv_point,Element*,jcv_point_comparator> _lookup;
         };
 
         ScreenSpaceLayoutContext* _context;
@@ -292,7 +313,6 @@ namespace
         bool _resetWhenViewChanges;
         bool _declutterIncrementally;
         unsigned _movesThisFrame;
-        double _leaderLen;
         bool _drawObscuredItems;
 
         //! Constructor
@@ -403,7 +423,20 @@ namespace
         else if (_offsetVector.y() <= 0.0)
         {
             _text->setAlignment(osgEarth::Text::CENTER_TOP);
-        }        
+        }
+        
+        else if(_offsetVector.y() >= 0.0)
+        {
+            _text->setAlignment(osgEarth::Text::CENTER_BOTTOM);
+        }
+        else if (_offsetVector.y() <= 0.0)
+        {
+            _text->setAlignment(osgEarth::Text::CENTER_TOP);
+        }
+        else
+        {
+            _text->setAlignment(osgEarth::Text::CENTER_CENTER);
+        }
     }
 
     CalloutImplementation::CameraLocal::CameraLocal() :
@@ -419,19 +452,6 @@ namespace
         _leaders->setLineWidth(1.5f);
         _leaders->setLineSmooth(true);
         GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
-
-        //_leadersStateGraph = new osgUtil::StateGraph(
-        //    0L, _leaders->getStateSet()
-        //);
-
-        //_leadersLeaf = new osgUtil::RenderLeaf(
-        //    _leaders.get(), 
-        //    0L,
-        //    new osg::RefMatrix(),
-        //    1.0f,
-        //    0u);
-
-        //_leadersLeaf->_parent = _leadersStateGraph.get();
     }
 
     CalloutImplementation::CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f) :
@@ -441,7 +461,6 @@ namespace
         _maxMoveAttempts(31),
         _drawObscuredItems(false),
         _declutterIncrementally(false),
-        _leaderLen(40),
         _resetWhenViewChanges(false)
     {
         //nop
@@ -462,7 +481,6 @@ namespace
             (local._frame - element._frame > 1);
 
         element._frame = local._frame;
-
         element._leaf = leaf;
 
         if (element._drawable == NULL)
@@ -510,13 +528,13 @@ namespace
             local._leadersDirty = true;
         }
 
-        osg::Vec3d pos = element._anchor + element._offsetVector*_leaderLen;
+        double leaderLen = osg::minimum((double)_context->_options.maxLeaderLength().get(), element._offsetLength);
+        osg::Vec3d pos = element._anchor + element._offsetVector*leaderLen;
         const osg::BoundingBox& b = drawable->getBoundingBox();
         element._vpbbox.LL.set(pos.x() + b.xMin(), pos.y() + b.yMin());
         element._vpbbox.UR.set(pos.x() + b.xMax(), pos.y() + b.yMax());
 
         leaf->_modelview->makeTranslate(pos);
-        leaf->_depth = 0.0f; //1.0f; // alpha
 
         // and update the leader line endpoints
         if (element._anchor != local._leaders->getVertex(element._leaderLineIndex))
@@ -527,42 +545,18 @@ namespace
         {
             local._leaders->setVertex(element._leaderLineIndex + 1, pos);
         }
-
-        // create the leader line bounding box
-        element._leaderbbox.LL.set(osg::minimum(element._anchor.x(), pos.x()), osg::minimum(element._anchor.y(), pos.y()));
-        element._leaderbbox.UR.set(osg::maximum(element._anchor.x(), pos.x()), osg::maximum(element._anchor.y(), pos.y()));
-
         // and update the colors of the leader line
         if (element._text)
         {
-            if (!element._conflicted ||
-                (_drawObscuredItems && element._moveAttempts == 0u)) //|| !rec._conflicted)
-            {
-                Color color =
-                    element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ?
-                    element._text->getBoundingBoxColor() :
-                    local._leaderColor;
+            Color color =
+                element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ?
+                element._text->getBoundingBoxColor() :
+                local._leaderColor;
 
-                local._leaders->setColor(element._leaderLineIndex, color);
-                local._leaders->setColor(element._leaderLineIndex + 1, color);
-            }
-
-            //if (element._text->getText().createUTF8EncodedString()=="Wahiawa")
-            //{
-            //    OE_INFO 
-            //        << "F="<<element._frame
-            //        <<", C="<<element._conflicted 
-            //        //<<", MA=" <<element._moveAttempts
-            //        //<<", MR=" <<element._moveRequested
-            //        <<", OV=" <<element._overlap
-            //        <<", D=" << element._leaf->_depth
-            //        <<", A=" << osg::RadiansToDegrees(atan2(element._offsetVector.y(), element._offsetVector.x()))
-            //        <<", New=" << isNew
-            //        <<std::endl;
-            //}
+            local._leaders->setColor(element._leaderLineIndex, color);
+            local._leaders->setColor(element._leaderLineIndex + 1, color);
         }
     }
-
     bool
     CalloutImplementation::handleOverlap(Element* lhs, const BBox& bbox)
     {
@@ -613,75 +607,128 @@ namespace
             local._vpm = VPM;
         }
 
-        local._elementIndex.RemoveAll();
-        local._leaderIndex.RemoveAll();
+        const osg::Viewport* vp = local._camera->getViewport();
 
-        float a_min[2], a_max[2];
-        float b_min[2], b_max[2];
-
-        std::vector<Element*> hits;
+        local._points.clear();
+        local._lookup.clear();
 
         for (Elements::reverse_iterator i = local._elements.rbegin();
             i != local._elements.rend();
             ++i)
         {
-            hits.clear();
+            Element& element = i->second;
 
-            Element& rec = i->second;
-
-            if (local._frame == rec._frame)
-            //if (local._frame - rec._frame <= 1)
+            if (element._leaf != NULL)
             {
-                a_min[0] = rec._vpbbox.LL.x(), a_min[1] = rec._vpbbox.LL.y();
-                a_max[0] = rec._vpbbox.UR.x(), a_max[1] = rec._vpbbox.UR.y();
-
-                b_min[0] = rec._leaderbbox.LL.x(), b_min[1] = rec._leaderbbox.LL.y();
-                b_max[0] = rec._leaderbbox.UR.x(), b_max[1] = rec._leaderbbox.UR.y();
-
-                // does the label conflict with another label?
-                if (local._elementIndex.Search(a_min, a_max, &hits, 1) > 0)
+                if (element._frame == element._frame)
                 {
-                    // yes; do something about it
-                    rec._conflicted = handleOverlap(&rec, (*hits.begin())->_vpbbox);
-                }
+                    // i.e., visible
+                    element._leaf->_depth = 1.0f;
 
-                // does the label conflict with another leader?
-                else if (local._leaderIndex.Search(a_min, a_max, &hits, 1) > 0)
-                {
-                    // yes; do something about it
-                    rec._conflicted = handleOverlap(&rec, (*hits.begin())->_leaderbbox);
-                }
+                    local._points.resize(local._points.size()+1);
+                    jcv_point& back = local._points.back();
+                    back.x = element._anchor.x();
+                    back.y = element._anchor.y();
+                    local._lookup[back] = &element;
 
+#if 0
+                    a_min[0] = rec._vpbbox.LL.x(), a_min[1] = rec._vpbbox.LL.y();
+                    a_max[0] = rec._vpbbox.UR.x(), a_max[1] = rec._vpbbox.UR.y();
+
+                    b_min[0] = rec._leaderbbox.LL.x(), b_min[1] = rec._leaderbbox.LL.y();
+                    b_max[0] = rec._leaderbbox.UR.x(), b_max[1] = rec._leaderbbox.UR.y();
+
+                    // does the label conflict with another label?
+                    if (local._elementIndex.Search(a_min, a_max, &hits, 1) > 0)
+                    {
+                        // yes; do something about it
+                        rec._conflicted = handleOverlap(&rec, (*hits.begin())->_vpbbox);
+                    }
+
+                    // does the label conflict with another leader?
+                    else if (local._leaderIndex.Search(a_min, a_max, &hits, 1) > 0)
+                    {
+                        // yes; do something about it
+                        rec._conflicted = handleOverlap(&rec, (*hits.begin())->_leaderbbox);
+                    }
+
+                    else
+                    {
+                        // If the track was conflicting but now is not, reset its state.
+                        if (rec._conflicted)
+                        {
+                            rec._conflicted = false;
+                            rec._moveAttempts = 0;
+                            rec._moveRequested = false;
+                            rec._overlap = 1.0f;
+                        }
+                    }
+
+                    // record the areas of both the label and the leader.
+                    if (_drawObscuredItems || !rec._conflicted)
+                    {
+                        local._elementIndex.Insert(a_min, a_max, &rec);   // label
+                        local._leaderIndex.Insert(b_min, b_max, &rec);  // leader
+                    }
+
+                    rec._leaf->_depth = rec._conflicted ? 0.0f : 1.0f;
+                    //if (rec._conflicted)
+                    //{
+                    //    rec._leaf->_depth = 0.0f;
+                    //}
+#endif
+                }
                 else
                 {
-                    // If the track was conflicting but now is not, reset its state.
-                    if (rec._conflicted)
-                    {
-                        rec._conflicted = false;
-                        rec._moveAttempts = 0;
-                        rec._moveRequested = false;
-                        rec._overlap = 1.0f;
-                    }
-                }
+                    //if(element._text->getText().createUTF8EncodedString()=="Honolulu")
+                    //  OE_WARN << " ***  : E=" << element._frame << ", F=" << local._frame << std::endl;
 
-                // record the areas of both the label and the leader.
-                if (_drawObscuredItems || !rec._conflicted)
-                {
-                    local._elementIndex.Insert(a_min, a_max, &rec);   // label
-                    local._leaderIndex.Insert(b_min, b_max, &rec);  // leader
+                    element._leaf->_depth = 0.0f; // shouldn't happen
                 }
-
-                rec._leaf->_depth = rec._conflicted ? 0.0f : 1.0f;
-                //if (rec._conflicted)
-                //{
-                //    rec._leaf->_depth = 0.0f;
-                //}
-            }
-            else
-            {
-                rec._leaf->_depth = 0.0f;
             }
         }
+
+        // Use a Voronoi diagram to find the best location for each callout.
+        // Use the centroid of the point's site as the label location. 
+        // The text alignment will alter this somewhat .. think about that later.
+        jcv_diagram diagram;
+        ::memset(&diagram, 0, sizeof(jcv_diagram));
+        jcv_rect bounds;
+        bounds.min.x = vp->x(), bounds.min.y = vp->y();
+        bounds.max.x = vp->x() + vp->width(), bounds.max.y = vp->y() + vp->height();
+        jcv_diagram_generate(local._points.size(), &local._points[0], &bounds, &diagram);
+
+        const jcv_site* sites = jcv_diagram_get_sites(&diagram);
+        for(int i=0; i<diagram.numsites; ++i)
+        {
+            const jcv_site* site = &sites[i];
+
+            Element* element = local._lookup[site->p];
+            if (element)
+            {
+                // calculate the centroid of the site
+                jcv_point sum;
+                sum.x = 0, sum.y = 0;
+                int count = 0;
+
+                const jcv_graphedge* edge = site->edges;
+                while(edge)
+                {
+                    sum.x += edge->pos[0].x;
+                    sum.y += edge->pos[0].y;
+                    ++count;
+                    edge = edge->next;
+                }
+                sum.x /= (jcv_real)count;
+                sum.y /= (jcv_real)count;
+
+                element->_offsetVector = osg::Vec3d(sum.x, sum.y, 0) - element->_anchor;
+                element->_offsetLength = element->_offsetVector.length();
+                element->_offsetVector.normalize();  
+                element->realign();
+            }
+        }
+        jcv_diagram_free(&diagram);
 
 #if 0
         _movesThisFrame = 0u;
@@ -726,6 +773,7 @@ namespace
         else
 #endif
 
+#if 0
         {
             // declutter all callouts each frame
             for (Elements::reverse_iterator i = local._elements.rbegin();
@@ -750,6 +798,7 @@ namespace
                 else
 #endif
                     
+#if 0
                 if (local._frame - element._frame > 5 * 60 * 60) // expire after 5 minutes
                 {
                     ++i;
@@ -761,11 +810,13 @@ namespace
                 }
 
                 else
+#endif
                 {
                     ++i;
                 }
             }
         }
+#endif
     }
 
     // runs in CULL thread after culling completes
@@ -805,7 +856,7 @@ namespace
         CameraLocal& local = _cameraLocal.get(cam);
         local._camera = cam;
 
-        static osg::Vec4f invisible(1,0,0,0.5);
+        static osg::Vec4f invisible(1,0,0,0);
         local._leaders->setColor(invisible);
 
         osg::GraphicsContext* gc = cam->getGraphicsContext();
@@ -834,6 +885,15 @@ namespace
             (*i)->_depth = 1.0f;
         }
 #endif
+
+        // clear out the RenderLeaf pointers (since they change each frame)
+        for (Elements::iterator i = local._elements.begin();
+            i != local._elements.end();
+            ++i)
+        {
+            Element& element = i->second;
+            element._leaf = NULL;
+        }
 
 #if 0
         for (Elements::iterator i = local._elements.begin();
@@ -1534,7 +1594,7 @@ namespace
                 ++rlitr)
             {
                 osgUtil::RenderLeaf* rl = *rlitr;
-                if (rl->_depth > 0.0f)
+                //if (rl->_depth > 0.0f)
                 {
                     renderLeaf(rl, renderInfo, previous, rs);
                     previous = rl;
@@ -1665,7 +1725,6 @@ namespace
             this->setName( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN );
             _context = new ScreenSpaceLayoutContext();
             clearSortingFunctor();
-            //setDrawCallback( new DeclutterDraw(_context.get()) );
 
             // needs its own state set for special magic.
             osg::StateSet* stateSet = new osg::StateSet();
@@ -1701,24 +1760,30 @@ namespace
         void setSortingFunctor( DeclutterSortFunctor* f )
         {
             _f = f;
-            //setSortCallback(new DeclutterImplementation(_context.get(), f));
-            CalloutImplementation* impl = new CalloutImplementation(_context.get(), f);
-            setSortCallback(impl);
 
-            CalloutDraw* draw = new CalloutDraw(_context.get());
-            draw->_sortCallback = impl;
-            setDrawCallback(draw);
+            if (_context->_options.technique() == ScreenSpaceLayoutOptions::TECHNIQUE_LABELS)
+            {
+                setSortCallback(new DeclutterImplementation(_context.get(), f));
+                setDrawCallback(new DeclutterDraw(_context.get()));
+            }
+            else
+            {
+                CalloutImplementation* impl = new CalloutImplementation(_context.get(), f);
+                setSortCallback(impl);
+                CalloutDraw* draw = new CalloutDraw(_context.get());
+                draw->_sortCallback = impl;
+                setDrawCallback(draw);
+            }
         }
 
         void clearSortingFunctor()
         {
-            //setSortCallback(new DeclutterImplementation(_context.get()));
-            CalloutImplementation* impl = new CalloutImplementation(_context.get(), 0L);
-            setSortCallback(impl);
+            setSortingFunctor(NULL);
+        }
 
-            CalloutDraw* draw = new CalloutDraw(_context.get());
-            draw->_sortCallback = impl;
-            setDrawCallback(draw);
+        void refresh()
+        {
+            setSortingFunctor(_f.get());
         }
 
         osg::ref_ptr<DeclutterSortFunctor> _f;
@@ -1814,6 +1879,8 @@ ScreenSpaceLayout::setOptions( const ScreenSpaceLayoutOptions& options )
 
         // communicate the new options on the shared context.
         bin->_context->_options = options;
+
+        bin->refresh();
     }
 }
 

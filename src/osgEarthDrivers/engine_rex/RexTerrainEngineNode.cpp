@@ -908,7 +908,6 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     MaskLayerVector maskLayers;
     getMap()->getLayers(maskLayers);
 
-    struct MinMax { osg::Vec3d min, max; };
     std::vector<MinMax> boundaryMinMaxes;
 
     for (MaskLayerVector::iterator iLayer = maskLayers.begin(); iLayer != maskLayers.end(); ++iLayer)

@@ -21,9 +21,8 @@
 
 #include <osg/CullStack>
 
-#if !defined(INT32_MAX)
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
+#ifndef INT32_MAX
+#define INT32_MAX 2147483647
 #endif
 
 using namespace osgEarth::Drivers::RexTerrainEngine;

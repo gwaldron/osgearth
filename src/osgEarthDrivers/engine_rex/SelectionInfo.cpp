@@ -21,6 +21,8 @@
 
 #include <osg/CullStack>
 
+#include <stdint.h>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 

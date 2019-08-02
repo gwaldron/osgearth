@@ -67,7 +67,7 @@ GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
 _maxGranularity_deg    ( 10.0 ),
 _mergeGeometry         ( true ),
 _clustering            ( false ),
-_instancing            ( true ), // MERGE: VTMAK has this as false
+_instancing            ( true ),
 _filterUsage           ( FILTER_USAGE_NORMAL ),
 _ignoreAlt             ( false ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),

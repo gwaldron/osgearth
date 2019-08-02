@@ -78,17 +78,6 @@ namespace
             traverse(node);
         }
 
-        /* MERGE: 2.10.2 got rid of this
-        void apply(osg::Geode& geode)
-        {
-            for (unsigned i = 0; i < geode.getNumDrawables(); ++i)
-            {
-                apply(geode.getDrawable(i));
-            }
-            apply(static_cast<osg::Node&>(geode));
-        }
-        */
-
         void apply(osg::Drawable& drawable)
         {
             apply(drawable.getStateSet());

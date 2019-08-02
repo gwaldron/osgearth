@@ -27,15 +27,6 @@
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
-    /* MERGE: is this needed?
-    struct VisParameters
-    {
-        double _visibilityRange;
-        double _fMorphStart;
-        double _fMorphEnd;
-    };
-    */
-
     /**
      * SelectionInfo is a data structure that holds the LOD distance switching 
      * information for the terrain, to support paging and LOD morphing. 

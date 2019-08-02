@@ -190,8 +190,8 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         Registry::instance()->startActivity(uri);
         // ORIG: osg::Node* node = graph->load(lod, x, y, uri, readOptions);
         // TimG: osg::ref_ptr<osg::Node> node = graph->load(lod, x, y, uri, readOptions);
-        // MERGE:
         //START VRV_PATCH switched to ref_ptr so DtOsgFileCache does not thow it away.
+        // GW: not sure but ok, does graph->load may need to return a ref_ptr as well?
         osg::ref_ptr<osg::Node> node = graph->load(lod, x, y, uri, readOptions);   
         //END VRV_PATCH
         Registry::instance()->endActivity(uri);

@@ -381,7 +381,6 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
         else
         {
-            /* 
             float range = context->getSelectionInfo().getRange(_subdivideTestKey);
 #if 1
             // slightly slower than the alternate block below, but supports a user overriding
@@ -392,23 +391,6 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
                 culler->getViewPointLocal(), 
                 range*range / culler->getLODScale());
 #endif
-            */
-            
-            // MERGE: Is this right or the one from 2.10.2 (above)
-
-            // simulate a focal point so we can call getDistanceToViewPoint() to get the
-            // actual visibility range to use. We do this so that you can still override
-            // getDistanceToViewPoint() and get a correct result.
-            //if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs() - 1)
-            {
-                float range = context->getSelectionInfo().getLOD(currLOD + 1)._visibilityRange;
-                float effectiveRange = range / culler->getLODScale(); // MERGE: This is the new getRangeScale?
-                float range2 = effectiveRange * effectiveRange;
-
-                return _surface->anyChildBoxIntersectsSphere(
-                    culler->getViewPointLocal(), 
-                    range2);
-            }
         }
     }                 
     return false;
@@ -486,10 +468,13 @@ TileNode::cull(TerrainCuller* culler)
         canCreateChildren = false;
         canLoadData       = false;
     }
+
+#if 0 // GW MERGE 2.10.x
     // VRV_PATCH
     if (culler->_numberChildrenCreated >= MAX_NUM_CHILDREN_CREATED_PER_FRAME) {
        canCreateChildren = false;
     }
+#endif
 
     if (childrenInRange)
     {
@@ -1072,10 +1057,7 @@ TileNode::load(TerrainCuller* culler)
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
-    // xiaohang:        float maxRange = si.visParameters(0)._visibilityRange * culler->getRangeScale();
-    // osgearth 2.10.2: float maxRange = si.getLOD(0)._visibilityRange;
-    // MERGE: my proposed way
-    float maxRange = si.getLOD(0)._visibilityRange * culler->getLODScale(); // MERGE: This is the new getRangeScale?
+    float maxRange = si.getLOD(0)._visibilityRange;
     float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority

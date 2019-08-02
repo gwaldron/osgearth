@@ -1287,18 +1287,6 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         osgUtil::Optimizer::MergeGeometryVisitor mg;
         mg.setTargetMaximumNumberOfVertices(65536);
         group->accept(mg);
-
-        /* MERGE: Don't think this is needed
-        // Because the mesh optimizers damage line geometry.
-        if ( !_outlineSymbol.valid() )
-        {
-            osgUtil::Optimizer o;
-            o.optimize(group,
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-        }
-        */
     }
 
     // Prepare buffer objects.

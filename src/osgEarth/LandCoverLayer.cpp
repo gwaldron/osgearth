@@ -438,8 +438,6 @@ Config
 LandCoverLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
-    // MERGE: This was from VTMAK github, needed?
-	conf.key() = "land_cover";
 
     conf.set("warp", _warp);
     conf.set("noise_lod", _noiseLOD);

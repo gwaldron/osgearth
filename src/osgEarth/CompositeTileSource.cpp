@@ -165,7 +165,6 @@ CompositeTileSource::createImage(const TileKey&    key,
             // If the progress got cancelled (due to any reason, including network error)
             // then return NULL to prevent this tile from being built and cached with
             // incomplete or partial data.
-			// MERGE orig: if (progress && (progress->isCanceled() || progress->needsRetry()))
             if (progress && progress->isCanceled()) 
             {
                 OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;

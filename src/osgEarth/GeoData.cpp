@@ -514,35 +514,6 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
     result.transformInPlace(getSRS());
     return result;
 }
-
-/*
-MERGE: This distanceTo function looks like it changed a lot
-       This was orig one in vtmak github
-GeoPoint::distanceTo(const GeoPoint& rhs) const
-{
-   if (getSRS()->isProjected() && rhs.getSRS()->isProjected())
-   {
-      if (getSRS()->isEquivalentTo(rhs.getSRS()))
-      {
-         return (vec3d() - rhs.vec3d()).length();
-      }
-      else
-      {
-         GeoPoint rhsT = rhs.transform(getSRS());
-         return (vec3d() - rhsT.vec3d()).length();
-      }
-   }
-   else
-   {
-      GeoPoint p1 = transform(getSRS()->getGeographicSRS());
-      GeoPoint p2 = rhs.transform(getSRS()->getGeodeticSRS());
-
-      return GeoMath::distance(
-         osg::DegreesToRadians(p1.y()), osg::DegreesToRadians(p1.x()),
-         osg::DegreesToRadians(p2.y()), osg::DegreesToRadians(p2.x()),
-         getSRS()->getGeographicSRS()->getEllipsoid()->getRadiusEquator());
-   }
-*/
    
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const

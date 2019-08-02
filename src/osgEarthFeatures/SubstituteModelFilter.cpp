@@ -251,7 +251,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // how that we have a marker source, create a node for it
         std::pair<URI, float> key(instanceURI, iconSymbol ? scale : 1.0f); //use 1.0 for models, since we don't want unique models based on scaling
 
-        // MERGE: Taking VTMAK's code here
         // cache nodes per instance.
         osg::ref_ptr<osg::Node> model;
 

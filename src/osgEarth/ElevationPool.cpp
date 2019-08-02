@@ -97,8 +97,6 @@ ElevationPool::getElevation(const GeoPoint& point, unsigned lod)
 {
     GetElevationOp* op = new GetElevationOp(this, point, lod);
     Future<ElevationSample> result = op->_promise.getFuture();
-    // TimG: Registry::instance()->getAsyncOperationQueue()->add(op);
-	// MERGE:
     _opQueue->add(op);
     return result;
 }

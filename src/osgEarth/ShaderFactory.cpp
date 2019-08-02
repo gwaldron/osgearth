@@ -399,7 +399,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // matrix uniforms. Why except vertex? OSG<3.5.8 only replaces these
     // in the vertex shader and not other stages.
 
-    // MERGE: Not sure if 'if(){ ..}' is needed, only else part I think is needed
     if (osg::State::getUseUboTransformStack())
     {
        gl_ModelViewMatrix = "osg.ModelViewMatrix";

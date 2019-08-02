@@ -195,7 +195,6 @@ namespace
     {
 #if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE) //osg state convertVertexShaderSourceToOsgBuiltIns inserts these and the double declaration is causing an error in gles
 
-       // MERGE: 2.10.2 only has part in 'if' and gets rid of 'else'
        GLSLChunker chunker;
 
         if (!osg::State::getUseUboTransformStack())
@@ -227,7 +226,8 @@ namespace
            chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg_ModelViewProjectionMatrix");
            chunker.replace(chunks, "gl_NormalMatrix", "osg_NormalMatrix");
         }
-        else {
+        else 
+        {
            chunker.replace(chunks, "gl_ModelViewMatrix", "osg.ModelViewMatrix");
            chunker.replace(chunks, "gl_ProjectionMatrix", "osg.ProjectionMatrix");
            chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg.ModelViewProjectionMatrix");

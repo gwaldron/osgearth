@@ -1008,20 +1008,6 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
         }
     }
     _lastUsedProgram.setAllElementsTo(NULL);
-
-    /* MERGE: Hm, the shader cache stuff is different in 2.10.2 -  see USE_POLYSHADER_CACHE
-    for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
-    {
-    if (i->data()._shader.valid())
-    {
-    i->data()._shader->releaseGLObjects(state);
-    }
-    }
-
-    _programCache.clear();
-
-    _programCacheMutex.unlock();
-    */
 #endif
 }
 

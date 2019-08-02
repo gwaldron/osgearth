@@ -487,6 +487,9 @@ TileNode::cull(TerrainCuller* culler)
 
             if ( !_childrenReady )
             {
+                //VRV_PATCH
+                //TODO: GW: Replace with a proper throttling mechanism without hard-coded values
+                //MERGE
                 OE_START_TIMER(createChildren);
                 int initialNumChildren = _children.size();
                 createChildren( context );

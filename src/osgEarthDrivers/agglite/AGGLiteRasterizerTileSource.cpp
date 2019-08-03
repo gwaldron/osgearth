@@ -371,10 +371,6 @@ public:
             osg::ref_ptr<Geometry> croppedGeometry;
             if ( geometry->crop( cropPoly.get(), croppedGeometry ) )
             {
-                const PolygonSymbol* poly =
-                    feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
-                    masterPoly;
-
                 if ( _options.coverage() == true && covValue.isSet() )
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
@@ -382,7 +378,11 @@ public:
                 }
                 else
                 {
-                    osg::Vec4f color = poly->fill()->color();
+                    const PolygonSymbol* poly =
+                        feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
+                        masterPoly;
+
+                    osg::Vec4f color = poly ? poly->fill()->color() : Color::White;
                     rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
                 
@@ -398,17 +398,18 @@ public:
             osg::ref_ptr<Geometry> croppedGeometry;
             if ( geometry->crop( cropPoly.get(), croppedGeometry ) )
             {
-                const LineSymbol* line =
-                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
-                    masterLine;
-
                 if ( _options.coverage() == true && covValue.isSet() )
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
                     rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
                 }
                 else
-                {   osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+                {   
+                    const LineSymbol* line =
+                        feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                        masterLine;
+                    
+                    osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : Color::White;
                     rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
             }

@@ -23,7 +23,9 @@
 #include <osgEarthAnnotation/BarNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarth/MapNode>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osg/Geometry>
+#include <cassert>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -111,58 +113,6 @@ public:
     }
 };
 
-osg::Geometry * createBox(float width, float height, const osg::Vec4 & bottomColor, const osg::Vec4& topColor)
-{
-    osg::Geometry* ret = new osg::Geometry;
-    const size_t numVertices = 8;
-    const size_t numIndicies = 14;
-    osg::Vec3Array* vertices = new osg::Vec3Array(numVertices);
-
-    // Declares the Vertex Array, where the coordinates of all the 8 cube vertices are stored
-    (*vertices)[0].set(width, width, height);
-    (*vertices)[1].set(-width, width, height);
-    (*vertices)[2].set(width, width, 0);
-    (*vertices)[3].set(-width, width, 0);
-    (*vertices)[4].set(width, -width, height);
-    (*vertices)[5].set(-width, -width, height);
-    (*vertices)[6].set(-width, -width, 0);
-    (*vertices)[7].set(width, -width, 0);
-    ret->setVertexArray(vertices);
-
-    osg::DrawElementsUByte* indices = new osg::DrawElementsUByte(osg::PrimitiveSet::TRIANGLE_STRIP, numIndicies);
-    ret->insertPrimitiveSet(0, indices);
-
-    indices->resize(numIndicies);
-    indices->setNumInstances(numIndicies);
-
-    static ColorGradient gradient;
-
-    // Declares the Elements Array, where the indexs to be drawn are stored
-    static unsigned char elements[] = {
-        3, 2, 6, 7, 4, 2, 0,
-        3, 1, 6, 5, 4, 1, 0
-    };
-    for (unsigned int c = 0; c < numIndicies; ++c)
-        (*indices)[c] = elements[c];
-    indices->dirty();
-
-    osg::Vec4Array * colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, numVertices);
-    (*colors)[0] = topColor;
-    (*colors)[1] = topColor;
-    (*colors)[2] = bottomColor;
-    (*colors)[3] = bottomColor;
-    (*colors)[4] = topColor;
-    (*colors)[5] = topColor;
-    (*colors)[6] = bottomColor;
-    (*colors)[7] = bottomColor;
-    ret->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
-    ret->setUseDisplayList(false);
-    ret->setUseVertexBufferObjects(true);
-    ret->dirtyBound();
-    ret->dirtyGLObjects();
-    return ret;
-}
-
 } // namespace
 
 BarNode::BarNode() :
@@ -212,6 +162,7 @@ void BarNode::compile()
 {
     applyStyle( _style );
 
+    buildGeometry();
     dirty();
 }
 
@@ -222,25 +173,43 @@ BarNode::applyStyle(const Style& style)
     const BarSymbol* bar = style.get<BarSymbol>();
     if (bar)
     {
-        float value = bar->value().value().eval();
         float width = bar->width().value().eval();
-        Color minColor = bar->minimumColor().value().color();
-        Color maxColor = bar->maximumColor().value().color();
-
-        float minVal = bar->minimumValue().value().eval();
-        float maxVal = bar->maximumValue().value().eval();
-
-        float range = maxVal - minVal;
-        float percent = (value - minVal) / range;
-
         _width = width;
-        addValue(percent, value, minColor, maxColor);
+
+        for(BarSymbol::ValueList::const_iterator it = bar->values().begin(); it != bar->values().end(); ++it)
+        {
+            const BarSymbol::Value& entry = *it;
+
+            float valueScale = entry.valueScale().value().eval();
+            float value = entry.value().value().eval() * valueScale;
+            Color minColor = entry.minimumColor().value().color();
+            Color maxColor = entry.maximumColor().value().color();
+
+            float minVal = entry.minimumValue().value().eval() * valueScale;
+            float maxVal = entry.maximumValue().value().eval() * valueScale;
+
+            float range = maxVal - minVal;
+            float percent = (value - minVal) / range;
+            addValue(percent, value, minColor, maxColor);
+        }
     }
     else {
         clear();
     }
 }
 
+void
+BarNode::updateLayoutData()
+{
+    if (!_dataLayout.valid())
+    {
+        _dataLayout = new ScreenSpaceLayoutData();
+    }
+    _geom->setUserData(_dataLayout.get());
+
+    _dataLayout->setPriority(getPriority());
+
+}
 
 void
 BarNode::buildGeometry()
@@ -249,8 +218,10 @@ BarNode::buildGeometry()
     float overallTotalHeight = 0;
     float barHeight = 0;
     float barWidth = _width.getValue();
-    unsigned numVertices = _values.size() * 8;
-    unsigned numIndicies = _values.size() + 14;
+    const unsigned num_vertices_per_value_set = 8;
+    const unsigned num_indicies_per_value_set = 14;
+    unsigned numVertices = _values.size() * num_vertices_per_value_set;
+    unsigned numIndicies = _values.size() * num_indicies_per_value_set;
     osg::Vec3Array* vertices = new osg::Vec3Array(numVertices);
     osg::Vec4Array * colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, numVertices);
     osg::DrawElementsUByte* indices = new osg::DrawElementsUByte(osg::PrimitiveSet::TRIANGLE_STRIP, numIndicies);
@@ -264,9 +235,10 @@ BarNode::buildGeometry()
         3, 2, 6, 7, 4, 2, 0,
         3, 1, 6, 5, 4, 1, 0
     };
-
-    unsigned vertexIndex = 0;
-    for(ValueList::const_iterator it = _values.begin(); it != _values.end(); ++it)
+    assert(sizeof(elements) / sizeof(elements[0]) == num_indicies_per_value_set);
+    unsigned vertexIndex = 0, indiciesIndex = 0;
+    for(ValueList::const_iterator it = _values.begin(); it != _values.end(); 
+        ++it, vertexIndex += num_vertices_per_value_set, indiciesIndex += num_indicies_per_value_set)
     {
         const Value & v = *it;
         float bottomHeight = barHeight;
@@ -284,8 +256,8 @@ BarNode::buildGeometry()
         (*vertices)[vertexIndex + 6].set(-barWidth, -barWidth, bottomHeight);
         (*vertices)[vertexIndex + 7].set(barWidth, -barWidth, bottomHeight);
 
-        for (unsigned int c = 0; c < sizeof(elements)/sizeof(elements[0]); ++c)
-            (*indices)[vertexIndex + c] = elements[c];
+        for (unsigned int c = 0; c < num_indicies_per_value_set; ++c)
+            (*indices)[indiciesIndex + c] = vertexIndex + elements[c];
 
         osg::Vec4 bottomColor = v.minimumValueColor.color();
         ColorGradient gradient(bottomColor, v.maximumValueColor.color());
@@ -311,6 +283,8 @@ BarNode::buildGeometry()
 
     if (_dynamic)
         setDynamic(_dynamic);
+
+    updateLayoutData();
 }
 
 

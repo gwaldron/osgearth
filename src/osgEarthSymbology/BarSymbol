@@ -45,26 +45,50 @@ namespace osgEarth { namespace Symbology
         /** dtor */
         virtual ~BarSymbol() { }
 
-        /** value of the bar (shown as height) */
-        optional<NumericExpression>& value() { return _value; }
-        const optional<NumericExpression>& value() const { return _value; }
-
         /** Width of the bar */
         optional<NumericExpression>& width() { return _width; }
         const optional<NumericExpression>& width() const { return _width; }
 
-        optional<NumericExpression>& minimumValue() { return _minimumValue; }
-        const optional<NumericExpression>& minimumValue() const { return _minimumValue; }
+        class OSGEARTHSYMBOLOGY_EXPORT Value
+        {
+        public:
+            Value();
 
-        optional<NumericExpression>& maximumValue() { return _maximumValue; }
-        const optional<NumericExpression>& maximumValue() const { return _maximumValue; }
+            /** value of the bar (shown as height) */
+            optional<NumericExpression>& value() { return _value; }
+            const optional<NumericExpression>& value() const { return _value; }
 
-        /** Text fill color. */
-        optional<Fill>& minimumColor() { return _minimumColor; }
-        const optional<Fill>& minimumColor() const { return _minimumColor; }
+            /** minimum value for the data series */
+            optional<NumericExpression>& minimumValue() { return _minimumValue; }
+            const optional<NumericExpression>& minimumValue() const { return _minimumValue; }
 
-        optional<Fill>& maximumColor() { return _maximumColor; }
-        const optional<Fill>& maximumColor() const { return _maximumColor; }
+            /** maximum value for the data series */
+            optional<NumericExpression>& maximumValue() { return _maximumValue; }
+            const optional<NumericExpression>& maximumValue() const { return _maximumValue; }
+
+            /** scale factor for the bar height */
+            optional<NumericExpression>& valueScale() { return _valueScale; }
+            const optional<NumericExpression>& valueScale() const { return _valueScale; }
+
+            /** fill color for the bottom/minimum color */
+            optional<Fill>& minimumColor() { return _minimumColor; }
+            const optional<Fill>& minimumColor() const { return _minimumColor; }
+
+            /** fill color for the top when the value reaches the maximum */
+            optional<Fill>& maximumColor() { return _maximumColor; }
+            const optional<Fill>& maximumColor() const { return _maximumColor; }
+
+            optional<NumericExpression> _value;
+            optional<NumericExpression> _minimumValue;
+            optional<NumericExpression> _maximumValue;
+            optional<NumericExpression> _valueScale;
+            optional<Fill> _minimumColor;
+            optional<Fill> _maximumColor;
+        };
+        typedef std::vector<Value> ValueList;
+
+        const ValueList& values() const { return _values; }
+        ValueList& values() { return _values; }
 
     public:
         virtual Config getConfig() const;
@@ -72,12 +96,8 @@ namespace osgEarth { namespace Symbology
         static void parseSLD(const Config& c, class Style& style);
 
     protected:
-        optional<NumericExpression> _value;
         optional<NumericExpression> _width;
-        optional<NumericExpression> _minimumValue;
-        optional<NumericExpression> _maximumValue;
-        optional<Fill> _minimumColor;
-        optional<Fill> _maximumColor;
+        ValueList _values;
     };
 
 } } // namespace osgEarth::Symbology

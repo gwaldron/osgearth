@@ -72,10 +72,6 @@ public:
         NumericExpression iconScaleExpr   ( icon ? *icon->scale()    : NumericExpression() );
         NumericExpression iconHeadingExpr ( icon ? *icon->heading()  : NumericExpression() );
         NumericExpression vertOffsetExpr  ( alt  ? *alt->verticalOffset() : NumericExpression() );
-        NumericExpression barValueExpr    ( bar  ? *bar->value() : NumericExpression());
-        NumericExpression barMinValueExpr ( bar  ? *bar->minimumValue() : NumericExpression());
-        NumericExpression barMaxValueExpr ( bar  ? *bar->maximumValue() : NumericExpression());
-        NumericExpression barWidthExpr    ( bar  ? *bar->width() : NumericExpression());
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
@@ -136,14 +132,37 @@ public:
 
             if( bar )
             {
-                if (bar->value().isSet())
-                    tempStyle.get<BarSymbol>()->value()->setLiteral(feature->eval(barValueExpr, &context));
-                if (bar->minimumValue().isSet())
-                    tempStyle.get<BarSymbol>()->minimumValue()->setLiteral(feature->eval(barMinValueExpr, &context));
-                if (bar->maximumValue().isSet())
-                    tempStyle.get<BarSymbol>()->maximumValue()->setLiteral(feature->eval(barMaxValueExpr, &context));
                 if (bar->width().isSet())
-                    tempStyle.get<BarSymbol>()->width()->setLiteral(feature->eval(barWidthExpr, &context));
+                {
+                    NumericExpression expr(*bar->width());
+                    tempStyle.get<BarSymbol>()->width()->setLiteral(feature->eval(expr, &context));
+                }
+                if(!bar->values().empty())
+                {
+                    BarSymbol::ValueList values(bar->values().size());
+                    unsigned index = 0;
+                    for(BarSymbol::ValueList::const_iterator it = bar->values().begin(); it != bar->values().end(); ++it, ++index)
+                    {
+                        const BarSymbol::Value& entry = *it;
+                        BarSymbol::Value& out = values[index];
+                        out = entry;
+                        NumericExpression barValueExpr(*entry.value());
+                        NumericExpression barValueScaleExpr(*entry.valueScale());
+                        NumericExpression barMinValueExpr(*entry.minimumValue());
+                        NumericExpression barMaxValueExpr(*entry.maximumValue());
+
+                        if (entry.value().isSet())
+                            out.value()->setLiteral(feature->eval(barValueExpr, &context));
+                        if (entry.valueScale().isSet())
+                            out.valueScale()->setLiteral(feature->eval(barValueScaleExpr, &context));
+                        if (entry.minimumValue().isSet())
+                            out.minimumValue()->setLiteral(feature->eval(barMinValueExpr, &context));
+                        if (entry.maximumValue().isSet())
+                            out.maximumValue()->setLiteral(feature->eval(barMaxValueExpr, &context));
+                        
+                    }
+                    tempStyle.get<BarSymbol>()->values() = values;
+                }
             }
             
             GeoPositionNode* node = 0L;

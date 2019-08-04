@@ -258,6 +258,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const IconSymbol*      icon      = style.get<IconSymbol>();
     const ModelSymbol*     model     = style.get<ModelSymbol>();
     const RenderSymbol*    render    = style.get<RenderSymbol>();
+    const BarSymbol*       bar       = style.get<BarSymbol>();
 
     // Perform tessellation first.
     if ( line )
@@ -458,7 +459,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    if ( text || icon )
+    if ( text || icon || bar )
     {
         // Only clamp annotation types when the technique is 
         // explicity set to MAP. Otherwise, the annotation subsystem

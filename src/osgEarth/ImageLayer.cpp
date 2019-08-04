@@ -314,7 +314,8 @@ _optionsConcrete(options)
 
 ImageLayer::ImageLayer(ImageLayerOptions* optionsPtr) :
 TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
+_options(optionsPtr? optionsPtr : &_optionsConcrete),
+_useCreateTexture(false)
 {
     //init(); // will be called by subclass.
 }

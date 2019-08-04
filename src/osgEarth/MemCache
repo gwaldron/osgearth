@@ -48,7 +48,11 @@ namespace osgEarth
         virtual CacheBin* getOrCreateDefaultBin();
     
     private:
-        MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : Cache( rhs, op ) { }
+        MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) 
+        : Cache( rhs, op )
+        , _maxBinSize(1) 
+        {
+        }
 
         unsigned _maxBinSize;
     };

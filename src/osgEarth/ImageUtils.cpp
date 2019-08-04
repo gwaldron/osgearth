@@ -1297,16 +1297,18 @@ ImageUtils::activateMipMaps(osg::Image* image)
       return;
    }
 
+   if (image->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
+       image->getInternalTextureFormat() == GL_LUMINANCE16F_ARB ||
+       image->getInternalTextureFormat() == GL_R16F ||
+       image->getInternalTextureFormat() == GL_R32F)
+   {
+       OE_DEBUG << LC << "WARNING! mipmapper can't currently handle luminance/red textures. Mipmapping: " << image->getName() << std::endl;
+       return;
+   }
+
    osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
    if (!ip)
    {
-      return;
-   }
-
-   if (image->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
-      image->getInternalTextureFormat() == GL_LUMINANCE16F_ARB)
-   {
-      OE_INFO << LC << "WARNING! mipmapper can't currently handle luminance textures. Mipmapping: " << image->getName() << std::endl;
       return;
    }
 
@@ -1363,8 +1365,19 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
                 //VRV_PATCH
                 if (tex->getImage(i) == 0L)
                    continue;
+
                 if (tex->getImage(i)->getDataPointer() == 0L)
                    continue;
+
+                if (tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
+                    tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE16F_ARB ||
+                    tex->getImage(i)->getInternalTextureFormat() == GL_R16F ||
+                    tex->getImage(i)->getInternalTextureFormat() == GL_R32F)
+                {
+                    //OE_DEBUG << LC << "WARNING! mipmapper can't currently handle luminance/red textures" << std::endl;
+                    continue;
+                }
+
                 if (tex->getImage(i)->getNumMipmapLevels() <= 1)
 		  	    {
                    ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);

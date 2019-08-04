@@ -712,12 +712,12 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         {
             OE_INFO << LC << "WARNING! mismatched extents." << std::endl;
         }
-        if (result.getImage()->getInternalTextureFormat() != GL_LUMINANCE32F_ARB &&
-           result.getImage()->getInternalTextureFormat() != GL_LUMINANCE16F_ARB)
+
         {
            osg::CVSpan UpdateTick(series, 2, "mipMapImagePreSave");
            ImageUtils::activateMipMaps(result.getImage());
         }
+
         osg::CVSpan UpdateTick(series, 4, "saveImage");
         cacheBin->write(cacheKey, result.getImage(), 0L);
     }

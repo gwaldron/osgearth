@@ -1311,6 +1311,15 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
                 if (tex->getImage(i)->getNumMipmapLevels() <= 1)
                 {
                     ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
+
+                    if (tex->getImage(i)->getInternalTextureFormat() == GL_RGB)
+                    {
+                        tex->getImage(i)->setInternalTextureFormat(GL_RGB8);
+                    }
+                    else if (tex->getImage(i)->getInternalTextureFormat() == GL_RGBA)
+                    {
+                        tex->getImage(i)->setInternalTextureFormat(GL_RGBA8);
+                    }
                 }
             }
         }

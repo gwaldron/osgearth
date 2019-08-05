@@ -196,7 +196,6 @@ SkinResource::createStateSet( osg::Image* image ) const
             if ( _texEnvMode.isSet() )
             {
                 osg::TexEnv* texenv = new osg::TexEnv();
-                texenv = new osg::TexEnv();
                 texenv->setMode( *_texEnvMode );
                 stateSet->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
             }

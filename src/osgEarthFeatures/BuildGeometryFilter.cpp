@@ -291,11 +291,9 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
     if ( context.isGeoreferenced() )
     {
-        //makeECEF   = context.getSession()->getMapInfo().isGeocentric();
         featureSRS = context.extent()->getSRS();
         outputSRS = context.getOutputSRS();
         makeECEF = outputSRS->isGeographic();
-        //mapSRS     = context.getSession()->getMapInfo().getProfile()->getSRS();
     }
 
     // We need to create a different geode for each texture that is used so they can share statesets.
@@ -748,6 +746,7 @@ void convertToDrawElementsUInt(osg::Geometry* geometry)
  */
 bool tesselateGeometry(osg::Geometry* geometry)
 {
+    //VRV_PATCH disable the osgEarth tessellator; reason unknown
     //osgEarth::Tessellator oeTess;
     //if ( !oeTess.tessellateGeometry(*geometry) )
     {

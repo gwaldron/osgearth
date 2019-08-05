@@ -238,7 +238,8 @@ TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr) :
 VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
 _options(optionsPtr ? optionsPtr : &_optionsConcrete),
 _openCalled(false),
-_tileSourceExpected(true)
+_tileSourceExpected(true),
+_tileSize(0)
 {
     //nop - init() called by subclass
 }
@@ -248,7 +249,8 @@ VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
 _options(optionsPtr ? optionsPtr : &_optionsConcrete),
 _tileSource(tileSource),
 _openCalled(false),
-_tileSourceExpected(true)
+_tileSourceExpected(true),
+_tileSize(0)
 {
     //nop - init() called by subclass
 }

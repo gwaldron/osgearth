@@ -52,6 +52,9 @@ namespace osgEarth
     public:
         AsyncNode()
         {
+            _lastTimeWeMet = DBL_MAX;
+            _maxValue = FLT_MAX;
+            _maxValue = FLT_MIN;
             _needy = true;
             _id = ++_idgen;
             char buf[64];

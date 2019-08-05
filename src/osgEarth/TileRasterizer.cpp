@@ -82,6 +82,10 @@ osg::Camera()
     setSmallFeatureCullingPixelSize(0.0f);
     setViewMatrix(osg::Matrix::identity());
 
+    // default viewport that is offscreen. This prevents this camera from
+    // clearing the framebuffer when this is not actually drawing anything.
+    setViewport(-1, -1, 1, 1);
+
     osg::StateSet* ss = getOrCreateStateSet();
 
     ss->setMode(GL_BLEND, 1);

@@ -428,39 +428,45 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
         else
         {            
             TileSource* source = i->_layer->getTileSource();
-
-            // If no profile is specified assume they want to use the profile of the first layer in the list.
-            if (!profile.valid())
+            if (source)
             {
-                profile = source->getProfile();
-            }
-
-            _dynamic = _dynamic || source->isDynamic();
-            
-            // gather extents                        
-            const DataExtentList& extents = source->getDataExtents();  
-
-            // If even one of the layers' data extents is unknown, the entire composite
-            // must have unknown data extents:
-            if (extents.empty())
-            {
-                dataExtentsValid = false;
-                getDataExtents().clear();
-            }
-
-            if (dataExtentsValid)
-            {
-                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-                {                
-                    // Convert the data extent to the profile that is actually used by this TileSource
-                    DataExtent dataExtent = *j;                
-                    GeoExtent ext = dataExtent.transform(profile->getSRS());
-                    unsigned int minLevel = 0;
-                    unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
-                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
-                    getDataExtents().push_back( dataExtent );
+                // If no profile is specified assume they want to use the profile of the first layer in the list.
+                if (!profile.valid())
+                {
+                    profile = source->getProfile();
                 }
-            }            
+
+                _dynamic = _dynamic || source->isDynamic();
+            
+                // gather extents                        
+                const DataExtentList& extents = source->getDataExtents();  
+
+                // If even one of the layers' data extents is unknown, the entire composite
+                // must have unknown data extents:
+                if (extents.empty())
+                {
+                    dataExtentsValid = false;
+                    getDataExtents().clear();
+                }
+
+                if (dataExtentsValid)
+                {
+                    for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                    {                
+                        // Convert the data extent to the profile that is actually used by this TileSource
+                        DataExtent dataExtent = *j;                
+                        GeoExtent ext = dataExtent.transform(profile->getSRS());
+                        unsigned int minLevel = 0;
+                        unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
+                        dataExtent = DataExtent(ext, minLevel, maxLevel);                                
+                        getDataExtents().push_back( dataExtent );
+                    }
+                }
+            }
+            else
+            {
+                OE_WARN << LC << "Tile Source is NULL (" << i->_layer->getName() << ") ... " << std::endl;
+            }
 
             ++i;
         }

@@ -219,30 +219,17 @@ RexTerrainEngineNode::resizeGLObjectBuffers(unsigned maxSize)
 void
 RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 {
-    // MERGE: Needed?
-    //getStateSet()->releaseGLObjects(state);
-    // MERGE: Is this the right way to releaseGLObject for terrain
-    //        (vs. the code below in the vrv patch)
-    //_terrain->getStateSet()->releaseGLObjects(state);
-
-    //VRV_PATCH: start
-    if (_terrain)
-    {
-        _terrain->releaseGLObjects(state);
-    }
-
-    if (_imageLayerStateSet.get())
+    if (_imageLayerStateSet.valid())
     {
         _imageLayerStateSet.get()->releaseGLObjects(state);
     }
 
-    if (_geometryPool)
+    if (_geometryPool.valid())
     {
         _geometryPool->clear();
     }
 
     TerrainEngineNode::releaseGLObjects(state);
-    //VRV_PATCH: end
 }
 
 void
@@ -503,15 +490,10 @@ RexTerrainEngineNode::setupRenderBindings()
 void
 RexTerrainEngineNode::dirtyTerrain()
 {
-//VRV_PATCH: start
-   if (_terrain)
-   {
-      _terrain->releaseGLObjects();
-   }
-//VRV_PATCH: end
-    if ( _terrain )
+    if (_terrain.valid())
     {
-          _terrain->removeChildren(0, _terrain->getNumChildren());
+        _terrain->releaseGLObjects();
+        _terrain->removeChildren(0, _terrain->getNumChildren());
     }
 
     // clear the loader:
@@ -878,8 +860,12 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     return mt;
 }
 
-//GCC patch.  Cant' create template classes with local structs.  That is a c++11 thing.
-struct MinMax { osg::Vec3d min, max; };
+namespace
+{
+    struct MinMax {
+        osg::Vec3d min, max;
+    };
+}
 
 osg::Node*
 RexTerrainEngineNode::createTile(const TerrainTileModel* model,

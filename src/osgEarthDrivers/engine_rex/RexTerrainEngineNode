@@ -79,10 +79,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //! Get the stateset used to render the terrain surface.
         osg::StateSet* getSurfaceStateSet();
 
-        //! Destroy the openGL objects.
-        virtual void releaseGLObjects(osg::State* state) const;
-
-    public: // internal TerrainEngineNode
         //! Unique identifier of this engine instance
         UID getUID() const { return _uid; }
 
@@ -96,6 +92,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingSphere computeBound() const;
 
         void resizeGLObjectBuffers(unsigned maxSize);
+
+        void releaseGLObjects(osg::State* state) const;
 
     public: // MapCallback adapter functions
 

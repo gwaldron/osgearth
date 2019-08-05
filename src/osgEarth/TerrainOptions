@@ -223,7 +223,7 @@ namespace osgEarth
         optional<double> _minExpiryTime;
         optional<bool> _castShadows;
         optional<osg::LOD::RangeMode> _rangeMode;
-        optional<float>               _tilePixelSize;
+        optional<float> _tilePixelSize;
     };
 }
 

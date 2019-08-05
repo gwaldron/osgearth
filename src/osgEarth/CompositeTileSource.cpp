@@ -428,10 +428,8 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
         else
         {
             TileSource* source = i->_layer->getTileSource();
-//VRV_PATCH: start
             if (source)
             {
-//VRV_PATCH: end
                 // If no profile is specified assume they want to use the profile of the first layer in the list.
                 if (!profile.valid())
                 {
@@ -465,12 +463,10 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                     }
                 }
             }
-//VRV_PATCH: start
             else
             {
                 OE_WARN << LC << "Tile Source is NULL (" << i->_layer->getName() << ") ... " << std::endl;
             }
-//VRV_PATCH: end
 
             ++i;        
         }

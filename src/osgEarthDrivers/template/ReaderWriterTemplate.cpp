@@ -75,12 +75,9 @@ class TemplateReaderWriter: public osgDB::ReaderWriter
                 std::istringstream iss(options->getOptionString());
                 std::string opt;
                 while (iss >> opt) {
-                    //START VRV_PATCH
                     std::string optLower = osgDB::convertToLowerCase(opt);
                     std::size_t eqInd = opt.find("=");
-                    //Lets only make the option key lowercase.
                     std::string key = optLower.substr(0, eqInd);
-                    //END VRV_PATCH
                     std::string value = opt.substr(eqInd + 1);
                     t.set(key, value);
                 }

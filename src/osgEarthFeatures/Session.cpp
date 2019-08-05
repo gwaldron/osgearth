@@ -109,9 +109,8 @@ Session::getDBOptions() const
     // otherwise get them from the map if possible:
     osg::ref_ptr<const Map> map;
     if (_map.lock(map))
-    {
        return map->getReadOptions();
-    }
+
     return 0L;
 }
 

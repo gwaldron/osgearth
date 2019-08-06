@@ -66,7 +66,16 @@ namespace
         }
     };
 
-    std::array<int, 3> parseVersion(const std::string& version)
+    struct Version
+    {
+        int major;
+        int minor;
+        int build;
+        Version() : major(0), minor(0), build(0) {}
+        ~Version() {}
+    };
+
+    Version parseVersion(const std::string& version)
     {
         std::vector<std::string> tokens;
         size_t prev = 0, pos = 0;
@@ -81,25 +90,25 @@ namespace
         } while (pos < version.length() && prev < version.length());
 
         if (tokens.size() != 3)
-            return std::array<int, 3>{0, 0, 0};
+            return Version();
 
-        std::array<int, 3> returnVal;
-        std::get<0>(returnVal) = std::stoi(tokens.at(0));
-        std::get<1>(returnVal) = std::stoi(tokens.at(1));
-        std::get<2>(returnVal) = std::stoi(tokens.at(2));
+        Version returnVal;
+        returnVal.major = std::stoi(tokens.at(0));
+        returnVal.minor = std::stoi(tokens.at(1));
+        returnVal.build = std::stoi(tokens.at(2));
         return returnVal;
     }
 
     bool versionIsAtLeast(const std::string& lhs, const std::string& rhs)
     {
-        auto lhsTuple = parseVersion(lhs);
-        auto rhsTuple = parseVersion(rhs);
+        auto lhsVersion = parseVersion(lhs);
+        auto rhsVersion = parseVersion(rhs);
 
-        if (std::get<0>(lhsTuple) < std::get<0>(rhsTuple))
+        if (lhsVersion.major < rhsVersion.major)
             return false;
-        if (std::get<1>(lhsTuple) < std::get<1>(rhsTuple))
+        if (lhsVersion.minor < rhsVersion.minor)
             return false;
-        if (std::get<2>(lhsTuple) < std::get<2>(rhsTuple))
+        if (lhsVersion.build < rhsVersion.build)
             return false;
 
         return true;

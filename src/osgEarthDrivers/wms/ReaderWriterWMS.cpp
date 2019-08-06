@@ -36,7 +36,7 @@
 #include <string.h>
 #include <limits.h>
 #include <iomanip>
-#include <tuple>
+#include <array>
 
 #include "TileService"
 #include "WMSOptions"
@@ -66,7 +66,7 @@ namespace
         }
     };
 
-    std::tuple<int, int, int> parseVersion(const std::string& version)
+    std::array<int, 3> parseVersion(const std::string& version)
     {
         std::vector<std::string> tokens;
         size_t prev = 0, pos = 0;
@@ -81,9 +81,9 @@ namespace
         } while (pos < version.length() && prev < version.length());
 
         if (tokens.size() != 3)
-            return std::tuple<int, int, int>{0, 0, 0};
+            return std::array<int, 3>{0, 0, 0};
 
-        std::tuple<int, int, int> returnVal;
+        std::array<int, 3> returnVal;
         std::get<0>(returnVal) = std::stoi(tokens.at(0));
         std::get<1>(returnVal) = std::stoi(tokens.at(1));
         std::get<2>(returnVal) = std::stoi(tokens.at(2));

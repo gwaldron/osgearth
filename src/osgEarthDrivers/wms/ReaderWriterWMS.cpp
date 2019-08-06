@@ -36,6 +36,7 @@
 #include <string.h>
 #include <limits.h>
 #include <iomanip>
+#include <tuple>
 
 #include "TileService"
 #include "WMSOptions"

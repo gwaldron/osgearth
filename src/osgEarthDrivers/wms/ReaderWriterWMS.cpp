@@ -64,6 +64,45 @@ namespace
             osg::ImageSequence::update( nv );
         }
     };
+
+    std::tuple<int, int, int> parseVersion(const std::string& version)
+    {
+        std::vector<std::string> tokens;
+        size_t prev = 0, pos = 0;
+        do
+        {
+            pos = version.find(".", prev);
+            if (pos == std::string::npos)
+                pos = version.length();
+            std::string token = version.substr(prev, pos - prev);
+            tokens.push_back(token);
+            prev = pos + 1;
+        } while (pos < version.length() && prev < version.length());
+
+        if (tokens.size() != 3)
+            return std::tuple<int, int, int>{0, 0, 0};
+
+        std::tuple<int, int, int> returnVal;
+        std::get<0>(returnVal) = std::stoi(tokens.at(0));
+        std::get<1>(returnVal) = std::stoi(tokens.at(1));
+        std::get<2>(returnVal) = std::stoi(tokens.at(2));
+        return returnVal;
+    }
+
+    bool versionIsAtLeast(const std::string& lhs, const std::string& rhs)
+    {
+        auto lhsTuple = parseVersion(lhs);
+        auto rhsTuple = parseVersion(rhs);
+
+        if (std::get<0>(lhsTuple) < std::get<0>(rhsTuple))
+            return false;
+        if (std::get<1>(lhsTuple) < std::get<1>(rhsTuple))
+            return false;
+        if (std::get<2>(lhsTuple) < std::get<2>(rhsTuple))
+            return false;
+
+        return true;
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -152,7 +191,7 @@ public:
             << "&LAYERS=" << _options.layers().value()
             << "&FORMAT=" << ( wmsFormatToUse.empty() ? std::string("image/") + _formatToUse : wmsFormatToUse )
             << "&STYLES=" << _options.style().value()
-            << (_options.wmsVersion().value() == "1.3.0" ? "&CRS=" : "&SRS=") << _srsToUse            
+            << (versionIsAtLeast(_options.wmsVersion().value(), "1.3.0") ? "&CRS=" : "&SRS=") << _srsToUse
             << "&WIDTH="<< getPixelsPerTile()
             << "&HEIGHT=" << getPixelsPerTile()
             << "&BBOX=%lf,%lf,%lf,%lf";
@@ -180,7 +219,7 @@ public:
         }
 
         // Next, try to glean the extents from the layer list
-        if ( capabilities.valid() )
+        if (capabilities.valid() )
         {
             StringTokenizer tok(",");
             StringVector tized;
@@ -432,7 +471,15 @@ public:
         key.getExtent().getBounds( minx, miny, maxx, maxy);
         
         char buf[2048];
-        sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);
+
+        if (versionIsAtLeast(_options.wmsVersion().value(), "1.3.0") && getProfile()->getProfileType() == osgEarth::Profile::TYPE_GEODETIC)
+        {
+            sprintf(buf, _prototype.c_str(), miny, minx, maxy, maxx);
+        }
+        else
+        {
+            sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);
+        }
         
         std::string uri(buf);
 

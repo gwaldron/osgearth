@@ -275,6 +275,13 @@ readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
             maxX = as<double>(e_bb->getAttr( ATTR_MAXX ), 0);
             maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), 0);
             layer->setExtents(minX, minY, maxX, maxY);
+        } 
+        else if (parentLayer)
+        {
+            // inherit the BB from the parent layer if there was one
+            double minX, minY, maxX, maxY;
+            parentLayer->getExtents(minX, minY, maxX, maxY);
+            layer->setExtents(minX, minY, maxX, maxY);
         }
 
         //Add the layer to the list and set its parent layer

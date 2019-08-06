@@ -68,10 +68,10 @@ namespace
 
     struct Version
     {
-        int major;
-        int minor;
+        int maj;
+        int min;
         int build;
-        Version() : major(0), minor(0), build(0) {}
+        Version() : maj(0), min(0), build(0) {}
         ~Version() {}
     };
 
@@ -93,9 +93,9 @@ namespace
             return Version();
 
         Version returnVal;
-        returnVal.major = std::stoi(tokens.at(0));
-        returnVal.minor = std::stoi(tokens.at(1));
-        returnVal.build = std::stoi(tokens.at(2));
+        returnVal.maj = stoi(tokens.at(0));
+        returnVal.min = stoi(tokens.at(1));
+        returnVal.build = stoi(tokens.at(2));
         return returnVal;
     }
 
@@ -104,9 +104,9 @@ namespace
         auto lhsVersion = parseVersion(lhs);
         auto rhsVersion = parseVersion(rhs);
 
-        if (lhsVersion.major < rhsVersion.major)
+        if (lhsVersion.maj < rhsVersion.maj)
             return false;
-        if (lhsVersion.minor < rhsVersion.minor)
+        if (lhsVersion.min < rhsVersion.min)
             return false;
         if (lhsVersion.build < rhsVersion.build)
             return false;

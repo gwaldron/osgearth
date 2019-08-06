@@ -96,9 +96,9 @@ namespace
         std::stringstream ssMaj(tokens.at(0));
         ssMaj >> returnVal.maj;
         std::stringstream ssMin(tokens.at(1));
-        ssMaj >> returnVal.min;
+        ssMin >> returnVal.min;
         std::stringstream ssBuild(tokens.at(2));
-        ssMaj >> returnVal.build;
+        ssBuild >> returnVal.build;
         return returnVal;
     }
 

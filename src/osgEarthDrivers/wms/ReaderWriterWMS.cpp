@@ -93,16 +93,19 @@ namespace
             return Version();
 
         Version returnVal;
-        returnVal.maj = stoi(tokens.at(0));
-        returnVal.min = stoi(tokens.at(1));
-        returnVal.build = stoi(tokens.at(2));
+        std::stringstream ssMaj(tokens.at(0));
+        ssMaj >> returnVal.maj;
+        std::stringstream ssMin(tokens.at(1));
+        ssMaj >> returnVal.min;
+        std::stringstream ssBuild(tokens.at(2));
+        ssMaj >> returnVal.build;
         return returnVal;
     }
 
     bool versionIsAtLeast(const std::string& lhs, const std::string& rhs)
     {
-        auto lhsVersion = parseVersion(lhs);
-        auto rhsVersion = parseVersion(rhs);
+        Version lhsVersion = parseVersion(lhs);
+        Version rhsVersion = parseVersion(rhs);
 
         if (lhsVersion.maj < rhsVersion.maj)
             return false;

@@ -250,6 +250,7 @@ MaskGenerator::Result
 MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, 
                                     osg::Vec3Array* verts, osg::Vec3Array* texCoords, 
                                     osg::Vec3Array* normals, osg::Vec3Array* neighbors,
+                                    osg::Vec3Array* neighborNormals,
                                     osg::ref_ptr<osg::DrawElementsUInt>& out_elements)
 {
     if (_maskRecords.size() <= 0)
@@ -600,6 +601,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
     normals->reserve(normals->size() + trigPoints->size());
     if ( neighbors )
         neighbors->reserve(neighbors->size() + trigPoints->size()); 
+    if ( neighborNormals )
+        neighborNormals->reserve(neighborNormals->size() + trigPoints->size()); 
 
     // Iterate through point to convert to model coords, calculate normals, and set up tex coords
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
@@ -629,9 +632,11 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
 
         verts->push_back(local);
 
-        // use same vert for neighbor to prevent morphing
+        // use same data for neighbor to prevent morphing
         if ( neighbors )
-            neighbors->push_back( local );  
+            neighbors->push_back( local );
+        if ( neighborNormals )
+            neighborNormals->push_back( normal );
 
         // set up text coords
         texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? VERTEX_MARKER_BOUNDARY : VERTEX_MARKER_PATCH) );

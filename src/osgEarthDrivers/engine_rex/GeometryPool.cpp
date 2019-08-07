@@ -360,7 +360,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
         MaskGenerator::Result r = maskSet->createMaskPrimitives(
             mapInfo,
-            verts.get(), texCoords.get(), normals.get(), neighbors.get(),
+            verts.get(), texCoords.get(), normals.get(), neighbors.get(), neighborNormals.get(),
             maskElements);
 
         if (r == MaskGenerator::R_BOUNDARY_INTERSECTS_TILE && 

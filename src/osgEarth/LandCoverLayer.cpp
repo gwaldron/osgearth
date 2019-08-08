@@ -97,7 +97,8 @@ namespace
         {
             if (sourceLayer->getEnabled() && 
                 sourceLayer->isKeyInLegalRange(key) &&
-                sourceLayer->mayHaveData(key))
+                sourceLayer->getDataExtentsUnion().intersects(key.getExtent()))
+                //sourceLayer->mayHaveData(key)) // does not work here.
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {

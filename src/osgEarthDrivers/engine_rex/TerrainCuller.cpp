@@ -232,6 +232,9 @@ TerrainCuller::apply(TileNode& node)
 
         // Render patch layers if applicable.
         // A patch layer is one rendered using GL_PATCHES.
+        std::vector<PatchLayer*> patchLayers;
+        patchLayers.reserve(_terrain.patchLayers().size());
+
         for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
         {
             PatchLayer* layer = i->get();
@@ -245,30 +248,33 @@ TerrainCuller::apply(TileNode& node)
             if (layer->getMaxVisibleRange() < range)
                 continue;
 
-            // Push this tile's matrix if we haven't already done so:
-            if (!pushedMatrix)
-            {
-                SurfaceNode* surface = node.getSurfaceNode();
-                    
-                // push the surface matrix:
-                osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
-                surface->computeLocalToWorldMatrix(*matrix,this);
-                _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
-
-                pushedMatrix = true;
-            }
-
-            // Add the draw command:
-            DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
-            if (cmd)
-            {
-                cmd->_drawPatch = true;
-                cmd->_drawCallback = layer->getDrawCallback();
-            }
+            patchLayers.push_back(layer);
         }
 
-        if (pushedMatrix)
+        if (!patchLayers.empty())
         {
+            SurfaceNode* surface = node.getSurfaceNode();
+                    
+            // push the surface matrix:
+            osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
+            surface->computeLocalToWorldMatrix(*matrix,this);
+            _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
+
+            // Add the draw command:
+            for(std::vector<PatchLayer*>::iterator i = patchLayers.begin();
+                i != patchLayers.end();
+                ++i)
+            {
+                PatchLayer* layer = *i;
+
+                DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
+                if (cmd)
+                {
+                    cmd->_drawPatch = true;
+                    cmd->_drawCallback = layer->getDrawCallback();
+                }
+            }
+
            _cv->popModelViewMatrix();
         }
     }

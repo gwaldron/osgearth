@@ -21,7 +21,6 @@
 #include <osgEarth/Map>
 #include <osgEarth/SimplexNoise>
 #include <osgEarth/Progress>
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 
@@ -125,11 +124,7 @@ namespace
                 // cannot interpolate coverage data:
                 read->setBilinear( false );
 
-                warp = sourceLayer->options().warp().get();
-
-                    //std::string s = key.str();
-                    //osgDB::writeImageFile(*image.getImage(),Stringify()<<"out/"<<osgEarth::replaceIn(s,"/","_")<<".tif");
-                
+                warp = sourceLayer->options().warp().get();                
             }
         }
     };

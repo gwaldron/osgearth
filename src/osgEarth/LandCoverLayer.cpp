@@ -21,6 +21,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/SimplexNoise>
 #include <osgEarth/Progress>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 
@@ -96,8 +97,8 @@ namespace
         void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
         {
             if (sourceLayer->getEnabled() && 
-                sourceLayer->isKeyInLegalRange(key) &&
-                sourceLayer->mayHaveData(key))
+                //sourceLayer->isKeyInLegalRange(key) &&
+                sourceLayer->getDataExtentsUnion().intersects(key.getExtent()))
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {
@@ -125,6 +126,10 @@ namespace
                 read->setBilinear( false );
 
                 warp = sourceLayer->options().warp().get();
+
+                    //std::string s = key.str();
+                    //osgDB::writeImageFile(*image.getImage(),Stringify()<<"out/"<<osgEarth::replaceIn(s,"/","_")<<".tif");
+                
             }
         }
     };
@@ -230,6 +235,8 @@ namespace
             setProfile( profile );
         }
 
+        DataExtentList combinedExtents;
+
         for(unsigned i=0; i<options().coverages().size(); ++i)
         {
             LandCoverCoverageLayerOptions coverageOptions = options().coverages()[i];
@@ -264,7 +271,7 @@ namespace
             {
                 if (!profile || dei->getSRS()->isHorizEquivalentTo(profile->getSRS()))
                 {
-                    getDataExtents().push_back(*dei);
+                    combinedExtents.push_back(*dei);
                 }
                 else
                 {
@@ -275,9 +282,15 @@ namespace
                         de.minLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->minLevel().get());
                     if (dei->maxLevel().isSet())
                         de.maxLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->maxLevel().get());
-                    getDataExtents().push_back(de);
+                    combinedExtents.push_back(de);
                 }
             }
+        }
+
+        // ONLY set the data extents if every component coverage was able to report.
+        if (combinedExtents.size() == _coverages.size())
+        {
+            getDataExtents().swap(combinedExtents);
         }
 
         return STATUS_OK;
@@ -430,7 +443,10 @@ LandCoverLayerOptions::fromConfig(const Config& conf)
     ConfigSet layerConfs = conf.child("coverages").children("coverage");
     for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
     {
-        _coverages.push_back(LandCoverCoverageLayerOptions(*i));
+        // Must set this here because of an artichectural vestige that will be resolved in 3.x
+        Config li = *i;
+        li.set("coverage", true);
+        _coverages.push_back(LandCoverCoverageLayerOptions(li));
     }
 }
 

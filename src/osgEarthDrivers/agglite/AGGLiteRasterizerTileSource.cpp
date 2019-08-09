@@ -125,8 +125,8 @@ public:
         if ( _options.coverage() == true )
         {
             image = new osg::Image();
-            image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_LUMINANCE, GL_FLOAT);
-            image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+            image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_RED, GL_FLOAT);
+            image->setInternalTextureFormat(GL_R16F);
             ImageUtils::markAsUnNormalized(image, true);
         }
         return image;

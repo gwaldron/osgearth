@@ -99,17 +99,20 @@ namespace osgEarth
                 }
             }
 
-#if 0
-            // Apply each of the osg_*Matrix uniforms, which may be used by the native program
-            if (apply(_modelViewMatrixUniform.get(), useProgram))
-                useProgram = false;
-            if (apply(_projectionMatrixUniform.get(), useProgram))
-                useProgram = false;
-            if (apply(_modelViewProjectionMatrixUniform.get(), useProgram))
-                useProgram = false;
-            if (apply(_normalMatrixUniform.get(), useProgram))
-                useProgram = false;
-#endif
+            if (state->getUseModelViewAndProjectionUniforms())
+            {
+                // Apply each of the osg_*Matrix uniforms, which may be used by the native program
+                osg::State* ncState = const_cast<osg::State*>(state);
+
+                if (apply(ncState->getModelViewMatrixUniform(), useProgram))
+                    useProgram = false;
+                if (apply(ncState->getProjectionMatrixUniform(), useProgram))
+                    useProgram = false;
+                if (apply(ncState->getModelViewProjectionMatrixUniform(), useProgram))
+                    useProgram = false;
+                if (apply(ncState->getNormalMatrixUniform(), useProgram))
+                    useProgram = false;
+            }
         }
 
     private:

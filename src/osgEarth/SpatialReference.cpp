@@ -1415,15 +1415,24 @@ bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
 
     unsigned int pixel = 0;
     double fc = 0.0;
+    // Don't create a Vec3d each inner loop
+    osg::Vec3d currPt;
+    double& curPX = currPt.x();
+    double& curPY = currPt.y();
+    currPt.z() = 0.0;
+
     for (unsigned int c = 0; c < numx; ++c, ++fc)
     {
         const double dest_x = in_xmin + fc * dx;
         double fr = 0.0;
+        curPX = dest_x;
+
         for (unsigned int r = 0; r < numy; ++r, ++fr)
         {
             const double dest_y = in_ymin + fr * dy;
-
-            points.push_back(osg::Vec3d(dest_x, dest_y, 0));
+            
+            curPY = dest_y;
+            points.push_back(currPt); //osg::Vec3d(dest_x, dest_y, 0)
             ++pixel;
         }
     }

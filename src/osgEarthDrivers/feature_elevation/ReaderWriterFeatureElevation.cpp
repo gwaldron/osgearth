@@ -204,7 +204,9 @@ public:
 
 						float h = NO_DATA_VALUE;
                         
-                        METRIC_SCOPED("fe.chf.iterate_features");
+                        // This metric gathering might be a little too low
+                        // in scope since this loop is called a lot
+                        // METRIC_SCOPED("fe.chf.iterate_features");
 
 						for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
 						{

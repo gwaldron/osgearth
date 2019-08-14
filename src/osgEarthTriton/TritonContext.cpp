@@ -20,6 +20,8 @@
 #include <osg/GLExtensions>
 #include <osg/Math>
 #include <osgDB/FileNameUtils>
+#include <osgEarth/Capabilities>
+#include <osgEarth/Registry>
 #include <osgEarth/SpatialReference>
 #include <cstdlib>
 
@@ -126,6 +128,13 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
 
             //_environment->SetConfigOption("avoid-opengl-stalls", "yes");
             //_environment->SetConfigOption("fft-texture-update-frame-delayed", "yes");
+
+            // Mesa drivers are unable to index variables in UBO prior to compilation
+            const std::string glRenderer = osgEarth::Registry::instance()->getCapabilities().getRenderer();
+            if (glRenderer.find("Mesa") != std::string::npos)
+            {
+                _environment->SetConfigOption( "use-uniform-buffer-objects", "no" );
+            }
 
             float openGLVersion = osg::getGLVersionNumber();
             enum ::Triton::Renderer tritonOpenGlVersion = ::Triton::OPENGL_2_0;

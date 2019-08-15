@@ -111,6 +111,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
     {
     case wkbPolygon:
     case wkbPolygon25D:
+    case wkbTriangleZ:
 #ifdef GDAL_HAS_M_TYPES
     case wkbPolygonM:
     case wkbPolygonZM:
@@ -154,6 +155,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
     case wkbMultiLineString25D:
     case wkbMultiPolygon:
     case wkbMultiPolygon25D:
+    case wkbTINZ:
 #ifdef GDAL_HAS_M_TYPES
     case wkbGeometryCollectionM:
     case wkbGeometryCollectionZM:

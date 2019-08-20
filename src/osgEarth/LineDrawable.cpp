@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2019 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #include <osgEarth/LineDrawable>
 #include <osgEarth/Shaders>
 #include <osgEarth/Registry>
@@ -66,7 +66,7 @@ LineGroup::LineGroup()
 }
 
 LineGroup::LineGroup(const LineGroup& rhs, const osg::CopyOp& copy) :
-osg::Geode(rhs, copy)
+    osg::Geode(rhs, copy)
 {
     //nop
 }
@@ -186,7 +186,7 @@ namespace
         }
     };
 
-    
+
 
     struct ImportLinesVisitor : public osg::NodeVisitor
     {
@@ -328,20 +328,20 @@ int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
 
 LineDrawable::LineDrawable() :
-osg::Geometry(),
-_mode(GL_LINE_STRIP),
-_gpu(false),
-_factor(1),
-_pattern(0xFFFF),
-_color(1, 1, 1, 1),
-_width(1.0f),
-_smooth(false),
-_first(0u),
-_count(0u),
-_current(NULL),
-_previous(NULL),
-_next(NULL),
-_colors(NULL)
+    osg::Geometry(),
+    _mode(GL_LINE_STRIP),
+    _gpu(false),
+    _factor(1),
+    _pattern(0xFFFF),
+    _color(1, 1, 1, 1),
+    _width(1.0f),
+    _smooth(false),
+    _first(0u),
+    _count(0u),
+    _current(NULL),
+    _previous(NULL),
+    _next(NULL),
+    _colors(NULL)
 {
 #ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
@@ -350,20 +350,20 @@ _colors(NULL)
 }
 
 LineDrawable::LineDrawable(GLenum mode) :
-osg::Geometry(),
-_mode(mode),
-_gpu(false),
-_factor(1),
-_pattern(0xFFFF),
-_color(1,1,1,1),
-_width(1.0f),
-_smooth(false),
-_first(0u),
-_count(0u),
-_current(NULL),
-_previous(NULL),
-_next(NULL),
-_colors(NULL)
+    osg::Geometry(),
+    _mode(mode),
+    _gpu(false),
+    _factor(1),
+    _pattern(0xFFFF),
+    _color(1,1,1,1),
+    _width(1.0f),
+    _smooth(false),
+    _first(0u),
+    _count(0u),
+    _current(NULL),
+    _previous(NULL),
+    _next(NULL),
+    _colors(NULL)
 {
 #ifdef USE_GPU
     _gpu = 
@@ -375,20 +375,20 @@ _colors(NULL)
 }
 
 LineDrawable::LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy) :
-osg::Geometry(rhs, copy),
-_mode(rhs._mode),
-_gpu(rhs._gpu),
-_color(rhs._color),
-_factor(rhs._factor),
-_pattern(rhs._pattern),
-_width(rhs._width),
-_smooth(rhs._smooth),
-_first(rhs._first),
-_count(rhs._count),
-_current(NULL),
-_previous(NULL),
-_next(NULL),
-_colors(NULL)
+    osg::Geometry(rhs, copy),
+    _mode(rhs._mode),
+    _gpu(rhs._gpu),
+    _color(rhs._color),
+    _factor(rhs._factor),
+    _pattern(rhs._pattern),
+    _width(rhs._width),
+    _smooth(rhs._smooth),
+    _first(rhs._first),
+    _count(rhs._count),
+    _current(NULL),
+    _previous(NULL),
+    _next(NULL),
+    _colors(NULL)
 {
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
 
@@ -507,19 +507,26 @@ LineDrawable::setLineSmooth(bool value)
 void
 LineDrawable::setColor(const osg::Vec4& color)
 {
-    initialize();
-
-    _color = color;
-    if (_colors && !_colors->empty())
+    if (_color != color)
     {
-        _colors->assign(_colors->size(), _color);
-        _colors->dirty();
+        initialize();
+
+        _color = color;
+        if (_colors && !_colors->empty())
+        {
+            _colors->assign(_colors->size(), _color);
+            _colors->dirty();
+        }
     }
 }
 
 void
 LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
 {
+    // test against overall color:
+    if (color == _color)
+        return;
+
     bool dirty = false;
     if (_gpu)
     {
@@ -582,6 +589,9 @@ LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
     if (dirty)
     {
         _colors->dirty();
+
+        // reset "overall" color
+        _color.set(-1,-1,-1,-1);
     }
 }
 
@@ -786,7 +796,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 
     unsigned size = _current->size();
     unsigned numVerts = getNumVerts();
-    
+
     // "vi" = virtual index, "ri" = real index.
 
     if (vi < numVerts)
@@ -798,7 +808,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 unsigned ri = vi*4u;
                 unsigned rnum = 4u; // number of real verts to set
 
-                // update the main verts:
+                                    // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
                 {
                     (*_current)[n] = vert;
@@ -860,7 +870,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 unsigned ri = vi*4u; // starting real index
                 unsigned rnum = 4u; // number of real verts to set
 
-                // update the main verts:
+                                    // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
                 {
                     (*_current)[n] = vert;
@@ -886,7 +896,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                         (*_previous)[rpi+n] = vert;
                     }
                 }
-                
+
                 _next->dirty();
                 _previous->dirty();
             }
@@ -1091,7 +1101,7 @@ namespace
             size > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt(GL_TRIANGLES) :
 #endif
             size > 0xFF ?   (osg::DrawElements*)new osg::DrawElementsUShort(GL_TRIANGLES) :
-                            (osg::DrawElements*)new osg::DrawElementsUByte(GL_TRIANGLES);
+            (osg::DrawElements*)new osg::DrawElementsUByte(GL_TRIANGLES);
         de->reserveElements(size);
         return de;
     }
@@ -1141,7 +1151,7 @@ LineDrawable::dirty()
                 els->addElement(e+3);
                 els->addElement(e+0); // PV
             }
-            
+
             addPrimitiveSet(els);
         }
 
@@ -1167,7 +1177,7 @@ LineDrawable::dirty()
             els->addElement(0);
             els->addElement(1);
             els->addElement(e+0); // PV
-            
+
             addPrimitiveSet(els);
         }
 
@@ -1184,7 +1194,7 @@ LineDrawable::dirty()
 
                 for(unsigned e=0; e<numVerts*2u; e += 4)
                 {
-                //for (int e = 0; e < _current->size(); e += 4)
+                    //for (int e = 0; e < _current->size(); e += 4)
                     els->addElement(e+3);
                     els->addElement(e+1);
                     els->addElement(e+0); // PV

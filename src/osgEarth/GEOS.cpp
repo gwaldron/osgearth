@@ -146,7 +146,10 @@ namespace
                             for( RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
                             {
                                 geom::Geometry* hole = import( r->get(), f );
-                                if ( hole ) holes->push_back( hole );
+                                if ( hole && hole->getGeometryTypeId() == geos::geom::GEOS_LINEARRING) 
+                                {
+                                    holes->push_back( hole );
+                                }
                             }
                             if (holes->size() == 0)
                             {

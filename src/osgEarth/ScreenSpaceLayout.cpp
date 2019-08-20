@@ -24,159 +24,22 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Extension>
 #include <osgEarth/Text>
-#include <osgEarth/Color>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/GLUtils>
-#include "rtree.h"
-
-// https://github.com/JCash/voronoi
-#define JC_VORONOI_IMPLEMENTATION
-#define JCV_REAL_TYPE double
-#define JCV_ATAN2 atan2
-#define JCV_FLT_MAX 1.7976931348623157E+308
-#include "jc_voronoi.h"
+#include "ScreenSpaceLayoutDeclutter"
+#include "ScreenSpaceLayoutCallout"
 
 #include <stdlib.h> // getenv
 
 #define LC "[ScreenSpaceLayout] "
 
-#define FADE_UNIFORM_NAME "oe_declutter_fade"
-
 using namespace osgEarth;
+using namespace osgEarth::Internal;
 
 //----------------------------------------------------------------------------
 
-namespace
-{
-    // Sort wrapper to satisfy the template processor.
-    struct SortContainer
-    {
-        SortContainer( DeclutterSortFunctor& f ) : _f(f) { }
-        const DeclutterSortFunctor& _f;
-        bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
-        {
-            return _f(lhs, rhs);
-        }
-    };
+bool osgEarth::ScreenSpaceLayout::globallyEnabled = true;
 
-    // Custom sorting functor that sorts drawables front-to-back, and when drawables share the
-    // same parent Geode, sorts them in traversal order.
-    struct SortFrontToBackPreservingGeodeTraversalOrder
-    {
-        bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
-        {
-            if (lhs->getDrawable()->getNumParents() > 0 &&
-                rhs->getDrawable()->getNumParents() > 0 &&
-                rhs->getDrawable()->getParent(0) == lhs->getDrawable()->getParent(0))
-            {
-                const osg::Group* parent = static_cast<const osg::Group*>(lhs->getDrawable()->getParent(0));
-                return parent->getChildIndex(lhs->getDrawable()) > parent->getChildIndex(rhs->getDrawable());
-            }
-            else
-            {
-                return ( lhs->_depth < rhs->_depth );
-            }
-        }
-    };
-
-    // Custom sorting functor that sorts drawables by Priority, and when drawables share the
-    // same parent Geode, sorts them in traversal order.
-    struct SortByPriorityPreservingGeodeTraversalOrder : public DeclutterSortFunctor
-    {
-        bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
-        {
-            if (lhs->getDrawable()->getNumParents() > 0 &&
-                rhs->getDrawable()->getNumParents() > 0 &&
-                rhs->getDrawable()->getParent(0) == lhs->getDrawable()->getParent(0))
-            {
-                const osg::Group* parent = static_cast<const osg::Group*>(lhs->getDrawable()->getParent(0));
-                return parent->getChildIndex(lhs->getDrawable()) > parent->getChildIndex(rhs->getDrawable());
-            }
-
-            else
-            {
-                const ScreenSpaceLayoutData* lhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(lhs->getDrawable()->getUserData());
-                float lhsPriority = lhsdata ? lhsdata->_priority : 0.0f;
-
-                const ScreenSpaceLayoutData* rhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(rhs->getDrawable()->getUserData());
-                float rhsPriority = rhsdata ? rhsdata->_priority : 0.0f;
-
-                float diff = lhsPriority - rhsPriority;
-
-                if ( diff != 0.0f )
-                    return diff > 0.0f;
-
-                // first fallback on depth:
-                diff = lhs->_depth - rhs->_depth;
-                if ( diff != 0.0f )
-                    return diff < 0.0f;
-
-                // then fallback on traversal order.
-#if OSG_VERSION_GREATER_THAN(3,6,0)
-                diff = float(lhs->_traversalOrderNumber) - float(rhs->_traversalOrderNumber);
-#else
-                diff = float(lhs->_traversalNumber) - float(rhs->_traversalNumber);
-#endif
-                return diff < 0.0f;
-            }
-        }
-    };
-
-    // Data structure shared across entire layout system.
-    struct ScreenSpaceLayoutContext : public osg::Referenced
-    {
-        ScreenSpaceLayoutOptions _options;
-        bool _debug;
-
-        ScreenSpaceLayoutContext()
-        {
-            _debug = (::getenv("OSGEARTH_DECLUTTER_DEBUG") != NULL);
-        }
-    };
-
-    // records information about each drawable.
-    // TODO: a way to clear out this list when drawables go away
-    struct DrawableInfo
-    {
-        DrawableInfo() : _lastAlpha(1.0f), _lastScale(1.0f), _frame(0u), _visible(true) { }
-        float _lastAlpha, _lastScale;
-        unsigned _frame;
-        bool _visible;
-    };
-
-    typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
-
-    typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
-
-    // Data structure stored one-per-View.
-    struct PerCamInfo
-    {
-        PerCamInfo() : _lastTimeStamp(0), _firstFrame(true) { }
-
-        // remembers the state of each drawable from the previous pass
-        DrawableMemory _memory;
-
-        // re-usable structures (to avoid unnecessary re-allocation)
-        osgUtil::RenderBin::RenderLeafList _passed;
-        osgUtil::RenderBin::RenderLeafList _failed;
-        std::vector<RenderLeafBox>         _used;
-
-        // time stamp of the previous pass, for calculating animation speed
-        osg::Timer_t _lastTimeStamp;
-        bool _firstFrame;
-        osg::Matrix _lastCamVPW;
-    };
-
-    static bool s_declutteringEnabledGlobally = true;
-
-    static const char* s_faderFS =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float " FADE_UNIFORM_NAME ";\n"
-        "void oe_declutter_apply_fade(inout vec4 color) { \n"
-        "    color.a *= " FADE_UNIFORM_NAME ";\n"
-        "}\n";
-}
 
 //----------------------------------------------------------------------------
 
@@ -216,6 +79,7 @@ ScreenSpaceLayoutOptions::getConfig() const
     return conf;
 }
 
+<<<<<<< HEAD
 //----------------------------------------------------------------------------
 
 
@@ -1615,6 +1479,8 @@ namespace
 }
 
 //----------------------------------------------------------------------------
+=======
+>>>>>>> 442a6e4c4... ScreenSpaceLayout: port callout impl from 3.0 branch and break out impls into separate files
 
 namespace
 {
@@ -1740,7 +1606,7 @@ ScreenSpaceLayout::deactivate(osg::StateSet* stateSet)
 void
 ScreenSpaceLayout::setDeclutteringEnabled(bool enabled)
 {
-    s_declutteringEnabledGlobally = enabled;
+    globallyEnabled = enabled;
 }
 
 void

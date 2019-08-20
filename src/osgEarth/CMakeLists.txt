@@ -182,6 +182,9 @@ SET(LIB_PUBLIC_HEADERS
     Revisioning
     SceneGraphCallback
     ScreenSpaceLayout
+    ScreenSpaceLayoutImpl
+    ScreenSpaceLayoutDeclutter    
+    ScreenSpaceLayoutCallout
     Shaders
     ShaderFactory
     ShaderGenerator

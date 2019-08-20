@@ -226,6 +226,9 @@ namespace osgEarth
          * reverting to the default behavior (which is to sort by distance from the camera).
          */
         static void clearSortFunctor();
+
+        // internal
+        static bool globallyEnabled;
     };
 
 } // namespace osgEarth

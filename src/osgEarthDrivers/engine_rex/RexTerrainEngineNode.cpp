@@ -187,6 +187,10 @@ _morphTerrainSupported(true)
 
     _terrain = new osg::Group();
     addChild(_terrain.get());
+
+    // force an update traversal in order to compute layer extents.
+    _cachedLayerExtentsComputeRequired = true;
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -576,6 +580,20 @@ RexTerrainEngineNode::dirtyState()
 }
 
 void
+RexTerrainEngineNode::cacheAllLayerExtentsInMapSRS()
+{
+    // Only call during update
+    LayerVector layers;
+    getMap()->getLayers(layers);
+    for(LayerVector::const_iterator i = layers.begin();
+        i != layers.end();
+        ++i)
+    {
+        cacheLayerExtentInMapSRS(i->get());
+    }
+}
+
+void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR)
@@ -586,6 +604,16 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             _terrain->accept(visitor);
             _renderModelUpdateRequired = false;
         }
+
+        // Called once on the first update pass to ensure that all existing
+        // layers have their extents cached properly
+        if (_cachedLayerExtentsComputeRequired)
+        {
+            cacheAllLayerExtentsInMapSRS();
+            _cachedLayerExtentsComputeRequired = false;
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
+
         TerrainEngineNode::traverse( nv );
     }
 

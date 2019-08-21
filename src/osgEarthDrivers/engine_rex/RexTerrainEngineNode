@@ -131,6 +131,9 @@ namespace osgEarth { namespace REX
         //! Adds a Layer to the cachedLayerExtents vector.
         void cacheLayerExtentInMapSRS(Layer* layer); 
 
+        //! Recompute all cached layer extents
+        void cacheAllLayerExtentsInMapSRS();
+
         //! computes the heightfield sample size required to match the vertices at the highest
         //! level of detail in rex if a tile key was requested at the given level of detail.
         unsigned int computeSampleSize(unsigned int levelOfDetail);
@@ -146,7 +149,8 @@ namespace osgEarth { namespace REX
         bool _morphTerrainSupported;
 
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
-        LayerExtentVector _cachedLayerExtents; 
+        LayerExtentVector _cachedLayerExtents;
+        bool _cachedLayerExtentsComputeRequired;
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles; // tiles in the scene graph.

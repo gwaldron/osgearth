@@ -1298,8 +1298,11 @@ RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
     // Store the layer's extent in the map's SRS:
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];
 
-    le._extent = layer->getExtent().transform(getMap()->getSRS());
-    le._computed = true;
+    if (!le._computed && getMap()->getProfile())
+    {
+        le._extent = getMap()->getProfile()->clampAndTransformExtent(layer->getExtent());
+        le._computed = true;
+    }
 }
 
 void

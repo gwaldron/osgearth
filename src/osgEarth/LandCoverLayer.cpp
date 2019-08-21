@@ -96,9 +96,7 @@ namespace
 
         void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
         {
-            if (sourceLayer->getEnabled() && 
-                //sourceLayer->isKeyInLegalRange(key) &&
-                sourceLayer->getDataExtentsUnion().intersects(key.getExtent()))
+            if (sourceLayer->getEnabled())
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {
@@ -275,13 +273,16 @@ namespace
                 else
                 {
                     // Transform the data extents to the layer profile
-                    GeoExtent ep = dei->transform(profile->getSRS());
-                    DataExtent de(ep);
-                    if (dei->minLevel().isSet())
-                        de.minLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->minLevel().get());
-                    if (dei->maxLevel().isSet())
-                        de.maxLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->maxLevel().get());
-                    combinedExtents.push_back(de);
+                    GeoExtent ep = profile->clampAndTransformExtent(*dei);
+                    if (ep.isValid())
+                    {
+                        DataExtent de(ep);
+                        if (dei->minLevel().isSet())
+                            de.minLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->minLevel().get());
+                        if (dei->maxLevel().isSet())
+                            de.maxLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->maxLevel().get());
+                        combinedExtents.push_back(de);
+                    }
                 }
             }
         }

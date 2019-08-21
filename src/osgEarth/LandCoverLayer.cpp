@@ -95,6 +95,8 @@ namespace
         {
             if (sourceLayer->getEnabled())
             {
+                ImageLayer* imageLayer = sourceLayer->getImageLayer();
+
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {
                     image = imageLayer->createImage(k, progress);
@@ -232,6 +234,8 @@ LandCoverLayer::open()
         }
     }
 
+    DataExtentList combinedExtents;
+
     // next attempt to open and incorporate the coverage layers:
     for(unsigned i=0; i<_coverageLayers.size(); ++i)
     {
@@ -259,24 +263,31 @@ LandCoverLayer::open()
                 {
                     if (!profile || dei->getSRS()->isHorizEquivalentTo(profile->getSRS()))
                     {
-                        dataExtents().push_back(*dei);
+                        combinedExtents.push_back(*dei);
                     }
                     else
                     {
                         // Transform the data extents to the layer profile
-                    GeoExtent ep = profile->clampAndTransformExtent(*dei);
-                    if (ep.isValid())
-                    {
-                        DataExtent de(ep);
-                        if (dei->minLevel().isSet())
-                            de.minLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->minLevel().get());
-                        if (dei->maxLevel().isSet())
-                            de.maxLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->maxLevel().get());
-                        dataExtents().push_back(de);
+                        GeoExtent ep = profile->clampAndTransformExtent(*dei);
+                        if (ep.isValid())
+                        {
+                            DataExtent de(ep);
+                            if (dei->minLevel().isSet())
+                                de.minLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->minLevel().get());
+                            if (dei->maxLevel().isSet())
+                                de.maxLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->maxLevel().get());
+                            combinedExtents.push_back(de);
+                        }
                     }
                 }
             }
         }
+    }
+
+    // ONLY set the data extents if every component coverage was able to report.
+    if (combinedExtents.size() == _coverageLayers.size())
+    {
+        dataExtents().swap(combinedExtents);
     }
 
     return ImageLayer::open();

@@ -99,7 +99,6 @@ namespace
             if (sourceLayer->getEnabled() && 
                 //sourceLayer->isKeyInLegalRange(key) &&
                 sourceLayer->getDataExtentsUnion().intersects(key.getExtent()))
-                //sourceLayer->mayHaveData(key)) // does not work here.
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {
@@ -126,7 +125,7 @@ namespace
                 // cannot interpolate coverage data:
                 read->setBilinear( false );
 
-                warp = sourceLayer->options().warp().get();
+                warp = sourceLayer->options().warp().get();                
 
                     //std::string s = key.str();
                     //osgDB::writeImageFile(*image.getImage(),Stringify()<<"out/"<<osgEarth::replaceIn(s,"/","_")<<".tif");

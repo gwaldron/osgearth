@@ -28,9 +28,9 @@ void user_intercept(in vec3 worldPosition, in vec3 localPosition, in vec4 eyePos
 }
 
 #if __VERSION__ > 140
-    out float oe_LogDepth_logz;
+    out float oe_LogDepth_clipz;
 #else
-    varying float oe_LogDepth_logz;
+    varying float oe_LogDepth_clipz;
 #endif
 uniform mat4 trit_projection;
 
@@ -46,12 +46,12 @@ vec4 overridePosition(in vec4 position)
     
         const float C = 0.001;
         float FC = 1.0/log(FAR*C + 1);
-        oe_LogDepth_logz = log(position.w*C + 1)*FC;
-        position.z = (2*oe_LogDepth_logz - 1)*position.w;
+        oe_LogDepth_clipz = log(position.w*C + 1)*FC;
+        position.z = (2*oe_LogDepth_clipz - 1)*position.w;
     }
     else
     {
-        oe_LogDepth_logz = -1;
+        oe_LogDepth_clipz = -1;
     }
     return position;
 }

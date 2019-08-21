@@ -856,7 +856,11 @@ GeoExtent::splitAcrossAntimeridian(GeoExtent& out_west, GeoExtent& out_east) con
 
 GeoExtent
 GeoExtent::transform(const SpatialReference* to_srs) const 
-{       
+{
+    // check for equivalence
+    if(getSRS()->isHorizEquivalentTo(to_srs))
+        return *this;
+
     //TODO: this may not work across the antimeridian - unit test required
     if ( isValid() && to_srs )
     {

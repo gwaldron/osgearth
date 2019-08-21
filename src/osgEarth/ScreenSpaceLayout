@@ -96,6 +96,11 @@ namespace osgEarth
     class OSGEARTH_EXPORT ScreenSpaceLayoutOptions : public ConfigOptions
     {
     public:
+        enum Technique {
+            TECHNIQUE_LABELS,
+            TECHNIQUE_CALLOUTS
+        };
+
         ScreenSpaceLayoutOptions( const ConfigOptions& co =ConfigOptions() )
             : ConfigOptions         ( co ),
               _minAnimAlpha         ( 0.35f ),
@@ -106,7 +111,9 @@ namespace osgEarth
               _sortByDistance       ( true ),
               _snapToPixel          ( false ),
               _maxObjects           ( INT_MAX ),
-              _renderBinNumber      ( 13 )
+              _renderBinNumber      ( 13 ),
+              _technique            ( TECHNIQUE_LABELS ),
+              _maxLeaderLen         ( 60 )
         {
             fromConfig(_conf);
         }
@@ -150,6 +157,14 @@ namespace osgEarth
         optional<int>& renderOrder() { return _renderBinNumber; }
         const optional<int>& renderOrder() const { return _renderBinNumber; }
 
+        //! Technique to use for drawing 
+        optional<Technique>& technique() { return _technique; }
+        const optional<Technique>& technique() const { return _technique; }
+
+        //! For callouts, the maximum length of a leader line in pixels
+        optional<float>& maxLeaderLength() { return _maxLeaderLen; }
+        const optional<float>& maxLeaderLength() const { return _maxLeaderLen; }
+
     public:
 
         Config getConfig() const;
@@ -164,6 +179,8 @@ namespace osgEarth
         optional<bool>     _snapToPixel;
         optional<unsigned> _maxObjects;
         optional<int>      _renderBinNumber;
+        optional<Technique> _technique;
+        optional<float> _maxLeaderLen;
 
         void fromConfig( const Config& conf );
     };
@@ -209,6 +226,9 @@ namespace osgEarth
          * reverting to the default behavior (which is to sort by distance from the camera).
          */
         static void clearSortFunctor();
+
+        // internal
+        static bool globallyEnabled;
     };
 
 } // namespace osgEarth

@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/Color>
 #include <osg/Drawable>
 #include <osgUtil/RenderLeaf>
 #include <limits.h>
@@ -113,7 +114,9 @@ namespace osgEarth
               _maxObjects           ( INT_MAX ),
               _renderBinNumber      ( 13 ),
               _technique            ( TECHNIQUE_LABELS ),
-              _maxLeaderLen         ( 60 )
+              _leaderLineMaxLen     ( 60 ),
+              _leaderLineColor      ( Color::White ),
+              _leaderLineWidth      ( 1.0f )
         {
             fromConfig(_conf);
         }
@@ -162,8 +165,16 @@ namespace osgEarth
         const optional<Technique>& technique() const { return _technique; }
 
         //! For callouts, the maximum length of a leader line in pixels
-        optional<float>& maxLeaderLength() { return _maxLeaderLen; }
-        const optional<float>& maxLeaderLength() const { return _maxLeaderLen; }
+        optional<float>& leaderLineMaxLength() { return _leaderLineMaxLen; }
+        const optional<float>& leaderLineMaxLength() const { return _leaderLineMaxLen; }
+
+        //! For callouts, the maximum length of a leader line in pixels
+        optional<Color>& leaderLineColor() { return _leaderLineColor; }
+        const optional<Color>& leaderLineColor() const { return _leaderLineColor; }
+
+        //! For callouts, the width of a leader line in pixels
+        optional<float>& leaderLineWidth() { return _leaderLineWidth; }
+        const optional<float>& leaderLineWidth() const { return _leaderLineWidth; }
 
     public:
 
@@ -180,7 +191,9 @@ namespace osgEarth
         optional<unsigned> _maxObjects;
         optional<int>      _renderBinNumber;
         optional<Technique> _technique;
-        optional<float> _maxLeaderLen;
+        optional<float>    _leaderLineMaxLen;
+        optional<Color>    _leaderLineColor;
+        optional<float>    _leaderLineWidth;
 
         void fromConfig( const Config& conf );
     };

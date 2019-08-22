@@ -144,13 +144,12 @@ namespace osgEarth { namespace Internal
         _frame(0), 
         _vpmChanged(true),
         _leadersDirty(false),
-        _leaderColor(1,1,0,1)
+        _leaderColor(1,1,1,1)
     {
         _leaders = new LineDrawable(GL_LINES);
         _leaders->setCullingActive(false);
         _leaders->setDataVariance(osg::Object::DYNAMIC);
-        _leaders->setColor(osg::Vec4f(1, 1, 1, 1));
-        _leaders->setLineWidth(1.5f);
+        _leaders->setColor(_leaderColor);
         _leaders->setLineSmooth(true);
         GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
     }
@@ -160,7 +159,7 @@ namespace osgEarth { namespace Internal
         _voronoi = new LineDrawable(GL_LINES);
         _voronoi->setCullingActive(false);
         _voronoi->setDataVariance(osg::Object::DYNAMIC);
-        _voronoi->setColor(osg::Vec4f(1, 0, 0, 0.75));
+        _voronoi->setColor(osg::Vec4f(1,0,0,1));
         _voronoi->setLineWidth(1.0f);
         GLUtils::setLighting(_voronoi->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
     }
@@ -233,7 +232,7 @@ namespace osgEarth { namespace Internal
 
         if (ScreenSpaceLayout::globallyEnabled)
         {
-            double leaderLen = osg::minimum((double)_context->_options.maxLeaderLength().get(), element._offsetLength);
+            double leaderLen = osg::minimum((double)_context->_options.leaderLineMaxLength().get(), element._offsetLength);
             pos = element._anchor + element._offsetVector*leaderLen;
         }
         else
@@ -266,8 +265,8 @@ namespace osgEarth { namespace Internal
             if (element._text)
             {
                 osg::Vec4f color =
-                    element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ?
-                    element._text->getBoundingBoxColor() :
+                    _context->_options.leaderLineColor().isSet() ? _context->_options.leaderLineColor().get() :
+                    element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ? element._text->getBoundingBoxColor() :
                     local._leaderColor;
 
                 local._leaders->setColor(element._leaderLineIndex, color);
@@ -408,6 +407,7 @@ namespace osgEarth { namespace Internal
 
         static osg::Vec4f invisible(1,0,0,0);
         local._leaders->setColor(invisible);
+        local._leaders->setLineWidth(_context->_options.leaderLineWidth().get());
 
         if (_context->_debug && !local._voronoi.valid() && ScreenSpaceLayout::globallyEnabled)
             local.initDebug();

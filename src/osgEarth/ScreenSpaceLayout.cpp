@@ -75,7 +75,7 @@ ScreenSpaceLayoutOptions::getConfig() const
     conf.set( "render_order",        _renderBinNumber );
     conf.set( "technique", "labels", _technique, TECHNIQUE_LABELS);
     conf.set( "technique", "callouts", _technique, TECHNIQUE_CALLOUTS);
-    conf.set("max_leader_length", _maxLeaderLen);
+    conf.set( "max_leader_length", _maxLeaderLen);
     return conf;
 }
 

@@ -51,8 +51,13 @@ namespace osgEarth { namespace Internal
     {
         struct BBox
         {
-            BBox() { }
-            BBox(const osg::BoundingBox& bbox);
+            BBox() : LL(DBL_MAX,DBL_MAX), UR(-DBL_MAX,-DBL_MAX) { }
+            void expandToInclude(double x, double y) {
+                LL.x() = osg::minimum(LL.x(), x);
+                UR.x() = osg::maximum(UR.x(), x);
+                LL.y() = osg::minimum(LL.y(), y);
+                UR.y() = osg::maximum(UR.y(), y);
+            }
             osg::Vec2d LL, UR;
         };
 
@@ -64,18 +69,13 @@ namespace osgEarth { namespace Internal
             osg::ref_ptr<osg::RefMatrix> _matrix;
             unsigned _frame;
             osg::Vec3d _anchor;
-            BBox _vpbbox;
-            BBox _leaderbbox;
             osg::Vec3d _offsetVector;
             double _offsetLength;
-            osg::Vec3d _bestVector;
             unsigned _leaderLineIndex;
-            jcv_point _lastPos;
 
             Element();
             bool operator < (const Element&) const; // comparator
             void move(float dir);
-            void realign();
         };
 
         typedef std::map<osg::Drawable*, Element> Elements;
@@ -115,20 +115,12 @@ namespace osgEarth { namespace Internal
         void sort(CameraLocal& local);
     };
 
-    CalloutImplementation::BBox::BBox(const osg::BoundingBox& bbox) :
-        LL(bbox.xMin(), bbox.yMin()),
-        UR(bbox.xMax(), bbox.yMax())
-    {
-        //nop
-    }
-
     CalloutImplementation::Element::Element() :
         _drawable(NULL),
         _text(NULL),
         _frame(0u),
         _leaderLineIndex(INT_MAX),
-        _offsetVector(0,1,0),
-        _bestVector(0,1,0)
+        _offsetVector(0,1,0)
     {
         //todo
     }
@@ -145,57 +137,7 @@ namespace osgEarth { namespace Internal
         const double rotation = osg::PI / 16; //1.7; //osg::PI / 32; //1.6;
         const osg::Quat q(dir*rotation, osg::Vec3d(0, 0, 1));
         _offsetVector = q * _offsetVector;
-        realign();        
-    }
-
-    void
-    CalloutImplementation::Element::realign()
-    {
-        if (!_text)
-        {
-            return;
-        }
-
-        if (_offsetVector.x() >= 0.5)
-        {
-            if (_offsetVector.y() >= 0.5)
-                _text->setAlignment(osgEarth::Text::LEFT_BOTTOM);
-            else if (_offsetVector.y() <= -0.5)
-                _text->setAlignment(osgEarth::Text::LEFT_TOP);
-            else
-                _text->setAlignment(osgEarth::Text::LEFT_CENTER);
-        }
-        else if (_offsetVector.x() <= -0.5)
-        {
-            if (_offsetVector.y() >= 0.5)
-                _text->setAlignment(osgEarth::Text::RIGHT_BOTTOM);
-            else if (_offsetVector.y() <= -0.5)
-                _text->setAlignment(osgEarth::Text::RIGHT_TOP);
-            else
-                _text->setAlignment(osgEarth::Text::RIGHT_CENTER);
-        }
-        else if (_offsetVector.y() >= 0.0)
-        {
-            _text->setAlignment(osgEarth::Text::CENTER_BOTTOM);
-        }
-        else if (_offsetVector.y() <= 0.0)
-        {
-            _text->setAlignment(osgEarth::Text::CENTER_TOP);
-        }
-
-        else if(_offsetVector.y() >= 0.0)
-        {
-            _text->setAlignment(osgEarth::Text::CENTER_BOTTOM);
-        }
-        else if (_offsetVector.y() <= 0.0)
-        {
-            _text->setAlignment(osgEarth::Text::CENTER_TOP);
-        }
-        else
-        {
-            _text->setAlignment(osgEarth::Text::CENTER_CENTER);
-        }
-    }
+    }   
 
     CalloutImplementation::CameraLocal::CameraLocal() :
         _camera(0), 
@@ -229,6 +171,12 @@ namespace osgEarth { namespace Internal
         _resetWhenViewChanges(false)
     {
         //nop
+    }
+
+    namespace {
+        inline float signOf(float x) {
+            return x<0.0f? -1.0f: x>0.0f? 1.0f : 0.0f;
+        }
     }
 
     void CalloutImplementation::push(osgUtil::RenderLeaf* leaf, CameraLocal& local)
@@ -266,15 +214,11 @@ namespace osgEarth { namespace Internal
         {
             element._offsetVector = element._anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
             element._offsetVector.normalize();
-            element._bestVector = element._offsetVector;
-            element.realign();
         }
         else if (_resetWhenViewChanges && local._vpmChanged)
         {
             element._offsetVector = element._anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
             element._offsetVector.normalize();
-            element._bestVector = element._offsetVector;
-            element.realign();
         }
 
         if (element._leaderLineIndex == INT_MAX)
@@ -297,11 +241,14 @@ namespace osgEarth { namespace Internal
             pos = element._anchor;
         }
 
-        const osg::BoundingBox& b = drawable->getBoundingBox();
-        element._vpbbox.LL.set(pos.x() + b.xMin(), pos.y() + b.yMin());
-        element._vpbbox.UR.set(pos.x() + b.xMax(), pos.y() + b.yMax());
+        // alignment of text relative to the leader line
+        const float margin = 5.0f;
+        osg::Vec3d alignment;
+        const osg::BoundingBox& bb = element._drawable->getBoundingBox();
+        alignment.x() = element._offsetVector.x() * 0.5*(bb.xMax()-bb.xMin()) + margin*signOf(element._offsetVector.x());
+        alignment.y() = element._offsetVector.y() * 0.5*(bb.yMax()-bb.yMin()) + margin*signOf(element._offsetVector.y());
 
-        leaf->_modelview->makeTranslate(pos);
+        leaf->_modelview->makeTranslate(pos + alignment);
 
         if (ScreenSpaceLayout::globallyEnabled)
         {
@@ -334,20 +281,10 @@ namespace osgEarth { namespace Internal
         if (local._elements.empty())
             return;
 
-        //if (local._camera)
-        //{
-        //    osg::Matrix VPM = local._camera->getViewMatrix() * local._camera->getProjectionMatrix();
-        //    local._vpmChanged = VPM != local._vpm;
-        //    local._vpm = VPM;
-        //}
-
         const osg::Viewport* vp = local._camera->getViewport();
 
         local._points.clear();
         local._lookup.clear();
-
-        // enable voronoi relaxation (LLoyd's algorithm)
-        bool relax = false; //local._vpmChanged;
 
         for (Elements::reverse_iterator i = local._elements.rbegin();
             i != local._elements.rend();
@@ -366,16 +303,9 @@ namespace osgEarth { namespace Internal
 
                     jcv_point& back = local._points.back();
 
-                    if (relax)
-                    {
-                        back.x = element._lastPos.x;
-                        back.y = element._lastPos.y;
-                    }
-                    else
-                    {
-                        back.x = element._anchor.x();
-                        back.y = element._anchor.y();
-                    }
+                    back.x = element._anchor.x();
+                    back.y = element._anchor.y();
+
                     local._lookup[back] = &element;
                 }
             }
@@ -406,28 +336,12 @@ namespace osgEarth { namespace Internal
             if (element)
             {
                 // find a "center location" of the site.
-                jcv_point centroid;
-                centroid.x = 0, centroid.y = 0;
-                double count = 0.0;
-
-                osg::BoundingSphered bs;
-
-                // in "relaxation" mode we are adjusting the voronoi cells each frame
-                // to equalize their sizes on screen.
-                if (relax)
-                {
-                    centroid = site->p;
-                    count = 1.0;
-                }
+                BBox bb;
 
                 const jcv_graphedge* edge = site->edges;
                 while(edge)
                 {
-                    bs.expandBy(osg::Vec3d(edge->pos[0].x, edge->pos[0].y, 0));
-
-                    centroid.x += edge->pos[0].x;
-                    centroid.y += edge->pos[1].y;
-                    count += 1.0;
+                    bb.expandToInclude(edge->pos[0].x, edge->pos[0].y);
 
                     if (local._voronoi.valid())
                     {
@@ -438,19 +352,14 @@ namespace osgEarth { namespace Internal
                     edge = edge->next;
                 }
 
-                centroid.x /= count;
-                centroid.y /= count;
+                osg::Vec3d centroid(
+                    bb.LL.x() + 0.5*(bb.UR.x()-bb.LL.x()),
+                    bb.LL.y() + 0.5*(bb.UR.y()-bb.LL.y()),
+                    0);
 
-                if (relax)
-                    element->_offsetVector = osg::Vec3d(centroid.x, centroid.y, 0.0) - element->_anchor;
-                else
-                    element->_offsetVector = bs.center() - element->_anchor;
-
+                element->_offsetVector = centroid - element->_anchor;
                 element->_offsetLength = element->_offsetVector.length();
-                element->_offsetVector.normalize();  
-                element->realign();
-
-                element->_lastPos = centroid;
+                element->_offsetVector.normalize();
             }
         }
         jcv_diagram_free(&diagram);
@@ -535,7 +444,7 @@ namespace osgEarth { namespace Internal
     }
 
 
-    /**.cpp
+    /**
     * Custom draw routine for our declutter render bin.
     */
     struct CalloutDraw : public osgUtil::RenderBin::DrawCallback

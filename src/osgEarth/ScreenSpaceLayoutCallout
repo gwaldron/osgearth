@@ -285,34 +285,47 @@ namespace osgEarth { namespace Internal
             local._leadersDirty = true;
         }
 
-        double leaderLen = osg::minimum((double)_context->_options.maxLeaderLength().get(), element._offsetLength);
-        osg::Vec3d pos = element._anchor + element._offsetVector*leaderLen;
+        osg::Vec3d pos;
+
+        if (ScreenSpaceLayout::globallyEnabled)
+        {
+            double leaderLen = osg::minimum((double)_context->_options.maxLeaderLength().get(), element._offsetLength);
+            pos = element._anchor + element._offsetVector*leaderLen;
+        }
+        else
+        {
+            pos = element._anchor;
+        }
+
         const osg::BoundingBox& b = drawable->getBoundingBox();
         element._vpbbox.LL.set(pos.x() + b.xMin(), pos.y() + b.yMin());
         element._vpbbox.UR.set(pos.x() + b.xMax(), pos.y() + b.yMax());
 
         leaf->_modelview->makeTranslate(pos);
 
-        // and update the leader line endpoints
-        if (element._anchor != local._leaders->getVertex(element._leaderLineIndex))
+        if (ScreenSpaceLayout::globallyEnabled)
         {
-            local._leaders->setVertex(element._leaderLineIndex, element._anchor);
-        }
-        if (pos != local._leaders->getVertex(element._leaderLineIndex + 1))
-        {
-            local._leaders->setVertex(element._leaderLineIndex + 1, pos);
-        }
+            // and update the leader line endpoints
+            if (element._anchor != local._leaders->getVertex(element._leaderLineIndex))
+            {
+                local._leaders->setVertex(element._leaderLineIndex, element._anchor);
+            }
+            if (pos != local._leaders->getVertex(element._leaderLineIndex + 1))
+            {
+                local._leaders->setVertex(element._leaderLineIndex + 1, pos);
+            }
 
-        // and update the colors of the leader line
-        if (element._text)
-        {
-            osg::Vec4f color =
-                element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ?
-                element._text->getBoundingBoxColor() :
-                local._leaderColor;
+            // and update the colors of the leader line
+            if (element._text)
+            {
+                osg::Vec4f color =
+                    element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ?
+                    element._text->getBoundingBoxColor() :
+                    local._leaderColor;
 
-            local._leaders->setColor(element._leaderLineIndex, color);
-            local._leaders->setColor(element._leaderLineIndex + 1, color);
+                local._leaders->setColor(element._leaderLineIndex, color);
+                local._leaders->setColor(element._leaderLineIndex + 1, color);
+            }
         }
     }
 
@@ -487,7 +500,7 @@ namespace osgEarth { namespace Internal
         static osg::Vec4f invisible(1,0,0,0);
         local._leaders->setColor(invisible);
 
-        if (_context->_debug && !local._voronoi.valid())
+        if (_context->_debug && !local._voronoi.valid() && ScreenSpaceLayout::globallyEnabled)
             local.initDebug();
 
         osg::GraphicsContext* gc = cam->getGraphicsContext();
@@ -506,7 +519,10 @@ namespace osgEarth { namespace Internal
             push(*i, local);
         }
 
-        sort(local);
+        if (ScreenSpaceLayout::globallyEnabled)
+        {
+            sort(local);
+        }
 
         // clear out the RenderLeaf pointers (since they change each frame)
         for (Elements::iterator i = local._elements.begin();
@@ -519,7 +535,7 @@ namespace osgEarth { namespace Internal
     }
 
 
-    /**
+    /**.cpp
     * Custom draw routine for our declutter render bin.
     */
     struct CalloutDraw : public osgUtil::RenderBin::DrawCallback
@@ -605,31 +621,35 @@ namespace osgEarth { namespace Internal
                 state.removeStateSet(insertStateSetPosition);
             }
 
-            // the leader lines
-            CalloutImplementation::CameraLocal& local = _sortCallback->_cameraLocal.get(renderInfo.getCurrentCamera());
-
-            if (local._leadersDirty)
+            if (ScreenSpaceLayout::globallyEnabled)
             {
-                local._leaders->dirty();
-                local._leadersDirty = false;
-            }
+                // the leader lines
+                CalloutImplementation::CameraLocal& local = _sortCallback->_cameraLocal.get(renderInfo.getCurrentCamera());
 
-            renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
+                if (local._leadersDirty)
+                {
+                    local._leaders->dirty();
+                    local._leadersDirty = false;
+                }
 
-            renderInfo.getState()->apply(local._leaders->getStateSet());
-            renderInfo.getState()->apply(local._leaders->getGPUStateSet());
-            glDepthFunc(GL_ALWAYS);
-            glDepthMask(GL_FALSE);
-            glEnable(GL_BLEND);
+                renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
 
-            if (renderInfo.getState()->getUseModelViewAndProjectionUniforms())
-                renderInfo.getState()->applyModelViewAndProjectionUniformsIfRequired();
+                renderInfo.getState()->apply(local._leaders->getStateSet());
+                renderInfo.getState()->apply(local._leaders->getGPUStateSet());
+                glDepthFunc(GL_ALWAYS);
+                glDepthMask(GL_FALSE);
+                glEnable(GL_BLEND);
 
-            local._leaders->draw(renderInfo);
+                if (renderInfo.getState()->getUseModelViewAndProjectionUniforms())
+                    renderInfo.getState()->applyModelViewAndProjectionUniformsIfRequired();
 
-            if (local._voronoi.valid())
-            {
-                local._voronoi->draw(renderInfo);
+                local._leaders->draw(renderInfo);
+
+                // the debug diagram
+                if (local._voronoi.valid())
+                {
+                    local._voronoi->draw(renderInfo);
+                }
             }
         }
 

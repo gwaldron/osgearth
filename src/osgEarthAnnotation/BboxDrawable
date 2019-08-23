@@ -26,10 +26,13 @@
 #include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarthAnnotation/Common>
 
+#include <osg/BoundingBox>
 #include <osg/Geometry>
 
 namespace osgEarth { namespace Annotation
-{	
+{
+    using namespace osgEarth::Symbology;
+
     /**
      * Drawable for rendering bounding box around label
      */

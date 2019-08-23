@@ -31,6 +31,11 @@
 #define JCV_FLT_MAX 1.7976931348623157E+308
 #include "jc_voronoi.h"
 
+// whether to use the rotated axis-aligned bounding box method for
+// calculating a Voronoi site centroid (as opposed to a simple centroid)
+#define USE_ROTATED_AABB_CENTROID_METHOD 1
+
+
 namespace osgEarth { namespace Internal
 {
     using namespace osgEarth;
@@ -306,8 +311,7 @@ namespace osgEarth { namespace Internal
         }
 
         // Use a Voronoi diagram to find the best location for each callout.
-        // Use the centroid of the point's site as the label location. 
-        // The text alignment will alter this somewhat .. think about that later.
+        // Use the "visual center" of the point's site as the label location.
         jcv_diagram diagram;
         ::memset(&diagram, 0, sizeof(jcv_diagram));
         jcv_rect bounds;
@@ -321,6 +325,10 @@ namespace osgEarth { namespace Internal
             local._voronoi->clear();
         }
 
+#ifdef USE_ROTATED_AABB_CENTROID_METHOD
+        osg::Quat q;
+#endif
+
         const jcv_site* sites = jcv_diagram_get_sites(&diagram);
         for(int i=0; i<diagram.numsites; ++i)
         {
@@ -329,7 +337,64 @@ namespace osgEarth { namespace Internal
             Element* element = local._lookup[site->p];
             if (element)
             {
-                // find a "center location" of the site.
+#ifdef USE_ROTATED_AABB_CENTROID_METHOD
+                // This centroid-finding method calculates an axis-aligned bounding box formed by
+                // first rotating the site so that its longest edge is axis-aligned. This seems to
+                // provide a better centroid in some cases, esp for trianglar sites.
+
+                // first find the longest edge in the site:
+                const jcv_graphedge* edge = NULL;
+                const jcv_graphedge* longestEdge = NULL;
+
+                jcv_real maxLen2 = 0;
+                for(edge = site->edges; edge; edge = edge->next)
+                {
+                    jcv_real dx = edge->pos[1].x - edge->pos[0].x;
+                    jcv_real dy = edge->pos[1].y - edge->pos[1].y;
+                    jcv_real len2 = dx*dx + dy*dy;
+                    if (len2 > maxLen2)
+                    {
+                        maxLen2 = len2;
+                        longestEdge = edge;
+                    }
+                }
+
+                // now compute a rotation that transforms the longest edge so that 
+                // it is parallel with x=0
+                osg::Vec3d v(longestEdge->pos[1].x-longestEdge->pos[0].x, longestEdge->pos[1].y-longestEdge->pos[0].y, 0);
+                q.makeRotate(v, osg::Vec3d(0,1,0));
+
+                // now calculate an axis-aligned bounding box for the rotated site:
+                BBox bb;
+                const jcv_graphedge* lastEdge = NULL;
+                osg::Vec3d p0, p1;
+                for(edge = site->edges; edge; edge = edge->next)
+                {
+                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);                    
+                    p1.set(edge->pos[1].x, edge->pos[1].y, 0);
+
+                    if (local._voronoi.valid())
+                    {
+                        local._voronoi->pushVertex(p0);
+                        local._voronoi->pushVertex(p1);
+                    }
+
+                    // rotate the point into the aabb frame and incorporate it
+                    // into the bounding box.
+                    p0 = q*p0;
+                    bb.expandToInclude(p0.x(), p0.y());
+                }
+
+                // finally take the centroid and transform it back into the original frame:
+                osg::Vec3d centroid(
+                    bb.LL.x() + 0.5*(bb.UR.x()-bb.LL.x()),
+                    bb.LL.y() + 0.5*(bb.UR.y()-bb.LL.y()),
+                    0);
+                
+                centroid = q.inverse()*centroid;
+
+#else
+                // This centroid-finding method is the typical bounding-box centroid.
                 BBox bb;
 
                 const jcv_graphedge* edge = site->edges;
@@ -350,6 +415,7 @@ namespace osgEarth { namespace Internal
                     bb.LL.x() + 0.5*(bb.UR.x()-bb.LL.x()),
                     bb.LL.y() + 0.5*(bb.UR.y()-bb.LL.y()),
                     0);
+#endif
 
                 element->_offsetVector = centroid - element->_anchor;
                 element->_offsetLength = element->_offsetVector.length();

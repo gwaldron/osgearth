@@ -81,6 +81,7 @@ SET(LIB_PUBLIC_HEADERS
     Clamping
     ClampableNode
     ClampingTechnique
+    Color
     ColorFilter
     Common
     CompositeTileSource
@@ -267,6 +268,7 @@ set(TARGET_SRC
     Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
+    Color.cpp
     ColorFilter.cpp
     CompositeTileSource.cpp
     Config.cpp

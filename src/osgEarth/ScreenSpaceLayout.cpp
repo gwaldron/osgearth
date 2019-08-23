@@ -57,7 +57,10 @@ ScreenSpaceLayoutOptions::fromConfig( const Config& conf )
     conf.get( "render_order",        _renderBinNumber );
     conf.get( "technique", "labels", _technique, TECHNIQUE_LABELS );
     conf.get( "technique", "callouts", _technique, TECHNIQUE_CALLOUTS );
-    conf.get( "max_leader_length", _maxLeaderLen );
+    conf.get( "max_leader_length", _leaderLineMaxLen ); // backwards compat
+    conf.get( "leader_line_max_length", _leaderLineMaxLen );
+    conf.get( "leader_line_color", _leaderLineColor );
+    conf.get( "leader_line_width", _leaderLineWidth );
 }
 
 Config
@@ -75,7 +78,9 @@ ScreenSpaceLayoutOptions::getConfig() const
     conf.set( "render_order",        _renderBinNumber );
     conf.set( "technique", "labels", _technique, TECHNIQUE_LABELS);
     conf.set( "technique", "callouts", _technique, TECHNIQUE_CALLOUTS);
-    conf.set("max_leader_length", _maxLeaderLen);
+    conf.set( "leader_line_max_length", _leaderLineMaxLen );
+    conf.set( "leader_line_color", _leaderLineColor );
+    conf.set( "leader_line_width", _leaderLineWidth );
     return conf;
 }
 

@@ -228,29 +228,20 @@ namespace osgEarth { namespace Internal
             local._leadersDirty = true;
         }
 
-        osg::Vec3d pos;
-
         if (ScreenSpaceLayout::globallyEnabled)
         {
             double leaderLen = osg::minimum((double)_context->_options.leaderLineMaxLength().get(), element._offsetLength);
-            pos = element._anchor + element._offsetVector*leaderLen;
-        }
-        else
-        {
-            pos = element._anchor;
-        }
+            osg::Vec3d pos = element._anchor + element._offsetVector*leaderLen;
 
-        // alignment of text relative to the leader line
-        const float margin = 5.0f;
-        osg::Vec3d alignment;
-        const osg::BoundingBox& bb = element._drawable->getBoundingBox();
-        alignment.x() = element._offsetVector.x() * 0.5*(bb.xMax()-bb.xMin()) + margin*signOf(element._offsetVector.x());
-        alignment.y() = element._offsetVector.y() * 0.5*(bb.yMax()-bb.yMin()) + margin*signOf(element._offsetVector.y());
+            // alignment of text relative to the leader line
+            const float margin = 5.0f;
+            osg::Vec3d alignment;
+            const osg::BoundingBox& bb = element._drawable->getBoundingBox();
+            alignment.x() = element._offsetVector.x() * 0.5*(bb.xMax()-bb.xMin()) + margin*signOf(element._offsetVector.x());
+            alignment.y() = element._offsetVector.y() * 0.5*(bb.yMax()-bb.yMin()) + margin*signOf(element._offsetVector.y());
 
-        leaf->_modelview->makeTranslate(pos + alignment);
+            leaf->_modelview->makeTranslate(pos + alignment);
 
-        if (ScreenSpaceLayout::globallyEnabled)
-        {
             // and update the leader line endpoints
             if (element._anchor != local._leaders->getVertex(element._leaderLineIndex))
             {
@@ -272,6 +263,10 @@ namespace osgEarth { namespace Internal
                 local._leaders->setColor(element._leaderLineIndex, color);
                 local._leaders->setColor(element._leaderLineIndex + 1, color);
             }
+        }
+        else
+        {
+            leaf->_modelview->makeTranslate(element._anchor);
         }
     }
 

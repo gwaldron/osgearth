@@ -101,7 +101,7 @@ namespace osgEarth { namespace Support
         {
             if (getNumChildren() > 0)
             {
-                osg::releaseGLObjects(getChild(0));
+                getChild(0)->releaseGLObjects();
                 removeChild(0, 1);
                 _needy = true;
             }

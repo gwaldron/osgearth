@@ -24,7 +24,7 @@
 
 namespace osgEarth { namespace Symbology
 {
-    typedef osgEarth::Color Color;
+    using osgEarth::Color;
 } }
 
 #endif // OSGEARTHSYMBOLOGY_COLOR_H

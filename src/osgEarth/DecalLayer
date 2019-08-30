@@ -1,0 +1,111 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DECAL_LAYER
+#define OSGEARTH_DECAL_LAYER 1
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/TileRasterizer>
+#include <osg/Image>
+
+namespace osgEarth {
+    class Profile;
+}
+
+namespace osgEarth { namespace Contrib
+{
+    class OSGEARTH_EXPORT DecalLayer : public osgEarth::ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, DecalLayer, Options, osgEarth::ImageLayer, Decal);
+
+        //! Adds a decal to the layer.
+        void addDecal(const GeoExtent& extent, const osg::Image* image);
+
+    public: // ImageLayer
+
+        //! Opens the layer and returns a status
+        virtual const Status& open();
+
+        //! Creates a texture for a tile key
+        virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const;
+
+        //! Called by Map when it adds this layer
+        virtual void addedToMap(const class Map*);
+
+        //! Called by Map when it removes this layer
+        virtual void removedFromMap(const class Map*);
+
+        //! A node to add to the scene graph for this layer.
+        virtual osg::Node* getNode() const;
+
+        //! Release GL resources
+        virtual void releaseGLObjects(osg::State* state) const;
+
+        //! Resize GL resources
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        virtual ~DecalLayer() { }
+
+    private:
+        // rasterizes geometry into a texture
+        osg::ref_ptr<TileRasterizer> _rasterizer;
+
+        struct Decal {
+            GeoExtent _extent;
+            osg::ref_ptr<const osg::Image> _image;
+        };
+        std::vector<Decal> _decals;
+        
+        // lookup table of existing tile textures
+        typedef std::map<TileKey, osg::ref_ptr<osg::Texture2D> > TileTable;
+        mutable TileTable _tiles;
+
+        osg::ref_ptr<osg::Image> _placeholder;
+
+        // controls access to both _decals and _textures
+        mutable Threading::Mutex _mutex;
+
+        // builds a simple quad mesh for rasterizing a decal
+        osg::Node* buildMesh(const GeoExtent&, const osg::Image*) const;
+
+        // queues (or re-queues) a tile for rasterization
+        void updateTexture(const TileKey& key, osg::Texture2D* tex) const;
+    };
+
+} } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalLayer::Options);
+
+#endif // OSGEARTH_DECAL_LAYER

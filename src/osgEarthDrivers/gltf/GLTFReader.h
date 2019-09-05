@@ -134,7 +134,7 @@ public:
 
     osg::Node* makeMesh(const tinygltf::Model &model, const tinygltf::Mesh& mesh) const
     {
-        osg::Group *group = new osg::Group;
+        osg::ref_ptr<osg::Group> group = new osg::Group;
 
         std::vector< osg::ref_ptr< osg::Array > > arrays;
         extractArrays(model, arrays);

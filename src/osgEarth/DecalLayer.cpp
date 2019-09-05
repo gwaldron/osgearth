@@ -48,6 +48,8 @@ namespace
         "uniform sampler2D tex; \n"
         "void main() { \n"
         "    output = texture(tex, texcoords); \n"
+        "    output.x = texture(tex, texcoords + dFdx(texcoords)).a; \n"
+        "    output.y = texture(tex, texcoords + dFdy(texcoords)).a; \n"
         "} \n";
 }
 
@@ -84,7 +86,8 @@ DecalLayer::init()
         setName("Decal");
 
     // Create a rasterizer for rendering nodes to images.
-    _rasterizer = new TileRasterizer(); 
+    _rasterizer = new TileRasterizer();
+    //_rasterizer->setClearColor(osg::Vec4f(0.5f, 0.5f, 0.0f, 0.0f));
 
     // Configure a base stateset for the rasterizer:
     osg::StateSet* rasterizerSS = _rasterizer->getOrCreateStateSet();
@@ -95,6 +98,7 @@ DecalLayer::init()
     program->addShader(new osg::Shader(osg::Shader::FRAGMENT, fs));
     rasterizerSS->setAttribute(program);
 
+#if 0 // blending is great for textures, bad for elevation deltas!!
     // Use normal RGB blending:
     osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     rasterizerSS->setAttributeAndModes(blendFunc);
@@ -102,6 +106,7 @@ DecalLayer::init()
     // Use MAX blending for the alpha channel:
     osg::BlendEquation* blendEquation = new osg::BlendEquation(osg::BlendEquation::FUNC_ADD, osg::BlendEquation::RGBA_MAX);
     rasterizerSS->setAttributeAndModes(blendEquation);
+#endif
 
     // Create a placeholder image to display before rasterization is complete
     _placeholder = ImageUtils::createEmptyImage();
@@ -329,6 +334,7 @@ DecalLayer::buildMesh(const GeoExtent& extent, const osg::Image* image) const
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    tex->setMaxAnisotropy(1.0f);
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setUnRefImageDataAfterApply(false);
 

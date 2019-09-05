@@ -28,6 +28,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
 #include <osgEarth/DecalLayer>
+#include <osgEarth/ImageUtils>
 #include <iostream>
 
 #define LC "[decal] "
@@ -54,6 +55,7 @@ struct App
 
     App()
     {
+        //_image = osgDB::readRefImageFile("../data/circle_gradient_2.png");
         _image = osgDB::readRefImageFile("../data/burn.png");
         if ( !_image.valid())
         {

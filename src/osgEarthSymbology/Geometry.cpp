@@ -216,11 +216,9 @@ Geometry::buffer(double distance,
         {
             output = gc.exportGeometry( outGeom );
             gc.disposeGeometry( outGeom );
-            delete outGeom;
         }
 
         gc.disposeGeometry( inGeom );
-        delete inGeom;
     }
 
     return output.valid();
@@ -295,15 +293,12 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
             }
 
             gc.disposeGeometry( outGeom );
-            delete outGeom;
         }
     }
 
     //Destroy the geometry
     gc.disposeGeometry( cropGeom );
-    delete cropGeom;
     gc.disposeGeometry( inGeom );
-    delete inGeom;
 
     return success;
 
@@ -482,9 +477,7 @@ Geometry::intersects(
 
     //Destroy the geometry
     gc.disposeGeometry( otherGeom );
-    delete otherGeom;
     gc.disposeGeometry( inGeom );
-    delete inGeom;
 
     return intersects;
 

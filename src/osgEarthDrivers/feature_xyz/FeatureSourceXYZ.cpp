@@ -62,7 +62,9 @@ class XYZFeatureSource : public FeatureSource
 public:
     XYZFeatureSource(const XYZFeatureOptions& options ) :
       FeatureSource( options ),
-          _options     ( options )      
+      _options     ( options ),
+      _rotateStart ( 0 ),
+      _rotateEnd   ( 0 )
       {                
       }
 

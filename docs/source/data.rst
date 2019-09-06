@@ -156,7 +156,7 @@ Tips for Preparing your own Data
 
     This will load each of the data sources in the earth file 
     (``file.earth`` in this case) and generate a TMS repository for each under the
-    folder ``output_folder``. You can also specify options:
+    folder ``output_folder``. You can also specify options::
     
         --out path                          Root output folder of the TMS repo
         --ext extension                     Output file extension
@@ -177,3 +177,5 @@ Tips for Preparing your own Data
         ogrinfo -sql "CREATE SPATIAL INDEX ON myfile" myfile.shp
 
     For shapefiles, this will generate a ".qix" file that contains the spatial index information.
+    Note! If you edit the shapefile, you will need to delete and regenerate the spatial index.
+    

@@ -5,43 +5,48 @@
 # GEOS_FOUND, if false, do not try to link to geos
 # GEOS_INCLUDE_DIR, where to find the headers
 
+SET(GEOS_DIR "" CACHE PATH "Root directory of GEOS distribution")
+
 FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
-  $ENV{GEOS_DIR}
+  PATHS
+    ${GEOS_DIR}
+    $ENV{GEOS_DIR}
   NO_DEFAULT_PATH
-    PATH_SUFFIXES include
+  PATH_SUFFIXES include
 )
 
 FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
   PATHS
-  /usr/local/include/geos
-  /usr/local/include/GEOS
-  /usr/local/include
-  /usr/include/geos
-  /usr/include/GEOS
-  /usr/include
-  ~/Library/Frameworks/geos/Headers
-  /Library/Frameworks/geos/Headers
-  /sw/include/geos 
-  /sw/include/GEOS 
-  /sw/include # Fink
-  /opt/local/include/geos
-  /opt/local/include/GEOS
-  /opt/local/include # DarwinPorts
-  /opt/csw/include/geos
-  /opt/csw/include/GEOS
-  /opt/csw/include # Blastwave
-  /opt/include/geos
-  /opt/include/GEOS
-  /opt/include
-  e:/devel/geos-3.1.1/source/headers
+    /usr/local/include/geos
+    /usr/local/include/GEOS
+    /usr/local/include
+    /usr/include/geos
+    /usr/include/GEOS
+    /usr/include
+    ~/Library/Frameworks/geos/Headers
+    /Library/Frameworks/geos/Headers
+    /sw/include/geos 
+    /sw/include/GEOS 
+    /sw/include # Fink
+    /opt/local/include/geos
+    /opt/local/include/GEOS
+    /opt/local/include # DarwinPorts
+    /opt/csw/include/geos
+    /opt/csw/include/GEOS
+    /opt/csw/include # Blastwave
+    /opt/include/geos
+    /opt/include/GEOS
+    /opt/include
+    e:/devel/geos-3.1.1/source/headers
 )
 
 FIND_LIBRARY(GEOS_LIBRARY
   NAMES geos
-  PATHS
+  PATHS  
+    ${GEOS_DIR}/lib
     $ENV{GEOS_DIR}
-    NO_DEFAULT_PATH
-    PATH_SUFFIXES lib64 lib
+  NO_DEFAULT_PATH
+  PATH_SUFFIXES lib64 lib
 )
 
 FIND_LIBRARY(GEOS_LIBRARY
@@ -59,17 +64,17 @@ FIND_LIBRARY(GEOS_LIBRARY
   PATH_SUFFIXES lib64 lib
 )
 
-
 FIND_LIBRARY(GEOS_LIBRARY_DEBUG
-  NAMES geod_d geos_i_d geosd
+  NAMES geos_d geos_i_d geosd
   PATHS
+    ${GEOS_DIR}/lib
     $ENV{GEOS_DIR}
-    NO_DEFAULT_PATH
-    PATH_SUFFIXES lib64 lib
+  NO_DEFAULT_PATH
+  PATH_SUFFIXES lib64 lib
 )
 
 FIND_LIBRARY(GEOS_LIBRARY_DEBUG
-  NAMES geod_d geos_i_d geosd
+  NAMES geos_d geos_i_d geosd
   PATHS
     ~/Library/Frameworks
     /Library/Frameworks

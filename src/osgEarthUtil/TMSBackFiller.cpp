@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/TMSBackFiller>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageMosaic>
 
@@ -134,8 +133,9 @@ std::string TMSBackFiller::getFilename( const TileKey& key )
 
 osg::Image* TMSBackFiller::readTile( const TileKey& key )
 {
-    std::string filename = getFilename( key );        
-    return osgDB::readImageFile( filename );        
+    std::string filename = getFilename( key );
+    osg::ref_ptr< osg::Image> image = osgDB::readRefImageFile( filename );
+    return image.release();
 }
 
 void TMSBackFiller::writeTile( const TileKey& key, osg::Image* image )

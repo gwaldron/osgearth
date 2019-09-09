@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -339,7 +339,7 @@ NumericExpression::eval() const
                 {
                     double op2 = s.top(); s.pop();
                     double op1 = s.top(); s.pop();
-                    s.push( std::min(op1, op2) );
+                    s.push( osg::minimum(op1, op2) );
                 }
             }
             else if ( a.first == MAX )
@@ -348,7 +348,7 @@ NumericExpression::eval() const
                 {
                     double op2 = s.top(); s.pop();
                     double op1 = s.top(); s.pop();
-                    s.push( std::max(op1, op2) );
+                    s.push( osg::maximum(op1, op2) );
                 }
             }
             else // OPERAND or VARIABLE

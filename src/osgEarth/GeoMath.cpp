@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,8 +84,8 @@ GeoMath::greatCircleMinMaxLatitude(double lat1Rad, double lon1Rad,
                                    double lat2Rad, double lon2Rad,
                                    double& out_minLatRad, double& out_maxLatRad)
 {
-    out_minLatRad = std::min(lat1Rad, lat2Rad);
-    out_maxLatRad = std::max(lat1Rad, lat2Rad);
+    out_minLatRad = osg::minimum(lat1Rad, lat2Rad);
+    out_maxLatRad = osg::maximum(lat1Rad, lat2Rad);
 
     // apply some spherical trig
     // http://en.wikipedia.org/wiki/Spherical_trigonometry
@@ -102,20 +102,20 @@ GeoMath::greatCircleMinMaxLatitude(double lat1Rad, double lon1Rad,
 
     double B = osg::PI_2 - lat1Rad;                       // angle between p1 and the pole
     if ( a < osg::PI_2 && b < osg::PI_2 )
-        out_maxLatRad = std::max( out_maxLatRad, osg::PI_2 - asin(sin(B)*sin(a)) );
+        out_maxLatRad = osg::maximum( out_maxLatRad, osg::PI_2 - asin(sin(B)*sin(a)) );
     //out_maxLatRad = a < osg::PI_2 && b < osg::PI_2 ? 
     //    osg::PI_2 - asin( sin(B)*sin(a) ) : 
-    //    std::max(lat1Rad,lat2Rad);
+    //    osg::maximum(lat1Rad,lat2Rad);
 
     // flip over to the triangle formed by the south pole:
     a = osg::PI - a, b = osg::PI - b;
     B = osg::PI - B; //lat1Rad - (-osg::PI_2);
 
     if ( a < osg::PI_2 && b < osg::PI_2 )
-        out_minLatRad = std::min( out_minLatRad, -osg::PI_2 + asin(sin(B)*sin(a)) );
+        out_minLatRad = osg::minimum( out_minLatRad, -osg::PI_2 + asin(sin(B)*sin(a)) );
     //out_minLatRad = a < osg::PI_2 && b < osg::PI_2 ? 
     //    osg::PI_2 - asin( sin(B)*sin(a) ) :
-    //    std::min(lat1Rad,lat2Rad);
+    //    osg::minimum(lat1Rad,lat2Rad);
 
     //OE_INFO 
     //    << "a = " << osg::RadiansToDegrees(a)
@@ -156,33 +156,6 @@ GeoMath::destination(double lat1Rad, double lon1Rad,
                        cos(lat1Rad)*sin(dR)*cos(bearingRad) );
     out_lonRad = lon1Rad + atan2(sin(bearingRad)*sin(dR)*cos(lat1Rad), 
                                  cos(dR)-sin(lat1Rad)*sin(out_latRad));
-}
-
-void
-GeoMath::interpolate(double lat1Rad, double lon1Rad,
-                     double lat2Rad, double lon2Rad,
-                     double t,
-                     double& out_latRad, double& out_lonRad)
-{
-    static osg::EllipsoidModel em; // questionable. make non-static?
-
-    osg::Vec3d v0, v1;
-
-    em.convertLatLongHeightToXYZ(lat1Rad, lon1Rad, 0, v0.x(), v0.y(), v0.z());
-    double r0 = v0.length();
-    v0.normalize();
-    em.convertLatLongHeightToXYZ(lat2Rad, lon2Rad, 0, v1.x(), v1.y(), v1.z());
-    double r1 = v1.length();
-    v1.normalize();
-
-    osg::Vec3d axis = v0 ^ v1;
-    double angle = acos( v0 * v1 );
-    osg::Quat q( angle * t, axis );
-
-    v0 = (q * v0) * 0.5*(r0 + r1);
-
-    double dummy;
-    em.convertXYZToLatLongHeight( v0.x(), v0.y(), v0.z(), out_latRad, out_lonRad, dummy );
 }
 
 double

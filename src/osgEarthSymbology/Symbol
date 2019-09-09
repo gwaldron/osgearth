@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -41,7 +41,7 @@ namespace osgEarth { namespace Symbology
         optional<StringExpression>& script() { return _script; }
         const optional<StringExpression>& script() const { return _script; }
 
-        /** URI context (relative paths, etc) associated wtih this symbol */
+        /** URI context (relative paths, etc) associated with this symbol */
         const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const;   

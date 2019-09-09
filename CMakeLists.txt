@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6.4 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
 
 if(COMMAND cmake_policy)
     # Works around warnings libraries linked against that don't
@@ -8,19 +8,13 @@ if(COMMAND cmake_policy)
     # Works around warnings about escaped quotes in ADD_DEFINITIONS
     # statements.
     cmake_policy(SET CMP0005 OLD)
-    
-    
-    IF(COMMAND cmake_policy)
-            IF(${CMAKE_MAJOR_VERSION} GREATER 2)
-                # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
-                cmake_policy(SET CMP0043 NEW)
-            ENDIF()
-    ENDIF()
 
-    # disable autolinking to qtmain as we have our own main() functions (new in Qt 5.1)
-    if(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)
-        cmake_policy(SET CMP0020 OLD)
-    endif(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)
+    # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
+    cmake_policy(SET CMP0043 NEW)
+
+    # Double colon in target name means IMPORTED (and not ALIAS or IMPORTED).
+    # Fixes a warning when cache_rocksdb links to target "RocksDB::rocksdb"
+    cmake_policy(SET CMP0028 NEW)
 endif(COMMAND cmake_policy)
 
 #
@@ -32,8 +26,8 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 8)
-SET(OSGEARTH_PATCH_VERSION 0)
+SET(OSGEARTH_MINOR_VERSION 10)
+SET(OSGEARTH_PATCH_VERSION 2)
 SET(OSGEARTH_SOVERSION     0)
 
 SET(OSGEARTH_PLUGIN_PREFIX "")
@@ -59,6 +53,12 @@ SET(OpenThreads_SOURCE_DIR ${OSGEARTH_SOURCE_DIR})
 # Good place to look for the OSG 3rd party libs
 SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
 
+IF(THIRD_PARTY_DIR)
+    LIST(APPEND CMAKE_INCLUDE_PATH ${THIRD_PARTY_DIR}/include)
+    LIST(APPEND CMAKE_LIBRARY_PATH ${THIRD_PARTY_DIR}/lib)
+    MESSAGE(STATUS "CMAKE_INCLUDE_PATH=${CMAKE_INCLUDE_PATH}")
+ENDIF(THIRD_PARTY_DIR)
+
 # We have some custom .cmake scripts not in the official distribution.
 # Maybe this can be used override existing behavior if needed?
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
@@ -70,33 +70,41 @@ IF (OSGEARTH_EMBED_GIT_SHA)
   get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
-# IPHONE_PORT@tom
-# Trying to get CMake to generate an XCode IPhone project, current efforts are to get iphoneos sdk 3.1 working
-# Added option which needs manually setting to select the IPhone SDK for building. We can only have one of the below 
-# set to true. Should realy have an OSG_BUILD_PLATFORM variable that we set to our desired platform
-OPTION(OSG_BUILD_PLATFORM_IPHONE "Enable IPhoneSDK Device support" OFF)
-OPTION(OSG_BUILD_PLATFORM_IPHONE_SIMULATOR "Enable IPhoneSDK Simulator support" OFF)
-IF(OSG_BUILD_PLATFORM_IPHONE OR OSG_BUILD_PLATFORM_IPHONE_SIMULATOR)
-  
-  #you need to manually set the default sdk version here
-  SET (IPHONE_SDKVER "6.1")
-  #the below is taken from ogre, it states the gcc stuff needs to happen before PROJECT() is called. I've no clue if we even need it
-  # Force gcc <= 4.2 on iPhone
-  include(CMakeForceCompiler)
-  CMAKE_FORCE_C_COMPILER(llvm-gcc-4.2 GNU)
-  CMAKE_FORCE_CXX_COMPILER(llvm-gcc-4.2 GNU)
-  SET(GCC_THUMB_SUPPORT NO)
+#
+SET(OSGEARTH_USE_GLES FALSE)
 
-        #set either the device sdk or the simulator sdk. Can't find away to separate these in the same project
-        IF(OSG_BUILD_PLATFORM_IPHONE)
-            SET (IPHONE_DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer")
-            SET (IPHONE_SDKROOT "${IPHONE_DEVROOT}/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk")
-        ELSE()
-            SET (IPHONE_DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer")
-            SET (IPHONE_SDKROOT "${IPHONE_DEVROOT}/SDKs/iPhoneSimulator${IPHONE_SDKVER}.sdk")
-        ENDIF()
+# check for iOS build
+OPTION(OSGEARTH_BUILD_PLATFORM_IPHONE "Enable IPhoneSDK Device support" OFF)
+
+IF(OSGEARTH_BUILD_PLATFORM_IPHONE)
+
+    SET(OSGEARTH_USE_GLES TRUE)
+
+    # set sdk and min versions
+    SET (IPHONE_SDKVER "10.2" CACHE STRING "IOS SDK-Version")
+    SET (IPHONE_VERSION_MIN "7.0" CACHE STRING "IOS minimum os version, use 7.0 or greater to get 64bit support")
+
+    # get full path to sdk from requested versions
+    SET (IPHONE_DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer")
+    SET (IPHONE_SDKROOT "${IPHONE_DEVROOT}/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk")
+
+    # optionally enable bitcode for the build
+    SET (IPHONE_ENABLE_BITCODE "NO" CACHE STRING "IOS Enable Bitcode")
+
+    # seamless toggle between device and simulator
+    SET(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos;-iphonesimulator")
+
+    # set deployment target to min version
+    SET(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${IPHONE_VERSION_MIN}" CACHE STRING "Deployment target for iOS" FORCE)
+
+    # Set standard architectures
+    SET(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)")
+
+    # set the sdk path as our sysroot
+    SET(CMAKE_OSX_SYSROOT "${IPHONE_SDKROOT}" CACHE STRING "System root for iOS" FORCE)
+
 ENDIF ()
-# IPHONE_PORT@tom
+
 
 # check if STLport is required
 OPTION(USE_STLPORT "Set to ON to build OSGEARTH with stlport instead of the default STL library." OFF)
@@ -122,22 +130,41 @@ IF(CMAKE_SYSTEM MATCHES IRIX)
     SET(CMAKE_THREAD_LIBS_INIT "" CACHE INTERNAL "")
 ENDIF(CMAKE_SYSTEM MATCHES IRIX)
 
-FIND_PACKAGE(OpenGL)
+IF (OSGEARTH_USE_GLES)
+    FIND_PACKAGE(OpenGLES) 
+ELSE ()
+    FIND_PACKAGE(OpenGL)
+ENDIF (OSGEARTH_USE_GLES)
 
 FIND_PACKAGE(CURL)
 FIND_PACKAGE(GDAL)
 FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
-FIND_PACKAGE(ZLIB)
 FIND_PACKAGE(Poco)
 
 FIND_PACKAGE(LevelDB)
-FIND_PACKAGE(RocksDB)
+
+SET (WITH_STATIC_ROCKSDB FALSE CACHE BOOL "Use static library of RocksDB")
+
+IF(MINGW)
+    FIND_PACKAGE(RocksDB CONFIG)
+    IF(RocksDB_FOUND)
+        MESSAGE(STATUS "Found RocksDB " ${RocksDB_VERSION})
+    ENDIF()
+ELSE(MINGW)
+    IF (WITH_STATIC_ROCKSDB)
+      FIND_PACKAGE(RocksDB REQUIRED COMPONENTS STATIC)
+    ELSE()
+      FIND_PACKAGE(RocksDB)
+    ENDIF()
+ENDIF(MINGW)
 
 FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)
+FIND_PACKAGE(WEBP QUIET)
 
 FIND_PACKAGE(Protobuf QUIET)
+SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 #VRV PATCH
 if(WIN32)
    if(${CMAKE_VERSION} VERSION_GREATER 3.4)
@@ -160,34 +187,10 @@ if(WIN32)
    endif(${CMAKE_VERSION} VERSION_GREATER 3.4)
 endif(WIN32)
 
-# JavaScript Engines:
-SET(V8_DIR "" CACHE PATH "set to base V8 install path")
-FIND_PACKAGE(V8)
-
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
 IF (WITH_EXTERNAL_DUKTAPE)
     FIND_PACKAGE(Duktape)
 ENDIF (WITH_EXTERNAL_DUKTAPE)
-
-OPTION(USE_V8 "Use V8 instead of Duktape if V8 is found" OFF)
-
-FIND_PACKAGE(Qt5Core QUIET)
-FIND_PACKAGE(Qt5Widgets QUIET)
-FIND_PACKAGE(Qt5Gui QUIET)
-FIND_PACKAGE(Qt5OpenGL QUIET)
-IF ( Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND )
-    SET(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
-ELSE()
-    FIND_PACKAGE(Qt4)
-    IF (QT4_FOUND)
-        INCLUDE(${QT_USE_FILE})
-		SET(QT_INCLUDES ${QT_INCLUDES} ${QT_INCLUDE_DIR} ${QT_QTCORE_INCLUDE_DIR} ${QT_QTGUI_INCLUDE_DIR}${QT_QTOPENGL_INCLUDE_DIR} )
-        SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
-    ENDIF (QT4_FOUND)
-ENDIF ()
-
-OPTION(OSGEARTH_USE_QT "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" ON)
-OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
 
 # option to install shaders:
 OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Make INSTALL" ON)
@@ -197,20 +200,24 @@ IF (WITH_EXTERNAL_TINYXML)
     FIND_PACKAGE(TinyXML)
 ENDIF (WITH_EXTERNAL_TINYXML)
 
-IF(UNIX)
+IF(UNIX AND NOT ANDROID)
     # Not sure what this will do on Cygwin and Msys
     # Also, remember OS X X11 is a user installed option so it may not exist.
     FIND_PACKAGE(X11)
     # Some Unicies need explicit linkage to the Math library or the build fails.
     FIND_LIBRARY(MATH_LIBRARY m)
-ENDIF(UNIX)
+ENDIF(UNIX AND NOT ANDROID)
 
-# Common global definitions
-#ADD_DEFINITIONS(-D)
+
 # Platform specific definitions
 
 
-IF(WIN32)
+IF(WIN32 AND NOT ANDROID)
+  FIND_PACKAGE(GLCORE)
+  IF(GLCORE_FOUND)
+      INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
+  ENDIF()    
+
   IF(MSVC)
         # This option is to enable the /MP switch for Visual Studio 2005 and above compilers
         OPTION(WIN32_USE_MP "Set to ON to build osgEarth with the /MP option (Visual Studio 2005 and above)." OFF)
@@ -228,26 +235,7 @@ IF(WIN32)
         ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
         ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
     ENDIF(MSVC)
-ENDIF(WIN32)
-
-########################################################################################################
-##### these were settings located in SetupCommon.cmake used in Luigi builds.... find out what are useful
-########################################################################################################
-#luigi#SET(CMAKE_VERBOSE_MAKEFILE TRUE)
-#luigi#SET(CMAKE_SKIP_RPATH TRUE)
-#luigi#SET(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
-#luigi#IF(UNIX)
-#luigi#    LIST_CONTAINS(contains "g++" ${CMAKE_CXX_COMPILER_LIST})
-#luigi#    IF (contains)
-#luigi#        MESSAGE(${MY_MESSAGE_DEFAULT} "${CMAKE_CURRENT_LIST_FILE}:${CMAKE_CURRENT_LIST_LINE} setting  CMAKE_CXX_COMPILER to g++")
-#luigi#        SET(CMAKE_CXX_COMPILER "g++")
-#luigi#        SET(CMAKE_CXX_COMPILER_LOADED 2)
-#luigi#        SET(CMAKE_CXX_COMPILER_WORKS 2)
-#luigi#    ENDIF (contains)
-#luigi#    SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
-#luigi#    SET(CMAKE_CXX_FLAGS_DEBUG "-ggdb -gstabs")
-#luigi#ENDIF(UNIX)
-########################################################################################################
+ENDIF(WIN32 AND NOT ANDROID)
 
 # Common to all platforms:
 
@@ -256,12 +244,25 @@ SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a postfix, usually empty on windo
 SET(CMAKE_RELWITHDEBINFO_POSTFIX "" CACHE STRING "add a postfix, usually empty on windows")
 SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a postfix, usually empty on windows")
 
+INCLUDE(OsgEarthMacroUtils)
+
+# Detect C++11 compiler support and set a variable.
+INCLUDE(CXX11)
+check_for_cxx11_compiler(CXX11_AVAILABLE)
+
+DETECT_OSG_VERSION()
+
+IF (NOT OPENSCENEGRAPH_VERSION)
+	SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
+ENDIF(NOT OPENSCENEGRAPH_VERSION)
+
 FIND_PACKAGE(OSG)
 
 # Make the headers visible to everything
 INCLUDE_DIRECTORIES(
     ${OSGEARTH_SOURCE_DIR}/src
     ${OSG_INCLUDE_DIR}
+    ${OSG_GEN_INCLUDE_DIR}
 )
 
 #FIND_PACKAGE(GDAL)
@@ -278,12 +279,12 @@ ENDIF("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 # Installation stuff
 
 
-IF(UNIX AND NOT WIN32 AND NOT APPLE)
+IF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
   IF(CMAKE_SIZEOF_VOID_P MATCHES "8")
       SET(LIB_POSTFIX "64" CACHE STRING "suffix for 32/64 dir placement")
       MARK_AS_ADVANCED(LIB_POSTFIX)
   ENDIF(CMAKE_SIZEOF_VOID_P MATCHES "8")
-ENDIF(UNIX AND NOT WIN32 AND NOT APPLE)
+ENDIF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
 IF(NOT DEFINED LIB_POSTFIX)
     SET(LIB_POSTFIX "")
 ENDIF(NOT DEFINED LIB_POSTFIX)
@@ -300,11 +301,6 @@ SET(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
 
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
 
-
-#SET(INSTALL_BINDIR VIRTUALPLANETBUILDER/bin)
-#SET(INSTALL_INCDIR VIRTUALPLANETBUILDER/include)
-#SET(INSTALL_LIBDIR VIRTUALPLANETBUILDER/lib)
-#SET(INSTALL_DOCDIR VIRTUALPLANETBUILDER/doc)
 
 ################################################################################
 # User Options
@@ -351,11 +347,9 @@ ENDIF(INSTALL_TO_OSG_DIR)
 # osgEarth Examples
 OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
 
-INCLUDE(OsgEarthMacroUtils)
-
-DETECT_OSG_VERSION()
-
-SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
+# Applications and tests
+OPTION(BUILD_APPLICATIONS "Enable build of Applications" ON)
+OPTION(BUILD_TESTS "Enable build of Tests" ON)
 
 # OE Core
 ADD_SUBDIRECTORY(src)
@@ -369,79 +363,43 @@ message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome")
 ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-aerodrome ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-aerodrome)
 ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-buildings ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-buildings)
 
-# VPB Applications
-# OPTION(BUILD_APPLICATIONS "Enable to build OSGEARTH Applications" ON)
-# IF   (BUILD_APPLICATIONS)
-    # ADD_SUBDIRECTORY(applications)
-# ENDIF(BUILD_APPLICATIONS)
-
-
 
 # Set defaults for Universal Binaries. We want 32-bit Intel/PPC on 10.4
 # and 32/64-bit Intel/PPC on >= 10.5. Anything <= 10.3 doesn't support.
-IF(APPLE)
+IF(APPLE AND NOT ANDROID)
 
-        #Here we check if the user specified IPhone SDK
-    IF(OSG_BUILD_PLATFORM_IPHONE OR OSG_BUILD_PLATFORM_IPHONE_SIMULATOR)
-
-        IF(OSG_BUILD_PLATFORM_IPHONE)
-            SET(CMAKE_OSX_ARCHITECTURES "armv7" CACHE STRING "Build architectures for iOS" FORCE)
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -miphoneos-version-min=4.1 -mno-thumb -arch armv7 -pipe -no-cpp-precomp" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-        ELSE()
-            #simulator uses i386 architectures
-            SET(CMAKE_OSX_ARCHITECTURES "i386" CACHE STRING "Build architectures for iOS Simulator" FORCE)
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-thumb -arch i386 -pipe -no-cpp-precomp" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-        ENDIF()
-
-        #here we set the specific iphone sdk version. We can only set either device or simulator sdk. So if you want both you currently have to have two seperate projects
-        SET(CMAKE_OSX_SYSROOT "${IPHONE_SDKROOT}" CACHE STRING "System root for iOS" FORCE)
-
-        #hack, force link to opengles
-        set(CMAKE_EXE_LINKER_FLAGS "-framework Foundation -framework OpenGLES")
-
-        #use the IPhone windowing system
-        SET(OSG_WINDOWING_SYSTEM "IOS" CACHE STRING "Forced IPhone windowing system on iOS"  FORCE)
-        SET(OSG_DEFAULT_IMAGE_PLUGIN_FOR_OSX "imageio" CACHE STRING "Forced imageio default image plugin for iOS" FORCE)
-
-        #I think this or similar will be required for IPhone apps
-        #OPTION(OSG_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" ON)
-
-    ELSE()
-
-        # These are just defaults/recommendations, but how we want to build
-        # out of the box. But the user needs to be able to change these options.
-        # So we must only set the values the first time CMake is run, or we
-        # will overwrite any changes the user sets.
-        # FORCE is used because the options are not reflected in the UI otherwise.
-        # Seems like a good place to add version specific compiler flags too.
-        IF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
-            # This is really fragile, but CMake doesn't provide the OS system
-            # version information we need. (Darwin versions can be changed
-            # independently of OS X versions.)
-            # It does look like CMake handles the CMAKE_OSX_SYSROOT automatically.
-            IF(EXISTS /Developer/SDKs/10.5.sdk)
-                SET(CMAKE_OSX_ARCHITECTURES "ppc;i386;ppc64;x86_64" CACHE STRING "Build architectures for OSX" FORCE)
-                SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.5 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-            ELSE(EXISTS /Developer/SDKs/10.5.sdk)
-                IF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
-                    SET(CMAKE_OSX_ARCHITECTURES "ppc;i386" CACHE STRING "Build architectures for OSX" FORCE)
-                    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.4 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-                ELSE(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
-                    # No Universal Binary support
-                    # Should break down further to set the -mmacosx-version-min,
-                    # but the SDK detection is too unreliable here.
-                ENDIF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
-            ENDIF(EXISTS /Developer/SDKs/10.5.sdk)
-        ENDIF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
+    # These are just defaults/recommendations, but how we want to build
+    # out of the box. But the user needs to be able to change these options.
+    # So we must only set the values the first time CMake is run, or we
+    # will overwrite any changes the user sets.
+    # FORCE is used because the options are not reflected in the UI otherwise.
+    # Seems like a good place to add version specific compiler flags too.
+    IF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
+        # This is really fragile, but CMake doesn't provide the OS system
+        # version information we need. (Darwin versions can be changed
+        # independently of OS X versions.)
+        # It does look like CMake handles the CMAKE_OSX_SYSROOT automatically.
+        IF(EXISTS /Developer/SDKs/10.5.sdk)
+            SET(CMAKE_OSX_ARCHITECTURES "ppc;i386;ppc64;x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.5 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+        ELSE(EXISTS /Developer/SDKs/10.5.sdk)
+            IF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
+                SET(CMAKE_OSX_ARCHITECTURES "ppc;i386" CACHE STRING "Build architectures for OSX" FORCE)
+                SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.4 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+            ELSE(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
+                # No Universal Binary support
+                # Should break down further to set the -mmacosx-version-min,
+                # but the SDK detection is too unreliable here.
+            ENDIF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
+        ENDIF(EXISTS /Developer/SDKs/10.5.sdk)
+    ENDIF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
 
 
-        OPTION(OSGEARTH_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" OFF)
-        OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
-        SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
+    OPTION(OSGEARTH_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" OFF)
+    OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
+    SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
 
-    ENDIF()
-
-ENDIF(APPLE)
+ENDIF(APPLE AND NOT ANDROID)
 
 
 # This needs to be run very last so other parts of the scripts can take

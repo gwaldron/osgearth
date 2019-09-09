@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,11 +24,6 @@
 #ifndef OSGEARTH_EXPORT_H
 #define OSGEARTH_EXPORT_H 1
 
-// define USE_DEPRECATED_API is used to include in API which is being phased out
-// if you can compile your apps with this turned off you are
-// well placed for compatibility with future versions.
-#define USE_DEPRECATED_API
-
 #if defined(_MSC_VER)
     #pragma warning( disable : 4244 )
     #pragma warning( disable : 4251 )
@@ -51,6 +46,9 @@
 #else
     #  define OSGEARTH_EXPORT
 #endif  
+
+// package-portected indicator:
+#define OSGEARTH_INTERNAL
 
 // set up define for whether member templates are supported by VisualStudio compilers.
 #ifdef _MSC_VER

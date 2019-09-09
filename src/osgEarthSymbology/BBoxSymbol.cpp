@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -48,13 +48,13 @@ Config
 BBoxSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
-    conf.key() = "text-bbox";
-    conf.addObjIfSet( "fill", _fill );
-    conf.addObjIfSet( "border", _border );
-    conf.addIfSet( "margin", _margin );
+    conf.key() = "bbox";
+    conf.set( "fill", _fill );
+    conf.set( "border", _border );
+    conf.set( "margin", _margin );
 
-    conf.addIfSet( "geom", "box", _bboxGeom, GEOM_BOX );
-    conf.addIfSet( "geom", "box_oriented", _bboxGeom, GEOM_BOX_ORIENTED );
+    conf.set( "geom", "box", _bboxGeom, GEOM_BOX );
+    conf.set( "geom", "box_oriented", _bboxGeom, GEOM_BOX_ORIENTED );
 
     return conf;
 }
@@ -62,12 +62,12 @@ BBoxSymbol::getConfig() const
 void
 BBoxSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet( "fill", _fill );
-    conf.getObjIfSet( "border", _border );
-    conf.getIfSet( "margin", _margin );
+    conf.get( "fill", _fill );
+    conf.get( "border", _border );
+    conf.get( "margin", _margin );
 
-    conf.getIfSet( "geom", "box", _bboxGeom, GEOM_BOX );
-    conf.getIfSet( "geom", "box_oriented", _bboxGeom, GEOM_BOX_ORIENTED );
+    conf.get( "geom", "box", _bboxGeom, GEOM_BOX );
+    conf.get( "geom", "box_oriented", _bboxGeom, GEOM_BOX_ORIENTED );
 }
 
 void

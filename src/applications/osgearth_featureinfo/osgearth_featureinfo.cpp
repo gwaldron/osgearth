@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,14 +21,14 @@
 */
 
 #include <osg/Notify>
-
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+
+#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/FeatureCursor>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
-
-#include <osgEarthFeatures/GeometryUtils>
 
 std::string attributeTypeToString( AttributeType type )
 {
@@ -85,7 +85,7 @@ void printFeature( Feature* feature )
 
 void printAllFeatures(FeatureSource* features)
 {
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
     while (cursor.valid() && cursor->hasMore())
     {
         osg::ref_ptr< Feature > feature = cursor->nextFeature();

@@ -6,19 +6,19 @@ osgEarth Sample - Annotations
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-        
+
     <elevation name="ReadyMap.org - Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-    
+
     <viewpoints>
-        <viewpoint name="Annotation Samples" 
+        <viewpoint name="Annotation Samples"
                    lat="33" long="-118" range="500000"
                    heading="35.27" pitch="-35" />
     </viewpoints>
-    
+
     <annotations name="Annotations Group A">
-    
+
         <label text="Label">
             <position lat="34" long="-120" />
             <style type="text/css">
@@ -32,7 +32,7 @@ osgEarth Sample - Annotations
                 text-bbox-border-width: 1;
             </style>
         </label>
-    
+
         <label text="Label with offsets">
             <position lat="16" long="-120" />
             <style type="text/css">
@@ -48,7 +48,7 @@ osgEarth Sample - Annotations
                 text-bbox-border-width: 1;
             </style>
         </label>
-        
+
         <place text="Place">
             <position lat="35" long="-110"/>
             <icon>../data/placemark32.png</icon>
@@ -57,10 +57,19 @@ osgEarth Sample - Annotations
                 text-halo:      #777;
             </style>
         </place>
-        
+
+        <place text="Extruded Place">
+            <position lat="35" long="-105" alt="5000"/>
+            <icon>../data/placemark32.png</icon>
+            <style type="text/css">
+                text-declutter: true;
+                text-halo:      #777;
+            </style>
+        </place>
+
         <circle name="draped circle">
             <position lat="34.051" long="-117.974"/>
-            <radius value="50" units="km"/>
+            <radius>50km</radius>
             <style type="text/css">
                 fill:               #ffff0080;
                 stroke:             #ffffff;
@@ -69,10 +78,10 @@ osgEarth Sample - Annotations
             </style>
         </circle>
         <label text="Draped circle" lat="34.051" long="-117.974"/>
-        
+
         <circle name="scene-clamped circle">
             <position lat="22.074" long="-159.606"/>
-            <radius value="1.2" units="km"/>
+            <radius>1.2km</radius>
             <style type="text/css">
                 stroke:             #ffffff;
                 stroke-width:       2px;
@@ -82,11 +91,11 @@ osgEarth Sample - Annotations
             </style>
         </circle>
         <label text="scene-clamped circle" lat="22.074" long="-159.606"/>
-        
+
         <ellipse name="ellipse relative">
             <position lat="40" long="-100" hat="5000"/>
-            <radius_major value="50" units="km"/>
-            <radius_minor value="40" units="km"/>
+            <radius_major>50km</radius_major>
+            <radius_minor>40km</radius_minor>
             <style type="text/css">
                 fill: #ff00ff7f;
                 stroke: #ffffff;
@@ -94,13 +103,13 @@ osgEarth Sample - Annotations
         </ellipse>
         <label text="HAT Ellipse" lat="40" long="-100.0"/>
     </annotations>
-    
+
     <annotations name="Annotations Group B">
-        
+
         <ellipse name="ellipse extruded">
             <position lat="32" long="-100.0"/>
-            <radius_major value="50" units="km"/>
-            <radius_minor value="20" units="km"/>
+            <radius_major>50km</radius_major>
+            <radius_minor>20km</radius_minor>
             <style type="text/css">
                 fill:             #ff7f007f;
                 stroke:           #ff0000ff;
@@ -147,7 +156,7 @@ osgEarth Sample - Annotations
                 text-bbox-border-width: 0.5;
             </style>
         </label>
-        
+
         <feature name="Draped Polygon">
             <srs>wgs84</srs>
             <geometry>
@@ -161,7 +170,7 @@ osgEarth Sample - Annotations
             </style>
         </feature>
         <label text="Draped Polygon" lat="45" long="-98"/>
-        
+
         <model name="Auto-Scaled Model">
             <position lat="43" long="-100"/>
             <style>
@@ -170,14 +179,14 @@ osgEarth Sample - Annotations
             </style>
         </model>
         <label text="Auto-Scaled Model" lat="42.5" long="-100"/>
-        
+
         <imageoverlay>
             <url>../data/fractal.png</url>
             <alpha>1.0</alpha>
             <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
-        </imageoverlay>            
+        </imageoverlay>
         <label text="ImageOverlay" lat="26" long="-81"/>
-        
+
         <local_geometry name="3D geometry">
             <geometry>
                 POLYGON((0 0 0, -25000 0 45000, 0 0 75000, 25000 0 45000))
@@ -207,13 +216,13 @@ osgEarth Sample - Annotations
                 render-lighting:     false;
             </style>
         </feature>
-        
+
         <label text="Tessellated line" lat="35" long="10">
             <style type="text/css">
                 text-align:              center_bottom;
                 text-geographic-course:  0;
             </style>
         </label>
-        
+
     </annotations>
 </map>

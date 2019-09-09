@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2010 Pelican Mapping
  * http://osgearth.org
  *
@@ -82,11 +82,11 @@ namespace osgEarth { namespace Drivers
         }
 
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "filename", _filename );
-            conf.getIfSet( "url", _filename ); // compat for consistency with other drivers
-            conf.getIfSet( "format", _format );
-            conf.getIfSet( "compute_levels", _computeLevels );
-            conf.getIfSet( "compress", _compress );
+            conf.get( "filename", _filename );
+            conf.get( "url", _filename ); // compat for consistency with other drivers
+            conf.get( "format", _format );
+            conf.get( "compute_levels", _computeLevels );
+            conf.get( "compress", _compress );
         }
 
     private:

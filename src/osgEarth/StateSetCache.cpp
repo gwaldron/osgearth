@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
  */
 #include <osgEarth/StateSetCache>
 #include <osg/NodeVisitor>
-#include <osg/Geode>
 #include <osg/BufferIndexBinding>
 #include <osg/ProxyNode>
 
@@ -26,9 +25,7 @@
 
 #define DEFAULT_PRUNE_ACCESS_COUNT 40
 
-#if OSG_MIN_VERSION_REQUIRED(3,1,4)
-#   define STATESET_SHARING_SUPPORTED 1
-#endif
+#define STATESET_SHARING_SUPPORTED 1
 
 using namespace osgEarth;
 
@@ -123,27 +120,6 @@ namespace
                 }
             }
             traverse(node);
-        }
-
-        void apply(osg::Geode& geode)
-        {
-            unsigned numDrawables = geode.getNumDrawables();
-            for( unsigned i=0; i<numDrawables; ++i )
-            {
-                osg::Drawable* d = geode.getDrawable(i);
-                if (d && d->getStateSet() )
-                {
-                    // ref for thread-safety; another thread might replace this stateset
-                    // during optimization while we're looking at it.
-                    osg::ref_ptr<osg::StateSet> stateset = d->getStateSet();
-                    if (stateset.valid() &&
-                        stateset->getDataVariance() != osg::Object::DYNAMIC)
-                    {
-                        applyStateSet( stateset.get() );
-                    }
-                }
-            }
-            apply((osg::Node&)geode);
         }
 
         void apply(osg::ProxyNode& proxyNode)
@@ -265,31 +241,6 @@ namespace
               traverse(proxyNode);
            }
         }
-
-        void apply(osg::Geode& geode)
-        {
-            unsigned numDrawables = geode.getNumDrawables();
-            for( unsigned i=0; i<numDrawables; ++i )
-            {
-                osg::Drawable* d = geode.getDrawable(i);
-                if ( d && d->getStateSet())
-                {
-                    osg::ref_ptr<osg::StateSet> stateset = d->getStateSet();
-                    if (stateset.valid() && isEligible(stateset.get()))
-                    {
-                        _stateSets++;
-                        osg::ref_ptr<osg::StateSet> shared;
-                        if ( _cache->share(stateset, shared) )
-                        {
-                            d->setStateSet( shared.get() );
-                            _shares++;
-                        }
-                        //else _misses.push_back(in.get());
-                    }
-                }
-            }
-            apply((osg::Node&)geode);
-        }
     };
 }
 
@@ -310,6 +261,17 @@ StateSetCache::~StateSetCache()
 {
     Threading::ScopedMutexLock lock( _mutex );
     prune();
+}
+
+void
+StateSetCache::releaseGLObjects(osg::State* state) const
+{
+    Threading::ScopedMutexLock lock( _mutex );
+    for(StateSetSet::const_iterator i = _stateSetCache.begin(); i != _stateSetCache.end(); ++i)
+    {
+        i->get()->releaseGLObjects(state);
+    }
+    
 }
 
 void
@@ -510,6 +472,7 @@ StateSetCache::clear()
 {
     Threading::ScopedMutexLock lock( _mutex );
 
+    prune();
     _stateAttributeCache.clear();
     _stateSetCache.clear();
 }

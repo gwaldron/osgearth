@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -81,6 +81,8 @@ namespace osgEarth { namespace Features
          * Operate on a feature
          */
         void operator()( Feature* feature, FilterContext& context ) const;
+
+        FilterContext push(FeatureList& input, FilterContext& context) const;
 
     protected:
         optional<Distance> _maxDistance;

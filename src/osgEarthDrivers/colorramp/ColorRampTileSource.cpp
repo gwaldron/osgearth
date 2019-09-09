@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -106,7 +106,7 @@ public:
         GeoHeightField geoHF = _layer->createHeightField(key, progress);
         if (geoHF.valid())
         {
-            osg::HeightField* hf = geoHF.getHeightField(); 
+            const osg::HeightField* hf = geoHF.getHeightField(); 
             osg::Image* image = new osg::Image();
             image->allocateImage(hf->getNumColumns(),hf->getNumRows(),1, GL_RGBA, GL_UNSIGNED_BYTE);
             memset(image->data(), 0, image->getImageSizeInBytes());

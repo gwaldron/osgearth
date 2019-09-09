@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -18,14 +18,19 @@
  */
 #include "IntersectFeatureFilterOptions"
 
+#include <osgEarth/Registry>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/Progress>
+
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FilterContext>
+
+#include <osgEarthSymbology/Geometry>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/ImageUtils>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthSymbology/Geometry>
 
 #define LC "[Intersect FeatureFilter] "
 
@@ -66,14 +71,14 @@ public: // FeatureFilter
     /**
      * Gets all the features that intersect the extent
      */
-    void getFeatures(const GeoExtent& extent, FeatureList& features)
+    void getFeatures(const GeoExtent& extent, FeatureList& features, ProgressCallback* progress)
     {
         GeoExtent localExtent = extent.transform( _featureSource->getFeatureProfile()->getSRS() );
         Query query;
         query.bounds() = localExtent.bounds();
         if (localExtent.intersects( _featureSource->getFeatureProfile()->getExtent()))
         {
-            osg::ref_ptr< FeatureCursor > cursor = _featureSource->createFeatureCursor( query );
+            osg::ref_ptr< FeatureCursor > cursor = _featureSource->createFeatureCursor(query, progress);
             if (cursor)
             {
                 cursor->fill( features );
@@ -85,9 +90,11 @@ public: // FeatureFilter
     {
         if (_featureSource.valid())
         {
+            osg::ref_ptr<ProgressCallback> progress = new ProgressCallback();
+
             // Get any features that intersect this query.
             FeatureList boundaries;
-            getFeatures(context.extent().get(), boundaries );
+            getFeatures(context.extent().get(), boundaries, progress.get());
             
             
             // The list of output features

@@ -15,7 +15,6 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthUtil)
 
 SET(TARGET_ADDED_LIBRARIES osgdb_osgearth_agglite
 osgdb_osgearth_arcgis
-osgdb_osgearth_arcgis_map_cache
 osgdb_osgearth_bing
 osgdb_osgearth_bumpmap
 osgdb_osgearth_cache_filesystem
@@ -23,12 +22,10 @@ osgdb_osgearth_colorramp
 osgdb_osgearth_debug
 osgdb_osgearth_detail
 osgdb_earth
-osgdb_osgearth_engine_byo
 osgdb_osgearth_engine_mp
 osgdb_osgearth_engine_rex
 osgdb_osgearth_feature_elevation
 osgdb_osgearth_feature_ogr
-osgdb_osgearth_feature_raster
 osgdb_osgearth_feature_tfs
 osgdb_osgearth_feature_wfs
 osgdb_osgearth_feature_xyz
@@ -43,22 +40,14 @@ osgdb_osgearth_mbtiles
 osgdb_osgearth_model_feature_geom
 osgdb_osgearth_model_simple
 osgdb_osgearth_monitor
-osgdb_osgearth_noise
-osgdb_osgearth_ocean_simple
 osgdb_osgearth_osg
-osgdb_osgearth_quadkey
-osgdb_osgearth_refresh
 osgdb_osgearth_scriptengine_javascript
 osgdb_osgearth_sky_gl
 osgdb_osgearth_sky_simple
 osgdb_osgearth_skyview
-osgdb_osgearth_splat_mask
 osgdb_template
-osgdb_osgearth_template_matclass
 osgdb_osgearth_terrainshader
-osgdb_osgearth_tilecache
 osgdb_osgearth_tileindex
-osgdb_osgearth_tileservice
 osgdb_osgearth_tms
 osgdb_osgearth_vdatum_egm84
 osgdb_osgearth_vdatum_egm96
@@ -67,8 +56,7 @@ osgdb_osgearth_viewpoints
 osgdb_osgearth_vpb
 osgdb_osgearth_wcs
 osgdb_osgearth_wms
-osgdb_osgearth_xyz
-osgdb_osgearth_yahoo)
+osgdb_osgearth_xyz)
 
 SET(OSG_STATIC_PLUGINS osgdb_tiff osgdb_rgb osgdb_imageio osgdb_curl osgdb_zip osgdb_freetype osgdb_osg osgdb_ive osgdb_obj osgdb_shp osgdb_openflight osgdb_rot osgdb_scale osgdb_trans)
 

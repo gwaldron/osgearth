@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,9 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/TextSymbolizer>
+#include <osgEarthFeatures/Feature>
 #include <osgEarth/Registry>
-#include <osgText/Text>
-
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -31,88 +30,221 @@ _symbol( symbol )
     //nop
 }
 
-osgText::Text*
-TextSymbolizer::create(Feature*             feature,
-                       const FilterContext* context,
-                       const std::string&   text     ) const
-{    
-    osgText::Text* t = new osgText::Text();
-
-    osgText::String::Encoding textEncoding = osgText::String::ENCODING_UNDEFINED;
-
-    if ( _symbol.valid() && _symbol->encoding().isSet() )
+namespace
+{
+    // rounds "x" up to the next power of 2
+    int nextPowerOf2(int x)
     {
-        switch(_symbol->encoding().value())
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+    
+    // transcodes an OE encoding to an OSG encoding
+    osgText::String::Encoding convertEncoding(TextSymbol::Encoding enc)
+    {
+        switch(enc)
         {
-        case TextSymbol::ENCODING_ASCII: textEncoding = osgText::String::ENCODING_ASCII; break;
-        case TextSymbol::ENCODING_UTF8: textEncoding = osgText::String::ENCODING_UTF8; break;
-        case TextSymbol::ENCODING_UTF16: textEncoding = osgText::String::ENCODING_UTF16; break;
-        case TextSymbol::ENCODING_UTF32: textEncoding = osgText::String::ENCODING_UTF32; break;
-        default: textEncoding = osgText::String::ENCODING_UNDEFINED; break;
+        case TextSymbol::ENCODING_ASCII: return osgText::String::ENCODING_ASCII; break;
+        case TextSymbol::ENCODING_UTF8:  return osgText::String::ENCODING_UTF8; break;
+        case TextSymbol::ENCODING_UTF16: return osgText::String::ENCODING_UTF16; break;
+        case TextSymbol::ENCODING_UTF32: return osgText::String::ENCODING_UTF32; break;
+        default: return osgText::String::ENCODING_UNDEFINED;
         }
     }
 
-    if ( !text.empty() )
+    osgText::String::Encoding getEncodingFromSymbol(const TextSymbol* symbol)
     {
-        t->setText( text, textEncoding );
+        return symbol && symbol->encoding().isSet() ?
+            convertEncoding(symbol->encoding().get()) :
+            osgText::String::ENCODING_UNDEFINED;
     }
-    else if ( _symbol.valid() && _symbol->content().isSet() )
-    {
-        StringExpression expr = *_symbol->content();
-        std::string newText = feature ? feature->eval(expr, context) : expr.eval();
-        t->setText( newText, textEncoding );
-    }
-
-    if ( _symbol.valid() && _symbol->pixelOffset().isSet() )
-    {
-        t->setPosition( osg::Vec3(_symbol->pixelOffset()->x(), _symbol->pixelOffset()->y(), 0.0f) );
-    }
-
-    //TODO: resonsider defaults here
-    t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-
-    float size = 16.0f;
-    if (_symbol->size().isSet())
-    {
-        NumericExpression sizeExpr = _symbol->size().value();
-        size = feature ? feature->eval(sizeExpr, context) : sizeExpr.eval();
-    }
-    t->setCharacterSize( size );
-
-    t->setColor( _symbol.valid() && _symbol->fill().isSet() ? _symbol->fill()->color() : Color::White );
-
-    osgText::Font* font = 0L;
-    if ( _symbol.valid() && _symbol->font().isSet() )
-    {
-        font = osgText::readFontFile( *_symbol->font() );
-        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
-        if ( font )
-            font->setGlyphImageMargin( 2 );
-    }
-    if ( !font )
-        font = Registry::instance()->getDefaultFont();
-    if ( font )
-        t->setFont( font );
-
-    if ( _symbol.valid() )
-    {
-        // they're the same enum.
-        osgText::Text::AlignmentType at = (osgText::Text::AlignmentType)_symbol->alignment().value();
-        t->setAlignment( at );
-    }
-
-    if ( _symbol.valid() && _symbol->halo().isSet() )
-    {
-        t->setBackdropColor( _symbol->halo()->color() );
-        t->setBackdropType( osgText::Text::OUTLINE );
-    }
-    else if ( !_symbol.valid() )
-    {
-        // if no symbol at all is provided, default to using a black halo.
-        t->setBackdropColor( osg::Vec4(.3,.3,.3,1) );
-        t->setBackdropType( osgText::Text::OUTLINE );
-    }
-
-    return t;
 }
 
+osgText::String::Encoding
+TextSymbolizer::getEncoding() const
+{
+    return getEncodingFromSymbol(_symbol.get());
+}
+
+void
+TextSymbolizer::apply(osgText::Text* drawable,
+                      Feature* feature,
+                      const FilterContext* context,
+                      const osg::BoundingBox* box_in) const
+{
+    static TextSymbol s_defaultSymbol;
+    const TextSymbol* symbol = _symbol.valid() ? _symbol.get() : &s_defaultSymbol;
+
+    osgText::String::Encoding encoding = convertEncoding(symbol->encoding().get());
+    if (symbol->content().isSet())
+    {
+        StringExpression temp(symbol->content().get());
+        std::string content = feature ? feature->eval(temp, context) : symbol->content()->eval();
+        drawable->setText(content, encoding);
+    }
+
+    // osgText::Text turns on depth writing by default, even if you turned it off.
+    // GW: move this to osgEarth::Text?
+    drawable->setEnableDepthWrites( false );
+
+    if ( symbol->layout().isSet() )
+    {
+        if(symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
+        {
+            drawable->setLayout(osgText::TextBase::RIGHT_TO_LEFT);
+        }
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
+        {
+            drawable->setLayout(osgText::TextBase::LEFT_TO_RIGHT);
+        }
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
+        {
+            drawable->setLayout(osgText::TextBase::VERTICAL);
+        }
+    }
+
+    // calculate the text position relative to the alignment box.
+    static osg::BoundingBox s_defaultbbox(0,0,0,0,0,0);
+    const osg::BoundingBox& box = box_in? *box_in : s_defaultbbox;
+
+    osg::Vec3f pos;
+
+    osgText::Text::AlignmentType align = osgText::Text::CENTER_CENTER;
+    // they're the same enum, but we need to apply the BBOX offsets.
+    align = (osgText::Text::AlignmentType)symbol->alignment().value();
+
+    switch( align )
+    {
+    case osgText::Text::LEFT_TOP:
+        pos.x() = box.xMax();
+        pos.y() = box.yMin();
+        break;
+    case osgText::Text::LEFT_CENTER:
+        pos.x() = box.xMax();
+        pos.y() = box.center().y();
+        break;
+    case osgText::Text::LEFT_BOTTOM:
+    case osgText::Text::LEFT_BOTTOM_BASE_LINE:
+    case osgText::Text::LEFT_BASE_LINE:
+        pos.x() = box.xMax();
+        pos.y() = box.yMax();
+        break;
+
+    case osgText::Text::RIGHT_TOP:
+        pos.x() = box.xMin();
+        pos.y() = box.yMin();
+        break;
+    case osgText::Text::RIGHT_CENTER:
+        pos.x() = box.xMin();
+        pos.y() = box.center().y();
+        break;
+    case osgText::Text::RIGHT_BOTTOM:
+    case osgText::Text::RIGHT_BOTTOM_BASE_LINE:
+    case osgText::Text::RIGHT_BASE_LINE:
+        pos.x() = box.xMin();
+        pos.y() = box.yMax();
+        break;
+
+    case osgText::Text::CENTER_TOP:
+        pos.x() = box.center().x();
+        pos.y() = box.yMin();
+        break;
+    case osgText::Text::CENTER_BOTTOM:
+    case osgText::Text::CENTER_BOTTOM_BASE_LINE:
+    case osgText::Text::CENTER_BASE_LINE:
+        pos.x() = box.center().x();
+        pos.y() = box.yMax();
+        break;
+    case osgText::Text::CENTER_CENTER:
+    default:
+        pos = box.center();
+        break;
+    }
+
+    drawable->setPosition( pos );
+
+    drawable->setAlignment( align );
+
+    drawable->setAutoRotateToScreen(false);
+    drawable->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
+    
+    float size = symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;    
+
+    drawable->setCharacterSize( size * Registry::instance()->getDevicePixelRatio() );
+
+    drawable->setColor( symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
+
+    osg::ref_ptr<osgText::Font> font;
+    if ( symbol->font().isSet() )
+    {
+        font = osgText::readRefFontFile( *symbol->font() );
+    }
+
+    if ( !font )
+    {
+        font = Registry::instance()->getDefaultFont();
+    }
+
+    if ( font )
+    {
+        drawable->setFont( font );
+        
+#if OSG_VERSION_LESS_THAN(3,5,8)
+        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+        font->setGlyphImageMargin( 2 );
+#endif        
+    }
+
+#if OSG_VERSION_LESS_THAN(3,5,8)
+    float resFactor = 2.0f;
+    int res = nextPowerOf2((int)(size*resFactor));
+    drawable->setFontResolution(res, res);
+#endif
+    
+    if ( symbol->halo().isSet() )
+    {
+        drawable->setBackdropColor( symbol->halo()->color() );
+
+        if ( symbol->haloBackdropType().isSet() )
+        {
+            drawable->setBackdropType( *symbol->haloBackdropType() );
+        }
+        else
+        {
+            drawable->setBackdropType( osgText::Text::OUTLINE );
+        }
+
+#if OSG_VERSION_LESS_THAN(3,5,8)
+        // deprecated since OSG 3.5.8
+        if ( symbol->haloImplementation().isSet() )
+        {
+            drawable->setBackdropImplementation( *symbol->haloImplementation() );
+        }
+#endif
+
+        if ( symbol->haloOffset().isSet() )
+        {
+            drawable->setBackdropOffset( *symbol->haloOffset(), *symbol->haloOffset() );
+        }
+    }
+
+    // this disables the default rendering bin set by osgText::Font. 
+    // Necessary if we're going to do decluttering.
+    // gw: consider moving this into annotationutils
+    if ( drawable->getStateSet() )
+    {
+        drawable->getStateSet()->setRenderBinToInherit();
+    }
+    
+}
+
+void
+TextSymbolizer::apply(osgText::Text* drawable) const
+{
+    return apply(drawable, 0L, 0L, 0L);
+}

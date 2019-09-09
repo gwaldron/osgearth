@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,12 +18,10 @@
  */
 
 #include <osgEarth/VerticalDatum>
-#include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
-#include <osgDB/ReaderWriter>
 
 using namespace osgEarth;
 
@@ -218,14 +216,15 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
 VerticalDatum*
 VerticalDatumFactory::create( const std::string& init )
 {
-    VerticalDatum* result = 0L;
+    osg::ref_ptr<VerticalDatum> datum;
 
     std::string driverExt = Stringify() << ".osgearth_vdatum_" << init;
-    result = dynamic_cast<VerticalDatum*>( osgDB::readObjectFile(driverExt) );
-    if ( !result )
+    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt );
+    datum = dynamic_cast<VerticalDatum*>( object.release() );
+    if ( !datum )
     {
         OE_WARN << "WARNING: Failed to load Vertical Datum driver for \"" << init << "\"" << std::endl;
     }
 
-    return result;
+    return datum.release();
 }

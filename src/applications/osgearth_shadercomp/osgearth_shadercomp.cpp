@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -40,6 +40,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/FileUtils>
+#include <osgEarth/GLUtils>
 #include <osgEarthUtil/Controls>
 
 using namespace osgEarth;
@@ -78,10 +80,9 @@ osg::Geode* makeGeom( float v )
     geom->setVertexArray( verts );
     geom->setUseDisplayList(false);
     geom->setUseVertexBufferObjects(true);
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
     colors->push_back( osg::Vec4(0,0,1,1) );
     geom->setColorArray(colors);
-    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
     geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES,0,3));
     geode->addDrawable(geom);
     return geode;
@@ -295,7 +296,7 @@ namespace TEST_5
 
         osg::Group* root = new osg::Group();
         root->getOrCreateStateSet()->setRenderBinDetails( 0, "TraversalOrderBin" );
-        root->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+        GLUtils::setLighting(root->getOrCreateStateSet(), 0);
 
         root->addChild( n1 );
         root->addChild( n2 );
@@ -457,8 +458,8 @@ namespace TEST_8
         OE_NOTICE << "Wrote to out.osgt" << std::endl;
 
         node = 0L;
-        node = osgDB::readNodeFile("out.osgt");
-        if (!node) {
+        node = osgDB::readRefNodeFile("out.osgt");
+        if (!node.valid()) {
             OE_WARN << "Readback failed!!" << std::endl;
             exit(0);
         }
@@ -621,35 +622,35 @@ int main(int argc, char** argv)
 
     if ( test1 || test2 || test3 || test4 || test6 )
     {
-        osg::Node* earthNode = osgDB::readNodeFile( "gdal_tiff.earth" );
-        if (!earthNode)
+        osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFile( "simple.earth" );
+        if (!earthNode.valid())
         {
             return usage( "Unable to load earth model." );
         }
 
         if ( test1 )
         {
-            root->addChild( TEST_1::run(earthNode) );
+            root->addChild( TEST_1::run(earthNode.get()) );
             if (ui) label->setText( "Function injection test: the map appears hazy at high altitude." );
         }
         else if ( test2 )
         {
-            root->addChild( TEST_2::run(earthNode) );
+            root->addChild( TEST_2::run(earthNode.get()) );
             if (ui) label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
         }
         else if ( test3 )
         {
-            root->addChild( TEST_3::run(earthNode) );
+            root->addChild( TEST_3::run(earthNode.get()) );
             if (ui) label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
         }
         else if ( test4 )
         {
-            root->addChild( TEST_4::run(earthNode) );
+            root->addChild( TEST_4::run(earthNode.get()) );
             if (ui) label->setText("Memory management test; monitor memory for stability");
         }
         else if ( test6 )
         {
-            root->addChild( TEST_6::run(earthNode) );
+            root->addChild( TEST_6::run(earthNode.get()) );
             if (ui) label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
         }
         
@@ -673,13 +674,13 @@ int main(int argc, char** argv)
     }
     else if (test9)
     {
-        osg::Node* earthNode = osgDB::readNodeFile( "readymap.earth" );
-        if (!earthNode)
+        osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFile( "readymap.earth" );
+        if (!earthNode.valid())
         {
             return usage( "Unable to load earth model." );
         }
         
-        root->addChild(TEST_9::run(earthNode));
+        root->addChild(TEST_9::run(earthNode.get()));
         if (ui) label->setText("DP Shader Test - see code comments");
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     }

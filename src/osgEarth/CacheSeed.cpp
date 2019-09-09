@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,13 +21,7 @@
 */
 
 #include <osgEarth/CacheSeed>
-#include <osgEarth/CacheEstimator>
-#include <osgEarth/MapFrame>
-#include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <OpenThreads/ScopedLock>
-#include <limits.h>
 
 #define LC "[CacheSeed] "
 

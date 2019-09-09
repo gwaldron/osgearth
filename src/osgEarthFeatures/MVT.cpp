@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -22,6 +22,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/GeoData>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgDB/Registry>
 #include <list>
 #include <stdio.h>
 #include <stdlib.h>
@@ -435,7 +436,7 @@ bool
 
                 if (geometry)
                 {
-                    oeFeature->setGeometry( geometry );
+                    oeFeature->setGeometry( geometry.get() );
                     features.push_back(oeFeature.get());
                 }
             }

@@ -20,5 +20,5 @@ void oe_mp_NormalMap_vertex(inout vec4 unused)
     oe_normalMapCoords = (oe_tile_normalTexMatrix * oe_layer_tilec).st;
 
     // send the bi-normal vector to the fragment shader.
-    oe_normalMapBinormal = gl_NormalMatrix * vec3(0,1,0);
+    oe_normalMapBinormal = normalize(gl_NormalMatrix * vec3(0,1,0));
 }

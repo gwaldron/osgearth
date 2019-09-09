@@ -119,7 +119,7 @@ void TerrainProfileWidget::initialize()
   vStack->addWidget(buttonToolbar);
 
   // create graph widget
-  _graph = new TerrainProfileGraph(_calculator, new UpdatePositionShim(this));
+  _graph = new TerrainProfileGraph(_calculator.get(), new UpdatePositionShim(this));
   vStack->addWidget(_graph);
 
   // Connect the action signals/slots
@@ -179,7 +179,7 @@ void TerrainProfileWidget::setActiveViews(const ViewVector& views)
   removeViews();
 
   for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
-    addView(*it);
+    addView(it->get());
 }
 
 void TerrainProfileWidget::addView(osgViewer::View* view)
@@ -256,15 +256,15 @@ void TerrainProfileWidget::updatePosition(double lat, double lon, const std::str
   if (!_markerNode.valid())
   {
     _markerNode = new osgEarth::Annotation::PlaceNode(
-        _mapNode.get(),
         GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::ALTMODE_RELATIVE),
-        _markerImage,
         text,
-        _placeStyle);
+        _placeStyle,
+        _markerImage.get());
+    _markerNode->setMapNode( _mapNode.get() );
 
     _markerNode->setDynamic(true);
 
-    _root->addChild(_markerNode);
+    _root->addChild(_markerNode.get());
   }
   else
   {
@@ -317,7 +317,8 @@ void TerrainProfileWidget::drawProfileLine()
 
   if (!_lineNode.valid())
   {
-    _lineNode = new osgEarth::Annotation::FeatureNode( _mapNode, feature );
+    _lineNode = new osgEarth::Annotation::FeatureNode( feature );
+    _lineNode->setMapNode( _mapNode.get() );
     _lineNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     _root->addChild( _lineNode.get() );
   }

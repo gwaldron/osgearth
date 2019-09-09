@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,10 +22,6 @@
 
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Registry>
-#include <osgEarth/VirtualProgram>
-#include <osg/NodeVisitor>
-#include <osg/Uniform>
-#include <osg/Geode>
 #include <osg/Geometry>
 
 using namespace osgEarth;
@@ -160,13 +156,10 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
 
     // add a new integer attributer to store the feautre ID per vertex.
     ObjectIDArray* ids = new ObjectIDArray();
-    geom->setVertexAttribArray    (_attribLocation, ids);
-    geom->setVertexAttribBinding  (_attribLocation, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(_attribLocation, false);
-    
-#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
+    ids->setBinding(osg::Array::BIND_PER_VERTEX);
+    ids->setNormalize(false);
+    geom->setVertexAttribArray(_attribLocation, ids);
     ids->setPreserveDataType(true);
-#endif
 
     // The tag is actually FeatureID + 1, to preserve "0" as an "empty" value.
     // TODO: use a ObjectID generator and mapping instead.
@@ -183,13 +176,10 @@ namespace
             setNodeMaskOverride(~0);
         }
 
-        void apply(osg::Geode& geode)
+        void apply(osg::Drawable& drawable)
         {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                _index->tagDrawable( geode.getDrawable(i), _id );
-            }
-            traverse( geode );
+            _index->tagDrawable(&drawable, _id);
+            traverse(drawable);
         }
 
         const ObjectIndex* _index;

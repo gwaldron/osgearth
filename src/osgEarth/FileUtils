@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -62,12 +62,6 @@ namespace osgEarth
      * archive.
      */
     extern OSGEARTH_EXPORT bool isPathToArchivedFile(const std::string& path);
-
-    /**
-     * @deprecated Please use isPathToArchivedFile instead
-     * Gets whether or not the given path contains a zip file within the path
-     */
-    extern OSGEARTH_EXPORT bool isZipPath(const std::string& path);
 
     /**
      * Gets the path to the temp directory

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -41,23 +41,9 @@ _enableCancel(true)
     _engine = context->getEngine();
 }
 
-namespace
-{
-    struct MyProgress : public ProgressCallback {
-        LoadTileData* _req;
-        MyProgress(LoadTileData* req) : _req(req) {}
-        bool isCanceled() {
-           if (_canceled == false && _req->isIdle())
-              _canceled = true;
-           return ProgressCallback::isCanceled();
-        }
-    };
-}
-
-
 // invoke runs in the background pager thread.
 void
-LoadTileData::invoke()
+LoadTileData::invoke(ProgressCallback* progress)
 {
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
@@ -71,21 +57,18 @@ LoadTileData::invoke()
     if (!_map.lock(map))
         return;
 
-    // Only use a progress callback if cancellation is enabled.    
-    osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
-
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
-        tilenode->getKey(),           
+        tilenode->getKey(),
         _filter,
-        progress.get() );
+        _enableCancel? progress : 0L);
 
-    // if the operation was canceled, set the request to idle and delete any existing data.
-    if (progress && (progress->isCanceled() || progress->needsRetry()))
+    // if the operation was canceled, set the request to idle and delete the tile model.
+    if (progress && progress->isCanceled())
     {
-       _dataModel = 0L;
-       setState(Request::IDLE);
+        _dataModel = 0L;
+        setState(Request::IDLE);
     }
 }
 
@@ -169,7 +152,7 @@ osg::StateSet*
 LoadTileData::createStateSet() const
 {
     osg::ref_ptr<osg::StateSet> out;
-    
+
     osg::ref_ptr<EngineContext> context;
     if (!_context.lock(context))
         return NULL;

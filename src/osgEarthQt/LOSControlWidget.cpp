@@ -94,7 +94,7 @@ void LOSControlWidget::setActiveViews(const ViewVector& views)
   removeViews();
 
   for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
-    addView(*it);
+    addView(it->get());
 }
 
 void LOSControlWidget::addView(osgViewer::View* view)

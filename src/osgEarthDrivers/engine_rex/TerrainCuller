@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -50,12 +50,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;
-        unsigned _currentTileDrawCommands;
-        DrawTileCommand* _firstTileDrawCommandForTile;
+        DrawTileCommand* _firstDrawCommandForTile;
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
         LayerExtentVector* _layerExtents;
-        float _rangeScale;
+        bool _isSpy;
         int _numberChildrenCreated;
 
     public:
@@ -63,7 +62,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
 
         /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings, const SelectionInfo& si);
+        void setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }
@@ -74,11 +73,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** The CullVIsitor that parents this culler. */
         osgUtil::CullVisitor& getParent() { return *_cv; }
 
-        /** Range scale for the current camera */
-        float getRangeScale() const { return _rangeScale; }
+        bool isCulledToBBox(osg::Transform* node, const osg::BoundingBox& box);
 
     public: // osg::NodeVisitor
         void apply(osg::Node& node);
+        void apply(TileNode& node);
+        void apply(SurfaceNode& node);
         
         float getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const;
 

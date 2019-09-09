@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -75,7 +75,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions);
+        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions, land_cover);
 
         /** Construct an emptry land cover layer. Use options() to configure */
         LandCoverLayer();

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -29,8 +29,6 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
     PerContextDrawState& ds = dsMaster.getPCDS(ri.getContextID());
 
     osg::State& state = *ri.getState();
-
-    //OE_INFO << LC << "      TILE: " << _geom << std::endl;
         
     // Tile key encoding, if the uniform is required.
     if (ds._tileKeyUL >= 0 )
@@ -38,10 +36,11 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         ds._ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
     }
 
-    if (ds._layerOrderUL >= 0 && !ds._layerOrder.isSetTo(_order))
+    // Apply the layer draw order for this tile so we can blend correctly:
+    if (ds._layerOrderUL >= 0 && !ds._layerOrder.isSetTo(_layerOrder))
     {
-        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_order);
-        ds._layerOrder = _order;
+        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_layerOrder);
+        ds._layerOrder = _layerOrder;
     }
 
     // Elevation coefficients (can probably be terrain-wide)
@@ -77,7 +76,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             const Sampler& sampler = (*_colorSamplers)[s];
             SamplerState& samplerState = ds._samplerState._samplers[s];
 
-            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
+            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
             {
                 state.setActiveTextureUnit((*dsMaster._bindings)[s].unit());
                 sampler._texture->apply(state);
@@ -93,7 +92,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             // Need a special uniform for color parents.
             if (s == SamplerBinding::COLOR_PARENT)
             {
-                if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture != 0L))
+                if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture.get() != 0L))
                 {
                     ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
                     ds._parentTextureExists = sampler._texture.valid();
@@ -109,7 +108,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             const Sampler& sampler = (*_sharedSamplers)[s];
             SamplerState& samplerState = ds._samplerState._samplers[s];
 
-            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
+            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
             {
                 state.setActiveTextureUnit((*dsMaster._bindings)[s].unit());
                 sampler._texture->apply(state);
@@ -148,42 +147,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
     // If there's a geometry, draw it now:
     if (_geom.valid())
     {
-        GLenum ptype = _drawPatch ? GL_PATCHES : GL_TRIANGLES;
-
-        _geom->render(ptype, ri);
-#if 0
-        // Set up the vertex arrays:
-        _geom->drawVertexArraysImplementation(ri);
-
-        if (_drawPatch)
-        {
-            for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
-            {
-                osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(i));
-                osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
-                state.bindElementBufferObject(ebo);
-                if (ebo)
-                    glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
-            }
-        }
-
-        else
-        {
-            if (_geom->referenceCount() <= 1)
-            {
-                OE_WARN << LC << "Big trouble\n";
-                exit(-1);
-            }
-
-            for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
-            {
-                osg::PrimitiveSet* ps = _geom->getPrimitiveSet(i);
-                if (ps)
-                {
-                    ps->draw(*ri.getState(), true);
-                }
-            }
-        }
-#endif
+        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode(); //GL_TRIANGLES;
+        _geom->draw(ri);
     }    
 }

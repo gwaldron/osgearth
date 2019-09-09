@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 
 using namespace osgEarth;
 
-class MapServiceLayer 
+class MapServiceLayer
 {
 public:
     MapServiceLayer( int id, const std::string& name );
@@ -96,13 +96,13 @@ public:
     bool init( const URI& uri, const osgDB::Options* options =0L );
 
     /**
-     * Returns true if the map service initialized succesfully.
+     * Returns true if the map service initialized successfully.
      */
     bool isValid() const;
 
     bool isTiled() const;
 
-    /** 
+    /**
      * If isValid() returns false, this method will return the error message.
      */
     const std::string& getError() const;
@@ -117,6 +117,11 @@ public:
      */
     const TileInfo& getTileInfo() const;
 
+    /**
+     * Gets the copyright text for the layer
+     */
+    const std::string& getCopyright() const;
+
 private:
     bool is_valid;
     URI uri;
@@ -125,6 +130,7 @@ private:
     MapServiceLayerList layers;
     bool tiled;
     TileInfo tile_info;
+    std::string _copyright;
 
     bool setError( const std::string& );
 };

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -43,7 +43,7 @@ namespace osgEarth { namespace Features
     // internal class
     struct FeatureSourceMapping
     {
-        FeatureSourceMapping(FeatureSource* fs, FeaturePredicate* fp) : _source(fs), _predicate(fp) { }
+        FeatureSourceMapping(FeatureSource* fs, FeaturePredicate* fp);
         osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeaturePredicate>   _predicate;
     };
@@ -54,9 +54,7 @@ namespace osgEarth { namespace Features
     {
     public:
         /** Construct a new virtual feature source */
-        VirtualFeatureSource() { }
-
-        virtual ~VirtualFeatureSource() { }
+        VirtualFeatureSource();
 
         /**
          * Adds a feature source/predicate mapping. This FeatureSource will draw
@@ -65,11 +63,13 @@ namespace osgEarth { namespace Features
         void add( FeatureSource* source, FeaturePredicate* predicate );
 
     public: // FeatureSource
-        virtual FeatureCursor* createFeatureCursor( const Query& query );
+        virtual FeatureCursor* createFeatureCursor(const Query& query, ProgressCallback* progress);
         virtual const FeatureSchema& getSchema() const;
         virtual Feature* getFeature( FeatureID id ) { return 0L; }
 
     protected:
+        virtual ~VirtualFeatureSource();
+
         virtual Status initialize(const osgDB::Options* readOptions);
 
     protected:

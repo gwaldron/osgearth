@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,27 +35,34 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapInfo
     {
     public:
-        MapInfo();
-
+        //! Constructs a new MapInfo object from the data in a Map
         MapInfo(const Map* map);
 
+        //! Copy constructor
         MapInfo(const MapInfo& rhs);
 
-        /** dtor */
+        //! Dtor
         virtual ~MapInfo() { }
 
+        //! Sets the map info to reflect a Map object
         void setMap(const Map* map);
         
+        //! Map's profile
         const Profile* getProfile() const { return _profile.get(); }
+
+        //! Map's profile SRS
         const SpatialReference* getSRS() const { return _profile->getSRS(); }
 
+        //! True if the map's visualization is geocentric
         bool isGeocentric() const { return _isGeocentric; }
-        bool isCube() const { return _isCube; }
-        bool isPlateCarre() const { return _profile->getSRS()->isPlateCarre(); }
 
+        //! True if the map's SRS is projected
         bool isProjectedSRS() const { return !isGeographicSRS(); }
+
+        //! True if the map's SRS Is geographic (lat/long)
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }
 
+        //! Elevation interpolation method used by the map
         ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
 
     private:

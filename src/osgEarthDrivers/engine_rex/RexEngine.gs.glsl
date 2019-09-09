@@ -29,7 +29,7 @@ void oe_rexEngine_gs(void)
     for(int i=0; i < 3; ++i )
     {
         VP_LoadVertex(i);
-        if (int(oe_layer_tilec.z) == VERTEX_MARKER_DISCARD)
+        if ( int(oe_layer_tilec.z) == VERTEX_MARKER_DISCARD )
             return;
     }
 

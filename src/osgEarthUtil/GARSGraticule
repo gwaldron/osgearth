@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,11 +19,9 @@
 #ifndef OSGEARTHANNOTATION_GARS_GRATICLE
 #define OSGEARTHANNOTATION_GARS_GRATICLE
 
-#include <osgEarth/Extension>
 #include <osgEarth/VisibleLayer>
 #include <osgEarthUtil/Common>
 #include <osgEarthSymbology/Style>
-#include <osg/ClipPlane>
 
 namespace osgEarth { namespace Util
 {
@@ -48,21 +46,20 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.key() = "gars_graticule";
-            conf.addObjIfSet("style", _style);
+            conf.set("style", _style);
             return conf;
-        }
-
-        virtual void fromConfig(const Config& conf) {
-            conf.getObjIfSet("style", _style);
         }
 
     protected:
         optional<Style> _style;
 
-        void mergeConfig(const Config& conf) {
+        virtual void mergeConfig(const Config& conf) {
             VisibleLayerOptions::mergeConfig(conf);
             fromConfig(conf);
+        }
+
+        void fromConfig(const Config& conf) {
+            conf.get("style", _style);
         }
     };
 
@@ -73,7 +70,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT GARSGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions);
+        META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions, gars_graticule);
 
         //! Construct a default GARS graticule
         GARSGraticule();
@@ -90,7 +87,7 @@ namespace osgEarth { namespace Util
 
         virtual void removedFromMap(const Map* map);
         
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         virtual void init();
 
@@ -101,13 +98,11 @@ namespace osgEarth { namespace Util
 
     private:
 
-        void setUpDefaultStyles();
         void rebuild();
         void build30MinCells();
 
         UID _uid;
         osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<osg::ClipPlane> _clipPlane;
         osg::ref_ptr<osg::Group> _root;
     };  
 } } // namespace osgEarth::Util

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,9 @@
 */
 
 #include "BoundaryUtil"
+
+#include <osgEarth/FileUtils>
+#include <osgEarth/GLUtils>
 
 #include <iostream>
 #include <iomanip>
@@ -80,11 +83,11 @@ int main(int argc, char** argv)
     bool convexOnly = arguments.read("--convex-hull");
     bool view = arguments.read("--view");
 
-    osg::Node* modelNode = osgDB::readNodeFiles( arguments );
-    if (!modelNode)
+    osg::ref_ptr<osg::Node> modelNode = osgDB::readNodeFiles( arguments );
+    if (!modelNode.valid())
         return usage( argv, "Unable to load model." );
 
-    osg::ref_ptr<osg::Vec3dArray> hull = BoundaryUtil::getBoundary(modelNode, geocentric, convexOnly);
+    osg::ref_ptr<osg::Vec3dArray> hull = BoundaryUtil::getBoundary(modelNode.get(), geocentric, convexOnly);
 
     if ( !outFile.empty() )
     {
@@ -161,14 +164,13 @@ int main(int argc, char** argv)
       osg::Geometry* boundaryGeometry = new osg::Geometry();
       boundaryGeometry->setVertexArray( drawHull );
 
-      osg::Vec4Array* colors = new osg::Vec4Array;
+      osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
       colors->push_back(osg::Vec4(1.0f,1.0f,0.0f,1.0f));
       boundaryGeometry->setColorArray(colors);
-      boundaryGeometry->setColorBinding(osg::Geometry::BIND_OVERALL);
       osg::StateSet* ss = boundaryGeometry->getOrCreateStateSet();
-      ss->setAttributeAndModes( new osg::LineWidth(1.0), 1 );
-      ss->setAttributeAndModes( new osg::Point(3.5), 1 );
-      ss->setMode( GL_LIGHTING, 0 );
+      osgEarth::GLUtils::setLineWidth(ss, 1.0f, 1);
+      osgEarth::GLUtils::setPointSize(ss, 3.5f, 1);
+      osgEarth::GLUtils::setLighting(ss, 0);
 
       boundaryGeometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP,0,drawHull->size()));
       boundaryGeometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS,0,drawHull->size()));

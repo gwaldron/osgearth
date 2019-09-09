@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureListSource>
+#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/Filter>
+#include <osgEarth/Progress>
 
 using namespace osgEarth::Features;
 
@@ -34,7 +37,7 @@ _defaultExtent( defaultExtent )
 }
 
 FeatureCursor*
-FeatureListSource::createFeatureCursor( const Symbology::Query& query )
+FeatureListSource::createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress)
 {
     if (getFeatureProfile() == 0L)
         setFeatureProfile(createFeatureProfile());
@@ -44,7 +47,7 @@ FeatureListSource::createFeatureCursor( const Symbology::Query& query )
     FeatureList cursorFeatures;
     for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
     {
-        Feature* feature = new osgEarth::Features::Feature(*(itr->get()), osg::CopyOp::DEEP_COPY_ALL);        
+        Feature* feature = new Feature(*(itr->get()), osg::CopyOp::DEEP_COPY_ALL);        
         cursorFeatures.push_back( feature );
     }    
     return new FeatureListCursor( cursorFeatures );

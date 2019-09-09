@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,10 +18,8 @@
  */
 
 #include <osgEarthUtil/MeasureTool>
-#include <osgEarth/GeoMath>
+#include <osgEarth/GLUtils>
 
-#include <osgEarthFeatures/Feature>
-#include <osgEarthAnnotation/FeatureNode>
 
 #define LC "[MeasureTool] "
 
@@ -34,9 +32,8 @@ using namespace osgEarth::Annotation;
 //#define SHOW_EXTENT 1
 
 
-MeasureToolHandler::MeasureToolHandler( osg::Group* group, osgEarth::MapNode* mapNode ):
+MeasureToolHandler::MeasureToolHandler( osgEarth::MapNode* mapNode ):
 _mouseDown         (false),
-_group             (group),
 _gotFirstLocation  (false),
 _lastPointTemporary(false),
 _finished          (false),
@@ -45,6 +42,7 @@ _mouseButton       (osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
 _isPath            (false),
 _intersectionMask  (0xffffffff)
 {
+    _root = new osg::Group();
     setMapNode( mapNode );
 }
 
@@ -61,7 +59,18 @@ MeasureToolHandler::setMapNode( MapNode* mapNode )
 
     if ( oldMapNode != mapNode )
     {
+        if (oldMapNode)
+        {
+            oldMapNode->removeChild(_root.get());
+        }
+
         _mapNode = mapNode;
+
+        if (mapNode)
+        {
+            mapNode->addChild(_root.get());
+        }
+
         rebuild();
     }
 }
@@ -70,9 +79,9 @@ MeasureToolHandler::setMapNode( MapNode* mapNode )
 void
 MeasureToolHandler::rebuild()
 {
-    if ( _group.valid() && _featureNode.valid() )
+    if ( _featureNode.valid() )
     {
-        _group->removeChild( _featureNode.get() );
+        _root->removeChild( _featureNode.get() );
         _featureNode = 0L;
     }
 
@@ -93,7 +102,7 @@ MeasureToolHandler::rebuild()
     // clamp to the terrain skin as it pages in
     AltitudeSymbol* alt = _feature->style()->getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
-    alt->technique() = alt->TECHNIQUE_SCENE;
+    alt->technique() = alt->TECHNIQUE_GPU;
 
     // offset to mitigate Z fighting
     RenderSymbol* render = _feature->style()->getOrCreate<RenderSymbol>();
@@ -107,11 +116,13 @@ MeasureToolHandler::rebuild()
     ls->stroke()->widthUnits() = Units::PIXELS;
     ls->tessellation() = 150;
 
-    _featureNode = new FeatureNode( getMapNode(), _feature.get() );
-    _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    _featureNode = new FeatureNode( _feature.get() );
+    _featureNode->setMapNode(getMapNode());
+
+    GLUtils::setLighting(_featureNode->getOrCreateStateSet(), osg::StateAttribute::OFF);
     //_featureNode->setClusterCulling(false);
 
-    _group->addChild (_featureNode.get() );
+    _root->addChild (_featureNode.get() );
 
 #ifdef SHOW_EXTENT
 
@@ -126,7 +137,7 @@ MeasureToolHandler::rebuild()
 
     _extentFeatureNode = new FeatureNode( getMapNode(), _extentFeature.get() );
     
-    _group->addChild( _extentFeatureNode.get() );
+    _root->addChild( _extentFeatureNode.get() );
 #endif
 }
 

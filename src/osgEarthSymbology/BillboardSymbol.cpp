@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #include <osgEarthSymbology/BillboardSymbol>
 #include <osgEarthSymbology/BillboardResource>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/URI>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -27,8 +28,8 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL(billboard, BillboardSymbol);
 
 
 BillboardSymbol::BillboardSymbol(const BillboardSymbol& rhs,const osg::CopyOp& copyop):
-InstanceSymbol(rhs, copyop),
-_image        (rhs._image.get())
+InstanceSymbol(rhs, copyop)//,
+//_image        (rhs._image.get())
 {
     //nop
 }
@@ -44,18 +45,20 @@ BillboardSymbol::getConfig() const
 {
     Config conf = InstanceSymbol::getConfig();
     conf.key() = "billboard";
-    conf.addIfSet( "width", _width );
-    conf.addIfSet( "height", _height );
-    conf.addNonSerializable( "BillboardSymbol::image", _image.get() );
+    conf.set( "width", _width );
+    conf.set( "height", _height );
+    conf.set( "top_url", _topURL );
+    //conf.setNonSerializable( "BillboardSymbol::image", _image.get() );
     return conf;
 }
 
 void 
 BillboardSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "width", _width );
-    conf.getIfSet( "height", _height );
-    _image = conf.getNonSerializable<osg::Image>( "BillboardSymbol::image" );
+    conf.get( "width", _width );
+    conf.get( "height", _height );
+    conf.get( "top_url", _topURL );
+    //_image = conf.getNonSerializable<osg::Image>( "BillboardSymbol::image" );
 }
 
 InstanceResource*
@@ -70,6 +73,10 @@ BillboardSymbol::parseSLD(const Config& c, Style& style)
     if ( match(c.key(), "billboard-image") ) {
         style.getOrCreate<BillboardSymbol>()->url() = c.value();
         style.getOrCreate<BillboardSymbol>()->url()->setURIContext( c.referrer() );
+    }
+    else if (match(c.key(), "billboard-top-image")) {
+        style.getOrCreate<BillboardSymbol>()->topURL() = c.value();
+        style.getOrCreate<BillboardSymbol>()->topURL()->setURIContext(c.referrer());
     }
     else if ( match(c.key(), "billboard-width") ) {
         style.getOrCreate<BillboardSymbol>()->width() = as<float>(c.value(), 10.0f);

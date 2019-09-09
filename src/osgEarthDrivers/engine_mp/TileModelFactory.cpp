@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -84,20 +84,10 @@ namespace
             const Profile* layerProfile = _layer->getProfile();
 
             //Only try to get data from the source if it actually intersects the key extent
-            bool hasDataInExtent = _layer->mayHaveDataInExtent(_key.getExtent());
-            //bool hasDataInExtent = true;
-            //if (tileSource && layerProfile)
-            //{
-            //    GeoExtent ext = _key.getExtent();
-            //    if (!layerProfile->getSRS()->isEquivalentTo( ext.getSRS()))
-            //    {
-            //        ext = layerProfile->clampAndTransformExtent( ext );
-            //    }
-            //    hasDataInExtent = tileSource->hasDataInExtent( ext );
-            //}
+            bool hasDataInExtent = _layer->mayHaveData(_key);
             
             // fetch the image from the layer.
-            if (hasDataInExtent && _layer->isKeyInLegalRange(_key))
+            if ((hasDataInExtent && _layer->isKeyInLegalRange(_key)) || isRootKey)
             {
                 if ( useMercatorFastPath )
                 {
@@ -276,7 +266,7 @@ TileModelFactory::buildElevation(const TileKey&    key,
     if (_meshHFCache->getOrCreateHeightField(frame, key, parentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
     {
         model->_elevationData = TileModel::ElevationData(
-            hf,
+            hf.get(),
             GeoLocator::createForKey( key, mapInfo ),
             isFallback );
 
@@ -393,7 +383,7 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
             else
             {
                 model->_normalData = TileModel::NormalData(
-                    hf,
+                    hf.get(),
                     GeoLocator::createForKey( key, mapInfo ),
                     isFallback );
 
@@ -409,7 +399,7 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
             key.getExtent(), EMPTY_NORMAL_MAP_SIZE, EMPTY_NORMAL_MAP_SIZE, 0u, true );
 
         model->_normalData = TileModel::NormalData(
-            hf,
+            hf.get(),
             GeoLocator::createForKey( key, mapInfo ),
             false );
 
@@ -515,4 +505,9 @@ TileModelFactory::createTileModel(const TileKey&           key,
     }
 
     out_model = model.release();
+
+    if (progress && progress->isCanceled())
+    {
+        out_model = 0;
+    }
 }

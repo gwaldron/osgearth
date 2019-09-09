@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -17,16 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "RexTerrainEngineNode"
-#include "RexTerrainEngineOptions"
-#include "TileNode"
-#include <osgEarth/Registry>
-#include <osgEarth/Progress>
 #include <osgEarth/Utils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <string>
-#include <sstream>
 
 #define LC "[engine_rex] "
 

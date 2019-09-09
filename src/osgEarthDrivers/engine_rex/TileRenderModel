@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -53,7 +53,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         RenderingPass() :
             _sourceUID(-1),
             _samplers(SamplerBinding::COLOR_PARENT+1),
-            _visibleLayer(0L)
+            _visibleLayer(0L),
+            _terrainLayer(0L)
             { }
         
         UID sourceUID() const { return _sourceUID; }
@@ -61,6 +62,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const Samplers& samplers() const  { return _samplers; }
         const Layer* layer() const { return _layer.get(); }
         const VisibleLayer* visibleLayer() const { return _visibleLayer; }
+        const TerrainLayer* terrainLayer() const { return _terrainLayer; }
 
         void releaseGLObjects(osg::State* state) const
         {
@@ -80,6 +82,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _layer = layer;
             if (layer) {
                 _visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
+                _terrainLayer = dynamic_cast<const TerrainLayer*>(layer);
                 _sourceUID = layer->getUID();
             }
         }
@@ -96,6 +99,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** VisibleLayer responsible for this rendering pass (is _layer is a VisibleLayer) */
         const VisibleLayer* _visibleLayer;
+        
+        /** VisibleLayer responsible for this rendering pass (is _layer is a TerrainLayer) */
+        const TerrainLayer* _terrainLayer;
+
 
     };
 

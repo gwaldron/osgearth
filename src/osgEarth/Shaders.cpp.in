@@ -6,22 +6,25 @@ namespace osgEarth
 {
     Shaders::Shaders()
     {
-        // AlphaEffect
-        AlphaEffectFragment = "AlphaEffect.frag.glsl";
-        _sources[AlphaEffectFragment] = "@AlphaEffect.frag.glsl@";
+        // Cascade Draping
+        CascadeDraping = "CascadeDraping.glsl";
+        _sources[CascadeDraping] = "@CascadeDraping.glsl@";
 
+        // Clip Plane
+        ClipPlane = "ClipPlane.glsl";
+        _sources[ClipPlane] = "@ClipPlane.glsl@";
 
         // Depth Offset
         DepthOffsetVertex = "DepthOffset.vert.glsl";
-       _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";
+        _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";
 
 
-       // Draping
-       DrapingVertex = "Draping.vert.glsl";
-       _sources[DrapingVertex] = "@Draping.vert.glsl@";
+        // Draping
+        DrapingVertex = "Draping.vert.glsl";
+        _sources[DrapingVertex] = "@Draping.vert.glsl@";
 
-       DrapingFragment = "Draping.frag.glsl";
-       _sources[DrapingFragment] = "@Draping.frag.glsl@";
+        DrapingFragment = "Draping.frag.glsl";
+        _sources[DrapingFragment] = "@Draping.frag.glsl@";
 
 
         // GPU Clamping
@@ -39,6 +42,13 @@ namespace osgEarth
         InstancingVertex = "Instancing.vert.glsl";
         _sources[InstancingVertex] = "@Instancing.vert.glsl@";
 
+        // LineDrawable
+        LineDrawable = "LineDrawable.glsl";
+        _sources[LineDrawable] = "@LineDrawable.glsl@";    
+
+        // PointDrawable
+        PointDrawable = "PointDrawable.glsl";
+        _sources[PointDrawable] = "@PointDrawable.glsl@";          
 
         // PhongLightingEffect
         PhongLightingVertex = "PhongLighting.vert.glsl";
@@ -46,5 +56,15 @@ namespace osgEarth
         
         PhongLightingFragment = "PhongLighting.frag.glsl";
         _sources[PhongLightingFragment] = "@PhongLighting.frag.glsl@";
+
+		// Text
+		TextVertex = "Text.vert.glsl";
+		_sources[TextVertex] = "@Text.vert.glsl@";
+
+		TextFragment = "Text.frag.glsl";
+		_sources[TextFragment] = "@Text.frag.glsl@";
+
+        TextLegacy = "Text_legacy.glsl";
+        _sources[TextLegacy] = "@Text_legacy.glsl@";
     }
 };

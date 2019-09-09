@@ -10,14 +10,14 @@ This shows how to label point features with an attribute.
     </image>
     
     <feature_source name="city-data" driver="ogr">
-        <url>../data/cities.shp</url>
+        <url>../data/cities.gpkg</url>
     </feature_source>
     
     <feature_model name="cities" feature_source="city-data">        
-        <feature_indexing enabled="true"/>
+        <feature_indexing enabled="false"/>
         <styles>
             <selector class="cities">
-                <query><expr><![CDATA[scalerank < 5]]></expr></query>
+                <query><expr><![CDATA[rank_max >= 8]]></expr></query>
             </selector>
             <style type="text/css">              
                 cities {
@@ -26,10 +26,11 @@ This shows how to label point features with an attribute.
                     icon-declutter: true;
                     icon-align:     center-bottom;
                     text-content:   [name];
-                    text-priority:  10-[scalerank];
+                    text-encoding:  utf-8;
+                    text-priority:  [rank_max];
                     text-align:     center-bottom;
                     text-halo:      #1f1f1f;
-                    text-size:      6+2*(10-[scalerank]);
+                    text-size:      6+2*[rank_max];
                 }     
             </style>
         </styles>
@@ -41,7 +42,6 @@ This shows how to label point features with an attribute.
         <min_animation_scale> 0.45 </min_animation_scale>
         <min_animation_alpha> 0.0  </min_animation_alpha>
         <sort_by_priority>    true </sort_by_priority>
-        <snap_to_pixel>       true </snap_to_pixel>
     </screen_space_layout>
   
 </map>

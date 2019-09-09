@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -19,24 +19,33 @@
 #include <osgViewer/Viewer>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/Registry>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
-#include <osgEarthTriton/TritonNode>
+#include <osgEarthTriton/TritonAPIWrapper>
+#include <osgEarthTriton/TritonCallback>
+#include <osgEarthTriton/TritonOptions>
+#include <osgEarthTriton/TritonLayer>
+#include <osgEarthAnnotation/AnnotationLayer>
+#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 
 #define LC "[osgearth_triton] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Triton;
+using namespace osgEarth::Annotation;
 namespace ui = osgEarth::Util::Controls;
-
 
 struct Settings
 {
     optional<double> chop;
     optional<double> seaState;
     optional<float> alpha;
+    osg::observer_ptr<TritonLayer> tritonLayer;
     
     void apply(Environment& env, Ocean& ocean)
     {
@@ -52,10 +61,12 @@ struct Settings
             seaState.clear();
         }
 
-        //if (alpha.isSet())
-        //{
-        //    triton->setAlpha( alpha.get() );
-        //}
+        osg::ref_ptr<TritonLayer> layer;
+        if (alpha.isSet() && tritonLayer.lock(layer))
+        {
+            layer->setOpacity(alpha.value());
+            alpha.clear();
+        }
     }
 };
 
@@ -82,23 +93,25 @@ struct App
 {
     App()
     {
-        triton = NULL;
-        mapNode = NULL;        
+        tritonLayer = NULL;
+        map = NULL;
+        const double lon = -118.5406, lat = 32.7838;
+
+        anchor.set(
+            SpatialReference::get("wgs84"), lon, lat, 0.0,
+            ALTMODE_ABSOLUTE);
+
+        isect = new Triton::TritonIntersections();
     }
 
-    MapNode*    mapNode;
-    TritonNode* triton;
-    Settings    settings;
-
-    osg::Group* getAttachPoint()
-    {
-        return mapNode;
-        //SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(mapNode);
-        //if (sky)
-        //    return sky;
-        //else
-        //    return mapNode;
-    }
+    Map*         map;
+    TritonLayer* tritonLayer;
+    Settings     settings;
+    osg::ref_ptr<Triton::TritonIntersections> isect;
+    AnnotationLayer* labels;
+    AnnotationLayer* normals;
+    LineDrawable* normalDrawable;
+    GeoPoint anchor;
 
     void addTriton()
     {
@@ -106,7 +119,7 @@ struct App
         osgEarth::Triton::TritonOptions tritonOptions;
         tritonOptions.user()        = "my_user_name";
         tritonOptions.licenseCode() = "my_license_code";
-        tritonOptions.maxAltitude() = 10000;
+        tritonOptions.maxAltitude() = 100000;
         tritonOptions.useHeightMap() = true;
 
         const char* ev_t = ::getenv("TRITON_PATH");
@@ -129,16 +142,88 @@ struct App
         }
 
 
-        triton = new TritonNode(tritonOptions, new TritonCallback(settings));
-        triton->setMapNode(mapNode);
+        tritonLayer = new TritonLayer(tritonOptions, new TritonCallback(settings));
+        map->addLayer(tritonLayer);
+        settings.tritonLayer = tritonLayer;
 
-        getAttachPoint()->addChild(triton);
+        tritonLayer->addIntersections(isect.get());
     }
 
     void removeTriton()
     {
-        getAttachPoint()->removeChild(triton);
-        triton = 0L;
+        if (tritonLayer)
+            map->removeLayer(tritonLayer);
+        tritonLayer = 0L;
+    }
+
+    void addBuoyancyTest(osg::Node* model)
+    {
+        //labels = new AnnotationLayer();
+        //map->addLayer(labels);
+
+        normals = new AnnotationLayer();
+        map->addLayer(normals);
+
+        // geometry for a unit normal vector
+        normalDrawable = new LineDrawable(GL_LINES);
+        normalDrawable->setColor(osg::Vec4(1,1,0,1));
+        normalDrawable->pushVertex(osg::Vec3(0,0,0));
+        normalDrawable->pushVertex(osg::Vec3(0,0,10));
+        normalDrawable->pushVertex(osg::Vec3(-2,0,0.5));
+        normalDrawable->pushVertex(osg::Vec3(2,0,0.5));
+        normalDrawable->pushVertex(osg::Vec3(0,-2,0.5));
+        normalDrawable->pushVertex(osg::Vec3(0,2,0.5));
+        normalDrawable->finish();
+
+        // a single shared anchor point for the intersection set:
+        isect->setAnchor(anchor);
+
+        // generate a bunch of local points around the anchor:
+        for(int x=-50; x<=50; x+=25)
+        {
+            for(int y=-50; y<=50; y+=25)
+            {
+                isect->addLocalPoint(osg::Vec3d(x, y, 0));
+
+                // a label communicating the wave height:
+                //PlaceNode* label = new PlaceNode();
+                //label->setDynamic(true);
+                //label->setPosition(anchor);
+                //label->setIconImage(image);
+                //label->setText("-");
+                //labels->getGroup()->addChild(label);
+
+                // a normal vector and optional model:
+                GeoPositionNode* normal = new GeoPositionNode();
+                normal->setDynamic(true);
+                normal->getPositionAttitudeTransform()->addChild(normalDrawable);
+                if (model)
+                    normal->getPositionAttitudeTransform()->addChild(model);
+                normal->setPosition(anchor);
+                normals->getGroup()->addChild(normal);
+            }
+        }
+
+        //ScreenSpaceLayout::setDeclutteringEnabled(false);
+    }
+
+    void updateBuoyancyTest()
+    {
+        for(unsigned i=0; i<isect->getHeights().size(); ++i)
+        {
+            osg::Vec3d local = isect->getInput()[i];
+            local.z() = isect->getHeights()[i];
+
+            //PlaceNode* label = dynamic_cast<PlaceNode*>(labels->getGroup()->getChild(i));
+            //label->getPositionAttitudeTransform()->setPosition(local);
+            //label->setText(Stringify()<<std::setprecision(2)<<local.z());
+
+            GeoPositionNode* normalNode = dynamic_cast<GeoPositionNode*>(normals->getGroup()->getChild(i));
+            normalNode->getPositionAttitudeTransform()->setPosition(local);
+            osg::Quat q;
+            q.makeRotate(osg::Vec3d(0,0,1), isect->getNormals()[i]);
+            normalNode->getPositionAttitudeTransform()->setAttitude(q);
+        }
     }
 };
 
@@ -156,7 +241,7 @@ template<typename T> struct Set : public ui::ControlEventHandler
 struct Toggle : public ui::ControlEventHandler
 {
     void onValueChanged(ui::Control*, bool value) {
-        if (s_app.triton)
+        if (s_app.tritonLayer)
             s_app.removeTriton();
         else
             s_app.addTriton();
@@ -179,7 +264,7 @@ Container* createUI()
     grid->setControl(1, r, new HSliderControl(0, 1.0, 1.0, new Set<float>(s_app.settings.alpha)));
     ++r;
     grid->setControl(0, r, new LabelControl("Toggle"));
-    grid->setControl(1, r, new CheckBoxControl(false, new Toggle()));
+    grid->setControl(1, r, new CheckBoxControl(true, new Toggle()));
 
     grid->getControl(1, r-1)->setHorizFill(true,200);
 
@@ -206,6 +291,14 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
+    osg::Node* model = 0L;
+    std::string filename;
+    if (arguments.read("--model", filename))
+    {
+        model = osgDB::readRefNodeFile(filename).release();
+        Registry::shaderGenerator().run(model);
+    }
+
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
@@ -213,7 +306,8 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
+    EarthManipulator* manip = new EarthManipulator();
+    viewer.setCameraManipulator(manip);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -225,10 +319,24 @@ main(int argc, char** argv)
 
         viewer.setSceneData( node );
 
-        s_app.mapNode = MapNode::get( node );
-        //s_app.addTriton();
+        s_app.map = MapNode::get( node )->getMap();
 
-        return viewer.run();
+        s_app.addTriton();
+        s_app.addBuoyancyTest(model);
+        
+        // Zoom the camera to our area of interest:
+        Viewpoint vp;
+        vp.heading() = 25.0f;
+        vp.pitch() = -25;
+        vp.range() = 400.0;
+        vp.focalPoint() = s_app.anchor;
+        manip->setViewpoint(vp);
+
+        while(!viewer.done())
+        {
+            viewer.frame();
+            s_app.updateBuoyancyTest();
+        }
     }
     else
     {

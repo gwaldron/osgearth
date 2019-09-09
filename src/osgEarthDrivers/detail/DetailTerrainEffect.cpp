@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -79,6 +79,7 @@ DetailTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // configure shaders
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+            vp->setName("DetailTerrainEffect");
 
             Shaders package;            
 

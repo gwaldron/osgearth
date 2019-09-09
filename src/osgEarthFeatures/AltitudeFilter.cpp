@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,13 +84,15 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-        
+
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
             StringExpression temp( _altitude->script().get() );
             feature->eval( temp, &cx );
         }
+        if (feature->getGeometry() == 0L)
+            continue;
 
         double minHAT       =  DBL_MAX;
         double maxHAT       = -DBL_MAX;
@@ -102,7 +104,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         optional<double> offsetZ( 0.0 );
         if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
             offsetZ = feature->eval( offsetExpr, &cx );       
-        
+
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
         {
@@ -151,18 +153,15 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     const Session* session = cx.getSession();
 
     // the map against which we'll be doing elevation clamping
-    MapFrame mapf = session->createMapFrame();
+    osg::ref_ptr<const Map> map = session->getMap();
+    if (!map.valid() || !map->getSRS())
+        return;
 
-    //VRV_PATCH: start
-    // PPP: Checks for mapSRS all through below.
-    // Map frame doesn't exist in the latest osg earth.
-    // Merge this carefully when we upgrade osgearth after merge
-    //VRV_PATCH: end
-    const SpatialReference* mapSRS = (mapf.getProfile()) ? mapf.getProfile()->getSRS() : 0;
+    const SpatialReference* mapSRS = map->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
 
     // establish an elevation query interface based on the features' SRS.
-    ElevationQuery eq( mapf );
+    ElevationQuery eq(map.get());
 
     NumericExpression scaleExpr;
     if ( _altitude->verticalScale().isSet() )
@@ -183,18 +182,20 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
     // whether the SRS's have a compatible vertical datum.
     bool vertEquiv =
-        (mapSRS) ? featureSRS->isVertEquivalentTo( mapSRS ) : false;
+        featureSRS->isVertEquivalentTo( mapSRS );
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-        
+
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
             StringExpression temp( _altitude->script().get() );
             feature->eval( temp, &cx );
         }
+        if (feature->getGeometry() == 0L)
+            continue;
 
         double maxTerrainZ  = -DBL_MAX;
         double minTerrainZ  =  DBL_MAX;
@@ -211,7 +212,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
         osgEarth::Bounds bounds = feature->getGeometry()->getBounds();
         const osg::Vec2d& center = bounds.center2d();
-        GeoPoint centroid(featureSRS, center.x(), center.y());
+        GeoPoint centroid(featureSRS.get(), center.x(), center.y());
         double   centroidElevation = 0.0;
 
         // If we aren't doing per vertex clamping go ahead and get the centroid.
@@ -226,7 +227,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                 centroidElevation = 0.0;
             }
         }
-        
+
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
         {
@@ -242,7 +243,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                 {
                     std::vector<float> elevations;
 
-                    if ( eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes ) )
+                    if ( eq.getElevations( geom->asVector(), featureSRS.get(), elevations, _maxRes ) )
                     {
                         for( unsigned i=0; i<geom->size(); ++i )
                         {
@@ -255,7 +256,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
                                 double z = p.z();
 
-                                if ( !vertEquiv && mapSRS )
+                                if ( !vertEquiv )
                                 {
                                     osg::Vec3d tempgeo;
                                     if ( !featureSRS->transform(p, mapSRS->getGeographicSRS(), tempgeo) )
@@ -286,7 +287,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         p.z() += offsetZ;
 
                         double z = p.z();
-                        if ( !vertEquiv && mapSRS )
+                        if ( !vertEquiv )
                         {
                             osg::Vec3d tempgeo;
                             if ( !featureSRS->transform(p, mapSRS->getGeographicSRS(), tempgeo) )
@@ -312,18 +313,15 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             // and record HATs along the way.
             else if ( _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
             {
-               osg::ref_ptr<const SpatialReference> featureSRSwithMapVertDatum;
-               if ( !vertEquiv && mapSRS )
-               {
-                  featureSRSwithMapVertDatum = SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString());
-               }
+                osg::ref_ptr<const SpatialReference> featureSRSwithMapVertDatum = !vertEquiv ?
+                    SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString()) : 0L;
 
                 if ( perVertex )
                 {
                     std::vector<float> elevations;
                     elevations.reserve( geom->size() );
-                    
-                    if ( eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes ) )
+
+                    if ( eq.getElevations( geom->asVector(), featureSRS.get(), elevations, _maxRes ) )
                     {
                         for( unsigned i=0; i<geom->size(); ++i )
                         {
@@ -339,9 +337,9 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
                                 // if necessary, convert the Z value (which is now in the map's SRS) back to
                                 // the feature's SRS.
-                                if (!vertEquiv && featureSRSwithMapVertDatum.get())
+                                if ( !vertEquiv )
                                 {
-                                    featureSRSwithMapVertDatum->transform(p, featureSRS, p);
+                                    featureSRSwithMapVertDatum->transform(p, featureSRS.get(), p);
                                 }
 
                                 if ( hat > maxHAT )
@@ -370,9 +368,9 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
                         // if necessary, convert the Z value (which is now in the map's SRS) back to
                         // the feature's SRS.
-                        if (!vertEquiv && featureSRSwithMapVertDatum)
+                        if ( !vertEquiv )
                         {
-                            featureSRSwithMapVertDatum->transform(p, featureSRS, p);
+                            featureSRSwithMapVertDatum->transform(p, featureSRS.get(), p);
                         }
 
                         if ( hat > maxHAT )
@@ -393,48 +391,37 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             {
                 if ( perVertex )
                 {
-                    eq.getElevations( geom->asVector(), featureSRS, true, _maxRes );
-                    
+                    eq.getElevations( geom->asVector(), featureSRS.get(), true, _maxRes );
+
                     // if necessary, transform the Z values (which are now in the map SRS) back
                     // into the feature's SRS.
                     if ( !vertEquiv )
                     {
-                       osg::ref_ptr<const SpatialReference> featureSRSwithMapVertDatum;
-                       if (mapSRS)
-                       {
-                          featureSRSwithMapVertDatum = SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString());
-                       }
+                        osg::ref_ptr<const SpatialReference> featureSRSwithMapVertDatum =
+                            SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString());
 
-                       if (featureSRSwithMapVertDatum.get())
-                       {
-                          osg::Vec3d tempgeo;
-                          for (unsigned i = 0; i < geom->size(); ++i)
-                          {
-                             osg::Vec3d& p = (*geom)[i];
-                             featureSRSwithMapVertDatum->transform(p, featureSRS, p);
-                          }
-                       }
+                        osg::Vec3d tempgeo;
+                        for( unsigned i=0; i<geom->size(); ++i )
+                        {
+                            osg::Vec3d& p = (*geom)[i];
+                            featureSRSwithMapVertDatum->transform(p, featureSRS.get(), p);
+                        }
                     }
                 }
                 else // per-centroid
                 {
                     osg::ref_ptr<const SpatialReference> featureSRSWithMapVertDatum;
-                    if (!vertEquiv && mapSRS)
-                    {
-                       featureSRSWithMapVertDatum = SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString());
-                    }
+                    if ( !vertEquiv )
+                        featureSRSWithMapVertDatum = SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString());
 
-                    if (featureSRSWithMapVertDatum.get())
+                    for( unsigned i=0; i<geom->size(); ++i )
                     {
-                       for (unsigned i = 0; i < geom->size(); ++i)
-                       {
-                          osg::Vec3d& p = (*geom)[i];
-                          p.z() = centroidElevation;
-                          if (!vertEquiv)
-                          {
-                             featureSRSWithMapVertDatum->transform(p, featureSRS, p);
-                          }
-                       }
+                        osg::Vec3d& p = (*geom)[i];
+                        p.z() = centroidElevation;
+                        if ( !vertEquiv )
+                        {
+                            featureSRSWithMapVertDatum->transform(p, featureSRS.get(), p);
+                        }
                     }
                 }
             }

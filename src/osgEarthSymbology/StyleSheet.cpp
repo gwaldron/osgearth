@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -178,6 +178,7 @@ Config
 StyleSheet::getConfig() const
 {
     Config conf;
+    conf.set("name", _name);
 
     for( StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
     {
@@ -215,7 +216,7 @@ StyleSheet::getConfig() const
         if ( !_script->profile.empty() )
             scriptConf.set( "profile", _script->profile );
         else if ( !_script->code.empty() )
-            scriptConf.value() = _script->code;
+            scriptConf.setValue(_script->code);
 
         conf.add( scriptConf );
     }
@@ -226,13 +227,19 @@ StyleSheet::getConfig() const
 void
 StyleSheet::mergeConfig( const Config& conf )
 {
+    conf.get("name", _name);
+
     _uriContext = URIContext( conf.referrer() );
 
     // read in any resource library references
     ConfigSet libraries = conf.children( "library" );
     for( ConfigSet::iterator i = libraries.begin(); i != libraries.end(); ++i )
     {
-        ResourceLibrary* resLib = new ResourceLibrary( *i );
+        const Config& libConf = *i;
+        ResourceLibrary* resLib = new ResourceLibrary( libConf );
+        if (resLib && libConf.value("name").empty() == false)
+            resLib->setName(libConf.value("name"));
+
         _resLibs[resLib->getName()] = resLib;
     }
 
@@ -300,9 +307,9 @@ StyleSheet::mergeConfig( const Config& conf )
             for( std::vector<std::string>::iterator i = blocks.begin(); i != blocks.end(); ++i )
             {
                 Config blockConf( styleConf );
-                blockConf.value() = *i;
+                blockConf.setValue(*i);
                 //OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
-                Style style( blockConf );
+                Style style( blockConf, this );
                 _styles[ style.getName() ] = style;
             }
         }

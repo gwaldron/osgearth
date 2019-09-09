@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -283,8 +283,8 @@ namespace
     typedef std::set<Index, IndexLess>            IndexSet;
     typedef std::map<Index, IndexSet, IndexLess>  EdgeMap;
 
-    // Stores the noded topology of a model with unique verticies and edge definitions.
-    // The verticies are stored rotated into the XY plane so that we can properly find
+    // Stores the noded topology of a model with unique vertices and edge definitions.
+    // The vertices are stored rotated into the XY plane so that we can properly find
     // the "bottom-most" vert and walk the boundary.
     struct TopologyGraph
     {
@@ -339,7 +339,7 @@ namespace
 
                 if ( _topology->_srs )
                 {
-                    const osgEarth::SpatialReference* ecef = _topology->_srs->getECEF();
+                    const osgEarth::SpatialReference* ecef = _topology->_srs->getGeocentricSRS();
                     ecef->transform(world, _topology->_srs, plane);
                 }
                 else
@@ -349,7 +349,7 @@ namespace
 
                 // insert it into the unique vert list
                 std::pair<VertexSet::iterator,bool> f = _topology->_verts.insert( plane );
-                if ( f.second ) // insert succedded
+                if ( f.second ) // insert succeeded
                 {
                     // this is a new location, so check it to see if it is the new "southernmost" point:
                     if ( _topology->_minY == _topology->_verts.end() || plane.y() < _topology->_minY->y() )
@@ -543,7 +543,7 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
         // pull up the edge set for this vertex:
         IndexSet& edges = topology._edgeMap[vptr];
 
-        // find the edge with the minimun delta angle to the base vector
+        // find the edge with the minimum delta angle to the base vector
         double bestScore = DBL_MAX;
         Index  bestEdge  = topology._verts.end();
         
@@ -615,7 +615,7 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     // un-rotate the results from the XY plane back to their original frame:
     if ( topology._srs )
     {
-        const osgEarth::SpatialReference* ecef = topology._srs->getECEF();
+        const osgEarth::SpatialReference* ecef = topology._srs->getGeocentricSRS();
         topology._srs->transform(_result->asVector(), ecef);
     }
     else
@@ -647,5 +647,5 @@ BoundaryUtil::simpleBoundaryTest(const osg::Vec3dArray& boundary)
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMin() - 10.0, boundsBounds.yMax() + 10.0, boundsBounds.zMin()));
 
   osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
-  return outterPoly->difference(boundsPoly, outPoly);
+  return outterPoly->difference(boundsPoly.get(), outPoly);
 }

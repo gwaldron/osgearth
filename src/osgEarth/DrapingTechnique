@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/DrapingCullSet>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
 #include <vector>
@@ -42,7 +43,7 @@ namespace osgEarth
      * This class is similar in scope to osgSim::OverlayNode, but is optimized
      * for use with osgEarth and geocentric terrains.
      */
-    class OSGEARTH_EXPORT DrapingTechnique : public OverlayTechnique
+    class OSGEARTH_INTERNAL DrapingTechnique : public OverlayTechnique
     {
     public:
         DrapingTechnique();
@@ -100,6 +101,8 @@ namespace osgEarth
         virtual bool hasData(
             OverlayDecorator::TechRTTParams& params) const;
 
+        virtual bool optimizeToVisibleBound() const { return true; }
+
         void preCullTerrain(
             OverlayDecorator::TechRTTParams& params,
             osgUtil::CullVisitor*            cv );
@@ -126,6 +129,10 @@ namespace osgEarth
         bool                          _rttBlending;
         bool                          _attachStencil;
         double                        _maxFarNearRatio;
+
+        mutable DrapingManager _drapingManager;
+        DrapingManager& getDrapingManager() { return _drapingManager; }
+        friend class MapNode;
 
         struct TechData : public osg::Referenced
         {

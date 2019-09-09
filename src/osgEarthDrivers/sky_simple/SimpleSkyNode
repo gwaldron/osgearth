@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -39,12 +39,7 @@ namespace osgEarth { namespace SimpleSky
     class SimpleSkyNode : public SkyNode
     {
     public:
-        SimpleSkyNode(
-            const SpatialReference* srs);
-
-        SimpleSkyNode(
-            const SpatialReference* srs,
-            const SimpleSkyOptions& options);
+        SimpleSkyNode(const SimpleSkyOptions& options);
 
     public: // SkyNode
 
@@ -58,6 +53,11 @@ namespace osgEarth { namespace SimpleSky
         void onSetMoonVisible();
         void onSetStarsVisible();
         void onSetAtmosphereVisible();
+
+    public: // osg::Object
+
+        void releaseGLObjects(osg::State* state) const;
+        void resizeGLObjectBuffers(unsigned maxSize);
 
     public: // osg::Node
 
@@ -103,10 +103,10 @@ namespace osgEarth { namespace SimpleSky
 
 		const SimpleSkyOptions _options;
 
-        void initialize(const SpatialReference* srs);
+        void construct();
 
         void makeSceneLighting();
-        void makeAtmosphere( const osg::EllipsoidModel* );
+        void makeAtmosphere(const osg::EllipsoidModel*);
         void makeSun();
         void makeMoon();
 
@@ -116,7 +116,7 @@ namespace osgEarth { namespace SimpleSky
         bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
 
         void setAmbientBrightness(float value);
-        void setSunPosition(const osg::Vec3& pos);
+        void setSunPosition(const osg::Vec3d& pos);
         void setMoonPosition(const osg::Vec3d& pos);
     };
 

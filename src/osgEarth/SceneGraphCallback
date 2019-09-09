@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -109,7 +109,7 @@ namespace osgEarth
         virtual bool addChild(osg::Node* child);
         virtual bool insertChild(unsigned index, osg::Node* child);
         virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
-        virtual bool removeChild(osg::Node* child);
+        virtual void childRemoved(unsigned pos, unsigned num);
 
     private:
         osg::observer_ptr<SceneGraphCallbacks> _host;

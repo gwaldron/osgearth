@@ -23,30 +23,24 @@ the feature data.
     <feature_model name="Countries" feature_source="world-data">
         <styles>        
             <style type="text/css">
-                p1 {
-                   fill:               #ffff807f;
+                base {
                    render-depth-test:  false;
                    altitude-clamping:  terrain-drape;
+                }                
+                p1 : base {
+                   fill: #ffff807f;
                 }       
-                p2 {
-                   fill:               #80ffff7f;
-                   render-depth-test:  false;
-                   altitude-clamping:  terrain-drape;
+                p2 : base {
+                   fill: #80ffff7f;
                 }   
-                p3 {
-                   fill:               #ff80ff7f;
-                   render-depth-test:  false;
-                   altitude-clamping:  terrain-drape;
+                p3 : base {
+                   fill: #ff80ff7f;
                 }       
-                p4 {
-                   fill:               #ff80807f;
-                   render-depth-test:  false;
-                   altitude-clamping:  terrain-drape;
+                p4 : base {
+                   fill: #ff80807f;
                 }     
-                p5 {
-                   fill:               #80ff807f;
-                   render-depth-test:  false;
-                   altitude-clamping:  terrain-drape;
+                p5 : base {
+                   fill: #80ff807f;
                 }                                      
             </style>
         

@@ -1,21 +1,21 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 
 #ifndef OSGEARTH_TILE_SOURCE_H
 #define OSGEARTH_TILE_SOURCE_H 1
@@ -47,121 +47,123 @@
 
 namespace osgEarth
 {
-	class ProgressCallback;
-	class Map;
-	class MapFrame;
+    class ProgressCallback;
+    class Map;
 
-	/**
-	* Configuration options for a tile source driver.
-	*/
-	class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions
-	{
-	public:
+    /**
+     * Configuration options for a tile source driver.
+     */
+    class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions
+    {
+    public:
 
-		/** File in which to store a tile blacklist. */
-		optional<std::string>& blacklistFilename() { return _blacklistFilename; }
-		const optional<std::string>& blacklistFilename() const { return _blacklistFilename; }
+        /** File in which to store a tile blacklist. */
+        optional<std::string>& blacklistFilename() { return _blacklistFilename; }
+        const optional<std::string>& blacklistFilename() const { return _blacklistFilename; }
 
-		/** Define a profile for this source, overriding the one reported by the source. */
-		optional<ProfileOptions>& profile() { return _profileOptions; }
-		const optional<ProfileOptions>& profile() const { return _profileOptions; }
+        /** Define a profile for this source, overriding the one reported by the source. */
+        optional<ProfileOptions>& profile() { return _profileOptions; }
+        const optional<ProfileOptions>& profile() const { return _profileOptions; }
 
-		/** Size of the in-memory cache (in entries; default=16) */
-		optional<int>& L2CacheSize() { return _L2CacheSize; }
-		const optional<int>& L2CacheSize() const { return _L2CacheSize; }
+        /** Size of the in-memory cache (in entries; default=16) */
+        optional<int>& L2CacheSize() { return _L2CacheSize; }
+        const optional<int>& L2CacheSize() const { return _L2CacheSize; }
 
-		/** Whether to use bilinear sampling when reprojecting data from this source
-		*  (default = true) */
-		optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
-		const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
+        /** Whether to use bilinear sampling when reprojecting data from this source
+         *  (default = true) */
+        optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
+        const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
 
-		/** Whether to rasterize into coverage data, which contains discrete non-interpolable values. */
-		optional<bool>& coverage() { return _coverage; }
-		const optional<bool>& coverage() const { return _coverage; }
+        /** Whether to rasterize into coverage data, which contains discrete non-interpolable values. */
+        optional<bool>& coverage() { return _coverage; }
+        const optional<bool>& coverage() const { return _coverage; }
 
-		/** osgDB::Options option string to pass through to osgDB reader/writers. */
-		optional<std::string>& osgOptionString() { return _osgOptionString; }
-		const optional<std::string>& osgOptionString() const { return _osgOptionString; }
+        /** osgDB::Options option string to pass through to osgDB reader/writers. */
+        optional<std::string>& osgOptionString() { return _osgOptionString; }
+        const optional<std::string>& osgOptionString() const { return _osgOptionString; }
 
-	public:
-		TileSourceOptions(const ConfigOptions& options = ConfigOptions());
+    public:
+        TileSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
-		/** dtor */
-		virtual ~TileSourceOptions() { }
+        /** dtor */
+        virtual ~TileSourceOptions() { }
 
-	public:
-		virtual Config getConfig() const;
+    public:
+        virtual Config getConfig() const;
 
-	protected:
-		virtual void mergeConfig(const Config& conf);
+    protected:
+        virtual void mergeConfig( const Config& conf );
 
-	private:
-		void fromConfig(const Config& conf);
+    private:
+        void fromConfig( const Config& conf );
 
-		optional<ProfileOptions> _profileOptions;
-		optional<std::string>    _blacklistFilename;
-		optional<int>            _L2CacheSize;
-		optional<bool>           _bilinearReprojection;
-		optional<bool>           _coverage;
-		optional<std::string>    _osgOptionString;
-	};
+        optional<ProfileOptions> _profileOptions;
+        optional<std::string>    _blacklistFilename;
+        optional<int>            _L2CacheSize;
+        optional<bool>           _bilinearReprojection;
+        optional<bool>           _coverage;
+        optional<std::string>    _osgOptionString;
+    };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileSourceOptions);
 
+namespace osgEarth
+{
+    /**
+     * A collection of tiles that should be considered blacklisted
+     */
+    class OSGEARTH_EXPORT TileBlacklist : public osg::Referenced
+    {
+    public:
+        /**
+         *Creates a new TileBlacklist
+         */
+        TileBlacklist();
 
-	/**
-	* A collection of tiles that should be considered blacklisted
-	*/
-	class OSGEARTH_EXPORT TileBlacklist : public osg::Referenced
-	{
-	public:
-		/**
-		*Creates a new TileBlacklist
-		*/
-		TileBlacklist();
+        /** dtor */
+        virtual ~TileBlacklist() { }
 
-		/** dtor */
-		virtual ~TileBlacklist() { }
+        /**
+         *Adds the given tile to the blacklist
+         */
+        void add(const TileKey& key);
 
-		/**
-		*Adds the given tile to the blacklist
-		*/
-		void add(const TileKey& key);
+        /**
+         *Removes the given tile from the blacklist
+         */
+        void remove(const TileKey& key);
 
-		/**
-		*Removes the given tile from the blacklist
-		*/
-		void remove(const TileKey& key);
+        /**
+         *Removes all tiles from the blacklist
+         */
+        void clear();
 
-		/**
-		*Removes all tiles from the blacklist
-		*/
-		void clear();
+        /**
+         *Returns whether the given tile is in the blacklist
+         */
+        bool contains(const TileKey& key) const;
 
-		/**
-		*Returns whether the given tile is in the blacklist
-		*/
-		bool contains(const TileKey& key) const;
+        /**
+         *Reads a TileBlacklist from the given istream
+         */
+        static TileBlacklist* read(std::istream &in);
 
-		/**
-		*Reads a TileBlacklist from the given istream
-		*/
-		static TileBlacklist* read(std::istream &in);
+        /**
+         *Reads a TileBlacklist from the given filename
+         */
+        static TileBlacklist* read(const std::string &filename);
 
-		/**
-		*Reads a TileBlacklist from the given filename
-		*/
-		static TileBlacklist* read(const std::string &filename);
+        /**
+         *Writes this TileBlacklist to the given ostream
+         */
+        void write(std::ostream &output) const;
 
-		/**
-		*Writes this TileBlacklist to the given ostream
-		*/
-		void write(std::ostream &output) const;
+        /**
+         *Writes this TileBlacklist to the given filename
+         */
+        void write(const std::string &filename) const;
 
-		/**
-		*Writes this TileBlacklist to the given filename
-		*/
-		void write(const std::string &filename) const;
-
-	private:
+    private:
         mutable LRUCache<TileKey, bool> _tiles; // using as a set (value unused)
     };
 
@@ -177,8 +179,8 @@ namespace osgEarth
         typedef unsigned Mode;
 
         /** Open for reading only */
-        static const Mode MODE_READ;  
-        
+        static const Mode MODE_READ;
+
         /** Open for writing */
         static const Mode MODE_WRITE;
 
@@ -231,6 +233,9 @@ namespace osgEarth
         float getMaxValidValue() const { return _maxValidValue; }
         void setMaxValidValue(float value) { _maxValidValue = value; }
 
+        //! The attribution string to be displayed for this TileSource
+        virtual std::string getAttribution() const { return ""; }
+
         /**
          * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
@@ -264,7 +269,7 @@ namespace osgEarth
          * image with one 32-bit channel and call storeImage.)
          */
         virtual bool storeHeightField(const TileKey&    key,
-                                      osg::HeightField* hf,
+                                      const osg::HeightField* hf,
                                       ProgressCallback* progress);
 
     public:
@@ -278,7 +283,7 @@ namespace osgEarth
 
         /**
          * TimeStamp indicating the last time the data at this source changed
-         * Default is 0, i.e. the beginning of time itself (1970). It is up to 
+         * Default is 0, i.e. the beginning of time itself (1970). It is up to
          * the TileSource implementation whether to populate this field. The
          * Map engine can use it for per-session caching purposes.
          */
@@ -290,13 +295,7 @@ namespace osgEarth
         virtual const Profile* getProfile() const;
 
         /**
-         * Gets the preferred extension for this TileSource
-         * @deprecated No longer used
-         */
-        virtual std::string getExtension() const {return "png";}
-
-        /**
-         *Gets the blacklist for this TileSource
+         * Gets the blacklist for this TileSource
          */
         TileBlacklist* getBlacklist();
         const TileBlacklist* getBlacklist() const;
@@ -313,7 +312,7 @@ namespace osgEarth
          * cache if one is configured. But a TileSource can report that caching should
          * not be used (for whatever reason) by returning CachePolicy::NO_CACHE.
          */
-        virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const 
+        virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const
             { return CachePolicy::DEFAULT; }
 
         /**
@@ -327,7 +326,7 @@ namespace osgEarth
         const TileSourceOptions& getOptions() const { return _options; }
 
         /**
-         * Set the L2 cache size default (if the size was not set in 
+         * Set the L2 cache size default (if the size was not set in
          * the options or environment). Must call this before open().
          */
         void setDefaultL2CacheSize(int size);
@@ -351,8 +350,6 @@ namespace osgEarth
          * intialization succeeded (in which case the owning layer will become enabled)
          * or failed (in which case the owning layer will become disabled.
          *
-         * This method replaces the now-deprecated initialize method below.
-         *
          * The Subclass should override this to report a correct initialization status.
          * The default implementation reports STATUS_OK (for compatibility).
          */
@@ -375,11 +372,11 @@ namespace osgEarth
             ProgressCallback*     progress );
 
     protected:
-        
+
         virtual ~TileSource();
 
         /**
-         * Subclass can call this to set a Profile after opening the 
+         * Subclass can call this to set a Profile after opening the
          * data store.
          */
         void setProfile( const Profile* profile );
@@ -391,28 +388,8 @@ namespace osgEarth
          */
         void setStatus(const Status& value) { _status = value; }
 
-        /**
-         * Accesses the map frame that synchronizes with a map if one is set.
-         * Note; the map frame might be empty/invalid.
-         */
-        MapFrame& getMapFrame() const;
-
         //! Compat - do not override
         unsigned getTileSize() const { return getPixelsPerTile(); }
-
-
-    protected: // deprecated
-
-        /**
-         * @deprecated
-         * Initializes the TileSource. This is the old initialize method; it will exists
-         * for backwards compatibility with older user-defined TileSource implementations.
-         * Consider updating to the new initialize() method above since it properly
-         * reports the results of the initialization.
-         */
-        virtual void initialize(
-            const osgDB::Options* dbOptions,
-            const Profile*        overrideProfile ) { }
 
     private:
 
@@ -432,7 +409,7 @@ namespace osgEarth
         DataExtentList  _dataExtents;
         Status          _status;
         Mode            _mode;
-        unsigned        _tileSize;     
+        unsigned        _tileSize;
         float           _noDataValue;
         float           _minValidValue;
         float           _maxValidValue;
@@ -443,34 +420,34 @@ namespace osgEarth
     };
 
 
-	typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
+    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
 
-	//--------------------------------------------------------------------
+    //--------------------------------------------------------------------
 
-	class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
-	{
-	protected:
-		const TileSourceOptions& getTileSourceOptions(const osgDB::Options* options) const;
+    class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const TileSourceOptions& getTileSourceOptions(const osgDB::Options* options) const;
 
-		const std::string getInterfaceName(const osgDB::Options* options) const;
+        const std::string getInterfaceName(const osgDB::Options* options) const;
 
-		TileSource::Mode getOpenMode(const osgDB::Options* options) const;
-	};
+        TileSource::Mode getOpenMode(const osgDB::Options* options) const;
+    };
 
-	//--------------------------------------------------------------------
+    //--------------------------------------------------------------------
 
-	/**
-	* Creates TileSource instances.
-	*/
-	class OSGEARTH_EXPORT TileSourceFactory
-	{
-	public:
-		/**
-		* Creates a TileSource instance by loading the driver plugin
-		* specified in the options.
-		*/
-		static TileSource* create(const TileSourceOptions& options);
-	};
+    /**
+     * Creates TileSource instances.
+     */
+    class OSGEARTH_EXPORT TileSourceFactory
+    {
+    public:
+        /**
+         * Creates a TileSource instance by loading the driver plugin
+         * specified in the options.
+         */
+        static TileSource* create(const TileSourceOptions& options);
+    };
 }
 
 #endif // OSGEARTH_TILE_SOURCE_H

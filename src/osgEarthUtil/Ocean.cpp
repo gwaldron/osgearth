@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,10 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Ocean>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -43,7 +41,7 @@ _maxAltitude       ( 20000.0 )
 void
 OceanOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "max_altitude", _maxAltitude );
+    conf.get( "max_altitude", _maxAltitude );
 }
 
 void
@@ -57,7 +55,7 @@ Config
 OceanOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
-    conf.addIfSet( "max_altitude", _maxAltitude );
+    conf.set( "max_altitude", _maxAltitude );
     return conf;
 }
 
@@ -117,7 +115,7 @@ OceanNode::traverse(osg::NodeVisitor& nv)
 
             // clamp the absolute value so it will work above or below sea level
             // and so we don't attempt to set the near clip below 1:
-            altitude = std::max( ::fabs(altitude), 1.0 );
+            altitude = osg::maximum( ::fabs(altitude), 1.0 );
 
             // we don't want the ocean participating in the N/F calculation:
             osg::CullSettings::ComputeNearFarMode mode = cv->getComputeNearFarMode();
@@ -132,7 +130,7 @@ OceanNode::traverse(osg::NodeVisitor& nv)
             // plane distance. Close enough and errs on the safe side.
             double oldNear = cv->getCalculatedNearPlane();
 
-            double newNear = std::min( oldNear, altitude );
+            double newNear = osg::minimum( oldNear, altitude );
             if ( newNear < oldNear )
             {
                 cv->setCalculatedNearPlane( newNear );

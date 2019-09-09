@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Bounds>
-#include <osgEarth/StringUtils>
 #include <osgEarth/SpatialReference>
 
 using namespace osgEarth;
@@ -160,4 +159,16 @@ void
 Bounds::transform( const SpatialReference* from, const SpatialReference* to )
 {
     from->transformExtentToMBR( to, _min.x(), _min.y(), _max.x(), _max.y() );
+}
+
+void
+Bounds::set(double xmin, double ymin, double xmax, double ymax)
+{
+    osg::BoundingBoxd::set(xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX);
+}
+
+void
+Bounds::set(double xmin, double ymin, double zmin, double xmax, double ymax, double zmax)
+{
+    osg::BoundingBoxd::set(xmin, ymin, zmin, xmax, ymax, zmax);
 }

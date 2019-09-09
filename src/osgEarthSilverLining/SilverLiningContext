@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,9 +46,6 @@ namespace osgEarth { namespace SilverLining
 
         /** Sets the light source that will represent the sun */
         void setLight(osg::Light* light);
-
-        /** Sets the spatial reference system of the map */
-        void setSRS(const SpatialReference* srs);
 
         /** Sets the minimum ambient lighting value */
         void setMinimumAmbient(const osg::Vec4f& value);

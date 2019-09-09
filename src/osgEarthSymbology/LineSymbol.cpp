@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -65,22 +65,22 @@ LineSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "line";
-    conf.addObjIfSet("stroke",       _stroke);
-    conf.addIfSet   ("tessellation", _tessellation);
-    conf.addIfSet   ("crease_angle", _creaseAngle);
-    conf.addObjIfSet("tessellation_size", _tessellationSize );
-    conf.addObjIfSet   ("image", _imageURI);
+    conf.set("stroke",       _stroke);
+    conf.set("tessellation", _tessellation);
+    conf.set("crease_angle", _creaseAngle);
+    conf.set("tessellation_size", _tessellationSize );
+    conf.set("image", _imageURI);
     return conf;
 }
 
 void 
 LineSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet("stroke",       _stroke);
-    conf.getIfSet   ("tessellation", _tessellation);
-    conf.getIfSet   ("crease_angle", _creaseAngle);
-    conf.getObjIfSet("tessellation_size", _tessellationSize);
-    conf.getObjIfSet("image", _imageURI);
+    conf.get("stroke",       _stroke);
+    conf.get("tessellation", _tessellation);
+    conf.get("crease_angle", _creaseAngle);
+    conf.get("tessellation_size", _tessellationSize);
+    conf.get("image", _imageURI);
 }
 
 void
@@ -116,7 +116,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "stroke-rounding-ratio") ) {
         style.getOrCreate<LineSymbol>()->stroke()->roundingRatio() = as<float>(c.value(), 0.4f);
     }
-    else if ( match(c.key(), "stroke-tessellation") ) {
+    else if ( match(c.key(), "stroke-tessellation-segments") ) {
         style.getOrCreate<LineSymbol>()->tessellation() = as<unsigned>( c.value(), 0 );
     }
     else if ( match(c.key(), "stroke-tessellation-size") ) {
@@ -144,5 +144,8 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "stroke-image")) {
         style.getOrCreate<LineSymbol>()->imageURI() = StringExpression(stripQuotes(c.value()), c.referrer());
+    }
+    else if (match(c.key(), "stroke-smooth")) {
+        style.getOrCreate<LineSymbol>()->stroke()->smooth() = as<bool>(c.value(), false);
     }
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,19 +20,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/DrapingTechnique>
-#include <osgEarth/DrapingCullSet>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
-#include <osgEarth/CullingUtils>
 #include <osgEarth/Lighting>
 
 #include <osg/BlendFunc>
-#include <osg/TexGen>
 #include <osg/Texture2D>
-#include <osg/Uniform>
 
 #define LC "[DrapingTechnique] "
 
@@ -48,6 +42,22 @@ using namespace osgEarth;
 
 namespace
 {
+    struct RenderBinSortingVisitor
+    {
+        void apply(osgUtil::RenderBin* bin)
+        {
+            bin->setSortMode(osgUtil::RenderBin::TRAVERSAL_ORDER);
+
+            for(osgUtil::RenderBin::RenderBinList::iterator i = bin->getRenderBinList().begin();
+                i != bin->getRenderBinList().end();
+                ++i)
+            {
+                osgUtil::RenderBin* child = i->second.get();
+                apply(child);
+            }
+        }
+    };
+
     /**
      * A camera that will traverse the per-thread DrapingCullSet instead of
      * its own children.
@@ -55,9 +65,12 @@ namespace
     class DrapingCamera : public osg::Camera
     {
     public:
-        DrapingCamera() : osg::Camera(), _camera(0L)
+        DrapingCamera(DrapingManager& dm) : osg::Camera(), _dm(dm), _camera(0L)
         {
             setCullingActive( false );
+            osg::StateSet* ss = getOrCreateStateSet();
+            ss->setMode(GL_DEPTH_TEST, 0);
+            ss->setRenderBinDetails(1, "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
         }
 
     public: // osg::Node
@@ -69,21 +82,57 @@ namespace
         }
 
         void traverse(osg::NodeVisitor& nv)
-        {            
-            DrapingCullSet& cullSet = DrapingCullSet::get(_camera);
+        {
+            DrapingCullSet& cullSet = _dm.get(_camera);
             cullSet.accept( nv );
+
+            // manhandle the render bin sorting, since OSG ignores the override
+            // in the render bin details above
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            if (cv)
+            {
+                applyTraversalOrderSorting(cv->getCurrentRenderBin());
+            }
+        }
+
+        void applyTraversalOrderSorting(osgUtil::RenderBin* bin)
+        {
+            bin->setSortMode(osgUtil::RenderBin::TRAVERSAL_ORDER);
+
+            for (osgUtil::RenderBin::RenderBinList::iterator i = bin->getRenderBinList().begin();
+                i != bin->getRenderBinList().end();
+                ++i)
+            {
+                osgUtil::RenderBin* child = i->second.get();
+                applyTraversalOrderSorting(child);
+            }
         }
 
     protected:
         virtual ~DrapingCamera() { }
+        DrapingManager& _dm;
         const osg::Camera* _camera;
     };
 
 
     // Additional per-view data stored by the draping technique.
-    struct LocalPerViewData : public osg::Referenced
+    struct LocalPerViewData : public osg::Object
     {
+        META_Object(osgEarth, LocalPerViewData);
+
         osg::ref_ptr<osg::Uniform> _texGenUniform;
+
+        void resizeGLObjectBuffers(unsigned maxSize) {
+            if (_texGenUniform.valid())
+                _texGenUniform->resizeGLObjectBuffers(maxSize);
+        }
+        void releaseGLObjects(osg::State* state) const {
+            if (_texGenUniform.valid())
+                _texGenUniform->releaseGLObjects(state);
+        }
+
+        LocalPerViewData() { }
+        LocalPerViewData(const LocalPerViewData& rhs, const osg::CopyOp& co) { }
     };
 }
 
@@ -134,9 +183,7 @@ namespace
 
     // Experimental.
     void optimizeProjectionMatrix(OverlayDecorator::TechRTTParams& params, double maxFarNearRatio)
-    {
-        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
-        
+    {        
         // t0,t1,t2,t3 will form a polygon that tightly fits the
         // main camera's frustum. Texture near the camera will get
         // more resolution then texture far away.
@@ -245,7 +292,7 @@ namespace
                     //break;
                 }
 
-                halfWidthNear = std::max(halfWidthNear, minHalfWidthNear);
+                halfWidthNear = osg::maximum(halfWidthNear, minHalfWidthNear);
             }
 
             // if the far plane is narrower than the near plane, bail out and 
@@ -386,7 +433,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     osg::Texture2D* projTexture = new DrapingTexture(); 
 
     projTexture->setTextureSize( *_textureSize, *_textureSize );
-    projTexture->setInternalFormat( GL_RGBA );
+    projTexture->setInternalFormat( GL_RGBA8 );  //use GL_RGBA8 for compatibility with osg's glTexStorage extension
     projTexture->setSourceFormat( GL_RGBA );
     projTexture->setSourceType( GL_UNSIGNED_BYTE );
     projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
@@ -397,7 +444,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:
-    params._rttCamera = new DrapingCamera(); //new osg::Camera();
+    params._rttCamera = new DrapingCamera(_drapingManager);
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
     // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
     // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
@@ -436,6 +483,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     {
         params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT );
     }
+
 
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
@@ -477,11 +525,6 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     //       while we are changing its children.
     params._rttCamera->addChild( params._group );
 
-    // overlay geometry is rendered with no depth testing, and in the order it's found in the
-    // scene graph... until further notice.
-    rttStateSet->setMode(GL_DEPTH_TEST, 0);
-    rttStateSet->setBinName( "TraversalOrderBin" );
-
     // add to the terrain stateset, i.e. the stateset that the OverlayDecorator will
     // apply to the terrain before cull-traversing it. This will activate the projective
     // texturing on the terrain.
@@ -508,12 +551,13 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
             "    if (vclip.z > 1.0) vclip.z = vclip.w+1.0; \n"
             "} \n";
         VirtualProgram* rtt_vp = VirtualProgram::getOrCreate(rttStateSet);
+        rtt_vp->setName("Draping RTT");
         rtt_vp->setFunction( "oe_overlay_warpClip", warpClip, ShaderComp::LOCATION_VERTEX_CLIP );
     }
 
     // Assemble the terrain shaders that will apply projective texturing.
     VirtualProgram* terrain_vp = VirtualProgram::getOrCreate(params._terrainStateSet);
-    terrain_vp->setName( "Draping terrain shaders");
+    terrain_vp->setName( "Draping apply");
 
     // sampler for projected texture:
     params._terrainStateSet->getOrCreateUniform(
@@ -571,13 +615,17 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
     if ( !params._rttCamera.valid() && _textureUnit.isSet() )
     {
         setUpCamera( params );
+
+        // We do this so we can detect the RTT's camera's parent for 
+        // things like auto-scaling, picking, and so on.
+        params._rttCamera->setView(cv->getCurrentCamera()->getView());
     }
 }
        
 const osg::BoundingSphere&
 DrapingTechnique::getBound(OverlayDecorator::TechRTTParams& params) const
 {
-    return DrapingCullSet::get(params._mainCamera).getBound();
+    return _drapingManager.get(params._mainCamera).getBound();
 }
 
 void

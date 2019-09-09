@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -127,7 +127,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     // if there's a model, render that - models do NOT get labels.
                     if ( model )
                     {
-                        ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions );
+                        ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions.get() );
                         node->setPosition( position );
 
                         // model scale:
@@ -160,13 +160,16 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     // is there an icon?
                     if ( icon )
                     {
-                        iconNode = new PlaceNode( cx._mapNode, position, style, cx._dbOptions );
+                        PlaceNode* placeNode = new PlaceNode( position );
+                        placeNode->setStyle(style, cx._dbOptions.get());
+                        iconNode = placeNode;
                     }
 
                     else if ( !model && text && !name.empty() )
                     {
                         // note: models do not get labels.
-                        iconNode = new LabelNode( cx._mapNode, position, style );
+                        iconNode = new LabelNode();
+                        iconNode->setStyle(style);
                     }
                 }
 
@@ -183,7 +186,8 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                         style.removeSymbol( text );
 
                     Feature* feature = new Feature(geom, cx._srs.get(), style);
-                    featureNode = new FeatureNode( cx._mapNode, feature );
+                    featureNode = new FeatureNode(feature );
+                    featureNode->setMapNode( cx._mapNode );
                 }
 
                 if ( iconNode )

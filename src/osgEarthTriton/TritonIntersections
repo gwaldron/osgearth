@@ -1,0 +1,76 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_TRITON_INTERSECTIONS
+#define OSGEARTH_TRITON_INTERSECTIONS 1
+
+#include "Common"
+
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/LayerListener>
+#include <osgEarth/ImageLayer>
+#include <osgEarthUtil/Ocean>
+#include <osgEarthTriton/TritonCallback>
+
+namespace osgEarth { namespace Triton
+{
+    /**
+     * Pass this structure to TritonLayer and it will automatically
+     * populate the results with ocean wave intersections (local coordinates
+     * and normals.)
+     */
+    class OSGEARTHTRITON_EXPORT TritonIntersections : public osg::Referenced
+    {
+    public:
+        //! Construct an empty set
+        TritonIntersections();
+
+        //! Anchor point for intersectsions in this set. Only the X and Y
+        //! components are used. Any local points you add to this set will
+        //! be in the local coordinate system (LTP) around this anchor point.
+        void setAnchor(const GeoPoint& p);
+
+        //! Adds a point to the intersection set. The point should be in the 
+        //! local coordinate system of the anchor point.
+        void addLocalPoint(const osg::Vec3d& p);
+
+        //! Maximum range at which to perform intersections. Beyond this
+        //! range Triton will skip this set. Default is 2km.
+        void setMaxRange(const Distance& value);
+        const Distance& getMaxRange() const { return _maxRange; }
+
+        //! Vector of input local points added by addLocalPoint.
+        const std::vector<osg::Vec3d>& getInput() const { return _input; }
+
+        //! Vector of heights resulting from the intersection tests.
+        const std::vector<float>& getHeights() const { return _heights; }
+
+        //! Vector of normals resulting from the intersection tests.
+        const std::vector<osg::Vec3d>& getNormals() const { return _normals; }
+
+    private:
+        GeoPoint _anchor;
+        std::vector<osg::Vec3d> _input;
+        std::vector<float> _heights;
+        std::vector<osg::Vec3d> _normals; 
+        Distance _maxRange;
+        friend class TritonLayerNode;
+    };
+} }
+
+#endif // OSGEARTH_TRITON_INTERSECTIONS

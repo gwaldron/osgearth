@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -64,7 +64,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             const MapFrame&          frame,         // map frame from which to get data
             bool                     accumulate,    // whether to accumulate values from parent tile(s)
             osg::ref_ptr<TileModel>& out_model,     // output or NULL upon failure
-            ProgressCallback*        progress);     // progess tracking
+            ProgressCallback*        progress);     // progress tracking
 
         void setNormalMapUnit(int unit) { _normalMapUnit = unit; }
 

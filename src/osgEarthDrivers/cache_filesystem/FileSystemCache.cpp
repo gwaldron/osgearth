@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,7 +40,6 @@ using namespace osgEarth::Threading;
 
 #define OSG_FORMAT "osgb"
 #define OSG_EXT   ".osgb"
-#define OSG_COMPRESS
 
 namespace
 {
@@ -124,6 +123,7 @@ namespace
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
         mutable Threading::ReadWriteMutex _mutex;
+        bool                              _debug;
     };
 
     void writeMeta( const std::string& fullPath, const Config& meta )
@@ -282,19 +282,21 @@ namespace
 
         _zlibOptions = Registry::instance()->cloneOrCreateOptions();
 
-#ifdef OSG_COMPRESS
-#ifdef OSGEARTH_HAVE_ZLIB
-        _zlibOptions->setPluginStringData("Compressor", "zlib");
-        _compressorName = "zlib";
-#endif        
-#endif
-        if (::getenv(OSGEARTH_ENV_DEFAULT_COMPRESSOR) != 0L){
-           _compressorName = ::getenv(OSGEARTH_ENV_DEFAULT_COMPRESSOR);
+        if (::getenv(OSGEARTH_ENV_DEFAULT_COMPRESSOR) != 0L)
+        {
+            _compressorName = ::getenv(OSGEARTH_ENV_DEFAULT_COMPRESSOR);
         }
-        if (_compressorName.length() > 0){
-           _zlibOptions->setPluginStringData("Compressor", _compressorName);
+        else
+        {
+            _compressorName = "zlib";
         }
-     
+
+        if (_compressorName.length() > 0)
+        {
+            _zlibOptions->setPluginStringData("Compressor", _compressorName);
+        }
+
+        _debug = ::getenv("OSGEARTH_CACHE_DEBUG") != 0L;
     }
 
     const osgDB::Options*
@@ -311,8 +313,9 @@ namespace
         else
         {
             osgDB::Options* merged = Registry::cloneOrCreateOptions(dbo);
-            if (_compressorName.length()){
-               merged->setPluginStringData("Compressor", _compressorName);
+            if (_compressorName.length())
+            {
+                merged->setPluginStringData("Compressor", _compressorName);
             }
             return merged;
         }
@@ -325,7 +328,7 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI(key, _metaPath);
+        URI fileURI( key, _metaPath );
         std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
@@ -351,6 +354,10 @@ namespace
 
             ReadResult rr( r.getImage(), meta );
             rr.setLastModifiedTime(timeStamp);
+
+            if (_debug)
+                OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+
             return rr;            
         }
     }
@@ -362,7 +369,7 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI(key, _metaPath);
+        URI fileURI( key, _metaPath );
         std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
@@ -388,6 +395,10 @@ namespace
 
             ReadResult rr( r.getObject(), meta );
             rr.setLastModifiedTime(timeStamp);
+
+            if (_debug)
+                OE_NOTICE << LC << "Read object \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+
             return rr;            
         }
     }
@@ -399,9 +410,16 @@ namespace
         if ( r.succeeded() )
         {
             if ( r.get<StringObject>() )
+            {
+                if (_debug)
+                    OE_NOTICE << LC << "Read string \"" << key << "\" from cache bin [" << getID() << "]" << std::endl;
+
                 return r;
+            }
             else
+            {
                 return ReadResult();
+            }
         }
         else
         {
@@ -416,7 +434,7 @@ namespace
             return false;
 
         // convert the key into a legal filename:
-        URI fileURI(key, _metaPath);
+        URI fileURI( key, _metaPath );
         
         osgDB::ReaderWriter::WriteResult r;
 
@@ -460,7 +478,8 @@ namespace
 
         if ( objWriteOK )
         {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+            if (_debug)
+                OE_NOTICE << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
         }
         else
         {
@@ -477,7 +496,7 @@ namespace
         if ( !binValidForReading() ) 
             return STATUS_NOT_FOUND;
 
-        URI fileURI(key, _metaPath);
+        URI fileURI( key, _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
@@ -489,7 +508,7 @@ namespace
     FileSystemCacheBin::remove(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI(key, _metaPath);
+        URI fileURI( key, _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
 
         ScopedWriteLock lock(_mutex);
@@ -500,7 +519,7 @@ namespace
     FileSystemCacheBin::touch(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI(key, _metaPath);
+        URI fileURI( key, _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
 
         ScopedWriteLock lock(_mutex);
@@ -529,14 +548,16 @@ namespace
                     purgeDirectory( full );
 
                     ok = ::unlink( full.c_str() );
-                    OE_DEBUG << LC << "Unlink: " << full << std::endl;
+                    if (_debug)
+                        OE_NOTICE << LC << "Unlink: " << full << std::endl;
                 }
                 else if ( type == osgDB::REGULAR_FILE )
                 {
                     if ( full != _metaPath )
                     {
                         ok = ::unlink( full.c_str() );
-                        OE_DEBUG << LC << "Unlink: " << full << std::endl;
+                        if (_debug)
+                            OE_NOTICE << LC << "Unlink: " << full << std::endl;
                     }
                 }
 
@@ -595,7 +616,7 @@ namespace
 
 /**
  * This driver defers loading of the source data to the appropriate OSG plugin. You
- * must explicity set an override profile when using this driver.
+ * must explicitly set an override profile when using this driver.
  *
  * For example, use this driver to load a simple jpeg file; then set the profile to
  * tell osgEarth its projection.

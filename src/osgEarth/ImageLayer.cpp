@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,23 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ColorFilter>
-#include <osgEarth/TileSource>
 #include <osgEarth/ImageMosaic>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Progress>
-#include <osgEarth/URI>
-#include <osgEarth/MemCache>
-#include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
-#include <osg/Version>
 #include <osg/ConcurrencyViewerMacros>
-#include <osgDB/WriteFile>
-#include <memory.h>
-#include <limits.h>
 
 
 using namespace osgEarth;
@@ -101,10 +90,11 @@ ImageLayerOptions::mergeConfig( const Config& conf )
 void
 ImageLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet( "nodata_image",   _noDataImageFilename );
-    conf.getIfSet( "shared",         _shared );
-    conf.getIfSet( "coverage",       _coverage );
-    conf.getIfSet( "feather_pixels", _featherPixels);
+    conf.get( "nodata_image",   _noDataImageFilename );
+    conf.get( "shared",         _shared );
+    conf.get( "coverage",       _coverage );
+    conf.get( "feather_pixels", _featherPixels);
+    conf.get( "altitude",       _altitude );
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -115,39 +105,39 @@ ImageLayerOptions::fromConfig(const Config& conf)
         ColorFilterRegistry::instance()->readChain( conf.child("color_filters"), _colorFilters );
     }
 
-    conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.get("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.get("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.get("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.get("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.get("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.get("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.get("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.get("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.get("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.get("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.get("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.get("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.getIfSet("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.getIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
-    conf.getIfSet("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
+    conf.get("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
+    conf.get("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
+    conf.get("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
     // uniform names
-    conf.getIfSet("shared_sampler", _shareTexUniformName);
-    conf.getIfSet("shared_matrix",  _shareTexMatUniformName);
+    conf.get("shared_sampler", _shareTexUniformName);
+    conf.get("shared_matrix",  _shareTexMatUniformName);
 }
 
 Config
 ImageLayerOptions::getConfig() const
 {
     Config conf = TerrainLayerOptions::getConfig();
-    conf.key() = "image";
 
     conf.set( "nodata_image",   _noDataImageFilename );
     conf.set( "shared",         _shared );
     conf.set( "coverage",       _coverage );
     conf.set( "feather_pixels", _featherPixels );
+    conf.set( "altitude",       _altitude );
 
     if (_transparentColor.isSet())
         conf.set("transparent_color", colorToString( _transparentColor.value()));
@@ -157,7 +147,7 @@ ImageLayerOptions::getConfig() const
         Config filtersConf("color_filters");
         if ( ColorFilterRegistry::instance()->writeChain( _colorFilters, filtersConf ) )
         {
-            conf.update( filtersConf );
+            conf.set( filtersConf );
         }
     }
 
@@ -324,7 +314,8 @@ _optionsConcrete(options)
 
 ImageLayer::ImageLayer(ImageLayerOptions* optionsPtr) :
 TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
+_options(optionsPtr? optionsPtr : &_optionsConcrete),
+_useCreateTexture(false)
 {
     //init(); // will be called by subclass.
 }
@@ -347,7 +338,7 @@ ImageLayer::open()
 
     // If we are using createTexture to make image tiles,
     // we don't need to load a tile source plugin.
-    if (createTextureSupported())
+    if (useCreateTexture())
     {
         setTileSourceExpected(false);
     }
@@ -360,8 +351,39 @@ ImageLayer::init()
 {
     TerrainLayer::init();
 
+    _useCreateTexture = false;
+
     // image layers render as a terrain texture.
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
+
+    if (options().altitude().isSet())
+    {
+        setAltitude(options().altitude().get());
+    }
+}
+
+void
+ImageLayer::setAltitude(const Distance& value)
+{
+    options().altitude() = value;
+
+    if (value != 0.0)
+    {
+        osg::StateSet* stateSet = getOrCreateStateSet();
+
+        stateSet->addUniform(
+            new osg::Uniform("oe_terrain_altitude", (float)options().altitude()->as(Units::METERS)),
+            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
+        stateSet->setMode(GL_CULL_FACE, 0);
+    }
+    else
+    {
+        osg::StateSet* stateSet = getOrCreateStateSet();
+        getOrCreateStateSet()->removeUniform("oe_terrain_altitude");
+        stateSet->removeMode(GL_CULL_FACE);
+    }
+    fireCallback( &ImageLayerCallback::onAltitudeChanged );
 }
 
 void
@@ -372,6 +394,13 @@ ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
         ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
+}
+
+void
+ImageLayer::setUseCreateTexture()
+{
+    _useCreateTexture = true;
+    setTileSourceExpected(false);
 }
 
 bool
@@ -561,8 +590,9 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
 
     // the cache key combines the Key and the horizontal profile.
     std::string cacheKey = Cache::makeCacheKey(
-       Stringify() << key.str() << "-" << key.getProfile()->getHorizSignature(),
-       "image");
+        Stringify() << key.str() << "-" << key.getProfile()->getHorizSignature(),
+        "image");
+
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
     
     // Check the layer L2 cache first
@@ -608,12 +638,12 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     // map profile, we can try this first.
     if ( cacheBin && policy.isCacheReadable() )
     {
-       osg::CVSpan UpdateTick(series, 5, "readImage");
+        osg::CVSpan UpdateTick(series, 5, "readImage");
         ReadResult r = cacheBin->readImage(cacheKey, 0L);
         if ( r.succeeded() )
         {
-           series.write_message("successfully loaded %s:%s",getName().c_str(), cacheKey.c_str());
-           cachedImage = r.releaseImage();
+            series.write_message("successfully loaded %s:%s",getName().c_str(), cacheKey.c_str());
+            cachedImage = r.releaseImage();
             cachedImage->setName(cacheKey);
             ImageUtils::fixInternalFormat( cachedImage.get() );            
             bool expired = policy.isExpired(r.lastModifiedTime());
@@ -659,6 +689,11 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         ImageUtils::fixInternalFormat( result.getImage() );
     }
 
+    // Check for cancelation before writing to a cache:
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
+    }
 
     // memory cache first:
     if ( result.valid() && _memCache.valid() )
@@ -673,19 +708,19 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         cacheBin        && 
         policy.isCacheWriteable())
     {
-       series.write_message(cacheKey.c_str());
-       if (key.getExtent() != result.getExtent())
+        series.write_message(cacheKey.c_str());
+        if ( key.getExtent() != result.getExtent() )
         {
             OE_INFO << LC << "WARNING! mismatched extents." << std::endl;
         }
-       if (result.getImage()->getInternalTextureFormat() != GL_LUMINANCE32F_ARB &&
-          result.getImage()->getInternalTextureFormat() != GL_LUMINANCE16F_ARB)
-       {
-          osg::CVSpan UpdateTick(series, 2, "mipMapImagePreSave");
-          ImageUtils::activateMipMaps(result.getImage());
-       }
-       osg::CVSpan UpdateTick(series, 4, "saveImage");
-       cacheBin->write(cacheKey, result.getImage(), 0L);
+
+        {
+           osg::CVSpan UpdateTick(series, 2, "mipMapImagePreSave");
+           ImageUtils::activateMipMaps(result.getImage());
+        }
+
+        osg::CVSpan UpdateTick(series, 4, "saveImage");
+        cacheBin->write(cacheKey, result.getImage(), 0L);
     }
 
     if ( result.valid() )
@@ -759,11 +794,15 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // blacklist this tile for future requests.
     if (result == 0L)
     {
-        if ( progress == 0L ||
-             ( !progress->isCanceled() && !progress->needsRetry() ) )
+        if ( progress == 0L || !progress->isCanceled() )
         {
             source->getBlacklist()->add( key );
         }
+    }
+
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
     }
 
     return GeoImage(result.get(), key.getExtent());
@@ -830,7 +869,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                         osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
                         if (convertedImg.valid())
                         {
-                            image = GeoImage(convertedImg, image.getExtent());
+                            image = GeoImage(convertedImg.get(), image.getExtent());
                         }
                     }
                 }
@@ -842,7 +881,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                 // the tile source did not return a tile, so make a note of it.
                 failedKeys.push_back( *k );
 
-                if (progress && (progress->isCanceled() || progress->needsRetry()))
+                if (progress && progress->isCanceled())
                 {
                     retry = true;
                     break;
@@ -850,16 +889,19 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
             }
         }
 
-        if ( mosaic.getImages().empty() || retry )
+        // Fail is: a) we got no data and the LOD is greater than zero; or
+        // b) the operation was canceled mid-stream.
+        if ( (mosaic.getImages().empty() && key.getLOD() > 0) || retry)
         {
-            // if we didn't get any data, fail.
+            // if we didn't get any data at LOD>0, fail.
             OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
             return GeoImage::INVALID;
         }
 
-        // We got at least one good tile, so go through the bad ones and try to fall back on
-        // lower resolution data to fill in the gaps. The entire mosaic must be populated or
-        // this qualifies as a bad tile.
+        // We got at least one good tile, OR we got nothing but since the LOD==0 we have to
+        // fall back on a lower resolution.
+        // So now we go through the failed keys and try to fall back on lower resolution data
+        // to fill in the gaps. The entire mosaic must be populated or this qualifies as a bad tile.
         for(std::vector<TileKey>::iterator k = failedKeys.begin(); k != failedKeys.end(); ++k)
         {
             GeoImage image;
@@ -882,7 +924,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                             osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
                             if (convertedImg.valid())
                             {
-                                image = GeoImage(convertedImg, image.getExtent());
+                                image = GeoImage(convertedImg.get(), image.getExtent());
                             }
                         }
 
@@ -933,8 +975,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         result = mosaicedImage.reproject( 
             key.getProfile()->getSRS(),
             &key.getExtent(), 
-            options().reprojectedTileSize().get(),
-            options().reprojectedTileSize().get(),
+            getTileSize(), getTileSize(),
             options().driver()->bilinearReprojection().get());
     }
 
@@ -944,6 +985,11 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         isCoverage() == false)
     {
         ImageUtils::featherAlphaRegions( result.getImage() );
+    }
+
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
     }
 
     return result;
@@ -1025,4 +1071,18 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
         // use specifically picked a mode.
         tex->setInternalFormatMode(options().textureCompression().get());
     }
+}
+
+
+void
+ImageLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
+{
+    if (options().altitude().isSet())
+    {
+        if (options().altitude()->as(Units::METERS) > box.zMax())
+        {
+            box.zMax() = options().altitude()->as(Units::METERS);
+        }
+    }
+    TerrainLayer::modifyTileBoundingBox(key, box);
 }

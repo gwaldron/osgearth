@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Lighting>
 #include <osg/Depth>
 #include <osgText/Text>
 
@@ -38,42 +39,119 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-TrackNode::TrackNode(MapNode*                    mapNode, 
-                     const GeoPoint&             position,
+namespace
+{
+    const char* iconVS =
+        "#version " GLSL_VERSION_STR "\n"
+        "out vec2 oe_TrackNode_texcoord; \n"
+        "void oe_TrackNode_icon_VS(inout vec4 vertex) { \n"
+        "    oe_TrackNode_texcoord = gl_MultiTexCoord0.st; \n"
+        "} \n";
+
+    const char* iconFS =
+        "#version " GLSL_VERSION_STR "\n"
+        "in vec2 oe_TrackNode_texcoord; \n"
+        "uniform sampler2D oe_TrackNode_tex; \n"
+        "void oe_TrackNode_icon_FS(inout vec4 color) { \n"
+        "    color = texture(oe_TrackNode_tex, oe_TrackNode_texcoord); \n"
+        "} \n";
+}
+
+//------------------------------------------------------------------------
+
+osg::observer_ptr<osg::StateSet> TrackNode::s_geodeStateSet;
+osg::observer_ptr<osg::StateSet> TrackNode::s_imageStateSet;
+
+
+TrackNode::TrackNode(const GeoPoint&             position,
                      osg::Image*                 image,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
-GeoPositionNode   ( mapNode, position )
+GeoPositionNode()
 {
+    construct();
+
     if ( image )
     {
         IconSymbol* icon = _style.getOrCreate<IconSymbol>();
         icon->setImage( image );
     }
+    
+    _fieldSchema = fieldSchema;
 
-    init( fieldSchema );
+    setPosition(position);
+
+    compile();
 }
 
-TrackNode::TrackNode(MapNode*                    mapNode, 
-                     const GeoPoint&             position,
+TrackNode::TrackNode(const GeoPoint&             position,
                      const Style&                style,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
-GeoPositionNode   ( mapNode, position ),
-_style      ( style )
+GeoPositionNode(),
+_style( style )
 {
-    init( fieldSchema );
+    construct();
+
+    _fieldSchema = fieldSchema;
+
+    setPosition(position);
+
+    compile();
 }
 
 void
-TrackNode::init( const TrackNodeFieldSchema& schema )
+TrackNode::construct()
 {
-    // tracknodes draw in screen space at their geoposition.
-    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
-
-    osgEarth::clearChildren( getPositionAttitudeTransform() );
+    // This class makes its own shaders
+    ShaderGenerator::setIgnoreHint(this, true);
 
     _geode = new osg::Geode();
+    getPositionAttitudeTransform()->addChild( _geode );
+
+    // initialize the shared stateset for the shared statesets.
+    osg::ref_ptr<osg::StateSet> geodeStateSet;
+    if (s_geodeStateSet.lock(geodeStateSet) == false)
+    {
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_geodeStateSet.lock(geodeStateSet) == false)
+        {
+            s_geodeStateSet = geodeStateSet = new osg::StateSet();
+
+            // draw in the screen-space bin
+            ScreenSpaceLayout::activate(geodeStateSet.get());
+
+            // completely disable depth buffer
+            geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
+
+            // Disable lighting for place nodes by default
+            Lighting::set(geodeStateSet.get(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+        }
+    }
+    _geode->setStateSet(geodeStateSet.get());
+
+    if (s_imageStateSet.lock(_imageStateSet) == false)
+    {
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_imageStateSet.lock(_imageStateSet) == false)
+        {
+            s_imageStateSet = _imageStateSet = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
+            vp->setName("TrackNode");
+            vp->setFunction("oe_TrackNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_TrackNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            _imageStateSet->addUniform(new osg::Uniform("oe_TrackNode_tex", 0));
+        }
+    }
+}
+
+void
+TrackNode::compile()
+{
+    // reset by clearing out any existing nodes:
+    _geode->removeChildren(0, _geode->getNumChildren());
 
     IconSymbol* icon = _style.get<IconSymbol>();
     osg::Image* image = icon ? icon->getImage() : 0L;
@@ -90,6 +168,8 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
 
         if ( imageGeom )
         {
+            // todo: optimize this better:
+            imageGeom->getOrCreateStateSet()->merge(*_imageStateSet.get());
             _geode->addDrawable( imageGeom );
 
             ScreenSpaceLayoutData* layout = new ScreenSpaceLayoutData();
@@ -98,11 +178,11 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
         }
     }
 
-    if ( !schema.empty() )
+    if ( !_fieldSchema.empty() )
     {
         // turn the schema defs into text drawables and record a map so we can
         // set the field text later.
-        for( TrackNodeFieldSchema::const_iterator i = schema.begin(); i != schema.end(); ++i )
+        for( TrackNodeFieldSchema::const_iterator i = _fieldSchema.begin(); i != _fieldSchema.end(); ++i )
         {
             const TrackNodeField& field = i->second;
             if ( field._symbol.valid() )
@@ -132,21 +212,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
         }
     }
 
-    // ensure depth testing always passes, and disable depth buffer writes.
-    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
-    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
-
     applyStyle( _style );
-
-    setLightingIfNotSet( false );
-
-    getPositionAttitudeTransform()->addChild( _geode );
-    
-    // generate shaders:
-    Registry::shaderGenerator().run(
-        this,
-        "osgEarth.TrackNode",
-        Registry::stateSetCache() );
 }
 
 void

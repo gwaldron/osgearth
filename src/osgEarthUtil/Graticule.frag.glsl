@@ -5,6 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_lighting
 #pragma vp_order      1.1
 
+#pragma import_defines(OE_DISABLE_GRATICULE)
+
 uniform float oe_GeodeticGraticule_lineWidth;
 uniform float oe_GeodeticGraticule_resolution;
 uniform vec4  oe_GeodeticGraticule_color;
@@ -14,6 +16,7 @@ in vec2 oe_GeodeticGraticule_coord;
 
 void oe_GeodeticGraticule_fragment(inout vec4 color)
 {
+#ifndef OE_DISABLE_GRATICULE
     // double the effective res for longitude since it has twice the span
     vec2 gr = vec2(0.5*oe_GeodeticGraticule_resolution, oe_GeodeticGraticule_resolution);
     vec2 distanceToLine = mod(oe_GeodeticGraticule_coord, gr);
@@ -34,4 +37,5 @@ void oe_GeodeticGraticule_fragment(inout vec4 color)
         float alpha = clamp(hae / maxHAE, 0.0, 1.0) * antialias;
         color.rgb = mix(color.rgb, oe_GeodeticGraticule_color.rgb, oe_GeodeticGraticule_color.a * alpha);
     }
+#endif
 }

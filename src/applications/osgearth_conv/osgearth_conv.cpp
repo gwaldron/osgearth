@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -72,14 +72,17 @@ struct ImageLayerToTileSource : public TileHandler
         bool ok = false;
         GeoImage image = _source->createImage(key);
         if (image.valid())
+        {
+            //OE_INFO << "Read " << key.str() << ", image size = " << image.getImage()->s() << std::endl;
             ok = _dest->storeImage(key, image.getImage(), 0L);
+        }
 
         return ok;
     }
 
     bool hasData(const TileKey& key) const
     {
-        return _source->mayHaveDataInExtent(key.getExtent());
+        return _source->mayHaveData(key);
     }
 
     osg::ref_ptr<ImageLayer> _source;
@@ -109,7 +112,7 @@ struct ElevationLayerToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->mayHaveDataInExtent(key.getExtent());
+        return _source->mayHaveData(key);
     }
 
     osg::ref_ptr<ElevationLayer> _source;
@@ -240,10 +243,17 @@ main(int argc, char** argv)
         return -1;
     }
 
+    // Assign a custom tile size to the input source, if possible:
+    unsigned tileSize = input->getPixelsPerTile();
+    if (args.read("--tile-size", tileSize))
+    {
+        input->setPixelsPerTile(tileSize);
+    }
+
     Status inputStatus = input->open( input->MODE_READ, dbo.get() );
     if ( inputStatus.isError() )
     {
-        OE_WARN << LC << "Error initializing input" << std::endl;
+        OE_WARN << LC << "Error initializing input: " << inputStatus.message() << std::endl;
         return -1;
     }
 
@@ -284,7 +294,7 @@ main(int argc, char** argv)
     osg::ref_ptr<TileSource> output = TileSourceFactory::create(outOptions);
     if ( !output.valid() )
     {
-        OE_WARN << LC << "Failed to open output" << std::endl;
+        OE_WARN << LC << "Failed to open output." << std::endl;
         return -1;
     }
 
@@ -306,7 +316,7 @@ main(int argc, char** argv)
 
     if ( outputStatus.isError() )
     {
-        OE_WARN << LC << "Error initializing output" << std::endl;
+        OE_WARN << LC << "Error initializing output: " << outputStatus.message() << std::endl;
         return -1;
     }
 

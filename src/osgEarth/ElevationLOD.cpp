@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,8 +18,6 @@
  */
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/GeoData>
-#include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
 
@@ -115,8 +113,7 @@ float ElevationLOD::getMaxRange() const
 
 void ElevationLOD::traverse( osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType()   == osg::NodeVisitor::CULL_VISITOR &&
-        nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN )
+    if (nv.getVisitorType()   == osg::NodeVisitor::CULL_VISITOR)
     {
         bool rangeOK     = true;
         bool altitudeOK  = true;
@@ -141,7 +138,14 @@ void ElevationLOD::traverse( osg::NodeVisitor& nv)
 
                 osg::Vec3d eye = cv->getViewPoint();
 
-                if ( _srs && !_srs->isProjected() )
+                Horizon* horizon = Horizon::get(nv);
+                if (horizon)
+                {
+                    double R = horizon->getRadius();
+                    alt = eye.length() - R;
+                }
+
+                else if ( _srs && !_srs->isProjected() )
                 {
                     GeoPoint mapPoint;
                     mapPoint.fromWorld( _srs.get(), eye );

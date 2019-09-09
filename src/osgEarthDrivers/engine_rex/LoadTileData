@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -28,7 +28,7 @@
 #include <osgEarth/Progress>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
-{    
+{
     class LoadTileData : public Loader::Request
     {
     public:
@@ -41,7 +41,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public: // Loader::Request
 
         /** Fetches the data for the tile node. */
-        void invoke();
+        void invoke(ProgressCallback*);
 
         /** Applies the fetched data to the tile node (scene-graph safe) */
         void apply(const osg::FrameStamp*);

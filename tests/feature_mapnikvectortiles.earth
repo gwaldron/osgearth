@@ -1,0 +1,221 @@
+<!--
+osgEarth Sample - Feature Mapnik Vector Tiles
+
+This example shows how to load a local mbtiles file that contains vector tiles.
+
+You must have the mapnik vector tiles driver built by including the protobuf libraries in cmake.
+
+For reference, the honolulu.mbtiles file was generated using the extract at https://mapzen.com/data/metro-extracts/metro/honolulu_hawaii/
+
+This was the command line used:
+
+osmium export -f geojsonseq --config=config.json honolulu_hawaii.osm.pbf | tippecanoe -f -pf -pk -ps -Z14 -z14 -d12 --no-tile-stats -b0 -l osm -n honolulu -o honolulu.mbtiles
+
+config.json was:
+{
+    "attributes": {
+        "type":      false,
+        "id":        false,
+        "version":   false,
+        "changeset": false,
+        "timestamp": false,
+        "uid":       false,
+        "user":      false,
+        "way_nodes": false
+    },
+    "linear_tags":  ["highway", "barrier", "natural=coastline"],
+    "area_tags":    ["aeroway", "amenity", "building", "landuse", "leisure", "man_made", "natural!=coastline"],
+    "exclude_tags": ["created_by", "source", "source:*"],
+    "include_tags": []
+}
+-->
+<map type="geocentric" version="2">
+
+    <feature_model name="osm">
+
+        <features name="osm" driver="mapnikvectortiles">
+            <url>../data/honolulu.mbtiles</url>
+        </features>
+
+        <instancing>true</instancing>
+
+        <feature_indexing enabled="false"></feature_indexing>
+
+        <styles>
+
+            <library name="us_resources">
+                <url>../data/resources/textures_us/catalog.xml</url>
+            </library>
+
+            <style type="text/css">
+                hospital {
+                     icon: "../data/hospital.png";
+                     icon-align:    center-center;
+                     icon-declutter: true;
+                     text-content:  getName();
+                     altitude-clamping:       terrain;
+                }
+
+                school {
+                     icon: "../data/school.png";
+                     icon-align:    center-center;
+                     icon-declutter: true;
+                     text-content:  getName();
+                     altitude-clamping:       terrain;
+                }
+
+                bank {
+                     icon: "../data/bank.png";
+                     icon-align:    center-center;
+                     icon-declutter: true;
+                     text-content:  getName();
+                     altitude-clamping:       terrain;
+                }
+
+                forest {
+                   model:               "../data/tree.osg";
+                   model-placement:     random;
+                   model-density:       10000;
+                   model-scale:         2.5;
+                   model-random-seed:   1;
+                   altitude-clamping:       terrain;
+                }
+
+                grass {
+                   model:               "../data/tree.osg";
+                   model-placement:     random;
+                   model-density:       10000;
+                   model-scale:         2.5;
+                   model-random-seed:   1;
+                   altitude-clamping:       terrain;
+                }
+
+                water {
+                   fill:               #6BA8FF;
+                   render-depth-test:  false;
+                   altitude-clamping:  terrain-drape;
+                }
+
+                buildings {
+                  extrusion-height:      getBuildingHeight();
+                  extrusion-flatten:     true;
+                  extrusion-wall-style:  building-wall;
+                  extrusion-roof-style:  building-rooftop;
+                  altitude-clamping:     terrain;
+                }
+
+                building-wall {
+                  skin-library:     us_resources;
+                  skin-tags:        building;
+                  skin-random-seed: 1;
+                  fill:             #ffffff;
+                }
+                building-rooftop {
+                  skin-library:     us_resources;
+                  skin-tags:        rooftop;
+                  skin-tiled:       true;
+                  skin-random-seed: 1;
+                  fill:             #ffffff;
+                }
+
+            </style>
+
+            <selector name="default" style_expr="selectStyle()"/>
+
+            <script language="javascript">
+                <![CDATA[
+
+                function selectStyle() {
+                    if ("building" in feature.properties) {
+                        return "buildings";
+                    }
+                    else if ("landuse" in feature.properties) {
+                        var landuse = feature.properties["landuse"];
+                        if ( landuse == "forest" ||
+                             landuse == "grass" ||
+                             landuse == "meadow"
+                            ) {
+                                return "forest";
+                            }
+                        else if (landuse == "reservoir") {
+                            return "water";
+                        }
+                    }
+                    else if ("natural" in feature.properties) {
+                        var natural = feature.properties["natural"];
+                        if (natural == "wood" || natural == "tree") {
+                            return "forest"
+                        }
+                        else if (natural == "water") {
+                            return "water";
+                        }
+                    }
+                    else if ("surface" in feature.properties) {
+                        var surface = feature.properties["surface"];
+                        if (surface == "grass") {
+                            return "grass";
+                        }
+                    }
+                    else if ("amenity" in feature.properties) {
+                        var amenity = feature.properties["amenity"];
+                        if (amenity == "hospital") {
+                            return "hospital";
+                        }
+                        else if (amenity == "school") {
+                            return "school";
+                        }
+                        else if (amenity == "bank") {
+                            return "bank";
+                        }
+                    }
+                    return null;
+                }
+
+                function getName() {
+                    if ("name" in feature.properties) {
+                        return feature.properties["name"];
+                    }
+                    return "";
+                }
+
+                function getBuildingHeight() {
+					if ("height" in feature.properties) {
+						var h = feature.properties["height"].replace('m','');
+						return Math.max(h, 4.0);
+					} else if ("building:height" in feature.properties) {
+						var h = feature.properties["building:height"].replace('m','');
+						return Math.max(h, 4.0);
+					} else if ("building:levels" in feature.properties){
+						var l = feature.properties["building:levels"];
+						return Math.max(l * 4.0, 4.0);
+					}
+					return Math.floor((Math.random() * 5.0) + 4.0);
+                }
+              ]]>
+            </script>
+
+        </styles>
+    </feature_model>
+
+    <image name="esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
+        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </image>
+
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+
+    <viewpoints>
+      <viewpoint>
+        <name>Honolulu</name>
+        <heading>-22.7465</heading>
+        <pitch>-5.28948</pitch>
+        <range>7310.49m</range>
+        <long>-157.8255773676917</long>
+        <lat>21.28116313649227</lat>
+        <height>10.88873224053532</height>
+      </viewpoint>
+    </viewpoints>
+
+</map>

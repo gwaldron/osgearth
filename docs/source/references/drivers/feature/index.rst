@@ -9,3 +9,4 @@ known as *feature data*.
    ogr
    tfs
    wfs
+   mapnikvectortiles

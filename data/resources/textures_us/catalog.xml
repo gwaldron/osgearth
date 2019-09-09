@@ -379,6 +379,7 @@
        <image_width>25</image_width>
        <image_height>25</image_height>
        <tiled>true</tiled>
+       <atlas>false</atlas>
    </skin>
 
    <skin name="roof_tiled2" tags="rooftop">
@@ -386,6 +387,7 @@
        <image_width>25</image_width>
        <image_height>25</image_height>
        <tiled>true</tiled>
+       <atlas>false</atlas>
    </skin>
 
    <skin name="roof_tiled3" tags="rooftop">
@@ -393,6 +395,7 @@
        <image_width>25</image_width>
        <image_height>25</image_height>
        <tiled>true</tiled>
+       <atlas>false</atlas>
    </skin>
    
 <!-- rooftops : non-tiled -->
@@ -432,6 +435,7 @@
        <image_width>50</image_width>
        <image_height>50</image_height>
        <tiled>true</tiled>
+       <atlas>false</atlas>
    </skin>   
 
 </resources>

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,17 +19,21 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Version>
 #include <osg/FragmentProgram>
-#include <osg/GraphicsContext>
-#include <osg/GL>
-#include <osg/GLExtensions>
 #include <osg/GL2Extensions>
-#include <osg/Texture>
+#include <osg/Version>
 #include <osgViewer/Version>
-#include <OpenThreads/Thread>
+#include <gdal_priv.h>
 
 using namespace osgEarth;
 
 #define LC "[Capabilities] "
+
+#ifndef GL_CONTEXT_PROFILE_MASK
+#define GL_CONTEXT_PROFILE_MASK           0x9126
+#endif
+#ifndef GL_CONTEXT_CORE_PROFILE_BIT
+#define GL_CONTEXT_CORE_PROFILE_BIT       0x00000001
+#endif
 
 // ---------------------------------------------------------------------------
 // A custom P-Buffer graphics context that we will use to query for OpenGL 
@@ -56,6 +60,8 @@ struct MyGraphicsContext
         traits->doubleBuffer = false;
         traits->sharedContext = 0;
         traits->pbuffer = false;
+        traits->glContextVersion = osg::DisplaySettings::instance()->getGLContextVersion();
+        traits->glContextProfileMask = osg::DisplaySettings::instance()->getGLContextProfileMask();
 
         // Intel graphics adapters dont' support pbuffers, and some of their drivers crash when
         // you try to create them. So by default we will only use the unmapped/pbuffer method
@@ -138,7 +144,8 @@ _supportsARBTC          ( false ),
 _supportsETC            ( false ),
 _supportsRGTC           ( false ),
 _supportsTextureBuffer  ( false ),
-_maxTextureBufferSize   ( 0 )
+_maxTextureBufferSize   ( 0 ),
+_isCoreProfile          ( true )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -159,15 +166,30 @@ _maxTextureBufferSize   ( 0 )
 #endif
 
     // create a graphics context so we can query OpenGL support:
+    osg::GraphicsContext* gc = NULL;
+    unsigned int id = 0;
+#ifndef __ANDROID__
     MyGraphicsContext mgc;
-
     if ( mgc.valid() )
     {
-        osg::GraphicsContext* gc = mgc._gc.get();
-        unsigned int id = gc->getState()->getContextID();
+        gc = mgc._gc.get();
+        id = gc->getState()->getContextID();
+    }
+#endif
+
+#ifndef __ANDROID__
+    if ( gc != NULL )
+#endif
+    {
         const osg::GL2Extensions* GL2 = osg::GL2Extensions::Get( id, true );
 
         OE_INFO << LC << "osgEarth Version: " << osgEarthGetVersion() << std::endl;
+
+        OE_INFO << LC << "OSG Version:      " << osgGetVersion() << std::endl;
+
+#ifdef GDAL_RELEASE_NAME
+        OE_INFO << LC << "GDAL Version:     " << GDAL_RELEASE_NAME << std::endl;
+#endif
         
         if ( ::getenv("OSGEARTH_NO_GLSL") )
         {
@@ -176,11 +198,7 @@ _maxTextureBufferSize   ( 0 )
         }
         else
         {
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
             _supportsGLSL = GL2->isGlslSupported;
-#else
-			_supportsGLSL = GL2->isGlslSupported();
-#endif
         }
 
         OE_INFO << LC << "Detected hardware capabilities:" << std::endl;
@@ -193,6 +211,19 @@ _maxTextureBufferSize   ( 0 )
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
         OE_INFO << LC << "  Version = " << _version << std::endl;
+
+        // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
+        if ( GL2->glVersion < 3.2f )
+        {
+            _isCoreProfile = false;
+        }
+        else
+        {
+            GLint profileMask = 0;
+            glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profileMask);
+            _isCoreProfile = ((profileMask & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
+        }
+        OE_INFO << LC << "  Core Profile = " << SAYBOOL(_isCoreProfile) << std::endl;
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
@@ -239,17 +270,11 @@ _maxTextureBufferSize   ( 0 )
 #else
         _maxLights = 1;
 #endif
-        OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
-
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )
         {
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
 			_GLSLversion = GL2->glslLanguageVersion;
-#else
-            _GLSLversion = GL2->getLanguageVersion();
-#endif
             OE_INFO << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 
@@ -259,14 +284,11 @@ _maxTextureBufferSize   ( 0 )
             osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_INFO << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
-        _supportsTexture3D = osg::isGLExtensionSupported( id, "GL_EXT_texture3D" );
-        OE_INFO << LC << "  3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
-
         _supportsMultiTexture = 
             osg::getGLVersionNumber() >= 1.3f ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
             osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
-        OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
+        //OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
 
         _supportsStencilWrap = osg::isGLExtensionSupported( id, "GL_EXT_stencil_wrap" );
         //OE_INFO << LC << "  Stencil wrapping = " << SAYBOOL(_supportsStencilWrap) << std::endl;
@@ -292,7 +314,7 @@ _maxTextureBufferSize   ( 0 )
         _supportsUniformBufferObjects = 
             _supportsGLSL &&
             osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
-        OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
+        //OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
 
         if ( _supportsUniformBufferObjects && _maxUniformBlockSize == 0 )
         {
@@ -306,7 +328,7 @@ _maxTextureBufferSize   ( 0 )
 #else
         _supportsNonPowerOfTwoTextures = true;
 #endif
-        OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
+        //OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
 
 
 #if !defined(OSG_GLES3_AVAILABLE)
@@ -330,7 +352,7 @@ _maxTextureBufferSize   ( 0 )
 
         bool supportsTransformFeedback =
             osg::isGLExtensionSupported( id, "GL_ARB_transform_feedback2" );
-        OE_INFO << LC << "  Transform feedback = " << SAYBOOL(supportsTransformFeedback) << "\n";
+        //OE_INFO << LC << "  Transform feedback = " << SAYBOOL(supportsTransformFeedback) << "\n";
 
 
         // Writing to gl_FragDepth is not supported under GLES, is supported under gles3
@@ -348,22 +370,11 @@ _maxTextureBufferSize   ( 0 )
         // BUT unfortunately, they dont' seem to work too well with shaders. Colors
         // change randomly, etc. Might work OK for textured geometry but not for 
         // untextured. TODO: investigate.
-#if 1
         _preferDLforStaticGeom = false;
         if ( ::getenv("OSGEARTH_TRY_DISPLAY_LISTS") )
         {
             _preferDLforStaticGeom = true;
         }
-#else
-        if ( ::getenv("OSGEARTH_ALWAYS_USE_VBOS") )
-        {
-            _preferDLforStaticGeom = false;
-        }
-        else
-        {
-            _preferDLforStaticGeom = isNVIDIA;
-        }
-#endif
 
         //OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
 
@@ -371,15 +382,6 @@ _maxTextureBufferSize   ( 0 )
         bool isATI = _vendor.find("ATI ") == 0;
 
         _supportsMipmappedTextureUpdates = isATI && enableATIworkarounds ? false : true;
-        //OE_INFO << LC << "  Mipmapped texture updates = " << SAYBOOL(_supportsMipmappedTextureUpdates) << std::endl;
-
-#if 0
-        // Intel workarounds:
-        bool isIntel = 
-            _vendor.find("Intel ")   != std::string::npos ||
-            _vendor.find("Intel(R)") != std::string::npos ||
-            _vendor.compare("Intel") == 0;
-#endif
 
         _maxFastTextureSize = _maxTextureSize;
 

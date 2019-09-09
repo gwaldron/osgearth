@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
  */
 #include <osgEarth/GLSLChunker>
 #include <osgEarth/StringUtils>
-#include <sstream>
 
 using namespace osgEarth;
 
@@ -144,18 +143,26 @@ GLSLChunker::read(const std::string& input, Chunks& output) const
                     --parenLevel;
                 }
 
-                else if (c0 == '{') {
+                else if (c0 == '{')
+                {
                     ++braceLevel;
                     // if we were in a statement, the precense of an open-brace converts it to a FUNCTION
-                    // unless we can detect that it's a struct.
-                    if (type == Chunk::TYPE_STATEMENT) {
-                        if (tokens.empty() || tokens[0] != "struct") {
+                    // unless we can detect that it's a struct or an interface block.
+                    if (type == Chunk::TYPE_STATEMENT)
+                    {
+                        if (tokens.empty() || 
+                            (tokens[0] != "struct"  && 
+                             tokens[0] != "in"      &&
+                             tokens[0] != "out"     &&
+                             tokens[0].substr(0,6) != "layout"))
+                        {
                             type = Chunk::TYPE_FUNCTION;
                         }
                     }
                 }
 
-                else if (c0 == '}') {
+                else if (c0 == '}')
+                {
                     --braceLevel;
                 }
             }

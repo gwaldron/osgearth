@@ -151,6 +151,15 @@ void ViewerWidget::reconfigure( osgViewer::View* view )
         traits->inheritedWindowData = new osgQt::GraphicsWindowQt::WindowData(this);
 
         _gc = new osgQt::GraphicsWindowQt( traits.get() );
+
+        // Update Qt OpenGL context to use the version of OpenGL requested 
+        // via the Qt graphics context setup.
+        unsigned int major, minor;
+        traits->getContextVersion(major, minor);
+        QGLFormat newFormat(format());
+        newFormat.setVersion(major, minor);
+        setFormat(newFormat);
+        makeCurrent();
     }
 
     // reconfigure this view's camera to use the Qt GC if necessary.
@@ -165,6 +174,9 @@ void ViewerWidget::reconfigure( osgViewer::View* view )
         camera->setProjectionMatrixAsPerspective(
             30.0f, camera->getViewport()->width()/camera->getViewport()->height(), 1.0f, 10000.0f );
     }
+    
+    camera->setDrawBuffer(_gc->getTraits()->doubleBuffer? GL_BACK : GL_FRONT);
+    camera->setReadBuffer(_gc->getTraits()->doubleBuffer? GL_BACK : GL_FRONT);
 }
 
       

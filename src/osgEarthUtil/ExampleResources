@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,7 +26,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Sky>
-#include <osgEarthUtil/Ocean>
+#include <osgEarthUtil/SimpleOceanLayer>
 #include <osgEarth/Viewpoint>
 
 //#include <osg/ArgumentParser>
@@ -39,6 +39,7 @@ namespace osg {
 }
 namespace osgViewer {
     class View;
+    class ViewerBase;
 };
 
 /**
@@ -61,18 +62,18 @@ namespace osgEarth { namespace Util
          * arguemnts and XML externals.
          */
         osg::Group* load(
-            osg::ArgumentParser& args,
-            osgViewer::View*     view,
-            Container*           userContainer = 0L) const
+            osg::ArgumentParser&   args,
+            osgViewer::ViewerBase* viewer,
+            Container*             userContainer = 0L) const
         {
-            return load(args, view, userContainer, 0L);
+            return load(args, viewer, userContainer, 0L);
         }
 
         osg::Group* load(
-            osg::ArgumentParser&  args, 
-            osgViewer::View*      view,
-            Container*            userContainer,
-            const osgDB::Options* readOptions) const;
+            osg::ArgumentParser&   args,
+            osgViewer::ViewerBase* viewer,
+            Container*             userContainer,
+            const osgDB::Options*  readOptions) const;
 
         /**
          * Takes an existing map node and processes all the built-in example command
@@ -94,7 +95,7 @@ namespace osgEarth { namespace Util
 
         /**
          * Configures a view with a stock set of event handlers that are useful
-         * for demos, and performs some other common view configuation for osgEarth.
+         * for demos, and performs some other common view configuration for osgEarth.
          */
         void configureView( osgViewer::View* view ) const;
 
@@ -112,7 +113,7 @@ namespace osgEarth { namespace Util
     {
     public:
         Control* create(
-            const std::vector<Viewpoint>& list, 
+            const std::vector<Viewpoint>& list,
             osgViewer::View*              view) const;
     };
 
@@ -123,8 +124,8 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MouseCoordsControlFactory
     {
     public:
-        Control* create( 
-            MapNode*         mapNode, 
+        Control* create(
+            MapNode*         mapNode,
             osgViewer::View* view ) const;
     };
 
@@ -136,7 +137,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT AnnotationGraphControlFactory
     {
     public:
-        Control* create( 
+        Control* create(
             osg::Node*       node,
             osgViewer::View* view) const;
     };
@@ -158,10 +159,26 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT OceanControlFactory
     {
     public:
-        Control* create( 
-            OceanNode* ocean ) const;
+        static Control* create(SimpleOceanLayer* ocean);
+    };
+
+
+    /**
+    * Creates UI controls displaying the map attribution
+    */
+    class OSGEARTHUTIL_EXPORT AttributionControlFactory
+    {
+    public:
+        Control* create(MapNode* mapNode) const;
     };
 
 } } // namespace osgEarth::Util
+
+
+#define OE_UI_HANDLER(X) \
+    struct X : public osgEarth::Util::Controls::ControlEventHandler { \
+        App& _app; X(App& app):_app(app) { } \
+        void onValueChanged(osgEarth::Util::Controls::Control*) { _app. X (); } \
+        void onClick(osgEarth::Util::Controls::Control*) { _app. X (); } }
 
 #endif // OSGEARTH_UTIL_EXAMPLE_RESOURCES_H

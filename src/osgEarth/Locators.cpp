@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,9 +18,7 @@
  */
 #include <osgEarth/Locators>
 #include <osgEarth/TileKey>
-#include <osgEarth/Registry>
 #include <osgEarth/MapInfo>
-#include <osg/Notify>
 
 using namespace osgEarth;
 
@@ -87,8 +85,7 @@ GeoLocator::createForExtent( const GeoExtent& extent, const class MapInfo& map)
 
     // A locator will place the tile on the globe:
     GeoLocator* locator = extent.getSRS()->createLocator(
-        extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(),
-        map.isPlateCarre() );
+        extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax());
 
     if ( map.isGeocentric() )
         locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );

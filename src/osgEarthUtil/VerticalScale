@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -33,6 +33,7 @@ namespace osgEarth { namespace Util
 {
     /**
      * Terrain effect that scales the terrain height.
+     * @deprecated (remove after 2.10) see vertical_scale.earth instead
      */
     class OSGEARTHUTIL_EXPORT VerticalScale : public TerrainEffect
     {

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2011 Pelican Mapping
  * http://osgearth.org
  *
@@ -115,13 +115,7 @@ namespace osgEarth
          */
         static bool ignore(const osg::Object* object);
 
-    public: // deprecated
-
-        /**
-         * Sets the name to give any VP's we create           
-         * @deprecated Now a NO-OP. Use run(graph, name, ...) instead.
-         */
-        void setProgramName(const std::string& name) const { }
+    public:
 
         /**
          * Whether to automatically duplicate (by cloning) subgraphs with
@@ -167,10 +161,7 @@ namespace osgEarth
         virtual void apply( osg::PagedLOD& );
         virtual void apply( osg::ProxyNode& );
         virtual void apply( osg::ClipNode& );
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,3)
         virtual void apply( osg::Drawable& );
-#endif
 
     public: // types not in osg::NodeVisitor
 

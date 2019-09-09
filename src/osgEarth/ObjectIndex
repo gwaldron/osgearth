@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -36,13 +36,8 @@
 
 namespace osgEarth
 {
-//#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
     typedef unsigned       ObjectID;
     typedef osg::UIntArray ObjectIDArray;
-//#else
-//    typedef int            ObjectID;
-//    typedef osg::IntArray  ObjectIDArray;
-//#endif
 
     /** 
      * Virutal interface class for building an object index.
@@ -214,7 +209,7 @@ namespace osgEarth
     protected:
         virtual ~ObjectIndex() { }
         
-        typedef std::map<ObjectID, osg::ref_ptr<osg::Referenced> > IndexMap;
+        typedef std::map<ObjectID, osg::observer_ptr<osg::Referenced> > IndexMap;
 
         IndexMap                 _index;
         int                      _attribLocation;

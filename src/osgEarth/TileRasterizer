@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -47,8 +47,8 @@ namespace osgEarth
     };
 
     /**
-    * Node that will render node graphs to textures, one at a time.
-    */
+     * Node that will render node graphs to textures, one at a time.
+     */
     class OSGEARTH_EXPORT TileRasterizer : public osg::Camera
     {
     public:
@@ -56,20 +56,20 @@ namespace osgEarth
         TileRasterizer();
 
         /**
-        * Schedule a rasterization to an osg::Image.
-        * @param node Node to render to the image
-        * @param size of the target image (both dimensions)
-        * @param extent geospatial extent of the node to render.
-        * @return Future image - blocks on .get()
-        */
+         * Schedule a rasterization to an osg::Image.
+         * @param node Node to render to the image
+         * @param size of the target image (both dimensions)
+         * @param extent geospatial extent of the node to render.
+         * @return Future image - blocks on .get()
+         */
         Threading::Future<osg::Image> push(osg::Node* node, unsigned size, const GeoExtent& extent);
 
         /**
-        * Schedule a rasterization to a texture.
-        * @param node    Node to render to the texture
-        * @param texture Texture to which to render the node
-        * @param extent  Geographic extent of the output texture
-        */
+         * Schedule a rasterization to a texture.
+         * @param node    Node to render to the texture
+         * @param texture Texture to which to render the node
+         * @param extent  Geographic extent of the output texture
+         */
         void push(osg::Node* node, osg::Texture* texture, const GeoExtent& extent);
 
     public: // osg::Node

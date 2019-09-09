@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -124,14 +124,19 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
                 _environment->SetConfigOption( "polar-earth-radius-meters",      poRadius.c_str() );
             }
 
+            //_environment->SetConfigOption("avoid-opengl-stalls", "yes");
+            //_environment->SetConfigOption("fft-texture-update-frame-delayed", "yes");
+
             float openGLVersion = osg::getGLVersionNumber();
             enum ::Triton::Renderer tritonOpenGlVersion = ::Triton::OPENGL_2_0;
-            if( openGLVersion == 4.1 )
+#ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE
+            if( openGLVersion >= 4.1 )
                 tritonOpenGlVersion = ::Triton::OPENGL_4_1;
-            else if( openGLVersion == 4.0 )
+            else if( openGLVersion >= 4.0 )
                 tritonOpenGlVersion = ::Triton::OPENGL_4_0;
-            else if( openGLVersion == 3.2 )
+            else if( openGLVersion >= 3.2 )
                 tritonOpenGlVersion = ::Triton::OPENGL_3_2;
+#endif
 
             ::Triton::EnvironmentError err = _environment->Initialize(
                 cs,
@@ -146,7 +151,8 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
 
                 _ocean = ::Triton::Ocean::Create(
                     _environment, 
-                    ::Triton::JONSWAP );
+                    ::Triton::JONSWAP,
+                    true );                 // enableHeightTests - activated GetHeight for intersections
             }
 
             if ( _ocean )
@@ -170,19 +176,28 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
     }
 }
 
-void
-TritonContext::update(double simTime)
+bool
+TritonContext::intersect(const osg::Vec3d& start, const osg::Vec3d& dir, float& out_height, osg::Vec3f& out_normal) const
 {
-    if ( _ocean )
-    {
-        // fmod requires b/c CUDA is limited to single-precision values
-        _ocean->UpdateSimulation( fmod(simTime, 86400.0) );
-    }
+    ::Triton::Vector3 p(start.ptr());
+    ::Triton::Vector3 d(dir.ptr());
+    ::Triton::Vector3 normal;
+    bool ok = _ocean->GetHeight(p, d, out_height, normal);
+    out_normal.set(normal.x, normal.y, normal.z);
+    return ok;
+}
+
+void
+TritonContext::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Object::resizeGLObjectBuffers(maxSize);
 }
 
 void
 TritonContext::releaseGLObjects(osg::State* state) const
 {
+    osg::Object::releaseGLObjects(state);
+
     OE_INFO << LC << "Triton shutting down - releasing GL resources\n";
     if (state)
     {

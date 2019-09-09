@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -67,7 +67,7 @@ SingleKeyNodeFactory::getMinimumRequiredLevel()
     unsigned minLevel = _frame.getHighestMinLevel();
 
     return _options.minLOD().isSet() ?
-        std::max( _options.minLOD().value(), minLevel ) :
+        osg::maximum( _options.minLOD().value(), minLevel ) :
         minLevel;
 }
 
@@ -117,7 +117,7 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         osg::BoundingSphere bs = tileNode->getBound();
         TilePagedLOD* plod = new TilePagedLOD( _engine->getUID(), _liveTiles.get(), _releaser.get() );
         plod->setCenter  ( bs.center() );
-        plod->addChild   ( tileNode );
+        plod->addChild   ( tileNode.get() );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engine->getUID() << ".osgearth_engine_mp_tile" );
         
         double rangeFactor = _options.minTileRangeFactor().get();
@@ -302,14 +302,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
 
     if ( makeTile )
     {
-        if ( _options.incrementalUpdate() == true )
-        {
-            quad = new TileGroup(key, _engine->getUID(), _liveTiles.get(), _releaser.get());
-        }
-        else
-        {
-            quad = new osg::Group();
-        }
+        quad = new osg::Group();
 
         for( unsigned q=0; q<4; ++q )
         {

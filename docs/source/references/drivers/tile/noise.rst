@@ -1,7 +1,7 @@
 Noise
 ==========================================
 The noise plugin procedurally generates fractal terrain based on a Perlin noise generator called `libnoise`_.
-We will explain how it works here, but you can also refer the the libnoise documentation for the meaning and
+We will explain how it works here, but you can also refer to the libnoise documentation for the meaning and
 application of the properties below.
 
 There are lots of ways to use the ``noise`` driver. After the properties list there are 
@@ -23,7 +23,7 @@ Basic Properties:
 Advanced Properties:
 
     :frequency:         The reciprocal of the *resolution* above. (Since osgEarth is a mapping SDK,
-                        it is usually more intuitive to specifiy the resolution and leave this empty.)
+                        it is usually more intuitive to specify the resolution and leave this empty.)
     :persistence:       Rate at which the *scale* decreases as the noise function traverses each
                         higher octave. Scale(octave N+1) = Scale(octave N) * Persistence.
     :lacunarity:        Rate at which the *frequency* increases as the noise function traverses each

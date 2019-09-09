@@ -122,7 +122,7 @@ TerrainProfileGraph::TerrainProfileGraph(TerrainProfileCalculator* calculator, T
   //connect(_graphChangedCallback, SIGNAL(graphChanged()), this, SLOT(onGraphChanged()), Qt::QueuedConnection);
   if (_calculator.valid())
   {
-      _calculator->addChangedCallback(_graphChangedCallback);
+      _calculator->addChangedCallback(_graphChangedCallback.get());
   }
 
   _coordinateFormatter = new osgEarth::Util::LatLongFormatter(

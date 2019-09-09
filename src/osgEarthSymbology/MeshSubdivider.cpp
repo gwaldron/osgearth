@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -62,7 +62,7 @@ namespace
     void
     geodeticMidpoint( const osg::Vec2d& g0, const osg::Vec2d& g1, osg::Vec2d& out_mid )
     {
-        if ( fabs(g0.x()-g1.x()) < osg::PI )
+        if ( fabs(g0.x()-g1.x()) <= osg::PI )
             out_mid.set( 0.5*(g0.x()+g1.x()), 0.5*(g0.y()+g1.y()) );
         else if ( g1.x() > g0.x() )
             out_mid.set( 0.5*((g0.x()+2*osg::PI)+g1.x()), 0.5*(g0.y()+g1.y()) );
@@ -516,7 +516,7 @@ namespace
             if ( !ebo )
             {
                 ebo = new ETYPE( GL_LINE_STRIP );
-                ebo->reserve( std::min(numElementsTotal-numElementsWritten, maxElementsPerEBO+1) );
+                ebo->reserve( osg::minimum(numElementsTotal-numElementsWritten, maxElementsPerEBO+1) );
                 numElementsInCurrentEBO = 0;
             }
 
@@ -554,7 +554,7 @@ namespace
         // collect all the line segments in the geometry.
         LineIndexFunctor<LineData> data;
         data.setSourceVerts( static_cast<osg::Vec3Array*>(geom.getVertexArray()) );
-        if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
+        if (geom.getColorArray() && geom.getColorArray()->getBinding() == osg::Array::BIND_PER_VERTEX)
             data.setSourceColors( static_cast<osg::Vec4Array*>(geom.getColorArray()) );
         //LineFunctor<LineData> data;
         geom.accept( data );
@@ -613,14 +613,14 @@ namespace
                 geom.removePrimitiveSet(0);
 
             // set the new VBO.
-            geom.setVertexArray( data._verts );
+            geom.setVertexArray( data._verts.get() );
             if ( geom.getVertexArray()->getVertexBufferObject() && data._verts->getVertexBufferObject() )
             {
                 data._verts->getVertexBufferObject()->setUsage( geom.getVertexArray()->getVertexBufferObject()->getUsage() );
             }
 
-            if ( data._colors )
-                geom.setColorArray( data._colors );
+            if ( data._colors.valid() )
+                geom.setColorArray( data._colors.get() );
 
 #ifdef STRIPIFY_LINES
             // detect and assemble line strips/loop
@@ -683,9 +683,9 @@ namespace
         osg::TriangleIndexFunctor<TriangleData> data;;
         data.setSourceVerts(dynamic_cast<osg::Vec3Array*>(geom.getVertexArray()));
         data.setSourceTexCoords(dynamic_cast<osg::Vec2Array*>(geom.getTexCoordArray(0)));
-        if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
+        if ( geom.getColorArray() && geom.getColorArray()->getBinding() == osg::Array::BIND_PER_VERTEX)
             data.setSourceColors(dynamic_cast<osg::Vec4Array*>(geom.getColorArray()));
-        if ( geom.getNormalBinding() == osg::Geometry::BIND_PER_VERTEX )
+        if (geom.getNormalArray() && geom.getNormalArray()->getBinding() == osg::Array::BIND_PER_VERTEX)
             data.setSourceNormals(dynamic_cast<osg::Vec3Array*>(geom.getNormalArray()));
 
         //TODO normals

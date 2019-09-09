@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/Color>
 #include <osg/Drawable>
 #include <osgUtil/RenderLeaf>
 #include <limits.h>
@@ -96,6 +97,11 @@ namespace osgEarth
     class OSGEARTH_EXPORT ScreenSpaceLayoutOptions : public ConfigOptions
     {
     public:
+        enum Technique {
+            TECHNIQUE_LABELS,
+            TECHNIQUE_CALLOUTS
+        };
+
         ScreenSpaceLayoutOptions( const ConfigOptions& co =ConfigOptions() )
             : ConfigOptions         ( co ),
               _minAnimAlpha         ( 0.35f ),
@@ -104,9 +110,13 @@ namespace osgEarth
               _outAnimTime          ( 0.00f ),
               _sortByPriority       ( false ),
               _sortByDistance       ( true ),
-              _snapToPixel          ( true ),
+              _snapToPixel          ( false ),
               _maxObjects           ( INT_MAX ),
-              _renderBinNumber      ( 13 )
+              _renderBinNumber      ( 13 ),
+              _technique            ( TECHNIQUE_LABELS ),
+              _leaderLineMaxLen     ( 60 ),
+              _leaderLineColor      ( Color::White ),
+              _leaderLineWidth      ( 1.0f )
         {
             fromConfig(_conf);
         }
@@ -129,11 +139,11 @@ namespace osgEarth
         optional<float>& outAnimationTime() { return _outAnimTime; }
         const optional<float>& outAnimationTime() const { return _outAnimTime; }
 
-        /** If set, activate the AnnotationData priority-based sorting */
+        /** If set, activate the ScreenSpaceLayoutData priority-based sorting */
         optional<bool>& sortByPriority() { return _sortByPriority; }
         const optional<bool>& sortByPriority() const { return _sortByPriority; }
 
-        /** If set, activate the AnnotationData distance-based sorting */
+        /** If set, activate the ScreenSpaceLayoutData distance-based sorting */
         optional<bool>& sortByDistance() { return _sortByDistance; }
         const optional<bool>& sortByDistance() const { return _sortByDistance; }
 
@@ -150,6 +160,22 @@ namespace osgEarth
         optional<int>& renderOrder() { return _renderBinNumber; }
         const optional<int>& renderOrder() const { return _renderBinNumber; }
 
+        //! Technique to use for drawing 
+        optional<Technique>& technique() { return _technique; }
+        const optional<Technique>& technique() const { return _technique; }
+
+        //! For callouts, the maximum length of a leader line in pixels
+        optional<float>& leaderLineMaxLength() { return _leaderLineMaxLen; }
+        const optional<float>& leaderLineMaxLength() const { return _leaderLineMaxLen; }
+
+        //! For callouts, the maximum length of a leader line in pixels
+        optional<Color>& leaderLineColor() { return _leaderLineColor; }
+        const optional<Color>& leaderLineColor() const { return _leaderLineColor; }
+
+        //! For callouts, the width of a leader line in pixels
+        optional<float>& leaderLineWidth() { return _leaderLineWidth; }
+        const optional<float>& leaderLineWidth() const { return _leaderLineWidth; }
+
     public:
 
         Config getConfig() const;
@@ -164,6 +190,10 @@ namespace osgEarth
         optional<bool>     _snapToPixel;
         optional<unsigned> _maxObjects;
         optional<int>      _renderBinNumber;
+        optional<Technique> _technique;
+        optional<float>    _leaderLineMaxLen;
+        optional<Color>    _leaderLineColor;
+        optional<float>    _leaderLineWidth;
 
         void fromConfig( const Config& conf );
     };
@@ -209,6 +239,9 @@ namespace osgEarth
          * reverting to the default behavior (which is to sort by distance from the camera).
          */
         static void clearSortFunctor();
+
+        // internal
+        static bool globallyEnabled;
     };
 
 } // namespace osgEarth

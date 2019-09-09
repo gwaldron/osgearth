@@ -17,16 +17,15 @@ to a polygon mask.
         <styles>
             <style>
                 stroke: #ffff00;
-                altitude-clamping: terrain-scene;
                 stroke-tessellation-size: 10km;
+                render-depth-offset: true;
             </style>
         </styles>
     </model>
     
-    <model name="cities" driver="feature_geom" comment="Cities in France">
+    <model name="Cities in France" driver="feature_geom">
         <features name="cities" driver="ogr">
-            <url>../data/ne_cities.shp</url>
-            <profile>spherical-mercator</profile>
+            <url>../data/cities.gpkg</url>
             <filters>
                 <intersect>
                     <comment>
@@ -49,6 +48,7 @@ to a polygon mask.
                 cities {
                     icon:           "../data/placemark32.png";
                     text-content:   [name];
+                    text-encoding:  utf-8;
                     text-halo:      #3f3f3f;
                 }     
             </style>

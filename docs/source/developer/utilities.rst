@@ -6,96 +6,6 @@ with the map. None of these are strictly necessary for using osgEarth, but they 
 make it easier to perform some common operations.
 
 
-AutoScale
----------
-
-*AutoScale* is a special *Render Bin* that will scale geometry from meters to pixels.
-That is: if you have an object that is 10 meters across, *AutoScale* will draw it in
-the space of 10 pixels (at scale 1.0) regardless of its distance from the camera.
-The effect is similar to OSG's ``AutoTransform::setAutoScaleToScreen`` method but is
-done in a shader and does not require any special nodes.
-
-To activate auto-scaling on a node::
-
-    node->getOrCreateStateSet()->setRenderBinDetails( 0, osgEarth::AUTO_SCALE_BIN );
-    
-And to deactivate it:
-
-    node->getOrCreateStateSet()->setRenderBinToInherit();
-
-
-DataScanner
------------
-
-The ``DataScanner`` will recursively search a directory tree on the local filesystem
-for files that it can load as ``ImageLayer`` objects. It is a quick and easy way to 
-load a full directory of images as layers.
-
-**NOTE** that only the *MP Terrain Engine* supports an unlimited number of image layers,
-so it is wise to use that engine in conjunction with the DataScanner.
-
-Use DataScanner like this::
-
-    DataScanner scanner;
-    ImageLayerVector imageLayers;
-    scanner.findImageLayers( rootFolder, extensions, imageLayers );
-    
-You can then add the image layes to your ``Map`` object.
-
-The ``extensions`` parameter lets you filter files by extension. For example, pass in 
-"tif,ecw" to only consider files with those extensions. Separate multiple extensions
-with a comma.
-
-
-DetailTexture
--------------
-
-``DetailTexture`` is a terrain controller that will apply a non-geospatial texture
-across the terrain. This is an old trick that you can use to generate "noise" that makes
-a low resolution terrain appear more detailed::
-
-    DetailTexture* detail = new DetailTexture();
-    detail->setImage( osgDB::readImageFile("mytexture.jpg") );
-    detail->setIntensity( 0.5f );
-    detail->setImageUnit( 4 );
-    mapnode->getTerrainEngine()->addEffect( detail );
-
-Try the example. Zoom in fairly close to the terrain to see the effect::
-
-    osgearth_detailtex readymap.earth
-
-
-
-LOD Blending
-------------
-
-``LODBlending`` is a terrain controller that will attempt to smoothly morph vertices
-and image textures from one LOD to the next as you zoom in or out. Basic usage is::
-
-    LODBlending* effect = new LODBlending();
-    mapnode->getTerrainEngine()->addEffect( effect );
-
-Caveats: It requires that the terrain elevation tile size dimensions be odd-numbered
-(e.g., 17x17, which is the default.) You can use the ``MapOptions::elevationTileSize``
-property to configure this, or set ``elevation_tile_size`` in your earth file if you
-want to change it::
-
-    <map>
-        <options elevation_tile_size="15" ...
-
-For a demo, run this example and zoom into a mountainous area::
-
-    osgearth_viewer lod_blending.earth
-
-LOD blending supports the following properties (earth file and API):
-
-    :delay:            Time to wait before starting a blending transition (seconds)
-    :duration:         Duration of the blending transition (seconds)
-    :vertical_scale:   Factor by which to vertically scale the terrain (default = 1.0)
-    :blend_imagery:    Whether to blend imagery LODs (true)
-    :blend_elevation:  Whether to morph elevation LODs (true)
-
-
 Logarithmic Depth Buffer
 ------------------------
 
@@ -160,7 +70,7 @@ MGRSFormatter
 
 The ``MGRSFormatter`` constructs a string according to the `Military Grid Reference System`_. 
 Technically, an MGRS coordinate represents a *region* rather than an exact point, so you
-have to specifiy a *precision* qualifier to control the size of the represented region.
+have to specify a *precision* qualifier to control the size of the represented region.
 Example::
 
     MGRSFormatter mgrs( MGRFormatter::PRECISION_1000M );
@@ -204,60 +114,5 @@ mouse to a *Qt* status bar::
 
 For your convenience, ``MouseCoordsTool`` also comes with a stock callback that will
 print the coords to ``osgEarthUtil::Controls::LabelControl``. You can even pass a
-``LabelControl`` to the contructor to make it even easier.
+``LabelControl`` to the constructor to make it even easier.
 
-
-NormalMap
----------
-
-The ``NormalMap`` effect will use an ``ImageLayer`` as a bump map texture, adding
-apparent detail to the terrain. 
-
-A *normal map* is a kind of *bump map* in which each texel represents an XYZ normal
-vector instead of an RGB color value. The GPU can then use this information to apply
-lighting to the terrain on a per-pixel basis instead of per-vertex, rendering a
-more detailed-looking surface with the same number of triangles.
-
-First you need to create a normal map layer. You can use the **noise** driver to do
-this. The setup looks like this in the earth file::
-
-    <image name="bump" driver="noise" shared="true" visible="false">
-        <normal_map>true</normal_map>
-    </image>
-    
-The **noise driver** generates Perlin noise; this will fill the image with pseudo-
-random normal vectors. (Setting ``normal_map`` to ``true`` is what tells the driver
-to make normal vectors instead of RGB values. You should also set ``shared`` to 
-``true``; this will make the normal map available to the shader pipeline so that it
-can do the custom lighting calculations.)
-
-Once you have the image layer set up, install the ``NormalMap`` terrain effect and 
-point it at our normal map layer. From the earth file::
-
-    <map>
-        ...
-        <external>
-            <normal_map layer="bump"/>
-        </external>
-
-Or from code::
-
-    NormalMap* normalMap = new NormalMap();
-    normalMap->setNormalMapLayer( myBumpLayer );
-    mapnode->getTerrainEngine()->addEffect( normalMap );
-    
-Please refer to the **normalmap.earth** example for a demo.
-
-
-VerticalScale
--------------
-
-``VerticalScale`` scales the height values of the terrain. Basic usage is::
-
-    VerticalScale* scale = new VerticalScale();
-    scale->setScale( 2.0 );
-    mapnode->getTerrainEngine()->addEffect( scale );
-
-For a demo, run this example::
-
-    osgearth_verticalscale readymap.earth

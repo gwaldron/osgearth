@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -18,7 +18,9 @@
  */
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Metrics>
-#include <osg/Version>
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
+#include <osg/ContextData>
+#endif
 
 using namespace osgEarth;
 
@@ -38,23 +40,31 @@ ResourceReleaser::ResourceReleaser()
 }
 
 void
-ResourceReleaser::push(osg::Object* node)
+ResourceReleaser::push(osg::Object* object)
 {
     Threading::ScopedMutexLock lock(_mutex);
-    _toRelease.push_back(node);
+
+    _toRelease.push_back(object);
 }
 
 void
-ResourceReleaser::push(const ObjectList& nodes)
+ResourceReleaser::push(const ObjectList& objects)
 {
     Threading::ScopedMutexLock lock(_mutex);
-    _toRelease.reserve(_toRelease.size() + nodes.size());
-    for (unsigned i = 0; i<nodes.size(); ++i)
-        _toRelease.push_back(nodes[i].get());
+
+    _toRelease.reserve(_toRelease.size() + objects.size());
+    for (unsigned i = 0; i<objects.size(); ++i)
+        _toRelease.push_back(objects[i].get());
 }
 
 void
 ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
+{
+    releaseGLObjects(ri.getState());
+}
+
+void
+ResourceReleaser::releaseGLObjects(osg::State* state) const
 {
     if (!_toRelease.empty())
     {
@@ -65,7 +75,7 @@ ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
             for (ObjectList::const_iterator i = _toRelease.begin(); i != _toRelease.end(); ++i)
             {
                 osg::Object* object = i->get();
-                object->releaseGLObjects(ri.getState());
+                object->releaseGLObjects(state);
             }
             OE_DEBUG << LC << "Released " << _toRelease.size() << " objects\n";
             _toRelease.clear();

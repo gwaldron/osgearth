@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -216,11 +216,9 @@ Geometry::buffer(double distance,
         {
             output = gc.exportGeometry( outGeom );
             gc.disposeGeometry( outGeom );
-            delete outGeom;
         }
 
         gc.disposeGeometry( inGeom );
-        delete inGeom;
     }
 
     return output.valid();
@@ -295,15 +293,12 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
             }
 
             gc.disposeGeometry( outGeom );
-            delete outGeom;
         }
     }
 
     //Destroy the geometry
     gc.disposeGeometry( cropGeom );
-    delete cropGeom;
     gc.disposeGeometry( inGeom );
-    delete inGeom;
 
     return success;
 
@@ -324,7 +319,7 @@ Geometry::crop( const Bounds& bounds, osg::ref_ptr<Geometry>& output ) const
     (*poly)[1].set(bounds.xMax(), bounds.yMin(), 0);
     (*poly)[2].set(bounds.xMax(), bounds.yMax(), 0);
     (*poly)[3].set(bounds.xMin(), bounds.yMax(), 0);
-    return crop(poly, output);
+    return crop(poly.get(), output);
 }
 
 bool
@@ -482,9 +477,7 @@ Geometry::intersects(
 
     //Destroy the geometry
     gc.disposeGeometry( otherGeom );
-    delete otherGeom;
     gc.disposeGeometry( inGeom );
-    delete inGeom;
 
     return intersects;
 
@@ -594,7 +587,7 @@ Geometry::getOrientation() const
 {
     // adjust for a non-open ring:
     int n = size();
-    while( n > 0 && front() == back() )
+    if ( n > 0 && front() == back() )
         n--;
 
     if ( n < 3 )

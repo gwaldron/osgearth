@@ -4213,7 +4213,7 @@ namespace Clara {
         }
 
         void parseIntoTokens( std::string const& arg, std::vector<Token>& tokens ) {
-            for( std::size_t i = 0; i <= arg.size(); ++i ) {
+            for( std::size_t i = 0; i < arg.size(); ++i ) {
                 char c = arg[i];
                 if( c == '"' )
                     inQuotes = !inQuotes;
@@ -4751,7 +4751,7 @@ namespace Catch {
             ss << seed;
             ss >> config.rngSeed;
             if( ss.fail() )
-                throw std::runtime_error( "Argment to --rng-seed should be the word 'time' or a number" );
+                throw std::runtime_error( "Argument to --rng-seed should be the word 'time' or a number" );
         }
     }
     inline void setVerbosity( ConfigData& config, int level ) {

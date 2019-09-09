@@ -1,0 +1,10 @@
+<!-- 
+osgEarth Sample - GDAL Driver
+Demonstrates the simplest possible use of the GDAL driver to load a GeoTIFF image.
+-->
+
+<map>
+    <image name="World GeoTIFF" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+</map>

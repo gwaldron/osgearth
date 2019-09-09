@@ -1,6 +1,6 @@
 /* --*-c++-*-- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,25 +22,20 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureModelSource>
-#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
-#include <osgEarth/OverlayNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/DepthOffset>
 #include <osgEarth/SceneGraphCallback>
 #include <osgDB/Callbacks>
 #include <osg/Node>
 #include <set>
 
-namespace osgEarth {
-    class ClampableNode;
-}
-
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+
+    class Session;
 
     /**
      * A scene graph that renders feature data.
@@ -112,7 +107,7 @@ namespace osgEarth { namespace Features
         /**
          * Session associated with this feature graph.
          */
-        Session* getSession() { return _session; }
+        Session* getSession();
 
         /**
          * Mark the feature graph dirty and in need of regeneration 
@@ -151,7 +146,8 @@ namespace osgEarth { namespace Features
             const Query&          baseQuery, 
             const GeoExtent&      extent, 
             FeatureIndexBuilder*  index,
-            const osgDB::Options* readOptions);
+            const osgDB::Options* readOptions,
+            ProgressCallback*     progress);
 
 
     private:
@@ -162,7 +158,8 @@ namespace osgEarth { namespace Features
             const Style&          style, 
             const Query&          query, 
             FeatureIndexBuilder*  index,
-            const osgDB::Options* readOptions);
+            const osgDB::Options* readOptions,
+            ProgressCallback*     progress);
 
         osg::Group* createStyleGroup(
             const Style&          style, 
@@ -175,27 +172,27 @@ namespace osgEarth { namespace Features
             const Query&          baseQuery,
             FeatureIndexBuilder*  index,
             osg::Group*           parent,
-            const osgDB::Options* readOptions);
+            const osgDB::Options* readOptions,
+            ProgressCallback*     progress);
 
         void queryAndSortIntoStyleGroups(
             const Query&            query,
             const StringExpression& styleExpr,
             FeatureIndexBuilder*    index,
             osg::Group*             parent,
-            const osgDB::Options*   readOptions);
+            const osgDB::Options*   readOptions,
+            ProgressCallback*       progress);
 
         osg::Group* getOrCreateStyleGroupFromFactory(
             const Style& style);
        
         osg::BoundingSphered getBoundInWorldCoords( 
-            const GeoExtent& extent, 
-            const MapFrame*  mapf ) const;
+            const GeoExtent& extent ) const;
 
         void buildSubTilePagedLODs(
             unsigned lod, unsigned tileX, unsigned tileY,
-            const MapFrame* mapFrame, osg::Group* parent,
+            osg::Group* parent,
             const osgDB::Options* readOptions);
-
         
         osg::Group* readTileFromCache(
             const std::string&    cacheKey,
@@ -223,23 +220,10 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
-        OpenThreads::ReentrantMutex      _clampableMutex;
-
-        osg::Group*                      _overlayInstalled;
-        osg::ref_ptr<osg::Group>         _overlayPlaceholder;
-        osg::ref_ptr<ClampableNode>      _clampable;
-        DepthOffsetAdapter               _depthOffsetAdapter;
+        OpenThreads::ReentrantMutex      _redrawMutex;
 
         OpenThreads::Atomic _cacheReads;
         OpenThreads::Atomic _cacheHits;
-
-        enum OverlayChange {
-            OVERLAY_NO_CHANGE,
-            OVERLAY_INSTALL_PLACEHOLDER,
-            OVERLAY_INSTALL_CLAMPABLE,
-            OVERLAY_INSTALL_DRAPEABLE
-        };
-        OverlayChange                    _overlayChange;
 
         osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
 
@@ -249,11 +233,11 @@ namespace osgEarth { namespace Features
 
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
+        osg::ref_ptr<osgDB::ObjectCache> _nodeCachingImageCache;
+
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);
         void applyRenderSymbology(const Style& style, osg::Node* node);
-        void checkForGlobalStyles(const Style& style);
-        void changeOverlay();
         bool createOrUpdateNode(FeatureCursor*, const Style&, FilterContext&, const osgDB::Options*, osg::ref_ptr<osg::Node>& output);
     };
 

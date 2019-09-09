@@ -6,13 +6,13 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION, OE_IS_SHADOW_CAMERA)
-
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
+#pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
 
 // stage
-vec3 vp_Normal; // up vector
+vec3 vp_Normal;
 
-vec4 oe_layer_texc;
 vec4 oe_layer_tilec;
 
 out float oe_rex_morphFactor;
@@ -22,8 +22,8 @@ flat out int oe_terrain_vertexMarker;
 uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
 
-#ifdef OE_IS_SHADOW_CAMERA
-uniform mat4 oe_shadow_shadowViewToPrimaryView;
+#ifdef OE_IS_DEPTH_CAMERA
+uniform mat4 oe_shadowToPrimaryMatrix;
 #endif
 
 // SDK functions:
@@ -35,20 +35,6 @@ float oe_terrain_getElevation(in vec2 uv);
 #define VERTEX_MARKER_PATCH    4
 #define VERTEX_MARKER_BOUNDARY 8
 #define VERTEX_MARKER_SKIRT    16
-
-// Morphs a vertex using a neighbor.
-void oe_rex_MorphVertex(inout vec3 position, inout vec2 uv, in vec3 neighborPosition)
-{
-   float halfSize        = (0.5*oe_tile_size)-0.5;
-   float twoOverHalfSize = 2.0/(oe_tile_size-1.0);
-   
-   vec2 fractionalPart = fract(uv * halfSize) * twoOverHalfSize;
-   uv = clamp(uv - (fractionalPart * oe_rex_morphFactor), 0.0, 1.0);
-   //uv = clamp(uv, 0, 1);
-
-   vec3 morphVector = neighborPosition.xyz - position.xyz;
-   position.xyz = position.xyz + morphVector*oe_rex_morphFactor;
-}
 
 
 // Compute a morphing factor based on model-space inputs:
@@ -65,12 +51,12 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 
     vec4 wouldBePositionView = gl_ModelViewMatrix * wouldBePosition;
 
-#ifdef OE_IS_SHADOW_CAMERA
-    // For a shadow camera, we have to compute the morphed position
+#ifdef OE_IS_DEPTH_CAMERA
+    // For a depth camera, we have to compute the morphed position
     // from the perspective of the primary camera so they match up:
-    wouldBePositionView = oe_shadow_shadowViewToPrimaryView * wouldBePositionView;
+    wouldBePositionView = oe_shadowToPrimaryMatrix * wouldBePositionView;
 #endif
-	
+    
     float fDistanceToEye = length(wouldBePositionView.xyz); // or just -z.
 	float fMorphLerpK  = 1.0f - clamp( oe_tile_morph[0] - fDistanceToEye * oe_tile_morph[1], 0.0, 1.0 );
     return fMorphLerpK;
@@ -86,9 +72,22 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 
-#ifdef OE_TERRAIN_MORPH_GEOMETRY 
-        vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
-        oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
+#ifdef OE_TERRAIN_MORPH_GEOMETRY
+        vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;        
+        vec3 neighborNormal = gl_MultiTexCoord2.xyz;
+        
+        float halfSize        = (0.5*oe_tile_size)-0.5;
+        float twoOverHalfSize = 2.0/(oe_tile_size-1.0);   
+        vec2 fractionalPart = fract(oe_layer_tilec.st * halfSize) * twoOverHalfSize;
+        oe_layer_tilec.st = clamp(oe_layer_tilec.st - (fractionalPart * oe_rex_morphFactor), 0.0, 1.0);
+
+        // morph the vertex:
+        vec3 morphVector = neighborVertexModel.xyz - vertexModel.xyz;
+        vertexModel.xyz = vertexModel.xyz + morphVector*oe_rex_morphFactor;
+
+        // morph the normal:
+        morphVector = neighborNormal - vp_Normal;
+        vp_Normal = normalize(vp_Normal + morphVector*oe_rex_morphFactor);
 #endif
     }
     else

@@ -16,5 +16,10 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <detail image="../data/noise3.png" lod="21" alpha="0.5" max_range="6000" attenuation="2000"/>        
+    <detail>
+        <image>../data/noise3.png</image>
+        <lod>21</lod>
+        <max_range>6000</max_range>
+        <attenuation>2000</attenuation>
+    </detail>
 </map>

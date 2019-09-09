@@ -24,19 +24,7 @@ used to control the camera and is optimized for viewing geospatial data.
 +----------------------------------+--------------------------------------------------------------------+
 | ``--coords``                     | Displays map coords under mouse                                    |
 +----------------------------------+--------------------------------------------------------------------+
-| ``--dms``                        | Displays map coords as degrees/mins/seconds                        |
-+----------------------------------+--------------------------------------------------------------------+
-| ``--dd``                         | Displays map coords as decimal degrees                             |
-+----------------------------------+--------------------------------------------------------------------+
-| ``--mgrs``                       | Displays map coords as MGRS                                        |
-+----------------------------------+--------------------------------------------------------------------+
 | ``--ortho``                      | Installs an orthographic camera projection                         |
-+----------------------------------+--------------------------------------------------------------------+
-| ``--images [path]``              | Finds images in [path] and loads them as image layers              |
-+----------------------------------+--------------------------------------------------------------------+
-| ``--image-extensions [*]``       | With ``--images``, only considers the listed extensions            |
-+----------------------------------+--------------------------------------------------------------------+
-| ``--out-earth [out.earth]``      | With ``--images``, writes out an earth file                        |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--logdepth``                   | Activates the logarithmic depth buffer in high-speed mode.         |
 +----------------------------------+--------------------------------------------------------------------+
@@ -117,6 +105,38 @@ The most common usage of osgearth_cache is to populate a cache in a non-interact
 | ``--purge``                         | Purges a layer cache in a .earth file                              |
 +-------------------------------------+--------------------------------------------------------------------+
 
+osgearth_conv
+----------------
+osgearth_conv copies the contents of one TileSource to another. All arguments are Config name/value pairs,
+so you need to look in the header file for each driver's Options structure for options. Of course, the output
+driver must support writing (by implementing the ReadWriteTileSource interface). The "in" properties come
+from the GDALOptions getConfig method. The "out" properties come from the MBTilesOptions getConfig method.
+
+**Sample Usage**
+::
+    osgearth_conv --in driver gdal --in url world.tif --out driver mbtiles --out filename world.db
+
++------------------------------------+--------------------------------------------------------------------+
+| Argument                           | Description                                                        |
++====================================+====================================================================+
+| ``--in [name] [value]``            | set the value of an input property                                 |
++------------------------------------+--------------------------------------------------------------------+
+| ``--out [name] [value]``           | set the value of an output property                                |
++------------------------------------+--------------------------------------------------------------------+
+| ``--elevation``                    | convert as elevation data (instead of image data)                  |
++------------------------------------+--------------------------------------------------------------------+
+| ``--profile [profile]``            | reproject to the target profile, e.g. "wgs84"                      |
++------------------------------------+--------------------------------------------------------------------+
+| ``--min-level [int]``              | min level of detail to copy                                        |
++------------------------------------+--------------------------------------------------------------------+
+| ``--max-level [int]``              | max level of detail to copy                                        |
++------------------------------------+--------------------------------------------------------------------+
+| ``--threads [n]``                  | threads to use (Careful, may crash. Doesn't help with GDAL inputs) |
++------------------------------------+--------------------------------------------------------------------+
+| ``--extents [minLat] [minLong]``   | Lat/Long extends to copy                                           |
+| ``[maxLat] [maxLong]``             |                                                                    |
++------------------------------------+--------------------------------------------------------------------+
+
 osgearth_package
 ----------------
 osgearth_package creates a redistributable `TMS`_ based package from an earth file.
@@ -166,34 +186,6 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--alpha-mask``                   | Mask out imagery that isn't in the provided extents.               |
 +------------------------------------+--------------------------------------------------------------------+
 | ``--verbose``                      | Displays progress of the operation                                 |
-+------------------------------------+--------------------------------------------------------------------+
-
-osgearth_conv
-----------------
-osgearth_conv copies the contents of one TileSource to another. All arguments are Config name/value pairs,
-so you need to look in the header file for each driver's Options structure for options. Of course, the output
-driver must support writing (by implementing the ReadWriteTileSource interface). The "in" properties come
-from the GDALOptions getConfig method. The "out" properties come from the MBTilesOptions getConfig method.
-
-**Sample Usage**
-::
-    osgearth_conv --in driver gdal --in url world.tif --out driver mbtiles --out filename world.db
-
-+------------------------------------+--------------------------------------------------------------------+
-| Argument                           | Description                                                        |
-+====================================+====================================================================+
-| ``--elevation``                    | convert as elevation data (instead of image data)                  |
-+------------------------------------+--------------------------------------------------------------------+
-| ``--profile [profile]``            | reproject to the target profile, e.g. "wgs84"                      |
-+------------------------------------+--------------------------------------------------------------------+
-| ``--min-level [int]``              | min level of detail to copy                                        |
-+------------------------------------+--------------------------------------------------------------------+
-| ``--max-level [int]``              | max level of detail to copy                                        |
-+------------------------------------+--------------------------------------------------------------------+
-| ``--threads [n]``                  | threads to use (Careful, may crash. Doesn't help with GDAL inputs) |
-+------------------------------------+--------------------------------------------------------------------+
-| ``--extents [minLat] [minLong]``   | Lat/Long extends to copy                                           |
-| ``[maxLat] [maxLong]``             |                                                                    |
 +------------------------------------+--------------------------------------------------------------------+
 
 osgearth_tfs

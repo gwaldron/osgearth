@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -43,20 +43,20 @@ void
 StyleSelector::mergeConfig( const Config& conf )
 {
     _name = conf.value( "name" );
-    conf.getIfSet   ( "style",        _styleName );
-    conf.getIfSet   ( "class",        _styleName ); // alias
-    conf.getObjIfSet( "style_expr",   _styleExpression ); 
-    conf.getObjIfSet( "class_expr",   _styleExpression ); // alias
-    conf.getObjIfSet( "query",        _query );
+    conf.get( "style",      _styleName );
+    conf.get( "class",      _styleName ); // alias
+    conf.get( "style_expr", _styleExpression ); 
+    conf.get( "class_expr", _styleExpression ); // alias
+    conf.get( "query",      _query );
 }
 
 Config
 StyleSelector::getConfig() const
 {
     Config conf( "selector" );
-    conf.add        ( "name",         _name );
-    conf.addIfSet   ( "style",        _styleName );
-    conf.addObjIfSet( "style_expr",   _styleExpression );
-    conf.addObjIfSet( "query",        _query );
+    conf.set( "name",       _name );
+    conf.set( "style",      _styleName );
+    conf.set( "style_expr", _styleExpression );
+    conf.set( "query",      _query );
     return conf;
 }

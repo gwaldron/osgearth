@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -120,8 +120,8 @@ Config
 GLSLColorFilter::getConfig() const
 {
     Config conf("glsl", getCode());
-    conf.addIfSet( "function", _functionName );
-    conf.addIfSet( "type", "vertex",   _type, osg::Shader::VERTEX );
-    conf.addIfSet( "type", "fragment", _type, osg::Shader::FRAGMENT );
+    conf.set( "function", _functionName );
+    conf.set( "type", "vertex",   _type, osg::Shader::VERTEX );
+    conf.set( "type", "fragment", _type, osg::Shader::FRAGMENT );
     return conf;
 }

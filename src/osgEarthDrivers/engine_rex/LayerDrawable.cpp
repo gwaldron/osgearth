@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "LayerDrawable"
+#include "TerrainRenderData"
 #include <osg/ConcurrencyViewerMacros>
 
 
@@ -28,7 +29,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 LayerDrawable::LayerDrawable() :
 _renderType(Layer::RENDERTYPE_TERRAIN_SURFACE),
-_order(0),
+_drawOrder(0),
 _layer(0L),
 _visibleLayer(0L),
 _imageLayer(0L),
@@ -38,7 +39,45 @@ _draw(true)
     setDataVariance(DYNAMIC);
     setUseDisplayList(false);
     setUseVertexBufferObjects(true);
+    _tiles.reserve(128);
 }
+
+LayerDrawable::~LayerDrawable()
+{
+    // Drawable's DTOR will release GL objects on any attached stateset;
+    // we don't want that because our Layer stateset is shared and re-usable.
+    // So detach it before OSG has a chance to do so.
+    setStateSet(0L);
+}
+
+namespace
+{
+    // Hack State so we can dirty the texture attrs without dirtying the other 
+    // attributes (as dirtyAllAttributes() would do.
+    struct StateEx : public osg::State
+    {
+        void dirtyAllTextureAttributes()
+        {
+            // dirtyAllTextureAttributes. (Don't call state->dirtyAllAttributes because that
+            // will mess up positional state attributes like light sources)
+            for (TextureAttributeMapList::iterator tamItr = _textureAttributeMapList.begin();
+                tamItr != _textureAttributeMapList.end();
+                ++tamItr)
+            {
+                osg::State::AttributeMap& attributeMap = *tamItr;
+                for (osg::State::AttributeMap::iterator aitr = attributeMap.begin();
+                    aitr != attributeMap.end();
+                    ++aitr)
+                {
+                    osg::State::AttributeStack& as = aitr->second;
+                    as.last_applied_attribute = 0;
+                    as.changed = true;
+                }
+            }
+        }
+    };
+}
+
 
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
@@ -56,27 +95,14 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     osg::CVMarkerSeries objectCreation("Main Thread");
     osg::CVSpan creationSpan(objectCreation, 4, buf.c_str());
 
-    if (_layer)
+    if (ds._layerUidUL >= 0)
     {
-        if (ds._layerUidUL >= 0)
-            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
-        if (ds._layerOpacityUL >= 0 && _visibleLayer)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_visibleLayer->getOpacity());
-        if (ds._layerMinRangeUL >= 0 && _visibleLayer)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_visibleLayer->getMinVisibleRange());
-        if (ds._layerMaxRangeUL >= 0 && _visibleLayer)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_visibleLayer->getMaxVisibleRange());
+        GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
+        ds._ext->glUniform1i(ds._layerUidUL, uid);
     }
     else
     {
-        if (ds._layerUidUL >= 0)
-            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)-1);
-        if (ds._layerOpacityUL >= 0)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)1.0f);
-        if (ds._layerMinRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)0.0f);
-        if (ds._layerMaxRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)FLT_MAX);
+        // This just means that the fragment shader for this layer doesn't use oe_layer_uid
     }
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
@@ -88,8 +114,13 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     // necessary when doing custom OpenGL within a Drawable.
     if (_clearOsgState)
     {
-        ri.getState()->dirtyAllAttributes();
-        ri.getState()->dirtyAllModes();
+        // Dirty the texture attributes so OSG can properly reset them
+        // NOTE: cannot call state.dirtyAllAttributes, because that would invalidate
+        // positional state like light sources!
+        reinterpret_cast<StateEx*>(ri.getState())->dirtyAllTextureAttributes();
+
+        // NOTE: this is a NOOP in OSG 3.5.x, but not in 3.4.x ... Later we will need to
+        // revisit whether to call disableAllVertexArrays() in 3.5.x instead.
         ri.getState()->dirtyAllVertexArrays();
         
         // unbind local buffers when finished.

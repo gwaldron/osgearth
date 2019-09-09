@@ -28,7 +28,7 @@ A Simple Earth File
 Here is a very simple example that reads data from a GeoTIFF file on the local
 file system and renders it as a geocentric round Earth scene::
 
-    <map name="MyMap" type="geocentric" version="2">
+    <map name="MyMap">
         <image name="bluemarble" driver="gdal">
             <url>world.tif</url>
         </image>
@@ -44,8 +44,6 @@ Some of the sub-elements (under ``image``) are particular to the selected
 driver. To learn more about drivers and how to configure each one, please
 refer to the `Driver Reference Guide`_.
 
-    *Note: the ``version`` number is required!*
-
 
 Multiple Image Layers
 ---------------------
@@ -57,7 +55,7 @@ atop a lower resolution base map.
 To add multiple images to a Earth File, simply add multiple "image" blocks
 to your Earth File::
 
-    <map name="Transportation" type="geocentric" version="2">
+    <map name="Transportation">
     
         <!--Add a base map of the blue marble data-->
         <image name="bluemarble" driver="gdal">
@@ -84,7 +82,7 @@ Adding Elevation Data
 Adding elevation data (sometimes called "terrain data") to an Earth File is 
 very similar to adding images. Use an ``elevation`` block like so::
 
-    <map name="Elevation" type="geocentric" version="2">
+    <map name="Elevation">
     
         <!--Add a base map of the blue marble data-->
         <image name="bluemarble" driver="gdal">
@@ -123,7 +121,7 @@ the same data.
 
 Here's an example cache setup::
 
-    <map name="TMS Example" type="geocentric" version="2">
+    <map name="TMS Example">
     
         <image name="metacarta blue marble" driver="tms">
             <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>

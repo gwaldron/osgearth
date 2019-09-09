@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,8 +26,10 @@ namespace osgEarth { namespace Annotation
 {
     using namespace osgEarth;
 
+    class AnnotationNode;
+
     /**
-     * Configuration options for the geodetic graticule.
+     * Configuration options for AnnotationLayer
      */
     class AnnotationLayerOptions : public VisibleLayerOptions
     {
@@ -39,19 +41,18 @@ namespace osgEarth { namespace Annotation
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
-            conf.key() = "annotations";
             return conf;
-        }
-
-        virtual void fromConfig(const Config& conf) {
-            //nop
         }
 
     protected:
 
-        void mergeConfig(const Config& conf) {
+        virtual void mergeConfig(const Config& conf) {
             VisibleLayerOptions::mergeConfig(conf);
             fromConfig(conf);
+        }
+
+        void fromConfig(const Config& conf) {
+            //nop
         }
     };
 
@@ -59,13 +60,12 @@ namespace osgEarth { namespace Annotation
      * Layer that holds annotation nodes.
      *
      * Use with the options structure is intended for loading from an earth file.
-     * To use from the API, you can just call getOrCreateNode(), cast to a Group,
-     * and add your annotations there.
+     * To use from the API, you can just call getGroup() and add Annotations there.
      */
     class OSGEARTHANNO_EXPORT AnnotationLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthAnnotation, AnnotationLayer, AnnotationLayerOptions);
+        META_Layer(osgEarthAnnotation, AnnotationLayer, AnnotationLayerOptions, annotations);
 
         //! Construct a default layer
         AnnotationLayer();
@@ -73,12 +73,15 @@ namespace osgEarth { namespace Annotation
         //! Construct a layer with custom options
         AnnotationLayer(const AnnotationLayerOptions& options);
 
-        //! Call to refresh after setting an option
-        void dirty();
+        //! Adds an annotation to the layer
+        void addChild(AnnotationNode*);
+
+        //! Gets the group to which you can add annotations
+        osg::Group* getGroup() const;
 
     public: // Layer
         
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         virtual void init();
 

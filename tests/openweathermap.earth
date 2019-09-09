@@ -1,0 +1,38 @@
+<!--
+osgEarth Sample - OpenWeatherMap Clouds
+
+ReadyMap.ORG provides free global base map data for osgEarth developers!
+This tiled, worldwide dataset of imagery, elevation, and street map data
+is a great base map that provides global context for your own local datasets.
+It works "out of the box" with osgEarth applications.
+
+**** NOTICE ****
+YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
+http://readymap.org
+
+-->
+<map name="readymap.org" type="geocentric">
+
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+    </image>
+
+    <image name="Cloud Cover" driver="xyz" visible="true">
+        <url>http://[abc].tile.openweathermap.org/map/clouds/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+    </image>
+
+    <image name="Precipitation" driver="xyz" visible="false">
+        <url>http://[abc].tile.openweathermap.org/map/precipitation/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+    </image>
+
+    <image name="Pressure" driver="xyz" visible="false">
+        <url>http://[abc].tile.openweathermap.org/map/pressure_cntr/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+    </image>
+
+</map>

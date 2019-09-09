@@ -86,7 +86,7 @@ using namespace osgEarth::Util;
     
     setenv("GDAL_DATA", dataPath.c_str(), 1);
     
-    osg::setNotifyLevel(osg::FATAL);
+    osg::setNotifyLevel(osg::DEBUG_FP);
     osgEarth::setNotifyLevel(osg::DEBUG_FP);
     
     // thread-safe initialization of the OSG wrapper manager. Calling this here
@@ -132,7 +132,7 @@ using namespace osgEarth::Util;
 	traits->sharedContext = 0;
 	traits->setInheritedWindowPixelFormat = true;
     
-	osg::ref_ptr<osg::Referenced> windata = new osgViewer::GraphicsWindowIOS::WindowData(self.view, osgViewer::GraphicsWindowIOS::WindowData::PORTRAIT_ORIENTATION, scale);
+	osg::ref_ptr<osg::Referenced> windata = new osgViewer::GraphicsWindowIOS::WindowData(self.view, self, osgViewer::GraphicsWindowIOS::WindowData::PORTRAIT_ORIENTATION, scale);
 	traits->inheritedWindowData = windata;
     
 	// Create the Graphics Context

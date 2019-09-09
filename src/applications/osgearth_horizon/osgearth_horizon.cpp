@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -45,7 +45,7 @@ int
 usage(const char* name)
 {
     OE_NOTICE 
-        << "\nUsage: " << name << " file.earth" << std::endl
+        << "\nUsage: " << name << " file.earth --activity" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
     return 0;
@@ -61,18 +61,6 @@ struct MyComputeBoundCallback : public osg::Node::ComputeBoundingSphereCallback
     osg::BoundingSphere computeBound(const osg::Node&) const
     {
         return osg::BoundingSphere(osg::Vec3f(0,0,0), _radius);
-    }
-};
-
-struct SetHorizonCallback : public osg::NodeCallback
-{
-    osg::ref_ptr<Horizon> _horizonProto;
-    void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {
-        osg::ref_ptr<Horizon> horizon = osg::clone(_horizonProto.get(), osg::CopyOp::DEEP_COPY_ALL);
-        horizon->setEye( nv->getViewPoint() );
-        horizon->put( *nv );        
-        traverse(node, nv);
     }
 };
 
@@ -111,6 +99,9 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
+    if (arguments.find("--activity") < 0)
+        return usage(argv[0]);
+
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
@@ -129,21 +120,22 @@ main(int argc, char** argv)
         viewer.setSceneData( root );
         root->addChild( node );
 
-        const SpatialReference* srs = MapNode::get(node)->getMapSRS();
-        SetHorizonCallback* set = new SetHorizonCallback();
-        set->_horizonProto = new Horizon(srs);
-        root->addCullCallback( set );
+        MapNode* mapNode = MapNode::get(node);
+        const SpatialReference* srs = mapNode->getMapSRS();
 
         osg::Node* item1 = installGeometry1(srs);
-        root->addChild( item1 );
+        mapNode->addChild( item1 );
 
         osg::Node* item2 = installGeometry2(srs);
-        root->addChild( item2 );
+        mapNode->addChild( item2 );
 
-        osg::ref_ptr<Horizon> horizon = new Horizon(srs);
-
+        // Culls the second item based on its horizon visibility
         HorizonCullCallback* callback = new HorizonCullCallback();
         item2->addCullCallback( callback );
+        
+        // This horizon object we are just using to print out the results;
+        // it's not actually part of the culling cullback!
+        osg::ref_ptr<Horizon> horizon = new Horizon(srs);        
 
         while (!viewer.done())
         {

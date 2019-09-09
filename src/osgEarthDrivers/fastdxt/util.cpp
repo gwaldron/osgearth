@@ -101,7 +101,7 @@ double aTime()
 
 
 
-void aLog(char* format,...)
+void aLog(const char* format,...)
 {
 	va_list vl;
 	char line[2048];
@@ -118,7 +118,7 @@ void aLog(char* format,...)
 	fflush(stderr);
 }
 
-void aError(char* format,...)
+void aError(const char* format,...)
 {
 	va_list vl;
 	char line[2048];

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,10 +26,12 @@
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/RectangleNode>
 #include <osgEarthAnnotation/Draggers>
-#include <osgEarth/MapNode>
 
 namespace osgEarth { namespace Annotation
 {
+    /**
+     * @deprecated (remove or refactor as example after 2.10)
+     */
     class OSGEARTHANNO_EXPORT AnnotationEditor : public osg::Group
     {
     protected:
@@ -39,7 +41,8 @@ namespace osgEarth { namespace Annotation
     };
 
      /**
-     * An editor node that allows you to move the position of LocalizedNode annotations    
+     * An editor node that allows you to move the position of LocalizedNode annotations 
+     * @deprecated (remove or refactor as example after 2.10)   
      */
     class OSGEARTHANNO_EXPORT GeoPositionNodeEditor : public AnnotationEditor
     {
@@ -63,7 +66,10 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr< GeoPositionNode > _node;
         Dragger* _dragger;
     };
-
+    
+    /**
+     * @deprecated (remove or refactor as example after 2.10)   
+     */
     class OSGEARTHANNO_EXPORT CircleNodeEditor : public GeoPositionNodeEditor
     {
     public:
@@ -88,7 +94,10 @@ namespace osgEarth { namespace Annotation
 
         Dragger* _radiusDragger;
     };
-
+    
+    /**
+     * @deprecated (remove or refactor as example after 2.10)   
+     */
     class OSGEARTHANNO_EXPORT EllipseNodeEditor : public GeoPositionNodeEditor
     {
     public:
@@ -106,7 +115,10 @@ namespace osgEarth { namespace Annotation
         Dragger* _majorDragger;
         Dragger* _minorDragger;
     };
-
+    
+    /**
+     * @deprecated (remove or refactor as example after 2.10)   
+     */
     class OSGEARTHANNO_EXPORT RectangleNodeEditor : public GeoPositionNodeEditor
     {
     public:

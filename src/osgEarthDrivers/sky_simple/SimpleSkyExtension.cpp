@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,7 +40,7 @@ namespace osgEarth { namespace SimpleSky
                                public SkyNodeFactory
     {
     public:
-        META_Object(osgearth_sky_simple, SimpleSkyExtension);
+        META_OE_Extension(osgEarth, SimpleSkyExtension, sky_simple);
 
         // CTORs
         SimpleSkyExtension() { }
@@ -57,7 +57,13 @@ namespace osgEarth { namespace SimpleSky
 
         bool connect(MapNode* mapNode)
         {
-            _skynode = createSkyNode(mapNode->getMap()->getProfile());
+            _skynode = createSkyNode();
+            if (mapNode->getMapSRS()->isProjected())
+            {
+                GeoPoint refPoint;
+                mapNode->getMap()->getProfile()->getExtent().getCentroid(refPoint);
+                _skynode->setReferencePoint(refPoint);
+            }                
             osgEarth::insertParent(_skynode.get(), mapNode);
             return true;
         }
@@ -107,14 +113,12 @@ namespace osgEarth { namespace SimpleSky
 
     public: // SkyNodeFactory
 
-        SkyNode* createSkyNode(const Profile* profile) {
-            return new SimpleSkyNode(profile->getSRS(), *this);
+        SkyNode* createSkyNode() {
+            return new SimpleSkyNode(*this);
         }
 
 
     protected: // Object
-
-        SimpleSkyExtension(const SimpleSkyExtension& rhs, const osg::CopyOp& op) { }
 
         // DTOR
         virtual ~SimpleSkyExtension() { }

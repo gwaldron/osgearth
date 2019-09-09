@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -55,6 +55,41 @@ Loader::Request::addToChangeSet(osg::Node* node)
     }
 }
 
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * Custom progress callback that checks for both request 
+     * timeout (via request::isIdle) and OSG database pager
+     * shutdown (via getDone)
+     */
+    struct RequestProgressCallback : public ProgressCallback
+    {
+        osgDB::DatabasePager::DatabaseThread* _thread;
+        Loader::Request* _request;
+
+        RequestProgressCallback(Loader::Request* req) :
+            _request(req)
+        {
+            // if this is a pager thread, get a handle on it:
+            _thread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
+                OpenThreads::Thread::CurrentThread());
+        }
+
+        virtual bool isCanceled()
+        {
+            // was the request canceled?
+            if (_canceled == false && _request->isIdle())
+                _canceled = true;
+
+            // was the pager shut down?
+            if (_thread != 0L && _thread->getDone())
+                _canceled = true;
+
+            return ProgressCallback::isCanceled();
+        }
+    };
+} } }
+
 //...............................................
 
 #undef  LC
@@ -75,12 +110,12 @@ SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& n
         r->setState(Request::RUNNING);
 
         //OE_INFO << LC << "Request invoke : UID = " << request->getUID() << "\n";
-        request->invoke();
+        request->invoke(0L);
         
         //OE_INFO << LC << "Request apply : UID = " << request->getUID() << "\n";
         if (r->isRunning())
         {
-           request->apply(nv.getFrameStamp());
+            request->apply( nv.getFrameStamp() );
         }
 
         r->setState(Request::IDLE);
@@ -135,10 +170,10 @@ namespace
                             LayerVector layers;
                             map->getLayers(layers);
                             if (map->isFast(key, layers))
-                        {
-                            result = LOCAL_FILE;
+                            {
+                                result = LOCAL_FILE;
+                            }
                         }
-                    }
                     }
 
                     //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";
@@ -206,14 +241,14 @@ _numLODs       ( 20u )
 void
 PagerLoader::setNumLODs(unsigned lods)
 {
-    _numLODs = std::max(lods, 1u);
+    _numLODs = osg::maximum(lods, 1u);
 }
 
 void
 PagerLoader::setMergesPerFrame(int value)
 {
-    _mergesPerFrame = std::max(value, 0);
-    this->setNumChildrenRequiringUpdateTraversal( 1 );
+    _mergesPerFrame = osg::maximum(value, 0);
+    ADJUST_EVENT_TRAV_COUNT(this, +1);
     OE_INFO << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
     
 }
@@ -253,7 +288,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
         request->lock();
         {
             request->setState(Request::RUNNING);
-
+            
             // remember the last tick at which this request was submitted
             request->_lastTick = osg::Timer::instance()->tick();
 
@@ -308,7 +343,7 @@ void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
     // only called when _mergesPerFrame > 0
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         if ( nv.getFrameStamp() )
         {
@@ -405,10 +440,10 @@ PagerLoader::addChild(osg::Node* node)
         Request* req = result->getRequest();
         if ( req )
         {
-           // Make sure the request is both current (newer than the last checkpoint)
-           // and running (i.e. has not been canceled along the way)
-           if (req->_lastTick >= _checkpoint && req->isRunning())
-           {
+            // Make sure the request is both current (newer than the last checkpoint)
+            // and running (i.e. has not been canceled along the way)
+            if (req->_lastTick >= _checkpoint && req->isRunning())
+            {
                 if ( _mergesPerFrame > 0 )
                 {
                     _mergeQueue.insert( req );
@@ -471,7 +506,8 @@ PagerLoader::invokeAndRelease(UID requestUID)
         if ( REPORT_ACTIVITY )
             Registry::instance()->startActivity( request->getName() );
 
-        request->invoke();
+        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request);
+        request->invoke(prog.get());
     }
 
     else
@@ -495,7 +531,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
         PagerLoaderAgent()
         {
-            //nop
+            // nop
         }
 
         virtual const char* className() const
@@ -521,15 +557,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 osg::ref_ptr<PagerLoader> loader;
                 if (OptionsData<PagerLoader>::lock(dboptions, "osgEarth.PagerLoader", loader))
                 {
-                   osg::ref_ptr<Loader::Request> req = loader->invokeAndRelease(requestUID);
+                    osg::ref_ptr<Loader::Request> req = loader->invokeAndRelease(requestUID);
 
-                   // make sure the request is still running (not canceled)
-                   if (req.valid() && req->isRunning())
-                      return new RequestResultNode(req.release());
-                   else
-                      return ReadResult::FILE_NOT_FOUND;
+                    // make sure the request is still running (not canceled)
+                    if (req.valid() && req->isRunning())
+                        return new RequestResultNode(req.release());
+                    else
+                        return ReadResult::FILE_LOADED; // fail silenty (cancelation)
                 }
-                return ReadResult::FILE_NOT_FOUND;
+
+                // fail silently - this could happen if the Loader disappears from
+                // underneath, if say the terrain is destroyed
+                return ReadResult::FILE_LOADED;
             }
             else
             {

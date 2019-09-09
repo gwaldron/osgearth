@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/GeometryClamper>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
@@ -37,54 +38,26 @@ using namespace osgEarth::Features;
 
 
 LocalGeometryNode::LocalGeometryNode() :
-GeoPositionNode(),
-_clampRelative(false),
-_clampDirty(false)
+GeoPositionNode()
 {
-    //nop - unused
+    construct();
 }
 
-LocalGeometryNode::LocalGeometryNode(MapNode* mapNode) :
-GeoPositionNode(),
-_clampRelative(false),
-_clampDirty(false)
-{
-    LocalGeometryNode::setMapNode( mapNode );
-    init( 0L );
-}
-
-LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
-                                     Geometry*    geom,
+LocalGeometryNode::LocalGeometryNode(Geometry*    geom,
                                      const Style& style) :
-GeoPositionNode(),
-_geom    ( geom ),
-_style   ( style ),
-_clampRelative(false),
-_clampDirty(false)
+GeoPositionNode()
 {
-    LocalGeometryNode::setMapNode( mapNode );
-    init( 0L );
-}
-
-
-LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
-                                     osg::Node*   node,
-                                     const Style& style) :
-GeoPositionNode(),
-_node    ( node ),
-_style   ( style ),
-_clampRelative(false),
-_clampDirty(false)
-{
-    LocalGeometryNode::setMapNode( mapNode );
-    init( 0L );
+    construct();
+    setStyle(style);
+    setGeometry(geom);
 }
 
 void
-LocalGeometryNode::setLocalOffset(const osg::Vec3f& pos)
+LocalGeometryNode::construct()
 {
-    GeoPositionNode::setLocalOffset(pos);
-    dirty();
+    _geom = 0L;
+    _clampInUpdateTraversal = false;
+    _perVertexClampingEnabled = false;
 }
 
 void
@@ -93,139 +66,150 @@ LocalGeometryNode::setMapNode(MapNode* mapNode)
     if ( mapNode != getMapNode() )
     {
         GeoPositionNode::setMapNode( mapNode );
-        init(0L);
+        compileGeometry();
     }
 }
 
 void
-LocalGeometryNode::initNode()
+LocalGeometryNode::compileGeometry()
 {
-    osgEarth::clearChildren( getPositionAttitudeTransform() );
-
-    if ( _node.valid() )
+    // clear out existing geometry first
+    if (_node.valid())
     {
-        _node = AnnotationUtils::installOverlayParent( _node.get(), _style );
-
-        getPositionAttitudeTransform()->addChild( _node.get() );
-
-        applyRenderSymbology( getStyle() );
-
-        setLightingIfNotSet( getStyle().has<ExtrusionSymbol>() );
+        getPositionAttitudeTransform()->removeChild(_node.get());
     }
-}
 
-
-void
-LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
-{
-    osgEarth::clearChildren( getPositionAttitudeTransform() );
-
+    // any old clamping data is out of date, so clear it
+    _clamperData.clear();
+    _perVertexClampingEnabled = false;
+    
     if ( _geom.valid() )
     {
         osg::ref_ptr<Session> session;
         if ( getMapNode() )
-            session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
-        
-        GeometryCompiler gc;
-        osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), getStyle(), FilterContext(session) );
-        if ( node.valid() )
         {
-            node = AnnotationUtils::installOverlayParent( node.get(), getStyle() );
+            session = new Session(getMapNode()->getMap(), 0L);
+        }
 
-            getPositionAttitudeTransform()->addChild( node.get() );
+        AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
 
+        GeometryCompilerOptions options;
+        if (alt == NULL ||
+            alt->technique().isSet() == false ||
+            alt->technique().isSetTo(alt->TECHNIQUE_SCENE))
+        {        
+            options.ignoreAltitudeSymbol() = true;
+        }
+
+        GeometryCompiler gc(options);
+
+        _node = gc.compile( _geom.get(), getStyle(), FilterContext(session.get()) );
+        if ( _node.valid() )
+        {
+            // deal with draping or gpu-clamping settings
+            _node = AnnotationUtils::installOverlayParent( _node.get(), getStyle() );
+
+            // install the new geometry under the geotransforms
+            getPositionAttitudeTransform()->addChild( _node.get() );
+
+            // re-assess support for per vertex clamping
+            togglePerVertexClamping();
+
+            // apply current style
+            setDefaultLighting( getStyle().has<ExtrusionSymbol>() );
             applyRenderSymbology( getStyle() );
-
-            applyAltitudeSymbology( getStyle() );
         }
     }
 }
-
-
-void 
-LocalGeometryNode::init(const osgDB::Options* options)
-{    
-    if ( _node.valid() )
-    {
-        initNode();
-    }
-    else
-    {
-        initGeometry( options );
-    }
-}
-
 
 void
 LocalGeometryNode::setStyle( const Style& style )
 {
     _style = style;
-    init( 0L );
+    compileGeometry();
 }
-
-
-void
-LocalGeometryNode::setNode( osg::Node* node )
-{
-    _node = node;
-    _geom = 0L;
-    initNode();
-}
-
 
 void
 LocalGeometryNode::setGeometry( Geometry* geom )
 {
     _geom = geom;
-    _node = 0L;
-    initGeometry(0L);
+    compileGeometry();
+}
+
+// GeoPositionNode override
+void
+LocalGeometryNode::setPosition(const GeoPoint& pos)
+{
+    GeoPositionNode::setPosition(pos);
+
+    // detect a position change because it will require a re-clamp
+    // if per-vertex clamping is enabled.
+    bool posXYchanged = false;
+
+    if (_lastPosition.x() != getPosition().x() ||
+        _lastPosition.y() != getPosition().y())
+    {
+        posXYchanged = true;
+    }
+
+    _lastPosition = getPosition();
+
+    // since the altitude mode may have changed, assess whether
+    // to toggle the per-vertex clamping
+    togglePerVertexClamping();
+
+    if (posXYchanged)
+    {
+        reclamp();
+    }
 }
 
 void
-LocalGeometryNode::applyAltitudeSymbology(const Style& style)
+LocalGeometryNode::togglePerVertexClamping()
 {
-    // deal with scene clamping symbology.
-    if ( getMapNode() )
+    const AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
+    bool needPVC =
+        alt &&
+        alt->binding() == alt->BINDING_VERTEX &&
+        (alt->technique().isSet() == false || alt->technique() == alt->TECHNIQUE_SCENE) &&
+        getPosition().altitudeMode() == ALTMODE_RELATIVE;
+
+    if (needPVC && !_perVertexClampingEnabled)
+    {    
+        osg::ref_ptr<Terrain> terrain = getGeoTransform()->getTerrain();
+        if (terrain.valid())
+        {
+            if (!_clampCallback.valid())
+                _clampCallback = new ClampCallback(this);
+
+            if (_clampCallback->referenceCount() == 1)
+                terrain->addTerrainCallback(_clampCallback.get());
+
+            // all drawables must be dynamic since we are altering the verts
+            SetDataVarianceVisitor sdv(osg::Object::DYNAMIC);
+            this->accept(sdv);
+
+            _perVertexClampingEnabled = true;
+
+            reclamp();
+        }
+    }
+
+    else if (!needPVC && _perVertexClampingEnabled)
     {
-        if ( _clampCallback.valid() )
+        osg::ref_ptr<Terrain> terrain = getGeoTransform()->getTerrain();
+        if (terrain.valid())
         {
-            getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
-            _clampCallback = 0L;
+            if (_clampCallback.valid())
+                terrain->removeTerrainCallback(_clampCallback.get());
+
+            // revert to original vertex array if necessary:
+            GeometryClamper clamper(_clamperData);
+            clamper.setRevert(true);
+            this->accept(clamper);
+
+            _perVertexClampingEnabled = false;
         }
-
-        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
-        if ( alt && alt->technique() == alt->TECHNIQUE_SCENE )
-        {
-            if ( alt->binding() == alt->BINDING_CENTROID )
-            {
-                // centroid scene clamping? let GeoTransform do its thing.
-                getGeoTransform()->setAutoRecomputeHeights( true );
-            }
-
-            else if ( alt->binding() == alt->BINDING_VERTEX )
-            {
-                // per vertex clamping? disable the GeoTransform's clamping and take over.
-                getGeoTransform()->setAutoRecomputeHeights( false );
-
-                if ( !_clampCallback.valid() )
-                {
-                    _clampCallback = new ClampCallback(this);
-                }
-
-                if ( alt->clamping() == alt->CLAMP_TO_TERRAIN )
-                {
-                    _clampRelative = false;
-                    getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-                }
-
-                else if ( alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN )
-                {
-                    _clampRelative = true;
-                    getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-                }
-            }
-        }
-        dirty();
     }
 }
 
@@ -235,13 +219,10 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
                                TerrainCallbackContext& context)
 {
     // If we are already set to clamp, ignore this
-    if (_clampDirty)
+    if (_clampInUpdateTraversal)
         return;
 
     bool needsClamp;
-
-    // This was faster, but less precise and resulted in a lot of unnecessary clamp attempts:
-    //if ( _boundingPT.contains(patch->getBound()) )
 
     // Does the tile key's polytope intersect the world bounds or this object?
     // (taking getParent(0) gives the world-tranformed bounds vs. local bounds)
@@ -249,7 +230,7 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
     {
         osg::Polytope tope;
         key.getExtent().createPolytope(tope);
-        needsClamp = tope.contains(this->getParent(0)->getBound());
+        needsClamp = tope.contains(getBound());
     }
     else
     {
@@ -259,10 +240,23 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
 
     if (needsClamp)
     {
-        //clamp(graph, context.getTerrain());
-        _clampDirty = true;
+        _clampInUpdateTraversal = true;
         ADJUST_UPDATE_TRAV_COUNT(this, +1);
+
         OE_DEBUG << LC << "LGN: clamp requested b/c of key " << key.str() << std::endl;
+    }
+}
+
+void
+LocalGeometryNode::reclamp()
+{
+    if (_perVertexClampingEnabled)
+    {
+        osg::ref_ptr<Terrain> terrain = getGeoTransform()->getTerrain();
+        if (terrain.valid())
+        {
+            clamp(terrain->getGraph(), terrain.get());
+        }
     }
 }
 
@@ -271,15 +265,20 @@ LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
 {
     if (terrain && graph)
     {
-        GeometryClamper clamper;
+        GeometryClamper clamper(_clamperData);
 
+        // The data to clamp to
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
-        clamper.setPreserveZ( _clampRelative );
-        //clamper.setOffset( getPosition().alt() );
+
+        // Since the GeometryClamper will use the matrix stack to
+        // resolve vertex locations, and that matrix stack will incorporate
+        // the GeoTransform's altitude, we need to compensate by adding the
+        // altitude back in as an offset.
+        clamper.setOffset(getPosition().alt());
 
         this->accept( clamper );
-
+        
         OE_DEBUG << LC << "LGN: clamped.\n";
     }
 }
@@ -287,77 +286,14 @@ LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
 void
 LocalGeometryNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR && _clampDirty)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR && _clampInUpdateTraversal)
     {
-        osg::ref_ptr<Terrain> terrain = getGeoTransform()->getTerrain();
-        if (terrain.valid())
-            clamp(terrain->getGraph(), terrain.get());
+        reclamp();
 
+        _clampInUpdateTraversal = false;
         ADJUST_UPDATE_TRAV_COUNT(this, -1);
-        _clampDirty = false;
     }
     GeoPositionNode::traverse(nv);
-}
-
-#if 0
-osg::BoundingSphere
-LocalGeometryNode::computeBound() const
-{
-    osg::BoundingSphere bs = AnnotationNode::computeBound();
-    
-    // NOTE: this is the same code found in Feature.cpp. Consolidate?
-
-    _boundingPT.clear();
-
-    // add planes for the four sides of the BS. Normals point inwards.
-    _boundingPT.add( osg::Plane(osg::Vec3d( 1, 0,0), osg::Vec3d(-bs.radius(),0,0)) );
-    _boundingPT.add( osg::Plane(osg::Vec3d(-1, 0,0), osg::Vec3d( bs.radius(),0,0)) );
-    _boundingPT.add( osg::Plane(osg::Vec3d( 0, 1,0), osg::Vec3d(0, -bs.radius(),0)) );
-    _boundingPT.add( osg::Plane(osg::Vec3d( 0,-1,0), osg::Vec3d(0,  bs.radius(),0)) );
-
-    const SpatialReference* srs = getPosition().getSRS();
-    if ( srs )
-    {
-        // for a projected feature, we're done. For a geocentric one, transform the polytope
-        // into world (ECEF) space.
-        if ( srs->isGeographic() && !srs->isPlateCarre() )
-        {
-            const osg::EllipsoidModel* e = srs->getEllipsoid();
-
-            // add a bottom cap, unless the bounds are sufficiently large.
-            double minRad = std::min(e->getRadiusPolar(), e->getRadiusEquator());
-            double maxRad = std::max(e->getRadiusPolar(), e->getRadiusEquator());
-            double zeroOffset = bs.center().length();
-            if ( zeroOffset > minRad * 0.1 )
-            {
-                _boundingPT.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
-            }
-        }
-
-        // transform the clipping planes ito ECEF space
-        GeoPoint refPoint;
-        refPoint.fromWorld( srs, bs.center() );
-
-        osg::Matrix local2world;
-        refPoint.createLocalToWorld( local2world );
-
-        _boundingPT.transform( local2world );
-    }
-
-    return bs;
-}
-#endif
-
-void
-LocalGeometryNode::dirty()
-{
-    GeoPositionNode::dirty();
-
-    // re-clamp the geometry if necessary.
-    if ( _clampCallback.valid() && getMapNode() )
-    {
-        clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
-    }
 }
 
 //-------------------------------------------------------------------
@@ -365,21 +301,20 @@ LocalGeometryNode::dirty()
 OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometryNode );
 
 
-LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
-                                     const Config&         conf,
-                                     const osgDB::Options* dbOptions) :
-GeoPositionNode( mapNode, conf ),
-_clampRelative(false),
-_clampDirty(false)
+LocalGeometryNode::LocalGeometryNode(const Config&         conf,
+                                     const osgDB::Options* options) :
+GeoPositionNode(conf, options)
 {
+    construct();
+
+    conf.get( "style", _style );
+
     if ( conf.hasChild("geometry") )
     {
         Config geomconf = conf.child("geometry");
-        _geom = GeometryUtils::geometryFromWKT( geomconf.value() );
+        osg::ref_ptr<Geometry> geom = GeometryUtils::geometryFromWKT( geomconf.value() );
+        setGeometry(geom.get());
     }
-
-    conf.getObjIfSet( "style", _style );
-    init( dbOptions );
 }
 
 Config
@@ -389,12 +324,10 @@ LocalGeometryNode::getConfig() const
     conf.key() = "local_geometry";
 
     if ( !_style.empty() )
-        conf.addObj( "style", _style );
+        conf.set( "style", _style );
 
     if ( _geom.valid() )
-    {
-        conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
-    }
+        conf.set( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
 
     return conf;
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -96,6 +96,12 @@ namespace osgEarth { namespace Features
         optional<Angle>& maxCreaseAngle() { return _maximumCreaseAngle; }
         const optional<Angle>& maxCreaseAngle() const { return _maximumCreaseAngle; }
 
+        /**
+         * Shader policy to use when appropriate
+         */
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+
     protected:
         Style                      _style;
 
@@ -105,6 +111,7 @@ namespace osgEarth { namespace Features
         optional<float>            _maxPolyTilingAngle_deg;
         optional<bool>             _optimizeVertexOrdering;
         optional<Angle>            _maximumCreaseAngle;
+        optional<ShaderPolicy>     _shaderPolicy;
         
         void tileAndBuildPolygon(
             Geometry*               input,
@@ -124,7 +131,7 @@ namespace osgEarth { namespace Features
             const osg::Matrixd      &world2local);
 
         osg::Geode* processPolygons        (FeatureList& input, FilterContext& cx);
-        osg::Geode* processLines           (FeatureList& input, FilterContext& cx);
+        osg::Group* processLines           (FeatureList& input, FilterContext& cx);
         osg::Group* processPolygonizedLines(FeatureList& input, bool twosided, FilterContext& cx);
         osg::Geode* processPoints          (FeatureList& input, FilterContext& cx);
     };

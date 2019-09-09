@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,4 +23,12 @@ using namespace osgEarth_kml;
 void 
 KML_LabelStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
+    if (!node)
+      return;
+    TextSymbol* text = style.getOrCreate<TextSymbol>();
+    std::string color = getValue(node, "color");
+    if (!color.empty())
+    {
+      text->fill()->color() = Color(Stringify() << "#" << color, Color::ABGR);
+    } 
 }

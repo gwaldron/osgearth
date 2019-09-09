@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
-#include <osgEarthSymbology/MarkerResource>
 #include <osgEarthSymbology/InstanceResource>
 #include <osgEarthSymbology/ModelResource>
 #include <osgEarthSymbology/ModelSymbol>
@@ -67,9 +66,10 @@ namespace osgEarth { namespace Symbology
          * Gets the name of the lib.
          */
         const std::string& getName() const { return _name; }
+        void setName(const std::string& name) { _name = name; }
 
         /**
-         * Adds a resoure to the library.
+         * Adds a resource to the library.
          */
         void addResource( Resource* resource );
 
@@ -104,19 +104,6 @@ namespace osgEarth { namespace Symbology
          * to provide consistency.
          */
         SkinResource* getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions =0L ) const;
-
-
-    public: // Marker resource functions (deprecated)
-
-        /**
-         * Finds and returns a marker reosurce by name.
-         */
-        MarkerResource* getMarker( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
-
-        /**
-         * Returns a list of all marker resources in this library.
-         */
-        void getMarkers( MarkerResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
 
 
     public: // Instance functions
@@ -154,7 +141,6 @@ namespace osgEarth { namespace Symbology
         mutable Threading::ReadWriteMutex  _mutex;
 
         ResourceMap<SkinResource>          _skins;
-        ResourceMap<MarkerResource>        _markers;
         ResourceMap<InstanceResource>      _instances;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;

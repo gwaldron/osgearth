@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,24 +23,16 @@
 
 using namespace osgEarth::Util;
 
-#include <algorithm>
-#include <osg/Geode>
-#include <osg/Geometry>
 #include <osg/Point>
 #include <osg/TriangleIndexFunctor>
-#include <osg/ComputeBoundsVisitor>
-#include <osgEarthSymbology/Geometry>
-#include <osgEarth/SpatialReference>
 #include <osgDB/WriteFile>
-#include <map>
-#include <vector>
-#include <set>
 
 #define LC "[TopologyGraph] "
 
 
 TopologyGraph::TopologyGraph() :
-_maxGraphID(0u)
+_maxGraphID(0u),
+_totalVerts(0)
 {
     //nop
 }
@@ -118,7 +110,7 @@ TopologyGraph::createBoundary(unsigned graphNum, TopologyGraph::IndexVector& out
 
         const IndexSet& edges = ei->second;
 
-        // find the edge with the minimun delta angle to the base vector
+        // find the edge with the minimum delta angle to the base vector
         double bestScore = -DBL_MAX;
         Index  bestEdge  = _verts.end();
         
@@ -299,8 +291,8 @@ TopologyBuilder::assignAndPropagate(TopologyGraph::Index& vertex, unsigned graph
             endPoint != endPoints.end();
             ++endPoint)
         {
-            TopologyGraph::Index vertex = *endPoint;
-            assignAndPropagate(vertex, graphID);
+            TopologyGraph::Index endPointVertex = *endPoint;
+            assignAndPropagate(endPointVertex, graphID);
         }
     }
 }

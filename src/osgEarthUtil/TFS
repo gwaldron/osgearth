@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -61,7 +61,7 @@ namespace osgEarth { namespace Util
         unsigned int getFirstLevel() const { return _firstLevel;}
         void setFirstLevel(unsigned int value) { _firstLevel = value;}
 
-        const SpatialReference* getSRS() const { return _srs;}
+        const SpatialReference* getSRS() const { return _srs.get();}
         void setSRS( const SpatialReference* srs ) { _srs = srs;}
 
     private:

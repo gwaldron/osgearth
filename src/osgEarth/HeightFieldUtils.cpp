@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,11 +19,7 @@
  */
 
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/GeoData>
-#include <osgEarth/Geoid>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ImageUtils>
-#include <osg/Notify>
 
 using namespace osgEarth;
 
@@ -396,38 +392,6 @@ HeightFieldUtils::getHeightAtNormalizedLocation(const HeightFieldNeighborhood& h
     }
     return false;
 }
-
-#if 0
-bool
-HeightFieldUtils::getNormalAtNormalizedLocation(const osg::HeightField* input,
-                                                double nx, double ny,
-                                                osg::Vec3& output,
-                                                ElevationInterpolation interp)
-{
-    double xcells = (double)(input->getNumColumns()-1);
-    double ycells = (double)(input->getNumRows()-1);
-
-    double w = input->getXInterval() * xcells * 111000.0;
-    double h = input->getYInterval() * ycells * 111000.0;
-
-    double ndx = 1.0/xcells;
-    double ndy = 1.0/ycells;
-
-    double xmin = osg::clampAbove( nx-ndx, 0.0 );
-    double xmax = osg::clampBelow( nx+ndx, 1.0 );
-    double ymin = osg::clampAbove( ny-ndy, 0.0 );
-    double ymax = osg::clampBelow( ny+ndy, 1.0 );
-
-    osg::Vec3 west (xmin*w, ny*h, getHeightAtNormalizedLocation(input, xmin, ny, interp));
-    osg::Vec3 east (xmax*w, ny*h, getHeightAtNormalizedLocation(input, xmax, ny, interp));
-    osg::Vec3 south(nx*w, ymin*h, getHeightAtNormalizedLocation(input, nx, ymin, interp));
-    osg::Vec3 north(nx*w, ymax*h, getHeightAtNormalizedLocation(input, nx, ymax, interp));
-
-    output = (west-east) ^ (north-south);
-    output.normalize();
-    return true;
-}
-#endif
 
 void
 HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
@@ -818,12 +782,7 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
 
     int sMax = (int)elevation->s()-1;
     int tMax = (int)elevation->t()-1;
-    
-    double xcells = (double)(sMax);
-    double ycells = (double)(tMax);
-    double xres = 1.0/xcells;
-    double yres = 1.0/ycells;
-    
+        
     // north-south interval in meters:
     double xInterval = extent.width() / (double)(sMax);
     double yInterval = extent.height() / (double)(tMax);
@@ -846,10 +805,10 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
             osg::Vec3f south( 0, t > 0 ? -dy : 0, h );
             osg::Vec3f north( 0, t < tMax ? dy : 0, h );
 
-            west.z() = readElevation(std::max(0, s - 1), t).r();
-            east.z() = readElevation(std::min(sMax, s + 1), t).r();
-            south.z() = readElevation(s, std::max(0, t - 1)).r();
-            north.z() = readElevation(s, std::min(tMax, t + 1)).r();
+            west.z() = readElevation(osg::maximum(0, s - 1), t).r();
+            east.z() = readElevation(osg::minimum(sMax, s + 1), t).r();
+            south.z() = readElevation(s, osg::maximum(0, t - 1)).r();
+            north.z() = readElevation(s, osg::minimum(tMax, t + 1)).r();
 
             osg::Vec3f n = (east-west) ^ (north-south);
             n.normalize();
@@ -868,72 +827,3 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
         }
     }
 }
-
-/******************************************************************************************/
-#if 0
-ReplaceInvalidDataOperator::ReplaceInvalidDataOperator():
-_replaceWith(0.0f)
-{
-}
-
-void
-ReplaceInvalidDataOperator::operator ()(osg::HeightField *heightField)
-{
-    if (heightField && _validDataOperator.valid())
-    {
-        for (unsigned int i = 0; i < heightField->getHeightList().size(); ++i)
-        {
-            float elevation = heightField->getHeightList()[i];
-            if (!(*_validDataOperator)(elevation))
-            {
-                heightField->getHeightList()[i] = _replaceWith;
-            }
-        }
-    }
-}
-
-
-/******************************************************************************************/
-FillNoDataOperator::FillNoDataOperator():
-_defaultValue(0.0f)
-{
-}
-
-void
-FillNoDataOperator::operator ()(osg::HeightField *heightField)
-{
-    if (heightField && _validDataOperator.valid())
-    {
-        for( unsigned int row=0; row < heightField->getNumRows(); row++ )
-        {
-            for( unsigned int col=0; col < heightField->getNumColumns(); col++ )
-            {
-                float val = heightField->getHeight(col, row);
-
-                if (!(*_validDataOperator)(val))
-                {
-                    if ( col > 0 )
-                        val = heightField->getHeight(col-1,row);
-                    else if ( col <= heightField->getNumColumns()-1 )
-                        val = heightField->getHeight(col+1,row);
-
-                    if (!(*_validDataOperator)(val))
-                    {
-                        if ( row > 0 )
-                            val = heightField->getHeight(col, row-1);
-                        else if ( row < heightField->getNumRows()-1 )
-                            val = heightField->getHeight(col, row+1);
-                    }
-
-                    if (!(*_validDataOperator)(val))
-                    {
-                        val = _defaultValue;
-                    }
-
-                    heightField->setHeight( col, row, val );
-                }
-            }
-        }
-    }
-}
-#endif

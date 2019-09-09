@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,21 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/OverlayDecorator>
-#include <osgEarth/DrapingTechnique>
-#include <osgEarth/MapInfo>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
-#include <osg/ComputeBoundsVisitor>
 #include <osg/ShapeDrawable>
-#include <osgShadow/ConvexPolyhedron>
-#include <osgUtil/LineSegmentIntersector>
 
-#include <iomanip>
-#include <stack>
 
 #define LC "[OverlayDecorator] "
 
@@ -57,7 +47,7 @@ namespace
             _tope = tope;
         }
 
-        void apply(osg::Geode& node)
+        void apply(osg::Drawable& node)
         {
             const osg::BoundingSphere& bs = node.getBound();
             osg::Vec3 p = bs.center() * _matrixStack.top();
@@ -105,13 +95,13 @@ namespace
         {
             double l,r,b,t,n,f;
             m.getOrtho(l,r,b,t,n,f);
-            m.makeOrtho(l,r,b,t, std::max(n, newNear), std::min(f,newFar));
+            m.makeOrtho(l,r,b,t, osg::maximum(n, newNear), osg::minimum(f,newFar));
         }
         else
         {
             double v,a,n,f;
             m.getPerspective(v,a,n,f);
-            m.makePerspective(v,a, std::max(n, newNear), std::min(f, newFar));
+            m.makePerspective(v,a, osg::maximum(n, newNear), osg::minimum(f, newFar));
         }
     }
 
@@ -167,7 +157,7 @@ namespace
 
                 if ( t0 >= 0.0 && t1 >= 0.0 )
                 {
-                    osg::Vec3d v = d*std::min(t0,t1);
+                    osg::Vec3d v = d*osg::minimum(t0,t1);
                     dist2 = v.length2();
                 }
                 else if ( t0 >= 0.0 )
@@ -281,7 +271,6 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_useShaders          ( true ),
 _dumpRequested       ( false ),
 _rttTraversalMask    ( ~0 ),
 _maxHorizonDistance  ( DBL_MAX ),
@@ -403,8 +392,6 @@ void
 OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                                                    PerViewData&          pvd)
 {
-    static int s_frame = 1;
-
     osg::Vec3d eye = cv->getViewPoint();
 
     double eyeLen;
@@ -503,7 +490,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
 
     // clamp the far plane (for RTT purposes) to the horizon distance.
-    double maxFar = std::min( horizonDistance, _maxHorizonDistance );
+    double maxFar = osg::minimum( horizonDistance, _maxHorizonDistance );
     cv->clampProjectionMatrix( projMatrix, zNear, maxFar );
 
     // prepare to calculate the ideal far plane for RTT extent resolution.
@@ -532,7 +519,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // clamp down the far plane:
     if ( maxDist2 != 0.0 )
     {
-        maxFar = std::min( zNear+sqrt(maxDist2), maxFar );
+        maxFar = osg::minimum( zNear+sqrt(maxDist2), maxFar );
     }
 
     // reset the projection matrix if we changed the far:
@@ -594,55 +581,62 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // now copy the RTT matrixes over to the techniques.
     for( unsigned t=0; t<pvd._techParams.size(); ++t )
     {
+        OverlayTechnique* tech = _techniques[t].get();
         TechRTTParams& params = pvd._techParams[t];
 
         // skip empty techniques
-        if ( !_techniques[t]->hasData(params) )
+        if ( !tech->hasData(params) )
             continue;
 
         // slice it to fit the overlay geometry. (this says 'visible' but it's just everything..
         // perhaps we can truly make it visible)
         osgShadow::ConvexPolyhedron visiblePH( frustumPH );
 
-#if 0
-        osg::Polytope frustumPT;
-        frustumPH.getPolytope(frustumPT);
-        ComputeVisibleBounds cvb(frustumPT, MVP);
-        params._group->accept(cvb);
-        const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
-        OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
-#else
-        const osg::BoundingSphere& visibleOverlayBS = _techniques[t]->getBound(params);
-#endif
-        if ( visibleOverlayBS.valid() )
+        // if the technique wishes it, compute the bounds of the geometry and
+        // crop the frustum to fit those bounds. This will result in a tighter
+        // fit if the geometry bounds are smaller than the visible region of terrain.
+        if (tech->optimizeToVisibleBound())
         {
-            // form an axis-aligned polytope around the bounding sphere of the
-            // overlay geometry. Use that to cut the camera frustum polytope.
-            // This will minimize the coverage area and also ensure inclusion
-            // of geometry that falls outside the camera frustum but inside
-            // the overlay area.
-            osg::Polytope visibleOverlayPT;
+#if 0
+            osg::Polytope frustumPT;
+            frustumPH.getPolytope(frustumPT);
+            ComputeVisibleBounds cvb(frustumPT, MVP);
+            params._group->accept(cvb);
+            const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
+            OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
+#else
+            const osg::BoundingSphere& visibleOverlayBS = tech->getBound(params);
+#endif
+            if ( visibleOverlayBS.valid() )
+            {
+                // form an axis-aligned polytope around the bounding sphere of the
+                // overlay geometry. Use that to cut the camera frustum polytope.
+                // This will minimize the coverage area and also ensure inclusion
+                // of geometry that falls outside the camera frustum but inside
+                // the overlay area.
+                osg::Polytope visibleOverlayPT;
 
-            osg::Vec3d tangent(0,0,1);
-            if (fabs(worldUp*tangent) > 0.9999)
-                tangent.set(0,1,0);
+                osg::Vec3d tangent(0,0,1);
+                if (fabs(worldUp*tangent) > 0.9999)
+                    tangent.set(0,1,0);
 
-            osg::Vec3d westVec  = worldUp^tangent; westVec.normalize();
-            osg::Vec3d southVec = worldUp^westVec; southVec.normalize();
-            osg::Vec3d eastVec  = -westVec;
-            osg::Vec3d northVec = -southVec;
+                osg::Vec3d westVec  = worldUp^tangent; westVec.normalize();
+                osg::Vec3d southVec = worldUp^westVec; southVec.normalize();
+                osg::Vec3d eastVec  = -westVec;
+                osg::Vec3d northVec = -southVec;
 
-            osg::Vec3d westPt  = visibleOverlayBS.center() + westVec*visibleOverlayBS.radius();
-            osg::Vec3d eastPt  = visibleOverlayBS.center() + eastVec*visibleOverlayBS.radius();
-            osg::Vec3d northPt = visibleOverlayBS.center() + northVec*visibleOverlayBS.radius();
-            osg::Vec3d southPt = visibleOverlayBS.center() + southVec*visibleOverlayBS.radius();
+                osg::Vec3d westPt  = visibleOverlayBS.center() + westVec*visibleOverlayBS.radius();
+                osg::Vec3d eastPt  = visibleOverlayBS.center() + eastVec*visibleOverlayBS.radius();
+                osg::Vec3d northPt = visibleOverlayBS.center() + northVec*visibleOverlayBS.radius();
+                osg::Vec3d southPt = visibleOverlayBS.center() + southVec*visibleOverlayBS.radius();
 
-            visibleOverlayPT.add(osg::Plane(-westVec,  westPt));
-            visibleOverlayPT.add(osg::Plane(-eastVec,  eastPt));
-            visibleOverlayPT.add(osg::Plane(-southVec, southPt));
-            visibleOverlayPT.add(osg::Plane(-northVec, northPt));
+                visibleOverlayPT.add(osg::Plane(-westVec,  westPt));
+                visibleOverlayPT.add(osg::Plane(-eastVec,  eastPt));
+                visibleOverlayPT.add(osg::Plane(-southVec, southPt));
+                visibleOverlayPT.add(osg::Plane(-northVec, northPt));
 
-            visiblePH.cut( visibleOverlayPT );
+                visiblePH.cut( visibleOverlayPT );
+            }
         }
 
         // for dumping, we want the previous fram's projection matrix
@@ -681,7 +675,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                 // This causes problems for the draping projection matrix optimizer, so
                 // for now instead of re-doing that code we will just center the eyepoint
                 // here by using the larger of xmin and xmax. -gw.                
-                double x = std::max( fabs(xmin), fabs(xmax) );
+                double x = osg::maximum( fabs(xmin), fabs(xmax) );
                 xmin = -x, xmax = x;
             }
 
@@ -712,7 +706,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             params._rttViewMatrix.set( rttViewMatrix );
             params._rttProjMatrix.set( rttProjMatrix );
             params._eyeWorld = eye;
-            params._visibleFrustumPH = clampedFrustumPH; //frustumPH;
+            params._visibleFrustumPH = clampedFrustumPH;
         }
 
         // service a "dump" of the polyhedrons for dubugging purposes
@@ -725,17 +719,17 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             {
                 frustumPH.dumpGeometry(0,0,0,fn);
             }
-            osg::Node* camNode = osgDB::readNodeFile(fn);
+            osg::ref_ptr<osg::Node> camNode = osgDB::readRefNodeFile(fn);
             camNode->setName("camera");
 
-            // visible overlay BEFORE cutting:
+            // visible overlay BEFORE cutting:brb
             //uncutVisiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
-            //osg::Node* overlay = osgDB::readNodeFile(fn);
+            //osg::ref_ptr<osg::Node> overlay = osgDB::readRefNodeFile(fn);
             //overlay->setName("overlay");
 
             // visible overlay Polyherdron AFTER cuting:
             visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
-            osg::Node* intersection = osgDB::readNodeFile(fn);
+            osg::ref_ptr<osg::Node> intersection = osgDB::readRefNodeFile(fn);
             intersection->setName("intersection");
 
             // RTT frustum:
@@ -748,7 +742,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                 rttPH.transform( inverseMVP, MVP );
                 rttPH.dumpGeometry(0,0,0,fn,osg::Vec4(1,1,0,1),osg::Vec4(1,1,0,0.25));
             }
-            osg::Node* rttNode = osgDB::readNodeFile(fn);
+            osg::ref_ptr<osg::Node> rttNode = osgDB::readRefNodeFile(fn);
             rttNode->setName("rtt");
 
             // EyePoint
@@ -879,4 +873,55 @@ void
 OverlayDecorator::setMaxHorizonDistance( double horizonDistance )
 {
     _maxHorizonDistance = horizonDistance;
+}
+
+
+void
+OverlayDecorator::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Group::resizeGLObjectBuffers(maxSize);
+
+    Threading::ScopedWriteLock lock(_perViewDataMutex);
+
+    for(PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i)
+    {
+        PerViewData& pvd = i->second;
+        if (pvd._sharedTerrainStateSet.valid())
+            pvd._sharedTerrainStateSet->resizeGLObjectBuffers(maxSize);
+
+        for(std::vector<TechRTTParams>::iterator t = pvd._techParams.begin(); t != pvd._techParams.end(); ++t)
+        {
+            if (t->_rttCamera.valid())
+                t->_rttCamera->resizeGLObjectBuffers(maxSize);
+            if (t->_rttToPrimaryMatrixUniform.valid())
+                t->_rttToPrimaryMatrixUniform->resizeGLObjectBuffers(maxSize);
+            if (t->_techniqueData.valid())
+                t->_techniqueData->resizeGLObjectBuffers(maxSize);
+        }
+    }
+}
+
+void
+OverlayDecorator::releaseGLObjects(osg::State* state) const
+{
+    osg::Group::releaseGLObjects(state);
+
+    Threading::ScopedWriteLock lock(_perViewDataMutex);
+
+    for(PerViewDataMap::const_iterator i = _perViewData.begin(); i != _perViewData.end(); ++i)
+    {
+        const PerViewData& pvd = i->second;
+        if (pvd._sharedTerrainStateSet.valid())
+            pvd._sharedTerrainStateSet->releaseGLObjects(state);
+
+        for(std::vector<TechRTTParams>::const_iterator t = pvd._techParams.begin(); t != pvd._techParams.end(); ++t)
+        {
+            if (t->_rttCamera.valid())
+                t->_rttCamera->releaseGLObjects(state);
+            if (t->_rttToPrimaryMatrixUniform.valid())
+                t->_rttToPrimaryMatrixUniform->releaseGLObjects(state);
+            if (t->_techniqueData.valid())
+                t->_techniqueData->releaseGLObjects(state);
+        }
+    }
 }

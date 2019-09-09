@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2011 Pelican Mapping
  * http://osgearth.org
  *
@@ -22,20 +22,19 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
+#include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osg/Group>
 
 namespace osgEarth
 {
-    class MapNode;
-
     /**
-     * Base class for a graph that can be "draped" on the MapNode terrain
-     * using the overlay decorator.
+     * Base class for a graph that can be "draped" on the terrain using
+     * projective texturing.
      *
-     * Usage: Create this node and put it anywhere in the scene graph. The
-     * subgraph of this node will be draped on the MapNode's terrain.
+     * Usage: Create this node and place it as a descendant of a MapNode.
      */
-    class OSGEARTH_EXPORT DrapeableNode : public osg::Group
+    class OSGEARTH_EXPORT DrapeableNode : public osg::Group, public MapNodeObserver
     {
     public:
         META_Object(osgEarth, DrapeableNode);
@@ -58,12 +57,18 @@ namespace osgEarth
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+    public: // osgEarth::MapNodeObserver
+
+        virtual void setMapNode(MapNode* mapNode) { _mapNode = mapNode; }
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
 
     protected:
         /** dtor */
         virtual ~DrapeableNode() { }
 
         bool _drapingEnabled;
+        bool _updateRequested;
+        osg::observer_ptr<MapNode> _mapNode;
     };
 
 } // namespace osgEarth

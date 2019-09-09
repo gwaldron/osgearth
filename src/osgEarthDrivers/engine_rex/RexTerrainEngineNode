@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -40,11 +40,6 @@
 #include "TileDrawable"
 #include "TerrainCuller"
 
-#include <osg/Geode>
-#include <osg/NodeCallback>
-#include <osg/Uniform>
-#include <osg/Timer>
-
 #include <list>
 #include <map>
 #include <vector>
@@ -56,39 +51,39 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class RexTerrainEngineNode : public TerrainEngineNode
     {
     public:
+        META_Node(osgEarth, RexTerrainEngineNode);
+
         RexTerrainEngineNode();
-        META_Node(osgEarth,RexTerrainEngineNode);
+
+    protected:
         virtual ~RexTerrainEngineNode();
 
-    public: // TerrainEngineNode
+    public: // TerrainEngineNode public
 
-        // for standalone tile creation outside of a terrain
+        //! for standalone tile creation outside of a terrain
         osg::Node* createTile(const TileKey& key);
 
-        // Create a standalone tile from a tile model (experimental)
+        //! Create a standalone tile from a tile model (experimental)
         osg::Node* createTile(
             const TerrainTileModel* model,
             int createTileFlags,
             unsigned referenceLOD,
             const TileKey& area);
         
-        // when incremental update is enabled, forces regeneration of tiles
-        // in the given region.
+        //! Forces regeneration of tiles in the given region.
         void invalidateRegion(
             const GeoExtent& extent,
             unsigned         minLevel,
             unsigned         maxLevel);
 
-        /** Get the stateset used to render the terrain surface. */
+        //! Get the stateset used to render the terrain surface.
         osg::StateSet* getSurfaceStateSet();
 
-        //! Destroy the openGL objects.
-        virtual void releaseGLObjects(osg::State* state) const;
-
-    public: // internal TerrainEngineNode
-
-        const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
+        //! Unique identifier of this engine instance
         UID getUID() const { return _uid; }
+
+        //! Terrain options object
+        const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
 
     public: // osg::Node
 
@@ -96,34 +91,35 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::BoundingSphere computeBound() const;
 
+        void resizeGLObjectBuffers(unsigned maxSize);
+
+        void releaseGLObjects(osg::State* state) const;
+
     public: // MapCallback adapter functions
 
         void onMapModelChanged( const MapModelChange& change ); // not virtual!
 
-        /** Access to the asychronous data loader */
+        //! Access to the asychronous data loader
         Loader* getLoader() const { return _loader.get(); }
 
-    protected:
-        // override from TerrainEngineNode
+    protected: // TerrainEngineNode protected
+
         virtual void setMap(const Map* map, const TerrainOptions& options);
 
-        // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateState(); }
         
-        // override from TerrainEngineNode
         virtual void dirtyTerrain();
 
-        // override from TerrainEngineNode
         virtual void dirtyState();
 
     private:
         void init();
         void syncMapModel();
 
-        // Reloads all the tiles in the terrain due to a data model change
+        //! Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
 
-        // Various methods that trigger when the Map model changes.
+        //! Various methods that trigger when the Map model changes.
         void addLayer(Layer* layer);
         void addElevationLayer( ElevationLayer* layer );
         void addTileLayer( Layer* layer );
@@ -141,6 +137,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //! Adds a Layer to the cachedLayerExtents vector.
         void cacheLayerExtentInMapSRS(Layer* layer); 
 
+        //! Recompute all cached layer extents
+        void cacheAllLayerExtentsInMapSRS();
+
         //! computes the heightfield sample size required to match the vertices at the highest
         //! level of detail in rex if a tile key was requested at the given level of detail.
         unsigned int computeSampleSize(unsigned int levelOfDetail);
@@ -153,19 +152,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _refreshRequired;
         bool _stateUpdateRequired;
 
-        LayerExtentVector _cachedLayerExtents;          // extents of each layer, in the Map's SRS. UID = vector index (for speed)
-
+        // extents of each layer, in the Map's SRS. UID = vector index (for speed)
+        LayerExtentVector _cachedLayerExtents;
+        bool _cachedLayerExtentsComputeRequired;
 
         // node registry is shared across all threads.
-        osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
+        osg::ref_ptr<TileNodeRegistry> _liveTiles; // tiles in the scene graph.
         osg::ref_ptr<ResourceReleaser> _releaser;
      
         EngineContext* getEngineContext() const { return _engineContext.get(); }
         osg::ref_ptr< EngineContext > _engineContext;
+        friend class EngineContext;
 
-        osg::Timer _timer;
-        unsigned   _tileCount;
-        double     _tileCreationTime;
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
         osg::ref_ptr<LoaderGroup>  _loader;
@@ -173,6 +171,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileRasterizer* _rasterizer;
         
         osg::ref_ptr<osg::Group> _terrain;
+        bool _morphingSupported;
 
         bool _renderModelUpdateRequired;
 
@@ -180,9 +179,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         SelectionInfo _selectionInfo;
 
+        osg::ref_ptr<osg::StateSet> _surfaceStateSet;
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
-
-        osg::ref_ptr<ModifyBoundingBoxCallback> _modifyBBoxCallback;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

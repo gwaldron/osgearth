@@ -123,7 +123,7 @@ public:
                   style = itr->second;
               }
 
-              FeatureNode* featureNode = new FeatureNode(_mapNode, features, style, GeometryCompilerOptions(), _styleSheet.get() );
+              FeatureNode* featureNode = new FeatureNode(_mapNode.get(), features, style, GeometryCompilerOptions(), _styleSheet.get() );
               return featureNode;
           }
           else
@@ -142,7 +142,7 @@ public:
 
       StyleSheet* getStyleSheet() const
       {
-          return _styleSheet;
+          return _styleSheet.get();
       }
 
       void setStyleSheet(StyleSheet* styleSheet)
@@ -273,7 +273,7 @@ int main(int argc, char** argv)
                 return -1;
             }
 
-            FeaturePager* featurePager = new FeaturePager(features, getStyle(randomColor(), 0.0), mapNode);
+            FeaturePager* featurePager = new FeaturePager(features.get(), getStyle(randomColor(), 0.0), mapNode);
 
             // Style 13 is where the full resolution data comes, in so use a fancy textured and extruded style
             // a style for the building data:

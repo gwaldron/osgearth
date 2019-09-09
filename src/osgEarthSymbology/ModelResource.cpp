@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -43,8 +43,8 @@ _canScaleToFitZ(true)
 void
 ModelResource::mergeConfig( const Config& conf )
 {
-    conf.getIfSet("can_scale_to_fit_xy", _canScaleToFitXY);
-    conf.getIfSet("can_scale_to_fit_z",  _canScaleToFitZ);
+    conf.get("can_scale_to_fit_xy", _canScaleToFitXY);
+    conf.get("can_scale_to_fit_z",  _canScaleToFitZ);
 }
 
 Config
@@ -52,8 +52,8 @@ ModelResource::getConfig() const
 {
     Config conf = InstanceResource::getConfig();
     conf.key() = "model";
-    conf.addIfSet("can_scale_to_fit_xy", _canScaleToFitXY);
-    conf.addIfSet("can_scale_to_fit_z",  _canScaleToFitZ);
+    conf.set("can_scale_to_fit_xy", _canScaleToFitXY);
+    conf.set("can_scale_to_fit_z",  _canScaleToFitZ);
     return conf;
 }
 

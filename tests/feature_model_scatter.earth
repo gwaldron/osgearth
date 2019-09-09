@@ -23,9 +23,6 @@ is randomized, but it is randomized exactly the same way each time.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
-        <!-- Instancing enables GL's "DrawInstanced" support. -->             
-        <instancing>true</instancing>
-        
         <!-- The stylesheet will describe how to render the feature data. In this case
              we indicate model substitution with density-based scattering. The "density"
              units are instances-per-sqkm. -->
@@ -43,32 +40,29 @@ is randomized, but it is randomized exactly the same way each time.
                 park-polygons {
                    fill:                #00ff007f;
                    altitude-clamping:   terrain-drape;
-                }                
-                parks-1 {
-                   model:               "../data/tree.ive";
+                }    
+                parks {
+                   model:               "../data/tree.osg";
                    model-placement:     random;
-                   model-density:       1000;
-                   model-scale:         2.0;
                    altitude-clamping:   terrain;
                    altitude-resolution: 0.001;
+                   render-transparent:  true;
+                   render-min-alpha:    0.15;                   
+                }
+                parks-1 : parks {
+                   model-density:     1000;
+                   model-scale:       2.0;
+                   model-random-seed: 0;
                 }            
-                parks-2 {
-                   model:               "../data/tree.ive";
-                   model-placement:     random;
-                   model-density:       2500;
-                   model-scale:         2.5;
-                   model-random-seed:   1;
-                   altitude-clamping:   terrain;
-                   altitude-resolution: 0.001;
+                parks-2 : parks {
+                   model-density:     2500;
+                   model-scale:       2.5;
+                   model-random-seed: 1;
                 }              
-                parks-3 {
-                   model:               "../data/tree.ive";
-                   model-placement:     random;
-                   model-density:       5000;
-                   model-scale:         1.0
-                   model-random-seed:   2;
-                   altitude-clamping:   terrain;
-                   altitude-resolution: 0.001;
+                parks-3 : parks {
+                   model-density:     5000;
+                   model-scale:       2.25;
+                   model-random-seed: 2;
                 }                
             </style>
         </styles>        

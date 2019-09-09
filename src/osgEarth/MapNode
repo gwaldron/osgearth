@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,9 @@ namespace osgEarth
     class MapNodeCullData;
     class SpatialReference;
     class ResourceReleaser;
+    class DrapingManager;
+    class ClampingManager;
+    class CascadeDrapingDecorator;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -136,16 +139,10 @@ namespace osgEarth
          */
         osg::Group* getLayerNodeGroup() const;
 
-        // @deprecated - use getLayerNodeGroup
-        osg::Group* getModelLayerGroup() const { return getLayerNodeGroup(); }
-
         /**
          * Accesses the root node for a specific ModelLayer.
          */
         osg::Node* getLayerNode(Layer* layer) const;
-
-        // @deprecated - use getLayerNode
-        //osg::Node* getModelLayerNode(ModelLayer* layer) const { return getLayerNode(layer); }
         
         /**
          * Gets the overlay decorator in this mapnode. Usually you do not need to
@@ -234,13 +231,16 @@ namespace osgEarth
 
         virtual void traverse( class osg::NodeVisitor& nv );
 
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+        virtual void releaseGLObjects(osg::State* state) const;
+
     protected:    
 
         virtual ~MapNode();
 
     private:
 
-        unsigned           _id;
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
         OverlayDecorator*  _overlayDecorator;
@@ -252,6 +252,9 @@ namespace osgEarth
         bool               _terrainEngineInitialized;
         osg::Group*        _terrainEngineContainer;
         ResourceReleaser*  _resourceReleaser;
+        DrapingManager*    _drapingManager;
+        ClampingManager*   _clampingManager;
+        CascadeDrapingDecorator* _cascadeDrapingDecorator;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 
@@ -261,12 +264,25 @@ namespace osgEarth
 
         void onLayerAdded(Layer* layer, unsigned index);
         void onLayerRemoved(Layer* layer, unsigned index);
+        void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
+
+        // internal
+        osg::Node* getDrapingDump();
+        CascadeDrapingDecorator* getCascadeDrapingDecorator() const;
 
     private:
 
         osg::ref_ptr< MapCallback > _mapCallback;
     
         void init();
+
+        DrapingManager* getDrapingManager();
+        friend class DrapingTechnique;
+        friend class DrapeableNode;
+        
+        ClampingManager* getClampingManager();
+        friend class ClampingTechnique;
+        friend class ClampableNode;
     };
 
 } // namespace osgEarth

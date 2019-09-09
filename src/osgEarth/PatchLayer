@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,7 +40,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT PatchLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, PatchLayer, PatchLayerOptions);
+        META_Layer(osgEarth, PatchLayer, PatchLayerOptions, patch);
 
         struct TileData : public osg::Referenced
         {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,19 +24,20 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
-#include <osgEarth/ShaderLoader>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/ObjectIndex>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/FeatureQueryTool>
+#include <osgEarthUtil/RTTPicker>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureIndex>
 
 #define LC "[feature_query] "
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Features;
 
 //-----------------------------------------------------------------------
 
@@ -60,19 +61,19 @@ Container* createUI()
  * user interface grid control.
  */
 
-class ReadoutCallback : public FeatureQueryTool::Callback
+class ReadoutCallback : public RTTPicker::Callback
 {
 public:
     ReadoutCallback(ControlCanvas* container) : _lastFID( ~0 )
     {
         _grid = new Grid();
-        _grid->setBackColor( Color(Color::Black,0.7f) );
+        _grid->setBackColor( osg::Vec4(0,0,0,0.7f) );
         container->addControl( _grid );
     }
 
     void onHit(ObjectID id)
     {
-        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>( id );
+        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
         Feature* feature = index ? index->getFeature( id ) : 0L;
         if ( feature && feature->getFID() != _lastFID )
         {
@@ -93,11 +94,6 @@ public:
                 _grid->setVisible( true );
         
             _lastFID = feature->getFID();
-
-            // Print out the feature as geojson, useful for debugging.
-            osg::ref_ptr< Feature > clone = new Feature(*feature);
-            clone->transform(SpatialReference::create("wgs84"));
-            OE_NOTICE << clone->getGeoJSON() << std::endl;
         }
     }
 
@@ -140,13 +136,13 @@ main(int argc, char** argv)
         if ( mapNode )
         {
             // Install the query tool.
-            FeatureQueryTool* tool = new FeatureQueryTool();
-            viewer.addEventHandler( tool );
-            tool->addChild( mapNode );
+            RTTPicker* picker = new RTTPicker();
+            viewer.addEventHandler( picker );
+            picker->addChild( mapNode );
 
             // Install a readout for feature metadata.
             ControlCanvas* canvas = ControlCanvas::getOrCreate(&viewer);
-            tool->setDefaultCallback( new ReadoutCallback(canvas) );
+            picker->setDefaultCallback( new ReadoutCallback(canvas) );
         }
 
         return viewer.run();

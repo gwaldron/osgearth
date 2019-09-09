@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -130,6 +130,7 @@ namespace
         {
             // the viewpoint container:
             grid = new Grid();
+            grid->setBackColor(osg::Vec4(0,0,0,0.1));
             grid->setChildSpacing( 0 );
             grid->setChildVertAlign( Control::ALIGN_CENTER );
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,11 +21,6 @@
 #define OSGEARTHFEATURES_COMMON_H 1
 
 #include <osgEarth/Common>
-
-// define USE_DEPRECATED_API is used to include in API which is being fazed out
-// if you can compile your apps with this turned off you are
-// well placed for compatibility with future versions.
-#define USE_DEPRECATED_API
 
 #if defined(_MSC_VER)
     #pragma warning( disable : 4244 )

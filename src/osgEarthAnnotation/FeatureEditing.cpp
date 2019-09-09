@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -62,7 +62,7 @@ AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
         GeoPoint mapPoint;
         mapPoint.fromWorld( mapNode->getMapSRS(), world );
 
-        Feature* feature = _featureNode->getFeatures().front();
+        Feature* feature = _featureNode->getFeatures().front().get();
 
         if ( feature )            
         {
@@ -125,7 +125,7 @@ public:
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          Feature* feature = _featureNode->getFeatures().front();
+          Feature* feature = _featureNode->getFeatures().front().get();
           (*feature->getGeometry())[_point] =  osg::Vec3d(position.x(), position.y(), 0);
           _featureNode->init();
       }
@@ -200,7 +200,7 @@ FeatureEditor::init()
 {
     removeChildren( 0, getNumChildren() );
 
-    Feature* feature = _featureNode->getFeatures().front();
+    Feature* feature = _featureNode->getFeatures().front().get();
     //Create a dragger for each point
     for (unsigned int i = 0; i < feature->getGeometry()->size(); i++)
     {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,7 +30,6 @@ Symbol(rhs, copyop)
     _height = rhs._height;
     _flatten = rhs._flatten;
     _heightExpr = rhs._heightExpr;
-    _heightRef = rhs._heightRef;
     _wallStyleName = rhs._wallStyleName;
     _roofStyleName = rhs._roofStyleName;
     _wallGradientPercentage = rhs._wallGradientPercentage;
@@ -40,7 +39,6 @@ ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
 Symbol    ( conf ),
 _height   ( 10.0 ),
 _flatten  ( true ),
-_heightRef( HEIGHT_REFERENCE_Z ),
 _wallGradientPercentage( 0.0f )
 {
     if ( !conf.empty() )
@@ -52,28 +50,24 @@ ExtrusionSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "extrusion";
-    conf.addIfSet   ( "height",            _height );
-    conf.addIfSet   ( "flatten",           _flatten );
-    conf.addObjIfSet( "height_expression", _heightExpr );
-    conf.addIfSet   ( "height_reference", "z",   _heightRef, HEIGHT_REFERENCE_Z );
-    conf.addIfSet   ( "height_reference", "msl", _heightRef, HEIGHT_REFERENCE_MSL );
-    conf.addIfSet   ( "wall_style", _wallStyleName );
-    conf.addIfSet   ( "roof_style", _roofStyleName );
-    conf.addIfSet   ( "wall_gradient", _wallGradientPercentage );
+    conf.set( "height", _height );
+    conf.set( "flatten", _flatten );
+    conf.set( "height_expression", _heightExpr );
+    conf.set( "wall_style", _wallStyleName );
+    conf.set( "roof_style", _roofStyleName );
+    conf.set( "wall_gradient", _wallGradientPercentage );
     return conf;
 }
 
 void 
 ExtrusionSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet   ( "height",  _height );
-    conf.getIfSet   ( "flatten", _flatten );
-    conf.getObjIfSet( "height_expression", _heightExpr );
-    conf.getIfSet   ( "height_reference", "z",   _heightRef, HEIGHT_REFERENCE_Z );
-    conf.getIfSet   ( "height_reference", "msl", _heightRef, HEIGHT_REFERENCE_MSL );
-    conf.getIfSet   ( "wall_style", _wallStyleName );
-    conf.getIfSet   ( "roof_style", _roofStyleName );
-    conf.getIfSet   ( "wall_gradient", _wallGradientPercentage );
+    conf.get( "height",  _height );
+    conf.get( "flatten", _flatten );
+    conf.get( "height_expression", _heightExpr );
+    conf.get( "wall_style", _wallStyleName );
+    conf.get( "roof_style", _roofStyleName );
+    conf.get( "wall_gradient", _wallGradientPercentage );
 }
 
 void

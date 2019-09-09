@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -42,14 +42,14 @@ CoverageSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "coverage";
-    conf.addObjIfSet( "value", _valueExpr );
+    conf.set( "value", _valueExpr );
     return conf;
 }
 
 void 
 CoverageSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet( "value", _valueExpr );
+    conf.get( "value", _valueExpr );
 }
 
 

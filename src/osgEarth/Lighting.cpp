@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
@@ -20,12 +20,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Lighting>
-#include <osg/Program>
 #include <osgUtil/CullVisitor>
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 #include <osgEarth/StringUtils>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 
@@ -33,6 +31,21 @@ using namespace osgEarth;
 
 // prefix to use for uniforms.
 #define UPREFIX "osg_"
+
+
+//............................................................................
+
+void
+Lighting::set(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue value)
+{
+    GLUtils::setLighting(stateSet, value);
+}
+
+void
+Lighting::remove(osg::StateSet* stateSet)
+{
+    GLUtils::remove(stateSet, GL_LIGHTING);
+}
 
 //............................................................................
 
@@ -145,7 +158,12 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         // Place these uniforms at the root stateset so they affect the entire graph:
         osg::StateSet* ss = cv->getCurrentRenderStage()->getStateSet();
         if (ss == 0L)
+        {
             cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());
+
+            Threading::ScopedMutexLock lock(_statesetsMutex);
+            _statesets.push_back(ss);
+        }
 
         ss->getOrCreateUniform(prefix + "ambient", osg::Uniform::FLOAT_VEC4)->set(light->getAmbient());
         ss->getOrCreateUniform(prefix + "diffuse", osg::Uniform::FLOAT_VEC4)->set(light->getDiffuse());
@@ -192,6 +210,23 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
     return traverse(obj, data);
 }
 
+void
+LightSourceGL3UniformGenerator::resizeGLBufferObjects(unsigned maxSize)
+{
+    Threading::ScopedMutexLock lock(_statesetsMutex);
+    for(unsigned i=0; i<_statesets.size(); ++i)
+        _statesets[i]->resizeGLObjectBuffers(maxSize);
+}
+
+void
+LightSourceGL3UniformGenerator::releaseGLObjects(osg::State* state) const
+{
+    Threading::ScopedMutexLock lock(_statesetsMutex);
+    for(unsigned i=0; i<_statesets.size(); ++i)
+        _statesets[i]->releaseGLObjects(state);
+    _statesets.clear();
+}
+
 //............................................................................
 void MaterialCallback::operator() (osg::StateAttribute* attr, osg::NodeVisitor* nv)
 {
@@ -229,7 +264,7 @@ LightGL3::apply(osg::State& state) const
 // Serializer for LightGL3.
 // The odd namespace name is here because this macro cannot be used more than once
 // in the same namespace in the same cpp file.
-namespace osgEarth_TEMP1
+namespace osgEarth { namespace Serializers { namespace LightGL3
 {
     REGISTER_OBJECT_WRAPPER(
         LightGL3,
@@ -239,7 +274,7 @@ namespace osgEarth_TEMP1
     {
         ADD_BOOL_SERIALIZER(Enabled, true);
     }
-}
+} } }
 
 //............................................................................
 
@@ -248,17 +283,19 @@ MaterialGL3::apply(osg::State& state) const
 {
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     osg::Material::apply(state);
+#else
+    state.Color(_diffuseFront.r(), _diffuseFront.g(), _diffuseFront.b(), _diffuseFront.a());
 #endif
 }
 
 // Serializer for MaterialGL3.
 // The odd namespace name is here because this macro cannot be used more than once
 // in the same namespace in the same cpp file.
-namespace osgEarth_TEMP2
+namespace osgEarth { namespace Serializers { namespace MaterialGL3
 {
     REGISTER_OBJECT_WRAPPER(
         MaterialGL3,
         new osgEarth::MaterialGL3,
         osgEarth::MaterialGL3,
         "osg::Object osg::StateAttribute osg::Material osgEarth::MaterialGL3") { }
-}
+} } }

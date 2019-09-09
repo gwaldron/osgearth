@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,8 +20,11 @@
 #include <osgEarth/MaskSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FilterContext>
+#include <osgEarthFeatures/FeatureCursor>
 
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
@@ -84,13 +87,13 @@ public:
         {
             if ( _features->getFeatureProfile() )
             {
-                osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
+                osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(progress);
                 if ( cursor.valid() && cursor->hasMore() )
                 {
                     Feature* f = cursor->nextFeature();
                     if ( f && f->getGeometry() )
                     {
-                        // Init a filter to tranform feature in desired SRS 
+                        // Init a filter to transform feature in desired SRS 
                         if (!srs->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
                         {
                             FilterContext cx;

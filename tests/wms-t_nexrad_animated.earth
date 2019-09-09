@@ -8,11 +8,9 @@ Try running this with:
   osgearth_sequencecontrol <file.earth>
 -->
 
-<map name="WMS Radar returns" type="geocentric" version="2">   
-     
-    <image name="world" driver="gdal">
-        <url>../data/world.tif</url>
-    </image>
+<map name="WMS Radar returns" type="geocentric" version="2">
+
+    <xi:include href="readymap_imagery.xml"/>
     
     <image name="nexrad45min" driver="wms">
         <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi</url>

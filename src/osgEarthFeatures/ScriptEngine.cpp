@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,14 +30,14 @@ void
 ScriptEngineOptions::fromConfig( const Config& conf )
 {
     optional<std::string> val;
-    if (conf.getIfSet<std::string>( "script_code", val))
+    if (conf.get<std::string>( "script_code", val))
     {
         Script cfgScript(val.get());
         
-        if (conf.getIfSet<std::string>( "script_language", val ))
+        if (conf.get<std::string>( "script_language", val ))
           cfgScript.setLanguage(val.get());
 
-        if (conf.getIfSet<std::string>( "script_name", val ))
+        if (conf.get<std::string>( "script_name", val ))
           cfgScript.setName(val.get());
     }
 }
@@ -56,9 +56,9 @@ ScriptEngineOptions::getConfig() const
 
     if (_script.isSet())
     {
-      if (!_script->getCode().empty()) conf.update("script_code", _script->getCode());
-      if (!_script->getLanguage().empty()) conf.update("script_language", _script->getLanguage());
-      if (!_script->getName().empty()) conf.update("script_name", _script->getName());
+      if (!_script->getCode().empty()) conf.set("script_code", _script->getCode());
+      if (!_script->getLanguage().empty()) conf.set("script_language", _script->getLanguage());
+      if (!_script->getName().empty()) conf.set("script_name", _script->getName());
     }
 
     return conf;
@@ -122,7 +122,7 @@ ScriptEngineFactory::createWithProfile( const Script& script, const std::string&
 ScriptEngine*
 ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
 {
-    ScriptEngine* scriptEngine = 0L;
+    osg::ref_ptr<ScriptEngine> scriptEngine;
 
     if ( !options.getDriver().empty() )
     {
@@ -133,7 +133,8 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
             rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
 
-            scriptEngine = dynamic_cast<ScriptEngine*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+            osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
+            scriptEngine = dynamic_cast<ScriptEngine*>( object.release() );
             if ( scriptEngine )
             {
                 OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
@@ -157,7 +158,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return scriptEngine;
+    return scriptEngine.release();
 }
 
 //------------------------------------------------------------------------

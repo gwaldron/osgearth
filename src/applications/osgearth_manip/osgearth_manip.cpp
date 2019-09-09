@@ -95,8 +95,8 @@ namespace
             "a :",                 "toggle viewpoint arcing",
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
-            "L :",                 "toggle log depth buffer"
-            "z :",                 "toggle zoom to mouse pointer"
+            "L :",                 "toggle log depth buffer",
+            "z :",                 "toggle zoom to mouse pointer",
             "arrows :",            "adjust tether offset",
         };
 

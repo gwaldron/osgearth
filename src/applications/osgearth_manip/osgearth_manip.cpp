@@ -96,6 +96,8 @@ namespace
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
             "L :",                 "toggle log depth buffer"
+            "z :",                 "toggle zoom to mouse pointer"
+            "arrows :",            "adjust tether offset",
         };
 
         Grid* g = new Grid();
@@ -217,6 +219,27 @@ namespace
         char _key;
         osg::Group* _group;
         bool _installed;
+    };
+
+    /**
+    * Toggles whether to zoom towards the mouse pointer.
+    */
+    struct ToggleZoomToMouse : public osgGA::GUIEventHandler 
+    {
+        ToggleZoomToMouse(char key, EarthManipulator* manip ) : _key(key), _manip(manip) { }
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        {
+            if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                _manip->getSettings()->setZoomToMouse(!_manip->getSettings()->getZoomToMouse());
+                return true;
+            }
+            return false;
+        }
+
+        char _key;
+        osg::observer_ptr<EarthManipulator> _manip;
     };
 
     /**
@@ -837,6 +860,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleLDB('L'));
     viewer.addEventHandler(new ToggleSSL(sims, ')'));
     viewer.addEventHandler(new FitViewToPoints('j', manip, mapNode->getMapSRS()));
+    viewer.addEventHandler(new ToggleZoomToMouse('z', manip));
     
     CalculateWindowCoords* calc = new CalculateWindowCoords('W', manip, sim1);
     viewer.addEventHandler(calc);

@@ -296,7 +296,8 @@ _orthoTracksPerspective         ( true ),
 _terrainAvoidanceEnabled        ( true ),
 _terrainAvoidanceMinDistance    ( 1.0 ),
 _throwingEnabled                ( false ),
-_throwDecayRate                 ( 0.05 )
+_throwDecayRate                 ( 0.05 ),
+_zoomToMouse                    ( false )
 {
     //NOP
 }
@@ -327,7 +328,8 @@ _breakTetherActions( rhs._breakTetherActions ),
 _terrainAvoidanceEnabled( rhs._terrainAvoidanceEnabled ),
 _terrainAvoidanceMinDistance( rhs._terrainAvoidanceMinDistance ),
 _throwingEnabled( rhs._throwingEnabled ),
-_throwDecayRate( rhs._throwDecayRate )
+_throwDecayRate( rhs._throwDecayRate ),
+_zoomToMouse( rhs._zoomToMouse )
 {
     //NOP
 }
@@ -1642,7 +1644,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
             if ( _task.valid() && _task->_type != TASK_NONE )
             {
-                bool stillRunning = serviceTask();
+                bool stillRunning = serviceTask(aa.asView());
                 if ( stillRunning )
                 {
                     aa.requestContinuousUpdate( true );
@@ -2005,7 +2007,7 @@ EarthManipulator::updateTether(double t)
 }
 
 bool
-EarthManipulator::serviceTask()
+EarthManipulator::serviceTask(osg::View* view)
 {
     if ( _task.valid() && _task->_type != TASK_NONE )
     {
@@ -2024,7 +2026,7 @@ EarthManipulator::serviceTask()
                     rotate( dt * _task->_dx, dt * _task->_dy );
                     break;
                 case TASK_ZOOM:
-                    zoom( dt * _task->_dx, dt * _task->_dy );
+                    zoom( dt * _task->_dx, dt * _task->_dy, view );
                     break;
                 default: break;
             }
@@ -2389,7 +2391,7 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 
     osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
 
-    _centerRotation = computeCenterRotation(_center);// getRotation( _center ).getRotate().inverse();
+    _centerRotation = computeCenterRotation(_center);
     _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();
 
     _previousUp = getUpVector(_centerLocalToWorld);
@@ -2600,17 +2602,100 @@ EarthManipulator::rotate( double dx, double dy )
 }
 
 void
-EarthManipulator::zoom( double dx, double dy )
+EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
 {
-    // in normal (non-tethered mode) we need a valid zoom point.
-    if ( !isTethering() )
+    if (isTethering())
     {
-        recalculateCenterFromLookVector();
+        double scale = 1.0f + dy;
+        setDistance( _distance * scale );
+        collisionDetect();
+        return;
     }
 
-    double scale = 1.0f + dy;
-    setDistance( _distance * scale );
-    collisionDetect();
+    if (_settings->getZoomToMouse() == false)
+    {
+        double scale = 1.0f + dy;
+        setDistance( _distance * scale );
+        collisionDetect();
+    }
+
+    // Zoom to mouseish
+    osgViewer::View* view = dynamic_cast<osgViewer::View*>(in_view);
+    if ( !view )
+        return;
+
+    if (_ga_t0 == NULL)
+        return;
+
+    float x = _ga_t0->getX(), y = _ga_t0->getY();
+    float local_x, local_y;
+
+    const osg::Camera* camera = view->getCameraContainingPosition(x, y, local_x, local_y);
+    if (!camera)
+        camera = view->getCamera();
+
+    if ( !camera )
+        return;
+
+    osg::Vec3d target;
+    bool onEarth = screenToWorld(x, y, view, target);
+    if (onEarth)
+    {
+        if (_srs.valid() && _srs->isGeographic())
+        {
+            // globe
+            osg::Quat rotCenterToTarget;
+            rotCenterToTarget.makeRotate(_center, target);
+
+            double scale = 1.0f + dy;
+            double newDistance = _distance*scale;
+            double delta = _distance - newDistance;
+            double ratio = delta/_distance;
+
+            // xform target point into the current focal point's local frame,
+            // and adjust the zoom ratio to account for the difference in 
+            // target distance based on the earth's curvature...approximately!
+            osg::Vec3d targetCR = _centerRotation.conj()*target;
+            double crRatio = _center.length() / targetCR.z();
+            ratio *= crRatio;
+
+            // interpolate a new center point
+            osg::Quat rot;
+            rot.slerp(ratio, osg::Quat(), rotCenterToTarget);
+
+            setCenter(rot*_center);
+            _centerRotation = computeCenterRotation(_center);
+
+            setDistance(newDistance);
+            collisionDetect();
+        }
+        else
+        {
+            // projected map
+            osg::Vec3d eye, at, up;
+            getWorldInverseMatrix().getLookAt(eye, at, up);
+
+            osg::Vec3d eyeToTargetVec = target-eye;
+            eyeToTargetVec.normalize();
+
+            double scale = 1.0f + dy;
+            double newDistance = _distance*scale;
+            double delta = _distance - newDistance;
+            double ratio = delta/_distance;
+            
+            osg::Vec3d newEye = eye + eyeToTargetVec*delta;
+
+            setByLookAt(newEye, newEye+(at-eye), up);
+            //setDistance(newDistance);
+        }
+    }
+
+    else
+    {
+        double scale = 1.0f + dy;
+        setDistance( _distance * scale );
+        collisionDetect();
+    }
 }
 
 
@@ -2682,7 +2767,7 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
         break;
 
     case ACTION_ZOOM:
-        zoom( dx, dy );
+        zoom( dx, dy, view );
         break;
 
     case ACTION_EARTH_DRAG:

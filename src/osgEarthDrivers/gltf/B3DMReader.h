@@ -153,7 +153,7 @@ public:
         loader.LoadBinaryFromMemory(&model, &err, &warn, reinterpret_cast<unsigned char*>(&gltfData[0]), sz);
 
 
-        osg::MatrixTransform *mt = new osg::MatrixTransform;
+        osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform;
 
         GLTFReader gltfReader;
         osg::Node* modelNode = gltfReader.makeNodeFromModel(model);

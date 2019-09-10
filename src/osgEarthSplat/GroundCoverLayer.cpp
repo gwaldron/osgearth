@@ -316,6 +316,33 @@ GroundCoverLayer::setTerrainResources(TerrainResources* res)
     }
 }
 
+namespace
+{
+    // Returns true if any billboard in the data model uses a "top-down" image.
+    bool groundCoverModelUsesTopImages(const GroundCover* gc)
+    {
+        for(int i=0; i<gc->getBiomes().size(); ++i)
+        {
+            const GroundCoverBiome* biome = gc->getBiomes()[i].get();
+
+            for(int j=0; j<biome->getObjects().size(); ++j)
+            {
+                const GroundCoverObject* object = biome->getObjects()[j];
+
+                if (object->getType() == GroundCoverObject::TYPE_BILLBOARD)
+                {
+                    const GroundCoverBillboard* bb = dynamic_cast<const GroundCoverBillboard*>(object);
+                    if (bb && bb->_topImage.valid())
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+
 void
 GroundCoverLayer::buildStateSets()
 {
@@ -426,6 +453,13 @@ GroundCoverLayer::buildStateSets()
 #endif
 
                 vp->setShader(covTest);
+
+                // whether to support top-down image billboards. We disable it when not in use
+                // for performance reasons.
+                if (groundCoverModelUsesTopImages(groundCover))
+                {
+                    zoneStateSet->setDefine("OE_GROUNDCOVER_USE_TOP_BILLBOARDS");
+                }
 
                 OE_INFO << LC << "Established zone \"" << zone->getName() << "\" at LOD " << getLOD() << "\n";
 

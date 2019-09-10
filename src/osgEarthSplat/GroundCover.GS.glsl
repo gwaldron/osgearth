@@ -7,16 +7,21 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_GROUNDCOVER_MASK_SAMPLER)
 #pragma import_defines(OE_GROUNDCOVER_MASK_MATRIX)
+#pragma import_defines(OE_GROUNDCOVER_USE_TOP_BILLBOARDS)
 #pragma import_defines(OE_GROUNDCOVER_SHOW_TESSELLATION)
                 
 layout(triangles) in;        // triangles from the TileDrawable
 
 #ifdef OE_GROUNDCOVER_SHOW_TESSELLATION
-layout(line_strip, max_vertices=12) out;
+    layout(line_strip, max_vertices=4) out;
 #else
-layout(triangle_strip, max_vertices=12) out;  // max of 12 verts per billboard
+    #ifdef OE_GROUNDCOVER_USE_TOP_BILLBOARDS
+        layout(triangle_strip, max_vertices=8) out;
+    #else
+        layout(triangle_strip, max_vertices=4) out;
+    #endif
 #endif
-                
+
 // VP helper functions:
 void VP_LoadVertex(in int);
 void VP_EmitViewVertex();
@@ -26,14 +31,11 @@ uniform float osg_FrameTime;            // Frame time (seconds) used for wind an
 uniform float oe_GroundCover_width;           // width of each billboard
 uniform float oe_GroundCover_height;          // height of each billboard
 uniform float oe_GroundCover_ao;              // fake ambient occlusion of ground verts (0=full)
-
 uniform float oe_GroundCover_fill;            // percentage of points that make it through, based on noise function
 uniform float oe_GroundCover_windFactor;      // wind blowing the foliage
 uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
-
 uniform float oe_GroundCover_contrast;
 uniform float oe_GroundCover_brightness;
-
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
 uniform float     oe_tile_elevationSize;
@@ -41,22 +43,19 @@ uniform float     oe_tile_elevationSize;
 // Noise texture:
 uniform sampler2D oe_GroundCover_noiseTex;
 
-// different noise texture channels:
+// noise texture channels:
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-// Input tile coordinates [0..1]
+// Tile coordinates [0..1]
 in vec4 oe_layer_tilec;
 
-// Output grass texture coordinates to the fragment shader
+// Output tex coords
 out vec2 oe_GroundCover_texCoord;
 
-// Input from the TCS that 
-//flat in int oe_GroundCover_biomeIndex;
-
-// Output that selects the land cover texture from the texture array (non interpolated)
+// Output that selects the land cover texture from the texture array
 flat out float oe_GroundCover_atlasIndex;
 
 struct oe_GroundCover_Biome {
@@ -93,9 +92,6 @@ out vec3 vp_Normal;
 // SDK import
 float oe_terrain_getElevation(in vec2);
 
-// Generated in code
-int oe_GroundCover_getBiomeIndex(in vec4);
-
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
 uniform sampler2D OE_GROUNDCOVER_MASK_SAMPLER;
 uniform mat4 OE_GROUNDCOVER_MASK_MATRIX;
@@ -109,24 +105,21 @@ oe_GroundCover_clamp(inout vec4 vert_view, in vec3 up, vec2 UV)
     vert_view.xyz += up*elev;
 }
 
-// Generate a pseudo-random value in the specified range:
-float
-oe_GroundCover_rangeRand(float minValue, float maxValue, vec2 co)
+// Generate a pseudo-random value
+float oe_GroundCover_rangeRand(float minValue, float maxValue, vec2 co)
 {
     float t = fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
     return minValue + t*(maxValue-minValue);
 }
 
 // Generate a wind-perturbation value
-float
-oe_GroundCover_applyWind(float time, float factor, float randOffset)
+float oe_GroundCover_applyWind(float time, float factor, float randOffset)
 {
    return sin(time + randOffset) * factor;
 }
 
-// Generate a pseudo-random barycentric point inside a triangle.
-vec3
-oe_GroundCover_getRandomBarycentricPoint(vec2 seed)
+// Generate a random barycentric point inside a triangle.
+vec3 oe_GroundCover_getRandomBarycentricPoint(vec2 seed)
 {
     vec3 b;
     b[0] = oe_GroundCover_rangeRand(0.0, 1.0, seed.xy);
@@ -147,9 +140,7 @@ float oe_GroundCover_fastpow(in float x, in float y)
     return x / (x + y - y * x);
 }
 
-// MAIN ENTRY POINT  
-void
-oe_GroundCover_geom()
+void oe_GroundCover_geom()
 {    
     vec4 center = vec4(0,0,0,1);
     vec2 tileUV = vec2(0,0);
@@ -176,8 +167,7 @@ oe_GroundCover_geom()
     // gen a random point within the input triangle
     vec3 b = oe_GroundCover_getRandomBarycentricPoint(gl_in[0].gl_Position.xy);
     
-    // Load the triangle data and compute the new position and tile coords
-    // using the barycentric coordinates.
+    // Load tri data and compute new position and tile coords using the barycentric coords
     for(int i=0; i < 3; ++i)
     {
         VP_LoadVertex(i);      
@@ -202,15 +192,12 @@ oe_GroundCover_geom()
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
     float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*vec4(tileUV,0,1)).st).a;
     if ( mask > 0.0 )
-    {
-        // Failed to pass the mask; no geometry emitted.
         return;
-    }
 #endif
     
     // Transform to view space.
     vec4 center_view = gl_ModelViewMatrix * center;
-    vec3 up_view     = gl_NormalMatrix * vp_Normal; //oe_UpVectorView;
+    vec3 up_view     = gl_NormalMatrix * vp_Normal;
     
     // Clamp the center point to the elevation.
     oe_GroundCover_clamp(center_view, up_view, tileUV);
@@ -232,16 +219,13 @@ oe_GroundCover_geom()
     // a pseudo-random scale factor to the width and height of a billboard
     float sizeScale = abs(1.0 + noise[NOISE_RANDOM_2]);
     
-    // Viewpoint culling:
-    // TODO: remove hard-coded max width/height and replace with a vp_define or a uniform.
-    // Note: this value must account for the height variation introduced by the noise function
-    // later in this shader!
+    // Viewpoint culling (needs work)
     vec4 cullPoint = center_view;
     //vec2 maxWidthHeight = biome.maxWidthHeight * sizeScale;
     cullPoint.xy -= sign(cullPoint.xy) * min(biome.maxWidthHeight*sizeScale, abs(cullPoint.xy));
     cullPoint = gl_ProjectionMatrix * cullPoint;
     float absw = abs(cullPoint.w);
-    if ( abs(cullPoint.x) > absw || abs(cullPoint.y) > absw )// || abs(cullPoint.z) > absw )
+    if ( abs(cullPoint.x) > absw || abs(cullPoint.y) > absw )
         return;
 
     // discard instances based on noise value threshold (coverage). If it passes,
@@ -266,31 +250,22 @@ oe_GroundCover_geom()
 
     oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
 
-    // push the falloff closer to the max distance.
+    // push the falloff closer to the max distance
     float falloff = 1.0-(nRange*nRange*nRange);
 
-    // billboard width, which shrinks into the distance
+    // billboard size shrinks in the distance
     float width = billboard.width * falloff * sizeScale;
     
     float height = billboard.height * falloff * sizeScale;
 
-    // vary the height of each instance and shrink it as it disappears into the distance.
-    // TODO: consider parameterizing this so we can toggle the feature
-    //height *= sizeScale;
-
-    // shrink land cover as it dissappears into the distance:
-    //height *= falloff;
-
-	// compute the billboard corners in view space.
-    vec4 LL, LR, UL, UR;
-    
+	// compute the billboard corners in view space
+    vec4 LL, LR, UL, UR;    
 
 #ifdef OE_IS_SHADOW_CAMERA
     
-    vec3 tangentVector = gl_NormalMatrix * vec3(1,0,0); // vector pointing east-ish.
+    vec3 tangentVector = gl_NormalMatrix * vec3(1,0,0);
     vec3 halfWidthTangentVector = cross(tangentVector, up_view) * 0.5 * width;
     vec3 heightVector = up_view*height;
-
     vp_Color = vec4(1,1,1,falloff);
 
     for(int i=0; i<2; ++i)
@@ -300,7 +275,6 @@ oe_GroundCover_geom()
         UL = vec4(LL.xyz + heightVector, 1.0);
         UR = vec4(LR.xyz + heightVector, 1.0);
     
-        // calculates normal:
         vp_Normal = normalize(cross(tangentVector, heightVector));
         
         gl_Position = LL;
@@ -349,20 +323,29 @@ oe_GroundCover_geom()
     // calculates normals:
     vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
 
+#ifdef OE_GROUNDCOVER_USE_TOP_BILLBOARDS
     // if we are looking straight-ish down on the billboard, don't bother with it
     if (billboard.atlasIndexTop < 0 && 
         abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
     {
         return;
     }
+#else
+    // if we are looking straight-ish down on the billboard, don't bother with it
+    if (abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
+    {
+        return;
+    }
+#endif
 
     float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
     vec3 Lnormal = mix(-tangentVector, faceNormalVector, blend);
     vec3 Rnormal = mix( tangentVector, faceNormalVector, blend);
 
     float billboardAmount = 1.0;
-    float topDownAmount = 0.0;
 
+#ifdef OE_GROUNDCOVER_USE_TOP_BILLBOARDS
+    float topDownAmount = 0.0;
     if (billboard.atlasIndexTop >= 0)
     {
         // calculate a [0..1] factor for interpolating from a front billboard view
@@ -375,6 +358,7 @@ oe_GroundCover_geom()
     const float billboardThreshold = 0.15;
 
     if (billboardAmount > billboardThreshold)
+#endif
     {
         vp_Color = vec4(color*oe_GroundCover_ao, falloff * billboardAmount);
 
@@ -403,6 +387,8 @@ oe_GroundCover_geom()
         EndPrimitive();
     }
 
+
+#ifdef OE_GROUNDCOVER_USE_TOP_BILLBOARDS
     const float topDownThreshold = 0.5;
 
     if (topDownAmount > topDownThreshold && billboard.atlasIndexTop >= 0)
@@ -449,6 +435,7 @@ oe_GroundCover_geom()
 
         EndPrimitive();
     }
+#endif // OE_GROUNDCOVER_USE_TOP_BILLBOARDS
     
 #endif // !OE_IS_SHADOW_CAMERA
 }

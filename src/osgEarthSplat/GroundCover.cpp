@@ -194,12 +194,10 @@ GroundCover::createShader() const
     std::stringstream biomeBuf;
     std::stringstream objectsBuf;
     std::stringstream billboardsBuf;
-    //std::stringstream doubleBillboardsBuf;
 
     int totalObjects = getTotalNumObjects();
 
     unsigned numBillboards = 0;
-    //unsigned numDoubleBillboards = 0;
 
     // encode all the biome data.
     biomeBuf << 

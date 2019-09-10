@@ -250,38 +250,10 @@ LandCoverLayer::open()
                 return setStatus(coverageStatus);
             }
 
-            _codemaps.resize(_codemaps.size()+1);
 
-            OE_INFO << LC << "...opened coverage \"" << coverage->getName() << "\"" << std::endl;
-        
-            // Integrate the coverage's data extents into this layer:
-            ImageLayer* imageLayer = coverage->getImageLayer();
-            if (imageLayer)
-            {
-                const DataExtentList& de = imageLayer->getDataExtents();
-                for (DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
-                {
-                    if (!profile || dei->getSRS()->isHorizEquivalentTo(profile->getSRS()))
-                    {
-                        combinedExtents.push_back(*dei);
-                    }
-                    else
-                    {
-                        // Transform the data extents to the layer profile
-                        GeoExtent ep = profile->clampAndTransformExtent(*dei);
-                        if (ep.isValid())
-                        {
-                            DataExtent de(ep);
-                            if (dei->minLevel().isSet())
-                                de.minLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->minLevel().get());
-                            if (dei->maxLevel().isSet())
-                                de.maxLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->maxLevel().get());
-                            combinedExtents.push_back(de);
-                        }
-                    }
-                }
-            }
-        }
+        // Normally we would collect and store the layer's DataExtents here.
+        // Since this is possibly a composited layer with warping, we just
+        // let it default so we can oversample the data with warping.
     }
 
     // ONLY set the data extents if every component coverage was able to report.

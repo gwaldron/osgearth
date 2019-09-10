@@ -125,10 +125,14 @@ namespace
         return yes;
     }
 
-    int replaceVarying(GLSLChunker::Chunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix)
+    int replaceVarying(GLSLChunker::Chunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix, bool isInput)
     {
         std::stringstream buf;
-        buf << "#pragma vp_varying";
+        if (isInput)
+            buf << "#pragma vp_varying_in";
+        else
+            buf << "#pragma vp_varying_out";
+
         if ( !prefix.empty() )
             buf << " " << prefix;
 
@@ -175,17 +179,17 @@ namespace
                 const std::vector<std::string>& tokens = chunks[i].tokens;
 
                 if      ( tokens.size() > 1 && tokens[0] == "out" && type != osg::Shader::FRAGMENT )
-                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 1, "", false), madeChanges = true;
                 else if ( tokens.size() > 1 && tokens[0] == "in" && type != osg::Shader::VERTEX )
-                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 1, "", true), madeChanges = true;
                 else if ( tokens.size() > 2 && tokens[0] == "varying" && tokens[1] == "out" && type != osg::Shader::FRAGMENT )
-                    i = replaceVarying(chunks, i, tokens, 2, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 2, "", false), madeChanges = true;
                 else if ( tokens.size() > 2 && tokens[0] == "flat" && tokens[1] == "out" && type != osg::Shader::FRAGMENT )
-                    i = replaceVarying(chunks, i, tokens, 2, "flat"), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 2, "flat", false), madeChanges = true;
                 else if ( tokens.size() > 2 && tokens[0] == "flat" && tokens[1] == "in" && type != osg::Shader::VERTEX )
-                    i = replaceVarying(chunks, i, tokens, 2, "flat"), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 2, "flat", true), madeChanges = true;
                 else if ( tokens.size() > 1 && tokens[0] == "varying" )
-                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 1, "", true), madeChanges = true;
             }
         }
 

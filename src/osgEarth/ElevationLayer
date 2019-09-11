@@ -143,6 +143,11 @@ namespace osgEarth
          */
         bool isOffset() const;
 
+    public: // override
+
+        virtual void setVisible(bool value);
+        virtual void setEnabled(bool value);
+
     protected: // Layer
 
         virtual void init();

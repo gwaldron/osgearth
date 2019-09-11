@@ -261,37 +261,11 @@ namespace
             {
                 OE_WARN << "Layer \"" << layer->getName() << "\": " << s.toString() << std::endl;
             }
-
-            // Integrate data extents into this tile source.
-            const DataExtentList& de = layer->getDataExtents();
-            for(DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
-            {
-                if (!profile || dei->getSRS()->isHorizEquivalentTo(profile->getSRS()))
-                {
-                    combinedExtents.push_back(*dei);
-                }
-                else
-                {
-                    // Transform the data extents to the layer profile
-                    GeoExtent ep = profile->clampAndTransformExtent(*dei);
-                    if (ep.isValid())
-                    {
-                        DataExtent de(ep);
-                        if (dei->minLevel().isSet())
-                            de.minLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->minLevel().get());
-                        if (dei->maxLevel().isSet())
-                            de.maxLevel() = profile->getEquivalentLOD(layer->getProfile(), dei->maxLevel().get());
-                        combinedExtents.push_back(de);
-                    }
-                }
-            }
         }
 
-        // ONLY set the data extents if every component coverage was able to report.
-        if (combinedExtents.size() == _coverages.size())
-        {
-            getDataExtents().swap(combinedExtents);
-        }
+        // Normally we would collect and store the layer's DataExtents here.
+        // Since this is possibly a composited layer with warping, we just
+        // let it default so we can oversample the data with warping.
 
         return STATUS_OK;
     }

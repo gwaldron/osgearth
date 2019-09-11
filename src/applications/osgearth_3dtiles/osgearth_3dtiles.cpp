@@ -107,8 +107,8 @@ ui::Control* makeUI(App& app)
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
 
-    ++r;
-    container->setControl(0, r, new ui::ButtonControl("Zoom to data", new zoomToData(app)));
+    //++r;
+    //container->setControl(0, r, new ui::ButtonControl("Zoom to data", new zoomToData(app)));
 
     return container;
 }
@@ -266,6 +266,8 @@ main_view(osg::ArgumentParser& arguments)
     viewer.setSceneData( node.get() );
 
     app.apply();
+
+    app.zoomToData();
 
     return viewer.run();
 }

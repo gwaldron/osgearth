@@ -460,7 +460,7 @@ RTTPicker::checkForPickResult(Pick& pick, unsigned frameNumber)
     // register a hit on draped/clamped geometry.
     bool pickExpired =
         hit == true ||
-        frameNumber - pick._frame >= 2u;
+        frameNumber - pick._frame >= 4u;
 
     if ((hit == false) && (pickExpired == true))
     {

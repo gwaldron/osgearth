@@ -19,18 +19,19 @@ Demonstrates how to select a style name using javascript.
     <FeatureModel name="countries" features="country-data">        
         <styles>        
             <style type="text/css">
-                p1 { fill: #ffff80; altitude-clamping: terrain-drape; }
-                p2 { fill: #80ffff; altitude-clamping: terrain-drape; }
-                p3 { fill: #ff80ff; altitude-clamping: terrain-drape; }
-                p4 { fill: #ff8080; altitude-clamping: terrain-drape; }
-                p5 { fill: #80ff80; altitude-clamping: terrain-drape; }
+                base { altitude-clamping: terrain-drape; }
+                p1 : base { fill: #ffff80; }
+                p2 : base { fill: #80ffff; }
+                p3 : base { fill: #ff80ff; }
+                p4 : base { fill: #ff8080; }
+                p5 : base { fill: #80ff80; }
             </style>
             
             <script language="javascript">
               <![CDATA[
                 function getStyleClass()
                 {
-                    var pop = parseInt(feature.properties.pop_cntry);
+                    var pop = parseInt(feature.properties.pop);
                     if      ( pop <= 14045470 )  return "p1";
                     else if ( pop <= 43410900 )  return "p2";
                     else if ( pop <= 97228750 )  return "p3";

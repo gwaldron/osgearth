@@ -199,6 +199,20 @@ ElevationLayer::init()
     setRenderType(RENDERTYPE_NONE);
 }
 
+void
+ElevationLayer::setVisible(bool value)
+{
+    VisibleLayer::setVisible(value);
+    setEnabled(value);
+}
+
+void
+ElevationLayer::setEnabled(bool value)
+{
+    VisibleLayer::setVisible(value);
+    VisibleLayer::setEnabled(value);
+}
+
 bool
 ElevationLayer::isOffset() const
 {

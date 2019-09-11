@@ -249,18 +249,12 @@ LandCoverLayer::open()
                 OE_WARN << LC << "One of the coverage layers failed to open; aborting" << std::endl;
                 return setStatus(coverageStatus);
             }
-
-
-        // Normally we would collect and store the layer's DataExtents here.
-        // Since this is possibly a composited layer with warping, we just
-        // let it default so we can oversample the data with warping.
+        }
     }
 
-    // ONLY set the data extents if every component coverage was able to report.
-    if (combinedExtents.size() == _coverageLayers.size())
-    {
-        dataExtents().swap(combinedExtents);
-    }
+    // Normally we would collect and store the layer's DataExtents here.
+    // Since this is possibly a composited layer with warping, we just
+    // let it default so we can oversample the data with warping.
 
     return ImageLayer::open();
 }

@@ -61,6 +61,8 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
     _lods.resize(numLods);
 
+    OE_INFO << LC << "LOD Ranges:\n";
+
     for (unsigned lod = 0; lod <= maxLod; ++lod)
     {
         unsigned tx, ty;
@@ -68,10 +70,12 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         TileKey key(lod, tx/2, ty/2, profile);
         GeoExtent e = key.getExtent();
         GeoCircle c = e.computeBoundingGeoCircle();
-        double range = c.getRadius() * mtrf * 2.0;
+        double range = c.getRadius() * mtrf * 2.0 * (1.0/1.405);
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
         _lods[lod]._maxValidTY = INT32_MAX;
+
+        //OE_INFO << LC << "  " << lod << " = " << range << std::endl;
     }
     
     double metersPerEquatorialDegree = (profile->getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;

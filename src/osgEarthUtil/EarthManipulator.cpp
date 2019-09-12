@@ -2612,7 +2612,7 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
         return;
     }
 
-    if (_settings->getZoomToMouse() == false)
+    if (_settings->getZoomToMouse() == false || in_view == NULL)
     {
         double scale = 1.0f + dy;
         setDistance( _distance * scale );
@@ -2621,6 +2621,7 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
     }
 
     // Zoom to mouseish
+
     osgViewer::View* view = dynamic_cast<osgViewer::View*>(in_view);
     if ( !view )
         return;
@@ -2638,16 +2639,38 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
     if ( !camera )
         return;
 
+    // reset the "remembered start location" if we're just starting a continuous zoom
+    static osg::Vec3d zero(0,0,0);
+    if (_last_action._type != ACTION_ZOOM)
+        _lastPointOnEarth = zero;
+
     osg::Vec3d target;
-    bool onEarth = screenToWorld(x, y, view, target);
+
+    bool onEarth = true;
+    if (_lastPointOnEarth != zero)
+    {
+        // Use the start location (for continuous zoom) 
+        target = _lastPointOnEarth;
+    }
+    else
+    {
+        // Zoom just started; calculate a start location
+        onEarth = screenToWorld(x, y, view, target);
+    }
+
     if (onEarth)
     {
+        _lastPointOnEarth = target;
+
         if (_srs.valid() && _srs->isGeographic())
         {
             // globe
+
+            // Calcuate a rotation that we'll use to interpolate from our center point to the target
             osg::Quat rotCenterToTarget;
             rotCenterToTarget.makeRotate(_center, target);
 
+            // Factor by which to scale the distance:
             double scale = 1.0f + dy;
             double newDistance = _distance*scale;
             double delta = _distance - newDistance;
@@ -2656,23 +2679,27 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
             // xform target point into the current focal point's local frame,
             // and adjust the zoom ratio to account for the difference in 
             // target distance based on the earth's curvature...approximately!
-            osg::Vec3d targetCR = _centerRotation.conj()*target;
-            double crRatio = _center.length() / targetCR.z();
+            osg::Vec3d targetInLocalFrame = _centerRotation.conj()*target;
+            double crRatio = _center.length() / targetInLocalFrame.z();
             ratio *= crRatio;
 
-            // interpolate a new center point
+            // Interpolate a new focal point:
             osg::Quat rot;
             rot.slerp(ratio, osg::Quat(), rotCenterToTarget);
-
             setCenter(rot*_center);
+
+            // recompute the local frame:
             _centerRotation = computeCenterRotation(_center);
 
+            // and set the new zoomed distance.
             setDistance(newDistance);
+
             collisionDetect();
         }
         else
         {
-            // projected map
+            // projected map. This will a simple linear interpolation
+            // of the eyepoint along the path between the eye and the target.
             osg::Vec3d eye, at, up;
             getWorldInverseMatrix().getLookAt(eye, at, up);
 
@@ -2687,12 +2714,12 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
             osg::Vec3d newEye = eye + eyeToTargetVec*delta;
 
             setByLookAt(newEye, newEye+(at-eye), up);
-            //setDistance(newDistance);
         }
     }
 
     else
     {
+        // if the user's mouse isn't over the earth, just zoom in to the center of the screen
         double scale = 1.0f + dy;
         setDistance( _distance * scale );
         collisionDetect();

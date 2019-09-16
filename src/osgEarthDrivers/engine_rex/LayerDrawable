@@ -57,6 +57,9 @@ namespace osgEarth { namespace REX
         // If _layer is an ImageLayer, this will be set as well, otherwise NULL
         const ImageLayer* _imageLayer;
 
+        // If _layer is a PatchLayer, this will be set, otherwise NULL
+        const PatchLayer* _patchLayer;
+
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
         int _drawOrder;

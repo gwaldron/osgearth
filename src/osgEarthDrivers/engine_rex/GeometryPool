@@ -26,6 +26,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/PatchLayer>
 #include <osg/Geometry>
 
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)
@@ -37,7 +38,7 @@ namespace osgEarth { namespace REX
     using namespace osgEarth;
 
     // Adapted from osgTerrain shared geometry class.
-    class /*internal*/ SharedGeometry : public osg::Drawable
+    class /*internal*/ SharedGeometry : public osg::Drawable, public PatchLayer::GeometryArrayProvider
     {
     public:
         SharedGeometry();
@@ -48,7 +49,7 @@ namespace osgEarth { namespace REX
 
         void setVertexArray(osg::Array* array) { _vertexArray = array; }
         osg::Array* getVertexArray() { return _vertexArray.get(); }
-        const osg::Array* getVertexArray() const  { return _vertexArray.get(); }
+        const osg::Array* getVertexArray() const { return _vertexArray.get(); }
 
         void setNormalArray(osg::Array* array) { _normalArray = array; }
         osg::Array* getNormalArray() { return _normalArray.get(); }

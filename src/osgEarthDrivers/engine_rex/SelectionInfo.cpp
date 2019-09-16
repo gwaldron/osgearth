@@ -68,7 +68,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         TileKey key(lod, tx/2, ty/2, profile);
         GeoExtent e = key.getExtent();
         GeoCircle c = e.computeBoundingGeoCircle();
-        double range = c.getRadius() * mtrf * 2.0;
+        double range = c.getRadius() * mtrf * 2.0 * (1.0/1.405);
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
         _lods[lod]._maxValidTY = INT32_MAX;

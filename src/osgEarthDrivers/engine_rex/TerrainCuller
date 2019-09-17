@@ -56,6 +56,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         LayerExtentVector* _layerExtents;
         bool _isSpy;
         int _numberChildrenCreated;
+        std::vector<PatchLayer*> _patchLayers;
 
     public:
         /** A new terrain culler */

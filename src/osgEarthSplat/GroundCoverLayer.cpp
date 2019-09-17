@@ -28,6 +28,7 @@
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
+#include <osg/Depth>
 #include <osg/Version>
 #include <cstdlib> // getenv
 
@@ -40,6 +41,13 @@ using namespace osgEarth::Splat;
 
 REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
 REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
+
+// The TS/GS implementation uses GL_PATCHES to pass the terrain tile geometry
+// to the tessellation shader and then the geometry shader where it generates
+// billboards. Undef this to use a VS-only implementation (which is slower
+// and still needs some work with the colors, etc.) but could be useful if
+// GS are extremely slow or unavailable on your target platform.
+#define USE_GEOMETRY_SHADER
 
 //........................................................................
 
@@ -182,9 +190,11 @@ GroundCoverLayer::init()
 
     setCullCallback(new ZoneSelector(this));
     
+#ifndef USE_GEOMETRY_SHADER
     // this layer will do its own custom rendering
     _renderer = new Renderer();
     setDrawCallback(_renderer.get());
+#endif
 }
 
 const Status&
@@ -382,20 +392,40 @@ GroundCoverLayer::buildStateSets()
                 // Install the land cover shaders on the state set
                 VirtualProgram* vp = VirtualProgram::getOrCreate(zoneStateSet);
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
-                shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
                 shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
                 // Generate the coverage acceptor shader
+#ifdef USE_GEOMETRY_SHADER
+                shaders.load(vp, shaders.GroundCover_TCS, getReadOptions());
+                shaders.load(vp, shaders.GroundCover_TES, getReadOptions());
+                shaders.load(vp, shaders.GroundCover_GS, getReadOptions());
+
+                osg::Shader* covTest = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
+                covTest->setName(covTest->getName() + "_GEOMETRY");
+                covTest->setType(osg::Shader::GEOMETRY);
+                vp->setShader(covTest);
+
+                osg::Shader* covTest2 = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
+                covTest->setName(covTest->getName() + "_TESSCONTROL");
+                covTest2->setType(osg::Shader::TESSCONTROL);
+                vp->setShader(covTest2);
+
+                osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
+                layerShader->setType(osg::Shader::GEOMETRY);
+                vp->setShader(layerShader.get());
+#else
+                shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
+
                 osg::Shader* covTest = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
                 covTest->setName(covTest->getName() + "_VERTEX");
                 covTest->setType(osg::Shader::VERTEX);
-                vp->setShader(covTest);
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
                 layerShader->setType(osg::Shader::VERTEX);
                 vp->setShader(layerShader.get());
+#endif
 
-                vp->addBindAttribLocation("oe_GroundCover_position", 6);
+                vp->setShader(covTest);
 
                 OE_INFO << LC << "Established zone \"" << zone->getName() << "\" at LOD " << getLOD() << "\n";
 
@@ -436,7 +466,8 @@ GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
         z->get()->resizeGLObjectBuffers(maxSize);
     }
 
-    _renderer->resizeGLObjectBuffers(maxSize);
+    if (_renderer.valid())
+        _renderer->resizeGLObjectBuffers(maxSize);
 
     PatchLayer::resizeGLObjectBuffers(maxSize);
 }
@@ -449,7 +480,8 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
         z->get()->releaseGLObjects(state);
     }
 
-    _renderer->releaseGLObjects(state);
+    if (_renderer.valid())
+        _renderer->releaseGLObjects(state);
 
     PatchLayer::releaseGLObjects(state);
 
@@ -462,22 +494,14 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
 
 //........................................................................
 
+// only used with non-GS implementation
 GroundCoverLayer::Renderer::DrawState::DrawState()
 {
-    const unsigned tileSize = 132u; //96u;
+    const unsigned tileSize = 132u; //93u;
     unsigned numInstances = tileSize*tileSize;
 
     _geom = new osg::Geometry();
     _geom->setDataVariance(osg::Object::STATIC);
-    _geom->setUseVertexBufferObjects(true);
-
-    //osg::VertexBufferObject* vbo = new osg::VertexBufferObject();
-    //vbo->setUsage(GL_STATIC_DRAW);
-
-    // 8 verts to draw 2 quads
-    //osg::Vec3Array* verts = new osg::Vec3Array(8);
-    //verts->setVertexBufferObject(vbo);
-    //_geom->setVertexArray(verts);
 
     static const GLubyte indices[12] = { 0,1,2,1,2,3, 4,5,6,5,6,7 };
     _geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 12, &indices[0], numInstances));
@@ -518,6 +542,22 @@ GroundCoverLayer::Renderer::preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Refer
     // Need to unbind any VAO since we'll be doing straight GL calls
     ri.getState()->unbindVertexArrayObject();
 #endif
+
+    // Testing - need this for glMultiDrawElementsIndirect
+    //osg::PrimitiveSet* de = ds._geom->getPrimitiveSet(0);
+    //osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(ri.getContextID());
+    //ri.getState()->bindElementBufferObject(ebo);
+}
+
+namespace
+{
+    struct DrawElementsIndirectCommand {
+        GLuint  count;
+        GLuint  instanceCount;
+        GLuint  firstIndex;
+        GLuint  baseVertex;
+        GLuint  baseInstance;
+    };
 }
 
 void
@@ -551,8 +591,8 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     // instance positions by interpolating across the tile extents.
     osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(tile._geom->getVertexArray());
 
-    osg::Vec3f LL = verts->front();
-    osg::Vec3f UR = verts->back();
+    const osg::Vec3f& LL = verts->front();
+    const osg::Vec3f& UR = verts->back();
 
     if (LL != ds._LLAppliedValue)
     {

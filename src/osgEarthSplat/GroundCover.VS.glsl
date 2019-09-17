@@ -6,9 +6,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 
 uniform vec2 oe_GroundCover_numInstances;
-uniform vec4 oe_GroundCover_extents;
 uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
-//uniform vec3 oe_GroundCover_LLNormal, oe_GroundCover_URNormal;
 
 // Noise texture:
 uniform sampler2D oe_GroundCover_noiseTex;
@@ -48,7 +46,6 @@ void oe_GroundCover_VS_MODEL(inout vec4 vertex_model)
 
     vertex_model.xyz = mix(oe_GroundCover_LL, oe_GroundCover_UR, vec3(tileUV.xy, z));
 
-    //vp_Normal = normalize(mix(oe_GroundCover_LLNormal, oe_GroundCover_URNormal, vec3(tileUV.xy, z)));
     vp_Normal = vec3(0,0,1);
 
     vp_Color = vec4(1);
@@ -233,7 +230,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     float height = billboard.height * falloff * sizeScale;
 
     int which = gl_VertexID & 7; // mod8
-
 
 #ifdef OE_IS_SHADOW_CAMERA
 

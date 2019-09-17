@@ -239,18 +239,21 @@ TerrainCuller::apply(TileNode& node)
             surface->computeLocalToWorldMatrix(*matrix,this);
             _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
 
-            // Add the draw command:
-            for(std::vector<PatchLayer*>::iterator i = patchLayers.begin();
-                i != patchLayers.end();
-                ++i)
+            if (!_cv->isCulled(surface->getAlignedBoundingBox()))
             {
-                PatchLayer* layer = *i;
-
-                DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
-                if (cmd)
+                // Add the draw command:
+                for(std::vector<PatchLayer*>::iterator i = patchLayers.begin();
+                    i != patchLayers.end();
+                    ++i)
                 {
-                    cmd->_drawPatch = true;
-                    cmd->_drawCallback = layer->getDrawCallback();
+                    PatchLayer* layer = *i;
+
+                    DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
+                    if (cmd)
+                    {
+                        cmd->_drawPatch = true;
+                        cmd->_drawCallback = layer->getDrawCallback();
+                    }
                 }
             }
 

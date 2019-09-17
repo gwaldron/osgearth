@@ -207,12 +207,8 @@ TerrainCuller::apply(TileNode& node)
         const RenderBindings& bindings = _context->getRenderBindings();
         TileRenderModel& renderModel = _currentTileNode->renderModel();
 
-        bool pushedMatrix = false;
-
         // Render patch layers if applicable.
-        // A patch layer is one rendered using GL_PATCHES.
-        std::vector<PatchLayer*> patchLayers;
-        patchLayers.reserve(_terrain.patchLayers().size());
+        _patchLayers.clear();
 
         for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
         {
@@ -227,10 +223,10 @@ TerrainCuller::apply(TileNode& node)
             if (layer->getMaxVisibleRange() < range)
                 continue;
 
-            patchLayers.push_back(layer);
+            _patchLayers.push_back(layer);
         }
 
-        if (!patchLayers.empty())
+        if (!_patchLayers.empty())
         {
             SurfaceNode* surface = node.getSurfaceNode();
                     
@@ -239,18 +235,21 @@ TerrainCuller::apply(TileNode& node)
             surface->computeLocalToWorldMatrix(*matrix,this);
             _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
 
-            // Add the draw command:
-            for(std::vector<PatchLayer*>::iterator i = patchLayers.begin();
-                i != patchLayers.end();
-                ++i)
+            if (!_cv->isCulled(surface->getAlignedBoundingBox()))
             {
-                PatchLayer* layer = *i;
-
-                DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
-                if (cmd)
+                // Add the draw command:
+                for(std::vector<PatchLayer*>::iterator i = _patchLayers.begin();
+                    i != _patchLayers.end();
+                    ++i)
                 {
-                    cmd->_drawPatch = true;
-                    cmd->_drawCallback = layer->getDrawCallback();
+                    PatchLayer* layer = *i;
+
+                    DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
+                    if (cmd)
+                    {
+                        cmd->_drawPatch = true;
+                        cmd->_drawCallback = layer->getDrawCallback();
+                    }
                 }
             }
 

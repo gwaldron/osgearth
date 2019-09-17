@@ -129,6 +129,56 @@ namespace osgEarth { namespace Splat
             void operator()(osg::Node*, osg::NodeVisitor*) const;
         };
         friend struct ZoneSelector;
+
+        // Custom GL renderer for ground cover
+        struct Renderer : public PatchLayer::DrawCallback
+        {
+            Renderer();
+
+            // Tracks a GL state to minimize state changes
+            struct DrawState
+            {
+                DrawState();
+
+                osg::ref_ptr<osg::Geometry> _geom;
+
+                osg::ref_ptr<osg::ElementBufferObject> _ebo;
+
+                const osg::Program::PerContextProgram* _pcp;
+
+                unsigned _tilesDrawnThisFrame;
+
+                GLint _numInstancesUL;
+                int _numInstances1D;
+
+                GLint _LLUL;
+                osg::Vec3f _LLAppliedValue;
+
+                GLint _URUL;
+                osg::Vec3f _URAppliedValue;
+
+                GLint _LLNormalUL;
+                GLint _URNormalUL;
+            };
+
+            // one per graphics context
+            osg::buffered_object<DrawState> _drawStateBuffer;
+
+            // uniform IDs
+            unsigned _numInstancesUName;
+            unsigned _LLUName, _URUName;
+            unsigned _LLNormalUName, _URNormalUName;
+
+            // DrawCallback API
+            void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data);
+            void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data);
+            void postDraw(osg::RenderInfo& ri, osg::Referenced* data);
+
+            void resizeGLObjectBuffers(unsigned maxSize);
+            void releaseGLObjects(osg::State* state) const;
+        };
+
+        osg::ref_ptr<Renderer> _renderer;
     };
 
 } } // namespace osgEarth::Splat

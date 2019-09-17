@@ -40,31 +40,31 @@ the feature data.
         
             <selector class="p1">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
+                    <expr><![CDATA[ POP <= 14045470 ]]></expr>
                 </query>
             </selector>
         
             <selector class="p2">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
+                    <expr><![CDATA[ POP > 14045470 and POP <= 43410900 ]]></expr>
                 </query>
             </selector>
             
             <selector class="p3">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
+                    <expr><![CDATA[ POP > 43410900 and POP <= 97228750 ]]></expr>
                 </query>
             </selector>
             
             <selector class="p4">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
+                    <expr><![CDATA[ POP > 97228750 and POP <= 258833000 ]]></expr>
                 </query>
             </selector>
             
             <selector class="p5">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
+                    <expr><![CDATA[ POP > 258833000 ]]></expr>
                 </query>
             </selector>
             

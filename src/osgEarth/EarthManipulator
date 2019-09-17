@@ -507,6 +507,9 @@ namespace osgEarth { namespace Util
             void setThrowDecayRate(double throwDecayRate) { _throwDecayRate = osg::clampBetween(throwDecayRate, 0.0, 1.0); }
             double getThrowDecayRate () const { return _throwDecayRate; }
 
+            void setZoomToMouse(bool value) { _zoomToMouse = value; }
+            bool getZoomToMouse() const { return _zoomToMouse; }
+
         private:
 
             friend class EarthManipulator;
@@ -552,6 +555,8 @@ namespace osgEarth { namespace Util
 
             bool _throwingEnabled;
             double _throwDecayRate;
+
+            bool _zoomToMouse;
         };
 
     public:
@@ -640,7 +645,7 @@ namespace osgEarth { namespace Util
         /**
          * Zoom the camera using deltas (dy only)
          */
-        virtual void zoom( double dx, double dy );
+        virtual void zoom( double dx, double dy, osg::View* view );
 
         /**
          * Drag the earth using deltas
@@ -830,7 +835,7 @@ namespace osgEarth { namespace Util
 
         // "ticks" the resident Task, which allows for multi-frame animation of navigation
         // movements.
-        bool serviceTask();
+        bool serviceTask(osg::View*);
 
         // returns the Euler Angles baked into _rotation, the local frame's rotation quaternion.
         void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch) const;

@@ -49,23 +49,31 @@ namespace osgEarth
             osg::ref_ptr<osg::Texture> _texture;
         };
 
+        class GeometryArrayProvider
+        {
+        public:
+            virtual osg::Array* getVertexArray() = 0;
+            virtual osg::Array* getNormalArray() = 0;
+            virtual osg::Array* getTexCoordArray() = 0;
+        };
+
         struct DrawContext
         {
-            const TileKey* key;
-            float          range;
-            osg::Texture*  colorTexture;
-            osg::Texture*  elevationTexture;
-            osg::Texture*  normalTexture;
-            osg::Texture*  coverageTexture;
-            DrawContext() : range(0.0f), colorTexture(0), elevationTexture(0), normalTexture(0), coverageTexture(0) { }
+            const TileKey* _key;
+            float          _range;
+            GeometryArrayProvider* _geom;
+            DrawContext() : _range(0.0f), _geom(NULL) { }
         };
 
         /**
          * Callback that the terrain engine will call for custom tile rendering.
          */
-        struct DrawCallback : public osg::Referenced
+        class DrawCallback : public osg::Referenced
         {
+        public:
+            virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
             virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
+            virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
         };
 
         /**

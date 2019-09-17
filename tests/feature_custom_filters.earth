@@ -16,9 +16,9 @@ Shows how you can use a custom FeatureFilter, even one that is defined in an Ear
     <OGRFeatures name="city-data">
         <url>../data/world.shp</url>
         
-        <!--Define a ChangeAttributeFilter, which is defined in the osgearth_featurefilter example.  This will change the cntry_name of all countries to osgEarthLand.-->
+        <!--Define a ChangeAttributeFilter, which is defined in the osgearth_featurefilter example.  This will change the name of all countries to osgEarthLand.-->
         <filters>
-            <change_attribute key="cntry_name" value="osgEarthLand"/>
+            <change_attribute key="name" value="osgEarthLand"/>
         </filters>
     </OGRFeatures>
     
@@ -27,8 +27,8 @@ Shows how you can use a custom FeatureFilter, even one that is defined in an Ear
             <style type="text/css">              
                 cities {
                    text-provider:  annotation;
-                   text-content:   [cntry_name];
-                   text-priority:  [pop_cntry];
+                   text-content:   [name];
+                   text-priority:  [pop];
                    text-halo:      #3f3f7f;
                    text-align:     center_center;
                    text-declutter: true;

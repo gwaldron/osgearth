@@ -144,6 +144,7 @@ TerrainRenderData::addLayerDrawable(const Layer* layer)
         drawable->_layer = layer;
         drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
         drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
+        drawable->_patchLayer = dynamic_cast<const PatchLayer*>(layer);
         drawable->setStateSet(layer->getStateSet());
         drawable->_renderType = layer->getRenderType();
     }

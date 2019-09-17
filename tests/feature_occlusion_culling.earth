@@ -15,8 +15,8 @@ Demonstrates occlusion culling on feature labels.
         <styles>
             <style type="text/css">              
                 labels {                            
-                   text-content:        [cntry_name];
-                   text-priority:       [pop_cntry];
+                   text-content:        [name];
+                   text-priority:       [pop];
                    text-halo:           #3f3f7f;
                    text-align:          center_center;
                    text-declutter:      true;

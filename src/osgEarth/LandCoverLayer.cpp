@@ -208,11 +208,6 @@ LandCoverLayer::open()
         setProfile(profile);
     }
 
-    // TODO: allow the layer to provide "hints" to the map
-    // Increase the L2 cache size since the parent LandCoverLayer is going to be
-    // using meta-tiling to create mosaics for warping
-    //setDefaultL2CacheSize(64);
-
     // If there are no coverage layers already set by the user,
     // attempt to instaniate them from the serialized options (i.e. earth file).
     if (_coverageLayers.empty())
@@ -250,45 +245,18 @@ LandCoverLayer::open()
                 return setStatus(coverageStatus);
             }
 
-            _codemaps.resize(_codemaps.size()+1);
-
-            OE_INFO << LC << "...opened coverage \"" << coverage->getName() << "\"" << std::endl;
-        
-            // Integrate the coverage's data extents into this layer:
-            ImageLayer* imageLayer = coverage->getImageLayer();
-            if (imageLayer)
+            if (coverage->getImageLayer())
             {
-                const DataExtentList& de = imageLayer->getDataExtents();
-                for (DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
-                {
-                    if (!profile || dei->getSRS()->isHorizEquivalentTo(profile->getSRS()))
-                    {
-                        combinedExtents.push_back(*dei);
-                    }
-                    else
-                    {
-                        // Transform the data extents to the layer profile
-                        GeoExtent ep = profile->clampAndTransformExtent(*dei);
-                        if (ep.isValid())
-                        {
-                            DataExtent de(ep);
-                            if (dei->minLevel().isSet())
-                                de.minLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->minLevel().get());
-                            if (dei->maxLevel().isSet())
-                                de.maxLevel() = profile->getEquivalentLOD(imageLayer->getProfile(), dei->maxLevel().get());
-                            combinedExtents.push_back(de);
-                        }
-                    }
-                }
+                coverage->getImageLayer()->setUpL2Cache(64u);
             }
+
+            _codemaps.resize(_codemaps.size()+1);
         }
     }
 
-    // ONLY set the data extents if every component coverage was able to report.
-    if (combinedExtents.size() == _coverageLayers.size())
-    {
-        dataExtents().swap(combinedExtents);
-    }
+    // Normally we would collect and store the layer's DataExtents here.
+    // Since this is possibly a composited layer with warping, we just
+    // let it default so we can oversample the data with warping.
 
     return ImageLayer::open();
 }

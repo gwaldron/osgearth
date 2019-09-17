@@ -150,12 +150,16 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     varDefs.insert( "vec4 vp_Vertex" );
 
     // parse the vp_varyings (which were injected by the ShaderLoader)
+    // We actually only care about the in's. Because any varying that 
+    // doesn't have an "in" somewhere in the shader list is not actually
+    // being used as a varying, in which case we don't need it in the
+    // interface block.
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
         osg::Shader* shader = s->data()._shader->getNominalShader();
         if ( shader )
         {
-            ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);
+            ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying_in", varDefs);
         }
     }
 

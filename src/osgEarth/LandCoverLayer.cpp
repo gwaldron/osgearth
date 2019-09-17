@@ -208,11 +208,6 @@ LandCoverLayer::open()
         setProfile(profile);
     }
 
-    // TODO: allow the layer to provide "hints" to the map
-    // Increase the L2 cache size since the parent LandCoverLayer is going to be
-    // using meta-tiling to create mosaics for warping
-    //setDefaultL2CacheSize(64);
-
     // If there are no coverage layers already set by the user,
     // attempt to instaniate them from the serialized options (i.e. earth file).
     if (_coverageLayers.empty())
@@ -249,6 +244,13 @@ LandCoverLayer::open()
                 OE_WARN << LC << "One of the coverage layers failed to open; aborting" << std::endl;
                 return setStatus(coverageStatus);
             }
+
+            if (coverage->getImageLayer())
+            {
+                coverage->getImageLayer()->setUpL2Cache(64u);
+            }
+
+            _codemaps.resize(_codemaps.size()+1);
         }
     }
 

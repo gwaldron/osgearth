@@ -48,15 +48,12 @@ namespace
 
             if ( rec.valid() )
             {
-                //OE_INFO << LC << "hits: " << _lru.getStats()._hitRatio*100.0f << "%" << std::endl;
-
                 return ReadResult( 
                    osg::clone(rec.value().first.get(), osg::CopyOp::DEEP_COPY_ALL),
                    rec.value().second );
             }
             else
             {
-                //OE_INFO << LC << "hits: " << _lru.getStats()._hitRatio*100.0f << "%" << std::endl;
                 return ReadResult();
             }
         }

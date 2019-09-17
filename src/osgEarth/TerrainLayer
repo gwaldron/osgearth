@@ -277,6 +277,9 @@ namespace osgEarth
          */
         CacheSettings* getCacheSettings() const;
 
+        //! Sets up a small data cache if necessary.
+        void setUpL2Cache(unsigned minSize =0u);
+
     protected: // Layer
 
         // CTOR initialization; call from subclass.
@@ -358,9 +361,6 @@ namespace osgEarth
 
         // Figure out the cache settings for this layer.
         void establishCacheSettings();
-
-        // Sets up a small data cache if necessary.
-        void setUpL2Cache(unsigned minSize =0u);
 
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */

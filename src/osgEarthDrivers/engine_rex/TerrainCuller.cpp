@@ -207,12 +207,8 @@ TerrainCuller::apply(TileNode& node)
         const RenderBindings& bindings = _context->getRenderBindings();
         TileRenderModel& renderModel = _currentTileNode->renderModel();
 
-        bool pushedMatrix = false;
-
         // Render patch layers if applicable.
-        // A patch layer is one rendered using GL_PATCHES.
-        std::vector<PatchLayer*> patchLayers;
-        patchLayers.reserve(_terrain.patchLayers().size());
+        _patchLayers.clear();
 
         for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
         {
@@ -227,10 +223,10 @@ TerrainCuller::apply(TileNode& node)
             if (layer->getMaxVisibleRange() < range)
                 continue;
 
-            patchLayers.push_back(layer);
+            _patchLayers.push_back(layer);
         }
 
-        if (!patchLayers.empty())
+        if (!_patchLayers.empty())
         {
             SurfaceNode* surface = node.getSurfaceNode();
                     
@@ -242,8 +238,8 @@ TerrainCuller::apply(TileNode& node)
             if (!_cv->isCulled(surface->getAlignedBoundingBox()))
             {
                 // Add the draw command:
-                for(std::vector<PatchLayer*>::iterator i = patchLayers.begin();
-                    i != patchLayers.end();
+                for(std::vector<PatchLayer*>::iterator i = _patchLayers.begin();
+                    i != _patchLayers.end();
                     ++i)
                 {
                     PatchLayer* layer = *i;

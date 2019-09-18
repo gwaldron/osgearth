@@ -47,8 +47,8 @@ BillboardSymbol::getConfig() const
     conf.key() = "billboard";
     conf.set( "width", _width );
     conf.set( "height", _height );
+    conf.set( "size_variation", _sizeVariation );
     conf.set( "top_url", _topURL );
-    //conf.setNonSerializable( "BillboardSymbol::image", _image.get() );
     return conf;
 }
 
@@ -57,8 +57,8 @@ BillboardSymbol::mergeConfig( const Config& conf )
 {
     conf.get( "width", _width );
     conf.get( "height", _height );
+    conf.get( "size_variation", _sizeVariation );
     conf.get( "top_url", _topURL );
-    //_image = conf.getNonSerializable<osg::Image>( "BillboardSymbol::image" );
 }
 
 InstanceResource*
@@ -83,6 +83,9 @@ BillboardSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "billboard-height") ) {
         style.getOrCreate<BillboardSymbol>()->height() = as<float>(c.value(), 10.0f);
+    }
+    else if ( match(c.key(), "billboard-size-variation") ) {
+        style.getOrCreate<BillboardSymbol>()->sizeVariation() = as<float>(c.value(), 0.0f);
     }
 }
 

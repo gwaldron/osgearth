@@ -101,7 +101,9 @@ struct ClickToDecal : public osgGA::GUIEventHandler
             mapPoint.fromWorld(_app._mapNode->getMapSRS(), world);
 
             double t = aa.asView()->getFrameStamp()->getReferenceTime();
-            t = 0.1 * (t - (long)t);
+            t = 200.0 + 100.0 * (t - (long)t);
+            
+            mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
 
             GeoExtent extent(
                 mapPoint.getSRS(),
@@ -111,8 +113,6 @@ struct ClickToDecal : public osgGA::GUIEventHandler
                 mapPoint.y()+t);
 
             _app.addDecal(extent);
-
-            OE_INFO << "ADDING DECAL... " << extent.toString() << std::endl;
 
             return true;
         }

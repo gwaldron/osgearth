@@ -33,6 +33,10 @@ REGISTER_OSGEARTH_LAYER(decal, DecalLayer);
 
 namespace
 {
+    // Shader for the rasterizer.
+    // Encodes the delta of the alpha channel in X and Y so we can use
+    // it to permute normals in the final output.
+
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
         "out vec2 texcoords; \n"
@@ -48,8 +52,8 @@ namespace
         "uniform sampler2D tex; \n"
         "void main() { \n"
         "    output = texture(tex, texcoords); \n"
-        "    output.x = texture(tex, texcoords + dFdx(texcoords)).a; \n"
-        "    output.y = texture(tex, texcoords + dFdy(texcoords)).a; \n"
+        "    output.x = texture(tex, texcoords + vec2(1.0/255.0, 0)).a; \n"
+        "    output.y = texture(tex, texcoords + vec2(0, 1.0/255.0)).a; \n"
         "} \n";
 }
 
@@ -75,11 +79,13 @@ DecalLayer::init()
 {
     ImageLayer::init();
 
+    // This layer does not use a TileSource.
     setTileSourceExpected(false);
 
+    // This layer implements the createTexture() function.
     setUseCreateTexture();
 
-    // Generate Mercator tiles by default.
+    // Set the layer profile.
     setProfile(Profile::create("global-geodetic"));
 
     if (getName().empty())
@@ -87,7 +93,6 @@ DecalLayer::init()
 
     // Create a rasterizer for rendering nodes to images.
     _rasterizer = new TileRasterizer();
-    //_rasterizer->setClearColor(osg::Vec4f(0.5f, 0.5f, 0.0f, 0.0f));
 
     // Configure a base stateset for the rasterizer:
     osg::StateSet* rasterizerSS = _rasterizer->getOrCreateStateSet();
@@ -98,7 +103,10 @@ DecalLayer::init()
     program->addShader(new osg::Shader(osg::Shader::FRAGMENT, fs));
     rasterizerSS->setAttribute(program);
 
-#if 0 // blending is great for textures, bad for elevation deltas!!
+    // Texture binding
+    //rasterizerSS->addUniform(new osg::Uniform("tex", 0));
+
+#if 1 // blending is great for textures, bad for elevation deltas!!
     // Use normal RGB blending:
     osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     rasterizerSS->setAttributeAndModes(blendFunc);
@@ -166,7 +174,7 @@ DecalLayer::resizeGLObjectBuffers(unsigned maxSize)
 void
 DecalLayer::updateTexture(const TileKey& key, osg::Texture2D* texture) const
 {
-    // INTERNAL function -- assume mutex is locked.
+    // INTERNAL function -- assumes mutex is locked.
 
     GeoExtent outputExtent;
     osg::ref_ptr<osg::Group> decalGroup = new osg::Group();
@@ -179,7 +187,6 @@ DecalLayer::updateTexture(const TileKey& key, osg::Texture2D* texture) const
         const SpatialReference* keySRS = outputExtent.getSRS();
         osg::Vec3d pos = outputExtent.getCentroid();
         osg::ref_ptr<const SpatialReference> srs = keySRS->createTangentPlaneSRS(pos);
-        //srs = keySRS->createEquirectangularSRS();
         outputExtent = outputExtent.transform(srs.get());
 
         for(std::vector<Decal>::const_iterator decal = _decals.begin();
@@ -203,7 +210,9 @@ DecalLayer::updateTexture(const TileKey& key, osg::Texture2D* texture) const
 
     if (decalGroup->getNumChildren() > 0)
     {
-        // Setting a size indicates that this texture is ready:
+        // Setting a size indicates that this texture is ready. We have to
+        // dirty the underlying texture object to regenerate the texture.
+        // This sometimes causes flashing; don't know why
         if (texture->getTextureWidth() != getTileSize())
         {
             texture->setTextureSize(getTileSize(), getTileSize());
@@ -212,8 +221,8 @@ DecalLayer::updateTexture(const TileKey& key, osg::Texture2D* texture) const
         }
     }
 
-    // Schedule the rasterization. We must rasterize each tile even if
-    // the decal Group is empty, to get an empty texture.
+    // Schedule the rasterization. We must rasterize each tile
+    // even if the decal Group is empty (to generate an empty texture)
     _rasterizer->push(decalGroup.get(), texture, outputExtent);
 }
 
@@ -242,26 +251,32 @@ DecalLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
         }
         else
         {
-            // THe placeholder is necessary because otherwise you can see
+            // The placeholder is necessary because otherwise you can see
             // "junk" data on the terrain while the tile is queued for
             // rasterization.
+            // Possible alternate approach: Have the terrain engine detect the
+            // fact that the texture is not ready for render and inject a
+            // placeholder in its place? This might also help with the flashing?
             texture = new osg::Texture2D(_placeholder.get());
             texture->setDataVariance(osg::Object::DYNAMIC);
+
             // TODO: Don't set the size until we actually render to a texture...?
-            // NOTE: Doing this causes the visual update to be weird.
+            // NOTE: Doing this causes the visual update to be weird (flashing)
             // NOTE: Maybe don't do this.
             texture->setTextureSize(1, 1);
+
+            // review. See if we can use a tighter format
             texture->setSourceFormat(GL_RGBA);
             texture->setSourceType(GL_UNSIGNED_BYTE);
             texture->setInternalFormat(GL_RGBA8);
+
             texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR ); // review this.
             texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
             texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
             texture->setResizeNonPowerOfTwoHint(false);
             texture->setMaxAnisotropy(1.0f);
             texture->setUnRefImageDataAfterApply(false);
-
 
             _tiles[key] = texture;
         }
@@ -294,6 +309,7 @@ DecalLayer::addDecal(const GeoExtent& extent, const osg::Image* image)
     }
 }
 
+// Builds the mesh that the rasterizer will render to the tile texture
 osg::Node*
 DecalLayer::buildMesh(const GeoExtent& extent, const osg::Image* image) const
 {
@@ -312,15 +328,8 @@ DecalLayer::buildMesh(const GeoExtent& extent, const osg::Image* image) const
     (*colors)[0].set(1,1,1,1);
     geom->setColorArray(colors, osg::Array::BIND_OVERALL);
 
-    osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_TRIANGLES);
-    de->reserve(6);
-    de->addElement(0);
-    de->addElement(1);
-    de->addElement(2);    
-    de->addElement(2);
-    de->addElement(3);
-    de->addElement(0);
-    geom->addPrimitiveSet(de);
+    static const GLubyte indices[6] = {0,1,2,2,3,0};
+    geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 6, indices));
 
     osg::Vec2Array* texcoords = new osg::Vec2Array(4);
     (*texcoords)[0].set(0,0);

@@ -1,36 +1,27 @@
-<!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
--->
-<map name="ReadyMap.org">
+<Map name="ReadyMap.org">
     
-    <TMSImage name="ReadyMap 15m Imagery">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </TMSImage>
+    <options>
+        <terrain skirt_ratio="0.05"/>
+    </options>
+    
+    <ArcGISServerImage name="World Imagery">
+        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
+		<nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </ArcGISServerImage>
 
     <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </TMSElevation>
-
-    <DebugImage/>
     
+    <!-- TODO: Should work with visible="false" but does not -->
     <Decal name="Damage" 
-           shared="true" 
-           min_level="11" 
+           visible="true"
+           opacity="0.0"
+           min_level="14"
+           shared="true"
            shared_sampler="decal_tex" 
            shared_matrix="decal_mat"/>
-
-    <xi:include href="viewpoints.xml"/>
     
     <terrainshader>
         <code>
@@ -44,17 +35,43 @@ http://readymap.org
             
             vec4 oe_layer_tilec;
             vec3 vp_Normal;
+            out vec2 decal_coords;
             
             void destroy_vs(inout vec4 vertex)
             {
-                const float maxdrop = -350.0;
+                // maximum distance to move the vertex:
+                const float maxdrop = -20.0;
                 vec3 up = vp_Normal;
-                vec2 uv = (decal_mat * oe_layer_tilec).st;
-                vec4 texel = texture(decal_tex, uv);
+                decal_coords = (decal_mat * oe_layer_tilec).st;
+                vec4 texel = texture(decal_tex, decal_coords);
                 float damage = texel.a;
                 vertex.xyz += up * maxdrop * damage;
-            }            
+            }
+            
+            [break]
+            
+            #version 330
+            #pragma vp_entryPoint destroy_fs
+            #pragma vp_location fragment_coloring            
+            
+            uniform sampler2D decal_tex;
+            in vec2 decal_coords;
+            
+            void destroy_fs(inout vec4 color)
+            {
+                vec4 texel = texture(decal_tex, decal_coords);
+                color.rgb = mix(color.rgb, vec3(0,0,0), clamp(texel.a,0,0.95));
+            }
           ]]>
         </code>
     </terrainshader>
-</map>
+    
+    <Viewpoints time="0">
+        <viewpoint name="Area 51">
+            <lat>37.247145</lat>
+            <long>-115.807340</long>
+            <pitch>-45</pitch>
+            <range>10000</range>
+        </viewpoint>
+    </Viewpoints>
+</Map>

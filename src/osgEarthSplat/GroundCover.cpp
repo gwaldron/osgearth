@@ -216,6 +216,7 @@ GroundCover::createShader() const
         "    int atlasIndexTop; \n"
         "    float width; \n"
         "    float height; \n"
+        "    float sizeVariation; \n"
         "}; \n"
         "const oe_GroundCover_Billboard oe_GroundCover_billboards[%NUM_BILLBOARDS%] = oe_GroundCover_Billboard[%NUM_BILLBOARDS%](\n";
     
@@ -290,10 +291,11 @@ GroundCover::createShader() const
                     << atlasSideIndex << ", " << atlasTopIndex
                     << ", float(" << bb->_width << ")"
                     << ", float(" << bb->_height << ")"
+                    << ", float(" << bb->_sizeVariation << ")"
                     << ")";
 
-                maxWidth = osg::maximum(maxWidth, bb->_width);
-                maxHeight = osg::maximum(maxHeight, bb->_height);
+                maxWidth = osg::maximum(maxWidth, bb->_width + (bb->_width*bb->_sizeVariation));
+                maxHeight = osg::maximum(maxHeight, bb->_height + (bb->_height*bb->_sizeVariation));
 
                 objectsBuf 
                     << (numBillboards>0?",\n":"")
@@ -632,7 +634,8 @@ GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo
             {
                 getObjects().push_back( new GroundCoverBillboard(
                     sideImage.get(), topImage.get(),
-                    bs->width().get(), bs->height().get()) );
+                    bs->width().get(), bs->height().get(),
+                    bs->sizeVariation().get() ));
             }
         } 
     }

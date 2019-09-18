@@ -158,8 +158,8 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT GroundCoverBillboard : public GroundCoverObject
     {
     public:
-        GroundCoverBillboard(osg::Image* sideImage, osg::Image* topImage, float width, float height)
-            : _sideImage(sideImage), _topImage(topImage), _width(width), _height(height) { }
+        GroundCoverBillboard(osg::Image* sideImage, osg::Image* topImage, float width, float height, float sizeVariation)
+            : _sideImage(sideImage), _topImage(topImage), _width(width), _height(height), _sizeVariation(sizeVariation) { }
 
         virtual Type getType() const { return TYPE_BILLBOARD; }
 
@@ -167,6 +167,7 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Image> _topImage;
         float                    _width;
         float                    _height;
+        float                    _sizeVariation;
     };
 
     /**

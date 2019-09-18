@@ -70,20 +70,12 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 uniform float osg_FrameTime;                  // Frame time (seconds) used for wind animation
 
-uniform float oe_GroundCover_width;           // width of each billboard
-uniform float oe_GroundCover_height;          // height of each billboard
 uniform float oe_GroundCover_ao;              // fake ambient occlusion of ground verts (0=full)
-
 uniform float oe_GroundCover_fill;            // percentage of points that make it through, based on noise function
 uniform float oe_GroundCover_windFactor;      // wind blowing the foliage
 uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
-
 uniform float oe_GroundCover_contrast;
 uniform float oe_GroundCover_brightness;
-
-uniform sampler2D oe_tile_elevationTex;
-uniform mat4      oe_tile_elevationTexMatrix;
-uniform float     oe_tile_elevationSize;
 
 // different noise texture channels:
 #define NOISE_SMOOTH   0
@@ -126,6 +118,7 @@ struct oe_GroundCover_Billboard {
     int atlasIndexTop;
     float width;
     float height;
+    float sizeVariation;
 };
 void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
 
@@ -203,9 +196,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     oe_GroundCover_Biome biome;
     oe_GroundCover_getBiome(biomeIndex, biome);
 
-    // a pseudo-random scale factor to the width and height of a billboard
-    float sizeScale = abs(1.0 + noise[NOISE_RANDOM_2]);
-
     // select a billboard seemingly at random. Need to scale n to account for the fill limit first though.
     int objectIndex = biome.firstObjectIndex + int(floor(noise[NOISE_RANDOM] * float(biome.numObjects)));
     objectIndex = min(objectIndex, biome.firstObjectIndex + biome.numObjects - 1);
@@ -224,10 +214,13 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
 
-    // billboard width, which shrinks into the distance
-    float width = billboard.width * falloff * sizeScale;
+    // a pseudo-random scale factor to the width and height of a billboard
+    float sizeScale = billboard.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
 
-    float height = billboard.height * falloff * sizeScale;
+    float width = (billboard.width + billboard.width*sizeScale) * falloff;
+
+    float height = (billboard.height + billboard.height*sizeScale) * falloff;
+
 
     int which = gl_VertexID & 7; // mod8
 

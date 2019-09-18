@@ -59,7 +59,11 @@ namespace osgEarth
         /** Height of the billboard image in meters */
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
-        
+
+        //! Percentage by which to vary width and height [0..1] default = 0
+        optional<float>& sizeVariation() { return _sizeVariation; }
+        const optional<float>& sizeVariation() const { return _sizeVariation; }
+
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -84,6 +88,7 @@ namespace osgEarth
         optional<StringExpression> _topURL;
         optional<float> _width;
         optional<float> _height;
+        optional<float> _sizeVariation;
         osg::ref_ptr<osg::Image> _sideImage;
         osg::ref_ptr<osg::Image> _topImage;
     };

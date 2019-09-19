@@ -197,7 +197,7 @@ namespace osgEarth { namespace QtGui
 
 
 //---------------------------------------------------------------------------
-const QString LayerWidgetMimeData::MIME_TYPE = tr("application/LayerWidgetMimeData");
+const QString LayerWidgetMimeData::MIME_TYPE = QT_TR_NOOP("application/LayerWidgetMimeData");
 
 
 //---------------------------------------------------------------------------

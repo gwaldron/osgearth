@@ -48,6 +48,7 @@ BillboardSymbol::getConfig() const
     conf.set( "width", _width );
     conf.set( "height", _height );
     conf.set( "size_variation", _sizeVariation );
+    conf.set( "selection_weight", _selectionWeight );
     conf.set( "top_url", _topURL );
     return conf;
 }
@@ -58,6 +59,7 @@ BillboardSymbol::mergeConfig( const Config& conf )
     conf.get( "width", _width );
     conf.get( "height", _height );
     conf.get( "size_variation", _sizeVariation );
+    conf.get( "selection_weight", _selectionWeight );
     conf.get( "top_url", _topURL );
 }
 
@@ -86,6 +88,9 @@ BillboardSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "billboard-size-variation") ) {
         style.getOrCreate<BillboardSymbol>()->sizeVariation() = as<float>(c.value(), 0.0f);
+    }
+    else if ( match(c.key(), "billboard-selection-weight") ) {
+        style.getOrCreate<BillboardSymbol>()->selectionWeight() = as<unsigned>(c.value(), 1u);
     }
 }
 

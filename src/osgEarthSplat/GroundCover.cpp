@@ -235,6 +235,8 @@ GroundCover::createShader() const
 
     int objectIndex = 0;
     int nextAtlasIndex = 0;
+    unsigned totalNumObjectsInserted = 0;
+
     for(int i=0; i<getBiomes().size(); ++i)
     {
         const GroundCoverBiome* biome = getBiomes()[i].get();
@@ -242,6 +244,10 @@ GroundCover::createShader() const
         float maxWidth = 0.0f, maxHeight = 0.0f;
         
         int firstObjectIndexOfBiome = objectIndex;
+
+        // This will be larger than biome->getObjects().size() IF any of the
+        // objects have a weight greater than 1.
+        unsigned numObjectsInsertedInBiome = 0;
 
         for(int j=0; j<biome->getObjects().size(); ++j)
         {
@@ -286,23 +292,36 @@ GroundCover::createShader() const
                 if (numBillboards > 0)
                     billboardsBuf << ", \n";
 
+                const BillboardSymbol* symbol = bb->_symbol.get();
+
                 billboardsBuf
                     << "    oe_GroundCover_Billboard("
                     << atlasSideIndex << ", " << atlasTopIndex
-                    << ", float(" << bb->_width << ")"
-                    << ", float(" << bb->_height << ")"
-                    << ", float(" << bb->_sizeVariation << ")"
+                    << ", float(" << symbol->width().get() << ")"
+                    << ", float(" << symbol->height().get() << ")"
+                    << ", float(" << symbol->sizeVariation().get() << ")"
                     << ")";
 
-                maxWidth = osg::maximum(maxWidth, bb->_width + (bb->_width*bb->_sizeVariation));
-                maxHeight = osg::maximum(maxHeight, bb->_height + (bb->_height*bb->_sizeVariation));
+                maxWidth = osg::maximum(
+                    maxWidth, 
+                    symbol->width().get() + (symbol->width().get()*symbol->sizeVariation().get()));
 
-                objectsBuf 
-                    << (numBillboards>0?",\n":"")
-                    << "   oe_GroundCover_Object("
-                    << (int)object->getType() << ", "
-                    << (int)numBillboards
-                    << ")";
+                maxHeight = osg::maximum(
+                    maxHeight, 
+                    symbol->height().get() + (symbol->height().get()*symbol->sizeVariation().get()));
+
+                // apply the selection weight by adding the object multiple times
+                unsigned weight = osg::maximum(symbol->selectionWeight().get(), 1u);
+                for(unsigned w=0; w<weight; ++w)
+                {
+                    objectsBuf 
+                        << (numObjectsInsertedInBiome>0?",\n":"")
+                        << "   oe_GroundCover_Object("
+                        << (int)object->getType() << ", "
+                        << (int)numBillboards
+                        << ")";
+                    ++numObjectsInsertedInBiome;
+                }
 
                 ++numBillboards;
                 ++objectIndex;
@@ -318,13 +337,15 @@ GroundCover::createShader() const
 
         biomeBuf << "    oe_GroundCover_Biome("
             << firstObjectIndexOfBiome << ", "
-            << biome->getObjects().size() 
+            << numObjectsInsertedInBiome //<< biome->getObjects().size() 
             << ", float(" << options().density().get() << ")"
             << ", float(" << options().fill().get() << ")"
             << ", vec2(float(" << maxWidth << "),float(" << maxHeight*2.0f << ")))";
 
         if ( (i+1) < getBiomes().size() )
             biomeBuf << ",\n";
+
+        totalNumObjectsInserted += numObjectsInsertedInBiome;
     }
 
     biomeBuf
@@ -357,14 +378,14 @@ GroundCover::createShader() const
     replaceIn(billboardsStr, "%NUM_BILLBOARDS%", Stringify()<<numBillboards);
 
     std::string objectsStr = objectsBuf.str();
-    replaceIn(objectsStr, "%NUM_OBJECTS%", Stringify() << getTotalNumObjects());
+    replaceIn(objectsStr, "%NUM_OBJECTS%", Stringify() << totalNumObjectsInserted); //getTotalNumObjects());
     
     osg::ref_ptr<ImageLayer> layer;
 
     osg::Shader* shader = new osg::Shader();
-    shader->setName( "GroundCoverLayer" );
+    shader->setName( "GroundCover lookup tables" );
     shader->setShaderSource( Stringify() 
-        << "#version 330\n" 
+        << "#version " GLSL_VERSION_STR "\n"
         << biomeStr << "\n"
         << objectsStr << "\n"
         << billboardsStr << "\n" 
@@ -632,10 +653,7 @@ GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo
 
             if ( sideImage.valid() )
             {
-                getObjects().push_back( new GroundCoverBillboard(
-                    sideImage.get(), topImage.get(),
-                    bs->width().get(), bs->height().get(),
-                    bs->sizeVariation().get() ));
+                getObjects().push_back( new GroundCoverBillboard(sideImage.get(), topImage.get(), bs) );
             }
         } 
     }

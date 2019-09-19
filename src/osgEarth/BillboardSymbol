@@ -52,11 +52,11 @@ namespace osgEarth
         optional<StringExpression>& topURL() { return _topURL; }
         const optional<StringExpression>& topURL() const { return _topURL; }
 
-        /** Width of the billboard image in meters */
+        //! Width of the billboard image in meters */
         optional<float>& width() { return _width; }
         const optional<float>& width() const { return _width; }
 
-        /** Height of the billboard image in meters */
+        //! Height of the billboard image in meters */
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
 
@@ -64,10 +64,13 @@ namespace osgEarth
         optional<float>& sizeVariation() { return _sizeVariation; }
         const optional<float>& sizeVariation() const { return _sizeVariation; }
 
+        //! Weighting of this symbol versus others in the same group.
+        //! Should be an integer >= 1. Default = 1.
+        optional<unsigned>& selectionWeight() { return _selectionWeight; }
+        const optional<unsigned>& selectionWeight() const { return _selectionWeight; }
         
     public: // non-serialized properties (for programmatic use only)
 
-        /** Explicit model to use for model placement */
         void setSideImage(osg::Image* value) { _sideImage = value; }
         osg::Image* getSideImage() const { return _sideImage.get(); }
 
@@ -89,6 +92,7 @@ namespace osgEarth
         optional<float> _width;
         optional<float> _height;
         optional<float> _sizeVariation;
+        optional<unsigned> _selectionWeight;
         osg::ref_ptr<osg::Image> _sideImage;
         osg::ref_ptr<osg::Image> _topImage;
     };

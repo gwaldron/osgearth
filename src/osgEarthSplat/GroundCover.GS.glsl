@@ -28,17 +28,12 @@ void VP_EmitViewVertex();
 
 uniform float osg_FrameTime;            // Frame time (seconds) used for wind animation
                 
-uniform float oe_GroundCover_width;           // width of each billboard
-uniform float oe_GroundCover_height;          // height of each billboard
 uniform float oe_GroundCover_ao;              // fake ambient occlusion of ground verts (0=full)
 uniform float oe_GroundCover_fill;            // percentage of points that make it through, based on noise function
 uniform float oe_GroundCover_windFactor;      // wind blowing the foliage
 uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
 uniform float oe_GroundCover_contrast;
 uniform float oe_GroundCover_brightness;
-uniform sampler2D oe_tile_elevationTex;
-uniform mat4      oe_tile_elevationTexMatrix;
-uniform float     oe_tile_elevationSize;
 
 // Noise texture:
 uniform sampler2D oe_GroundCover_noiseTex;
@@ -81,6 +76,7 @@ struct oe_GroundCover_Billboard {
     int atlasIndexTop;
     float width;
     float height;
+    float sizeVariation;
 };
 void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
 
@@ -89,7 +85,7 @@ out vec4 vp_Color;
 out vec3 vp_Normal;
 
 float oe_terrain_getElevation(in vec2); // SDK import
-int oe_GroundCover_getBiomeIndex(in vec4); // Generated in code
+int oe_GroundCover_getBiomeIndex(in vec4 coords); // Generated in code
 
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
 uniform sampler2D OE_GROUNDCOVER_MASK_SAMPLER;
@@ -214,14 +210,10 @@ void oe_GroundCover_geom()
 
     // sample the noise texture.
     vec4 noise = texture(oe_GroundCover_noiseTex, tileUV);
-
-    // a pseudo-random scale factor to the width and height of a billboard
-    float sizeScale = abs(1.0 + noise[NOISE_RANDOM_2]);
     
     // Viewpoint culling (needs work)
     vec4 cullPoint = center_view;
-    //vec2 maxWidthHeight = biome.maxWidthHeight * sizeScale;
-    cullPoint.xy -= sign(cullPoint.xy) * min(biome.maxWidthHeight*sizeScale, abs(cullPoint.xy));
+    cullPoint.xy -= sign(cullPoint.xy) * min(biome.maxWidthHeight, abs(cullPoint.xy));
     cullPoint = gl_ProjectionMatrix * cullPoint;
     float absw = abs(cullPoint.w);
     if ( abs(cullPoint.x) > absw || abs(cullPoint.y) > absw )
@@ -250,11 +242,15 @@ void oe_GroundCover_geom()
     oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
 
     // push the falloff closer to the max distance
+    // billboard size shrinks in the distance
     float falloff = 1.0-(nRange*nRange*nRange);
 
-    // billboard size shrinks in the distance
-    float width = billboard.width * falloff * sizeScale;    
-    float height = billboard.height * falloff * sizeScale;
+    // a pseudo-random scale factor to the width and height of a billboard
+    float sizeScale = billboard.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
+
+    float width = (billboard.width + billboard.width*sizeScale) * falloff;
+    
+    float height = (billboard.height + billboard.height*sizeScale) * falloff;
 
 	// compute the billboard corners in view space
     vec4 LL, LR, UL, UR;    

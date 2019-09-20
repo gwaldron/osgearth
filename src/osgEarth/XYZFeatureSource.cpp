@@ -192,8 +192,17 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream" || mimeType == "application/octet-stream")
     {
+#ifdef OSGEARTH_HAVE_MVT
         std::stringstream in(buffer);
         return MVT::readTile(in, key, features);
+#else
+        if (getStatus().isOK())
+        {
+            setStatus(Status::ResourceUnavailable, "osgEarth is not built with MVT/PBF support");
+            OE_WARN << LC << getStatus().message() << std::endl;
+        }
+        return false;
+#endif
     }
     else
     {

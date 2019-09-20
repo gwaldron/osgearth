@@ -33,6 +33,7 @@
 #include <stack>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #undef LC
 #define LC "[GLTFWriter] "
@@ -311,22 +312,38 @@ public:
 
                     _textures.push_back(osgTexture);
 
-                    std::string filename;
-
-                    int fileNameInc = 0;
-                    do
-                    {
-                        std::stringstream ss;
-                        ss << fileNameInc << ".png";
-                        filename = ss.str();
-                        fileNameInc++;
-                    } while (osgDB::fileExists(filename));
-                    
+                 
                     // Flip the image before writing
                     osg::ref_ptr< osg::Image > flipped = new osg::Image(*osgImage.get());
                     flipped->flipVertical();
-                    osgDB::writeImageFile(*flipped.get(), filename);
 
+                    std::string filename;
+
+                    // If the image has a filename try to hash it so we only write out one copy of it.  
+                    if (!osgImage->getFileName().empty())
+                    {
+                        std::string ext = osgDB::getFileExtension(osgImage->getFileName());
+                        filename = Stringify() << std::hex << ::Strings::hashString(osgImage->getFileName()) << "." << ext;                        
+
+                        if (!osgDB::fileExists(filename))
+                        {
+                            osgDB::writeImageFile(*flipped.get(), filename);
+                        }                        
+                    }
+                    else
+                    {
+                        // Otherwise just find a filename that doesn't exist
+                        int fileNameInc = 0;
+                        do
+                        {
+                            std::stringstream ss;
+                            ss << fileNameInc << ".png";
+                            filename = ss.str();
+                            fileNameInc++;
+                        } while (osgDB::fileExists(filename));
+                        osgDB::writeImageFile(*flipped.get(), filename);
+                    }
+                                   
                     // Add the image
                     Image image;
                     image.uri = filename;

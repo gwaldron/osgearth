@@ -111,7 +111,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     if (_patchLayer && _patchLayer->getDrawCallback())
     {
-        _patchLayer->getDrawCallback()->preDraw(ri, layerData);
+        _patchLayer->getDrawCallback()->postDraw(ri, layerData);
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes

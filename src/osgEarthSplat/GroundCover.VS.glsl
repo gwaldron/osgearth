@@ -5,6 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_GroundCover_VS_MODEL
 #pragma vp_location   vertex_model
 
+#pragma import_defines(OE_GROUNDCOVER_USE_INSTANCING)
+
 uniform vec2 oe_GroundCover_numInstances;
 uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
 
@@ -25,11 +27,17 @@ vec4 noise;  // vertex stage global
 
 void oe_GroundCover_VS_MODEL(inout vec4 vertex_model)
 {
+#ifdef OE_GROUNDCOVER_USE_INSTANCING
+    int instanceID = gl_InstanceID;
+#else
+    int instanceID = gl_VertexID / 8;
+#endif
+
     // Instead of using oe_layer_tilec, generate the UV tile coordinates
     // based on the current instance number
     vec2 offset = vec2(
-        float(gl_InstanceID % int(oe_GroundCover_numInstances.x)),
-        float(gl_InstanceID / int(oe_GroundCover_numInstances.y)));
+        float(instanceID % int(oe_GroundCover_numInstances.x)),
+        float(instanceID / int(oe_GroundCover_numInstances.y)));
 
     tileUV = vec4(offset/(oe_GroundCover_numInstances-1), 0, 1);
 

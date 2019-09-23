@@ -140,6 +140,8 @@ namespace osgEarth { namespace Splat
             {
                 DrawState();
 
+                void reset();
+
                 osg::ref_ptr<osg::Geometry> _geom;
 
                 osg::ref_ptr<osg::ElementBufferObject> _ebo;
@@ -165,6 +167,7 @@ namespace osgEarth { namespace Splat
             osg::buffered_object<DrawState> _drawStateBuffer;
 
             // uniform IDs
+            float _density;
             unsigned _numInstancesUName;
             unsigned _LLUName, _URUName;
             unsigned _LLNormalUName, _URNormalUName;

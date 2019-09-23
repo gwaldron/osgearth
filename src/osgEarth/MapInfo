@@ -27,6 +27,11 @@
 namespace osgEarth
 {
     class Map;
+}
+
+namespace osgEarth { namespace Support
+{
+    using namespace osgEarth;
 
     /**
      * A convenience class that combines a general geospatial profile and additional 
@@ -63,13 +68,13 @@ namespace osgEarth
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }
 
         //! Elevation interpolation method used by the map
-        ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
+        RasterInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
 
     private:
         osg::ref_ptr<const Profile> _profile;
         bool _isGeocentric, _isCube;
-        ElevationInterpolation _elevationInterpolation;
+        RasterInterpolation _elevationInterpolation;
     };
-}
+} }
 
 #endif // OSGEARTH_MAP_CALLBACK_H

@@ -35,6 +35,7 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 //----------------------------------------------------------------------------
 
@@ -155,17 +156,17 @@ namespace osgEarth
         else
             return TimeStamp(filetime);
     }
-}
 
-static int CurlProgressCallback(void *clientp,double dltotal,double dlnow,double ultotal,double ulnow)
-{
-    ProgressCallback* callback = (ProgressCallback*)clientp;
-    bool cancelled = false;
-    if (callback)
+    static int CurlProgressCallback(void *clientp,double dltotal,double dlnow,double ultotal,double ulnow)
     {
-        cancelled = callback->isCanceled() || callback->reportProgress(dlnow, dltotal);
+        ProgressCallback* callback = (ProgressCallback*)clientp;
+        bool cancelled = false;
+        if (callback)
+        {
+            cancelled = callback->isCanceled() || callback->reportProgress(dlnow, dltotal);
+        }
+        return cancelled;
     }
-    return cancelled;
 }
 
 /****************************************************************************/

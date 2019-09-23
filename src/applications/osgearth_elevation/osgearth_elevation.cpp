@@ -30,17 +30,16 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Terrain>
 #include <osgEarth/VerticalDatum>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/LatLongFormatter>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/ModelNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
+#include <osgEarth/LatLongFormatter>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/ModelNode>
 #include <iomanip>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Annotation;
 
 static MapNode*       s_mapNode     = 0L;
 static LabelControl*  s_posLabel    = 0L;

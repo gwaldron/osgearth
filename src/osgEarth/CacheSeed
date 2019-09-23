@@ -27,11 +27,12 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/TileVisitor>
 
-
-namespace osgEarth
-{
+namespace osgEarth {
     class Map;
+}
 
+namespace osgEarth { namespace Contrib
+{
     /**
     * A TileHandler that caches tiles for the given layer.
     */
@@ -77,6 +78,6 @@ namespace osgEarth
 
         osg::ref_ptr< TileVisitor > _visitor;
     };
-}
+} }
 
 #endif //OSGEARTH_CACHE_SEED_H

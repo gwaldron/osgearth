@@ -29,7 +29,7 @@
 #include <osgDB/Options>
 #include <map>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * ShaderPolicy encodes general behavior when deciding how to
@@ -147,6 +147,6 @@ namespace osgEarth
         void install(osg::StateSet* ss, float minAlpha) const;
         void uninstall(osg::StateSet* ss) const;
     };
-}
+} }
 
 #endif // OSGEARTH_SHADER_UTILS_H

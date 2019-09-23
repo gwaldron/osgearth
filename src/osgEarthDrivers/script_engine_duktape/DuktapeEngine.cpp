@@ -20,7 +20,7 @@
 #include "JSGeometry"
 #include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/GeometryUtils>
 #include <sstream>
 
 #undef  LC
@@ -32,7 +32,6 @@
 //#define MAXIMUM_ISOLATION
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Drivers::Duktape;
 
 //............................................................................

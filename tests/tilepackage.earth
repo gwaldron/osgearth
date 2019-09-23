@@ -3,10 +3,10 @@ osgEarth Sample - ArcGISTilePackage
 Loads an exploded arcgis tilepackage (tpk) repository
 http://pro.arcgis.com/en/pro-app/help/sharing/overview/tile-package.htm
 -->
-<map name="tilepackage" type="geocentric">
+<Map name="Demo: TilePackage">
 
-    <image name="bluemarble" driver="tilepackage">    
+    <ArcGISTilePackageImage name="bluemarble">
         <url>../data/bluemarble_tilepackage</url>
-    </image>
+    </ArcGISTilePackageImage>
 
-</map>
+</Map>

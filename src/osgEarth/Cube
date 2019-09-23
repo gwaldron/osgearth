@@ -25,8 +25,10 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
 
-namespace osgEarth
+namespace osgEarth { namespace Contrib
 {
+    using namespace osgEarth;
+
     /**
      * Utilities for working with cube and cubeface coordinates.
      */
@@ -204,6 +206,6 @@ namespace osgEarth
         
         GeoExtent transformGcsExtentOnFace( const GeoExtent& gcsExtent, int face ) const;
     };
-}
+} }
 
 #endif // OSGEARTH_CUBE_H

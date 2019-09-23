@@ -49,8 +49,11 @@ osg::MatrixTransform(rhs, op)
 void
 GeoTransform::setTerrain(Terrain* terrain)
 {
-    _terrain = terrain;
-    setPosition(_position);
+    if (terrain)
+    {
+        _terrain = terrain;
+        setPosition(_position);
+    }
 }
 
 void

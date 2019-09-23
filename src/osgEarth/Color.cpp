@@ -1,3 +1,4 @@
+#if 0
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2019 Pelican Mapping
@@ -218,3 +219,4 @@ Color::fromHSL(const osg::Vec4f& hsla)
     *this = hsla;
     hsv2rgb(*this);
 }
+#endif

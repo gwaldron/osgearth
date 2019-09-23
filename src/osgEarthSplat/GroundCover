@@ -23,7 +23,8 @@
 #include <osgEarth/Config>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LandCoverLayer>
-#include <osgEarthSymbology/BillboardSymbol>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/BillboardSymbol>
 #include <osg/BoundingBox>
 #include <osg/Shader>
 
@@ -37,7 +38,6 @@ namespace osgEarth {
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     class Coverage;
     class SplatCoverageLegend;

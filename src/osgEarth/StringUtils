@@ -34,7 +34,7 @@
 #include <set>
 #include <ctype.h>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     extern OSGEARTH_EXPORT const std::string EMPTY_STRING;
 
@@ -313,7 +313,14 @@ namespace osgEarth
         bool     _allowEmpties;
         bool     _trimTokens;
     };
+} }
+
+
+namespace osgEarth
+{
+    namespace Strings = osgEarth::Support;
 }
+
 
 #endif // OSGEARTH_STRING_UTILS_H
 

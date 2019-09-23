@@ -21,23 +21,24 @@
 
 #include "Common"
 #include "MaskGenerator"
-#include "RexTerrainEngineOptions"
+#include <osgEarth/TerrainOptions>
 #include <osgEarth/MapInfo>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/PatchLayer>
 #include <osg/Geometry>
 
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)
 #define SUPPORTS_VAO 1
 #endif
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
     // Adapted from osgTerrain shared geometry class.
-    class /*internal*/ SharedGeometry : public osg::Drawable
+    class /*internal*/ SharedGeometry : public osg::Drawable, public PatchLayer::GeometryArrayProvider
     {
     public:
         SharedGeometry();
@@ -48,7 +49,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void setVertexArray(osg::Array* array) { _vertexArray = array; }
         osg::Array* getVertexArray() { return _vertexArray.get(); }
-        const osg::Array* getVertexArray() const  { return _vertexArray.get(); }
+        const osg::Array* getVertexArray() const { return _vertexArray.get(); }
 
         void setNormalArray(osg::Array* array) { _normalArray = array; }
         osg::Array* getNormalArray() { return _normalArray.get(); }
@@ -139,7 +140,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         /** Construct the geometry pool */
-        GeometryPool(const RexTerrainEngineOptions& options);
+        GeometryPool(const TerrainOptions& options);
 
         /** Sets an object to release unused GL resources */
         void setReleaser(ResourceReleaser* releaser);
@@ -215,8 +216,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         mutable Threading::Mutex       _geometryMapMutex;
         GeometryMap                    _geometryMap;
-        //unsigned                       _tileSize;
-        const RexTerrainEngineOptions& _options; 
+        const TerrainOptions&          _options; 
         osg::ref_ptr<ResourceReleaser> _releaser;
 
         mutable osg::ref_ptr<osg::Vec3Array> _sharedTexCoords;
@@ -237,6 +237,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _debug;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_GEOMETRY_POOL

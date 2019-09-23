@@ -1,51 +1,55 @@
-<map>
-    <options>
-        <terrain driver="rex"/>
-    </options>
-    
+<map>    
     <xi:include href="../data/land_cover_dictionary.xml"/>
+    <xi:include href="readymap_elevation.xml"/>    
+    <xi:include href="viewpoints.xml"/>
 
-    <land_cover name="Land Cover Raster" max_data_level="15">
+    <LandCover name="Land Cover Raster" max_data_level="15">
         <cache_policy usage="no_cache"/>
 
         <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <profile>global-geodetic</profile>
+            <coverage name="ESA GLOBCOVER">
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
                 <warp>0.05</warp>
+                <GDALImage coverage="true">
+                    <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                    <profile>global-geodetic</profile>
+                </GDALImage>
             </coverage>  
 
-            <coverage name="NCLD 2011" driver="gdal">
-                <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+            <coverage name="NCLD 2011">
                 <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
+                <GDALImage coverage="true">
+                    <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+                </GDALImage>
             </coverage>
             
-            <coverage name="US Highways" driver="agglite" min_level="10" max_data_level="15" coverage="true">
+            <coverage name="US Highways" min_level="10" max_data_level="15">
                 <cache_policy usage="no_cache"/>
-                <features name="roads-data" driver="ogr">
-                    <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
-                    <build_spatial_index>true</build_spatial_index>
-                </features>
-                <styles>
-                    <style type="text/css">
-                        default {
-                            stroke-width: 22m;
-                            coverage-value: 1;
-                        }
-                    </style>
-                </styles>                
+                <FeatureImage coverage="true">
+                    <OGRFeatures name="roads-data">
+                        <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
+                        <build_spatial_index>true</build_spatial_index>
+                    </OGRFeatures>
+                    <styles>
+                        <style type="text/css">
+                            default {
+                                stroke-width: 22m;
+                                coverage-value: 1;
+                            }
+                        </style>
+                    </styles>
+                </FeatureImage>
                 <land_cover_mappings>
                     <mapping value="1" class="asphalt"/>
                 </land_cover_mappings>
-            </coverage> 
+            </coverage>
         </coverages>
         
         <noise_lod>12</noise_lod>
 
         <shared_sampler>CLASSMAP</shared_sampler>
         <shared_matrix>CLASSMAP_matrix</shared_matrix>
-    </land_cover>
+    </LandCover>
 
     <terrainshader>
         <code>
@@ -70,16 +74,10 @@
                 else if (c == 9)  v.rgb = ivec3(250, 250, 250); // tundra
                 else if (c == 10) v.rgb = ivec3(128, 128, 128); // urban
                 else if (c == 11) v.rgb = ivec3(48, 48, 48);    // asphalt
-                else v.rgb = ivec3(0,0,0);
+                else v.rgb = ivec3(255,0,0);
                 color.rgb = vec3(float(v.r)/255.0, float(v.g)/255.0, float(v.b)/255.0);
             }
           ]]>
         </code>
     </terrainshader>
-
-    <elevation name="ReadyMap 90m" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    
-    <xi:include href="viewpoints.xml"/>
 </map>

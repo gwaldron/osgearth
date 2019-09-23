@@ -24,7 +24,7 @@
 #include <osgEarth/SpatialReference>
 #include <osg/Matrix>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     struct OSGEARTH_EXPORT ECEF
     {
@@ -75,6 +75,6 @@ namespace osgEarth
             const SpatialReference* outputSRS,
             osg::Matrixd&           out_rotation );
     };
-}
+} }
 
 #endif // OSGEARTH_ECEF_H

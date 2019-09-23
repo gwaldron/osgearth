@@ -26,7 +26,7 @@
 #include <osgEarth/ImageUtils>
 
 using namespace osg;
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[TileDrawable] "

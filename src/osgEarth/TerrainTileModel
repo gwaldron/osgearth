@@ -32,6 +32,8 @@
 
 namespace osgEarth
 {
+    using namespace Support;
+
     /**
      * Data model backing an individual layer of a terrain tile.
      */
@@ -63,7 +65,7 @@ namespace osgEarth
     typedef std::vector< osg::ref_ptr<TerrainTileLayerModel> > TerrainTileLayerModelVector;
 
     /**
-     * Layer based on a color layer (ImageLayer or any other RENDERTYPE_TILE layer)
+     * Layer based on a color layer (ImageLayer or any other RENDERTYPE_TERRAIN_SURFACE layer)
      */
     class OSGEARTH_EXPORT TerrainTileColorLayerModel : public TerrainTileLayerModel
     {

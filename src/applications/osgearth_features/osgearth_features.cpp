@@ -26,22 +26,16 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include <osgEarth/MapNode>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ModelLayer>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/GDAL>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 
-#include <osgEarthSymbology/Style>
-#include <osgEarthFeatures/FeatureModelLayer>
-
-#include <osgEarthDrivers/gdal/GDALOptions>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthDrivers/agglite/AGGLiteOptions>
+#include <osgEarth/Style>
+#include <osgEarth/OGRFeatureSource>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/FeatureImageLayer>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 int usage( const std::string& app )
@@ -82,16 +76,16 @@ int main(int argc, char** argv)
 
     // Start with a basemap imagery layer; we'll be using the GDAL driver
     // to load a local GeoTIFF file:
-    GDALOptions basemap;
-    basemap.url() = "../data/world.tif";
-    map->addLayer( new ImageLayer(ImageLayerOptions("basemap", basemap)));
+    GDALImageLayer* basemap = new GDALImageLayer();
+    basemap->setURL("../data/world.tif");
+    map->addLayer(basemap);
     
-    // Next we add a feature layer. 
-    OGRFeatureOptions featureData;
+    // Next we add a layer to provide the feature data. 
+    OGRFeatureSource* features = new OGRFeatureSource();
+    features->setName("vector-data");
     if ( !useMem )
     {
-        // Configures the feature driver to load the vectors from a shapefile:
-        featureData.url() = "../data/world.shp";
+        features->setURL("../data/world.shp");
     }
     else
     {
@@ -101,14 +95,9 @@ int main(int argc, char** argv)
         line->push_back( osg::Vec3d(-120, 20, 0) );
         line->push_back( osg::Vec3d(-120, 60, 0) );
         line->push_back( osg::Vec3d(-60, 60, 0) );
-        featureData.geometry() = line;
+        features->setGeometry(line);
     }
-
-    // Make a feature source layer and add it to the Map:
-    FeatureSourceLayerOptions ogrLayer;
-    ogrLayer.name() = "vector-data";
-    ogrLayer.featureSource() = featureData;
-    map->addLayer(new FeatureSourceLayer(ogrLayer));
+    map->addLayer(features);
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -140,23 +129,26 @@ int main(int argc, char** argv)
     
     if (useRaster)
     {
-        AGGLiteOptions rasterOptions;
-        rasterOptions.featureOptions() = featureData;
-        rasterOptions.styles() = new StyleSheet();
-        rasterOptions.styles()->addStyle( style );
-        map->addLayer(new ImageLayer("My Features", rasterOptions) );
+        FeatureImageLayer* layer = new FeatureImageLayer();
+        layer->setFeatureSource(features);
+        StyleSheet* sheet = new StyleSheet();
+        sheet->addStyle(style);
+        layer->setStyleSheet(sheet);
+        map->addLayer(layer);
     }
 
     else //if (useGeom)
     {
-        FeatureModelLayerOptions fml;
-        fml.name() = "My Features";
-        fml.featureSourceLayer() = "vector-data";
-        fml.styles() = new StyleSheet();
-        fml.styles()->addStyle(style);
-        fml.enableLighting() = false;
+        FeatureModelLayer* layer = new FeatureModelLayer();
+        layer->setFeatureSource(features);
 
-        map->addLayer(new FeatureModelLayer(fml));
+        StyleSheet* styleSheet = new StyleSheet();
+        styleSheet->addStyle(style);
+        layer->setStyleSheet(styleSheet);
+
+        //fml.enableLighting() = false;
+
+        map->addLayer(layer);
     }   
 
     if ( useLabels && !useRaster )
@@ -167,21 +159,22 @@ int main(int argc, char** argv)
         Style labelStyle;
 
         TextSymbol* text = labelStyle.getOrCreateSymbol<TextSymbol>();
-        text->content() = StringExpression( "[cntry_name]" );
-        text->priority() = NumericExpression( "[pop_cntry]" );
+        text->content() = StringExpression( "[name]" );
+        text->priority() = NumericExpression( "[pop]" );
         text->size() = 16.0f;
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
         text->fill()->color() = Color::White;
         text->halo()->color() = Color::DarkGray;
 
-        // and configure a model layer:
-        FeatureModelLayerOptions fml;
-        fml.name() = "Labels";
-        fml.featureSourceLayer() = "vector-data";
-        fml.styles() = new StyleSheet();
-        fml.styles()->addStyle( labelStyle );
+        StyleSheet* sheet = new StyleSheet();
+        sheet->addStyle(labelStyle);
 
-        map->addLayer(new FeatureModelLayer(fml));
+        // and configure a model layer:
+        FeatureModelLayer* fml = new FeatureModelLayer();
+        fml->setName("Labels");
+        fml->setFeatureSource(features);
+        fml->setStyleSheet(sheet);
+        map->addLayer(fml);
     }
 
     // That's it, the map is ready; now create a MapNode to render the Map:

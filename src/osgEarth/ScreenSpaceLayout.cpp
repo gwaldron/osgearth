@@ -88,10 +88,10 @@ ScreenSpaceLayoutOptions::getConfig() const
 namespace
 {
     /**
-     * The actual custom render bin
-     * This wants to be in the global scope for the dynamic registration to work,
-     * hence the annoyinging long class name
-     */
+    * The actual custom render bin
+    * This wants to be in the global scope for the dynamic registration to work,
+    * hence the annoyinging long class name
+    */
     class osgEarthScreenSpaceLayoutRenderBin : public osgUtil::RenderBin
     {
     public:
@@ -187,7 +187,7 @@ ScreenSpaceLayout::activate(osg::StateSet* stateSet) //, int binNum)
             binNum,
             OSGEARTH_SCREEN_SPACE_LAYOUT_BIN,
             osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
-        
+
         // Force a single shared layout bin per render stage
         stateSet->setNestRenderBins( false );
 

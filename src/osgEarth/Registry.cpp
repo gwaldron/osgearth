@@ -23,12 +23,14 @@
 #include <osgEarth/TaskService>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/Async>
 
 #include <osgText/Font>
 
 #include <gdal_priv.h>
 
 #include <ogr_api.h>
+#include <cstdlib>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -40,6 +42,11 @@ using namespace OpenThreads;
 #define STR_LOCAL              "local"
 
 #define LC "[Registry] "
+
+void osgEarth::initialize()
+{
+    osgEarth::Registry::instance()->getCapabilities();
+}
 
 namespace
 {
@@ -60,7 +67,8 @@ _terrainEngineDriver( "rex" ),
 _cacheDriver        ( "filesystem" ),
 _overrideCachePolicyInitialized( false ),
 _threadPoolSize(2u),
-_devicePixelRatio(1.0f)
+_devicePixelRatio(1.0f),
+_maxVertsPerDrawable(65535)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -75,6 +83,10 @@ _devicePixelRatio(1.0f)
 
     // global initialization for CURL (not thread safe)
     HTTPClient::globalInit();
+
+    // warn if GDAL_DATA is not set
+    if (::getenv("GDAL_DATA") == NULL)
+        OE_INFO << LC << "Note: GDAL_DATA environment variable is not set" << std::endl;
 
     // generates the basic shader code for the terrain engine and model layers.
     _shaderLib = new ShaderFactory();
@@ -156,6 +168,9 @@ _devicePixelRatio(1.0f)
 
     // register the system stock Units.
     Units::registerAll( this );
+
+    // create an async mem mgr for AsyncLODs.
+    _asyncMemoryManager = new AsyncMemoryManager();
 }
 
 Registry::~Registry()
@@ -400,7 +415,7 @@ Registry::overrideCachePolicy() const
                 const char* cacheMaxAge = ::getenv(OSGEARTH_ENV_CACHE_MAX_AGE);
                 if ( cacheMaxAge )
                 {
-                    TimeSpan maxAge = osgEarth::as<long>( std::string(cacheMaxAge), INT_MAX );
+                    TimeSpan maxAge = osgEarth::Strings::as<long>( std::string(cacheMaxAge), INT_MAX );
                     _overrideCachePolicy->maxAge() = maxAge;
                     OE_INFO << LC << "Cache max age set from environment: " << cacheMaxAge << std::endl;
                 }
@@ -746,18 +761,38 @@ Registry::setDevicePixelRatio(float devicePixelRatio)
     _devicePixelRatio = devicePixelRatio;
 }
 
-
-//Simple class used to add a file extension alias for the earth_tile to the earth plugin
-class RegisterEarthTileExtension
+void
+Registry::setMaxNumberOfVertsPerDrawable(unsigned value)
 {
-public:
-    RegisterEarthTileExtension()
+    _maxVertsPerDrawable = value;
+}
+
+unsigned
+Registry::getMaxNumberOfVertsPerDrawable() const
+{
+    return _maxVertsPerDrawable;
+}
+
+AsyncMemoryManager*
+Registry::getAsyncMemoryManager() const
+{
+    return _asyncMemoryManager.get();
+}
+
+namespace
+{
+    //Simple class used to add a file extension alias for the earth_tile to the earth plugin
+    class RegisterEarthTileExtension
     {
-#if OSG_VERSION_LESS_THAN(3,5,4)
-        // Method deprecated beyone 3.5.4 since all ref counting is thread-safe by default
-        osg::Referenced::setThreadSafeReferenceCounting( true );
-#endif
-        osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
-    }
-};
+    public:
+        RegisterEarthTileExtension()
+        {
+    #if OSG_VERSION_LESS_THAN(3,5,4)
+            // Method deprecated beyone 3.5.4 since all ref counting is thread-safe by default
+            osg::Referenced::setThreadSafeReferenceCounting( true );
+    #endif
+            osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
+        }
+    };
+}
 static RegisterEarthTileExtension s_registerEarthTileExtension;

@@ -289,7 +289,7 @@ LineGroup::optimize()
     // Merge all non-dynamic drawables to reduce the total number of 
     // OpenGL calls.
     osgUtil::Optimizer::MergeGeometryVisitor mg;
-    mg.setTargetMaximumNumberOfVertices(65536);
+    mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
     accept(mg);
 }
 
@@ -507,8 +507,6 @@ LineDrawable::setLineSmooth(bool value)
 void
 LineDrawable::setColor(const osg::Vec4& color)
 {
-    if (_color != color)
-    {
         initialize();
 
         _color = color;
@@ -517,16 +515,11 @@ LineDrawable::setColor(const osg::Vec4& color)
             _colors->assign(_colors->size(), _color);
             _colors->dirty();
         }
-    }
 }
 
 void
 LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
 {
-    // test against overall color:
-    if (color == _color)
-        return;
-
     bool dirty = false;
     if (_gpu)
     {
@@ -589,9 +582,6 @@ LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
     if (dirty)
     {
         _colors->dirty();
-
-        // reset "overall" color
-        _color.set(-1,-1,-1,-1);
     }
 }
 

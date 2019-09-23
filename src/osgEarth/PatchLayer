@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,44 +26,54 @@
 
 namespace osgEarth
 {
-    //! Options that govern a PatchLayer
-    class /*header only*/ PatchLayerOptions : public VisibleLayerOptions
-    {
-    public:
-        PatchLayerOptions(const ConfigOptions& co = ConfigOptions()) : VisibleLayerOptions(co) { }
-    };
-
     /**
      * PatchLayer is a layer that can render terrain tiles using either
      * a geometry shader patch (GL_PATCHES) or a custom draw callback.
      */
     class OSGEARTH_EXPORT PatchLayer : public VisibleLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarth, PatchLayer, PatchLayerOptions, patch);
+        META_Layer(osgEarth, PatchLayer, Options, VisibleLayer, Patch);
 
         struct TileData : public osg::Referenced
         {
             osg::ref_ptr<osg::Texture> _texture;
         };
 
+        class GeometryArrayProvider
+        {
+        public:
+            virtual osg::Array* getVertexArray() = 0;
+            virtual osg::Array* getNormalArray() = 0;
+            virtual osg::Array* getTexCoordArray() = 0;
+        };
+
         struct DrawContext
         {
-            const TileKey* key;
-            float          range;
-            osg::Texture*  colorTexture;
-            osg::Texture*  elevationTexture;
-            osg::Texture*  normalTexture;
-            osg::Texture*  coverageTexture;
-            DrawContext() : range(0.0f), colorTexture(0), elevationTexture(0), normalTexture(0), coverageTexture(0), key(0) { }
+            const TileKey* _key;
+            float          _range;
+            GeometryArrayProvider* _geom;
+            DrawContext() : _range(0.0f), _geom(NULL) { }
         };
 
         /**
          * Callback that the terrain engine will call for custom tile rendering.
          */
-        struct DrawCallback : public osg::Referenced
+        class DrawCallback : public osg::Referenced
         {
+        public:
+            virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
             virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
+            virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
         };
 
         /**
@@ -81,7 +91,6 @@ namespace osgEarth
 
 
     public:
-        PatchLayer();
 
         /**
          * Draw callback to use to render tiles in this layer
@@ -99,9 +108,6 @@ namespace osgEarth
         TileData* createTileData(const TileKey& key) { return 0L; }
 
     protected:
-
-        //! Subclass constructor
-        PatchLayer(PatchLayerOptions* options);
 
         /** dtor */
         virtual ~PatchLayer() { }

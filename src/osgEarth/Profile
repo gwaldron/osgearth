@@ -32,6 +32,7 @@ namespace osgEarth
 
     /**
      * Configuration options for initializing a Profile.
+     * TODO: refactor into Profile::Options
      */
     class OSGEARTH_EXPORT ProfileOptions : public ConfigOptions
     {
@@ -134,14 +135,14 @@ namespace osgEarth
 
         static const Profile* create(
             const std::string& srs_string,
-            const std::string& vsrs_string ="",
+            const std::string& vsrs_string,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
         static const Profile* create(
             const ProfileOptions& options );
 
-        static const Profile* createNamed(
+        static const Profile* create(
             const std::string& name);
 
         /**

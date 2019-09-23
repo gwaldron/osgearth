@@ -113,6 +113,6 @@ mouse to a *Qt* status bar::
     };
 
 For your convenience, ``MouseCoordsTool`` also comes with a stock callback that will
-print the coords to ``osgEarthUtil::Controls::LabelControl``. You can even pass a
+print the coords to ``osgEarth::Util::Controls::LabelControl``. You can even pass a
 ``LabelControl`` to the constructor to make it even easier.
 

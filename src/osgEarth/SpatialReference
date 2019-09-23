@@ -36,7 +36,10 @@ namespace osgEarth
     const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
     const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
 
-    class OSGEARTH_EXPORT GeoLocator;
+    namespace Support
+    {
+        class GeoLocator;
+    }
 
     /** 
      * SpatialReference holds information describing the reference ellipsoid/datum
@@ -268,9 +271,6 @@ namespace osgEarth
 
         /** Gets the geocentric reference system associated with this SRS' ellipsoid. */
         const SpatialReference* getGeocentricSRS() const;
-
-        //! @deprecated after 2.10 - call getGeocentricSRS() instead
-        const SpatialReference* getECEF() const;
 
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */
         const VerticalDatum* getVerticalDatum() const;

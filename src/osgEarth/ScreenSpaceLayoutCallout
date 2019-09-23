@@ -113,7 +113,7 @@ namespace osgEarth { namespace Internal
         CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f);
 
         //! Override from SortCallback
-        void sortImplementation(osgUtil::RenderBin*);
+        void CalloutImplementation::sortImplementation(osgUtil::RenderBin*);
 
         void push(osgUtil::RenderLeaf* leaf, CameraLocal& local);
 
@@ -125,9 +125,7 @@ namespace osgEarth { namespace Internal
         _text(NULL),
         _frame(0u),
         _leaderLineIndex(INT_MAX),
-        _offsetVector(0,1,0),
-        _leaf(NULL),
-        _offsetLength(0.0)
+        _offsetVector(0,1,0)
     {
         //todo
     }
@@ -352,7 +350,7 @@ namespace osgEarth { namespace Internal
                 for(edge = site->edges; edge; edge = edge->next)
                 {
                     jcv_real dx = edge->pos[1].x - edge->pos[0].x;
-                    jcv_real dy = edge->pos[1].y - edge->pos[0].y;
+                    jcv_real dy = edge->pos[1].y - edge->pos[1].y;
                     jcv_real len2 = dx*dx + dy*dy;
                     if (len2 > maxLen2)
                     {
@@ -530,7 +528,6 @@ namespace osgEarth { namespace Internal
         */
         CalloutDraw(ScreenSpaceLayoutContext* context)
             : _context(context)
-            , _sortCallback(NULL)
         {
             // create the fade uniform.
             _fade = new osg::Uniform(osg::Uniform::FLOAT, FADE_UNIFORM_NAME);

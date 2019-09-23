@@ -1,11 +1,9 @@
 <!--
 osgEarth Sample - Annotation going across the dateline.  Should be one continuous line.
 -->
-<map name="readymap.org" type="geocentric" version="2">
+<map name="Annotation Dateline Test">
 
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 
     <annotations>
 

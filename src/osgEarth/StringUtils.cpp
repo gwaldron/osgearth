@@ -23,6 +23,7 @@
 #include <cstring>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 StringTokenizer::StringTokenizer( const std::string& delims, const std::string& quotes ) :
 _allowEmpties( true ),
@@ -146,10 +147,10 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
 
 //--------------------------------------------------------------------------
 
-const std::string osgEarth::EMPTY_STRING;
+const std::string osgEarth::Support::EMPTY_STRING;
 
 std::string
-osgEarth::toLegalFileName(const std::string& input, bool allowSubdirs)
+osgEarth::Support::toLegalFileName(const std::string& input, bool allowSubdirs)
 {
     // See: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
     // We omit '-' so we can use it for the HEX identifier.
@@ -180,7 +181,7 @@ osgEarth::toLegalFileName(const std::string& input, bool allowSubdirs)
 
 /** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
 unsigned
-osgEarth::hashString( const std::string& input )
+osgEarth::Support::hashString( const std::string& input )
 {
     const unsigned int m = 0x5bd1e995;
     const int r = 24;
@@ -216,7 +217,7 @@ osgEarth::hashString( const std::string& input )
 }
 
 std::string
-osgEarth::hashToString(const std::string& input)
+osgEarth::Support::hashToString(const std::string& input)
 {
     return Stringify() << std::hex << std::setw(8) << std::setfill('0') << hashString(input);
 }
@@ -224,9 +225,9 @@ osgEarth::hashToString(const std::string& input)
 
 /** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
 osg::Vec4f
-osgEarth::htmlColorToVec4f( const std::string& html )
+osgEarth::Support::htmlColorToVec4f( const std::string& html )
 {
-    std::string t = osgEarth::toLower(html);
+    std::string t = osgEarth::Support::toLower(html);
     osg::Vec4ub c(0,0,0,255);
     if ( t.length() >= 7 ) {
         c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;
@@ -246,7 +247,7 @@ osgEarth::htmlColorToVec4f( const std::string& html )
 
 /** Makes an HTML color ("#rrggbb" or "#rrggbbaa") from an OSG color. */
 std::string
-osgEarth::vec4fToHtmlColor( const osg::Vec4f& c )
+osgEarth::Support::vec4fToHtmlColor( const osg::Vec4f& c )
 {
     std::stringstream buf;
     buf << "#";
@@ -262,7 +263,7 @@ osgEarth::vec4fToHtmlColor( const osg::Vec4f& c )
 
 /** Parses a color string in the form "255 255 255 255" (r g b a [0..255]) into an OSG color. */
 osg::Vec4ub
-osgEarth::stringToColor(const std::string& str, osg::Vec4ub default_value)
+osgEarth::Support::stringToColor(const std::string& str, osg::Vec4ub default_value)
 {
     osg::Vec4ub color = default_value;
     std::istringstream strin(str);
@@ -279,7 +280,7 @@ osgEarth::stringToColor(const std::string& str, osg::Vec4ub default_value)
 
 /** Creates a string in the form "255 255 255 255" (r g b a [0..255]) from a color */
 std::string
-osgEarth::colorToString( const osg::Vec4ub& c )
+osgEarth::Support::colorToString( const osg::Vec4ub& c )
 {
     std::stringstream ss;
     ss << (int)c.r() << " " << (int)c.g() << " " << (int)c.b() << " " << (int)c.a();
@@ -290,7 +291,7 @@ osgEarth::colorToString( const osg::Vec4ub& c )
 
 /** Converts a string to a vec3f */
 osg::Vec3f
-osgEarth::stringToVec3f( const std::string& str, const osg::Vec3f& default_value )
+osgEarth::Support::stringToVec3f( const std::string& str, const osg::Vec3f& default_value )
 {
     std::stringstream buf(str);
     osg::Vec3f out = default_value;
@@ -307,7 +308,7 @@ osgEarth::stringToVec3f( const std::string& str, const osg::Vec3f& default_value
 
 /** Converts a vec3f to a string */
 std::string
-osgEarth::vec3fToString( const osg::Vec3f& v )
+osgEarth::Support::vec3fToString( const osg::Vec3f& v )
 {
     std::stringstream buf;
     buf << std::setprecision(6)
@@ -321,7 +322,7 @@ osgEarth::vec3fToString( const osg::Vec3f& v )
 
 /** Replaces all the instances of "sub" with "other" in "s". */
 std::string&
-osgEarth::replaceIn( std::string& s, const std::string& sub, const std::string& other)
+osgEarth::Support::replaceIn( std::string& s, const std::string& sub, const std::string& other)
 {
     if ( sub.empty() ) return s;
     size_t b=0;
@@ -336,7 +337,7 @@ osgEarth::replaceIn( std::string& s, const std::string& sub, const std::string& 
 }
 
 std::string&
-osgEarth::ciReplaceIn( std::string& s, const std::string& pattern, const std::string& replacement )
+osgEarth::Support::ciReplaceIn( std::string& s, const std::string& pattern, const std::string& replacement )
 {
     if ( pattern.empty() ) return s;
 
@@ -364,7 +365,7 @@ osgEarth::ciReplaceIn( std::string& s, const std::string& pattern, const std::st
 * http://www.codeproject.com/KB/stl/stdstringtrim.aspx
 */
 void
-osgEarth::trim2( std::string& str )
+osgEarth::Support::trim2( std::string& str )
 {
     static const std::string whitespace (" \t\f\v\n\r");
     std::string::size_type pos = str.find_last_not_of( whitespace );
@@ -381,7 +382,7 @@ osgEarth::trim2( std::string& str )
 * copy of the string with whitespace removed.
 */
 std::string
-osgEarth::trim( const std::string& in )
+osgEarth::Support::trim( const std::string& in )
 {
     std::string str = in;
     trim2( str );
@@ -389,7 +390,7 @@ osgEarth::trim( const std::string& in )
 }
 
 std::string
-osgEarth::trimAndCompress(const std::string& in)
+osgEarth::Support::trimAndCompress(const std::string& in)
 {
     bool inwhite = true;
     std::stringstream buf;
@@ -417,7 +418,7 @@ osgEarth::trimAndCompress(const std::string& in)
 }
 
 std::string
-osgEarth::joinStrings( const StringVector& input, char delim )
+osgEarth::Support::joinStrings( const StringVector& input, char delim )
 {
     std::stringstream buf;
     for( StringVector::const_iterator i = input.begin(); i != input.end(); ++i )
@@ -432,7 +433,7 @@ osgEarth::joinStrings( const StringVector& input, char delim )
 
 /** Returns a lower-case version of the input string. */
 std::string
-osgEarth::toLower( const std::string& input )
+osgEarth::Support::toLower( const std::string& input )
 {
     std::string output = input;
     std::transform( output.begin(), output.end(), output.begin(), ::tolower );
@@ -440,7 +441,7 @@ osgEarth::toLower( const std::string& input )
 }
 
 std::string
-osgEarth::prettyPrintTime( double seconds )
+osgEarth::Support::prettyPrintTime( double seconds )
 {
     int hours = (int)floor(seconds / (3600.0) );
     seconds -= hours * 3600.0;
@@ -454,7 +455,7 @@ osgEarth::prettyPrintTime( double seconds )
 }
 
 std::string
-osgEarth::prettyPrintSize( double mb )
+osgEarth::Support::prettyPrintSize( double mb )
 {
     std::stringstream buf;
     // Convert to terabytes
@@ -487,7 +488,7 @@ namespace
 }
 
 bool
-osgEarth::ciEquals(const std::string& lhs, const std::string& rhs, const std::locale& loc )
+osgEarth::Support::ciEquals(const std::string& lhs, const std::string& rhs, const std::locale& loc )
 {
     if ( lhs.length() != rhs.length() )
         return false;
@@ -513,7 +514,7 @@ bool CIStringComp::operator()(const std::string& lhs, const std::string& rhs) co
 }
 
 bool
-osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+osgEarth::Support::startsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
 {
     if ( pattern.length() > ref.length() )
         return false;
@@ -538,7 +539,7 @@ osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool c
 }
 
 bool
-osgEarth::endsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+osgEarth::Support::endsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
 {
     if ( pattern.length() > ref.length() )
         return false;

@@ -24,18 +24,17 @@
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/ECEF>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/ExampleResources>
 
-#include <osgEarthAnnotation/AnnotationEditing>
-#include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarthAnnotation/ImageOverlay>
-#include <osgEarthAnnotation/ImageOverlayEditor>
-#include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/RectangleNode>
-#include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/AnnotationRegistry>
+#include <osgEarth/ImageOverlay>
+#include <osgEarth/ImageOverlayEditor>
+#include <osgEarth/CircleNode>
+#include <osgEarth/RectangleNode>
+#include <osgEarth/EllipseNode>
+#include <osgEarth/PlaceNode>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -44,7 +43,6 @@
 
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 
 int

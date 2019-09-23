@@ -30,7 +30,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * Tracks the state of a single sampler through the draw process,
@@ -141,6 +141,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         PerContextDrawState& getPCDS(unsigned contextID) { return _pcds[contextID]; }
     };
 
-} } } // namespace 
+} } // namespace 
 
 #endif // OSGEARTH_REX_TERRAIN_DRAW_STATE_H

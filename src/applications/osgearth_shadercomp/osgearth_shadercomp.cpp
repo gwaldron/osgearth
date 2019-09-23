@@ -35,14 +35,14 @@
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/EarthManipulator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Controls>
 
 using namespace osgEarth;
 using namespace osgEarth::Util::Controls;
@@ -163,39 +163,6 @@ namespace TEST_2
     }
 }
 
-//-------------------------------------------------------------------------
-
-// Tests the VirtualProgram's min/max range for functions (shader LOD)
-namespace TEST_3
-{
-    const char* fragShader =
-        "#version 110\n"
-        "void make_it_red(inout vec4 color) {\n"
-        "    color.r = 1.0;\n"
-        "}\n";
-
-    osg::Group* run(osg::Node* node)
-    {
-        float radius = osgEarth::SpatialReference::get("wgs84")->getEllipsoid()->getRadiusEquator();
-
-        VirtualProgram* vp = VirtualProgram::getOrCreate(node->getOrCreateStateSet());
-
-        // Install the shader function:
-        vp->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
-
-        // Set a maximum LOD range for the above function:
-        vp->setFunctionMinRange( "make_it_red", 500000 );
-        vp->setFunctionMaxRange( "make_it_red", 1000000 );
-
-        osg::Group* g = new osg::Group();
-
-        // Install a callback that will convey the LOD range to the shader LOD.
-        g->addCullCallback( new RangeUniformCullCallback() );
-
-        g->addChild( node );
-        return g;
-    }
-}
 //-------------------------------------------------------------------
 
 // Tests memory management by installing and uninstalling shader
@@ -590,14 +557,13 @@ int main(int argc, char** argv)
 
     bool test1 = arguments.read("--test1");
     bool test2 = arguments.read("--test2");
-    bool test3 = arguments.read("--test3");
     bool test4 = arguments.read("--test4");
     bool test5 = arguments.read("--test5");
     bool test6 = arguments.read("--test6");
     bool test7 = arguments.read("--test7");
     bool test8 = arguments.read("--test8");
     bool test9 = arguments.read("--test9");
-    bool ok    = test1 || test2 || test3 || test4 || test5 || test6 || test7 || test8||test9;
+    bool ok    = test1 || test2 || test4 || test5 || test6 || test7 || test8||test9;
 
     bool ui = !arguments.read("--noui");
 
@@ -620,7 +586,7 @@ int main(int argc, char** argv)
         canvas->addControl(label);
     }
 
-    if ( test1 || test2 || test3 || test4 || test6 )
+    if ( test1 || test2 || test4 || test6 )
     {
         osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFile( "simple.earth" );
         if (!earthNode.valid())
@@ -637,11 +603,6 @@ int main(int argc, char** argv)
         {
             root->addChild( TEST_2::run(earthNode.get()) );
             if (ui) label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
-        }
-        else if ( test3 )
-        {
-            root->addChild( TEST_3::run(earthNode.get()) );
-            if (ui) label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
         }
         else if ( test4 )
         {

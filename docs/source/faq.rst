@@ -56,8 +56,8 @@ Lines or Annotations (FeatureNode, etc.) are not rendering. Why?
 
     Lines render using a shader that requires some initial state to be set.
     You can apply this state to your top-level camera (or anywhere else 
-    above the geometry) like so::
-
+    above the geometry) like so:
+    
         #include <osgEarth/GLUtils>
         ...
         GLUtils::setGlobalDefaults(camera->getOrCreateStateSet());
@@ -85,7 +85,6 @@ Lines or Annotations (FeatureNode, etc.) are not rendering. Why?
 
     Again: MapNode does all this automatically so this is only necessary if you do
     not place your annotations as descendants of the MapNode.
-
 
 ----
 

@@ -27,7 +27,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class TerrainRenderData;
 
@@ -56,6 +56,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // If _layer is an ImageLayer, this will be set as well, otherwise NULL
         const ImageLayer* _imageLayer;
+
+        // If _layer is a PatchLayer, this will be set, otherwise NULL
+        const PatchLayer* _patchLayer;
 
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
@@ -91,6 +94,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     typedef std::vector< osg::ref_ptr<LayerDrawable> > LayerDrawableList;
     typedef std::map<UID, osg::ref_ptr<LayerDrawable> > LayerDrawableMap;
 
-} } } // namespace 
+} } // namespace 
 
 #endif // OSGEARTH_REX_TERRAIN_LAYER_DRAWABLE_H

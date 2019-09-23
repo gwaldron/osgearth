@@ -3,17 +3,17 @@ osgEarth Sample
 This shows how to label point features with an attribute.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
-            
-    <image name="World Imagery" driver="gdal">
+<map name="Labels Demo">
+
+    <GDALImage name="World Imagery">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <feature_source name="city-data" driver="ogr">
+    <OGRFeatures name="city-data">
         <url>../data/cities.gpkg</url>
-    </feature_source>
+    </OGRFeatures>
     
-    <feature_model name="cities" feature_source="city-data">        
+    <FeatureModel name="cities" features="city-data">        
         <feature_indexing enabled="false"/>
         <styles>
             <selector class="cities">
@@ -34,7 +34,7 @@ This shows how to label point features with an attribute.
                 }     
             </style>
         </styles>
-    </feature_model>
+    </FeatureModel>
     
     <screen_space_layout>
         <out_animation_time>  0.0  </out_animation_time>

@@ -1,38 +1,26 @@
 <!--
 osgEarth Sample - OpenWeatherMap Clouds
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
 -->
-<map name="readymap.org" type="geocentric">
+<map name="Demo: OpenWeatherMap">
 
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/> 
 
-    <image name="Cloud Cover" driver="xyz" visible="true">
-        <url>http://[abc].tile.openweathermap.org/map/clouds/{z}/{x}/{y}.png</url>
+    <XYZImage name="Cloud Cover" visible="true">
+        <url>https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=92cfef259508be57f2001ac68224aba7</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
-    </image>
+    </XYZImage>
 
-    <image name="Precipitation" driver="xyz" visible="false">
-        <url>http://[abc].tile.openweathermap.org/map/precipitation/{z}/{x}/{y}.png</url>
+    <XYZImage name="Precipitation" visible="false">
+        <url>https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=92cfef259508be57f2001ac68224aba7</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
-    </image>
+    </XYZImage>
 
-    <image name="Pressure" driver="xyz" visible="false">
-        <url>http://[abc].tile.openweathermap.org/map/pressure_cntr/{z}/{x}/{y}.png</url>
+    <XYZImage name="Wind" visible="false">
+        <url>https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=92cfef259508be57f2001ac68224aba7</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
-    </image>
+    </XYZImage>
 
 </map>

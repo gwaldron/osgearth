@@ -22,6 +22,7 @@
 #include <osgEarth/MetaTile>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[MetaImage] "
 

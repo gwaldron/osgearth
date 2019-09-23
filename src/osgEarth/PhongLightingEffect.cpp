@@ -26,6 +26,7 @@
 #include <osgEarth/Lighting>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 PhongLightingEffect::PhongLightingEffect()
@@ -60,8 +61,7 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
         vp->setName( "osgEarth.PhongLightingEffect" );
         
         Shaders shaders;
-        shaders.load(vp, shaders.PhongLightingVertex);
-        shaders.load(vp, shaders.PhongLightingFragment);
+        shaders.load(vp, shaders.PhongLighting);
 
         stateset->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
         stateset->setDefine("OE_NUM_LIGHTS", "1");
@@ -101,8 +101,7 @@ PhongLightingEffect::detach(osg::StateSet* stateset)
         if ( vp )
         {
             Shaders shaders;
-            shaders.unload(vp, shaders.PhongLightingVertex);
-            shaders.unload(vp, shaders.PhongLightingFragment);
+            shaders.unload(vp, shaders.PhongLighting);
         }
     }
 }

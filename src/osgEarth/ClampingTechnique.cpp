@@ -40,6 +40,7 @@
 //#define TIME_RTT_CAMERA 1
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 //---------------------------------------------------------------------------
 
@@ -300,8 +301,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     vp->addBindAttribLocation( Clamping::HeightsAttrName, Clamping::HeightsAttrLocation );
 
     osgEarth::Shaders pkg;
-    pkg.load(vp, pkg.GPUClampingVertex);
-    pkg.load(vp, pkg.GPUClampingFragment);
+    pkg.load(vp, pkg.GPUClamping);
 }
 
 

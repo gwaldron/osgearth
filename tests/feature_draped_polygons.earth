@@ -8,19 +8,13 @@ It also shows the "selector" technique of using SQL queries to selectively style
 the feature data.
 -->
 
-<map name="Feature Overlay Demo" type="geocentric" version="2">
-    
-    <options>
-        <lighting>false</lighting>
-        <overlay_blending>false</overlay_blending>
-        <terrain min_lod="8"/>
-    </options>
+<map name="Feature Overlay Demo">
 
-    <image name="Imagery" driver="gdal">
+    <GDALImage name="Imagery">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <feature_model name="Countries" feature_source="world-data">
+    <FeatureModel name="Countries" features="world-data" opacity="0.8">
         <styles>        
             <style type="text/css">
                 base {
@@ -28,61 +22,60 @@ the feature data.
                    altitude-clamping:  terrain-drape;
                 }                
                 p1 : base {
-                   fill: #ffff807f;
+                   fill: #ffff80;
                 }       
                 p2 : base {
-                   fill: #80ffff7f;
+                   fill: #80ffff;
                 }   
                 p3 : base {
-                   fill: #ff80ff7f;
+                   fill: #ff80ff;
                 }       
                 p4 : base {
-                   fill: #ff80807f;
+                   fill: #ff8080;
                 }     
                 p5 : base {
-                   fill: #80ff807f;
+                   fill: #80ff80;
                 }                                      
             </style>
         
             <selector class="p1">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
+                    <expr><![CDATA[ POP <= 14045470 ]]></expr>
                 </query>
             </selector>
         
             <selector class="p2">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
+                    <expr><![CDATA[ POP > 14045470 and POP <= 43410900 ]]></expr>
                 </query>
             </selector>
             
             <selector class="p3">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
+                    <expr><![CDATA[ POP > 43410900 and POP <= 97228750 ]]></expr>
                 </query>
             </selector>
             
             <selector class="p4">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
+                    <expr><![CDATA[ POP > 97228750 and POP <= 258833000 ]]></expr>
                 </query>
             </selector>
             
             <selector class="p5">
                 <query>
-                    <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
+                    <expr><![CDATA[ POP > 258833000 ]]></expr>
                 </query>
             </selector>
             
-        </styles>
-        
-    </feature_model>
+        </styles>        
+    </FeatureModel>
     
-    <feature_source name="world-data" driver="ogr">
+    <OGRFeatures name="world-data">
         <url>../data/world.shp</url>
         <filters>
             <resample max_length="5.0"/>
             <buffer distance="-0.05"/>
         </filters>
-    </feature_source>
+    </OGRFeatures>
 </map>

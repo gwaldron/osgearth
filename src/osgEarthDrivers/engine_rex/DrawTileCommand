@@ -30,7 +30,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * All data necessary to draw a single terrain tile.
@@ -112,6 +112,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     //typedef std::list<DrawTileCommand> DrawTileCommands;
     typedef std::vector<DrawTileCommand> DrawTileCommands;
 
-} } } // namespace 
+} } // namespace 
 
 #endif // OSGEARTH_REX_TERRAIN_DRAW_TILE_COMMAND_H

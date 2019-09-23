@@ -41,7 +41,6 @@ namespace osgEarth
             ADD_LAYER,
             REMOVE_LAYER,
             MOVE_LAYER,
-            TOGGLE_LAYER,     // visibilty toggle on elevation is a model change.
             ENABLE_LAYER,
             DISABLE_LAYER,
             UNSPECIFIED

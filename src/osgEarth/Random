@@ -24,7 +24,7 @@
 
 #include <osgEarth/Common>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Psuedo random number generator. Results are guaranteed to be consistent across
@@ -88,6 +88,6 @@ namespace osgEarth
         unsigned _seed;
         unsigned _next;
     };
-}
+} }
 
 #endif // OSGEARTH_RANDOM_H

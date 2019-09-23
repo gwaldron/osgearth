@@ -23,50 +23,7 @@
 #include <osgEarth/LandCover>
 
 namespace osgEarth
-{
-    /**
-     * Serializable configuration for a LandCoverLayer.
-     */
-    class OSGEARTH_EXPORT LandCoverLayerOptions : public ImageLayerOptions
-    {
-    public:
-        LandCoverLayerOptions(const ConfigOptions& co = ConfigOptions());
-        
-        /**
-         * Images layer from which to read source coverage data.
-         */
-        std::vector<LandCoverCoverageLayerOptions>& coverages() { return _coverages; }
-        const std::vector<LandCoverCoverageLayerOptions>& coverages() const { return _coverages; }
-
-        /**
-         * Amount by which to warp texture coordinates of coverage data.
-         * Try 0.01 as a starting point.
-         */
-        optional<float>& warpFactor() { return _warp; }
-        const optional<float>& warpFactor() const { return _warp; }
-
-        /**
-         * LOD at which to calculate the noise function for warping.
-         */
-        optional<unsigned>& noiseLOD() { return _noiseLOD; }
-        const optional<unsigned>& noiseLOD() const { return _noiseLOD; }
-
-    public:
-        virtual Config getConfig() const;
-
-    protected:
-        void fromConfig(const Config& conf);
-        virtual void mergeConfig(const Config& conf) {
-            ImageLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
-
-        optional<float> _warp;
-        optional<unsigned> _noiseLOD;
-        std::vector<LandCoverCoverageLayerOptions> _coverages;
-    };
-
-    
+{    
     /**
      * Layer that provides land cover raster data, in which each texel 
      * contains a land cover code as defined in the LandCoverDictionary.
@@ -74,33 +31,69 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT LandCoverLayer : public ImageLayer
     {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
     public:
-        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions, land_cover);
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_VECTOR(ConfigOptions, coverages);
+            OE_OPTION(float, warpFactor);
+            OE_OPTION(unsigned, noiseLOD);
+        virtual Config getConfig() const;
+        private:
+        void fromConfig(const Config& conf);
+    };
 
-        /** Construct an emptry land cover layer. Use options() to configure */
-        LandCoverLayer();
+    public:
+        META_Layer(osgEarth, LandCoverLayer, Options, ImageLayer, LandCover);
 
-        /** Construct a land cover layer from options. */
-        LandCoverLayer(const LandCoverLayerOptions& options);
+        //! Sets the coverage warping factor
+        void setWarpFactor(const float& value);
+        const float& getWarpFactor() const;
+
+        //! Sets the LOD of the noise texture
+        void setNoiseLOD(const unsigned& value);
+        const unsigned& getNoiseLOD() const;
+
+        //! Adds a coverage layer definition (TODO: add actual layer, not options)
+        void addCoverage(LandCoverCoverageLayer* layer);
 
         //! Given a land cover tile, which you can generate by calling
         //! createImage, get the land cover class at the given parametric
         //! coordinates [0..1].
         const LandCoverClass* getClassByUV(const GeoImage& tile, double u, double v) const;
 
+    public: // Layer
+
+        virtual const Status& open();
+
+        virtual void addedToMap(const class Map*);
+
+        virtual void removedFromMap(const class Map*);
+
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback*) const;
+
     protected: // Layer
 
         virtual void init();
 
-        virtual void addedToMap(const class Map*);
-
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback*);
-
     protected: // TerrainLayer
 
-        virtual TileSource* createTileSource();
-
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
+        std::vector<float> _warps;
+        typedef std::vector<int> CodeMap;
+        std::vector<CodeMap> _codemaps;
+        typedef std::vector<osg::ref_ptr<LandCoverCoverageLayer> > CoverageLayerVector;
+        CoverageLayerVector _coverageLayers;
+
+        GeoImage createMetaImageComponent(const TileKey& key, ProgressCallback* progress) const;
+
+        void buildCodeMap(const LandCoverCoverageLayer*, CodeMap&);
+
+        struct MetaImageComponent {
+            MetaImageComponent() : pixel(0L) { }
+            osg::ref_ptr<osg::Image> image;
+            osg::Matrix scaleBias;
+            ImageUtils::PixelReader pixel;
 
         struct MetaImageComponent {
             MetaImageComponent() : pixel(0L) { }
@@ -109,9 +102,11 @@ namespace osgEarth
             ImageUtils::PixelReader pixel;
         };
         typedef std::map<TileKey, MetaImageComponent> MetaImage;
-        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*);
+        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*) const;
     };
 
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::LandCoverLayer::Options);
 
 #endif // OSGEARTH_LAND_COVER_LAYER

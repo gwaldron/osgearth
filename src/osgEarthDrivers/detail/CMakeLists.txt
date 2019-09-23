@@ -32,9 +32,6 @@ set(TARGET_H
 	${LIB_PUBLIC_HEADERS}
 	DetailShaders
 	)
-
-set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-    osgEarthUtil)
 	
 setup_plugin(osgearth_detail)
 

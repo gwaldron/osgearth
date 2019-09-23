@@ -8,12 +8,7 @@ SET(TARGET_H
 	GLSkyNode
 )
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-    osgEarthUtil
-)
-
 SETUP_PLUGIN(osgearth_sky_gl)
-
 
 # to install public driver includes:
 SET(LIB_NAME sky_gl)

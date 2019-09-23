@@ -45,7 +45,8 @@
 #define LC "[CascadeDrapingDecorator] "
 
 using namespace osgEarth;
-
+using namespace osgEarth::Contrib;
+using namespace osgEarth::Support;
 
 
 // Whether to intersect the ellipsoid versus the horizon plane when

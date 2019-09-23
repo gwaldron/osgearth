@@ -22,6 +22,7 @@
 #define LC "[GeometryClamper] "
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define ZOFFSETS_NAME "GeometryClamper::zOffsets"
 

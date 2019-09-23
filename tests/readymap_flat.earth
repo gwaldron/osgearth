@@ -11,17 +11,13 @@ YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
 http://readymap.org
 
 -->
-<map name="readymap.org" type="projected">    
+<map name="readymap.org">    
     
     <options>
-        <profile>plate-carre</profile>
+        <profile>global-mercator</profile>
     </options>
     
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
+    <xi:include href="viewpoints.xml"/>
 </map>

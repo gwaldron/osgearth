@@ -1164,18 +1164,6 @@ VirtualProgram::setFunction(const std::string&           functionName,
     } // release lock
 }
 
-void
-VirtualProgram::setFunctionMinRange(const std::string& name, float minRange)
-{
-    OE_DEPRECATED(VirtualProgram::setFunctionMinRange, shaders) << std::endl;
-}
-
-void
-VirtualProgram::setFunctionMaxRange(const std::string& name, float maxRange)
-{
-    OE_DEPRECATED(VirtualProgram::setFunctionMaxRange, shaders) << std::endl;
-}
-
 bool
 VirtualProgram::addGLSLExtension(const std::string& extension)
 {
@@ -2025,6 +2013,8 @@ void PolyShader::clearShaderCache()
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
+namespace
+{
 #define PROGRAM_LIST_FUNC( PROP, TYPE, DATA ) \
     static bool check##PROP(const osgEarth::VirtualProgram& attr) \
     { return attr.get##TYPE().size()>0; } \
@@ -2049,12 +2039,11 @@ void PolyShader::clearShaderCache()
         return true; \
     }
 
-PROGRAM_LIST_FUNC(AttribBinding, AttribBindingList, BindAttribLocation);
-//PROGRAM_LIST_FUNC( FragDataBinding, FragDataBindingList, BindFragDataLocation );
+    PROGRAM_LIST_FUNC( AttribBinding, AttribBindingList, BindAttribLocation );
 
-// functions
-static bool checkFunctions(const osgEarth::VirtualProgram& attr)
-{
+    // functions
+    static bool checkFunctions( const osgEarth::VirtualProgram& attr )
+    {
     osgEarth::ShaderComp::FunctionLocationMap functions;
     attr.getFunctions(functions);
 
@@ -2062,10 +2051,10 @@ static bool checkFunctions(const osgEarth::VirtualProgram& attr)
     for (osgEarth::ShaderComp::FunctionLocationMap::const_iterator loc = functions.begin(); loc != functions.end(); ++loc)
         count += loc->second.size();
     return count > 0;
-}
+    }
 
-static bool readFunctions(osgDB::InputStream& is, osgEarth::VirtualProgram& attr)
-{
+    static bool readFunctions( osgDB::InputStream& is, osgEarth::VirtualProgram& attr )
+    {
     unsigned int size = is.readSize();
     is >> is.BEGIN_BRACKET;
 
@@ -2104,10 +2093,10 @@ static bool readFunctions(osgDB::InputStream& is, osgEarth::VirtualProgram& attr
     }
     is >> is.END_BRACKET;
     return true;
-}
+    }
 
-static bool writeFunctions(osgDB::OutputStream& os, const osgEarth::VirtualProgram& attr)
-{
+    static bool writeFunctions( osgDB::OutputStream& os, const osgEarth::VirtualProgram& attr )
+    {
     osgEarth::ShaderComp::FunctionLocationMap functions;
     attr.getFunctions(functions);
 
@@ -2162,10 +2151,8 @@ static bool writeFunctions(osgDB::OutputStream& os, const osgEarth::VirtualProgr
     os << os.END_BRACKET << std::endl;
 
     return true;
-}
+    }
 
-namespace
-{
     REGISTER_OBJECT_WRAPPER(
         VirtualProgram,
         new osgEarth::VirtualProgram,

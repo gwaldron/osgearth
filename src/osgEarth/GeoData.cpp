@@ -119,7 +119,7 @@ _altMode( ALTMODE_ABSOLUTE )
     conf.get( "alt", _p.z() );
     conf.get( "hat", _p.z() ); // height above terrain (relative)
 
-    if ( !_srs.valid() )
+    if ( !_srs.valid() && conf.hasValue("srs") )
         _srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
 
     if ( conf.hasValue("lat") && (!_srs.valid() || _srs->isGeographic()) )
@@ -1626,18 +1626,33 @@ GeoImage GeoImage::INVALID( 0L, GeoExtent::INVALID );
 
 GeoImage::GeoImage() :
 _image ( 0L ),
-_extent( GeoExtent::INVALID )
+_extent( GeoExtent::INVALID ),
+_status( Status::GeneralError )
 {
     //nop
+}
+
+GeoImage::GeoImage(const Status& status) :
+_image(0L),
+_extent(GeoExtent::INVALID),
+_status(status)
+{
+    if (_status.isOK())
+        _status = Status::GeneralError;
 }
 
 GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
 _image(image),
 _extent(extent)
 {
-    if ( _image.valid() && extent.isInvalid() )
+    if (_image.valid() && extent.isInvalid())
     {
         OE_WARN << LC << "ILLEGAL: created a GeoImage with a valid image and an invalid extent" << std::endl;
+        _status = Status::GeneralError;
+    }
+    else if (!_image.valid())
+    {
+        _status = Status::GeneralError;
     }
 }
 
@@ -2424,7 +2439,17 @@ _extent     ( GeoExtent::INVALID ),
 _minHeight  ( 0.0f ),
 _maxHeight  ( 0.0f )
 {
-    //nop
+    init();
+}
+
+GeoHeightField::GeoHeightField(const Status& value) :
+_heightField(0L),
+_extent(GeoExtent::INVALID),
+_minHeight(0.0f),
+_maxHeight(0.0f),
+_status(value)
+{
+    init();
 }
 
 GeoHeightField::GeoHeightField(osg::HeightField* heightField,
@@ -2455,6 +2480,7 @@ GeoHeightField::init()
     if ( _heightField.valid() && _extent.isInvalid() )
     {
         OE_WARN << LC << "Created with a valid heightfield AND INVALID extent" << std::endl;
+        _status = Status::GeneralError;
     }
 
     else if ( _heightField.valid() )
@@ -2475,6 +2501,11 @@ GeoHeightField::init()
             if ( h < _minHeight ) _minHeight = h;
         }
     }
+
+    else if (!_heightField.valid())
+    {
+        _status = Status::GeneralError;
+    }
 }
 
 bool
@@ -2486,6 +2517,9 @@ GeoHeightField::valid() const
 float
 GeoHeightField::getElevation(double x, double y) const
 {
+    if (!valid())
+        return NO_DATA_VALUE;
+
     return HeightFieldUtils::getHeightAtLocation(
         _heightField.get(),
         x, y,
@@ -2505,7 +2539,7 @@ bool
 GeoHeightField::getElevation(const SpatialReference* inputSRS, 
                              double                  x, 
                              double                  y, 
-                             ElevationInterpolation  interp,
+                             RasterInterpolation  interp,
                              const SpatialReference* outputSRS,
                              float&                  out_elevation) const
 {
@@ -2569,7 +2603,7 @@ bool
 GeoHeightField::getElevationAndNormal(const SpatialReference* inputSRS,
                                       double                  x,
                                       double                  y,
-                                      ElevationInterpolation  interp,
+                                      RasterInterpolation  interp,
                                       const SpatialReference* outputSRS,
                                       float&                  out_elevation,
                                       osg::Vec3f&             out_normal) const
@@ -2651,7 +2685,7 @@ GeoHeightField::getElevationAndNormal(const SpatialReference* inputSRS,
 }
 
 GeoHeightField
-GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, ElevationInterpolation interpolation) const
+GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, RasterInterpolation interpolation) const
 {
     double div = destEx.width()/_extent.width();
     if ( div >= 1.0f )
@@ -2716,5 +2750,3 @@ GeoHeightField::getYInterval() const
 {
     return _extent.height() / (double)(_heightField->getNumRows()-1);
 }
-
-

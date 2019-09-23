@@ -45,13 +45,19 @@ namespace osgEarth
     class Cache;
     class Capabilities;
     class Profile;
-    class ShaderFactory;
-    class TaskServiceManager;
     class URIReadCallback;
-    class ColorFilterRegistry;
-    class StateSetCache;
     class ObjectIndex;
     class Units;
+    class StateSetCache;
+
+    namespace Support
+    {
+        class ShaderFactory;
+        class TaskServiceManager;
+        class AsyncMemoryManager;
+    }
+
+    using namespace Support;
 
 
     extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
@@ -273,6 +279,8 @@ namespace osgEarth
         //! Access to the general-purpose async operations queue
         osg::OperationQueue* getAsyncOperationQueue() const { return _opQueue.get(); }
 
+        //! Access to the Async mem mgr
+        AsyncMemoryManager* getAsyncMemoryManager() const;
 
         /**
          * Gets the device pixel ratio.
@@ -284,6 +292,14 @@ namespace osgEarth
         * This value is useful when running in high dpi environments on high resolution displays.
         */
         void setDevicePixelRatio(float devicePixelRatio);
+
+        /**
+         * Maximum number of vertices to allow in a single osg::Geometry drawable
+         * when performing optimization processing. This varies based on hardware
+         * capabilities. Default is 65535.
+         */
+        void setMaxNumberOfVertsPerDrawable(unsigned value);
+        unsigned getMaxNumberOfVertsPerDrawable() const;
         
         //! Release any resources held by the registry so it can be re-used
         void release();
@@ -372,16 +388,24 @@ namespace osgEarth
         typedef std::map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
         mutable SRSCache _srsCache;
         mutable Threading::Mutex _srsMutex;
+
+        unsigned _maxVertsPerDrawable;
+
+        osg::ref_ptr<AsyncMemoryManager> _asyncMemoryManager;
     };
 }
 
 
-/** Proxy class for automatic registration of Units with the Registry.*/
-struct osgEarthRegisterUnits {
-    osgEarthRegisterUnits(const osgEarth::Units* units) {
-        osgEarth::Registry::instance()->registerUnits(units);
-    }
-};
+namespace
+{
+    /** Proxy class for automatic registration of Units with the Registry.*/
+    struct osgEarthRegisterUnits {
+        osgEarthRegisterUnits(const osgEarth::Units* units) {
+            osgEarth::Registry::instance()->registerUnits(units);
+        }
+    };
+}
+
 #define OSGEARTH_REGISTER_UNITS(NAME,INSTANCE) \
     extern "C" void osgearth_units_##NAME(void) {} \
     static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)

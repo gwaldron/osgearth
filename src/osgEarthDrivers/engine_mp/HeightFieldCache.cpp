@@ -44,7 +44,7 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
                                          osg::ref_ptr<osg::HeightField>& out_hf,
                                          bool&                           out_isFallback,
                                          ElevationSamplePolicy           samplePolicy,
-                                         ElevationInterpolation          interp,
+                                         RasterInterpolation          interp,
                                          ProgressCallback*               progress )
 {
     // default

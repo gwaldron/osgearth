@@ -18,9 +18,9 @@
 */
 #include <osgViewer/Viewer>
 #include <osgDB/FileNameUtils>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
 #include <osgEarthSilverLining/SilverLiningNode>
 #include <osgEarth/NodeUtils>
 
@@ -221,7 +221,6 @@ main(int argc, char** argv)
 
         // TODO: uncommenting the callback on the following line results in a crash when SeedClouds is called.
         s_settings.sky = new SilverLiningNode(
-            mapNode->getMapSRS(),
             slOptions,
             new SLCallback() );
 

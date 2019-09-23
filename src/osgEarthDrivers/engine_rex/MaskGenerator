@@ -34,7 +34,7 @@ namespace osgEarth {
     class Map;
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
@@ -109,6 +109,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Vec3d _ndcMin, _ndcMax;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_MASK_GENERATOR

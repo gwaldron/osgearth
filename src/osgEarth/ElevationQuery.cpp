@@ -23,6 +23,7 @@
 #define LC "[ElevationQuery] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 ElevationQuery::ElevationQuery()

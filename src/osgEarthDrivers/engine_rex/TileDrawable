@@ -30,7 +30,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class EngineContext;
 
@@ -130,7 +130,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual ~TileDrawable();
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_RexGEOMETRY
 

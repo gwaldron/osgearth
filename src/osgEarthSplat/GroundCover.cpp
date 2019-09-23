@@ -9,13 +9,12 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/VirtualProgram>
-#include <osgEarthSymbology/BillboardSymbol>
+#include <osgEarth/BillboardSymbol>
 
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
-using namespace osgEarth::Symbology;
 
 #define LC "[GroundCover] "
 

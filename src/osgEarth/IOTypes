@@ -129,7 +129,7 @@ namespace osgEarth
         bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
 
         /** Whether the read operation failed */
-        bool failed() const { return _code != RESULT_OK; }
+        bool failed() const { return !succeeded(); }
 
         /** Whether the result contains an object */
         bool empty() const { return !_result.valid(); }

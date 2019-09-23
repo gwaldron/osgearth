@@ -141,6 +141,94 @@ namespace osgEarth
                 ((*entry->_object).*(entry->_function))(0L);
         }
     };
+
+
+
+
+    /**
+     * Helper class for Layers that reference other layers.
+     */
+    template<typename T>
+    class LayerClient
+    {
+    public:
+        typedef typename T::Options TypedOptions;
+
+        typedef void(*OnSetLayerMethod)(T*);
+
+        void setLayer(T* layer) 
+        {
+            _layer = layer;
+        }
+
+        T* getLayer() const 
+        {
+            return _layer.get();
+        }
+
+        void addedToMap(const optional<std::string>& layerName, const Map* map)
+        {
+            if (layerName.isSet())
+            {
+                _listener.clear();
+                _listener.listen(map, layerName.get(), this, &LayerClient<T>::setLayer);
+            }
+        }
+
+        void removedFromMap(const Map* map)
+        {
+            _listener.clear();
+        }
+
+        Status open(const optional<TypedOptions>& embeddedOptions, const osgDB::Options* readOptions)
+        {
+            if (embeddedOptions.isSet())
+            {
+                osg::ref_ptr<Layer> layer = Layer::create(embeddedOptions.get());
+                osg::ref_ptr<T> typedLayer = dynamic_cast<T*>(layer.get());
+                if (typedLayer)
+                {
+                    typedLayer->setReadOptions(readOptions);
+                    const Status& fsStatus = typedLayer->open();
+                    if (fsStatus.isError())
+                    {
+                        return fsStatus;
+                    }
+                    setLayer(typedLayer.get());
+                }
+            }
+            return Status::OK();
+        }
+
+        static void fromConfig(const Config& conf, const std::string& tag, optional<std::string>& layerName, optional<TypedOptions>& embeddedOptions)
+        {
+            conf.get(tag, layerName);
+
+            for (ConfigSet::const_iterator i = conf.children().begin();
+                i != conf.children().end();
+                ++i)
+            {
+                osg::ref_ptr<Layer> layer = Layer::create(*i);
+                if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                {
+                    embeddedOptions = TypedOptions(*i);
+                    break;
+                }
+            }
+
+        }
+
+        static void getConfig(Config& conf, const std::string& tag, const optional<std::string>& layerName, const optional<TypedOptions>& embeddedOptions)
+        {
+            conf.set(tag, layerName);
+            if (embeddedOptions.isSet())
+                conf.set(embeddedOptions->getConfig());
+        }
+
+    private:
+        LayerListener< LayerClient<T>, T > _listener;
+        osg::ref_ptr< T > _layer;
+    };
 }
 
 #endif // OSGEARTH_LAYER_LISTENER_H

@@ -29,9 +29,9 @@
 #include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/MapNode>
 
@@ -54,7 +54,6 @@ usage(const char* name)
 
 struct App
 {
-    const osgEarth::SpatialReference* srs;
     osgEarth::GeoTransform*           geo;
     osg::PositionAttitudeTransform*   pat;
 
@@ -71,7 +70,7 @@ struct App
         AltitudeMode altMode = uiRelativeZ->getValue() ? ALTMODE_RELATIVE : ALTMODE_ABSOLUTE;
 
         GeoPoint pos(
-            srs,
+            SpatialReference::get("wgs84"),
             uiLon->getValue(), uiLat->getValue(), uiAlt->getValue(),
             altMode);
 
@@ -153,21 +152,21 @@ main(int argc, char** argv)
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
     osg::Node* earth = MapNodeHelper().load( arguments, &viewer );
+
     MapNode* mapNode = MapNode::get(earth);
     if (!mapNode)
         return usage(argv[0]);
 
     // load the model file into the local coordinate frame, which will be
     // +X=east, +Y=north, +Z=up.
-    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("../data/axes.osgt.(1000).scale.osgearth_shadergen");
+    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("../data/axes.osgt.1000.scale.osgearth_shadergen");
     if (!model.valid())
         return usage(argv[0]);
 
     osg::Group* root = new osg::Group();
     root->addChild( earth );
-    
+
     App app;
-    app.srs = mapNode->getMapSRS();
     app.geo = new GeoTransform();
     app.pat = new osg::PositionAttitudeTransform();
     app.pat->addChild( model.get() );

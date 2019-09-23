@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TimeControl>
 #include <osgEarth/URI>
+#include <osgEarth/Map>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -28,98 +29,52 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
-TerrainLayerOptions::TerrainLayerOptions() :
-VisibleLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-TerrainLayerOptions::TerrainLayerOptions(const ConfigOptions& co) :
-VisibleLayerOptions(co)
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-TerrainLayerOptions::TerrainLayerOptions(const std::string& layerName) :
-VisibleLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-    name() = layerName;
-}
-
-TerrainLayerOptions::TerrainLayerOptions(const std::string& layerName, const TileSourceOptions& driverOptions) :
-VisibleLayerOptions(driverOptions)
-{
-    setDefaults();
-    fromConfig(_conf);
-    _driver = driverOptions;
-    name() = layerName;
-}
-
-void
-TerrainLayerOptions::setDefaults()
-{
-    _exactCropping.init( false );
-    _reprojectedTileSize.init( 256 );
-    _minLevel.init( 0 );
-    _maxLevel.init( 23 );
-    _maxDataLevel.init( 99 );
-    _tileSize.init( 256 );
-}
-
 Config
-TerrainLayerOptions::getConfig() const
+TerrainLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
+    Config conf = VisibleLayer::Options::getConfig();
 
     conf.set( "min_level", _minLevel );
     conf.set( "max_level", _maxLevel );
     conf.set( "min_resolution", _minResolution );
     conf.set( "max_resolution", _maxResolution );
     conf.set( "max_data_level", _maxDataLevel );
-    conf.set( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.set( "reprojected_tilesize", _reprojectedTileSize);
-    conf.set( "vdatum", _vertDatum );
     conf.set( "proxy", _proxySettings );
-    conf.set("no_data_value", _noDataValue);
-    conf.set("min_valid_value", _minValidValue);
-    conf.set("max_valid_value", _maxValidValue);
+    conf.set( "no_data_value", _noDataValue);
+    conf.set( "min_valid_value", _minValidValue);
+    conf.set( "max_valid_value", _maxValidValue);
     conf.set( "tile_size", _tileSize);
+    conf.set( "profile", _profile);
 
     return conf;
 }
 
 void
-TerrainLayerOptions::fromConfig(const Config& conf)
+TerrainLayer::Options::fromConfig(const Config& conf)
 {
+    _minLevel.init( 0 );
+    _maxLevel.init( 23 );
+    _maxDataLevel.init( 99 );
+    _tileSize.init( 256 );
+    _noDataValue.init( -32768.0f );
+    _minValidValue.init(-32767.0f );
+    _maxValidValue.init( 32768.0f );
+
     conf.get( "min_level", _minLevel );
     conf.get( "max_level", _maxLevel );
     conf.get( "min_resolution", _minResolution );
     conf.get( "max_resolution", _maxResolution );
     conf.get( "max_data_level", _maxDataLevel );
-    conf.get( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.get( "reprojected_tilesize", _reprojectedTileSize);
-    conf.get( "vdatum", _vertDatum );
-    conf.get( "vsrs", _vertDatum );    // back compat
     conf.get( "proxy",        _proxySettings );
-    conf.get("no_data_value", _noDataValue);
-    conf.get("nodata_value", _noDataValue); // back compat
-    conf.get("min_valid_value", _minValidValue);
-    conf.get("max_valid_value", _maxValidValue);
+    conf.get( "no_data_value", _noDataValue);
+    conf.get( "nodata_value", _noDataValue); // back compat
+    conf.get( "min_valid_value", _minValidValue);
+    conf.get( "max_valid_value", _maxValidValue);
     conf.get( "tile_size", _tileSize);
+    conf.get( "profile", _profile);
 
     if (conf.hasValue("driver"))
         driver() = TileSourceOptions(conf);
-}
-
-void
-TerrainLayerOptions::mergeConfig(const Config& conf)
-{
-    VisibleLayerOptions::mergeConfig(conf);
-    fromConfig(conf);
 }
 
 //------------------------------------------------------------------------
@@ -234,26 +189,12 @@ TerrainLayer::CacheBinMetadata::getConfig() const
 
 //------------------------------------------------------------------------
 
-TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr) :
-VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
-_options(optionsPtr ? optionsPtr : &_optionsConcrete),
-_openCalled(false),
-_tileSourceExpected(true),
-_tileSize(0)
-{
-    //nop - init() called by subclass
-}
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, unsigned, MinLevel, minLevel);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, double, MinResolution, minResolution);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, unsigned, MaxLevel, maxLevel);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, double, MaxResolution, maxResolution);
+OE_LAYER_PROPERTY_IMPL(TerrainLayer, unsigned, MaxDataLevel, maxDataLevel);
 
-TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr, TileSource* tileSource) :
-VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
-_options(optionsPtr ? optionsPtr : &_optionsConcrete),
-_tileSource(tileSource),
-_openCalled(false),
-_tileSourceExpected(true),
-_tileSize(0)
-{
-    //nop - init() called by subclass
-}
 
 TerrainLayer::~TerrainLayer()
 {
@@ -265,13 +206,88 @@ TerrainLayer::init()
 {
     Layer::init();
 
+    _openCalled = false;
+    _writingRequested = false;
+    _tileSourceExpected = true;
+    _profileMatchesMapProfile = true;
+
     // intiailize our read-options, which store caching and IO information.
     setReadOptions(0L);
 
+    // Custom tile size?
     if (options().tileSize().isSet())
         _tileSize = options().tileSize().get();
     else
         _tileSize = 256;
+
+    // If the user asked for a custom profile, install it now
+    if (options().profile().isSet())
+    {
+        _profile = Profile::create(options().profile().get());
+    }
+}
+
+void
+TerrainLayer::addedToMap(const Map* map)
+{
+    VisibleLayer::addedToMap(map);
+
+    unsigned l2CacheSize = 0u;
+
+    // If the profiles don't match, mosaicing will be likely so set up a 
+    // small L2 cache for this layer.
+    if (map &&
+        map->getProfile() &&
+        getProfile() &&
+        !map->getProfile()->getSRS()->isHorizEquivalentTo(getProfile()->getSRS()))
+    {
+        _profileMatchesMapProfile = false;
+        l2CacheSize = 16u;
+        OE_INFO << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
+    }
+
+    setUpL2Cache(l2CacheSize);
+}
+
+void
+TerrainLayer::removedFromMap(const Map* map)
+{
+    VisibleLayer::removedFromMap(map);
+    _profileMatchesMapProfile.unset();
+}
+
+void
+TerrainLayer::setUpL2Cache(unsigned minSize)
+{
+    // Check the layer hints
+    unsigned l2CacheSize = layerHints().L2CacheSize().getOrUse(minSize);
+
+        // Create an L2 mem cache that sits atop the main cache, if necessary.
+        // For now: use the same L2 cache size at the driver.
+    if (l2CacheSize == 0u && options().driver()->L2CacheSize().isSet())
+        l2CacheSize = options().driver()->L2CacheSize().get();
+
+        // See if it was overridden with an env var.
+    char const* l2env = ::getenv("OSGEARTH_L2_CACHE_SIZE");
+    if (l2env)
+        {
+        l2CacheSize = as<int>(std::string(l2env), 0);
+            OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
+        }
+
+        // Env cache-only mode also disables the L2 cache.
+    char const* noCacheEnv = ::getenv("OSGEARTH_MEMORY_PROFILE");
+    if (noCacheEnv)
+        {
+            l2CacheSize = 0;
+        }
+
+        // Initialize the l2 cache if it's size is > 0
+    if (l2CacheSize > 0)
+        {
+        _memCache = new MemCache(l2CacheSize);
+        OE_INFO << LC << "L2 cache size = " << l2CacheSize << std::endl;
+        }
 }
 
 const Status&
@@ -279,38 +295,13 @@ TerrainLayer::open()
 {
     if ( !_openCalled )
     {
+        _openCalled = true;
+
         // Call base class
         if (VisibleLayer::open().isError())
             return getStatus();
 
-        // Create an L2 mem cache that sits atop the main cache, if necessary.
-        // For now: use the same L2 cache size at the driver.
-        int l2CacheSize = options().driver()->L2CacheSize().get();
-
-        // See if it was overridden with an env var.
-        char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
-        if ( l2env )
-        {
-            l2CacheSize = as<int>( std::string(l2env), 0 );
-            OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
-        }
-
-        // Env cache-only mode also disables the L2 cache.
-        char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
-        if ( noCacheEnv )
-        {
-            l2CacheSize = 0;
-        }
-
-        // Initialize the l2 cache if it's size is > 0
-        if ( l2CacheSize > 0 )
-        {
-            _memCache = new MemCache( l2CacheSize );
-        }
-
         // create the unique cache ID for the cache bin.
-        //std::string cacheId;
-
         if (options().cacheId().isSet() && !options().cacheId()->empty())
         {
             // user expliticy set a cacheId in the terrain layer options.
@@ -350,6 +341,8 @@ TerrainLayer::open()
         // Integrate a cache policy from this Layer's options:
         _cacheSettings->integrateCachePolicy(options().cachePolicy());
 
+        // If the layer hints are set, integrate that cache policy last.
+        _cacheSettings->integrateCachePolicy(layerHints().cachePolicy());
 
         // If you created the layer with a pre-created tile source, it will already by set.
         if (!_tileSource.valid())
@@ -391,14 +384,26 @@ TerrainLayer::open()
             }
         }
 
-        OE_INFO << LC << _cacheSettings->toString() << "\n";
-
-        // Done!
-        _openCalled = true;
+        OE_INFO << LC
+            << (getProfile()? getProfile()->toString() : "[no profile]") << " "
+            << (_cacheSettings.valid()? _cacheSettings->toString() : "[no cache settings]")
+            << std::endl;
 
     }
 
     return getStatus();
+}
+
+
+const Status&
+TerrainLayer::openForWriting()
+{
+    if (isWritingSupported())
+    {
+        _writingRequested = true;
+        return open();
+    }
+    return setStatus(Status::ServiceUnavailable, "Layer does not support writing");
 }
 
 void
@@ -425,27 +430,15 @@ TerrainLayer::getCacheSettings() const
 }
 
 void
-TerrainLayer::setTargetProfileHint( const Profile* profile )
+TerrainLayer::setTileSource(TileSource* value)
 {
-    _targetProfileHint = profile;
-
-    // Re-read the  cache policy hint since it may change due to the target profile change.
-    refreshTileSourceCachePolicyHint( getTileSource() );
-}
-
-void
-TerrainLayer::refreshTileSourceCachePolicyHint(TileSource* ts)
-{
-    if ( ts && getCacheSettings() && !options().cachePolicy().isSet() )
+    if (_openCalled)
     {
-        CachePolicy hint = ts->getCachePolicyHint( _targetProfileHint.get() );
-
-        if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
-        {
-            getCacheSettings()->cachePolicy() = hint;
-            OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
+        OE_WARN << LC << "Illegal: cannot call setTileSource after Layer is open" << std::endl;
+        return;
         }
-    }
+    _tileSource = value;
+    setTileSourceExpected(true);    
 }
 
 TileSource*
@@ -469,6 +462,9 @@ TerrainLayer::setProfile(const Profile* profile)
 bool
 TerrainLayer::isDynamic() const
 {
+    if (getHints().dynamic().isSetTo(true))
+        return true;
+
     TileSource* ts = getTileSource();
     return ts ? ts->isDynamic() : false;
 }
@@ -743,15 +739,9 @@ TerrainLayer::createAndOpenTileSource()
         // Now that the tile source exists, set up the cache.
         if (_cacheSettings->isCacheEnabled())
         {
-            // read the cache policy hint from the tile source unless user expressly set
-            // a policy in the initialization options. In other words, the hint takes
-            // ultimate priority (even over the Registry override) unless expressly
-            // overridden in the layer options!
-            refreshTileSourceCachePolicyHint( ts.get() );
-
             // Unless the user has already configured an expiration policy, use the "last modified"
             // timestamp of the TileSource to set a minimum valid cache entry timestamp.
-            const CachePolicy& cp = options().cachePolicy().get();
+            const CachePolicy& cp = _cacheSettings->cachePolicy().get();
 
             if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
             {
@@ -804,7 +794,6 @@ TerrainLayer::createAndOpenTileSource()
         {
             // create the final profile from any overrides:
             applyProfileOverrides();
-            OE_INFO << LC << "Profile=" << _profile->toString() << std::endl;
         }
     }
 
@@ -826,30 +815,6 @@ TerrainLayer::createAndOpenTileSource()
     }
 
     return ts.release();
-}
-
-void
-TerrainLayer::applyProfileOverrides()
-{
-    // Check for a vertical datum override.
-    bool changed = false;
-    if ( _profile.valid() && options().verticalDatum().isSet() )
-    {
-        std::string vdatum = options().verticalDatum().get();
-        OE_INFO << "override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
-        if ( !ciEquals(_profile->getSRS()->getVertInitString(), vdatum) )
-        {
-            ProfileOptions po = _profile->toProfileOptions();
-            po.vsrsString() = vdatum;
-            setProfile( Profile::create(po) );
-            changed = true;
-        }
-    }
-
-    if (changed && _profile.valid())
-    {
-        OE_INFO << LC << "Override profile: " << _profile->toString() << std::endl;
-    }
 }
 
 #if 0
@@ -1239,10 +1204,22 @@ TerrainLayer::mayHaveData(const TileKey& key) const
     return key == getBestAvailableTileKey(key);
 }
 
+void
+TerrainLayer::setTileSize(const unsigned& value)
+{
+    options().tileSize() = value;
+}
+
 unsigned
 TerrainLayer::getTileSize() const
 {
     return getTileSource() ? getTileSource()->getPixelsPerTile() : options().tileSize().get();
+}
+
+void
+TerrainLayer::setNoDataValue(const float& value)
+{
+    options().noDataValue() = value;
 }
 
 float
@@ -1251,10 +1228,22 @@ TerrainLayer::getNoDataValue() const
     return getTileSource() ? getTileSource()->getNoDataValue() : options().noDataValue().get();
 }
 
+void
+TerrainLayer::setMinValidValue(const float& value)
+{
+    options().minValidValue() = value;
+}
+
 float
 TerrainLayer::getMinValidValue() const
 {
     return getTileSource() ? getTileSource()->getMinValidValue() : options().minValidValue().get();
+}
+
+void
+TerrainLayer::setMaxValidValue(const float& value)
+{
+    options().maxValidValue() = value;
 }
 
 float

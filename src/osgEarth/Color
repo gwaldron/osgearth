@@ -19,15 +19,21 @@
 #ifndef OSGEARTH_COLOR_H
 #define OSGEARTH_COLOR_H 1
 
+<<<<<<<< HEAD:src/osgEarth/Color
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osg/Vec4f>
 #include <string>
+========
+#include <osgEarthSymbology/Common>
+#include <osgEarth/Color>
+>>>>>>>> upstream/3.0:src/osgEarthSymbology/Color
 
 namespace osgEarth
 {
+<<<<<<<< HEAD:src/osgEarth/Color
     /**
-     * Color.
+     * Pre-set colors (convenience class).
      */
     struct OSGEARTH_EXPORT Color : public osg::Vec4f
     {
@@ -136,5 +142,9 @@ namespace osgEarth
     }
 }
 
+========
+    using osgEarth::Color;
+} }
+>>>>>>>> upstream/3.0:src/osgEarthSymbology/Color
 
 #endif // OSGEARTH_COLOR_H

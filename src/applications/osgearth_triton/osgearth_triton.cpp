@@ -21,23 +21,21 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
 #include <osgEarthTriton/TritonAPIWrapper>
 #include <osgEarthTriton/TritonCallback>
-#include <osgEarthTriton/TritonOptions>
 #include <osgEarthTriton/TritonLayer>
-#include <osgEarthAnnotation/AnnotationLayer>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/GeoPositionNode>
+#include <osgEarth/AnnotationLayer>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/GeoPositionNode>
 
 #define LC "[osgearth_triton] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Triton;
-using namespace osgEarth::Annotation;
 namespace ui = osgEarth::Util::Controls;
 
 struct Settings
@@ -115,22 +113,19 @@ struct App
 
     void addTriton()
     {
-        // Create TritonNode from TritonOptions
-        osgEarth::Triton::TritonOptions tritonOptions;
-        tritonOptions.user()        = "my_user_name";
-        tritonOptions.licenseCode() = "my_license_code";
-        tritonOptions.maxAltitude() = 100000;
-        tritonOptions.useHeightMap() = true;
+        tritonLayer = new TritonLayer();
+        tritonLayer->setUserName("my_user_name");
+        tritonLayer->setLicenseCode("my_license_code");
+        tritonLayer->setMaxAltitude(100000);
+        tritonLayer->setUseHeightMap(true);
 
         const char* ev_t = ::getenv("TRITON_PATH");
         if ( ev_t )
         {
-            tritonOptions.resourcePath() = osgDB::concatPaths(
-                std::string(ev_t),
-                "Resources" );
+            tritonLayer->setResourcePath(osgDB::concatPaths(std::string(ev_t), "Resources"));
 
             OE_INFO << LC 
-                << "Setting resource path to << " << tritonOptions.resourcePath().get()
+                << "Setting resource path to << " << tritonLayer->getResourcePath()
                 << std::endl;
         }
         else
@@ -141,8 +136,7 @@ struct App
                 << std::endl;
         }
 
-
-        tritonLayer = new TritonLayer(tritonOptions, new TritonCallback(settings));
+tritonLayer->setUserCallback(new TritonCallback(settings));
         map->addLayer(tritonLayer);
         settings.tritonLayer = tritonLayer;
 

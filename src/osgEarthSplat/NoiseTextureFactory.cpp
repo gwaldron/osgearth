@@ -26,6 +26,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
+using namespace osgEarth::Support;
 
 
 #define LC "[NoiseTextureFactory] "
@@ -51,12 +52,12 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     const float P[4] = { 0.8f,  1.0f,  0.9f, 0.9f };
     const float L[4] = { 2.2f,  1.0f,  1.0f, 4.0f };
 
-    osgEarth::Random random(0, Random::METHOD_FAST);
+    Random random(0, Random::METHOD_FAST);
     
-    for(int k=0; k<chans; ++k)
+    for(unsigned k=0; k<chans; ++k)
     {
         // Configure the noise function:
-        osgEarth::SimplexNoise noise;
+        Util::SimplexNoise noise;
         noise.setNormalize( true );
         noise.setRange( 0.0, 1.0 );
         noise.setFrequency( F[k] );

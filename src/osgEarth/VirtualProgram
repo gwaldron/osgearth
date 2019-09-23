@@ -53,6 +53,7 @@
 
 namespace osgEarth
 {
+    /** TODO: refactor into VirtualProgram */
     namespace ShaderComp
     {
         // User function injection points.
@@ -137,7 +138,8 @@ namespace osgEarth
         typedef unsigned StageMask;
     }
 
-
+    namespace Support
+    {
     /**
      * A Shader that can compile into different stages of the program pipeline
      * depending on which stages are in use. For example, you may designate a
@@ -265,7 +267,12 @@ namespace osgEarth
         mutable ProgramMap _db;
         mutable Threading::Mutex _m;
     };
+    }
+}
 
+namespace osgEarth
+{
+    using namespace osgEarth::Support;
 
     /**
      * VirtualProgram enables GLSL shader composition within osgEarth. It automatically
@@ -339,12 +346,6 @@ namespace osgEarth
             ShaderComp::FunctionLocation location,
             ShaderComp::AcceptCallback*  acceptCallback,
             float                        order =1.0f );
-
-        /** @deprecated and NOOP (remove after 2.10) */
-        void setFunctionMinRange(const std::string& name, float minRange);
-
-        /** @deprecated and NOOP (remove after 2.10) */
-        void setFunctionMaxRange(const std::string& name, float maxRange);
 
         /**
          * Whether this VP should inherit shaders from parent state sets. This is

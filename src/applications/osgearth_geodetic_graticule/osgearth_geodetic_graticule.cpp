@@ -24,15 +24,14 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/MapNode>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/GeodeticGraticule>
+#include <osgEarth/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 namespace ui = osgEarth::Util::Controls;
 
 int

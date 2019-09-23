@@ -26,8 +26,8 @@
 
 #include <osg/Geometry>
     
-namespace osgEarth {
-
+namespace osgEarth { namespace Support
+{
     /**
      * Polygon tessellator using a modified ear clipping technique
      */
@@ -43,6 +43,6 @@ namespace osgEarth {
         bool isConvex(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor);
         bool isEar(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor, bool &tradEar);
     };
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_TESSELLATOR_H

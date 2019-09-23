@@ -22,69 +22,27 @@
 
 using namespace osgEarth;
 
-REGISTER_OSGEARTH_LAYER(video, VideoLayer);
-
-VideoLayerOptions::VideoLayerOptions() :
-ImageLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-VideoLayerOptions::VideoLayerOptions(const ConfigOptions& options) :
-ImageLayerOptions( options )
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-VideoLayerOptions::VideoLayerOptions(const std::string& name) :
-ImageLayerOptions( name )
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-void
-VideoLayerOptions::setDefaults()
-{
-}
+//.......................................................................
 
 Config
-VideoLayerOptions::getConfig() const
+VideoLayer::Options::getConfig() const
 {
-    Config conf = ImageLayerOptions::getConfig();
+    Config conf = ImageLayer::Options::getConfig();
     conf.set("url", _url);
     return conf;
 }
 
 void
-VideoLayerOptions::fromConfig( const Config& conf )
+VideoLayer::Options::fromConfig( const Config& conf )
 {
     conf.get("url", _url );
 }
 
-void
-VideoLayerOptions::mergeConfig( const Config& conf )
-{
-    ImageLayerOptions::mergeConfig( conf );
-    fromConfig( conf );
-}
+//-------------------------------------------------------------
 
+REGISTER_OSGEARTH_LAYER(video, VideoLayer);
 
-VideoLayer::VideoLayer() :
-    _options(NULL)
-{
-    init();
-}
-
-VideoLayer::VideoLayer( const VideoLayerOptions& options ):
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{    
-    init();    
-}
+OE_LAYER_PROPERTY_IMPL(VideoLayer, URI, URL, url);
 
 void
 VideoLayer::init()
@@ -141,13 +99,15 @@ VideoLayer::open()
     return getStatus();
 }
 
-osg::Texture* VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)
+TextureWindow
+VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
 {   
+    osg::Matrix textureMatrix;
     bool flip = _texture->getImage()->getOrigin() == osg::Image::TOP_LEFT;    
     key.getExtent().createScaleBias(key.getProfile()->getExtent(), textureMatrix);
     if (flip)
     {
         textureMatrix *= osg::Matrixf::scale(1.0, flip ? -1.0 : 1.0, 1.0);
     }  
-    return _texture.get();
+    return TextureWindow(_texture.get(), textureMatrix);
 }

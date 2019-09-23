@@ -11,16 +11,13 @@ IF(NOT OSGCORE_BUNDLED)
 	ENDIF(OSGCORE_FOUND)
 	SET(CMAKE_MODULE_PATH  ${PROJECT_SOURCE_DIR}/../../Macros)
 ENDIF(NOT OSGCORE_BUNDLED)
+
 SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
 
 
 #OpenThreads, osg, osgDB and osgUtil are included elsewhere.
 SET(TARGET_COMMON_LIBRARIES
     osgEarth
-    osgEarthFeatures
-    osgEarthUtil
-    osgEarthSymbology
-    osgEarthAnnotation
 )
 
 SET(TARGET_DEFAULT_PREFIX "application_")
@@ -46,6 +43,8 @@ ADD_SUBDIRECTORY(osgearth_3pv)
 ADD_SUBDIRECTORY(osgearth_featureinfo)
 #ADD_SUBDIRECTORY(osgearth_featuretiler)
 
+#ADD_SUBDIRECTORY(osgearth_featuretiler)
+
 IF(BUILD_OSGEARTH_EXAMPLES)
     SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")
     SET(TARGET_DEFAULT_APPLICATION_FOLDER "Samples")
@@ -66,13 +65,12 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_measure)
     ADD_SUBDIRECTORY(osgearth_controls)
     ADD_SUBDIRECTORY(osgearth_shadercomp)
-    ADD_SUBDIRECTORY(osgearth_tilesource)
+    #ADD_SUBDIRECTORY(osgearth_tilesource)
     ADD_SUBDIRECTORY(osgearth_imageoverlay)
     ADD_SUBDIRECTORY(osgearth_city)
     ADD_SUBDIRECTORY(osgearth_graticule)
     ADD_SUBDIRECTORY(osgearth_featurequery)
     ADD_SUBDIRECTORY(osgearth_occlusionculling)
-    ADD_SUBDIRECTORY(osgearth_colorfilter)
     ADD_SUBDIRECTORY(osgearth_sequencecontrol)
     ADD_SUBDIRECTORY(osgearth_minimap)
     ADD_SUBDIRECTORY(osgearth_mrt)
@@ -97,6 +95,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_eci)
     ADD_SUBDIRECTORY(osgearth_windows)
     #ADD_SUBDIRECTORY(osgearth_3dtiles)
+    ADD_SUBDIRECTORY(osgearth_callouts)
 
     IF(SILVERLINING_FOUND)
         ADD_SUBDIRECTORY(osgearth_silverlining)

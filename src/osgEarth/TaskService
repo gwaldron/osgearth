@@ -30,7 +30,7 @@
 #include <string>
 #include <map>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class OSGEARTH_EXPORT TaskRequest : public osg::Referenced
     {
@@ -289,7 +289,7 @@ namespace osgEarth
 
         void reallocate( int targetNumThreads );
     };
-}
+} }
 
 #endif // OSGEARTH_TASK_SERVICE
 

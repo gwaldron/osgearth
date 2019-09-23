@@ -24,6 +24,7 @@
 #define LC "[Random] "
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 //------------------------------------------------------------------------
 

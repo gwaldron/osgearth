@@ -21,48 +21,55 @@
 #include <osgEarth/Map>
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/VirtualProgram>
-#include <osgEarthFeatures/FilterContext>
-#include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarth/FilterContext>
+#include <osgEarth/GeometryCompiler>
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[RoadSurfaceLayer] "
 
 
+REGISTER_OSGEARTH_LAYER(roadsurface, RoadSurfaceLayer);
 REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
 
-RoadSurfaceLayer::RoadSurfaceLayer() :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
+//........................................................................
+
+Config
+RoadSurfaceLayer::Options::getConfig() const
 {
-    init();
+    Config conf = ImageLayer::Options::getConfig();
+    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    conf.set("buffer_width", featureBufferWidth() );
+    return conf;
 }
 
-RoadSurfaceLayer::RoadSurfaceLayer(const RoadSurfaceLayerOptions& options) :
-ImageLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
+void
+RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    init();
+    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    conf.get("buffer_width", featureBufferWidth() );
 }
+
+//........................................................................
+
+OE_LAYER_PROPERTY_IMPL(RoadSurfaceLayer, Distance, FeatureBufferWidth, featureBufferWidth);
 
 void
 RoadSurfaceLayer::init()
 {
+    ImageLayer::init();
+
     setTileSourceExpected(false);
 
     // Generate Mercator tiles by default.
     setProfile(Profile::create("global-geodetic"));
-    //setProfile(Profile::create("spherical-mercator"));
 
     // Create a rasterizer for rendering nodes to images.
     _rasterizer = new TileRasterizer(); 
-
-    ImageLayer::init();
 
     if (getName().empty())
         setName("Road surface");
@@ -72,62 +79,37 @@ const Status&
 RoadSurfaceLayer::open()
 {
     // assert a feature source:
-    if (!options().features().isSet() && !options().featureSourceLayer().isSet())
-    {
-        return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
-    }
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    if (fsStatus.isError())
+        return setStatus(fsStatus);
 
-    if (options().features().isSet())
-    {
-        // create and attempt to open that feature source:
-        osg::ref_ptr<FeatureSource> features = FeatureSourceFactory::create(options().features().get());
-        if (features.valid())
-        {
-            setStatus(features->open());
+    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    if (ssStatus.isError())
+        return setStatus(ssStatus);
 
-            if (getStatus().isOK())
-            {
-                setFeatureSource(features.get());
-            }
-        }
-        else
-        {
-            return setStatus(Status::Error(Status::ServiceUnavailable, "Cannot load feature source"));
-        }
-    }
-
-
-    if (getStatus().isOK())
-        return ImageLayer::open();
-    else
-        return getStatus();
+    return ImageLayer::open();
 }
 
 void
 RoadSurfaceLayer::addedToMap(const Map* map)
 {
+    ImageLayer::addedToMap(map);
+
     // create a session for feature processing based in the Map,
     // but don't set the feature source yet.
-    _session = new Session(map, options().styles().get(), 0L, getReadOptions());
+    _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    if (options().featureSourceLayer().isSet())
-    {
-        _layerListener.listen(
-            map,
-            options().featureSourceLayer().get(),
-            this,
-            &RoadSurfaceLayer::setFeatureSourceLayer);
-    }
-    else if (!_features.valid())
-    {
-        setStatus(Status::Error(Status::ConfigurationError, "No features"));
-    }
+    _featureSource.addedToMap(options().featureSourceLayer(), map);
+    _styleSheet.addedToMap(options().styleSheetLayer(), map);
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
+    ImageLayer::removedFromMap(map);
+    _featureSource.removedFromMap(map);
+    _styleSheet.removedFromMap(map);
     _session = 0L;
 }
 
@@ -139,142 +121,156 @@ RoadSurfaceLayer::getNode() const
 }
 
 void
-RoadSurfaceLayer::setFeatureSource(FeatureSource* fs)
+RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 {
-    if (fs != _features.get())
+    if (getFeatureSource() != layer)
     {
-        _features = fs;
-        if (_features.valid())
+        _featureSource.setLayer(layer);
+        if (layer && layer->getStatus().isError())
         {
-            setStatus(_features->getStatus());
+            setStatus(layer->getStatus());
         }
     }
+}
+
+FeatureSource*
+RoadSurfaceLayer::getFeatureSource() const
+{
+    return _featureSource.getLayer();
 }
 
 void
-RoadSurfaceLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
+RoadSurfaceLayer::setStyleSheet(StyleSheet* value)
 {
-    if (layer && layer->getStatus().isError())
-    {
-        setStatus(Status::Error(Status::ResourceUnavailable, "Feature source layer is unavailable; check for error"));
-        return;
-    }
-
-    if (layer)
-        OE_INFO << LC << "Feature source layer is \"" << layer->getName() << "\"\n";
-
-    setFeatureSource(layer ? layer->getFeatureSource() : 0L);
+    _styleSheet.setLayer(value);
 }
 
-typedef std::vector< std::pair< Style, FeatureList > > StyleToFeatures;
-
-void addFeatureToMap(Feature* feature, const Style& style, StyleToFeatures& map)
+StyleSheet*
+RoadSurfaceLayer::getStyleSheet() const
 {
-    bool added = false;
+    return _styleSheet.getLayer();
+}
 
-    if (!style.getName().empty())
+namespace
+{
+    typedef std::vector< std::pair< Style, FeatureList > > StyleToFeatures;
+
+    void addFeatureToMap(Feature* feature, const Style& style, StyleToFeatures& map)
     {
-        // Try to find the style by name
-        for (int i = 0; i < map.size(); i++)
+        bool added = false;
+
+        if (!style.getName().empty())
         {
-            if (map[i].first.getName() == style.getName())
+            // Try to find the style by name
+            for (int i = 0; i < map.size(); i++)
             {
-                map[i].second.push_back(feature);
-                added = true;
-                break;
+                if (map[i].first.getName() == style.getName())
+                {
+                    map[i].second.push_back(feature);
+                    added = true;
+                    break;
+                }
             }
         }
+
+        if (!added)
+        {
+            FeatureList list;
+            list.push_back( feature );
+            map.push_back(std::pair< Style, FeatureList>(style, list));
+        }                                
     }
 
-    if (!added)
+    void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext &context, StyleToFeatures& map)
     {
-        FeatureList list;
-        list.push_back( feature );
-        map.push_back(std::pair< Style, FeatureList>(style, list));
-    }                                
-}
+        if ( styles == 0L )
+            return;
 
-void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext &context, StyleToFeatures& map)
-{
-    if ( styles == 0L )
-        return;
-
-    if ( styles->selectors().size() > 0 )
-    {
-        for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
+        if ( styles->getSelectors().size() > 0 )
         {
-            const StyleSelector& sel = *i;
-
-            if ( sel.styleExpression().isSet() )
+            for( StyleSelectors::const_iterator i = styles->getSelectors().begin(); 
+                i != styles->getSelectors().end();
+                ++i )
             {
-                // establish the working bounds and a context:
-                StringExpression styleExprCopy(  sel.styleExpression().get() );
+                const StyleSelector& sel = i->second;
 
-                for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                if ( sel.styleExpression().isSet() )
                 {
-                    Feature* feature = itr->get();
+                    // establish the working bounds and a context:
+                    StringExpression styleExprCopy(  sel.styleExpression().get() );
 
-                    const std::string& styleString = feature->eval( styleExprCopy, &context );
-                    if (!styleString.empty() && styleString != "null")
+                    for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
                     {
-                        // resolve the style:
-                        Style combinedStyle;
+                        Feature* feature = itr->get();
 
-                        // if the style string begins with an open bracket, it's an inline style definition.
-                        if ( styleString.length() > 0 && styleString[0] == '{' )
+                        const std::string& styleString = feature->eval( styleExprCopy, &context );
+                        if (!styleString.empty() && styleString != "null")
                         {
-                            Config conf( "style", styleString );
-                            conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
-                            conf.set( "type", "text/css" );
-                            combinedStyle = Style(conf);
+                            // resolve the style:
+                            Style combinedStyle;
+
+                            // if the style string begins with an open bracket, it's an inline style definition.
+                            if ( styleString.length() > 0 && styleString[0] == '{' )
+                            {
+                                Config conf( "style", styleString );
+                                conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
+                                conf.set( "type", "text/css" );
+                                combinedStyle = Style(conf);
+                            }
+
+                            // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                            // style in this case: for style expressions, the user must be explicity about 
+                            // default styling; this is because there is no other way to exclude unwanted
+                            // features.
+                            else
+                            {
+                                const Style* selectedStyle = styles->getStyle(styleString, false);
+                                if ( selectedStyle )
+                                    combinedStyle = *selectedStyle;
+                            }
+
+                            if (!combinedStyle.empty())
+                            {
+                                addFeatureToMap( feature, combinedStyle, map);
+                            }                                
                         }
-
-                        // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                        // style in this case: for style expressions, the user must be explicity about 
-                        // default styling; this is because there is no other way to exclude unwanted
-                        // features.
-                        else
-                        {
-                            const Style* selectedStyle = styles->getStyle(styleString, false);
-                            if ( selectedStyle )
-                                combinedStyle = *selectedStyle;
-                        }
-
-                        if (!combinedStyle.empty())
-                        {
-                            addFeatureToMap( feature, combinedStyle, map);
-                        }                                
                     }
                 }
             }
         }
-    }
-    else
-    {
-        const Style* style = styles->getDefaultStyle();
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+        else
         {
-            Feature* feature = itr->get();
-            addFeatureToMap( feature, *style, map);
-        }        
+            const Style* style = styles->getDefaultStyle();
+            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+            {
+                Feature* feature = itr->get();
+                addFeatureToMap( feature, *style, map);
+            }        
+        }
     }
 }
 
 GeoImage
-RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())    
     {
         return GeoImage::INVALID;
     }
     
-    if (!_features.valid())
+    if (!getFeatureSource())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
         return GeoImage::INVALID;
     }
 
-    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    if (getFeatureSource()->getStatus().isError())
+    {
+        setStatus(getFeatureSource()->getStatus());
+        return GeoImage::INVALID;
+    }
+
+    const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (!featureProfile)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
@@ -329,7 +325,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
+            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
             if (cursor.valid())
             {
                 cursor->fill(features);
@@ -343,7 +339,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         query.bounds() = queryExtent.bounds();
 
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
+        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
         if (cursor.valid())
         {
             cursor->fill(features);
@@ -367,7 +363,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         GeometryCompiler compiler;
 
         StyleToFeatures map;
-        sortFeaturesIntoStyleGroups(options().styles().get(), features, fc, map);
+        sortFeaturesIntoStyleGroups(getStyleSheet(), features, fc, map);
         osg::ref_ptr< osg::Group > group;
         if (!map.empty())
         {

@@ -33,6 +33,7 @@
 
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 //---------------------------------------------------------------------------
 
@@ -367,11 +368,15 @@ OverlayDecorator::setTerrainEngine(TerrainEngineNode* engine)
     {
         _engine = engine;
 
-        // establish the earth's major axis:
-        MapInfo info(engine->getMap());
-        _isGeocentric = info.isGeocentric();
-        _srs = info.getProfile()->getSRS();
-        _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
+        if (engine->getMap()->getSRS() == 0L)
+        {
+            OE_WARN << LC << "ILLEGAL STATE: setTerrainEngine(), map SRS is not set" << std::endl;
+            return;
+        }   
+
+        _srs = engine->getMap()->getSRS();
+        _isGeocentric = _srs->isGeographic() || _srs->isGeocentric();
+        _ellipsoid = _srs->getEllipsoid();
 
         for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
         {

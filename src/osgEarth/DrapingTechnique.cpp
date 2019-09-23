@@ -34,6 +34,7 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 //---------------------------------------------------------------------------
 
@@ -569,8 +570,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // shaders
     Shaders pkg;
-    pkg.load( terrain_vp, pkg.DrapingVertex );
-    pkg.load( terrain_vp, pkg.DrapingFragment );
+    pkg.load( terrain_vp, pkg.Draping );
 }
 
 

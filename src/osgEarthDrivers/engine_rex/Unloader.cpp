@@ -23,7 +23,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/NodeUtils>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 
 //........................................................................

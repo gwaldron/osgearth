@@ -22,38 +22,37 @@
 
 #include <osgViewer/Viewer>
 #include <osgDB/WriteFile>
-#include <osgUtil/Simplifier>
-#include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ViewFitter>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
+#include <osgEarth/ViewFitter>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TDTiles>
 #include <osgEarth/Random>
 #include <osgEarth/TileKey>
 #include <osgEarth/CullingUtils>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/FeatureModelLayer>
-#include <osgEarthFeatures/ResampleFilter>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/ResampleFilter>
+#include <osgEarth/OGRFeatureSource>
+#include <osgEarth/Registry>
+#include <osgEarth/Async>
+#include <osgDB/FileUtils>
 #include <iostream>
 
 #define LC "[3dtiles test] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Drivers;
+using namespace osgEarth::Contrib;
 namespace ui = osgEarth::Util::Controls;
 
 struct App
 {
+    MapNode* _mapNode;
     ui::HSliderControl* _sse;
     TDTiles::ContentHandler* _handler;
     EarthManipulator* _manip;
@@ -73,7 +72,7 @@ struct App
         if (_tileset->getBound().valid())
         {
             const osg::BoundingSphere& bs = _tileset->getBound();
-
+            
             const SpatialReference* wgs84 = SpatialReference::get("wgs84");
 
             std::vector<GeoPoint> points;
@@ -87,6 +86,11 @@ struct App
 
             _manip->setViewpoint(vp);
         }
+    }
+
+    void apply()
+    {
+        changeSSE();
     }
 };
 
@@ -103,8 +107,8 @@ ui::Control* makeUI(App& app)
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
 
-    ++r;
-    container->setControl(0, r, new ui::ButtonControl("Zoom to data", new zoomToData(app)));
+    //++r;
+    //container->setControl(0, r, new ui::ButtonControl("Zoom to data", new zoomToData(app)));
 
     return container;
 }
@@ -116,21 +120,17 @@ usage(const std::string& message)
         << "\n\n" << message
         << "\n\nUsage: osgearth_3dtiles"
         << "\n"
-        << "\n   --build [earthfile]          ; build a B3DM file"
-        << "\n     --extent <minLat> <minLon>"
-        << "\n              <maxLat> <maxLon> ; Extents to build (degrees)"
-        << "\n     --out <filename>           ; output file with .b3dm extension"
-        << "\n     --error <meters>           ; geometric error (meters) of data (default=100)"
-        << "\n     --resolution <meters>      ; downsample data to this resolution"
-        << "\n     --limit <n>                ; Only generate <n> tiles (for testing)"
+        << "\n   --tile                       ; build a tileset"
+        << "\n     --in <earthfile>           ; Earth file containing feature source and stylesheet"
+        << "\n     --out <tileset>            ; output JSON tileset"
+        << "\n     --format <format>          ; output geometry format (default = b3dm)"
         << "\n"
-        << "\n   --view                       ; view a 3dtiles dataset"
+        << "\n   --view <earthfile>           ; view a 3dtiles dataset"
         << "\n     --tileset <filename>       ; 3dtiles tileset JSON file to load"
         << "\n     --maxsse <n>               ; maximum screen space error in pixels for UI"
         << "\n     --features                 ; treat the 3dtiles content as feature data"
         << "\n     --random-colors            ; randomly color feature tiles (instead of one color)"
         << std::endl;
-        //<< MapNodeHelper().usage() << std::endl;
 
     return -1;
 }
@@ -150,32 +150,50 @@ struct FeatureRenderer : public TDTiles::ContentHandler
     {
         osg::ref_ptr<osg::Node> node;
 
-        if (tile->content().isSet() && tile->content()->uri().isSet())
+        if (tile->content().isSet() && tile->content()->uri().isSet() && !tile->content()->uri()->empty())
         {
-            OE_INFO << "Rendering feature tile: " << tile->content()->uri()->base() << std::endl;
-        
-            OGRFeatureOptions ogr;
-            ogr.url() = tile->content()->uri().get();
-            osg::ref_ptr<FeatureSource> fs = FeatureSourceFactory::create(ogr);
-            if (fs.valid() && fs->open().isOK())
+            if (osgEarth::Strings::endsWith(tile->content()->uri()->base(), ".shp"))
             {
-                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(0L);
-                FeatureList features;
-                cursor->fill(features);
-                if (!features.empty())
+                OE_INFO << "Rendering: " << tile->content()->uri()->full() << std::endl;
+        
+                osg::ref_ptr<OGRFeatureSource> fs = new OGRFeatureSource();
+                fs->setURL(tile->content()->uri().get());
+                if (fs->open().isOK())
                 {
-                    Style style;
-                    osg::Vec4 color;
-                    if (_app._randomColors)
-                        color.set(_random.next(), _random.next(), _random.next(), 1.0f);
-                    else
-                        color.set(1.0, 0.6, 0.0, 1.0);
+                    Query query;
 
-                    style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
-                    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-                    style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-                    node = new FeatureNode(features, style);
+                    // Gather features whose centroid falls within the query bounds
+                    FeatureList features;
+                    osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(query, NULL);
+                    if (cursor.valid())
+                        cursor->fill(features);
+                    fs->close();
+
+                    if (!features.empty())
+                    {
+                        Style style;
+                        osg::Vec4 color;
+                        if (_app._randomColors)
+                            color.set(_random.next(), _random.next(), _random.next(), 1.0f);
+                        else
+                            color.set(1.0, 0.6, 0.0, 1.0);
+
+                        style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
+                        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                        //style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+                        ExtrusionSymbol* ext = style.getOrCreate<ExtrusionSymbol>();
+                        ext->heightExpression() = NumericExpression("[height]");
+
+                        FeatureNode* fn = new FeatureNode(features, style);
+                        fn->setMapNode(_app._mapNode);
+                        node = fn;
+                        osg::BoundingSphere bs = node->getBound();
+                    }
                 }
+            }
+            else
+            {
+                node = osgDB::readRefNodeFile(tile->content()->uri()->full());
             }
         }
         else
@@ -199,7 +217,7 @@ main_view(osg::ArgumentParser& arguments)
     bool readFeatures = arguments.read("--features");
     app._randomColors = arguments.read("--random-colors");
 
-    app._maxSSE = 7.0f;
+    app._maxSSE = 20.0f;
     arguments.read("--maxsse", app._maxSSE);
 
     // load the tile set:
@@ -225,6 +243,7 @@ main_view(osg::ArgumentParser& arguments)
         return usage("Failed to load an earth file");
 
     MapNode* mapNode = MapNode::get(node.get());
+    app._mapNode = mapNode;
 
     if (readFeatures)
         app._tileset = new TDTilesetGroup(new FeatureRenderer(app));
@@ -235,8 +254,6 @@ main_view(osg::ArgumentParser& arguments)
     app._sseGroup = new LODScaleGroup();
     app._sseGroup->addChild(app._tileset.get());
 
-    //app._handler = app._tileset->getContentHandler();
-
     ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
     app._tileset->setTileset(tileset);
@@ -244,7 +261,14 @@ main_view(osg::ArgumentParser& arguments)
 
     mapNode->addChild(app._sseGroup);
 
+    mapNode->addChild(Registry::instance()->getAsyncMemoryManager());
+
     viewer.setSceneData( node.get() );
+
+    app.apply();
+
+    app.zoomToData();
+
     return viewer.run();
 }
 
@@ -294,206 +318,69 @@ createTile(osg::Node* node, const GeoExtent& extent, double error, const std::st
 }
 
 int
-main_build(osg::ArgumentParser& arguments)
+main_tile(osg::ArgumentParser& args)
 {
-    // Process:
-    // 1. Open an earth file and load a Map.
-    // 2. Find a feature model layer.
-    // 3. Read in one tile from the feature source.
-    // 4. Compile it into OSG geometry with a matrix transform
-    // 5. Save that geometry to a B3DM file.
+    // 1. Load an earth file
+    // 2. Find the first FeatureSource Layer and StyleSheet Layer
+    // 3. Create a 3D-Tiles Tileset object from it
+    // 4. Write the tileset to disk.
+    std::string infile;
+    if (!args.read("--in", infile))
+        return usage("Missing required --in <earthfile>");
 
-    // Estalish extents for the build.
-    double minLat, minLon, maxLat, maxLon;
-    if (!arguments.read("--extent", minLat, minLon, maxLat, maxLon))
-        return usage("Missing required --extent");
+    std::string outfile;
+    if (!args.read("--out", outfile))
+        return usage("Missing required --out tileset.json");
 
-    GeoExtent extent(SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
-    if (!extent.isValid())
-        return usage("Invalid extent");
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(infile);
+    MapNode* mapnode = MapNode::get(node.get());
+    if (!mapnode)
+        return usage("Input file is not a valid earth file");
 
-    // Output filename prefix
-    std::string prefix;
-    if (!arguments.read("--out", prefix))
-        return usage("Missing required --out <prefix>");
-    if (!prefix.empty()) prefix = prefix + "_";
+    Map* map = mapnode->getMap();
 
-    // Geometric error (only render the data if it's on-screen size
-    // is greater than "maxSSE" pixels per "error" meters.
-    // For example, if error=100m, and maxSSE=16px, the data will only
-    // render once 100m of data takes up at least 16px of screen space.
-    double tilesetError;
-    if (!arguments.read("--error", tilesetError))
-        tilesetError = 500.0;
+    OGRFeatureSource* fs = map->getLayer<OGRFeatureSource>();
+    if (!fs)
+        return usage("No feature source layer found in the map");
 
-    double resolution = 0.0;
-    arguments.read("--resolution", resolution);
-
-    TDTiles::RefinePolicy refine = TDTiles::REFINE_REPLACE;
-    if (arguments.read("--add"))
-        refine = TDTiles::REFINE_ADD;
-
-    int limit = INT_MAX;
-    arguments.read("--limit", limit);
-
-    // Open an earth file and load a Map.
-    osg::ref_ptr<osg::Node> earthFile = osgDB::readNodeFiles(arguments);
-    MapNode* mapNode = MapNode::get(earthFile.get());
-    if (!mapNode)
-        return usage("Unable to load an earth file");
-
-    // Open all the layers:
-    mapNode->openMapLayers();
-
-    // Locate the first FeatureModelLayer in the map:
-    const Map* map = mapNode->getMap();
-    FeatureModelLayer* fml = map->getLayer<FeatureModelLayer>();
-    if ( !fml )
-        return usage("Unable to find a FeatureModel layer in the Map");
-    if ( !fml->getStatus().isOK() )
-        return usage(fml->getStatus().message());
-
-    // Extract the feature source from the layer:
-    FeatureSource* fs = fml->getFeatureSource();
-    if ( !fs )
-        return usage("Unable to get feature source from layer");
-    if ( !fs->getStatus().isOK() )
-        return usage(fs->getStatus().message());
-    if ( fs->open(0L).isError() )
-        return usage(fs->getStatus().message());
-
-    const FeatureProfile* fp = fs->getFeatureProfile();
-    if (!fp)
-        return usage("Unable to get a feature profile");
-    if (!fp->getProfile())
-        return usage("Unagle to find a tiling profile in the feature profile");
-
-    std::vector<TileKey> keys;
-    fp->getProfile()->getIntersectingTiles(extent, fp->getMaxLevel(), keys);
-    if (keys.empty())
-        return usage("No data in requested extent");
-    OE_INFO << "Found " << keys.size() << " tiles in extent" << std::endl;
-
-    StyleSheet* sheet = fml->options().styles().get();
+    StyleSheet* sheet = map->getLayer<StyleSheet>();
     if (!sheet)
-        return usage("Missing stylesheet");
+        return usage("No stylesheet found in the map");
 
-    // Make sure the b3dm plugin is loaded
-    std::string libname = osgDB::Registry::instance()->createLibraryNameForExtension("gltf");
-    osgDB::Registry::instance()->loadLibrary(libname);
+    const Style* style = sheet->getDefaultStyle();
+    if (!sheet)
+        return usage("No default style found in the stylesheet");
 
-    osg::ref_ptr<Session> session = new Session(map, sheet, fs, 0L);
-    GeometryCompiler compiler(fml->options());
+    std::string format("b3dm");
+    args.read("--format", format);
 
-    // Read all the styles in the stylesheet and sort them by geometric error:
-    std::map<double, Style> styles;
-    const StyleMap& smap = sheet->styles();
-    for(StyleMap::const_iterator i = smap.begin(); i != smap.end(); ++i)
+    if (!map->getProfile())
     {
-        styles[atoi(i->first.c_str())] = i->second;
-        OE_INFO << LC << "Found style \"" << i->first << "\"" << std::endl;
+        const Profile* profile = map->calculateProfile();
+        map->setProfile(profile);
     }
 
-    // Create the tileset file
-    osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
-    tileset->asset()->version() = "1.0";
-    tileset->root() = new TDTiles::Tile();
-    tileset->root()->refine() = TDTiles::REFINE_ADD;
-    tileset->root()->geometricError() = tilesetError;
+    // For best optimization
+    Registry::instance()->setMaxNumberOfVertsPerDrawable(UINT_MAX);
 
-    // track the largest tile radius - we will use this as the geometric error
-    // for the group.
-    double maxTileRadius = 0.0;
+    TDTiles::TilesetFactory factory;
+    factory.setMap(map);
+    factory.setGeometryFormat(format);
+    factory.setStyleSheet(sheet);
+    factory.setURIContext(URIContext(outfile));
 
-    // track the total geospatial extent - this will become the bounding volume
-    // for the group
-    GeoExtent total;
+    Query query;
+    osg::ref_ptr<TDTiles::Tileset> tileset = factory.create(fs, query, NULL);
+    if (!tileset.valid())
+        return usage("Failed to create a tileset from the feature source");
 
-    //TODO: for loop on the feature keys
-    int count = 0;
-    for(std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
-    {
-        // Check the "radius"
-        double tileRadius = key->getExtent().computeBoundingGeoCircle().getRadius();
-        maxTileRadius = osg::maximum(tileRadius, maxTileRadius);
-
-        // Query the features corresponding to the tile key:
-        Query query;
-        query.tileKey() = *key;
-
-        std::string filenamePrefix = Stringify() << prefix << key->getLOD() << "_" << key->getTileX() << "_" << key->getTileY();
-
-        osg::ref_ptr<TDTiles::Tile> parent = tileset->root();
-
-        for(std::map<double, Style>::reverse_iterator i = styles.rbegin(); i != styles.rend(); ++i)
-        {
-            double error = i->first;
-            const Style& style = i->second;
-
-            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(query, 0L);
-            if (!cursor.valid())
-                continue;
-
-            // Compile into OSG geometry
-            FeatureList features;
-            cursor->fill(features);
-            if (features.empty())
-                continue;
-
-            OE_INFO << LC << "Tile " << key->str() << ", features=" << features.size() << ", width=" << key->getExtent().width() << ", error=" << error << std::endl;
-
-            FilterContext fc(session.get(), fp, key->getExtent());
-
-            // first simplify the feature set
-            if (resolution > 0.0)
-            {
-                ResampleFilter resample(resolution, DBL_MAX);
-                fc = resample.push(features, fc);
-            }
-
-            osg::ref_ptr<osg::Node> result = compiler.compile(features, style, fc);
-            if (!result)
-                return usage("Failed to compile features into OSG geometry");
-
-            if (result->getBound().valid())
-            {
-                GeoExtent extent = key->getExtent().transform(SpatialReference::get("wgs84"));
-                if (total.isValid())
-                    total.expandToInclude(extent);
-                else
-                    total = extent;
-
-                osg::ref_ptr<TDTiles::Tile> tile = createTile(result.get(), extent, error, filenamePrefix, refine);
-                parent->children().push_back(tile);
-
-                parent->geometricError() = error;
-
-                parent = tile;
-            }
-        }
-
-        if (++count >= limit)
-            break;
-    }
-
-    // TODO: calculate the correct Z min/max instead of hard-coding
-    tileset->root()->boundingVolume()->region()->set(
-        osg::DegreesToRadians(total.xMin()),
-        osg::DegreesToRadians(total.yMin()),
-        -1000.0,
-        osg::DegreesToRadians(total.xMax()),
-        osg::DegreesToRadians(total.yMax()),
-        3000.0);
+    std::ofstream fout(outfile);
+    Support::Json::Value json = tileset->getJSON();
+    Support::Json::StyledStreamWriter writer;
+    writer.write(fout, json);
+    fout.close();
+    OE_INFO << "Wrote tileset to " << outfile << std::endl;
     
-    tileset->geometricError() = tileset->root()->geometricError().get() * 1.5;
-
-    // write out the tileset file ("tileset.json")
-    std::ofstream out("tileset.json");
-    Json::Value tilesetJSON = tileset->getJSON();
-    Json::StyledStreamWriter writer;
-    writer.write(out, tilesetJSON);
-    out.close();
-
     return 0;
 }
 
@@ -502,13 +389,19 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc, argv);
 
+    // Make sure the b3dm plugin is loaded
+    std::string libname = osgDB::Registry::instance()->createLibraryNameForExtension("gltf");
+    osgDB::Registry::instance()->loadLibrary(libname);
+
     if (arguments.read("--help"))
         return usage("Help!");
 
-    if (arguments.read("--build"))
-        return main_build(arguments);
+    else if (arguments.read("--tile"))
+        return main_tile(arguments);
+
     else if (arguments.read("--view"))
         return main_view(arguments);
+
     else
         return usage("Missing required --build or --view");
 }

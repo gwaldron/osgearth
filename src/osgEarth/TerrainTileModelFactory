@@ -68,8 +68,7 @@ namespace osgEarth
     {
     public:
         /** Constructor */
-        TerrainTileModelFactory(
-            const TerrainOptions& options);
+        TerrainTileModelFactory(const TerrainOptions& options);
 
         /**
          * Creates a tile model and populates it with data from the map.
@@ -119,7 +118,7 @@ namespace osgEarth
             const Map*                      map,
             const TileKey&                  key,
             ElevationSamplePolicy           samplePolicy,
-            ElevationInterpolation          interpolation,
+            RasterInterpolation             interpolation,
             unsigned                        border,
             osg::ref_ptr<osg::HeightField>& out_hf,
             osg::ref_ptr<NormalMap>&        out_normalMap,
@@ -141,7 +140,7 @@ namespace osgEarth
             bool compress
             ) const;
 
-        const TerrainOptions _options;
+        const TerrainOptions& _options;
         
 
         /** Key into the height field cache */

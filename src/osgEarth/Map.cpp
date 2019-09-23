@@ -19,21 +19,12 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Registry>
-#include <osgEarth/Utils>
 
 using namespace osgEarth;
 
 #define LC "[Map] "
 
-//------------------------------------------------------------------------
-
-Map::VisibleLayerCB::VisibleLayerCB(Map* map) : _map(map) { }
-
-void Map::VisibleLayerCB::onVisibleChanged(VisibleLayer* layer) {
-    osg::ref_ptr<Map> map;
-    if ( _map.lock(map) )
-        _map->notifyLayerVisibleChanged(layer);
-}
+//...................................................................
 
 Map::LayerCB::LayerCB(Map* map) : _map(map) { }
 
@@ -43,42 +34,88 @@ void Map::LayerCB::onEnabledChanged(Layer* layer) {
         map->notifyOnLayerEnabledChanged(layer);
 }
 
-//------------------------------------------------------------------------
+//...................................................................
 
-Map::Map() :
-osg::Object(),
-_dataModelRevision(0)
+Config
+Map::Options::getConfig() const
 {
-    ctor();
-}
+    Config conf = ConfigOptions::getConfig();
 
-Map::Map( const MapOptions& options ) :
-osg::Object(),
-_mapOptions          ( options ),
-_initMapOptions      ( options ),
-_dataModelRevision   ( 0 )
-{
-    ctor();
+    conf.set( "name",         name() );
+    conf.set( "profile",      profile() );
+    conf.set( "cache",        cache() );
+    conf.set( "cache_policy", cachePolicy() );
+
+    conf.set( "elevation_interpolation", "nearest",     elevationInterpolation(), INTERP_NEAREST);
+    conf.set( "elevation_interpolation", "average",     elevationInterpolation(), INTERP_AVERAGE);
+    conf.set( "elevation_interpolation", "bilinear",    elevationInterpolation(), INTERP_BILINEAR);
+    conf.set( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
+
+    return conf;
 }
 
 void
-Map::ctor()
+Map::Options::fromConfig(const Config& conf)
 {
-    // Set the object name.
-    osg::Object::setName("osgEarth.Map");
+    elevationInterpolation().init(INTERP_BILINEAR);
+    
+    conf.get( "name",         name() );
+    conf.get( "profile",      profile() );
+    conf.get( "cache",        cache() );  
+    conf.get( "cache_policy", cachePolicy() );
+
+    // legacy support:
+    if ( conf.value<bool>( "cache_only", false ) == true )
+        cachePolicy()->usage() = CachePolicy::USAGE_CACHE_ONLY;
+
+    if ( conf.value<bool>( "cache_enabled", true ) == false )
+        cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
+
+    conf.get( "elevation_interpolation", "nearest",     elevationInterpolation(), INTERP_NEAREST);
+    conf.get( "elevation_interpolation", "average",     elevationInterpolation(), INTERP_AVERAGE);
+    conf.get( "elevation_interpolation", "bilinear",    elevationInterpolation(), INTERP_BILINEAR);
+    conf.get( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
+}
+
+//...................................................................
+
+Map::Map() :
+osg::Object()
+{
+    init();
+}
+
+Map::Map(const Map::Options& options) :
+osg::Object(),
+_optionsConcrete(options)
+{
+    init();
+}
+
+void
+Map::init()
+{
+    // reset the revision:
+    _dataModelRevision = 0;
+
+    // set the object name from the options:
+    if (options().name().isSet())
+        osg::Object::setName(options().name().get());
+    else
+        osg::Object::setName("osgEarth.Map");
 
     // Generate a UID.
     _uid = Registry::instance()->createUID();
 
     // If the registry doesn't have a default cache policy, but the
     // map options has one, make the map policy the default.
-    if (_mapOptions.cachePolicy().isSet() &&
+    if (options().cachePolicy().isSet() &&
         !Registry::instance()->defaultCachePolicy().isSet())
     {
-        Registry::instance()->setDefaultCachePolicy( _mapOptions.cachePolicy().get() );
+        Registry::instance()->setDefaultCachePolicy( options().cachePolicy().get() );
         OE_INFO << LC
             << "Setting default cache policy from map ("
-            << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
+            << options().cachePolicy()->usageString() << ")" << std::endl;
     }
 
     // the map-side dbOptions object holds I/O information for all components.
@@ -90,32 +127,25 @@ Map::ctor()
     osg::ref_ptr<CacheSettings> cacheSettings = new CacheSettings();
 
     // Set up a cache if there's one in the options:
-    if (_mapOptions.cache().isSet())
-        cacheSettings->setCache(CacheFactory::create(_mapOptions.cache().get()));
+    if (options().cache().isSet())
+        cacheSettings->setCache(CacheFactory::create(options().cache().get()));
 
     // Otherwise use the registry default cache if there is one:
     if (cacheSettings->getCache() == 0L)
         cacheSettings->setCache(Registry::instance()->getDefaultCache());
 
     // Integrate local cache policy (which can be overridden by the environment)
-    cacheSettings->integrateCachePolicy(_mapOptions.cachePolicy());
+    cacheSettings->integrateCachePolicy(options().cachePolicy());
 
     // store in the options so we can propagate it to layers, etc.
     cacheSettings->store(_readOptions.get());
-
     OE_INFO << LC << cacheSettings->toString() << "\n";
 
     // remember the referrer for relative-path resolution:
-    URIContext( _mapOptions.referrer() ).store( _readOptions.get() );
+    URIContext( options().referrer() ).store( _readOptions.get() );
 
     // we do our own caching
     _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-
-    // encode this map in the read options.
-    OptionsData<const Map>::set(_readOptions.get(), "osgEarth.Map", this);
-
-    // set up a callback that the Map will use to detect Layer visibility changes
-    _visibleLayerCB = new VisibleLayerCB(this);
 
     // create a callback that the Map will use to detect setEnabled calls
     _layerCB = new LayerCB(this);
@@ -134,34 +164,6 @@ ElevationPool*
 Map::getElevationPool() const
 {
     return _elevationPool.get();
-}
-
-void
-Map::notifyLayerVisibleChanged(VisibleLayer* layer)
-{
-    // bump the revision safely:
-    Revision newRevision;
-    {
-        Threading::ScopedWriteLock lock(_mapDataMutex);
-        newRevision = ++_dataModelRevision;
-    }
-
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    if (elevationLayer)
-    {
-        // reinitialize the elevation pool:
-        _elevationPool->clear();
-    }
-
-    MapModelChange change(
-        MapModelChange::TOGGLE_LAYER,
-        newRevision,
-        layer);
-
-    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-    {
-        i->get()->onMapModelChanged(change);
-    }
 }
 
 void
@@ -200,27 +202,6 @@ Map::notifyOnLayerEnabledChanged(Layer* layer)
     }
 }
 
-bool
-Map::isGeocentric() const
-{
-    return
-        _mapOptions.coordSysType().isSet() ? _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC :
-        getSRS() ? getSRS()->isGeographic() :
-        true;
-}
-
-const osgDB::Options*
-Map::getGlobalOptions() const
-{
-    return _globalOptions.get();
-}
-
-void
-Map::setGlobalOptions( const osgDB::Options* options )
-{
-    _globalOptions = options;
-}
-
 void
 Map::setMapName( const std::string& name ) {
     _name = name;
@@ -232,12 +213,80 @@ Map::getDataModelRevision() const
     return _dataModelRevision;
 }
 
+void
+Map::setProfile(const Profile* value)
+{
+    bool notifyLayers = !_profile.valid();
+
+    if (value)
+    {
+        _profile = value;
+
+        // create a "proxy" profile to use when querying elevation layers with a vertical datum
+        if (_profile.valid() && _profile->getSRS()->getVerticalDatum() != 0L )
+        {
+            ProfileOptions po = _profile->toProfileOptions();
+            po.vsrsString().unset();
+            _profileNoVDatum = Profile::create(po);
+        }
+        else
+        {
+            _profileNoVDatum = _profile;
+        }
+
+        // finally, fire an event if the profile has been set.
+        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
+    }
+
+    // If we just set the profile, tell all our layers they are not added
+    // to a valid map.
+    if (_profile.valid() && notifyLayers)
+    {
+        for(LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        {
+            Layer* layer = i->get();
+            if (layer->getEnabled() && layer->getStatus().isOK())
+            {
+                layer->addedToMap(this);
+            }
+        }
+    }
+}
+
 const Profile*
 Map::getProfile() const
 {
-    if ( !_profile.valid() )
-        const_cast<Map*>(this)->calculateProfile();
     return _profile.get();
+}
+
+void
+Map::setCachePolicy(const CachePolicy& value)
+{
+    options().cachePolicy() = value;
+
+    CacheSettings* cacheSettings = CacheSettings::get(_readOptions.get());
+    if (cacheSettings)
+    {
+        cacheSettings->integrateCachePolicy(value);
+    }
+}
+
+const CachePolicy&
+Map::getCachePolicy() const
+{
+    return options().cachePolicy().get();
+}
+
+void
+Map::setElevationInterpolation(const RasterInterpolation& value)
+{
+    options().elevationInterpolation() = value;
+}
+
+const RasterInterpolation&
+Map::getElevationInterpolation() const
+{
+    return options().elevationInterpolation().get();
 }
 
 Cache*
@@ -347,9 +396,6 @@ Map::addLayer(Layer* layer)
             newRevision = ++_dataModelRevision;
         }
 
-        // tell the layer it was just added.
-        //layer->addedToMap(this);
-
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
@@ -386,9 +432,6 @@ Map::insertLayer(Layer* layer, unsigned index)
 
             newRevision = ++_dataModelRevision;
         }
-
-        // tell the layer it was just added.
-        //layer->addedToMap(this);
 
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -500,14 +543,8 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
 void
 Map::installLayerCallbacks(Layer* layer)
 {
-    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
-    if (visibleLayer)
-    {
-        visibleLayer->addCallback(_visibleLayerCB.get());
-    }
-
     // If this is an elevation layer, install a callback so we know when
-    // it's visibility changes:
+    // it's enabled state changes:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
     {
@@ -522,12 +559,6 @@ Map::installLayerCallbacks(Layer* layer)
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
-    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
-    if (visibleLayer)
-    {
-        visibleLayer->removeCallback(_visibleLayerCB.get());
-    }
-
     // undo the things we did in prepareLayer:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
@@ -545,15 +576,12 @@ Map::openLayer(Layer* layer)
     // Pass along the Read Options (including the cache settings, etc.) to the layer:
     layer->setReadOptions(_readOptions.get());
 
-    // If this is a terrain layer, tell it about the Map profile.
-    TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-    if (terrainLayer && _profile.valid())
-    {
-        terrainLayer->setTargetProfileHint(_profile.get());
-    }
+    // Attempt to open the layer
+    layer->open();
 
-    // Attempt to open the layer. Don't check the status here.
-    if (layer->open().isOK())
+    // If it opened OK, and if the map's profile is set, 
+    // tell the layer it is being added to the map.
+    if (layer->getStatus().isOK() && getProfile() != 0L)
     {
         layer->addedToMap(this);
     }
@@ -664,120 +692,67 @@ Map::clear()
     getElevationPool()->clear();
 }
 
-
-void
-Map::setLayersFromMap(const Map* map)
-{
-    this->clear();
-
-    if ( map )
-    {
-        LayerVector layers;
-        map->getLayers(layers);
-        for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
-            addLayer(i->get());
-    }
-}
-
-
-void
-Map::calculateProfile()
+const Profile*
+Map::calculateProfile(bool makeProjected) const
 {
     // collect the terrain layers; we will need them later
     TerrainLayerVector layers;
     getLayers(layers);
 
     // Figure out the map profile:
-    if ( !_profile.valid() )
+    osg::ref_ptr<const Profile> profile;
+
+    // Do the map options contain a profile? If so, try to use it:
+    if ( options().profile().isSet() )
     {
-        osg::ref_ptr<const Profile> profile;
+        profile = Profile::create( options().profile().value() );
+    }
 
-        // Do the map options contain a profile? If so, try to use it:
-        if ( _mapOptions.profile().isSet() )
-        {
-            profile = Profile::create( _mapOptions.profile().value() );
-        }
-
-        // Do the map options contain an override coordinate system type?
-        // If so, attempt to apply that next:
-        if (_mapOptions.coordSysType().isSetTo(MapOptions::CSTYPE_GEOCENTRIC))
-        {
-            if (profile.valid() && profile->getSRS()->isProjected())
-            {
-                OE_WARN << LC << "Geocentric map type conflicts with the projected SRS profile; ignoring your profile\n";
-                profile = Registry::instance()->getGlobalGeodeticProfile();
-            }
-        }
-
-        // Do the map options ask for a projected map?
-        else if (_mapOptions.coordSysType().isSetTo(MapOptions::CSTYPE_PROJECTED))
-        {
-            // Is there a conflict in the MapOptions?
-            if (profile.valid() && profile->getSRS()->isGeographic())
-            {
-                OE_WARN << LC << "Projected map type conflicts with the geographic SRS profile; converting to Equirectangular projection\n";
-                unsigned u, v;
-                profile->getNumTiles(0, u, v);
-                const osgEarth::SpatialReference* eqc = profile->getSRS()->createEquirectangularSRS();
-                osgEarth::GeoExtent e = profile->getExtent().transform( eqc );
-                profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
-            }
-
-            // Is there no profile set? Try to derive it from the Map layers:
-            if (!profile.valid())
-            {
-                for (TerrainLayerVector::iterator i = layers.begin(); !profile.valid() && i != layers.end(); ++i)
-                {
-                    profile = i->get()->getProfile();
-                }
-            }
-
-            if (!profile.valid())
-            {
-                OE_WARN << LC << "No profile information available; defaulting to Spherical Mercator projection\n";
-                profile = Registry::instance()->getSphericalMercatorProfile();
-            }
-        }
-
-        // Finally, if there is still no profile, default to global geodetic.
+    // Do the map options ask for a projected map?
+    if (makeProjected)
+    {
+        // Is there no profile set try to derive one from the Map layers:
         if (!profile.valid())
         {
-            profile = Registry::instance()->getGlobalGeodeticProfile();
+            for (TerrainLayerVector::iterator i = layers.begin(); !profile.valid() && i != layers.end(); ++i)
+            {
+                profile = i->get()->getProfile();
+            }
         }
 
-
-        // Set the map's profile!
-        _profile = profile.release();
-
-        // create a "proxy" profile to use when querying elevation layers with a vertical datum
-        if ( _profile->getSRS()->getVerticalDatum() != 0L )
+        // If we have a profile now, but it's geographic, switch over to a
+        // flat plate carre setup.
+        if (profile.valid() && profile->getSRS()->isGeographic())
         {
-            ProfileOptions po = _profile->toProfileOptions();
-            po.vsrsString().unset();
-            _profileNoVDatum = Profile::create(po);
-        }
-        else
-        {
-            _profileNoVDatum = _profile;
+            OE_WARN << LC << "Projected map type conflicts with the geographic SRS profile; converting to Equirectangular projection\n";
+            unsigned u, v;
+            profile->getNumTiles(0, u, v);
+            const osgEarth::SpatialReference* eqc = profile->getSRS()->createEquirectangularSRS();
+            osgEarth::GeoExtent e = profile->getExtent().transform( eqc );
+            profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
         }
 
-        // finally, fire an event if the profile has been set.
-        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
-
-        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        // Still nothing? Pick Mercator.
+        if (!profile.valid())
         {
-            //i->get()->onMapInfoEstablished( MapInfo(this) );
+            OE_WARN << LC << "No profile information available; defaulting to Spherical Mercator projection\n";
+            profile = Registry::instance()->getSphericalMercatorProfile();
         }
     }
 
-    // Tell all the layers about the profile
-    for (TerrainLayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
+    // Finally, if there is still no profile, default to global geodetic.
+    if (!profile.valid())
     {
-        if (i->get()->getEnabled())
-        {
-            i->get()->setTargetProfileHint(_profile.get());
-        }
+        profile = Registry::instance()->getGlobalGeodeticProfile();
     }
+
+    return profile.release();
+}
+
+const SpatialReference*
+Map::getSRS() const
+{
+    return _profile.valid() ? _profile->getSRS() : 0L;
 }
 
 const SpatialReference*

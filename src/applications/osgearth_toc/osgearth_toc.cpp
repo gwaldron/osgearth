@@ -24,12 +24,12 @@
 #include <osgEarth/MapModelChange>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/XmlUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/ViewFitter>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/AnnotationLayer>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/ViewFitter>
+#include <osgEarth/LabelNode>
+#include <osgEarth/AnnotationLayer>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -38,12 +38,12 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Annotation;
 
 void createControlPanel(Container*);
 void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
+static LabelControl* s_mapTitle;
 static Grid* s_activeBox;
 static Grid* s_inactiveBox;
 static bool s_updateRequired = true;
@@ -97,11 +97,6 @@ struct UpdateOperation : public osg::Operation
             if ( ms )
             {
                 ms->dirty();
-            }
-            else
-            {
-                OE_NOTICE << modelLayers[i]->getName()
-                    << " has no model source.\n";
             }
         }
     }
@@ -157,6 +152,8 @@ struct DumpLabel : public osgGA::GUIEventHandler
             Style style;
             TextSymbol* symbol = style.getOrCreate<TextSymbol>();
             symbol->alignment() = symbol->ALIGN_CENTER_CENTER;
+            symbol->size() = 24;
+            symbol->halo()->color().set(.1,.1,.1,1);
             label->setStyle(style);
 
             _layer->addChild(label);
@@ -346,13 +343,18 @@ struct ZoomLayerHandler : public ControlEventHandler
 
 //------------------------------------------------------------------------
 
+#define BACKCOLOR 0,0,0,0.2
 
 void
 createControlPanel(Container* container)
 {
+    s_mapTitle = new LabelControl();
+    s_mapTitle->setBackColor(BACKCOLOR);
+    container->addControl(s_mapTitle);
+
     //The Map layers
     s_activeBox = new Grid();
-    s_activeBox->setBackColor(0,0,0,0.1);
+    s_activeBox->setBackColor(BACKCOLOR);
     s_activeBox->setPadding( 10 );
     s_activeBox->setChildSpacing( 10 );
     s_activeBox->setChildVertAlign( Control::ALIGN_CENTER );
@@ -361,7 +363,7 @@ createControlPanel(Container* container)
 
     //the removed layers
     s_inactiveBox = new Grid();
-    s_inactiveBox->setBackColor(0,0,0,0.1);
+    s_inactiveBox->setBackColor(BACKCOLOR);
     s_inactiveBox->setPadding( 10 );
     s_inactiveBox->setChildSpacing( 10 );
     s_inactiveBox->setChildVertAlign( Control::ALIGN_CENTER );
@@ -516,9 +518,12 @@ updateControlPanel()
 
     int row = 0;
 
-    LabelControl* activeLabel = new LabelControl( "Map Layers" );
-    activeLabel->setForeColor(osg::Vec4f(1,1,0,1));
-    s_activeBox->setControl( 1, row++, activeLabel );
+    std::string title = 
+        s_activeMap->getName().empty()? "Map Layers" :
+        s_activeMap->getName();
+
+    s_mapTitle->setText(title);
+    s_mapTitle->setForeColor(osg::Vec4f(1,1,0,1));
 
     // the active map layers:
     LayerVector layers;

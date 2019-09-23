@@ -40,7 +40,7 @@
 #define ROCKSDB_CACHE_VERSION 1
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers::RocksDBCache;
+using namespace osgEarth::RocksDBCache;
 
 
 RocksDBCacheImpl::RocksDBCacheImpl( const CacheOptions& options ) :

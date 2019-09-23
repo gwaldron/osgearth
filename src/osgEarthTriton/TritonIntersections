@@ -22,9 +22,7 @@
 #include "Common"
 
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
-#include <osgEarthUtil/Ocean>
 #include <osgEarthTriton/TritonCallback>
 
 namespace osgEarth { namespace Triton

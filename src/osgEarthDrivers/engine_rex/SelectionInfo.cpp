@@ -19,33 +19,12 @@
 #include "SelectionInfo"
 #include <osgEarth/TileKey>
 
-#include <osg/CullStack>
-
-#ifndef INT32_MAX
-#define INT32_MAX 2147483647
-#endif
-
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[SelectionInfo] "
 
 const double SelectionInfo::_morphStartRatio = 0.66;
-
-// Reverse-engineers the LOD scale that is active in the cull visitor.
-// Why not just call getLODScale()? Because if someone (mak) overrides
-// CullVisitor::getDistanceToViewPoint(), they can alter the return value in
-// other ways. This function will detect that.
-float SelectionInfo::computeRangeScale(osg::NodeVisitor* nv) const
-{
-   osg::CullStack& cs = *dynamic_cast<osg::CullStack*>(nv);
-   const osg::Vec3 viewLocal = cs.getViewPointLocal();
-   osg::Vec3 viewVector = cs.getLookVectorLocal();
-   viewVector.normalize();
-   osg::Vec3 point = viewLocal + viewVector*_lods[0]._visibilityRange;
-   float distance = nv->getDistanceToViewPoint(point, true);
-   return distance / _lods[0]._visibilityRange;
-}
 
 const SelectionInfo::LOD&
 SelectionInfo::getLOD(unsigned lod) const
@@ -82,8 +61,6 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
     _lods.resize(numLods);
 
-    OE_INFO << LC << "LOD Ranges:\n";
-
     for (unsigned lod = 0; lod <= maxLod; ++lod)
     {
         unsigned tx, ty;
@@ -95,8 +72,6 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
         _lods[lod]._maxValidTY = INT32_MAX;
-
-        //OE_INFO << LC << "  " << lod << " = " << range << std::endl;
     }
     
     double metersPerEquatorialDegree = (profile->getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;

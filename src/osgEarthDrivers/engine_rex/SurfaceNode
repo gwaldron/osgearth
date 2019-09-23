@@ -36,7 +36,7 @@
 #include <OpenThreads/Atomic>
 #include <vector>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
@@ -138,6 +138,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         ChildrenCorners _childrenCorners;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_SURFACE_NODE

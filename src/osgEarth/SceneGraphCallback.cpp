@@ -21,7 +21,8 @@
 */
 #include <osgEarth/SceneGraphCallback>
 
-using namespace osgEarth;
+using namespace osgEarth; 
+using namespace osgEarth::Support;
 
 //...................................................................
 

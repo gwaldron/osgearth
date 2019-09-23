@@ -30,9 +30,13 @@
 #include <map>
 #include <vector>
 
-namespace osgEarth
-{
+namespace osgEarth {
     class ProgressCallback;
+}
+
+namespace osgEarth { namespace Support
+{
+    using namespace osgEarth;
 
     /**
      * Proxy server configuration.
@@ -70,13 +74,9 @@ namespace osgEarth
         std::string _userName;
         std::string _password;
     };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ProxySettings);
 
-namespace osgEarth
-{
+
     typedef std::map<std::string,std::string> Headers;
-
 
     /**
      * An HTTP request for use with the HTTPClient class.
@@ -429,6 +429,8 @@ namespace osgEarth
             HTTPResponse::Part*  input,
             HTTPResponse::Parts& output) const;
     };
-}
+} }
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Support::ProxySettings);
 
 #endif // OSGEARTH_HTTP_CLIENT_H

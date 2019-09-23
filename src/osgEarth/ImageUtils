@@ -44,7 +44,7 @@
     #define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG     0x8C03
 #endif
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     class OSGEARTH_EXPORT ImageUtils
     {
@@ -551,6 +551,6 @@ namespace osgEarth
         virtual void apply(osg::Node& node);
         virtual void apply(osg::StateSet& stateSet);
     };
-}
+} }
 
 #endif //OSGEARTH_IMAGEUTILS_H

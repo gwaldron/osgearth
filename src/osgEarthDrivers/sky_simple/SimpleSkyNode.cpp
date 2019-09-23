@@ -23,8 +23,8 @@
 #include "SimpleSkyNode"
 #include "SimpleSkyShaders"
 
-#include <osgEarthUtil/StarData>
-#include <osgEarthUtil/Ephemeris>
+#include <osgEarth/StarData>
+#include <osgEarth/Ephemeris>
 
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/NodeUtils>
@@ -895,7 +895,7 @@ SimpleSkyNode::getDefaultStars(std::vector<StarData>& out_stars)
 {
     out_stars.clear();
 
-    for(const char **sptr = s_defaultStarData; *sptr; sptr++)
+    for(const char **sptr = Support::s_defaultStarData; *sptr; sptr++)
     {
         std::stringstream ss(*sptr);
         out_stars.push_back(StarData(ss));

@@ -1,19 +1,14 @@
 <!--
 osgEarth Sample - Annotations
 -->
-<map name="readymap.org" type="geocentric" version="2">
+<map name="Scene clamping test">
 
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>   
+    <xi:include href="readymap_elevation.xml"/>
 
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <DebugImage enabled="false"/>
 
-    <image driver="debug" visible="false"/>
-
-    <viewpoints time="0.1">
+    <Viewpoints time="0.1">
         <viewpoint name="Circles">
             <heading>25.2721</heading>
             <pitch>-24.7961</pitch>
@@ -23,7 +18,7 @@ osgEarth Sample - Annotations
             <height>1057.80545252189</height>
             <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
-    </viewpoints>
+    </Viewpoints>
 
     <annotations name="Annotations: LocalGeometryNode">
     

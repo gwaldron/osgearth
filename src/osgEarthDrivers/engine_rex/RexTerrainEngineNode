@@ -28,7 +28,6 @@
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/TileRasterizer>
 
-#include "RexTerrainEngineOptions"
 #include "EngineContext"
 #include "TileNodeRegistry"
 #include "RenderBindings"
@@ -46,7 +45,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class RexTerrainEngineNode : public TerrainEngineNode
     {
@@ -81,9 +80,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         //! Unique identifier of this engine instance
         UID getUID() const { return _uid; }
-
-        //! Terrain options object
-        const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
 
     public: // osg::Node
 
@@ -125,7 +121,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void addTileLayer( Layer* layer );
         void removeImageLayer( ImageLayer* layerRemoved );
         void removeElevationLayer( ElevationLayer* layerRemoved );
-        void toggleElevationLayer( ElevationLayer* layer );
         void moveElevationLayer( ElevationLayer* layerMoved );
         
         //! refresh the statesets of the terrain and the imagelayer tile surface
@@ -145,12 +140,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned int computeSampleSize(unsigned int levelOfDetail);
 
     private:
-        RexTerrainEngineOptions _terrainOptions;
+        const TerrainOptions* _terrainOptions;
+        const TerrainOptions& options() const { return *_terrainOptions; }
 
         UID _uid;
         bool _batchUpdateInProgress;
         bool _refreshRequired;
         bool _stateUpdateRequired;
+        bool _morphTerrainSupported;
 
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
         LayerExtentVector _cachedLayerExtents;
@@ -183,6 +180,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_ENGINE_NODE_H

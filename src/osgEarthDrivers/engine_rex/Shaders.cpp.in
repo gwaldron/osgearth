@@ -2,7 +2,7 @@
 
 #include <osgEarthDrivers/engine_rex/Shaders>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 Shaders::Shaders()
 {

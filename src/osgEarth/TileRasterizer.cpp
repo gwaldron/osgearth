@@ -28,6 +28,7 @@
 #endif
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 //VRV_PATCH
 #define GL_ANY_SAMPLES_PASSED             0x8C2F
@@ -113,8 +114,8 @@ osg::Camera()
     osg::GraphicsContext* gc = osg::GraphicsContext::createGraphicsContext(traits);
     setGraphicsContext(gc);
 #endif
-    setDrawBuffer(GL_FRONT);
-    setReadBuffer(GL_FRONT);
+    //setDrawBuffer(GL_FRONT);
+    //setReadBuffer(GL_FRONT);
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->setName("TileRasterizer");

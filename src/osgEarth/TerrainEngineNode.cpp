@@ -50,8 +50,7 @@ namespace osgEarth
     };
 }
 
-
-//------------------------------------------------------------------------
+//...................................................................
 
 
 TerrainEngineNode::ImageLayerController::ImageLayerController(TerrainEngineNode* engine) :
@@ -60,6 +59,7 @@ _engine( engine )
     //nop
 }
 
+//...................................................................
 
 void
 TerrainEngineNode::addEffect(TerrainEffect* effect)
@@ -120,6 +120,12 @@ _updateScheduled( false )
 
     // register for update traversals so we can process terrain callbacks
     //ADJUST_UPDATE_TRAV_COUNT(this, 1);
+    
+    // Install an object to manage texture image unit usage:
+    _textureResourceTracker = new TerrainResources();
+    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
+    for (std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
+        _textureResourceTracker->setTextureImageUnitOffLimits(*i);
 }
 
 TerrainEngineNode::~TerrainEngineNode()
@@ -184,34 +190,36 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
     if (!map) return;
 
+    if (!map->getProfile())
+    {
+        OE_WARN << "Illegal: Map profile is not set" << std::endl;
+        return;
+    }
+
     _map = map;
     
     // Create a terrain utility interface. This interface can be used
     // to query the in-memory terrain graph, subscribe to tile events, etc.
-    _terrainInterface = new Terrain( this, map->getProfile(), options );
+    _terrainInterface = new Terrain( this, map->getProfile() );
 
     // Set up the CSN values. We support this because some manipulators look for it,
     // but osgEarth itself doesn't use it.
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
     
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-    if ( !_map->isGeocentric() )
+    if ( _map->getSRS()->isProjected())
+    {
         this->setEllipsoidModel( NULL );
-    
-    // Install an object to manage texture image unit usage:
-    _textureResourceTracker = new TerrainResources();
-    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
-    for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
-        _textureResourceTracker->setTextureImageUnitOffLimits( *i );
+    }
 
     // Register a callback so we can process further map model changes
     _map->addMapCallback( new TerrainEngineNodeCallbackProxy(this) );
 
     // Force a render bin if specified in the options
-    if ( options.binNumber().isSet() )
+    if ( options.renderBinNumber().isSet() )
     {
         osg::StateSet* set = getOrCreateStateSet();
-        set->setRenderBinDetails( options.binNumber().get(), "RenderBin" );
+        set->setRenderBinDetails(options.renderBinNumber().get(), "RenderBin" );
     }
    
     // This is the object that creates the data model for each terrain tile.
@@ -455,4 +463,3 @@ TerrainEngineNodeFactory::create(const TerrainOptions& options )
 
     return node.release();
 }
-

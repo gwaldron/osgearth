@@ -36,19 +36,18 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/LogarithmicDepthBuffer>
-#include <osgEarthUtil/ViewFitter>
-#include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/LogarithmicDepthBuffer>
+#include <osgEarth/ViewFitter>
+#include <osgEarth/AnnotationUtils>
+#include <osgEarth/LabelNode>
+#include <osgEarth/Style>
 #include <osgEarth/ScreenSpaceLayout>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Annotation;
 
 #define D2R (osg::PI/180.0)
 #define R2D (180.0/osg::PI)
@@ -83,8 +82,6 @@ namespace
             "right mouse :",       "continuous zoom",
             "double-click :",      "zoom to point",
             "scroll wheel :",      "zoom in/out",
-            "arrows :",            "pan",
-            //"1-6 :",               "fly to preset viewpoints",
             "shift-left-mouse :",  "locked pan",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
@@ -97,6 +94,8 @@ namespace
             "k :",                 "toggle collision",
             "L :",                 "toggle log depth buffer",
             "z :",                 "toggle zoom to mouse pointer",
+            "arrows :",            "adjust tether offset",
+            "z :",                 "toggle zoom to mouse pointer"
             "arrows :",            "adjust tether offset",
         };
 
@@ -131,7 +130,7 @@ namespace
 
     /**
      * Handler that demonstrates the "viewpoint" functionality in 
-     *  osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
+     * EarthManipulator. Press a number key to fly to a viewpoint.
      */
     struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
     {

@@ -26,18 +26,21 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/MGRSFormatter>
-#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/GLUtils>
 
-#include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/MGRSGraticule>
-#include <osgEarthUtil/UTMGraticule>
-#include <osgEarthUtil/GARSGraticule>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/MouseCoordsTool>
+#include <osgEarth/MGRSFormatter>
+#include <osgEarth/LatLongFormatter>
+
+#include <osgEarth/GeodeticGraticule>
+#include <osgEarth/MGRSGraticule>
+#include <osgEarth/UTMGraticule>
+#include <osgEarth/GARSGraticule>
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
+using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Contrib;
 
 int
 usage( const std::string& msg )
@@ -73,6 +76,9 @@ main(int argc, char** argv)
 
     // install our manipulator:
     viewer.setCameraManipulator( new EarthManipulator() );
+
+    // initialize the top level state
+    GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());
 
     // root scene graph:
     osg::Group* root = new osg::Group();

@@ -28,8 +28,11 @@
 #include <vector>
 #include <map>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Support;
+
     /**
      * Defines the usage information for a single texture sampler.
      */
@@ -89,6 +92,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     typedef AutoArray<SamplerBinding> RenderBindings;
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_RENDER_BINDINGS_H

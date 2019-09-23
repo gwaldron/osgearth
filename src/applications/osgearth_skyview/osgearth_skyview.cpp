@@ -23,7 +23,7 @@
 #include <osgViewer/Viewer>
 #include <osg/CullFace>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/ExampleResources>
 #include "SkyManipulator"
 
 

@@ -95,7 +95,7 @@ namespace
             //k == "model" ||
             //k == "mask" ||
             k == "external" ||
-            k == "extensions" ||
+            //k == "extensions" ||
             k == "libraries";
     }
 
@@ -161,7 +161,7 @@ namespace
                 }
                 else
                 {
-                    OE_WARN << LC << "Failed to load library \"" << libName << "\"\n";
+                    OE_INFO << LC << "Failed to load library \"" << libName << "\"\n";
                 }
             }
         }        
@@ -268,48 +268,48 @@ namespace
             return inputURI.base();
         }
 
-		std::string getPathRelative(const std::string& from, const std::string& to)
-		{
-			// This implementation is not 100% robust, and should be replaced with C++0x "std::path" as soon as possible.
+        std::string getPathRelative(const std::string& from, const std::string& to)
+        {
+            // This implementation is not 100% robust, and should be replaced with C++0x "std::path" as soon as possible.
 
-			// Definition: an "element" is a part between slashes. Ex: "/a/b" has two elements ("a" and "b").
-			// Algorithm:
-			// 1. If paths are neither both absolute nor both relative, then we cannot do anything (we need to make them absolute, but need additional info on how to make it). Return.
-			// 2. If both paths are absolute and root isn't the same (for Windows only, as roots are of the type "C:", "D:"), then the operation is impossible. Return.
-			// 3. Iterate over two paths elements until elements are equal
-			// 4. For each remaining element in "from", add ".." to result
-			// 5. For each remaining element in "to", add this element to result
+            // Definition: an "element" is a part between slashes. Ex: "/a/b" has two elements ("a" and "b").
+            // Algorithm:
+            // 1. If paths are neither both absolute nor both relative, then we cannot do anything (we need to make them absolute, but need additional info on how to make it). Return.
+            // 2. If both paths are absolute and root isn't the same (for Windows only, as roots are of the type "C:", "D:"), then the operation is impossible. Return.
+            // 3. Iterate over two paths elements until elements are equal
+            // 4. For each remaining element in "from", add ".." to result
+            // 5. For each remaining element in "to", add this element to result
 
-			// 1 & 2
-			const std::string root = osgDB::getPathRoot(from);
-			if (root != osgDB::getPathRoot(to)) {
-				OSG_INFO << "Cannot relativise paths. From=" << from << ", To=" << to << ". Returning 'to' unchanged." << std::endl;
-				//return to;
-				return osgDB::getSimpleFileName(to);
-			}
+            // 1 & 2
+            const std::string root = osgDB::getPathRoot(from);
+            if (root != osgDB::getPathRoot(to)) {
+                OSG_INFO << "Cannot relativise paths. From=" << from << ", To=" << to << ". Returning 'to' unchanged." << std::endl;
+                //return to;
+                return osgDB::getSimpleFileName(to);
+            }
 
-			// 3
-			PathIterator itFrom(from), itTo(to);
-			// Iterators may point to Windows roots. As we tested they are equal, there is no need to ++itFrom and ++itTo.
-			// However, if we got an Unix root, we must add it to the result.
-			// std::string res(root == "/" ? "/" : "");
-			// Since result is a relative path, even in unix, no need to add / to the result first.
-			std::string res = "";
-			for(; itFrom.valid() && itTo.valid() && *itFrom==*itTo; ++itFrom, ++itTo) {}
+            // 3
+            PathIterator itFrom(from), itTo(to);
+            // Iterators may point to Windows roots. As we tested they are equal, there is no need to ++itFrom and ++itTo.
+            // However, if we got an Unix root, we must add it to the result.
+            // std::string res(root == "/" ? "/" : "");
+            // Since result is a relative path, even in unix, no need to add / to the result first.
+            std::string res = "";
+            for (; itFrom.valid() && itTo.valid() && *itFrom == *itTo; ++itFrom, ++itTo) {}
 
-			// 4
-			for(; itFrom.valid(); ++itFrom) res += "../";
+            // 4
+            for (; itFrom.valid(); ++itFrom) res += "../";
 
-			// 5
-			for(; itTo.valid(); ++itTo) res += *itTo + "/";
+            // 5
+            for (; itTo.valid(); ++itTo) res += *itTo + "/";
 
-			// Remove trailing slash before returning
-			if (!res.empty() && std::find_first_of(res.rbegin(), res.rbegin()+1, PATH_SEPARATORS, PATH_SEPARATORS+PATH_SEPARATORS_LEN) != res.rbegin()+1)
-			{
-				return res.substr(0, res.length()-1);
-			}
-			return res;
-			}
+            // Remove trailing slash before returning
+            if (!res.empty() && std::find_first_of(res.rbegin(), res.rbegin() + 1, PATH_SEPARATORS, PATH_SEPARATORS + PATH_SEPARATORS_LEN) != res.rbegin() + 1)
+            {
+                return res.substr(0, res.length() - 1);
+            }
+            return res;
+        }
     };
 }
 
@@ -372,6 +372,78 @@ namespace
             }
         }
     }
+
+    void updateVersion2ToVersion3(Config& c)
+    {
+        std::string key0 = c.key();
+
+        if (c.key() == "image" && c.hasValue("driver"))
+        {
+            const std::string& driver = c.value("driver");
+            if (driver == "gdal") c.key() = "GDALImage";
+            else if (driver == "mbtiles") c.key() = "MBTilesImage";
+            else if (driver == "arcgisonline") c.key() = "ArcGISServerImage";
+            else if (driver == "tilepackage") c.key() = "ArcGISTilePackageImage";
+            else if (driver == "bing") c.key() = "BingImage";
+            else if (driver == "cesiumion") c.key() = "CesiumIonImage";
+            else if (driver == "landcover") c.key() = "LandCover";
+            else if (driver == "tilecache") c.key() = "TileCacheImage";
+            else if (driver == "tms") c.key() = "TMSImage";
+            else if (driver == "video") c.key() = "VideoImage";
+            else if (driver == "wms") c.key() = "WMSImage";
+            else if (driver == "xyz") c.key() = "XYZImage";
+            else if (driver == "agglite") c.key() = "FeatureImage";
+            else if (driver == "debug") c.key() = "DebugImage";
+            else if (driver == "road_surface") c.key() = "RoadSurface";
+        }
+        else if (c.key() == "elevation" && c.hasValue("driver"))
+        {
+            const std::string& driver = c.value("driver");
+            if (driver == "gdal") c.key() = "GDALElevation";
+            else if (driver == "mbtiles") c.key() = "MBTilesElevation";
+            else if (driver == "bing") c.key() = "BingElevation";
+            else if (driver == "tms") c.key() = "TMSElevation";
+            else if (driver == "xyz") c.key() = "XYZElevation";
+            else if (driver == "mbtiles") c.key() = "MBTilesElevation";
+            else if (driver == "tilecache") c.key() = "TileCacheElevation";
+            else if (driver == "flatten_elevation") c.key() = "FlattenElevation";
+            else if (driver == "fractal_elevation") c.key() = "FractalElevation";
+        }
+        else if (c.key() == "model" && c.hasValue("driver"))
+        {
+            const std::string& driver = c.value("driver");
+            if (driver == "simple") c.key() = "Model";
+            else if (driver == "feature_geom") c.key() = "FeatureModel";
+        }
+        else if (c.key() == "mask" && c.hasValue("driver"))
+        {
+            const std::string& driver = c.value("driver");
+            if (driver == "feature") c.key() = "FeatureMask";
+        }
+        else if (c.key() == "feature_source" || c.key() == "features")
+        {
+            const std::string& driver = c.value("driver");
+            if (driver == "ogr") c.key() = "OGRFeatures";
+            else if (driver == "wfs") c.key() = "WFSFeatures";
+            else if (driver == "tfs") c.key() = "TFSFeatures";
+            else if (driver == "mapnikvectortiles") c.key() = "MVTFeatures";
+            else if (driver == "xyz") c.key() = "XYZFeatures";
+            else if (driver == "image_to_feature") c.key() = "ImageToFeature";
+        }
+        else if (c.key() == "splat_imagery") c.key() = "SplatImage";
+        else if (c.key() == "splat_groundcover") c.key() = "GroundCover";
+        else if (c.key() == "land_cover") c.key() = "LandCover";
+
+        if (key0 != c.key())
+        {
+            c.remove("driver");
+        }
+
+        for (ConfigSet::iterator j = c.children().begin(); j != c.children().end(); ++j)
+        {
+            updateVersion2ToVersion3(*j);
+        }
+    }
 }
 
 EarthFileSerializer2::EarthFileSerializer2() :
@@ -383,25 +455,30 @@ _rewriteAbsolutePaths( false )
 
 
 osg::Node*
-EarthFileSerializer2::deserialize( const Config& conf, const std::string& referrer ) const
+EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& referrer ) const
 {
+    Config conf = const_conf;
+
     // First, pre-load any extension DLLs.
     preloadExtensionLibs(conf);
     preloadExtensionLibs(conf.child("extensions"));
     preloadExtensionLibs(conf.child("external"));
 
-    MapOptions mapOptions( conf.child( "options" ) );
+    Map::Options mapOptions(conf.child("options"));
 
-    // legacy: check for name/type in top-level attrs:
+    // Check for name/type in top-level attrs:
     if ( conf.hasValue( "name" ) || conf.hasValue( "type" ) )
     {
-        Config legacy;
-        if ( conf.hasValue("name") ) legacy.add( "name", conf.value("name") );
-        if ( conf.hasValue("type") ) legacy.add( "type", conf.value("type") );
-        mapOptions.mergeConfig( legacy );
+        Config temp;
+        if ( conf.hasValue("name") ) temp.set( "name", conf.value("name") );
+        if ( conf.hasValue("type") ) temp.set( "type", conf.value("type") );
+        mapOptions.merge(ConfigOptions(temp));
     }
 
-    osg::ref_ptr< Map > map = new Map( mapOptions );
+    osg::ref_ptr<Map> map = new Map(mapOptions);
+
+    // First go through and update to version 3.
+    updateVersion2ToVersion3(conf);
 
     // Start a batch update of the map:
     map->beginUpdate();
@@ -419,7 +496,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             addLayer(temp, map.get());
         }
 
-        else if ( i->key() == "elevation" ) // || i->key() == "heightfield" )
+        else if ( i->key() == "elevation" )
         {
             addLayer(*i, map.get());
         }
@@ -469,8 +546,8 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // If any errors occurred, report them now.
     reportErrors(map.get());
 
-    // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
-    MapNodeOptions mapNodeOptions( conf.child("options") );
+    // Yes, Map::Options and MapNode::Options share the same Config node. Weird but true.
+    MapNode::Options mapNodeOptions( conf.child("options") );
 
     // Create a map node.
     osg::ref_ptr<MapNode> mapNode = new MapNode( map.get(), mapNodeOptions );

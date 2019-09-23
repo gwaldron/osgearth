@@ -387,7 +387,7 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
     else
     {
         // No horizon data... just assume visibility
-        OE_WARN << LC << "No horizon info installed in callback\n";
+        //OE_WARN << LC << "No horizon info installed in callback\n";
         return true;
     }
 }

@@ -21,15 +21,13 @@
 */
 
 #include <osgViewer/CompositeViewer>
-#include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
+#include <osgEarth/Registry>
 #include <iostream>
 
-#define LC "[viewer] "
+#define LC "[osgearth_windows] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -51,6 +49,8 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -86,6 +86,7 @@ main(int argc, char** argv)
             view->getCamera()->setViewport(i*size, 0, size, size);
             view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
             view->getCamera()->setName(Stringify()<<"View "<<i);
+
         }
         MapNodeHelper().configureView(view);
         viewer.addView(view);

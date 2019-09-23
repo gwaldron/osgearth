@@ -30,7 +30,6 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TraversalData>
-#include <osgEarth/Shadowing>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TraversalData>
@@ -43,7 +42,7 @@
 
 #include <osgDB/WriteFile>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
@@ -105,7 +104,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     if (!map.valid())
         return;
 
-    unsigned tileSize = context->getOptions().tileSize().get();
+    unsigned tileSize = options().tileSize().get();
 
     // Mask generator creates geometry from masking boundaries when they exist.
     osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
@@ -132,7 +131,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     TileDrawable* surfaceDrawable = new TileDrawable(
         key, 
         geom.get(),
-        context->getOptions().tileSize().get() );
+        options().tileSize().get() );
 
     // Give the tile Drawable access to the render model so it can properly
     // calculate its bounding box and sphere.
@@ -151,7 +150,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _loadRequest->setTileKey( _key );
 
     // whether the stitch together normal maps for adjacent tiles.
-    _stitchNormalMap = context->_options.normalizeEdges() == true;
+    _stitchNormalMap = options().normalizeEdges() == true;
 
     // Encode the tile key in a uniform
     unsigned tw, th;
@@ -361,7 +360,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     {
         // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
         // allowable on-screen tile size in pixels.
-        if (context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+        if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
         {
             float tileSizeInPixels = -1.0;
 
@@ -375,7 +374,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
                 tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
             }
         
-            return (tileSizeInPixels > context->getOptions().tilePixelSize().get());
+            return (tileSizeInPixels > options().tilePixelSize().get());
         }
 
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
@@ -451,7 +450,7 @@ TileNode::cull(TerrainCuller* culler)
     bool canAcceptSurface = false;
     
     // Don't load data in progressive mode until the parent is up to date
-    if (context->getOptions().progressive() == true)
+    if (options().progressive() == true)
     {
         TileNode* parent = getParentTile();
         if ( parent && parent->isDirty() )
@@ -675,13 +674,13 @@ TileNode::createChildren(EngineContext* context)
     for(unsigned int quadrant= _children.size(); quadrant<4; ++quadrant)
     {
         TileNode* node = new TileNode();
-        if (context->getOptions().minExpiryFrames().isSet())
+        if (options().minExpiryFrames().isSet())
         {
-            node->setMinimumExpirationFrames( *context->getOptions().minExpiryFrames() );
+            node->setMinimumExpirationFrames(options().minExpiryFrames().get());
         }
-        if (context->getOptions().minExpiryTime().isSet())
+        if (context->options().minExpiryTime().isSet())
         {         
-            node->setMinimumExpirationTime( *context->getOptions().minExpiryTime() );
+            node->setMinimumExpirationTime(options().minExpiryTime().get());
         }
 
         // Build the surface geometry:
@@ -1055,8 +1054,10 @@ TileNode::load(TerrainCuller* culler)
 
     // If progressive mode is enabled, lower LODs get higher priority since
     // we want to load them in order
-    if (_context->getOptions().progressive() == true)
+    if (options().progressive() == true)
+    {
         lodPriority = (float)(numLods - lod);
+    }
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
@@ -1183,4 +1184,10 @@ TileNode::updateNormalMap()
     }
 
     //OE_INFO << LC << _key.str() << " : updated normal map.\n";
+}
+
+const TerrainOptions&
+TileNode::options() const
+{
+    return _context->options();
 }

@@ -28,54 +28,16 @@ using namespace OpenThreads;
 
 #define LC "[ElevationLayer] \"" << getName() << "\" : "
 
-namespace osgEarth {
-    REGISTER_OSGEARTH_LAYER(elevation, osgEarth::ElevationLayer);
-}
-
 //#define ANALYZE
 
 //------------------------------------------------------------------------
 
-ElevationLayerOptions::ElevationLayerOptions() :
-TerrainLayerOptions()
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-ElevationLayerOptions::ElevationLayerOptions(const ConfigOptions& options) :
-TerrainLayerOptions( options )
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-ElevationLayerOptions::ElevationLayerOptions(const std::string& name) :
-TerrainLayerOptions( name )
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-ElevationLayerOptions::ElevationLayerOptions(const std::string& name, const TileSourceOptions& driverOptions) :
-TerrainLayerOptions( name, driverOptions )
-{
-    setDefaults();
-    fromConfig( _conf );
-}
-
-void
-ElevationLayerOptions::setDefaults()
-{
-    _offset.init( false );
-    _noDataPolicy.init( NODATA_INTERPOLATE );
-}
-
 Config
-ElevationLayerOptions::getConfig() const
+ElevationLayer::Options::getConfig() const
 {
-    Config conf = TerrainLayerOptions::getConfig();
-    conf.set("offset", _offset);
+    Config conf = TerrainLayer::Options::getConfig();
+    conf.set("vdatum", verticalDatum() );
+    conf.set("offset", offset());
     conf.set("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.set("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
     conf.set("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
@@ -83,19 +45,17 @@ ElevationLayerOptions::getConfig() const
 }
 
 void
-ElevationLayerOptions::fromConfig( const Config& conf )
+ElevationLayer::Options::fromConfig( const Config& conf )
 {
-    conf.get("offset", _offset );
+    _offset.init( false );
+    _noDataPolicy.init( NODATA_INTERPOLATE );
+    
+    conf.get("vdatum", verticalDatum() );
+    conf.get("vsrs", verticalDatum() );    // back compat
+    conf.get("offset", offset() );
     conf.get("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.get("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
     conf.get("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
-}
-
-void
-ElevationLayerOptions::mergeConfig( const Config& conf )
-{
-    TerrainLayerOptions::mergeConfig( conf );
-    fromConfig( conf );
 }
 
 //------------------------------------------------------------------------
@@ -105,7 +65,7 @@ namespace
     // Opeartion that replaces invalid heights with the NO_DATA_VALUE marker.
     struct NormalizeNoDataValues : public TileSource::HeightFieldOperation
     {
-        NormalizeNoDataValues(TerrainLayer* layer)
+        NormalizeNoDataValues(const TerrainLayer* layer)
         {
             _noDataValue   = layer->getNoDataValue();
             _minValidValue = layer->getMinValidValue();
@@ -137,12 +97,18 @@ namespace
     {
         if (!hf) 
             return false;
-        if (hf->getNumRows() < 2 || hf->getNumRows() > 1024)
+        if (hf->getNumRows() < 2 || hf->getNumRows() > 1024) {
+            OE_WARN << "row count = " << hf->getNumRows() << std::endl;
             return false;
-        if (hf->getNumColumns() < 2 || hf->getNumColumns() > 1024)
+        }
+        if (hf->getNumColumns() < 2 || hf->getNumColumns() > 1024) {
+            OE_WARN << "col count = " << hf->getNumColumns() << std::endl;
             return false;
-        if (hf->getHeightList().size() != hf->getNumColumns() * hf->getNumRows())
+        }
+        if (hf->getHeightList().size() != hf->getNumColumns() * hf->getNumRows()) {
+            OE_WARN << "mismatched data size" << std::endl;
             return false;
+        }
         //if (hf->getXInterval() < 1e-5 || hf->getYInterval() < 1e-5)
         //    return false;
         
@@ -152,43 +118,11 @@ namespace
 
 //------------------------------------------------------------------------
 
-ElevationLayer::ElevationLayer() :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
+REGISTER_OSGEARTH_LAYER(elevation, ElevationLayer);
 
-ElevationLayer::ElevationLayer(const ElevationLayerOptions& options) :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-ElevationLayer::ElevationLayer(const std::string& name, const TileSourceOptions& driverOptions) :
-TerrainLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(name, driverOptions)
-{
-    init();
-}
-
-ElevationLayer::ElevationLayer(const ElevationLayerOptions& options, TileSource* tileSource) :
-TerrainLayer(&_optionsConcrete, tileSource),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-ElevationLayer::ElevationLayer(ElevationLayerOptions* optionsPtr) :
-TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
-{
-    //init(); // will be called by subclass.
-}
+OE_LAYER_PROPERTY_IMPL(ElevationLayer, std::string, VerticalDatum, verticalDatum);
+OE_LAYER_PROPERTY_IMPL(ElevationLayer, bool, Offset, offset);
+OE_LAYER_PROPERTY_IMPL(ElevationLayer, ElevationNoDataPolicy, NoDataPolicy, noDataPolicy);
 
 void
 ElevationLayer::init()
@@ -198,6 +132,24 @@ ElevationLayer::init()
     // elevation layers do not render directly; rather, a composite of elevation data
     // feeds the terrain engine to permute the mesh.
     setRenderType(RENDERTYPE_NONE);
+
+    // sync up enabled & visible
+    if (getVisible() != getEnabled())
+        setVisible(getEnabled());
+}
+
+void
+ElevationLayer::setVisible(bool value)
+{
+    VisibleLayer::setVisible(value);
+    setEnabled(value);
+}
+
+void
+ElevationLayer::setEnabled(bool value)
+{
+    VisibleLayer::setVisible(value);
+    VisibleLayer::setEnabled(value);
 }
 
 void
@@ -221,7 +173,7 @@ ElevationLayer::isOffset() const
 }
 
 TileSource::HeightFieldOperation*
-ElevationLayer::getOrCreatePreCacheOp()
+ElevationLayer::getOrCreatePreCacheOp() const
 {
     if ( !_preCacheOp.valid() )
     {
@@ -235,20 +187,43 @@ ElevationLayer::getOrCreatePreCacheOp()
 }
 
 void
-ElevationLayer::createImplementation(const TileKey& key,
-                                     osg::ref_ptr<osg::HeightField>& out_hf,
-                                     osg::ref_ptr<NormalMap>& out_normalMap,
-                                     ProgressCallback* progress)
+ElevationLayer::applyProfileOverrides()
 {
-    out_hf = createHeightFieldFromTileSource(key, progress);
+    // Check for a vertical datum override.
+    bool changed = false;
+    if ( getProfile() && options().verticalDatum().isSet() )
+    {
+        std::string vdatum = options().verticalDatum().get();
+        OE_INFO << LC << "Override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
+        if ( !ciEquals(getProfile()->getSRS()->getVertInitString(), vdatum) )
+        {
+            ProfileOptions po = getProfile()->toProfileOptions();
+            po.vsrsString() = vdatum;
+            setProfile( Profile::create(po) );
+            changed = true;
+        }
+    }
+
+    if (changed && _profile.valid())
+    {
+        OE_INFO << LC << "Override profile: " << _profile->toString() << std::endl;
+    }
+}
+
+GeoHeightField
+ElevationLayer::createHeightFieldImplementation(const TileKey& key,
+                                                ProgressCallback* progress) const
+{
+    osg::ref_ptr<osg::HeightField> hf = createHeightFieldFromTileSource(key, progress);
+    return GeoHeightField(hf.get(), key.getExtent());
     
     // Do not create a normal map here. The populateHeightField method will
     // create the normal map.
 }
 
 osg::HeightField*
-ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
-                                                ProgressCallback* progress)
+ElevationLayer::createHeightFieldFromTileSource(const TileKey& key,
+                                                ProgressCallback* progress) const
 {
     osg::ref_ptr<osg::HeightField> result;
 
@@ -258,7 +233,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
     }
 
     TileSource* source = getTileSource();
-    if ( !source )
+    if ( !source || !source->isOK() )
     {
         if (progress) progress->message() = "no tile source";
         return 0L;
@@ -333,7 +308,7 @@ void
 ElevationLayer::assembleHeightField(const TileKey& key,
                                     osg::ref_ptr<osg::HeightField>& out_hf,
                                     osg::ref_ptr<NormalMap>& out_normalMap,
-                                    ProgressCallback* progress)
+                                    ProgressCallback* progress) const
 {			
     // Collect the heightfields for each of the intersecting tiles.
     GeoHeightFieldVector heightFields;
@@ -385,12 +360,10 @@ ElevationLayer::assembleHeightField(const TileKey& key,
 
             if ( isKeyInLegalRange(layerKey) )
             {
-                osg::ref_ptr<osg::HeightField> hf;
-                osg::ref_ptr<NormalMap> normalMap;
-                createImplementation(layerKey, hf, normalMap, progress);
+                GeoHeightField hf = createHeightFieldImplementation(layerKey, progress);
                 if (hf.valid())
                 {
-                    heightFields.push_back( GeoHeightField(hf.get(), normalMap.get(), layerKey.getExtent()) );
+                    heightFields.push_back( hf );
                 }
             }
         }
@@ -481,19 +454,19 @@ ElevationLayer::createHeightField(const TileKey& key)
 }
 
 GeoHeightField
-ElevationLayer::createHeightField(const TileKey&    key,
-                                  ProgressCallback* progress )
+ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress)
 {
     METRIC_SCOPED_EX("ElevationLayer::createHeightField", 2,
                      "key", key.str().c_str(),
                      "name", getName().c_str());
 
+    // If the layer is already in an error state, bail out
     if (getStatus().isError())
     {
         return GeoHeightField::INVALID;
     }
 
-    // If the layer is disabled, bail out.
+    // If the layer is disabled, bail out
     if ( getEnabled() == false )
     {
         return GeoHeightField::INVALID;
@@ -501,7 +474,6 @@ ElevationLayer::createHeightField(const TileKey&    key,
   
     GeoHeightField result;
     osg::ref_ptr<osg::HeightField> hf;
-    osg::ref_ptr<NormalMap> normalMap;
 
     // Check the memory cache first
     bool fromMemCache = false;
@@ -513,6 +485,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
         "elevation");
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
 
+    // Try the L2 memory cache first:
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
@@ -527,6 +500,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
         }
     }
 
+    // Next try the main cache:
     if ( !result.valid() )
     {
         // See if there's a persistent cache.
@@ -584,28 +558,30 @@ ElevationLayer::createHeightField(const TileKey&    key,
             return GeoHeightField::INVALID;
         }
 
+        // If we didn't get anything from cache, time to create one:
         if ( !hf.valid() )
         {
+            // Check that the key is legal (in valid LOD range, etc.)
             if ( !isKeyInLegalRange(key) )
-                return GeoHeightField::INVALID;
-
-            // If no tile source is expected, create a height field by calling
-            // the raw inheritable method.
-            if (!isTileSourceExpected())
             {
-                createImplementation(key, hf, normalMap, progress);
-                //hf = createHeightFieldImplementation(key, progress);
+                return GeoHeightField::INVALID;
             }
 
+            //TODO:
+            //getOrCreatePreCacheOp() is only used in TileSource-based path atm.
+            //We need to include the funcionality in all 
+
+            if (key.getProfile()->isHorizEquivalentTo(getProfile()))
+            {
+                result = createHeightFieldImplementation(key, progress);
+            }
             else
             {
-                // bad tilesource? fail
-                if ( !getTileSource() || !getTileSource()->isOK() )
-                    return GeoHeightField::INVALID;
-
-                // build a HF from the TileSource.
-                //hf = createHeightFieldImplementation( key, progress );
-                createImplementation(key, hf, normalMap, progress);
+                // If the profiles are different, use a compositing method to assemble the tile.
+                osg::ref_ptr<NormalMap> normalMap;
+                osg::ref_ptr<osg::HeightField> hf;
+                assembleHeightField(key, hf, normalMap, progress);
+                result = GeoHeightField(hf.get(), normalMap.get(), key.getExtent());
             }
 
             // Check for cancelation before writing to a cache
@@ -614,15 +590,30 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 return GeoHeightField::INVALID;
             }
 
+            // The const_cast is safe here because we just created the
+            // heightfield from scratch...not from a cache.
+            // TODO: note, I don't like this -gw
+            hf = const_cast<osg::HeightField*>(result.getHeightField());
+
             // validate it to make sure it's legal.
             if ( hf.valid() && !validateHeightField(hf.get()) )
             {
-                OE_WARN << LC << "Driver " << getTileSource()->getName() << " returned an illegal heightfield" << std::endl;
+                OE_WARN << LC << "Generated an illegal heightfield!" << std::endl;
                 hf = 0L; // to fall back on cached data if possible.
             }
 
-            // cache if necessary
-            if ( hf            && 
+            // Pre-caching operation. If there's a TileSource, it runs the precache
+            // operator so we don't need to run it here. This is a temporary construct
+            // until we get rid of TileSource
+            if (getTileSource() == NULL)
+            {
+                NormalizeNoDataValues preCache(this);
+                preCache.operator()(hf);
+            }
+
+            // If we have a cacheable heightfield, and it didn't come from the cache
+            // itself, cache it now.
+            if ( hf.valid()    && 
                  cacheBin      && 
                  !fromCache    &&
                  policy.isCacheWriteable() )
@@ -630,32 +621,24 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 cacheBin->write(cacheKey, hf.get(), 0L);
             }
 
-            // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
+            // If we have an expired heightfield from the cache and were not able to create
+            // any new data, just return the cached data.
             if (!hf.valid() && cachedHF.valid())
             {
                 OE_DEBUG << LC << "Using cached but expired heightfield for " << key.str() << std::endl;
                 hf = cachedHF;
             }
 
+            // No luck on any path:
             if ( !hf.valid() )
             {
                 return GeoHeightField::INVALID;
             }
-
-            // Set up the heightfield params.
-            double minx, miny, maxx, maxy;
-            key.getExtent().getBounds(minx, miny, maxx, maxy);
-            hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-            double dx = (maxx - minx)/(double)(hf->getNumColumns()-1);
-            double dy = (maxy - miny)/(double)(hf->getNumRows()-1);
-            hf->setXInterval( dx );
-            hf->setYInterval( dy );
-            hf->setBorderWidth( 0 );
         }
 
         if ( hf.valid() )
         {
-            result = GeoHeightField( hf.get(), normalMap.get(), key.getExtent() );
+            result = GeoHeightField( hf.get(), key.getExtent() );
         }
     }
 
@@ -665,8 +648,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
         return GeoHeightField::INVALID;
     }
 
-    // post-processing -- must be done before caching because it may alter the heightfield data
-    if ( result.valid() && !fromMemCache && hf.valid() )
+    // Process invalid height values based on the no-data policy.
+    // This is happening *after* the disk cache, but *before* the memory cache.
+    // TODO: evaluate whether this makes sense. I don't like that we are altering
+    // a const heightfield returned from createHeightFieldImplementation;
+    // the method is const, but still..
+    if ( result.valid() )
     {
         if ( options().noDataPolicy() == NODATA_MSL )
         {
@@ -700,6 +687,22 @@ ElevationLayer::createHeightField(const TileKey&    key,
     }
 
     return result;
+}
+
+Status
+ElevationLayer::writeHeightField(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
+{
+    if (isWritingSupported() && isWritingRequested())
+    {
+        return writeHeightFieldImplementation(key, hf, progress);
+    }
+    return Status::ServiceUnavailable;
+}
+
+Status
+ElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
+{
+    return Status::ServiceUnavailable;
 }
 
 
@@ -860,7 +863,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                                                       NormalMap*             normalMap,
                                                       const TileKey&         key,
                                                       const Profile*         haeProfile,
-                                                      ElevationInterpolation interpolation,
+                                                      RasterInterpolation interpolation,
                                                       ProgressCallback*      progress ) const
 {
     // heightfield must already exist.

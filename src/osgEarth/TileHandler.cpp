@@ -23,6 +23,7 @@
 
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 bool TileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 {

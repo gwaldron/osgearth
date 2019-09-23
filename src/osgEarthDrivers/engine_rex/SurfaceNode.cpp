@@ -37,7 +37,7 @@
 
 #include <numeric>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[SurfaceNode] "

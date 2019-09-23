@@ -31,18 +31,18 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/Controls>
+#include <osgEarth/MouseCoordsTool>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Color>
 
-#include <osgEarthUtil/MeasureTool>
+#include <osgEarth/MeasureTool>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 
 class MyMeasureToolCallback : public MeasureToolHandler::MeasureToolEventHandler
 {

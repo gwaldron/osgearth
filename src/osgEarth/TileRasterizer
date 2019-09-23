@@ -33,7 +33,7 @@
 
 namespace osgEarth
 {
-    // placeholder - might go away -gw
+    /** @deprecated - not used, remove */
     class OSGEARTH_EXPORT GeoNode : public osg::Object
     {
     public:

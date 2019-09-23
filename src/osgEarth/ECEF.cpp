@@ -20,6 +20,7 @@
 #include <osgEarth/ECEF>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 #define LC "[ECEF] "
 

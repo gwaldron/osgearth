@@ -220,7 +220,7 @@ namespace osgEarth
 
         /**
          * Gets a elevation value for each input point and puts them in output.
-         * Returns the number of successful elevations. Failed queries are set to
+         * Returns the number of successful queries. Failed queries are set to
          * NO_DATA_VALUE in the output vector.
          */
         unsigned getElevations(

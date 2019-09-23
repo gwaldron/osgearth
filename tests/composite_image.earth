@@ -1,0 +1,20 @@
+<!--
+Composite Image Layer.
+An image layer comprised of other image layers - they act as
+a single layer for visibility, caching, etc.
+-->
+<map name="Composite">
+    <CompositeImage>
+        <layers>
+            <xi:include href="readymap_imagery.xml"/>
+            
+            <GDALImage name="Boston">
+                <url>../data/boston-inset-wgs84.tif</url>
+            </GDALImage>	
+            
+            <GDALImage name="New York">
+                <url>../data/nyc-inset-wgs84.tif</url>
+            </GDALImage>
+        </layers>
+    </CompositeImage>
+</map>

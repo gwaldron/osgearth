@@ -18,7 +18,6 @@ http://spatialreference.org
         <profile srs="+proj=longlat +ellps=clrk66 +datum=NAD27 +no_defs"/>
     </options> 
         
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
+	
 </map>

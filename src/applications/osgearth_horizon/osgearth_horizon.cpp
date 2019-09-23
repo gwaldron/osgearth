@@ -24,12 +24,12 @@
 #include <osgEarth/Notify>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/AnnotationUtils>
 #include <osgEarth/Horizon>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/ActivityMonitorTool>
+#include <osgEarth/ActivityMonitorTool>
 
 #include <osg/Shape>
 #include <osg/ShapeDrawable>
@@ -39,7 +39,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 int
 usage(const char* name)

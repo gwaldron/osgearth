@@ -33,7 +33,7 @@
 
 #define REPORT_ACTIVITY true
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 
 Loader::Request::Request()
@@ -55,7 +55,7 @@ Loader::Request::addToChangeSet(osg::Node* node)
     }
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * Custom progress callback that checks for both request 
@@ -88,7 +88,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return ProgressCallback::isCanceled();
         }
     };
-} } }
+} }
 
 //...............................................
 
@@ -522,7 +522,7 @@ PagerLoader::invokeAndRelease(UID requestUID)
 
 
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
@@ -578,4 +578,4 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     };
     REGISTER_OSGPLUGIN(osgearth_rex_loader, PagerLoaderAgent);
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX

@@ -22,7 +22,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osg/TransferFunction>
@@ -32,7 +32,6 @@
 #define LC "[ColorRamp Driver] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 
 

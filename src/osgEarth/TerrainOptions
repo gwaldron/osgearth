@@ -24,207 +24,216 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/GeoCommon>
-#include <osg/Texture>
+#include <osgEarth/Color>
 #include <osg/LOD>
 
 namespace osgEarth
-{    
-    /**
-     * Base class for the configuration for a terrain engine driver.
-     */
+{
+    // Options structure for a terrain engine (internal)
     class OSGEARTH_EXPORT TerrainOptions : public DriverConfigOptions
     {
     public:
-        TerrainOptions( const ConfigOptions& options =ConfigOptions() );
-
-        /** dtor */
-        virtual ~TerrainOptions() { }
-       
-        /**
-         * Sets or gets the scale factor for height-field values.
-         * Default = 1.0
-         */
-        optional<float>& verticalScale() { return _verticalScale; }
-        const optional<float>& verticalScale() const { return _verticalScale; }
-
-        /**
-         * Sets or gets the offset for height-field values.
-         * Default = 0.0
-         */
-        optional<float>& verticalOffset() { return _verticalOffset; }
-        const optional<float>& verticalOffset() const { return _verticalOffset; }
-
-        /**
-         * Size of each dimension of each terrain tile, in verts. Ideally this 
-         * will be a power of 2 plus 1, i.e.: a number X with that X = (2^Y)+1
-         * where Y is an integer >= 1.
-         *
-         * Default = 17. 
-         */
-        optional<int>& tileSize() { return _tileSize; }
-        const optional<int>& tileSize() const { return _tileSize; }
-
-        /**
-         * The minimum tile LOD range as a factor of the tile's radius.
-         * Default = 7.0.
-         */
-        optional<float>& minTileRangeFactor() { return _minTileRangeFactor; }
-        const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }
-
-        /**
-         * Distance (m) over which to ramp min_range and max_range blending; Default = 0.
-         * @deprecated (remove after 2.10) Use VisibleLayer::attenuation instead.
-         */
-        optional<float>& attenuationDistance() { return _attenuationDistance; }
-        const optional<float>& attenuationDistance() const { return _attenuationDistance; }
-
-        /**
-         * Whether cluster culling is enabled on terrain tiles (default = true)
-         */
-        optional<bool>& clusterCulling() { return _clusterCulling; }
-        const optional<bool>& clusterCulling() const { return _clusterCulling; }
-
-        /**
-         * The maximum level of detail to which the terrain should subdivide. If you leave this
-         * unset, the terrain will subdivide until the map layers stop providing data (default
-         * behavior). If you set a value, the terrain will stop subdividing at the specified LOD
-         * even if higher-resolution data is available. (It still might stop subdividing before it
-         * reaches this level if data runs out.)
-         */
-        optional<unsigned>& maxLOD() { return _maxLOD; }
-        const optional<unsigned >& maxLOD() const { return _maxLOD; }
-
-        /**
-         * The minimum level of detail to which the terrain should subdivide (no matter what).
-         * If you leave this unset, the terrain will subdivide until the map layers
-         * stop providing data (default behavior). If you set a value, the terrain will subdivide
-         * to the specified LOD no matter what (and may continue farther if higher-resolution
-         * data is available).
-         */
-        optional<unsigned>& minLOD() { return _minLOD; }
-        const optional<unsigned>& minLOD() const { return _minLOD; }
-
-        /**
-         * The lowest LOD to display. By default, the terrain begins at LOD 0. Set this
-         * to start the terrain tile mesh at a higher LOD. Don't set this TOO high though
-         * or you will run into memory problems.
-         */
-        optional<unsigned>& firstLOD() { return _firstLOD; }
-        const optional<unsigned>& firstLOD() const { return _firstLOD; }
-
-        /**
-         * Whether to explicity enable or disable GL lighting on the map node.
-         */
-        optional<bool>& enableLighting() { return _enableLighting; }
-        const optional<bool>& enableLighting() const { return _enableLighting; }
-            
-        /**
-         * Whether to enable blending on the terrain. Default is true.
-         */
-        optional<bool>& enableBlending() { return _enableBlending; }
-        const optional<bool>& enableBlending() const { return _enableBlending; }
-
-        /**
-         * Whether to compress the normal map
-         */
-        optional<bool>& compressNormalMaps() { return _compressNormalMaps; }
-        const optional<bool>& compressNormalMaps() const { return _compressNormalMaps; }
-
-        /**
-         * Whether to enable the "fast path" for spherical Mercator image layers
-         * Default = true. If enabled, Mercator image tiles will be rendered on a
-         * geocentric map with no reprojection. The trade-off is higher texture
-         * memory usage and NPOT texture usage.
-         * @deprecated (remove after 2.10)
-         */
-        optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
-        const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
-
-        /**
-         * The minimum level of detail at which to generate elevation-based normal maps,
-         * assuming normal maps have been activated. This mitigates the overhead of 
-         * calculating normal maps for very high altitude scenes where they are no
-         * of much use. Default is 0 (zero).
-         */
-        optional<unsigned>& minNormalMapLOD() { return _minNormalMapLOD; }
-        const optional<unsigned>& minNormalMapLOD() const { return _minNormalMapLOD; }
-
-        /**
-         * Whether the terrain engine will be using GPU tessellation shaders.
-         */
-        optional<bool>& gpuTessellation() { return _gpuTessellation; }
-        const optional<bool>& gpuTessellation() const { return _gpuTessellation; }
-
-        /**
-         * debugging mode
-         */
-        optional<bool>& debug() { return _debug; }
-        const optional<bool>& debug() const { return _debug; }
-
-        optional<int>& binNumber() { return _binNumber; }
-        const optional<int>& binNumber() const { return _binNumber; }
-
-        /**
-         * Terrain tile expiration
-         */
-        optional<int>& minExpiryFrames() { return _minExpiryFrames; }
-        const optional<int>& minExpiryFrames() const { return _minExpiryFrames; }
-
-        optional<double>& minExpiryTime() { return _minExpiryTime; }
-        const optional<double>& minExpiryTime() const { return _minExpiryTime; }
-
-        /**
-         * Whether the terrain should cast shadows - default is false
-         */
-        optional<bool>& castShadows() { return _castShadows; }
-        const optional<bool>& castShadows() const { return _castShadows; }
-
-        /** Mode to use when calculating LOD switching distances.
-         *  Choices are DISTANCE_FROM_EYE_POINT (default) or PIXEL_SIZE_ON_SCREEN */
-        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
-        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
-
-        /** The size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN */
-        optional<float>& tilePixelSize() { return _tilePixelSize; }
-        const optional<float>& tilePixelSize() const { return _tilePixelSize; }
-   
-    public:
+        META_ConfigOptions(osgEarth, TerrainOptions, DriverConfigOptions);
+        OE_OPTION(float, verticalScale);
+        OE_OPTION(float, verticalOffset);
+        OE_OPTION(int, tileSize);
+        OE_OPTION(float, minTileRangeFactor);
+        OE_OPTION(bool, clusterCulling);
+        OE_OPTION(unsigned, maxLOD);
+        OE_OPTION(unsigned, minLOD);
+        OE_OPTION(unsigned, firstLOD);
+        OE_OPTION(bool, enableLighting);
+        OE_OPTION(bool, enableBlending);
+        OE_OPTION(bool, compressNormalMaps);
+        OE_OPTION(unsigned, minNormalMapLOD);
+        OE_OPTION(bool, gpuTessellation);
+        OE_OPTION(bool, debug);
+        OE_OPTION(int, renderBinNumber);
+        OE_OPTION(int, minExpiryFrames);
+        OE_OPTION(double, minExpiryTime);
+        OE_OPTION(float, minExpiryRange);
+        OE_OPTION(unsigned, expirationThreshold);
+        OE_OPTION(bool, castShadows);
+        OE_OPTION(osg::LOD::RangeMode, rangeMode);
+        OE_OPTION(float, tilePixelSize);
+        OE_OPTION(float, heightFieldSkirtRatio);
+        OE_OPTION(Color, color);
+        OE_OPTION(bool, progressive);
+        OE_OPTION(bool, normalMaps);
+        OE_OPTION(bool, normalizeEdges);
+        OE_OPTION(bool, morphTerrain);
+        OE_OPTION(bool, morphImagery);
+        OE_OPTION(unsigned, mergesPerFrame);
         virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config&);
+    };
 
-    protected:
-        virtual void mergeConfig( const Config& conf ) {
-            DriverConfigOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
+    class OSGEARTH_EXPORT TerrainOptionsAPI
+    {
+    public:
+        //! Scale factor for heightfield values. Default=1.0
+        void setVerticalScale(const float& value);
+        const float& getVerticalScale() const;
+
+        //! Offset for heightfield values. Default = 0.0.
+        void setVerticalOffset(const float& value);
+        const float& getVerticalOffset() const;
+
+        //! Size of each dimension of each terrain tile, in verts.
+        //! Ideally this will be a power of 2 plus 1, i.e.: a number X
+        //! such that X = (2^Y)+1 where Y is an integer >= 1. Default=17.
+        void setTileSize(const int& value);
+        const int& getTileSize() const;
+
+        //! The minimum tile LOD range as a factor of a tile's radius. Default = 7.0
+        void setMinTileRangeFactor(const float& value);
+        const float& getMinTileRangeFactor() const;
+
+        //! Whether cluster culling is enabled on terrain tiles. Deafult=true
+        void setClusterCulling(const bool& value);
+        const bool& getClusterCulling() const;
+
+        //! (Legacy property)
+        //! The maximum level of detail to which the terrain should subdivide.
+        //! If you leave this unset the terrain will subdivide until the map layers
+        //! stop providing data (default behavior). If you set a value, the terrain
+        //! will stop subdividing at the specified LOD even if higher-resolution
+        //! data is available. (It still might stop subdividing before it reaches
+        //! this level if data runs out
+        void setMaxLOD(const unsigned& value);
+        const unsigned& getMaxLOD() const;
+
+        //! (Legacy property)
+        //! The minimum level of detail to which the terrain should subdivide (no matter what).
+        //! If you leave this unset, the terrain will subdivide until the map layers
+        //! stop providing data (default behavior). If you set a value, the terrain will subdivide
+        //! to the specified LOD no matter what (and may continue farther if higher-resolution
+        //! data is available).
+        void setMinLOD(const unsigned& value);
+        const unsigned& getMinLOD() const;
+
+        //! (Legacy property)
+        //! The lowest LOD to display. By default, the terrain begins at LOD 0.
+        //! Set this to start the terrain tile mesh at a higher LOD.
+        //! Don't set this TOO high though or you will run into memory problems.
+        void setFirstLOD(const unsigned& value);
+        const unsigned& getFirstLOD() const;
+
+        //! Whether to explicity enable or disable GL lighting on the map node.
+        //! Default = true
+        void setEnableLighting(const bool& value);
+        const bool& getEnableLighting() const;
+            
+        //! (Legacy property)
+        //! Whether to enable blending on the terrain. Default is true.
+        void setEnableBlending(const bool& value);
+        const bool& getEnableBlending() const;
+
+        //! Whether to compress the normal maps before sending to the GPU
+        void setCompressNormalMaps(const bool& value);
+        const bool& getCompressNormalMaps() const;
+
+        //! Minimum level of detail at which to generate elevation-based normal maps,
+        //! assuming normal maps have been activated. This mitigates the overhead of 
+        //! calculating normal maps for very high altitude scenes where they are no
+        //! of much use. Default is 0 (zero).
+        void setMinNormalMapLOD(const unsigned& value);
+        const unsigned& getMinNormalMapLOD() const;
+
+        //! Whether the terrain engine will be using GPU tessellation shaders.
+        void setGPUTessellation(const bool& value);
+        const bool& getGPUTessellation() const;
+
+        //! Whether to activate debugging mode
+        void setDebug(const bool& value);
+        const bool& getDebug() const;
+
+        //! Render bin number for the terrain
+        void setRenderBinNumber(const int& value);
+        const int& getRenderBinNumber() const;
+
+        //! Minimum number of frames before unused terrain data is eligible to expire
+        void setMinExpiryFrames(const int& value);
+        const int& getMinExpiryFrames() const;
+
+        //! Minimum time (seconds) before unused terrain data is eligible to expire
+        void setMinExpiryTime(const double& value);
+        const double& getMinExpiryTime() const;
+
+        //! Minimun range (distance from camera) beyond which unused terrain data 
+        //! is eligible to expire
+        void setMinExpiryRange(const float& value);
+        const float& getMinExpiryRange() const;
+
+        //! Minimum number of terrain elements to keep in memory before expiring usused data
+        void setExpirationThreshold(const unsigned& value);
+        const unsigned& getExpirationThreshold() const;
+
+        //! Whether the terrain should cast shadows - default is false
+        void setCastShadows(const bool& value);
+        const bool& getCastShadows() const;
+
+        //! Mode to use when calculating LOD switching distances.
+        //! Choices are DISTANCE_FROM_EYE_POINT (default) or PIXEL_SIZE_ON_SCREEN
+        void setRangeMode(const osg::LOD::RangeMode& value);
+        const osg::LOD::RangeMode& getRangeMode() const;
+
+        //! Size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN
+        void setTilePixelSize(const float& value);
+        const float& getTilePixelSize() const;
+
+        //! Ratio of skirt height to tile width. The "skirt" is geometry extending
+        //! down from the edge of terrain tiles meant to hide cracks between adjacent
+        //! levels of detail. Default is 0 (no skirt).
+        void setHeightFieldSkirtRatio(const float& value);
+        const float& getHeightFieldSkirtRatio() const;
+
+        //! Color of the untextured globe (where no imagery is displayed) (default is white)
+        void setColor(const Color& value);
+        const Color& getColor() const;
+
+        //! Whether to load levels of details one after the other, instead of 
+        //! prioritizing them based on the camera position. (default = false)
+        void setProgressive(const bool& value);
+        const bool& getProgressive() const;
+
+        //! Whether to generate normal map textures. Default is true
+        void setNormalMaps(const bool& value);
+        const bool& getNormalMaps() const;
+
+        //! Whether to average normal vectors on tile boundaries. Doing so reduces the
+        //! the appearance of seams when using lighting, but requires extra CPU work.
+        void setNormalizeEdges(const bool& value);
+        const bool& getNormalizeEdges() const;
+
+        //! Whether to morph terrain data between terrain tile LODs.
+        //! This feature is not available when rangeMode is PIXEL_SIZE_ON_SCREEN
+        void setMorphTerrain(const bool& value);
+        const bool& getMorphTerrain() const;
+
+        //! Whether to morph imagery between terrain tile LODs.
+        //! This feature is not available when rangeMode is PIXEL_SIZE_ON_SCREEN
+        void setMorphImagery(const bool& value);
+        const bool& getMorphImagery() const;
+
+        //! Maximum number of tile data merges permitted per frame. 0 = infinity.
+        void setMergesPerFrame(const unsigned& value);
+        const unsigned& getMergesPerFrame() const;
+
+    public: // Legacy support
+
+        //! Sets the name of the terrain engine driver to use
+        void setDriver(const std::string& name);
 
     private:
-        void fromConfig( const Config& conf );
-                    
-        optional<float> _verticalScale;
-        optional<float> _verticalOffset;
-        optional<int>   _tileSize;
-        optional<float> _minTileRangeFactor;        
-        optional<unsigned> _minLOD;
-        optional<unsigned> _maxLOD;
-        optional<unsigned> _firstLOD;
-        optional<bool> _enableLighting;
-        optional<float> _attenuationDistance;
-        optional<bool> _clusterCulling;
-        optional<bool> _enableBlending;
-        optional<bool> _compressNormalMaps;
-        optional<bool> _mercatorFastPath;
-        optional<ElevationInterpolation> _elevationInterpolation;
-        optional<unsigned> _minNormalMapLOD;
-        optional<bool> _gpuTessellation;
-        optional<bool> _debug;
-        optional<int> _binNumber;
-        optional<int> _minExpiryFrames;
-        optional<double> _minExpiryTime;
-        optional<bool> _castShadows;
-        optional<osg::LOD::RangeMode> _rangeMode;
-        optional<float> _tilePixelSize;
+        friend class MapNode;
+        TerrainOptionsAPI(TerrainOptions*);
+        TerrainOptions* _ptr;
+        TerrainOptions& options() { return *_ptr; }
+        const TerrainOptions& options() const { return *_ptr; }
     };
-}
+
+} // namespace osgEarth
 
 #endif // OSGEARTH_TERRAIN_OPTIONS_H

@@ -19,6 +19,7 @@
 #include <osgEarth/EllipsoidIntersector>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 EllipsoidIntersector::EllipsoidIntersector(const osg::EllipsoidModel* em)
 {

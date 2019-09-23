@@ -23,14 +23,13 @@
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Shadowing>
-#include <osgEarth/ClampableNode>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureSourceLayer>
+#include <osgEarth/CameraUtils>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
+#include <osg/Depth>
+#include <osg/Version>
 #include <cstdlib> // getenv
 
 #define LC "[GroundCoverLayer] " << getName() << ": "
@@ -40,22 +39,32 @@
 
 using namespace osgEarth::Splat;
 
-namespace osgEarth { namespace Splat {
-    REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
-} }
+REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
+REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
+
+// The TS/GS implementation uses GL_PATCHES to pass the terrain tile geometry
+// to the tessellation shader and then the geometry shader where it generates
+// billboards. Undef this to use a VS-only implementation (which is slower
+// and still needs some work with the colors, etc.) but could be useful if
+// GS are extremely slow or unavailable on your target platform.
+#define USE_GEOMETRY_SHADER
+
+// If we're not using the GS, we have the option of using instancing or not.
+// OFF by default since it benchmarks faster on older cards. On newer cards
+// (RTX 2070 e.g.) it's about the same.
+//#define USE_INSTANCING_IN_VERTEX_SHADER
 
 //........................................................................
 
 Config
-GroundCoverLayerOptions::getConfig() const
+GroundCoverLayer::Options::getConfig() const
 {
-    Config conf = PatchLayerOptions::getConfig();
-    conf.set("land_cover_layer", _landCoverLayerName);
-    conf.set("mask_layer", _maskLayerName);
+    Config conf = PatchLayer::Options::getConfig();
+    conf.set("land_cover_layer", _landCoverLayer);
+    conf.set("mask_layer", _maskLayer);
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
-    conf.set("node_caching", _nodeCaching);
-    
+
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
         Config zone = _zones[i].getConfig();
@@ -68,13 +77,15 @@ GroundCoverLayerOptions::getConfig() const
 }
 
 void
-GroundCoverLayerOptions::fromConfig(const Config& conf)
+GroundCoverLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("land_cover_layer", _landCoverLayerName);
-    conf.get("mask_layer", _maskLayerName);
+    _lod.init(13u);
+    _castShadows.init(false);
+
+    conf.get("land_cover_layer", _landCoverLayer);
+    conf.get("mask_layer", _maskLayer);
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
-    conf.get("node_caching", _nodeCaching);
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {
@@ -91,14 +102,13 @@ bool
 GroundCoverLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
 {
     // if this is a shadow camera and the layer is configured to cast shadows, accept it.
-    if (osgEarth::Shadowing::isShadowCamera(camera))
+    if (CameraUtils::isShadowCamera(camera))
     {
-        bool use = (_layer->options().castShadows() == true);
-        return use;
+        return _layer->getCastShadows();
     }
 
     // if this is a depth-pass camera (and not a shadow cam), reject it.
-    bool isDepthCamera = ClampableNode::isDepthCamera(camera);
+    bool isDepthCamera = CameraUtils::isDepthCamera(camera);
     if (isDepthCamera)
         return false;
 
@@ -162,20 +172,8 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
 
 //........................................................................
 
-GroundCoverLayer::GroundCoverLayer() :
-PatchLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-GroundCoverLayer::GroundCoverLayer(const GroundCoverLayerOptions& options) :
-PatchLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
+OE_LAYER_PROPERTY_IMPL(GroundCoverLayer, unsigned, LOD, lod);
+OE_LAYER_PROPERTY_IMPL(GroundCoverLayer, bool, CastShadows, castShadows);
 
 void
 GroundCoverLayer::init()
@@ -196,6 +194,12 @@ GroundCoverLayer::init()
     setAcceptCallback(new LayerAcceptor(this));
 
     setCullCallback(new ZoneSelector(this));
+    
+#ifndef USE_GEOMETRY_SHADER
+    // this layer will do its own custom rendering
+    _renderer = new Renderer();
+    setDrawCallback(_renderer.get());
+#endif
 }
 
 const Status&
@@ -212,6 +216,12 @@ GroundCoverLayer::setLandCoverDictionary(LandCoverDictionary* layer)
         buildStateSets();
 }
 
+const LandCoverDictionary*
+GroundCoverLayer::getLandCoverDictionary() const
+{
+    return _landCoverDict.get();
+}
+
 void
 GroundCoverLayer::setLandCoverLayer(LandCoverLayer* layer)
 {
@@ -220,6 +230,12 @@ GroundCoverLayer::setLandCoverLayer(LandCoverLayer* layer)
         OE_INFO << LC << "Land cover layer is \"" << layer->getName() << "\"\n";
         buildStateSets();
     }
+}
+
+const LandCoverLayer*
+GroundCoverLayer::getLandCoverLayer() const
+{
+    return _landCoverLayer.get();
 }
 
 void
@@ -233,15 +249,17 @@ GroundCoverLayer::setMaskLayer(ImageLayer* layer)
     }
 }
 
-unsigned
-GroundCoverLayer::getLOD() const
+const ImageLayer*
+GroundCoverLayer::getMaskLayer() const
 {
-    return options().lod().get();
+    return _maskLayer.get();
 }
 
 void
 GroundCoverLayer::addedToMap(const Map* map)
 {
+    PatchLayer::addedToMap(map);
+
     if (!_landCoverDict.valid())
     {
         _landCoverDictListener.listen(map, this, &GroundCoverLayer::setLandCoverDictionary);
@@ -270,7 +288,7 @@ GroundCoverLayer::addedToMap(const Map* map)
 void
 GroundCoverLayer::removedFromMap(const Map* map)
 {
-    //NOP
+    PatchLayer::removedFromMap(map);
 }
 
 void
@@ -406,9 +424,14 @@ GroundCoverLayer::buildStateSets()
                 // Install the land cover shaders on the state set
                 VirtualProgram* vp = VirtualProgram::getOrCreate(zoneStateSet);
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
-                shaders.loadAll(vp, getReadOptions());
+                shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
                 // Generate the coverage acceptor shader
+#ifdef USE_GEOMETRY_SHADER
+                shaders.load(vp, shaders.GroundCover_TCS, getReadOptions());
+                shaders.load(vp, shaders.GroundCover_TES, getReadOptions());
+                shaders.load(vp, shaders.GroundCover_GS, getReadOptions());
+
                 osg::Shader* covTest = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
                 covTest->setName(covTest->getName() + "_GEOMETRY");
                 covTest->setType(osg::Shader::GEOMETRY);
@@ -422,6 +445,24 @@ GroundCoverLayer::buildStateSets()
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader.get());
+#else
+                shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
+
+                osg::Shader* covTest = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
+                covTest->setName(covTest->getName() + "_VERTEX");
+                covTest->setType(osg::Shader::VERTEX);
+
+                osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
+                layerShader->setType(osg::Shader::VERTEX);
+                vp->setShader(layerShader.get());
+
+#ifdef USE_INSTANCING_IN_VERTEX_SHADER
+                zoneStateSet->setDefine("OE_GROUNDCOVER_USE_INSTANCING");
+#endif
+
+#endif
+
+                vp->setShader(covTest);
 
                 // whether to support top-down image billboards. We disable it when not in use
                 // for performance reasons.
@@ -454,7 +495,7 @@ GroundCoverLayer::buildStateSets()
         }
     }
 
-    if (maxRange > 0.0f && !options().maxVisibleRange().isSet())
+    if (maxRange > 0.0f)
     {
         setMaxVisibleRange(maxRange);
         OE_INFO << LC << "Max visible range set to " << maxRange << std::endl;
@@ -469,6 +510,9 @@ GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
         z->get()->resizeGLObjectBuffers(maxSize);
     }
 
+    if (_renderer.valid())
+        _renderer->resizeGLObjectBuffers(maxSize);
+
     PatchLayer::resizeGLObjectBuffers(maxSize);
 }
 
@@ -480,10 +524,192 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
         z->get()->releaseGLObjects(state);
     }
 
+    if (_renderer.valid())
+        _renderer->releaseGLObjects(state);
+
     PatchLayer::releaseGLObjects(state);
 
     // For some unknown reason, release doesn't work on the zone 
     // texture def data (SplatTextureDef). So we have to recreate
     // it here.
     const_cast<GroundCoverLayer*>(this)->buildStateSets();
+}
+
+
+//........................................................................
+
+// only used with non-GS implementation
+GroundCoverLayer::Renderer::DrawState::DrawState()
+{
+    // initialize all the uniform locations - we will fetch these at draw time
+    // when the program is active
+    _pcp = NULL;
+    _numInstancesUL = -1;
+    _LLUL = -1;
+    _URUL = -1;
+    _LLNormalUL = -1;
+    _URNormalUL = -1;
+}
+
+void
+GroundCoverLayer::Renderer::DrawState::reset()
+{
+    _tilesDrawnThisFrame = 0;
+    _LLAppliedValue.set(FLT_MAX, FLT_MAX, FLT_MAX);
+    _URAppliedValue.set(FLT_MAX, FLT_MAX, FLT_MAX);
+
+    if (!_geom.valid())
+    {
+        const unsigned tileSize = 132u; // matches GS density = 3.4
+        unsigned numInstances = tileSize*tileSize;
+
+        _geom = new osg::Geometry();
+        _geom->setDataVariance(osg::Object::STATIC);
+        _geom->setUseVertexBufferObjects(true);
+
+#ifdef USE_INSTANCING_IN_VERTEX_SHADER
+
+        static const GLubyte indices[12] = { 0,1,2,1,2,3, 4,5,6,5,6,7 };
+        _geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 12, &indices[0], numInstances));
+
+#else // big giant drawelements:
+
+        static const unsigned indiciesPerInstance = 12;
+        static const unsigned totalIndicies = numInstances * indiciesPerInstance;
+        std::vector<GLuint> indices;
+        indices.reserve(totalIndicies);
+        for (unsigned i = 0; i < numInstances; i++)
+        {
+            unsigned offset = i * 8;
+            std::vector<GLuint> instanceIndicies = { (GLuint)(0 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(3 + offset),  (GLuint)(4 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(7 + offset) };
+            indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
+        }
+        _geom->addPrimitiveSet(new osg::DrawElementsUInt(GL_TRIANGLES, totalIndicies, indices.data(), 0));
+
+        //unsigned int numverts = numInstances * 8;
+        //osg::Vec3Array* coords = new osg::Vec3Array(numverts);
+        //_geom->setVertexArray(coords);        
+
+#endif // USE_INSTANCING_IN_VERTEX_SHADER
+
+        _numInstances1D = tileSize;
+    }
+}
+
+GroundCoverLayer::Renderer::Renderer()
+{
+    // create uniform IDs for each of our uniforms
+    _numInstancesUName = osg::Uniform::getNameID("oe_GroundCover_numInstances");
+    _LLUName = osg::Uniform::getNameID("oe_GroundCover_LL");
+    _URUName = osg::Uniform::getNameID("oe_GroundCover_UR");
+
+    _drawStateBuffer.resize(64u);
+
+    _density = 1.0f;
+}
+
+void
+GroundCoverLayer::Renderer::preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& data)
+{
+    DrawState& ds = _drawStateBuffer[ri.getContextID()];
+
+    ds.reset();
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
+    // Need to unbind any VAO since we'll be doing straight GL calls
+    //ri.getState()->unbindVertexArrayObject();
+#endif
+
+    // Testing - need this for glMultiDrawElementsIndirect
+    //osg::PrimitiveSet* de = ds._geom->getPrimitiveSet(0);
+    //osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(ri.getContextID());
+    //ri.getState()->bindElementBufferObject(ebo);
+}
+
+namespace
+{
+    struct DrawElementsIndirectCommand {
+        GLuint  count;
+        GLuint  instanceCount;
+        GLuint  firstIndex;
+        GLuint  baseVertex;
+        GLuint  baseInstance;
+    };
+}
+
+void
+GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, osg::Referenced* data)
+{
+    DrawState& ds = _drawStateBuffer[ri.getContextID()];
+    osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+
+    // find the uniform location for our uniforms if necessary.
+    // (only necessary when the PCP has changed)
+    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+    if (pcp != ds._pcp || ds._numInstancesUL < 0)
+    {
+        ds._numInstancesUL = pcp->getUniformLocation(_numInstancesUName);
+        ds._LLUL = pcp->getUniformLocation(_LLUName);
+        ds._URUL = pcp->getUniformLocation(_URUName);
+
+        ds._pcp = pcp;
+    }
+
+    // on the first draw call this frame, initialize the uniform that tells the
+    // shader the total number of instances:
+    if (ds._tilesDrawnThisFrame == 0)
+    {
+        osg::Vec2f numInstances(ds._numInstances1D, ds._numInstances1D);
+        ext->glUniform2fv(ds._numInstancesUL, 1, numInstances.ptr());
+    }
+
+    // transmit the extents of this tile to the shader, skipping the glUniform
+    // call if the values have not changed. The shader will calculate the
+    // instance positions by interpolating across the tile extents.
+    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(tile._geom->getVertexArray());
+
+    const osg::Vec3f& LL = verts->front();
+    const osg::Vec3f& UR = verts->back();
+
+    if (LL != ds._LLAppliedValue)
+    {
+        ext->glUniform3fv(ds._LLUL, 1, LL.ptr());
+        ds._LLAppliedValue = LL;
+    }
+
+    if (UR != ds._URAppliedValue)
+    {
+        ext->glUniform3fv(ds._URUL, 1, UR.ptr());
+        ds._URAppliedValue = UR;
+    }
+
+    // draw the instanced billboard geometry:
+    ds._geom->draw(ri);
+
+    ++ds._tilesDrawnThisFrame;
+}
+
+void
+GroundCoverLayer::Renderer::postDraw(osg::RenderInfo& ri, osg::Referenced* data)
+{
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
+    // Need to unbind our VAO so as not to confuse OSG
+    ri.getState()->unbindVertexArrayObject();
+#endif
+}
+
+void
+GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
+{
+    _drawStateBuffer.resize(osg::maximum(maxSize, _drawStateBuffer.size()));
+}
+
+void
+GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
+{
+    for(unsigned i=0; i<_drawStateBuffer.size(); ++i)
+    {
+        if (_drawStateBuffer[i]._geom.valid())
+            _drawStateBuffer[i]._geom->releaseGLObjects(state);
+    }
 }

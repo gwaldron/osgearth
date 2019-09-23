@@ -1,32 +1,26 @@
 <!--
 osgEarth Sample
-
 Demonstrates how to select a style name using javascript.
 -->
 
-<map name="Feature Overlay Demo" type="geocentric" version="2">
-    
-    <options>
-        <lighting>false</lighting>
-        <overlay_blending>false</overlay_blending>
-    </options>
+<map name="Demo: style selectors">
 
-    <image name="world" driver="gdal">
+    <GDALImage name="world">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <model name="countries" driver="feature_geom">
-                          
-        <features name="states" driver="ogr">
-            <url>../data/world.shp</url>
-            <filters>
-                <buffer distance="-0.05"/>
-            </filters>
-        </features>
-        
+    <OGRFeatures name="country-data">
+        <url>../data/world.shp</url>
+        <filters>
+            <buffer distance="-0.05"/>
+        </filters>
+    </OGRFeatures>
+    
+    <FeatureModel name="countries" features="country-data">        
         <styles>        
             <style type="text/css">
-                p { altitude-clamping: terrain-drape; } 
+                p { altitude-clamping: terrain-drape;
+                    render-backface-culling: false; }
                 p1 : p { fill: #ffffff9f; }
                 p2 : p { fill: #cccccc9f; }
                 p3 : p { fill: #9999999f; }
@@ -39,15 +33,15 @@ Demonstrates how to select a style name using javascript.
                 function getStyleClass()
                 {
 					// Exclude any countries beginning with the letter A: 
-					if ( feature.properties.cntry_name.charAt(0) === 'A' )
+					if ( feature.properties.name.charAt(0) === 'A' )
 						return null;
 						
 					// If it starts with the letter C, return an inline style:
-					if ( feature.properties.cntry_name.charAt(0) == 'C' )
+					if ( feature.properties.name.charAt(0) == 'C' )
 						return '{ fill: #ffc838; stroke: #8f8838; extrusion-height: 250000; }';
 						
 					// Otherwise, color by population and return a stylesheet style:
-                    var pop = parseFloat(feature.properties.pop_cntry);
+                    var pop = parseFloat(feature.properties.pop);
                     if      ( pop <= 14045470 )  return "p1";
                     else if ( pop <= 43410900 )  return "p2";
                     else if ( pop <= 97228750 )  return "p3";
@@ -58,7 +52,7 @@ Demonstrates how to select a style name using javascript.
             </script>
             
             <selector class_expr="getStyleClass()"/>
-        </styles>
-        
-    </model>
+        </styles>        
+    </FeatureModel>
+    
 </map>

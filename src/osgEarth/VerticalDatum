@@ -135,15 +135,17 @@ namespace osgEarth
 
     //--------------------------------------------------------------------
 
-    /**
-     * Creates a geoid instance based on an initialization string.
-     */
-    class OSGEARTH_EXPORT VerticalDatumFactory
-    {   
-	public:
-        static VerticalDatum* create( const std::string& id );
-    };
-
+    namespace Support
+    {
+        /**
+         * Creates a geoid instance based on an initialization string.
+         */
+        class OSGEARTH_EXPORT VerticalDatumFactory
+        {   
+	    public:
+            static VerticalDatum* create( const std::string& id );
+        };
+    }
 }
 
 #endif // OSGEARTH_VERTICAL_DATUM_H

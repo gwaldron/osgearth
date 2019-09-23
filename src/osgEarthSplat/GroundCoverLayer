@@ -29,99 +29,57 @@
 #include <osgEarth/LayerListener>
 #include <osgEarth/LandCoverLayer>
 
-namespace osgEarth { namespace Features {
-    class FeatureSource;
-    class FeatureSourceLayer;
-} }
-
 namespace osgEarth { namespace Splat
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Features;
-
-    //! Serializable configuration for a GroundCoverLayer.
-    class OSGEARTHSPLAT_EXPORT GroundCoverLayerOptions : public PatchLayerOptions
-    {
-    public:
-        GroundCoverLayerOptions(const ConfigOptions& co = ConfigOptions()) :
-            PatchLayerOptions(co),
-            _lod(13u),
-            _castShadows(false)
-        {
-            fromConfig(_conf);
-        }
-
-        //! Required layer containing land cover data
-        optional<std::string>& landCoverLayer() { return _landCoverLayerName; }
-        const optional<std::string>& landCoverLayer() const { return _landCoverLayerName; }        
-        
-        //! Optional name of a map layer to use for masking ground cover
-        optional<std::string>& maskLayer() { return _maskLayerName; }
-        const optional<std::string>& maskLayer() const { return _maskLayerName; }
-
-        //! Geographic zones
-        std::vector<ZoneOptions>& zones() { return _zones; }
-        const std::vector<ZoneOptions>& zones() const { return _zones; }
-
-        //! Terrain LOD at which this layer should render
-        optional<unsigned>& lod() { return _lod; }
-        const optional<unsigned>& lod() const { return _lod; }
-
-        //! Whether objects in this layer should cast shadows.
-        optional<bool>& castShadows() { return _castShadows; }
-        const optional<bool>& castShadows() const { return _castShadows; }
-
-        //! Whether this layer should node cache.
-        optional<bool>& nodeCaching() { return _nodeCaching; }
-        const optional<bool>& nodeCaching() const { return _nodeCaching; }
-
-    public:
-        virtual Config getConfig() const;
-    protected:
-        virtual void mergeConfig(const Config& conf) {
-            VisibleLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
-        void fromConfig(const Config& conf);
-
-    private:
-        optional<std::string> _landCoverLayerName;
-        optional<std::string> _maskLayerName;
-        ZoneOptionsVector _zones;
-        optional<unsigned> _lod;
-        optional<bool> _castShadows;
-        optional<bool> _nodeCaching;
-    };
-
-
     //! Layer that renders billboards on the ground using the GPU,
     //! like trees, grass, rocks, etc.
     class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public PatchLayer
     {
     public:
-        META_Layer(osgEarthSplat, GroundCoverLayer, GroundCoverLayerOptions, splat_groundcover);
+        class OSGEARTHSPLAT_EXPORT Options : public PatchLayer::Options {
+        //! Whether this layer should node cache.
+        optional<bool>& nodeCaching() { return _nodeCaching; }
+        const optional<bool>& nodeCaching() const { return _nodeCaching; }
 
-        //! Construct a layer with default configuration
-        GroundCoverLayer();
-        
-        //! Construct a layer with configuration options
-        GroundCoverLayer(const GroundCoverLayerOptions& options);
+    public:
+            META_LayerOptions(osgEarth, Options, PatchLayer::Options);
+            OE_OPTION(std::string, landCoverLayer);
+            OE_OPTION(std::string, maskLayer);
+            OE_OPTION(unsigned, lod);
+            OE_OPTION(bool, castShadows);
+            OE_OPTION_VECTOR(ZoneOptions, zones);
+        virtual Config getConfig() const;
+        private:
+        void fromConfig(const Config& conf);
+        optional<bool> _nodeCaching;
+    };
+
+    public:
+        META_Layer(osgEarth, GroundCoverLayer, Options, PatchLayer, GroundCover);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);
+        const LandCoverLayer* getLandCoverLayer() const;
 
         //! Layer containing the land cover dictionary.
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
+        const LandCoverDictionary* getLandCoverDictionary() const;
 
         //! Masking layer (optional)
         void setMaskLayer(ImageLayer* layer);
+        const ImageLayer* getMaskLayer() const;
 
         //! LOD at which to draw ground cover
-        unsigned getLOD() const;
+        void setLOD(const unsigned& value);
+        const unsigned& getLOD() const;
 
         //! Geogrphic zones; at least one is required
-        Zones& zones() { return _zones; }
-        const Zones& zones() const { return _zones; }
+        Zones& getZones() { return _zones; }
+        const Zones& getZones() const { return _zones; }
+
+        //! Whether the ground cover casts shadows on the terrain
+        void setCastShadows(const bool& value);
+        const bool& getCastShadows() const;
 
     protected:
 
@@ -176,8 +134,62 @@ namespace osgEarth { namespace Splat
             void operator()(osg::Node*, osg::NodeVisitor*) const;
         };
         friend struct ZoneSelector;
+
+        // Custom GL renderer for ground cover
+        struct Renderer : public PatchLayer::DrawCallback
+        {
+            Renderer();
+
+            // Tracks a GL state to minimize state changes
+            struct DrawState
+            {
+                DrawState();
+
+                void reset();
+
+                osg::ref_ptr<osg::Geometry> _geom;
+
+                osg::ref_ptr<osg::ElementBufferObject> _ebo;
+
+                const osg::Program::PerContextProgram* _pcp;
+
+                unsigned _tilesDrawnThisFrame;
+
+                GLint _numInstancesUL;
+                int _numInstances1D;
+
+                GLint _LLUL;
+                osg::Vec3f _LLAppliedValue;
+
+                GLint _URUL;
+                osg::Vec3f _URAppliedValue;
+
+                GLint _LLNormalUL;
+                GLint _URNormalUL;
+    };
+
+            // one per graphics context
+            osg::buffered_object<DrawState> _drawStateBuffer;
+
+            // uniform IDs
+            float _density;
+            unsigned _numInstancesUName;
+            unsigned _LLUName, _URUName;
+            unsigned _LLNormalUName, _URNormalUName;
+
+            // DrawCallback API
+            void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data);
+            void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data);
+            void postDraw(osg::RenderInfo& ri, osg::Referenced* data);
+
+            void resizeGLObjectBuffers(unsigned maxSize);
+            void releaseGLObjects(osg::State* state) const;
+        };
+
+        osg::ref_ptr<Renderer> _renderer;
     };
 
 } } // namespace osgEarth::Splat
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::GroundCoverLayer::Options);
 
 #endif // OSGEARTH_SPLAT_GROUND_COVER_LAYER_H

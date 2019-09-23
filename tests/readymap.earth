@@ -11,15 +11,16 @@ YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
 http://readymap.org
 
 -->
-<map name="readymap.org" type="geocentric">
+<map name="ReadyMap.org">
 
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+	<TMSImage name="ReadyMap 15m Imagery">
+		<url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+	</TMSImage>
 
-    <elevation name="readymap_elevation" driver="tms" vdatum="egm96">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+	 <TMSElevation name="ReadyMap 90m Elevation">
+		 <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+		 <vdatum>egm96</vdatum>
+	 </TMSElevation>
 
     <xi:include href="viewpoints.xml"/>
 </map>

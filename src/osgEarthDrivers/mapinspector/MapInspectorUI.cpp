@@ -18,16 +18,13 @@
  */
 #include "MapInspectorUI"
 #include <osgEarth/GeoData>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/Feature>
+#include <osgEarth/Style>
+#include <osgEarth/Geometry>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::MapInspector;
 
 namespace ui = osgEarth::Util::Controls;

@@ -27,10 +27,10 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/LinearLineOfSight>
-#include <osgEarthUtil/RadialLineOfSight>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/LinearLineOfSight>
+#include <osgEarth/RadialLineOfSight>
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
 #include <osg/Depth>
@@ -39,6 +39,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 
 
 osg::AnimationPath* createAnimationPath(const GeoPoint& pos, const SpatialReference* mapSRS, float radius, double looptime)

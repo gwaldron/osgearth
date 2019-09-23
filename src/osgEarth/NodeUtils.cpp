@@ -21,6 +21,7 @@
 #include <osg/Geometry>
 
 using namespace osgEarth;
+using namespace osgEarth::Support;
 
 
 //------------------------------------------------------------------------

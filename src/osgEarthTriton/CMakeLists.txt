@@ -14,7 +14,6 @@ SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Common
     Export
-    TritonOptions
     TritonContext
     TritonDrawable
     TritonAPIWrapper
@@ -49,7 +48,6 @@ LINK_EXTERNAL(
 LINK_INTERNAL(
     ${LIB_NAME}
     osgEarth
-    osgEarthUtil
 )
 
 LINK_WITH_VARIABLES(

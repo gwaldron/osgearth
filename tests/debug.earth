@@ -1,0 +1,7 @@
+<!--
+Debug layer
+Shows the tile key and other information about each terrain tile.
+-->
+<Map>
+    <DebugImage/>
+</Map>

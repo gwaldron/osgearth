@@ -25,7 +25,7 @@
 #include <osg/Image>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Pairs an OSG image with TileKey parameters.
@@ -74,6 +74,6 @@ namespace osgEarth
 
         TileImageList _images;
     };
-}
+} }
 
 #endif // OSGEARTH_COMPOSITING_H

@@ -66,7 +66,7 @@ namespace
             osg::clampBetween( covIn.y() + n1*warp, 0.0f, 1.0f ) );
     }
 
-    float getNoise(osgEarth::SimplexNoise& noiseGen, const osg::Vec2& uv)
+    float getNoise(osgEarth::Util::SimplexNoise& noiseGen, const osg::Vec2& uv)
     {
         // TODO: check that u and v are 0..s and not 0..s-1
         double n = noiseGen.getTiledValue(uv.x(), uv.y());
@@ -97,15 +97,14 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
     }
 
     // load all the image layers:
-    _imageLayers.assign( _options.imageLayerOptionsVector().size(), 0L );
-    _warps.assign( _options.imageLayerOptionsVector().size(), 0.0f );
+    _imageLayers.assign( _options.ImageLayerOptionsVector().size(), 0L );
+    _warps.assign( _options.ImageLayerOptionsVector().size(), 0.0f );
 
-    for(unsigned i=0; i<_options.imageLayerOptionsVector().size(); ++i)
+    for(unsigned i=0; i<_options.ImageLayerOptionsVector().size(); ++i)
     {
-        ImageLayerOptions ilo = _options.imageLayerOptionsVector()[i];
+        ImageLayer::Options ilo = _options.ImageLayerOptionsVector()[i];
         ilo.cachePolicy() = CachePolicy::NO_CACHE;
         ImageLayer* layer = new ImageLayer( ilo );
-        layer->setTargetProfileHint( profile );
         layer->setReadOptions(_dbOptions.get());
         layer->open();
         _imageLayers[i] = layer;

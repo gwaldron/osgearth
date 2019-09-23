@@ -23,8 +23,6 @@
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
@@ -39,17 +37,17 @@
 
 using namespace osgEarth::Splat;
 
-namespace osgEarth { namespace Splat {
-    REGISTER_OSGEARTH_LAYER(splat_imagery, SplatLayer);
-} }
+REGISTER_OSGEARTH_LAYER(splat, SplatLayer);
+REGISTER_OSGEARTH_LAYER(splatimage, SplatLayer);
+REGISTER_OSGEARTH_LAYER(splat_imagery, SplatLayer);
 
 //........................................................................
 
 Config
-SplatLayerOptions::getConfig() const
+SplatLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayerOptions::getConfig();
-    conf.set("land_cover_layer", _landCoverLayerName);
+    Config conf = VisibleLayer::Options::getConfig();
+    conf.set("land_cover_layer", landCoverLayer() );
 
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
@@ -63,9 +61,9 @@ SplatLayerOptions::getConfig() const
 }
 
 void
-SplatLayerOptions::fromConfig(const Config& conf)
+SplatLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("land_cover_layer", _landCoverLayerName);
+    conf.get("land_cover_layer", landCoverLayer() );
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {
@@ -126,21 +124,6 @@ SplatLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) cons
 
 //........................................................................
 
-SplatLayer::SplatLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-SplatLayer::SplatLayer(const SplatLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
 void
 SplatLayer::init()
 {
@@ -184,6 +167,8 @@ SplatLayer::setLandCoverLayer(LandCoverLayer* layer)
 void
 SplatLayer::addedToMap(const Map* map)
 {
+    VisibleLayer::addedToMap(map);
+
     if (!_landCoverDict.valid())
     {
         _landCoverDictListener.listen(map, this, &SplatLayer::setLandCoverDictionary);
@@ -207,7 +192,7 @@ SplatLayer::addedToMap(const Map* map)
 void
 SplatLayer::removedFromMap(const Map* map)
 {
-    //NOP
+    VisibleLayer::removedFromMap(map);
 }
 
 void

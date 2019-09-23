@@ -3,13 +3,11 @@ osgEarth Sample - Graticules
 Run this with osgearth_toc to toggle the various graticule types on and off.
 -->
 
-<map name="osgEarth Graticules" type="geocentric">
+<map name="osgEarth Graticules">
 
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>  
+    <xi:include href="readymap_imagery.xml"/>
     
-    <gars_graticule name="GARS" visible="false">
+    <GARSGraticule name="GARS" visible="false">
         <style type="text/css">
                 default {
                     stroke: #ffff0059;
@@ -20,9 +18,9 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                     text-align: left_bottom;
                 }        
         </style>
-    </gars_graticule>  
+    </GARSGraticule>  
     
-    <mgrs_graticule name="MGRS" visible="true">
+    <MGRSGraticule name="MGRS" visible="true">
         <sqid_data>../data/mgrs_sqid.bin</sqid_data>
         <styles>
             <style type="text/css">
@@ -62,9 +60,9 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                 }                
             </style>
         </styles>
-    </mgrs_graticule>
+    </MGRSGraticule>
     
-    <mgrs_graticule name="UTM" visible="false">
+    <MGRSGraticule name="UTM" visible="false">
         <use_default_styles>false</use_default_styles>
         <styles>
             <style type="text/css">
@@ -77,9 +75,9 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                 }        
             </style>
         </styles>
-    </mgrs_graticule>
+    </MGRSGraticule>
             
-    <geodetic_graticule name="Geodetic" visible="false">
+    <GeodeticGraticule name="Geodetic" visible="false">
         <color>#ffff007f</color>
         <label_color>#ffffffff</label_color>
         <grid_lines>10</grid_lines>
@@ -87,6 +85,6 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
         <grid_lines_visible>true</grid_lines_visible>
         <grid_labels_visible>true</grid_labels_visible>
         <edge_labels_visible>true</edge_labels_visible>
-    </geodetic_graticule>
+    </GeodeticGraticule>
     
 </map>

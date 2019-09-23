@@ -170,7 +170,6 @@ namespace osgEarth
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;        
 
         friend class Map;
-        friend class MapEngine;
         friend class ModelSourceFactory;
 
     };

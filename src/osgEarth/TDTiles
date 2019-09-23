@@ -25,20 +25,28 @@
 #include <osgEarth/URI>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/GeoData>
+#include <osgEarth/Feature>
 #include <osg/Group>
 #include <osg/LOD>
 #include <osg/PagedLOD>
 #include <osg/MatrixTransform>
 #include <osgDB/Options>
+#include "rtree.h"
 
 using namespace osgEarth;
+
+namespace osgEarth {
+    class Map;
+    class OGRFeatureSource;
+    class StyleSheet;
+}
 
 /**
  * 3D Tiles
  * https://github.com/AnalyticalGraphicsInc/3d-tiles
  * EXPERIMENTAL
  */
-namespace osgEarth { namespace TDTiles
+namespace osgEarth { namespace Contrib { namespace TDTiles
 {
     enum RefinePolicy
     {
@@ -152,9 +160,35 @@ namespace osgEarth { namespace TDTiles
         TileNode(const TileNode& rhs, const osg::CopyOp& op) { }
         virtual ~TileNode() { }
     };
-} }
 
-namespace osgEarth
+    class OSGEARTH_EXPORT TilesetFactory
+    {
+    public:
+        TilesetFactory();
+        ~TilesetFactory();
+
+        void setMap(const Map* map);
+
+        void setStyleSheet(StyleSheet* sheet);
+
+        void setGeometryFormat(const std::string& format);
+
+        void setURIContext(const URIContext& value);
+
+        Tileset* create(
+            OGRFeatureSource* source,
+            const Query& query,
+            ProgressCallback* progress) const;
+
+    private:
+        const Map* _map;
+        osg::ref_ptr<StyleSheet> _sheet;
+        std::string _format;
+        URIContext _uriContext;
+    };
+} } }
+
+namespace osgEarth { namespace Contrib
 {
     class OSGEARTH_EXPORT TDTilesetGroup : public osg::Group
     {
@@ -191,6 +225,6 @@ namespace osgEarth
         osg::ref_ptr<const osgDB::Options> _readOptions;
         URI _tilesetURI;
     };
-}
+} }
 
 #endif // OSGEARTH_TDTILES_H

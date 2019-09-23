@@ -24,7 +24,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
     /**
      * Template that helps with the registration of plugins.
@@ -78,6 +78,6 @@ namespace osgEarth
         }
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_PLUGIN_LOADER_H

@@ -11,18 +11,15 @@ i.e. "altitude-clamping: terrain-drape".
         <terrain min_lod="16"/>
     </options>
 
-    <image name="world" driver="gdal">
+    <GDALImage name="world">
         <url>../data/world.tif</url>
-        <cache_policy usage="no_cache"/>
-    </image>
-    
-    <feature_model name="world_boundaries">
+    </GDALImage>
             
-        <features name="world" driver="ogr">
-            <url>../data/world.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-                
+    <OGRFeatures name="world-data">
+        <url>../data/world.shp</url>
+    </OGRFeatures>
+    
+    <FeatureModel name="world_boundaries" features="world-data">
         <styles>
             <style type="text/css">
                 world {
@@ -32,7 +29,6 @@ i.e. "altitude-clamping: terrain-drape".
                 }            
             </style>
         </styles>
-        
-    </feature_model>
+    </FeatureModel>
   
 </map>

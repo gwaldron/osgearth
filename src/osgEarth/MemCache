@@ -21,8 +21,10 @@
 
 #include <osgEarth/Cache>
 
-namespace osgEarth
+namespace osgEarth { namespace Support
 {
+    using namespace osgEarth;
+
     /**
      * An in-memory cache.
      * Each bin in this cache has its own locking mechanism for thread-safety. Each
@@ -57,6 +59,6 @@ namespace osgEarth
         unsigned _maxBinSize;
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_MEMCACHE_H

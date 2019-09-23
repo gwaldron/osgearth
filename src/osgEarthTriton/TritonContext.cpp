@@ -28,7 +28,7 @@
 using namespace osgEarth::Triton;
 
 
-TritonContext::TritonContext(const TritonOptions& options) :
+TritonContext::TritonContext(const TritonLayer::Options& options) :
 _options              ( options ),
 _initAttempted        ( false ),
 _initFailed           ( false ),
@@ -71,13 +71,13 @@ TritonContext::passHeightMapToTriton() const
 int
 TritonContext::getHeightMapSize() const
 {
-    return osg::clampBetween(_options.heightMapSize().get(), 64, 2048);
+    return osg::clampBetween(_options.heightMapSize().get(), 64u, 2048u);
 }
 
 const std::string&
 TritonContext::getMaskLayerName() const
 {
-    return _options.maskLayer().get();
+    return _options.maskLayerName().get();
 }
 
 void

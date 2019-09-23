@@ -19,13 +19,13 @@
 #include "GeometryPool"
 #include <osgEarth/Locators>
 #include <osgEarth/NodeUtils>
-#include <osgEarthUtil/TopologyGraph>
+#include <osgEarth/TopologyGraph>
 #include <osg/Point>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #define LC "[GeometryPool] "
 
@@ -46,7 +46,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 //};
 
 
-GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
+GeometryPool::GeometryPool(const TerrainOptions& options) :
 _options ( options ),
 _enabled ( true ),
 _debug   ( false )

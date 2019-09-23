@@ -23,8 +23,8 @@
 #include <osgEarth/GeoCommon>
 #include <osgEarth/Bounds>
 #include <osgEarth/SpatialReference>
-#include <osgEarth/Units>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Status>
 
 #include <osg/Referenced>
 #include <osg/Image>
@@ -599,6 +599,9 @@ namespace osgEarth
         /** Construct an empty (invalid) geoimage. */
         GeoImage();
 
+        //! Construct an image with an error status
+        GeoImage(const Status&);
+
         /** 
          * Constructs a new goereferenced image.
          */
@@ -614,6 +617,9 @@ namespace osgEarth
          * True if this is a valid geo image. 
          */
         bool valid() const;
+
+        //! Error status if set
+        const Status& getStatus() const { return _status; }
 
         /**
          * Gets a pointer to the underlying OSG image.
@@ -699,6 +705,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<osg::Image> _image;
         GeoExtent                _extent;
+        Status                   _status;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;
@@ -745,6 +752,9 @@ namespace osgEarth
         /** Constructs an empty (invalid) heightfield. */
         GeoHeightField();
 
+        //! Construct a heightfield with an error status
+        GeoHeightField(const Status&);
+
         /**
          * Constructs a new georeferenced heightfield.
          */
@@ -771,6 +781,9 @@ namespace osgEarth
          */
         bool valid() const;
 
+        //! Status indicator
+        const Status& getStatus() const { return _status; }
+
         /**
          * Gets the elevation value at a specified point.
          *
@@ -796,7 +809,7 @@ namespace osgEarth
             const SpatialReference* inputSRS, 
             double                  x,
             double                  y,
-            ElevationInterpolation  interp,
+            RasterInterpolation     interp,
             const SpatialReference* srsWithOutputVerticalDatum,
             float&                  out_elevation ) const;
 
@@ -804,7 +817,7 @@ namespace osgEarth
             const SpatialReference* inputSRS, 
             double                  x,
             double                  y,
-            ElevationInterpolation  interp,
+            RasterInterpolation     interp,
             const SpatialReference* srsWithOutputVerticalDatum,
             float&                  out_elevation,
             osg::Vec3&              out_normal ) const;
@@ -819,7 +832,7 @@ namespace osgEarth
          * Subsamples the heightfield, returning a new heightfield corresponding to
          * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
          */
-        GeoHeightField createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, ElevationInterpolation interpolation) const;
+        GeoHeightField createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, RasterInterpolation interpolation) const;
 
         /**
          * Gets the geospatial extent of the heightfield.
@@ -869,6 +882,7 @@ namespace osgEarth
         osg::ref_ptr<NormalMap>        _normalMap;
         GeoExtent                      _extent;
         float                          _minHeight, _maxHeight;
+        Status                         _status;
 
         void init();
     };

@@ -27,7 +27,7 @@
 #include <osg/Uniform>
 #include <osg/observer_ptr>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Shader effect that performs simple Phong lighting.
@@ -66,6 +66,6 @@ namespace osgEarth
         void init();
     };
 
-} // namespace osgEarth::Util
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_PHONG_LIGHTING_EFFECT_H

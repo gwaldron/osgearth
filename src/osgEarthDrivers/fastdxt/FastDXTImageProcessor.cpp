@@ -25,13 +25,16 @@
 #include "libdxt.h"
 #include <string.h>
 
+using namespace osgEarth;
+using namespace osgEarth::Support;
+
 class FastDXTProcessor : public osgDB::ImageProcessor
 {
 public:
     virtual void compress(osg::Image& image, osg::Texture::InternalFormatMode compressedFormat, bool generateMipMap, bool resizeToPowerOfTwo, CompressionMethod method, CompressionQuality quality)
     {
         //Resize the image to the nearest power of two
-        if (!osgEarth::ImageUtils::isPowerOfTwo( &image ))
+        if (!ImageUtils::isPowerOfTwo( &image ))
         {
             unsigned int s = osg::Image::computeNearestPowerOfTwo( image.s() );
             unsigned int t = osg::Image::computeNearestPowerOfTwo( image.t() );
@@ -45,7 +48,7 @@ public:
         if (image.getPixelFormat() != GL_RGBA)
         {
             osg::Timer_t start = osg::Timer::instance()->tick();
-            rgba = osgEarth::ImageUtils::convertToRGBA8( &image );
+            rgba = ImageUtils::convertToRGBA8( &image );
             osg::Timer_t end = osg::Timer::instance()->tick();
             OE_DEBUG << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
             sourceImage = rgba.get();

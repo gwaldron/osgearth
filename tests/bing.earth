@@ -10,15 +10,9 @@ Mircosoft Bing Maps example.
 Supported imagery sets are Aerial, AerialWithLabels, and Road.
 -->
 
-<map>    
-    <image name="Bing imagery" driver="bing">
+<Map name="Demo: Bing API">
+    <BingImage name="Bing Imagery">
         <key>your-api-key-here</key>
-        <imagery_set>Aerial</imagery_set>
-    </image> 
-    
-    <elevation name="Bing elevation" driver="bing">
-        <key>your-api-key-here</key>
-    </elevation>  
-
-    <xi:include href="viewpoints.xml"/>
-</map>
+        <imagery_set>AerialWithLabels</imagery_set>
+    </BingImage>
+</Map>

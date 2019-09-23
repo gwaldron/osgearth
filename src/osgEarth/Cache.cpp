@@ -99,9 +99,10 @@ std::string
 CacheSettings::toString() const
 {
     return Stringify()
-        << "cache=" << (_cache.valid() ? _cache->className() : "none")
+        << "[cache=" << (_cache.valid() ? _cache->className() : "none")
         << "; policy=" << _policy->usageString()
-        << "; bin=" << (_activeBin.get() ? "yes" : "no");
+        << "; bin=" << (_activeBin.get() ? "yes" : "no")
+        << "]";
 }
 
 //------------------------------------------------------------------------

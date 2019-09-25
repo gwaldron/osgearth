@@ -355,7 +355,7 @@ FeatureModelGraph::open()
         float maxRange = FLT_MAX;
 
         if (_options.layout().isSet())
-    {
+        {
             if (_options.layout()->getNumLevels() > 0)
             {
                 OE_WARN << LC << "Levels are not allowed on a tiled data source - ignoring" << std::endl;
@@ -367,11 +367,6 @@ FeatureModelGraph::open()
             maxRange = _options.layout()->maxRange().get();
         }
         
-        if (_options.maxRange().isSet())
-            {
-            maxRange = osg::minimum(maxRange, _options.maxRange().get());
-            }
-
         // Max range is unspecified, so compute one
         if (maxRange == FLT_MAX)
         {
@@ -381,25 +376,25 @@ FeatureModelGraph::open()
 
         // Aautomatically compute the tileSizeFactor based on the max range if necessary
         // GW: Need this?
-            if ( !_options.layout()->tileSizeFactor().isSet() )
-            {
-                double width, height;
-                featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+        if (!_options.layout()->tileSizeFactor().isSet())
+        {
+            double width, height;
+            featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
-                GeoExtent ext(featureProfile->getSRS(),
-                    featureProfile->getExtent().west(),
-                    featureProfile->getExtent().south(),
-                    featureProfile->getExtent().west() + width,
-                    featureProfile->getExtent().south() + height);
-                osg::BoundingSphered bounds = getBoundInWorldCoords( ext );
+            GeoExtent ext(featureProfile->getSRS(),
+                featureProfile->getExtent().west(),
+                featureProfile->getExtent().south(),
+                featureProfile->getExtent().west() + width,
+                featureProfile->getExtent().south() + height);
+            osg::BoundingSphered bounds = getBoundInWorldCoords(ext);
 
             float tileSizeFactor = maxRange / bounds.radius();
 
-                //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
-                tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
+            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+            tileSizeFactor = osg::maximum(tileSizeFactor, 1.0f);
             OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRange << std::endl;
-                _options.layout()->tileSizeFactor() = tileSizeFactor;
-            }
+            _options.layout()->tileSizeFactor() = tileSizeFactor;
+        }
 
         // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
@@ -418,18 +413,12 @@ FeatureModelGraph::open()
 
         // if there's a layout max_range, use that:
         if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
-    {
+        {
             maxRange = _options.layout()->maxRange().get();
         }
 
-        // if the layer's max range is less, use that:
-        if (_options.maxRange().isSet())
-        {
-            maxRange = osg::minimum(maxRange, _options.maxRange().get());
-        }
-
         // if the level-zero's max range is even less, use THAT:
-        if (_options.layout().isSet() && 
+        if (_options.layout().isSet() &&
             _options.layout()->getNumLevels() > 0 &&
             _options.layout()->getLevel(0)->maxRange().isSet())
         {

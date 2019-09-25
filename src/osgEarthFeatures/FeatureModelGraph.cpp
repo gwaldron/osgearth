@@ -323,103 +323,63 @@ FeatureModelGraph::ctor()
 
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords( _usableMapExtent );
-    
-    // whether to request tiles from the source (if available). if the source is tiled, but the
-    // user manually specified schema levels, don't use the tiles.
+
+    // A data source is either Tiled or Not Tiled. Set things up differently depending.
     _useTiledSource = featureProfile->getTiled();
 
-
-    // compute an appropriate tileSizeFactor for a tiled source if a max range was set but no tilesize factor
-    if (_options.layout().isSet() && (_options.layout()->maxRange().isSet() || _options.maxRange().isSet()))
+    if (featureProfile->getTiled())
     {
-        // select the max range either from the Layout or from the model layer options.
-        float userMaxRange = FLT_MAX;
-        if ( _options.layout()->maxRange().isSet() )
-            userMaxRange = *_options.layout()->maxRange();
-        if ( _options.maxRange().isSet() )
-            userMaxRange = osg::minimum(userMaxRange, *_options.maxRange());
-        
-        if ( featureProfile->getTiled() )
+        float maxRange = FLT_MAX;
+
+        if (_options.layout().isSet())
         {
-            // Cannot change the tile size of a tiled data source.
-            if (_options.layout()->tileSize().isSet() )
+            if (_options.layout()->getNumLevels() > 0)
             {
-                OE_WARN << LC << getName()
-                    << ": Illegal: you cannot set a tile size on a pre-tiled feature source. Ignoring.\n";
-            }
-
-            if ( !_options.layout()->tileSizeFactor().isSet() )
-            {
-                // So automatically compute the tileSizeFactor based on the max range
-                double width, height;
-                featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
-                
-                GeoExtent ext(featureProfile->getSRS(),
-                    featureProfile->getExtent().west(),
-                    featureProfile->getExtent().south(),
-                    featureProfile->getExtent().west() + width,
-                    featureProfile->getExtent().south() + height);
-                osg::BoundingSphered bounds = getBoundInWorldCoords( ext );
-
-                float tileSizeFactor = userMaxRange / bounds.radius();
-                //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
-                tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
-                OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
-                _options.layout()->tileSizeFactor() = tileSizeFactor;
+                OE_WARN << LC << "Levels are not allowed on a tiled data source - ignoring" << std::endl;
             }
         }
-    }
-
-
-    if ( _options.layout().isSet() && _options.layout()->getNumLevels() > 0 )
-    {
-        // the user provided a custom levels setup, so don't use the tiled source (which
-        // provides its own levels setup)
-        _useTiledSource = false;
-
-        // If the user asked for a particular tile size, give it to them!
-        if (_options.layout()->tileSize().isSet() &&
-            _options.layout()->tileSize() > 0.0 )
-        {
-            float maxRange = FLT_MAX;
-            maxRange = _options.maxRange().getOrUse(maxRange);
-            maxRange = _options.layout()->maxRange().getOrUse(maxRange);
-            maxRange = osg::minimum( maxRange, _options.layout()->getLevel(0)->maxRange().get() );
         
-            _options.layout()->tileSizeFactor() = maxRange / _options.layout()->tileSize().get();
-
-            OE_INFO << LC << "Tile size = " << (*_options.layout()->tileSize()) << " ==> TRF = " << 
-                (*_options.layout()->tileSizeFactor()) << "\n";
-        }
-
-        // for each custom level, calculate the best LOD match and store it in the level
-        // layout data. We will use this information later when constructing the SG in
-        // the pager.
-        for( unsigned i = 0; i < _options.layout()->getNumLevels(); ++i )
+        if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
         {
-            const FeatureLevel* level = _options.layout()->getLevel( i );
-            unsigned lod = _options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
-            _lodmap.resize( lod+1, 0L );
-            _lodmap[lod] = level;
-
-            OE_INFO << LC << _session->getFeatureSource()->getName() 
-                << ": F.Level max=" << level->maxRange().get() << ", min=" << level->minRange().get()
-                << ", LOD=" << lod
-                << std::endl;
+            maxRange = _options.layout()->maxRange().get();
         }
-    }
+        
+        if (_options.maxRange().isSet())
+        {
+            maxRange = osg::minimum(maxRange, _options.maxRange().get());
+        }
 
+        // Max range is unspecified, so compute one
+        if (maxRange == FLT_MAX)
+        {
+            osg::BoundingSphered bounds = getBoundInWorldCoords( featureProfile->getExtent() );
+            maxRange = bounds.radius() * _options.layout()->tileSizeFactor().get();
+        }
 
-    // Compute the feature levels up front for tiled sources.
-    if (featureProfile->getTiled() && _useTiledSource)
-    {    
-        // Get the max range of the root level
-        osg::BoundingSphered bounds = getBoundInWorldCoords( featureProfile->getExtent() );
-        double maxRange = bounds.radius() * *_options.layout()->tileSizeFactor();
+        // Aautomatically compute the tileSizeFactor based on the max range if necessary
+        // GW: Need this?
+        if ( !_options.layout()->tileSizeFactor().isSet() )
+        {
+            double width, height;
+            featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
-        _lodmap.resize(featureProfile->getMaxLevel() + 1);
-         
+            GeoExtent ext(featureProfile->getSRS(),
+                featureProfile->getExtent().west(),
+                featureProfile->getExtent().south(),
+                featureProfile->getExtent().west() + width,
+                featureProfile->getExtent().south() + height);
+            osg::BoundingSphered bounds = getBoundInWorldCoords( ext );
+
+            float tileSizeFactor = maxRange / bounds.radius();
+
+            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+            tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
+            OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRange << std::endl;
+            _options.layout()->tileSizeFactor() = tileSizeFactor;
+        }
+
         // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
+        _lodmap.resize(featureProfile->getMaxLevel() + 1);
         for (int i = 0; i < featureProfile->getMaxLevel()+1; i++)
         {
             OE_INFO << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
@@ -429,9 +389,74 @@ FeatureModelGraph::ctor()
         }
     }
 
+    else // not tiled
+    {
+        float maxRange = FLT_MAX;
+
+        // if there's a layout max_range, use that:
+        if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
+        {
+            maxRange = _options.layout()->maxRange().get();
+        }
+
+        // if the layer's max range is less, use that:
+        if (_options.maxRange().isSet())
+        {
+            maxRange = osg::minimum(maxRange, _options.maxRange().get());
+        }
+
+        // if the level-zero's max range is even less, use THAT:
+        if (_options.layout().isSet() && 
+            _options.layout()->getNumLevels() > 0 &&
+            _options.layout()->getLevel(0)->maxRange().isSet())
+        {
+            maxRange = osg::minimum(maxRange, _options.layout()->getLevel(0)->maxRange().get());
+        }
+
+        // If the user asked for a particular tile size, give it to them!
+        if (_options.layout()->tileSize().isSet() &&
+            _options.layout()->tileSize() > 0.0 )
+        {        
+            _options.layout()->tileSizeFactor() = maxRange / _options.layout()->tileSize().get();
+
+            OE_INFO << LC << "Tile size = " << (*_options.layout()->tileSize()) << " ==> TRF = " << 
+                (*_options.layout()->tileSizeFactor()) << "\n";
+        }
+
+        if (_options.layout()->getNumLevels() > 0)
+        {
+            // for each custom level, calculate the best LOD match and store it in the level
+            // layout data. We will use this information later when constructing the SG in
+            // the pager.
+            for( unsigned i = 0; i < _options.layout()->getNumLevels(); ++i )
+            {
+                const FeatureLevel* level = _options.layout()->getLevel( i );
+                unsigned lod = _options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
+                _lodmap.resize( lod+1, 0L );
+                _lodmap[lod] = level;
+    
+                OE_INFO << LC << _session->getFeatureSource()->getName() 
+                    << ": F.Level max=" << level->maxRange().get() << ", min=" << level->minRange().get()
+                    << ", LOD=" << lod
+                    << std::endl;
+            }
+        }
+        else
+        {
+            FeatureLevel* level = new FeatureLevel(0.0f, FLT_MAX);
+            unsigned lod = _options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
+            _lodmap.resize(lod+1, 0L);
+            _lodmap[lod] = level;
+
+            OE_INFO << LC << _session->getFeatureSource()->getName() 
+                << ": No levels specified, so adding one for LOD=" << lod
+                << std::endl;
+        }
+    }
+
+
     // Apply some default state. The options properties let you override the
     // defaults, but we'll set some reasonable state if they are not set.
-
     osg::StateSet* stateSet = getOrCreateStateSet();
 
     // Set up backface culling. If the option is unset, enable it by default
@@ -700,7 +725,7 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
         }
     }
 
-    else if ( !_options.layout().isSet() || _options.layout()->getNumLevels() == 0 )
+    else if ( !_options.layout().isSet() )
     {
         // This is a non-tiled data source that has NO level details. In this case, 
         // we simply want to load all features at once and make them visible at

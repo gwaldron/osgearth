@@ -25,6 +25,7 @@
 #include <osgEarth/Filter>
 #include <osgEarth/Style>
 #include <osgEarth/Containers>
+#include <osgEarth/FilterUsage>
 
 namespace osgEarth { namespace Support
 {

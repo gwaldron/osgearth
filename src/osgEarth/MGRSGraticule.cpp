@@ -423,7 +423,6 @@ namespace
         osg::ref_ptr<const SpatialReference> _utm;
 
         GeomGrid(double size)
-            : _options(NULL)
         {
             _size = size;
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
@@ -667,7 +666,6 @@ namespace
         const MGRSGraticule* _parent;
 
         SQID100kmGrid(const std::string& name, const osg::BoundingSphere& bs)
-            : _options(NULL)
         {
             setName(name);
             _bs = bs;
@@ -922,7 +920,6 @@ namespace
         osg::BoundingSphere _bs;
 
         GZDText(const std::string& name, const osg::BoundingSphere& bs)
-            : _options(NULL)
         {
             setName(name);     
             _bs = bs;

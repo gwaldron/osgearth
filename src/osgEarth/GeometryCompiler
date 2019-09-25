@@ -26,6 +26,7 @@
 #include <osgEarth/Style>
 #include <osgEarth/GeoMath>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/FilterUsage>
 
 namespace osgEarth
 {

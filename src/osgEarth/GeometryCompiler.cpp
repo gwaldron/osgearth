@@ -36,6 +36,8 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Utils>
 
+#include <osgEarth/ExtrudeGeometryFilterNode>
+
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>

@@ -3,8 +3,6 @@
 
 namespace osgEarth
 {
-   namespace Features
-   {
       ExtrudeGeometryFilterNode::ExtrudeGeometryFilterNode()
       {
 
@@ -25,13 +23,12 @@ namespace osgEarth
 
       REGISTER_OBJECT_WRAPPER(ExtrudeGeometryFilterNode,
          new ExtrudeGeometryFilterNode,
-         osgEarth::Features::ExtrudeGeometryFilterNode,
-         "osg::Object osgEarth::Features::ExtrudeGeometryFilterNode")
+         osgEarth::ExtrudeGeometryFilterNode,
+         "osg::Object osgEarth::ExtrudeGeometryFilterNode")
       {
          ADD_OBJECT_SERIALIZER(_extrusionGroup, osg::Group, NULL);
 
          ADD_MATRIX_SERIALIZER(_xform, osg::Matrixd::identity());
       }
 
-   }
 }

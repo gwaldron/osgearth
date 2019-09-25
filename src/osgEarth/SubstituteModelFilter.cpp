@@ -33,6 +33,8 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/OEAssert>
 
+#include <osgEarth/SubstituteModelFilterNode>
+
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geode>

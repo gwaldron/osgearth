@@ -307,6 +307,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureSourceIndexNode
     Filter
     FilterContext
+    FilterUsage
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
@@ -399,6 +400,9 @@ SET(LIB_PUBLIC_HEADERS
     rtree.h    
     
     FileGDBFeatureSource
+    
+    ExtrudeGeometryFilterNode
+    SubstituteModelFilterNode
 )
 
 
@@ -726,6 +730,9 @@ set(TARGET_SRC
     TrackNode.cpp
     
     FileGDBFeatureSource.cpp
+    
+    ExtrudeGeometryFilterNode.cpp
+    SubstituteModelFilterNode.cpp
     
     ${SHADERS_CPP} 
 )

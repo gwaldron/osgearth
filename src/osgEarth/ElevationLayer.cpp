@@ -152,20 +152,6 @@ ElevationLayer::setEnabled(bool value)
     VisibleLayer::setEnabled(value);
 }
 
-void
-ElevationLayer::setVisible(bool value)
-{
-    VisibleLayer::setVisible(value);
-    setEnabled(value);
-}
-
-void
-ElevationLayer::setEnabled(bool value)
-{
-    VisibleLayer::setVisible(value);
-    VisibleLayer::setEnabled(value);
-}
-
 bool
 ElevationLayer::isOffset() const
 {

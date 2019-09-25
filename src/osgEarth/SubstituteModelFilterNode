@@ -1,15 +1,14 @@
 #pragma once
 
-#include <osgEarthFeatures/Common>
+#include <osgEarth/Common>
 #include <osgEarth/URI>
 
 #include <osg/Object>
 #include <osg/Matrixd>
 
-namespace osgEarth {
-   namespace Features
+namespace osgEarth
    {
-      class OSGEARTHFEATURES_EXPORT SubstituteModelFilterNode : public osg::Object
+      class OSGEARTH_EXPORT SubstituteModelFilterNode : public osg::Object
       {
       public:
        
@@ -51,5 +50,4 @@ namespace osgEarth {
          bool _clustered;
          ModelSymbolList _modelSymbolList;
       };
-   }
 }

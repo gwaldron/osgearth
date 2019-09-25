@@ -20,7 +20,7 @@ Jump to a symbol:
  
 **Developer Note**:
 
-    *In the SDK, symbols are in the ``osgEarth::Symbology`` namespace, and each
+    *In the SDK, symbols are in the ``osgEarth::`` namespace, and each
     symbol class is in the form ``AltitudeSymbol`` for example. Properties below
     are as they appear in the earth file; in the SDK, properties are available
     via accessors in the form ``LineSymbol::strokeWidth()`` etc.

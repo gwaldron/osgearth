@@ -56,6 +56,6 @@ namespace osgEarth
         typedef osgEarth::GeometryRasterizer GeometryRasterizer;
     }
 
-} // namespace osgEarth::Symbology
+} // namespace osgEarth::
 
 #endif // OSGEARTHSYMBOLOGY_GEOMETRY_RASTERIZER_H

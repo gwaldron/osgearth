@@ -11,10 +11,9 @@ namespace osg
    class Group;
 }
 
-namespace osgEarth {
-   namespace Features
+namespace osgEarth
    {
-      class ExtrudeGeometryFilterNode : public osg::Object
+      class OSGEARTH_EXPORT ExtrudeGeometryFilterNode : public osg::Object
       {
       public:
          struct ModelSymbol
@@ -50,5 +49,4 @@ namespace osgEarth {
          osg::ref_ptr<osg::Group> _extrusionGroup;
          osg::Matrixd _xform;
       };
-   }
 }

@@ -250,7 +250,12 @@ TerrainCuller::apply(TileNode& node)
         if (!_patchLayers.empty())
         {
             SurfaceNode* surface = node.getSurfaceNode();
-                    
+                
+            if (!surface)
+            {
+               return;
+            }
+
             // push the surface matrix:
             osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
             surface->computeLocalToWorldMatrix(*matrix,this);

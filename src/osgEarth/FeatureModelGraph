@@ -66,6 +66,7 @@ namespace osgEarth { namespace Support
 
         //! Session associated with this feature graph.
         void setSession(Session* session);
+        const Session* getSession() const;
 
         //! Min visible range
         void setMinRange(float value);

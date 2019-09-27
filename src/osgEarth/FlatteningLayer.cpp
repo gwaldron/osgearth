@@ -820,10 +820,23 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
     // If the feature source has a tiling profile, we are going to have to map the incoming
     // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
-    GeoExtent queryExtent = key.getExtent().transform(featureSRS);
+    GeoExtent queryExtent;
+    if (featureProfile->getTilingProfile())
+        queryExtent = featureProfile->getTilingProfile()->clampAndTransformExtent(key.getExtent());
+    else
+        queryExtent = key.getExtent().transform(featureSRS);
+
+    if (!queryExtent.isValid())
+    {
+        return GeoHeightField::INVALID;
+    }
 
     // Lat/Long extent:
     GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
+    if (!geoExtent.isValid())
+    {
+        return GeoHeightField::INVALID;
+    }
 
     // Buffer the query extent to include the potentially flattened area.
     /*

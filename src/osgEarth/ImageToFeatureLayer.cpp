@@ -86,10 +86,10 @@ ImageToFeatureSource::open()
 
     const GeoExtent& extent = globalGeodetic->getExtent();
     FeatureProfile* profile = new FeatureProfile(extent);
-    profile->setProfile(Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1));
+    profile->setTiled(true);
+    profile->setTilingProfile(Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1));
     profile->setFirstLevel(options().level().get());
     profile->setMaxLevel(options().level().get());
-    profile->setTiled(true);
 
     setFeatureProfile(profile);
     return FeatureSource::open();

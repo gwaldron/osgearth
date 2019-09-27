@@ -44,35 +44,39 @@ namespace osgEarth
     class OSGEARTH_EXPORT FeatureProfile : public osg::Referenced
     {
     public:        
-        FeatureProfile( const GeoExtent& extent );
+        FeatureProfile(const GeoExtent& featuresExtent);
 
         virtual ~FeatureProfile() { }
 
-        /** Gets the spatial extents of the features in this profile. */
+        //! Spatial extents of the features data
         const GeoExtent& getExtent() const { return _extent; }
 
-        /** Gets the spatial reference system of feature shapes in this class. */
+        //! Spatial reference system of feature data
         const SpatialReference* getSRS() const { return _extent.getSRS(); }
+        
 
-        /** Whether the feature data is pre-tiled */
+        //! Whether the feature data is pre-tiled
         bool getTiled() const;
         void setTiled(bool tiled);
 
+        //! For tiled data, the tiling profile
+        const osgEarth::Profile* getTilingProfile() const;
+        void setTilingProfile( const osgEarth::Profile* profile );
+
+        //! For tiled data, the first tiling level of detail
         int getFirstLevel() const;
         void setFirstLevel(int firstLevel );
 
+        //! For tiled data, the last tiling level fo detail
         int getMaxLevel() const;
         void setMaxLevel(int maxLevel);
 
-        const osgEarth::Profile* getProfile() const;
-        void setProfile( const osgEarth::Profile* profile );
-
-        /** Interpolation method for geodetic data */
+        //! Interpolation method for geodetic data
         optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
     protected:
-        osg::ref_ptr< const osgEarth::Profile > _profile;
+        osg::ref_ptr< const osgEarth::Profile > _tilingProfile;
         GeoExtent _extent;
         bool _tiled;
         int _firstLevel;

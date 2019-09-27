@@ -380,7 +380,7 @@ FeatureModelGraph::open()
         if ( !_options.layout()->tileSizeFactor().isSet() )
         {
             double width, height;
-            featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+            featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
             GeoExtent ext(featureProfile->getSRS(),
                 featureProfile->getExtent().west(),
@@ -698,10 +698,10 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             // The tilekey x, y, z that is computed in the FeatureModelGraph uses a lower left origin,
             // osgEarth tilekeys use a lower left so we need to invert it.
             unsigned int w, h;
-            featureProfile->getProfile()->getNumTiles(lod, w, h);
+            featureProfile->getTilingProfile()->getNumTiles(lod, w, h);
             int invertedTileY = h - tileY - 1;
 
-            TileKey key(lod, tileX, invertedTileY, featureProfile->getProfile());
+            TileKey key(lod, tileX, invertedTileY, featureProfile->getTilingProfile());
 
             geometry = buildTile( level, tileExtent, &key, readOptions );
             result = geometry;

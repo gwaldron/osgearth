@@ -592,7 +592,6 @@ MVTFeatureSource::createFeatureProfile()
 {
     const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
     FeatureProfile* result = new FeatureProfile(profile->getExtent());
-    result->setTiled(true);
     std::string minLevelStr, maxLevelStr;
     if (getMetaData("minzoom", minLevelStr) && getMetaData("maxzoom", maxLevelStr))
     {
@@ -608,9 +607,10 @@ MVTFeatureSource::createFeatureProfile()
 
 
     // Use the max level for now as the min level.
+    result->setTiled(true);
     result->setFirstLevel(_maxLevel);
     result->setMaxLevel(_maxLevel);
-    result->setProfile(profile);
+    result->setTilingProfile(profile);
     result->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;
     return result;
 }

@@ -866,11 +866,11 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
     MultiGeometry geoms;
     WidthsList widths;
 
-    if (featureProfile->getProfile())
+    if (featureProfile->getTilingProfile())
     {
         // Tiled source, must resolve complete set of intersecting tiles:
         std::vector<TileKey> intersectingKeys;
-        featureProfile->getProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
+        featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
 
         std::set<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)

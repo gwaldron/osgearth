@@ -97,7 +97,7 @@ XYZFeatureSource::open()
     fp->setTiled(true);
     fp->setFirstLevel(options().minLevel().get());
     fp->setMaxLevel(options().maxLevel().get());
-    fp->setProfile(profile.get());
+    fp->setTilingProfile(profile.get());
     if (options().geoInterp().isSet())
     {
         fp->geoInterp() = options().geoInterp().get();

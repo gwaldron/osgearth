@@ -210,7 +210,7 @@ TFSFeatureSource::open()
         fp->setTiled(true);
         fp->setFirstLevel(_layer.getFirstLevel());
         fp->setMaxLevel(_layer.getMaxLevel());
-        fp->setProfile(osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1));
+        fp->setTilingProfile(osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1));
         if (options().geoInterp().isSet())
         {
             fp->geoInterp() = options().geoInterp().get();
@@ -239,7 +239,7 @@ TFSFeatureSource::open()
         fp->setTiled(true);
         fp->setFirstLevel(*options().minLevel());
         fp->setMaxLevel(*options().maxLevel());
-        fp->setProfile(profile.get());
+        fp->setTilingProfile(profile.get());
         if (options().geoInterp().isSet())
         {
             fp->geoInterp() = options().geoInterp().get();

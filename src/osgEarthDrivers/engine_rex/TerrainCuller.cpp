@@ -89,6 +89,8 @@ DrawTileCommand*
 TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const RenderingPass* pass, TileNode* tileNode)
 {
     SurfaceNode* surface = tileNode->getSurfaceNode();
+    if ( !surface )
+        return 0L;
 
     const RenderBindings& bindings = _context->getRenderBindings();
 
@@ -222,7 +224,7 @@ TerrainCuller::apply(TileNode& node)
     // knows to blend it with the terrain geometry color.
     _firstDrawCommandForTile = 0L;
         
-    if (!_terrain.patchLayers().empty())
+    if (!_terrain.patchLayers().empty() && node.getSurfaceNode())
     {
         // todo: check for patch/virtual
         const RenderBindings& bindings = _context->getRenderBindings();

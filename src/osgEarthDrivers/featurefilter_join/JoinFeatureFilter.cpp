@@ -35,11 +35,15 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
 
-
+/**
+ * Spatial Join: This feature finds all the features in a secondary feature source
+ * that intersect the input feature's extent, and adds their attributes to the
+ * input feature.
+ */
 class JoinFeatureFilter : public FeatureFilter, public JoinFeatureFilterOptions
 {
 private:
-    osg::ref_ptr< FeatureSource > _featureSource;
+    LayerClient<FeatureSource> _featureSource;
 
 public:
     JoinFeatureFilter(const ConfigOptions& options)
@@ -51,15 +55,9 @@ public: // FeatureFilter
 
     Status initialize(const osgDB::Options* readOptions)
     {
-        // Load the feature source containing the intersection geometry.
-        _featureSource = FeatureSource::create(featureSource().get());
-        if ( !_featureSource.valid() )
-            return Status::Error(Status::ServiceUnavailable, "Failed to create feature source");
-
-        _featureSource->setReadOptions(readOptions);
-        const Status& fs = _featureSource->open();
-        if (fs.isError())
-            return fs;
+        Status fsStatus = _featureSource.open(featureSource(), readOptions);
+        if (fsStatus.isError())
+            return fsStatus;
 
         return Status::OK();
     }
@@ -69,12 +67,17 @@ public: // FeatureFilter
      */
     void getFeatures(const GeoExtent& extent, FeatureList& features, ProgressCallback* progress)
     {
-        GeoExtent localExtent = extent.transform( _featureSource->getFeatureProfile()->getSRS() );
+        FeatureSource* fs = _featureSource.getLayer();
+        if (!fs)
+            return;
+
+        //TODO: should this be Profile::transformAndClampExtent instead?
+        GeoExtent localExtent = extent.transform( fs->getFeatureProfile()->getSRS() );
         Query query;
         query.bounds() = localExtent.bounds();
-        if (localExtent.intersects( _featureSource->getFeatureProfile()->getExtent()))
+        if (localExtent.intersects( fs->getFeatureProfile()->getExtent()))
         {
-            osg::ref_ptr< FeatureCursor > cursor = _featureSource->createFeatureCursor( query, progress );
+            osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor( query, progress );
             if (cursor)
             {
                 cursor->fill( features );
@@ -84,7 +87,7 @@ public: // FeatureFilter
 
     FilterContext push(FeatureList& input, FilterContext& context)
     {
-        if (_featureSource.valid())
+        if (_featureSource.getLayer())
         {
             // Get any features that intersect this query.
             FeatureList boundaries;
@@ -105,7 +108,7 @@ public: // FeatureFilter
                     {
                         osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
                        
-                        if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
+                        if (_featureSource.getLayer()->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                         {
                             for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                             {

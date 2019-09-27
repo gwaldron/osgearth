@@ -29,7 +29,7 @@
 
 using namespace osgEarth;
 
-#define LC "[FeatureImageLayer] "
+#define LC "[FeatureImageLayer] " << getName() << ": "
 
 
 REGISTER_OSGEARTH_LAYER(featureimage, FeatureImageLayer);
@@ -182,8 +182,11 @@ FeatureImageLayer::init()
     ImageLayer::init();
     setTileSourceExpected(false);
 
-    // Default profile (WGS84)
-    setProfile(Profile::create("global-geodetic"));
+    // Default profile (WGS84) if not set
+    if (!getProfile())
+    {
+        setProfile(Profile::create("global-geodetic"));
+    }
 }
 
 const Status&
@@ -199,7 +202,7 @@ FeatureImageLayer::open()
         return setStatus(ssStatus);
 
     if (!getFeatureSource() && !options().featureSourceLayer().isSet())
-        return setStatus(Status::ConfigurationError, "No features");
+        return setStatus(Status::ConfigurationError, "Required feature source is missing");
 
     return ImageLayer::open();
 }
@@ -274,6 +277,16 @@ FeatureImageLayer::establishSession()
             {
                 // Use FeatureProfile's GeoExtent
                 dataExtents().push_back(DataExtent(fp->getExtent()));
+            }
+
+            // warn the user if the feature data is tiled and the
+            // layer profile doesn't match the feature source profile
+            if (fp->getTiled() && 
+                fp->getProfile() &&
+                fp->getProfile()->isHorizEquivalentTo(getProfile()) == false)
+            {
+                OE_WARN << LC << "Layer profile doesn't match feature profile for tiled dataset - data may not render properly" << std::endl;
+                OE_WARN << LC << "(Feature profile = " << fp->getProfile()->toString() << ")" << std::endl;
             }
         }
 

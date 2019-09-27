@@ -411,17 +411,36 @@ FeatureModelGraph::ctor()
             _options.layout()->getLevel(0)->maxRange().isSet())
         {
             maxRange = osg::minimum(maxRange, _options.layout()->getLevel(0)->maxRange().get());
-        }
+        }   
 
-        // If the user asked for a particular tile size, give it to them!
+        // Figure out the tile size:
+        float tileSize;
         if (_options.layout()->tileSize().isSet() &&
             _options.layout()->tileSize() > 0.0 )
-        {        
-            _options.layout()->tileSizeFactor() = maxRange / _options.layout()->tileSize().get();
-
-            OE_INFO << LC << "Tile size = " << (*_options.layout()->tileSize()) << " ==> TRF = " << 
-                (*_options.layout()->tileSizeFactor()) << "\n";
+        {
+            tileSize = _options.layout()->tileSize().get();
         }
+        else
+        {
+            tileSize = _fullWorldBound.radius() / 1.4142;
+        }
+
+        // If we still have no maxRange, calculate one now
+        if (maxRange == FLT_MAX &&
+            _options.layout().isSet() &&
+            _options.layout()->tileSizeFactor().isSet())
+        {
+            maxRange = _options.layout()->tileSizeFactor().get() * tileSize;
+        }
+
+        // Finally lock in the size factor.
+        if (!_options.layout()->tileSizeFactor().isSet())
+        {
+            _options.layout()->tileSizeFactor() = maxRange / tileSize;
+        }
+
+        OE_INFO << LC << "tileSize = " << tileSize << "; maxRange = " << maxRange << "; tsf=" << _options.layout()->tileSizeFactor().get()
+            << std::endl;
 
         if (_options.layout()->getNumLevels() > 0)
         {

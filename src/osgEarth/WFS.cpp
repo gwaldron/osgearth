@@ -284,7 +284,7 @@ WFSFeatureSource::open()
                 fp->setTiled(true);
                 fp->setFirstLevel(featureType->getFirstLevel());
                 fp->setMaxLevel(featureType->getMaxLevel());
-                fp->setProfile(osgEarth::Profile::create(
+                fp->setTilingProfile(osgEarth::Profile::create(
                     osgEarth::SpatialReference::create("epsg:4326"),
                     featureType->getExtent().xMin(), featureType->getExtent().yMin(),
                     featureType->getExtent().xMax(), featureType->getExtent().yMax(),

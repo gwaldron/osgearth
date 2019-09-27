@@ -32,7 +32,7 @@ using namespace osgEarth::Support;
 
 //----------------------------------------------------------------------------
 
-FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
+FeatureProfile::FeatureProfile(const GeoExtent& extent) :
 _extent    ( extent ),
 _firstLevel( 0 ),
 _maxLevel  ( -1 ),
@@ -78,15 +78,15 @@ FeatureProfile::setMaxLevel(int maxLevel)
 }
 
 const osgEarth::Profile* 
-FeatureProfile::getProfile() const
+FeatureProfile::getTilingProfile() const
 {
-    return _profile.get();
+    return _tilingProfile.get();
 }
 
 void
-FeatureProfile::setProfile( const osgEarth::Profile* profile )
+FeatureProfile::setTilingProfile( const osgEarth::Profile* profile )
 {
-    _profile = profile;
+    _tilingProfile = profile;
 }
 
 //----------------------------------------------------------------------------

@@ -1043,7 +1043,7 @@ MGRSGraticule::rebuild()
         mapProfile->getExtent().yMax(),
         8, 4 );
 
-    _featureProfile = new FeatureProfile(_profile->getSRS());
+    _featureProfile = new FeatureProfile(_profile->getExtent()); //getSRS());
 
 
     // rebuild the graph:

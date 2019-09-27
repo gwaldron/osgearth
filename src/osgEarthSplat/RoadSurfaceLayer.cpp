@@ -304,11 +304,11 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
     FeatureList features;
 
-    if (featureProfile->getProfile())
+    if (featureProfile->getTilingProfile())
     {
         // Resolve the list of tile keys that intersect the incoming extent.
         std::vector<TileKey> intersectingKeys;
-        featureProfile->getProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
+        featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
 
         std::set<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)

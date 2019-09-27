@@ -268,10 +268,10 @@ FeatureImageLayer::establishSession()
         if (fp)
         {
             // recalculate the data extents based on the feature source.
-            if (fp->getProfile() != NULL)
+            if (fp->getTilingProfile() != NULL)
             {
                 // Use specified profile's GeoExtent
-                dataExtents().push_back(DataExtent(fp->getProfile()->getExtent()));
+                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent()));
             }
             else if (fp->getExtent().isValid() == true)
             {
@@ -282,11 +282,11 @@ FeatureImageLayer::establishSession()
             // warn the user if the feature data is tiled and the
             // layer profile doesn't match the feature source profile
             if (fp->getTiled() && 
-                fp->getProfile() &&
-                fp->getProfile()->isHorizEquivalentTo(getProfile()) == false)
+                fp->getTilingProfile() &&
+                fp->getTilingProfile()->isHorizEquivalentTo(getProfile()) == false)
             {
-                OE_WARN << LC << "Layer profile doesn't match feature profile for tiled dataset - data may not render properly" << std::endl;
-                OE_WARN << LC << "(Feature profile = " << fp->getProfile()->toString() << ")" << std::endl;
+                OE_WARN << LC << "Layer profile doesn't match feature tiling profile - data may not render properly" << std::endl;
+                OE_WARN << LC << "(Feature tiling profile = " << fp->getTilingProfile()->toString() << ")" << std::endl;
             }
         }
 

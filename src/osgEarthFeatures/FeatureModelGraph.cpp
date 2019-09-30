@@ -312,6 +312,7 @@ FeatureModelGraph::ctor()
         &_featureExtentClamped );
 
     // same, back into feature coords:
+    // SHOULD use profile->clampAndTransform but it's superfluous here I think
     _usableFeatureExtent = _usableMapExtent.transform( featureProfile->getSRS() );
 
     // for projected data, contract the extent slightly to prevent precision errors
@@ -352,8 +353,20 @@ FeatureModelGraph::ctor()
         // Max range is unspecified, so compute one
         if (maxRange == FLT_MAX)
         {
-            osg::BoundingSphered bounds = getBoundInWorldCoords( featureProfile->getExtent() );
-            maxRange = bounds.radius() * _options.layout()->tileSizeFactor().get();
+            // Calculate the bounds of the center-most tile in the tiling profile,
+            // as this will always be the largest:
+            const Profile* tilingProfile = featureProfile->getProfile();
+            unsigned tw, th;
+            tilingProfile->getNumTiles(featureProfile->getFirstLevel(), tw, th);
+            TileKey temp(featureProfile->getFirstLevel(), tw/2, th/2, tilingProfile);
+            osg::BoundingSphered bounds = getBoundInWorldCoords(temp.getExtent());
+            float factor = _options.layout()->tileSizeFactor().get();
+            maxRange = bounds.radius() * factor;
+
+            // Officially set the size factor if it's not already set
+            // so we don't try to compute it again later.
+            if (_options.layout()->tileSizeFactor().isSet() == false)
+                _options.layout()->tileSizeFactor() = factor;
         }
 
         // Aautomatically compute the tileSizeFactor based on the max range if necessary
@@ -368,6 +381,7 @@ FeatureModelGraph::ctor()
                 featureProfile->getExtent().south(),
                 featureProfile->getExtent().west() + width,
                 featureProfile->getExtent().south() + height);
+
             osg::BoundingSphered bounds = getBoundInWorldCoords( ext );
 
             float tileSizeFactor = maxRange / bounds.radius();
@@ -380,12 +394,18 @@ FeatureModelGraph::ctor()
 
         // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
+        float levelMaxRange = maxRange;
         for (int i = 0; i < featureProfile->getMaxLevel()+1; i++)
-        {
-            OE_INFO << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
+        {            
+            OE_INFO << LC << "Max range " << maxRange << " for lod " << i << std::endl;
             FeatureLevel* level = new FeatureLevel(0.0, maxRange);
             _lodmap[i] = level;
-            maxRange /= 2.0;
+
+            // Start halving the max range once we get to the first level of data.
+            if (i >= featureProfile->getFirstLevel())
+            {
+                maxRange /= 2.0;
+            }
         }
     }
 
@@ -534,9 +554,8 @@ FeatureModelGraph::dirty()
 //std::ostream& operator << (std::ostream& in, const osg::Vec3d& v) { in << v.x() << ", " << v.y() << ", " << v.z(); return in; }
 
 osg::BoundingSphered
-FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
+FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile* tilingProfile) const
 {
-    osg::Vec3d center, corner;
     GeoExtent workingExtent;
 
     if ( !extent.isValid() )
@@ -550,65 +569,59 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
     }
     else
     {
-        workingExtent = extent.transform( _usableMapExtent.getSRS() ); // safe.
+        if (tilingProfile)
+            workingExtent = _session->getMap()->getProfile()->clampAndTransformExtent(extent);
+        else
+            workingExtent = extent.transform(_session->getMap()->getSRS()); // _usableMapExtent.getSRS() );
     }
-    
-#if 1
+
+#if 0
     return workingExtent.createWorldBoundingSphere(-11000, 9000); // lowest and highest points on earth
+#endif
 
-#else
-    workingExtent.getCentroid( center.x(), center.y() );
-    
-    if ( mapf )
+    GeoPoint center;
+    workingExtent.getCentroid(center);
+
+    if (_session.valid())
     {
-        // Use an appropriate resolution for this extents width
-        double resolution = workingExtent.width();
-        ElevationQuery query( *mapf );
-        GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
-        float elevation = query.getElevation( p, resolution );
+        // TODO: Use an appropriate resolution for this extents width
+        unsigned lod = 23u;
+        osg::ref_ptr<ElevationEnvelope> env = _session->getMap()->getElevationPool()->createEnvelope(center.getSRS(), lod);
+        float elevation = env->getElevation(center.x(), center.y());
+
         // Check for NO_DATA_VALUE and use zero instead.
-        if (elevation == NO_DATA_VALUE)
+        if (elevation != NO_DATA_VALUE)
         {
-            elevation = 0.0f;
+            center.z() = elevation;
         }
-        center.z() = elevation;
-    }    
 
-    corner.x() = workingExtent.xMin();
-    corner.y() = workingExtent.yMin();
-    corner.z() = 0;
+        // expand the bounds a little bit vertically to account for feature data
+        osg::BoundingSphered bs = workingExtent.createWorldBoundingSphere(center.z()-100.0, center.z()+100.0);
 
-    if ( _session->getMapInfo().isGeocentric() )
-    {
-        // Compute the bounding sphere by sampling points along the extent.
-        int samples = 6;
+        // account for a worldwide bound:
+        double minRadius = osg::minimum(
+            _session->getMap()->getSRS()->getEllipsoid()->getRadiusPolar(),
+            _session->getMap()->getSRS()->getEllipsoid()->getRadiusEquator());
 
-        double xSample = workingExtent.width() / (double)samples;
-        double ySample = workingExtent.height() / (double)samples;
+        double maxRadius = osg::maximum(
+            _session->getMap()->getSRS()->getEllipsoid()->getRadiusPolar(),
+            _session->getMap()->getSRS()->getEllipsoid()->getRadiusEquator());
 
-        osg::BoundingSphered bs;
-        for (int c = 0; c < samples+1; c++)
-        {
-            double x = workingExtent.xMin() + (double)c * xSample;
-            for (int r = 0; r < samples+1; r++)
-            {
-                double y = workingExtent.yMin() + (double)r * ySample;
-                osg::Vec3d world;
-                GeoPoint(workingExtent.getSRS(), x, y, center.z(), ALTMODE_ABSOLUTE).toWorld(world);
-                bs.expandBy(world);
-            }
-        }
+        if (bs.radius() > minRadius/2.0)
+            return osg::BoundingSphered(osg::Vec3d(0,0,0), maxRadius);
+
         return bs;
     }
 
-    if (workingExtent.getSRS()->isGeographic() &&
-        ( workingExtent.width() >= 90 || workingExtent.height() >= 90 ) )
-    {
-        return osg::BoundingSphered( osg::Vec3d(0,0,0), 2*center.length() );
-    }
+    // fallback OR projected map approach
+    GeoPoint corner(workingExtent.getSRS(), workingExtent.xMin(), workingExtent.yMin(), center.z());
+    osg::Vec3d cornerWorld;
+    corner.toWorld(cornerWorld);
 
-    return osg::BoundingSphered( center, (center-corner).length() );
-#endif
+    osg::Vec3d centerWorld;
+    center.toWorld(centerWorld);
+
+    return osg::BoundingSphered( centerWorld, (centerWorld-cornerWorld).length() );
 }
 
 osg::Node*

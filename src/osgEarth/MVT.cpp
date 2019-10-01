@@ -482,7 +482,9 @@ MVTFeatureSource::openImplementation()
     int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, SQLITE_OPEN_READONLY, 0L);
     if (rc != 0)
     {
-        return Status::ResourceUnavailable, Stringify() << "Failed to open database, " << sqlite3_errmsg((sqlite3*)_database);
+        return Status(Status::ResourceUnavailable, Stringify() 
+                          << "Failed to open database, " 
+                          << sqlite3_errmsg((sqlite3*)_database));
     }
 
     setFeatureProfile(createFeatureProfile());

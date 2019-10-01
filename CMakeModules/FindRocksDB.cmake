@@ -1,6 +1,6 @@
 # Locate RocksDB
 
-SET(ROCKSDB_DIR "" CACHE PATH "Root directory of RocksDB distribution")
+SET(ROCKSDB_DIR "" CACHE PATH "Root directory of RocksDB distribution (OPTIONAL)")
 
 FIND_PATH(ROCKSDB_INCLUDE_DIR rocksdb/db.h
   PATHS
@@ -35,8 +35,7 @@ find_package_handle_standard_args(ROCKSDB
     REQUIRED_VARS
       ROCKSDB_LIBRARY
       ROCKSDB_INCLUDE_DIR
-    FAIL_MESSAGE
-      "Could NOT find ROCKSDB"
+    QUIET
 )
 
 set(ROCKSDB_INCLUDE_DIRS ${ROCKSDB_INCLUDE_DIR} )

@@ -60,6 +60,7 @@ namespace osgEarth { namespace Support
 
         //! Sets the object that creates geometry nodes.
         void setNodeFactory(FeatureNodeFactory* factory);
+        FeatureNodeFactory* getNodeFactory() const { return _factory.get(); }
 
         //! Sets the style sheet to use to render features 
         void setStyleSheet(StyleSheet* styles);

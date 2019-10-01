@@ -250,7 +250,7 @@ FeatureModelLayer::create()
 
             // group that will build all the feature geometry:
             osg::ref_ptr<FeatureModelGraph> fmg = new FeatureModelGraph(options());
-            fmg->setName(this->getName());
+            fmg->setOwnerName(this->getName());
             fmg->setSession(_session.get());
             fmg->setNodeFactory(createFeatureNodeFactory());
             fmg->setSceneGraphCallbacks(getSceneGraphCallbacks());

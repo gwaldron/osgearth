@@ -47,7 +47,7 @@
 #include <algorithm>
 #include <iterator>
 
-#define LC "[FeatureModelGraph] " << getName() << ": "
+#define LC "[FeatureModelGraph] " << _ownerName << ": "
 
 using namespace osgEarth;
 using namespace osgEarth::Support;
@@ -184,7 +184,7 @@ namespace
             osg::ref_ptr<FeatureModelGraph> graph;
             if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
             {
-               OE_WARN << LC << "Internal error - no FeatureModelGraph object in OptionsData\n";
+               OE_WARN << "Internal error - no FeatureModelGraph object in OptionsData\n";
                return ReadResult::ERROR_IN_READING_FILE;
             }
 
@@ -272,6 +272,12 @@ void
 FeatureModelGraph::setMaxRange(float value)
 {
     _maxRange = value;
+}
+
+void
+FeatureModelGraph::setOwnerName(const std::string& value)
+{
+    _ownerName = value;
 }
 
 Status

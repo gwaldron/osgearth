@@ -27,7 +27,7 @@ before_install:
 # Debug print out osgversion
 - osgversion
 script:
-- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j3 && sudo make install && sudo ldconfig; fi
+- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=11 . && make -j3 && sudo make install && sudo ldconfig; fi
 - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cd tests && osgEarth_tests ; fi
 notifications:
   slack:
@@ -38,6 +38,6 @@ addons:
       name: "gwaldron/osgearth"
       description: "osgEarth"
     notification_email: jasonbeverage@pelicanmapping.com
-    build_command_prepend: cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_OSGEARTH_EXAMPLES=OFF .
+    build_command_prepend: cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_OSGEARTH_EXAMPLES=OFF -DCMAKE_CXX_STANDARD=11 .
     build_command: make -j3
     branch_pattern: coverity_scan

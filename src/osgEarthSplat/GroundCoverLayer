@@ -87,7 +87,7 @@ namespace osgEarth { namespace Splat
         virtual void init();
 
         //! Override layer open
-        virtual const Status& open();
+        virtual Status openImplementation();
 
     public:
 

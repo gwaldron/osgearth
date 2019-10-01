@@ -55,7 +55,7 @@ namespace osgEarth
 
         virtual void init();
 
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const;
 

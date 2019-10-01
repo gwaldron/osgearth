@@ -131,7 +131,7 @@ namespace osgEarth
     public: // Layer
 
         //! Open the layer and return its status
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Called when this layer is added to a Map
         virtual void addedToMap(const Map*);

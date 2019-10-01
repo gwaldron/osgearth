@@ -182,7 +182,7 @@ namespace osgEarth
     public: // Layer
         
         //! Open the layer for reading.
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Subclass can override this when not using a TileSource
         //! by calling setTileSourceExpected(false).

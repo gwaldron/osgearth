@@ -109,7 +109,7 @@ namespace osgEarth
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 

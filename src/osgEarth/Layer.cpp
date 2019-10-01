@@ -86,9 +86,6 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 
 //.................................................................
 
-OE_LAYER_PROPERTY_IMPL(Layer, CachePolicy, CachePolicy, cachePolicy);
-
-
 Layer::Layer() :
 _options(&_optionsConcrete)
 {
@@ -220,6 +217,18 @@ Layer::setStatus(const Status::Code& code, const std::string& message) const
 }
 
 void
+Layer::setCachePolicy(const CachePolicy& value)
+{
+    options().cachePolicy() = value;
+}
+
+const CachePolicy&
+Layer::getCachePolicy() const
+{
+    return options().cachePolicy().get();
+}
+
+void
 Layer::init()
 {
     // For detecting scene graph changes at runtime
@@ -249,7 +258,9 @@ Layer::open()
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
 
-    return _status;
+    setStatus(openImplementation());
+
+    return getStatus();
 }
 
 const Status&
@@ -257,6 +268,12 @@ Layer::open(const osgDB::Options* readOptions)
 {
     setReadOptions(readOptions);
     return open();
+}
+
+Status
+Layer::openImplementation()
+{
+    return STATUS_OK;
 }
 
 void

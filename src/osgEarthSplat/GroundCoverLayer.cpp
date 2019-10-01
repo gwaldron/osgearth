@@ -202,10 +202,10 @@ GroundCoverLayer::init()
 #endif
 }
 
-const Status&
-GroundCoverLayer::open()
+Status
+GroundCoverLayer::openImplementation()
 {
-    return PatchLayer::open();
+    return PatchLayer::openImplementation();
 }
 
 void

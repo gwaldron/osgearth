@@ -47,7 +47,7 @@
 #include <algorithm>
 #include <iterator>
 
-#define LC "[FeatureModelGraph] " << getName() << ": "
+#define LC "[FeatureModelGraph] " << _ownerName << ": "
 
 using namespace osgEarth;
 using namespace osgEarth::Support;
@@ -184,7 +184,7 @@ namespace
             osg::ref_ptr<FeatureModelGraph> graph;
             if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
             {
-               OE_WARN << LC << "Internal error - no FeatureModelGraph object in OptionsData\n";
+               OE_WARN << "Internal error - no FeatureModelGraph object in OptionsData\n";
                return ReadResult::ERROR_IN_READING_FILE;
             }
 
@@ -274,6 +274,12 @@ FeatureModelGraph::setMaxRange(float value)
     _maxRange = value;
 }
 
+void
+FeatureModelGraph::setOwnerName(const std::string& value)
+{
+    _ownerName = value;
+}
+
 Status
 FeatureModelGraph::open()
 {
@@ -349,9 +355,9 @@ FeatureModelGraph::open()
 
 
     // A data source is either Tiled or Not Tiled. Set things up differently depending.
-    _useTiledSource = featureProfile->getTiled();
+    _useTiledSource = featureProfile->isTiled();
 
-    if (featureProfile->getTiled())
+    if (featureProfile->isTiled())
     {
         float maxRange = FLT_MAX;
 
@@ -614,7 +620,7 @@ FeatureModelGraph::setupPaging()
         if ( _maxRange.isSet() )
             userMaxRange = osg::minimum(userMaxRange, _maxRange.get());
         
-        if ( !featureProfile->getTiled() )
+        if ( !featureProfile->isTiled() )
         {
             // user set a max_range, but we'd not tiled. Just override the top level plod.
             maxRangeOverride = userMaxRange;
@@ -689,9 +695,6 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             float tileFactor = _options.layout().isSet() ? _options.layout()->tileSizeFactor().get() : 15.0f;            
             double maxRange =  tileBound.radius() * tileFactor;
             FeatureLevel level( 0, maxRange );
-            //OE_NOTICE << "(" << lod << ": " << tileX << ", " << tileY << ")" << std::endl;
-            //OE_NOTICE << "  extent = " << tileExtent.width() << "x" << tileExtent.height() << std::endl;
-            //OE_NOTICE << "  tileFactor = " << tileFactor << " maxRange=" << maxRange << " radius=" << tileBound.radius() << std::endl;
             
 
             // Construct a tile key that will be used to query the source for this tile.            

@@ -88,7 +88,7 @@ namespace osgEarth
     public: // Layer
         
         //! Establishes a connection to the service
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Closes all resources
         virtual void close();

@@ -121,8 +121,8 @@ DebugImageLayer::init()
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
-const Status&
-DebugImageLayer::open()
+Status
+DebugImageLayer::openImplementation()
 {
     _color = osgEarth::htmlColorToVec4f(options().colorCode().get());
 
@@ -131,7 +131,7 @@ DebugImageLayer::open()
         setProfile( Profile::create("global-geodetic") );
     }
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 GeoImage

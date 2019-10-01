@@ -101,6 +101,9 @@ namespace osgDB {
     void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
     const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
 
+#ifndef OSGEARTH_CXX11
+#define final
+#endif
 
 namespace osgEarth
 {
@@ -184,16 +187,10 @@ namespace osgEarth
         const osgDB::Options* getReadOptions() const;
 
         //! Open a layer.
-        //! MAKE SURE you call superclass init() if you override this!
-        //! This is where you will connect to back-end data sources if
-        //! appropriate. When added to a map, init() is called before open()
-        //! and addedToMap() is called after open() if it succeeds.
-        //! The usage idiom is for the implementation to call setStatus,
-        //! then return getStatus().
-        virtual const Status& open();
+        virtual const Status& open() final;
 
         //! Open a layer. Shortcut for calling setReadOptions() followed by open().
-        const Status& open(const osgDB::Options* options);
+        virtual const Status& open(const osgDB::Options* options) final;
 
         //! Close this layer.
         virtual void close();
@@ -345,6 +342,14 @@ namespace osgEarth
         //! post-ctor initialization, chain to subclasses.
         //! MAKE SURE you call the superclass init() if you override this!
         virtual void init();
+
+        //! Called by open() to connect to external resources and return a status.
+        //! MAKE SURE you call superclass openImplementation() if you override this!
+        //! This is where you will connect to back-end data sources if
+        //! appropriate. When added to a map, init() is called before open()
+        //! and addedToMap() is called after open() if it succeeds.
+        //! By default, returns STATUS_OK.
+        virtual Status openImplementation();
 
         //! Sets the status for this layer - internal
         const Status& setStatus(const Status& status) const;

@@ -53,14 +53,14 @@ VideoLayer::init()
     setUseCreateTexture();
 }
 
-const Status&
-VideoLayer::open()
+Status
+VideoLayer::openImplementation()
 {
     if ( !_openCalled )
     {
         if (!options().url().isSet())
         {
-            return setStatus(Status::Error(Status::ConfigurationError, "Missing required url"));
+            return Status(Status::ConfigurationError, "Missing required url");
         }
 
         osg::ref_ptr< osg::Image > image = options().url()->readImage().getImage();
@@ -85,14 +85,14 @@ VideoLayer::open()
         {
             std::stringstream buf;
             buf << "Failed to load " << options().url()->full();
-            return setStatus(Status::Error(Status::ServiceUnavailable, buf.str()));
+            return Status(Status::ServiceUnavailable, buf.str());
         }
 
         setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
 
         if (getStatus().isOK())
         {
-            return ImageLayer::open();
+            return ImageLayer::openImplementation();
         }
     }
 

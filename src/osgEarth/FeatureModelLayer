@@ -94,7 +94,7 @@ namespace osgEarth
     public: // Layer
 
         // opens the layer and returns the status
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         // The Node representing this layer.
         virtual osg::Node* getNode() const;

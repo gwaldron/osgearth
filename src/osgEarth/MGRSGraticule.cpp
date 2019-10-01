@@ -338,14 +338,14 @@ MGRSGraticule::init()
 
 }
 
-const Status&
-MGRSGraticule::open()
+Status
+MGRSGraticule::openImplementation()
 {
     Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
     if (ssStatus.isError())
-        return setStatus(ssStatus);
+        return ssStatus;
 
-    return VisibleLayer::open();
+    return VisibleLayer::openImplementation();
 }
 
 void

@@ -116,16 +116,13 @@ namespace osgEarth
         //! DTOR
         virtual ~TerrainLayer();
 
-    public: // Layer
-
         //! Opens the layer and initializes the data source.
-        virtual const Status& open();
+        virtual Status openImplementation();
+
+    public: // Layer
 
         //! Cache ID for this layer
         virtual std::string getCacheID() const;
-
-
-    public:
 
         //! Open the layer for writing (calls open)
         const Status& openForWriting();
@@ -143,7 +140,6 @@ namespace osgEarth
         //! automatically based on source metadata. For those that don't you can
         //! call it directly to set up a profile.
         void setProfile(const Profile* profile);
-
 
         //! Install a tile source instance.
         void setTileSource(TileSource* tileSource);

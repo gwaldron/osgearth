@@ -65,7 +65,7 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual const Status& open();
+        virtual Status openImplementation();
 
     protected: // Layer
 

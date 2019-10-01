@@ -75,19 +75,19 @@ RoadSurfaceLayer::init()
         setName("Road surface");
 }
 
-const Status&
-RoadSurfaceLayer::open()
+Status
+RoadSurfaceLayer::openImplementation()
 {
     // assert a feature source:
     Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-        return setStatus(fsStatus);
+        return fsStatus;
 
     Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
     if (ssStatus.isError())
-        return setStatus(ssStatus);
+        return ssStatus;
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void

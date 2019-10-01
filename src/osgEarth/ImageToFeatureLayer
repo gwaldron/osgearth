@@ -71,7 +71,7 @@ namespace osgEarth
 
         virtual void init();
 
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         virtual void addedToMap(const Map*);
 

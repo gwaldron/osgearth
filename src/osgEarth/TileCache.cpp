@@ -143,17 +143,20 @@ TileCacheImageLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-TileCacheImageLayer::open()
+Status
+TileCacheImageLayer::openImplementation()
 {
     if (!getProfile())
         setProfile(Profile::create("global-geodetic"));
 
-    setStatus(_driver.open(
+    Status status = _driver.open(
         options().url().get(),
-        getReadOptions()));
+        getReadOptions());
 
-    return ImageLayer::open();
+    if (status.isError())
+        return status;
+
+    return ImageLayer::openImplementation();
 }
 
 GeoImage
@@ -218,8 +221,8 @@ TileCacheElevationLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-TileCacheElevationLayer::open()
+Status
+TileCacheElevationLayer::openImplementation()
 {
     // Create an image layer under the hood. TMS fetch is the same for image and
     // elevation; we just convert the resulting image to a heightfield
@@ -227,14 +230,13 @@ TileCacheElevationLayer::open()
 
     // Initialize and open the image layer
     _imageLayer->setReadOptions(getReadOptions());
-    setStatus( _imageLayer->open() );
+    Status status = _imageLayer->open();
+    if (status.isError())
+        return status;
 
-    if (getStatus().isOK())
-    {
-        setProfile(_imageLayer->getProfile());            
-    }
+    setProfile(_imageLayer->getProfile());            
 
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 GeoHeightField

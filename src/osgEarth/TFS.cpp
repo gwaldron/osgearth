@@ -194,8 +194,8 @@ TFSFeatureSource::init()
     _layerValid = false;
 }
 
-const Status&
-TFSFeatureSource::open()
+Status
+TFSFeatureSource::openImplementation()
 {
     FeatureProfile* fp = 0L;
 
@@ -207,7 +207,6 @@ TFSFeatureSource::open()
         OE_INFO << LC << "Read layer TFS " << _layer.getTitle() << " " << _layer.getAbstract() << " " << _layer.getFirstLevel() << " " << _layer.getMaxLevel() << " " << _layer.getExtent().toString() << std::endl;
 
         fp = new FeatureProfile(_layer.getExtent());
-        fp->setTiled(true);
         fp->setFirstLevel(_layer.getFirstLevel());
         fp->setMaxLevel(_layer.getMaxLevel());
         fp->setTilingProfile(osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1));
@@ -221,22 +220,21 @@ TFSFeatureSource::open()
         // Try to get the results from the settings instead
         if (!options().profile().isSet())
         {
-            return setStatus(Status::ConfigurationError, "TFS driver requires an explicit profile");
+            return Status(Status::ConfigurationError, "TFS driver requires an explicit profile");
         }
 
         if (!options().minLevel().isSet() || !options().maxLevel().isSet())
         {
-            return setStatus(Status::ConfigurationError, "TFS driver requires a min and max level");
+            return Status(Status::ConfigurationError, "TFS driver requires a min and max level");
         }
 
         osg::ref_ptr<const Profile> profile = Profile::create(*options().profile());
         if (!profile.valid())
         {
-            return setStatus(Status::ConfigurationError, "Failed to establish valid Profile");
+            return Status(Status::ConfigurationError, "Failed to establish valid Profile");
         }
 
         fp = new FeatureProfile(profile->getExtent());
-        fp->setTiled(true);
         fp->setFirstLevel(*options().minLevel());
         fp->setMaxLevel(*options().maxLevel());
         fp->setTilingProfile(profile.get());
@@ -248,7 +246,7 @@ TFSFeatureSource::open()
 
     setFeatureProfile(fp);
 
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 
@@ -458,7 +456,7 @@ TFSFeatureSource::createURL(const Query& query)
         // attempt to verify that the request is within the first and max level
         // of the data source.
         const FeatureProfile* fp = getFeatureProfile();
-        if (fp && fp->getTiled())
+        if (fp && fp->isTiled())
         {
             if (fp->getFirstLevel() > level || fp->getMaxLevel() < level)
             {

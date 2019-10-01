@@ -197,10 +197,10 @@ FractalElevationLayer::init()
     }
 }
 
-const Status&
-FractalElevationLayer::open()
+Status
+FractalElevationLayer::openImplementation()
 {
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 void

@@ -462,8 +462,8 @@ OGRFeatureSource::~OGRFeatureSource()
     close();
 }
 
-const Status&
-OGRFeatureSource::open()
+Status
+OGRFeatureSource::openImplementation()
 {
     // Data source at a URL?
     if (options().url().isSet())
@@ -495,8 +495,7 @@ OGRFeatureSource::open()
     // If nothing was set, we're done
     if (_source.empty() && !_geometry.valid())
     {
-        return setStatus(
-            Status::Error(Status::ConfigurationError, "No URL, connection, or inline geometry provided"));
+        return Status(Status::ConfigurationError, "No URL, connection, or inline geometry provided");
     }
 
     // Try to open the datasource and establish a feature profile.        
@@ -541,7 +540,7 @@ OGRFeatureSource::open()
         
         if (_ogrDriverHandle == NULL)
         {
-            return setStatus(
+            return Status(
                 Status::ResourceUnavailable,
                 Stringify() << "OGR driver \"" << driverName << "\" not found");
         }
@@ -552,8 +551,7 @@ OGRFeatureSource::open()
         _dsHandle = OGROpenShared(_source.c_str(), openMode, &_ogrDriverHandle);
         if (!_dsHandle)
         {
-            return setStatus(
-                Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open \"" << _source << "\""));
+            return Status(Status::ResourceUnavailable, Stringify() << "Failed to open \"" << _source << "\"");
         }
 
         if (openMode == 1)
@@ -565,8 +563,7 @@ OGRFeatureSource::open()
         _layerHandle = OGR::openLayer(_dsHandle, options().layer().value());
         if (!_layerHandle)
         {
-            return setStatus(
-                Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open layer \"" << options().layer().get() << "\" from \"" << _source << "\""));
+            return Status(Status::ResourceUnavailable, Stringify() << "Failed to open layer \"" << options().layer().get() << "\" from \"" << _source << "\"");
         }
 
         // if the user provided a profile, use that:
@@ -582,30 +579,26 @@ OGRFeatureSource::open()
             OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef(_layerHandle);
             if (!srHandle)
             {
-                return setStatus(
-                    Status::Error(Status::ResourceUnavailable, Stringify() << "No spatial reference found in \"" << _source << "\""));
+                return Status(Status::ResourceUnavailable, Stringify() << "No spatial reference found in \"" << _source << "\"");
             }
 
             osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle(srHandle);
             if (!srs.valid())
             {
-                return setStatus(
-                    Status::Error(Status::ResourceUnavailable, Stringify() << "Unrecognized SRS found in \"" << _source << "\""));
+                return Status(Status::ResourceUnavailable, Stringify() << "Unrecognized SRS found in \"" << _source << "\"");
             }
 
             // extract the full extent of the layer:
             OGREnvelope env;
             if (OGR_L_GetExtent(_layerHandle, &env, 1) != OGRERR_NONE)
             {
-                return setStatus(
-                    Status::Error(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\""));
+                return Status(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\"");
             }
 
             GeoExtent extent(srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY);
             if (!extent.isValid())
             {
-                return setStatus(
-                    Status::Error(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\""));
+                return Status(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\"");
             }
 
             // Made it!
@@ -691,13 +684,12 @@ OGRFeatureSource::open()
 
     else
     {
-        return setStatus(
-            Status::Error(Status::ResourceUnavailable, "Failed to establish a valid feature profile"));
+        return Status(Status::ResourceUnavailable, "Failed to establish a valid feature profile");
     }
 
     OE_INFO << LC << getName() << " : opened OK" << std::endl;
 
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 const Status&

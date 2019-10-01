@@ -143,10 +143,10 @@ ContourMapLayer::init()
     this->setTransferFunction(xfer);
 }
 
-const Status&
-ContourMapLayer::open()
+Status
+ContourMapLayer::openImplementation()
 {
-    return VisibleLayer::open();
+    return VisibleLayer::openImplementation();
 }
 
 void

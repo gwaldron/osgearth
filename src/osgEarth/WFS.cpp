@@ -240,8 +240,8 @@ WFSFeatureSource::init()
     FeatureSource::init();
 }
 
-const Status&
-WFSFeatureSource::open()
+Status
+WFSFeatureSource::openImplementation()
 {
     // parse the WFS capabilities URL
     std::string capUrl;
@@ -259,7 +259,7 @@ WFSFeatureSource::open()
     _capabilities = WFS::CapabilitiesReader::read(capUrl, _readOptions.get());
     if (!_capabilities.valid())
     {
-        return setStatus(Status::ResourceUnavailable, Stringify() << "Failed to read WFS GetCapabilities from \"" << capUrl << "\"");
+        return Status(Status::ResourceUnavailable, Stringify() << "Failed to read WFS GetCapabilities from \"" << capUrl << "\"");
     }
     else
     {
@@ -281,7 +281,6 @@ WFSFeatureSource::open()
 
             if (featureType->getTiled() && !disableTiling)
             {
-                fp->setTiled(true);
                 fp->setFirstLevel(featureType->getFirstLevel());
                 fp->setMaxLevel(featureType->getMaxLevel());
                 fp->setTilingProfile(osgEarth::Profile::create(
@@ -306,7 +305,7 @@ WFSFeatureSource::open()
 
     setFeatureProfile(fp);
 
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 

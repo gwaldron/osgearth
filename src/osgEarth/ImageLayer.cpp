@@ -243,8 +243,8 @@ REGISTER_OSGEARTH_LAYER(image, ImageLayer);
 OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Shared, shared);
 OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
 
-const Status&
-ImageLayer::open()
+Status
+ImageLayer::openImplementation()
 {
     if (!_emptyImage.valid())
         _emptyImage = ImageUtils::createEmptyImage();
@@ -266,7 +266,7 @@ ImageLayer::open()
         setTileSourceExpected(false);
     }
 
-    return TerrainLayer::open();
+    return TerrainLayer::openImplementation();
 }
 
 void

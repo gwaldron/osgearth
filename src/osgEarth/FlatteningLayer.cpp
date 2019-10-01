@@ -708,13 +708,13 @@ FlatteningLayer::init()
     _pool->setTileSize(257u);
 }
 
-const Status&
-FlatteningLayer::open()
+Status
+FlatteningLayer::openImplementation()
 {
     // ensure the caller named a feature source:
     Status fsStatus = _client.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-        return setStatus(fsStatus);
+        return fsStatus;
     
     const Profile* profile = getProfile();
     if ( !profile )
@@ -723,7 +723,7 @@ FlatteningLayer::open()
         setProfile( profile );
     }
 
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 FlatteningLayer::~FlatteningLayer()

@@ -137,7 +137,7 @@ namespace osgEarth
     public: // Layer
         
         //! Establishes a connection to the database
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
@@ -221,7 +221,7 @@ namespace osgEarth
     public: // Layer
         
         //! Establishes a connection to the TMS repository
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         virtual bool isWritingSupported() const { return true; }
 

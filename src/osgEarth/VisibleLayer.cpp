@@ -72,8 +72,8 @@ VisibleLayer::init()
     Layer::init();
 }
 
-const Status&
-VisibleLayer::open()
+Status
+VisibleLayer::openImplementation()
 {
     if (options().visible().isSet())
     {
@@ -87,7 +87,7 @@ VisibleLayer::open()
         initializeMinMaxRangeOpacity();
     }
 
-    return Layer::open();
+    return Layer::openImplementation();
 }
 
 void

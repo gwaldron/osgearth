@@ -170,18 +170,18 @@ FeatureModelLayer::getNode() const
     return _root.get();
 }
 
-const Status&
-FeatureModelLayer::open()
+Status
+FeatureModelLayer::openImplementation()
 {
     Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-        return setStatus(fsStatus);
+        return fsStatus;
 
     Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
     if (ssStatus.isError())
-        return setStatus(ssStatus);
+        return ssStatus;
 
-    return VisibleLayer::open();
+    return VisibleLayer::openImplementation();
 }
 
 const GeoExtent&
@@ -250,6 +250,7 @@ FeatureModelLayer::create()
 
             // group that will build all the feature geometry:
             osg::ref_ptr<FeatureModelGraph> fmg = new FeatureModelGraph(options());
+            fmg->setName(this->getName());
             fmg->setSession(_session.get());
             fmg->setNodeFactory(createFeatureNodeFactory());
             fmg->setSceneGraphCallbacks(getSceneGraphCallbacks());

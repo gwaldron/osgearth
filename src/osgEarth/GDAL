@@ -203,7 +203,7 @@ namespace osgEarth
         virtual void init();
         
         //! Establishes a connection to the TMS repository
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Closes down any GDAL connections
         virtual void close();
@@ -266,7 +266,7 @@ namespace osgEarth
         virtual void init();
         
         //! Establishes a connection to the repository
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Closes down any GDAL connections
         virtual void close();

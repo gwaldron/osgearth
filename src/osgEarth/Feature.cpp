@@ -42,15 +42,9 @@ _tiled     ( false )
 }
 
 bool
-FeatureProfile::getTiled() const
+FeatureProfile::isTiled() const
 {
-    return _tiled;
-}
-
-void
-FeatureProfile::setTiled(bool tiled)
-{
-    _tiled = true;
+    return getTilingProfile() != 0L;
 }
 
 int

@@ -56,8 +56,7 @@ namespace osgEarth
         
 
         //! Whether the feature data is pre-tiled
-        bool getTiled() const;
-        void setTiled(bool tiled);
+        bool isTiled() const;
 
         //! For tiled data, the tiling profile
         const osgEarth::Profile* getTilingProfile() const;

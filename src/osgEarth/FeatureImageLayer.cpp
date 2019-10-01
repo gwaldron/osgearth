@@ -189,22 +189,22 @@ FeatureImageLayer::init()
     }
 }
 
-const Status&
-FeatureImageLayer::open()
+Status
+FeatureImageLayer::openImplementation()
 {
     // assert a feature source:
     Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-        return setStatus(fsStatus);
+        return fsStatus;
 
     Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
     if (ssStatus.isError())
-        return setStatus(ssStatus);
+        return ssStatus;
 
     if (!getFeatureSource() && !options().featureSourceLayer().isSet())
-        return setStatus(Status::ConfigurationError, "Required feature source is missing");
+        return Status(Status::ConfigurationError, "Required feature source is missing");
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void
@@ -281,8 +281,7 @@ FeatureImageLayer::establishSession()
 
             // warn the user if the feature data is tiled and the
             // layer profile doesn't match the feature source profile
-            if (fp->getTiled() && 
-                fp->getTilingProfile() &&
+            if (fp->isTiled() &&
                 fp->getTilingProfile()->isHorizEquivalentTo(getProfile()) == false)
             {
                 OE_WARN << LC << "Layer profile doesn't match feature tiling profile - data may not render properly" << std::endl;

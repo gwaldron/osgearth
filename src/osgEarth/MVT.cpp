@@ -473,8 +473,8 @@ REGISTER_OSGEARTH_LAYER(mvtfeatures, MVTFeatureSource);
 OE_LAYER_PROPERTY_IMPL(MVTFeatureSource, URI, URL, url);
 
 
-const Status&
-MVTFeatureSource::open()
+Status
+MVTFeatureSource::openImplementation()
 {
     std::string fullFilename = options().url()->full();
 
@@ -482,12 +482,12 @@ MVTFeatureSource::open()
     int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, SQLITE_OPEN_READONLY, 0L);
     if (rc != 0)
     {
-        return setStatus(Status::ResourceUnavailable, Stringify() << "Failed to open database, " << sqlite3_errmsg((sqlite3*)_database));
+        return Status::ResourceUnavailable, Stringify() << "Failed to open database, " << sqlite3_errmsg((sqlite3*)_database);
     }
 
     setFeatureProfile(createFeatureProfile());
 
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 void
@@ -607,7 +607,6 @@ MVTFeatureSource::createFeatureProfile()
 
 
     // Use the max level for now as the min level.
-    result->setTiled(true);
     result->setFirstLevel(_maxLevel);
     result->setMaxLevel(_maxLevel);
     result->setTilingProfile(profile);

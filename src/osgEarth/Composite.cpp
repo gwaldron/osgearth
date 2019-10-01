@@ -97,8 +97,8 @@ CompositeImageLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-CompositeImageLayer::open()
+Status
+CompositeImageLayer::openImplementation()
 {    
     _open = true;
 
@@ -109,7 +109,7 @@ CompositeImageLayer::open()
     // You may not call addLayers() and also put layers in the options.
     if (_layers.empty() == false && options().layers().empty() == false)
     {
-        return setStatus(Status::ConfigurationError, 
+        return Status(Status::ConfigurationError, 
             "Illegal to add layers both by options and by API");
     }
 
@@ -158,7 +158,7 @@ CompositeImageLayer::open()
 
         if (status.isError())
         {
-            return setStatus(status);
+            return status;
         }
 
         OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
@@ -169,7 +169,7 @@ CompositeImageLayer::open()
             profile = layer->getProfile();
             if (!profile.valid())
             {
-                return setStatus(
+                return Status(
                     Status::ResourceUnavailable, 
                     Stringify()<<"Cannot establish profile for layer " << layer->getName());
             }
@@ -211,7 +211,7 @@ CompositeImageLayer::open()
 
     setProfile( profile.get() );
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 GeoImage
@@ -441,8 +441,8 @@ CompositeElevationLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-CompositeElevationLayer::open()
+Status
+CompositeElevationLayer::openImplementation()
 {
     _open = true;
 
@@ -453,8 +453,8 @@ CompositeElevationLayer::open()
     // You may not call addLayers() and also put layers in the options.
     if (_layers.empty() == false && options().layers().empty() == false)
     {
-        return setStatus(Status(Status::ConfigurationError, 
-            "Illegal to add layers both by options and by API"));
+        return Status(Status::ConfigurationError, 
+            "Illegal to add layers both by options and by API");
     }
 
     // If the user didn't call addLayer(), try to read them from the options.
@@ -502,7 +502,7 @@ CompositeElevationLayer::open()
 
         if (status.isError())
         {
-            return setStatus(status);
+            return status;
         }
 
         OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
@@ -513,8 +513,8 @@ CompositeElevationLayer::open()
             profile = layer->getProfile();
             if (!profile.valid())
             {
-                return setStatus(Status(Status::ResourceUnavailable, 
-                    Stringify()<<"Cannot establish profile for layer " << layer->getName()));
+                return Status(Status::ResourceUnavailable, 
+                    Stringify()<<"Cannot establish profile for layer " << layer->getName());
             }
         }
 
@@ -554,7 +554,7 @@ CompositeElevationLayer::open()
 
     setProfile( profile.get() );
 
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 GeoHeightField

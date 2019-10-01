@@ -35,7 +35,8 @@ find_package_handle_standard_args(ROCKSDB
     REQUIRED_VARS
       ROCKSDB_LIBRARY
       ROCKSDB_INCLUDE_DIR
-    QUIET
+    FAIL_MESSAGE
+      "Could NOT find ROCKSDB"
 )
 
 set(ROCKSDB_INCLUDE_DIRS ${ROCKSDB_INCLUDE_DIR} )

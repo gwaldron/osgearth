@@ -165,7 +165,7 @@ namespace osgEarth
         {
             return _layer.get();
         }
-
+        
         void addedToMap(const optional<std::string>& layerName, const Map* map)
         {
             if (layerName.isSet())
@@ -221,6 +221,28 @@ namespace osgEarth
         static void getConfig(Config& conf, const std::string& tag, const optional<std::string>& layerName, const optional<TypedOptions>& embeddedOptions)
         {
             conf.set(tag, layerName);
+            if (embeddedOptions.isSet())
+                conf.set(embeddedOptions->getConfig());
+        }
+
+        static void fromConfig(const Config& conf, optional<TypedOptions>& embeddedOptions)
+        {
+            for (ConfigSet::const_iterator i = conf.children().begin();
+                i != conf.children().end();
+                ++i)
+            {
+                osg::ref_ptr<Layer> layer = Layer::create(*i);
+                if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                {
+                    embeddedOptions = TypedOptions(*i);
+                    break;
+                }
+            }
+
+        }
+
+        static void getConfig(Config& conf, const optional<TypedOptions>& embeddedOptions)
+        {
             if (embeddedOptions.isSet())
                 conf.set(embeddedOptions->getConfig());
         }

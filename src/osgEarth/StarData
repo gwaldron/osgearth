@@ -22,7 +22,7 @@
 #ifndef OSGEARTHUTIL_STAR_DATA
 #define OSGEARTHUTIL_STAR_DATA
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
   /*
   Star data from the Yale Bright Star Catalog. Extracted from the ASCII version.

@@ -24,7 +24,7 @@
 #include <osg/CoordinateSystemNode>
 #include <osgEarth/Common>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
     * Utility class to perform ellipsoid intersections

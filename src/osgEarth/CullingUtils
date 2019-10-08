@@ -35,7 +35,7 @@
 #include <osg/ClipPlane>
 #include <osgUtil/CullVisitor>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {    
     /**
      * A customized CCC that works correctly under an RTT camera and also with 

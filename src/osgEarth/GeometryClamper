@@ -27,7 +27,7 @@
 #include <osg/NodeVisitor>
 #include <osg/fast_back_stack>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Utility that takes existing OSG geometry and modifies it so that

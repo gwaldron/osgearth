@@ -26,7 +26,7 @@
 #include <osgEarth/Style>
 #include <osgEarth/Containers>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class ResourceLibrary;
 

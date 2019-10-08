@@ -30,7 +30,7 @@
 #include <osg/Node>
 #include <set>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class Session;
 

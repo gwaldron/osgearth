@@ -38,7 +38,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 REGISTER_OSGEARTH_LAYER(mgrsgraticule, MGRSGraticule);
 REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);

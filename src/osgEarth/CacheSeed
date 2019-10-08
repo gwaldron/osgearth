@@ -33,6 +33,8 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Contrib
 {
+    using namespace osgEarth::Util;
+
     /**
     * A TileHandler that caches tiles for the given layer.
     */

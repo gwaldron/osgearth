@@ -41,7 +41,7 @@ namespace osg
     class EllipsoidModel;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {    
     /**
      * Utility for storing observables in an osg::Object

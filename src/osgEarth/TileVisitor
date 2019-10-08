@@ -27,7 +27,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 

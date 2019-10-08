@@ -30,7 +30,7 @@
 #include <osg/ObserverNodePath>
 #include <osg/Camera>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Support for GPU Clamping.

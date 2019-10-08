@@ -31,7 +31,7 @@
 namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
-    using namespace osgEarth::Support;
+    using namespace osgEarth::Util;
 
     /**
      * Defines the usage information for a single texture sampler.

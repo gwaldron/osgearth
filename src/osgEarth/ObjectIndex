@@ -39,7 +39,7 @@ namespace osgEarth
     typedef unsigned       ObjectID;
     typedef osg::UIntArray ObjectIDArray;
 
-    using namespace Support;
+    using namespace Util;
 
     /** 
      * Virutal interface class for building an object index.

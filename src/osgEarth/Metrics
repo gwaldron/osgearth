@@ -30,7 +30,7 @@ namespace osgViewer {
     class Viewer;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Interface for a class that handles collecting metrics.

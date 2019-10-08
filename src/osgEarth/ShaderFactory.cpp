@@ -38,7 +38,7 @@ namespace
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 
 ShaderFactory::ShaderFactory()

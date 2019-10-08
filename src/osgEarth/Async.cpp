@@ -27,7 +27,7 @@
 #include <osgDB/Registry>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 #define LC "[Async] "
 
@@ -47,7 +47,7 @@ _node(node), _requestId(0u)
 
 //........................................................................
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     // internal class
     class AsyncNode : public osg::Group
@@ -457,7 +457,7 @@ AsyncMemoryManager::cycle(osg::NodeVisitor& nv)
 
 //........................................................................
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     struct AsyncNodePseudoLoader : public osgDB::ReaderWriter
     {

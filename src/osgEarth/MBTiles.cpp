@@ -297,10 +297,10 @@ MBTilesImageLayer::openImplementation()
             StringTokenizer(",").tokenize(boundsStr, tokens);
             if (tokens.size() == 4)
             {
-                double minLon = osgEarth::Support::as<double>(tokens[0], 0.0);
-                double minLat = osgEarth::Support::as<double>(tokens[1], 0.0);
-                double maxLon = osgEarth::Support::as<double>(tokens[2], 0.0);
-                double maxLat = osgEarth::Support::as<double>(tokens[3], 0.0);
+                double minLon = osgEarth::Util::as<double>(tokens[0], 0.0);
+                double minLat = osgEarth::Util::as<double>(tokens[1], 0.0);
+                double maxLon = osgEarth::Util::as<double>(tokens[2], 0.0);
+                double maxLat = osgEarth::Util::as<double>(tokens[3], 0.0);
 
                 GeoExtent extent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
                 if (extent.isValid())

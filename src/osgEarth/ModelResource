@@ -24,7 +24,7 @@
 #include <osgEarth/InstanceResource>
 #include <osgEarth/Status>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * A resource that materializes an InstanceSymbol, which is a single-point object

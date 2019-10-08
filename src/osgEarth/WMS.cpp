@@ -26,7 +26,7 @@
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 #undef LC
 #define LC "[WMS] "

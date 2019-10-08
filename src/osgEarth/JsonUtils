@@ -47,7 +47,7 @@
 
 #define JSON_API OSGEARTH_EXPORT
 
-namespace osgEarth { namespace Support { namespace Json
+namespace osgEarth { namespace Util { namespace Json
 {
    class FastWriter;
    class Reader;

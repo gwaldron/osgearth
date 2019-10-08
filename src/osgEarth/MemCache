@@ -21,7 +21,7 @@
 
 #include <osgEarth/Cache>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 

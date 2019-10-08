@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Filter>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 

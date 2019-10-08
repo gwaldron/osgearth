@@ -38,7 +38,7 @@
 #define LC "[LabelNode] "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //-------------------------------------------------------------------
 

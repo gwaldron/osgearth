@@ -37,7 +37,7 @@ namespace osgEarth
     class TerrainEngineNode;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class OverlayDecorator;
     class OverlayTechnique;

@@ -20,7 +20,7 @@
 #include <osgEarth/Cube>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 
 #define LC "[Cube] "

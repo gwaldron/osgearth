@@ -30,7 +30,7 @@ namespace osgEarth
     class Feature;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class FilterContext;
 

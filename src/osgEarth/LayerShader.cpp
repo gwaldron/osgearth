@@ -27,7 +27,7 @@
 #define LC "[LayerShader] "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //...................................................................
 

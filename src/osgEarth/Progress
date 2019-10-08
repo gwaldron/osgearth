@@ -113,7 +113,7 @@ namespace osgEarth
         /**
          * Access user stats
          */
-        typedef Support::fast_map<std::string,double> Stats;
+        typedef Util::fast_map<std::string,double> Stats;
         Stats& stats() { return _stats; }
         double& stats(const std::string& name);
         bool& collectStats() { return _collectStats; } 

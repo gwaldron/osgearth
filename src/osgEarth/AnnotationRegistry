@@ -25,7 +25,7 @@
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/MapNode>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class AnnotationFactory;
 

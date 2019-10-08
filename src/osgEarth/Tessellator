@@ -26,7 +26,7 @@
 
 #include <osg/Geometry>
     
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Polygon tessellator using a modified ear clipping technique

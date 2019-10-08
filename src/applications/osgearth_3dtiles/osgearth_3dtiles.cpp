@@ -375,8 +375,8 @@ main_tile(osg::ArgumentParser& args)
         return usage("Failed to create a tileset from the feature source");
 
     std::ofstream fout(outfile);
-    Support::Json::Value json = tileset->getJSON();
-    Support::Json::StyledStreamWriter writer;
+    Util::Json::Value json = tileset->getJSON();
+    Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);
     fout.close();
     OE_INFO << "Wrote tileset to " << outfile << std::endl;

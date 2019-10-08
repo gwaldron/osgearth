@@ -35,7 +35,7 @@ namespace osgEarth
     class Cache;
     class CacheBin;
 
-    namespace Support {
+    namespace Util {
         class MemCache;
     }
 
@@ -307,7 +307,7 @@ namespace osgEarth
 
         optional<bool> _profileMatchesMapProfile;
         unsigned _tileSize;
-        osg::ref_ptr<Support::MemCache> _memCache;
+        osg::ref_ptr<Util::MemCache> _memCache;
         bool _openCalled;
         bool _writingRequested;
 

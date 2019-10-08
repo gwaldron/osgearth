@@ -24,7 +24,7 @@
 #include <osgEarth/SpatialReference>
 #include <osg/Matrix>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     struct OSGEARTH_EXPORT ECEF
     {

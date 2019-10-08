@@ -27,7 +27,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/FilterUsage>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
         class ResourceLibrary;
 

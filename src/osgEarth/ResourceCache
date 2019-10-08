@@ -27,7 +27,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/ThreadingUtils>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Caches the runtime objects created by resources, so we can avoid creating them

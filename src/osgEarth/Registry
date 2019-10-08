@@ -50,14 +50,14 @@ namespace osgEarth
     class Units;
     class StateSetCache;
 
-    namespace Support
+    namespace Util
     {
         class ShaderFactory;
         class TaskServiceManager;
         class AsyncMemoryManager;
     }
 
-    using namespace Support;
+    using namespace Util;
 
 
     extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();

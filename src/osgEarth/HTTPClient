@@ -34,7 +34,7 @@ namespace osgEarth {
     class ProgressCallback;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
@@ -431,6 +431,6 @@ namespace osgEarth { namespace Support
     };
 } }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Support::ProxySettings);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::ProxySettings);
 
 #endif // OSGEARTH_HTTP_CLIENT_H

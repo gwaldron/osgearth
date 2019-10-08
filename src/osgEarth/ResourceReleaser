@@ -24,7 +24,7 @@
 #include <osg/Drawable>
 #include <vector>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Scene graph node that will call releaseGLObjects() on objects

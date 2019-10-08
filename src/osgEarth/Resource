@@ -27,7 +27,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <vector>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Base class for a Resource, which is an external data element managed

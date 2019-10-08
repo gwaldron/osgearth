@@ -33,7 +33,7 @@ namespace osgEarth {
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Support;
+    using namespace osgEarth::Util;
 
     /**
      * A CULL callback that automatically adjusts the calculated near and far clip planes for

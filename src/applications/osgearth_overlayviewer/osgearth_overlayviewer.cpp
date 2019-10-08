@@ -51,21 +51,21 @@ namespace
 
     CascadeDrapingDecorator* getCDD(osg::Node* node)
     {
-        return osgEarth::Support::findTopMostNodeOfType< CascadeDrapingDecorator>(node);
+        return osgEarth::Util::findTopMostNodeOfType< CascadeDrapingDecorator>(node);
     }
 
     osg::Node* getDrapingDump(osg::Node* node)
     {
-        OverlayDecorator* od = osgEarth::Support::findTopMostNodeOfType<OverlayDecorator>(node);
+        OverlayDecorator* od = osgEarth::Util::findTopMostNodeOfType<OverlayDecorator>(node);
         if (od) return od->getDump();
-        CascadeDrapingDecorator* cdd = osgEarth::Support::findTopMostNodeOfType<CascadeDrapingDecorator>(node);
+        CascadeDrapingDecorator* cdd = osgEarth::Util::findTopMostNodeOfType<CascadeDrapingDecorator>(node);
         if (cdd) return cdd->getDump();
         return 0L;
     }
 
     void requestDrapingDump(osg::Node* node)
     {
-        OverlayDecorator* od = osgEarth::Support::findTopMostNodeOfType<OverlayDecorator>(node);
+        OverlayDecorator* od = osgEarth::Util::findTopMostNodeOfType<OverlayDecorator>(node);
         if (od) return od->requestDump();
     }
 

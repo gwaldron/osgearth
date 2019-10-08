@@ -46,7 +46,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 
 // Whether to intersect the ellipsoid versus the horizon plane when

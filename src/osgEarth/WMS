@@ -28,7 +28,7 @@
 
 namespace osgEarth {
     class WMSImageLayer;
-    namespace Support {
+    namespace Util {
         class XmlElement;
     }
 }

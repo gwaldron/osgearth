@@ -33,7 +33,7 @@ namespace osgEarth
     class TerrainEngineNode;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Clamps geometry to the terrain using the GPU.

@@ -32,7 +32,7 @@
 #include <set>
 #include <map>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     template<typename DATA>
     struct fast_set
@@ -737,7 +737,7 @@ namespace osgEarth { namespace Support
         }
 
     private:
-        osgEarth::Support::fast_map<KEY,DATA> _data;
+        osgEarth::Util::fast_map<KEY,DATA> _data;
         mutable osgEarth::Threading::Mutex _mutex;
     };
 

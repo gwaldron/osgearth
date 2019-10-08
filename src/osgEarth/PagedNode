@@ -26,7 +26,7 @@
 #include <osgEarth/optional>
 #include <osg/PagedLOD>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * PagedNode is a group with a self-contained paged child.

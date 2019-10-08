@@ -24,7 +24,7 @@
 #include <osgEarth/Feature>
 #include <osgEarth/Filter>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Feature filter that will clamp incoming feature geometry to an elevation model.

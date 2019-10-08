@@ -115,7 +115,7 @@ namespace osgEarth
         virtual ~DepthOffsetInterface() { }
     };
 
-    namespace Support
+    namespace Util
     {
         /**
          * Adapter that affects depth offset functionality on a graph.
@@ -184,7 +184,7 @@ namespace osgEarth
         void dirty();
         void scheduleUpdate();
 
-        Support::DepthOffsetAdapter _adapter;
+        Util::DepthOffsetAdapter _adapter;
         bool               _updatePending;
 
         virtual ~DepthOffsetGroup() { }

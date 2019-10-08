@@ -34,7 +34,7 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //---------------------------------------------------------------------------
 

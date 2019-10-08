@@ -50,7 +50,7 @@
 #define LC "[FeatureModelGraph] " << _ownerName << ": "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 using namespace osgEarth::Util;
 
 #undef USE_PROXY_NODE_FOR_TESTING

@@ -44,7 +44,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------
 

@@ -31,7 +31,7 @@ namespace osgEarth
     class StateSetCache;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class ResourceCache;
     class ScriptEngine;

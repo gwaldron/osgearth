@@ -25,7 +25,7 @@
 #include <osg/Array>
 #include <osg/Geometry>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Triangulates a line string into a buffered geometry.

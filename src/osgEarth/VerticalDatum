@@ -135,7 +135,7 @@ namespace osgEarth
 
     //--------------------------------------------------------------------
 
-    namespace Support
+    namespace Util
     {
         /**
          * Creates a geoid instance based on an initialization string.

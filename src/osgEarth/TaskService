@@ -30,7 +30,7 @@
 #include <string>
 #include <map>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT TaskRequest : public osg::Referenced
     {

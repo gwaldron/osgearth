@@ -25,7 +25,7 @@
 #include <osg/Image>
 #include <vector>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Pairs an OSG image with TileKey parameters.

@@ -33,7 +33,7 @@
 
 // XML support utilites.
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT XmlNode : public osg::Referenced
     {

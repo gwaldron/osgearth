@@ -28,7 +28,7 @@
 #endif
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //VRV_PATCH
 #define GL_ANY_SAMPLES_PASSED             0x8C2F

@@ -29,7 +29,7 @@ namespace osgEarth
     class VirtualProgram;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
 
     /**

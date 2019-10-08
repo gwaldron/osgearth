@@ -174,7 +174,7 @@ inline double OE_DECODE_DOUBLE(uint64_t x) {
     return r;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     inline void byteSwapInPlace(uint32_t x) {
         unsigned char* p = (unsigned char*)&x;

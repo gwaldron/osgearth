@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <vector>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Utility that reads GLSL source code and lexes it into chunks that

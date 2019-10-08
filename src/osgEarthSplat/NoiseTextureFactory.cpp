@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 
 #define LC "[NoiseTextureFactory] "

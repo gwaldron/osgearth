@@ -20,7 +20,7 @@
 
 #define LC "[Revisioning] "
 
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 
 //------------------------------------------------------------------------

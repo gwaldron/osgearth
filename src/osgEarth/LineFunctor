@@ -25,7 +25,7 @@
 #include <osg/Vec3>
 #include <osg/Vec4>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * This is basically the same thing as osg::TriangleFunctor, but for lines.

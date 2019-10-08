@@ -21,7 +21,7 @@
 
 #include <osgEarth/Common>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
     * Prepares a scene graph for aggressive optimization.  Removes things like names, user data, callbacks, etc.

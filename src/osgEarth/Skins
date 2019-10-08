@@ -27,7 +27,7 @@
 #include <osg/TexEnv>
 #include <osg/Image>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * A resource that points to a "skin", which is a Texture image paired with

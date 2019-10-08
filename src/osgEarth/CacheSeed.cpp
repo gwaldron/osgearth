@@ -27,7 +27,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 using namespace OpenThreads;
 
 CacheTileHandler::CacheTileHandler( TerrainLayer* layer, const Map* map ):

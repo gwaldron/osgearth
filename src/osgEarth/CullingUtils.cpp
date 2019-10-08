@@ -24,7 +24,7 @@
 #include <osgDB/ObjectWrapper>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 namespace osgEarth {
    OcclusionQueryNodeFactory* OcclusionQueryNodeFactory::_occlusionFactory = NULL;

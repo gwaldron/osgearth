@@ -419,7 +419,7 @@ namespace osgEarth
     }
 
     // osgEarth::Strings specializations
-    namespace Support
+    namespace Util
     {
         template<> inline
         Distance as(const std::string& str, const Distance& default_value) {

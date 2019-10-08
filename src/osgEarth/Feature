@@ -32,7 +32,7 @@
 
 namespace osgEarth
 {
-    namespace Support
+    namespace Util
     {
         class FilterContext;
         class Session;

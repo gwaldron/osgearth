@@ -24,7 +24,7 @@
 
 #include <osgEarth/Common>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Psuedo random number generator. Results are guaranteed to be consistent across

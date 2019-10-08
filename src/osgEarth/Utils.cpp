@@ -20,7 +20,7 @@
 #include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 

@@ -25,7 +25,7 @@
 #include <osg/observer_ptr>
 #include <vector>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * A tracking revision. See "class Revisioned" below for details.

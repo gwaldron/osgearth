@@ -29,7 +29,7 @@ namespace osgEarth
     class Map;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 

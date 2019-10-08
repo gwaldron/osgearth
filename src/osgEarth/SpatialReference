@@ -36,7 +36,7 @@ namespace osgEarth
     const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
     const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
 
-    namespace Support
+    namespace Util
     {
         class GeoLocator;
     }

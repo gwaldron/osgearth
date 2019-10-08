@@ -2,7 +2,7 @@
 
 #include <osgEarth/Shaders>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     Shaders::Shaders()
     {

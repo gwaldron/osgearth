@@ -23,7 +23,7 @@
 #include <osgEarth/ClipSpace>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 ClipSpace::ClipSpace(const osg::Matrix& MVP, const osg::Matrix& MVPinv)
     : _worldToClip(MVP),

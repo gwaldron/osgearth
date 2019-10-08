@@ -32,7 +32,7 @@ namespace osgEarth
 {
     class IconSymbol;
     class ModelSymbol;
-    namespace Support {
+    namespace Util {
         class InstanceResource;
     }
 

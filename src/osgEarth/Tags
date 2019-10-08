@@ -28,7 +28,7 @@
 #include <set>
 #include <algorithm>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     typedef std::vector<std::string> TagVector;
     typedef std::set<std::string>    TagSet;

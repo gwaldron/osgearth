@@ -1517,7 +1517,7 @@ SpatialReference::_init()
 
     // Extract the base units:
     std::string units = getOGRAttrValue( _handle, "UNIT", 0, true );
-    double unitMultiplier = osgEarth::Support::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
+    double unitMultiplier = osgEarth::Util::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
     if ( _is_geographic )
         _units = Units(units, units, Units::TYPE_ANGULAR, unitMultiplier);
     else

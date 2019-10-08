@@ -26,13 +26,13 @@
 #include <algorithm>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 #define LC "[Feature] "
 
 //----------------------------------------------------------------------------
 
-FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
+FeatureProfile::FeatureProfile(const GeoExtent& extent) :
 _extent    ( extent ),
 _firstLevel( 0 ),
 _maxLevel  ( -1 ),
@@ -42,15 +42,9 @@ _tiled     ( false )
 }
 
 bool
-FeatureProfile::getTiled() const
+FeatureProfile::isTiled() const
 {
-    return _tiled;
-}
-
-void
-FeatureProfile::setTiled(bool tiled)
-{
-    _tiled = true;
+    return getTilingProfile() != 0L;
 }
 
 int
@@ -78,15 +72,15 @@ FeatureProfile::setMaxLevel(int maxLevel)
 }
 
 const osgEarth::Profile* 
-FeatureProfile::getProfile() const
+FeatureProfile::getTilingProfile() const
 {
-    return _profile.get();
+    return _tilingProfile.get();
 }
 
 void
-FeatureProfile::setProfile( const osgEarth::Profile* profile )
+FeatureProfile::setTilingProfile( const osgEarth::Profile* profile )
 {
-    _profile = profile;
+    _tilingProfile = profile;
 }
 
 //----------------------------------------------------------------------------

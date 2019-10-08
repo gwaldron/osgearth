@@ -102,8 +102,8 @@ FeatureSource::init()
     Layer::init();
 }
 
-const Status&
-FeatureSource::open()
+Status
+FeatureSource::openImplementation()
 {
     // Create and initialize the filters.
     for(unsigned i=0; i<options().filters().size(); ++i)
@@ -124,7 +124,7 @@ FeatureSource::open()
         }
     }
 
-    return Layer::open();
+    return Layer::openImplementation();
 }
 
 const Status&

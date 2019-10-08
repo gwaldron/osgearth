@@ -89,12 +89,12 @@ BingImageLayer::~BingImageLayer()
     delete _tileURICache;
 }
 
-const Status&
-BingImageLayer::open()
+Status
+BingImageLayer::openImplementation()
 {
     if (_key.empty())
     {
-        return setStatus(Status::ConfigurationError, "Bing API key is required");
+        return Status(Status::ConfigurationError, "Bing API key is required");
     }
     
     // Bing maps profile is spherical mercator with 2x2 tiles are the root.
@@ -103,7 +103,7 @@ BingImageLayer::open()
             MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
             2u, 2u));
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void
@@ -300,12 +300,12 @@ BingElevationLayer::~BingElevationLayer()
     //nop
 }
 
-const Status&
-BingElevationLayer::open()
+Status
+BingElevationLayer::openImplementation()
 {
     if (_key.empty())
     {
-        return setStatus(Status::ConfigurationError, "Bing API key is required");
+        return Status(Status::ConfigurationError, "Bing API key is required");
     }
 
     // Bing maps profile is spherical mercator with 2x2 tiles are the root.
@@ -314,7 +314,7 @@ BingElevationLayer::open()
         MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
         2u, 2u));
 
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 GeoHeightField

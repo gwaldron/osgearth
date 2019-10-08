@@ -194,8 +194,8 @@ TFSFeatureSource::init()
     _layerValid = false;
 }
 
-const Status&
-TFSFeatureSource::open()
+Status
+TFSFeatureSource::openImplementation()
 {
     FeatureProfile* fp = 0L;
 
@@ -207,10 +207,9 @@ TFSFeatureSource::open()
         OE_INFO << LC << "Read layer TFS " << _layer.getTitle() << " " << _layer.getAbstract() << " " << _layer.getFirstLevel() << " " << _layer.getMaxLevel() << " " << _layer.getExtent().toString() << std::endl;
 
         fp = new FeatureProfile(_layer.getExtent());
-        fp->setTiled(true);
         fp->setFirstLevel(_layer.getFirstLevel());
         fp->setMaxLevel(_layer.getMaxLevel());
-        fp->setProfile(osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1));
+        fp->setTilingProfile(osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1));
         if (options().geoInterp().isSet())
         {
             fp->geoInterp() = options().geoInterp().get();
@@ -221,25 +220,24 @@ TFSFeatureSource::open()
         // Try to get the results from the settings instead
         if (!options().profile().isSet())
         {
-            return setStatus(Status::ConfigurationError, "TFS driver requires an explicit profile");
+            return Status(Status::ConfigurationError, "TFS driver requires an explicit profile");
         }
 
         if (!options().minLevel().isSet() || !options().maxLevel().isSet())
         {
-            return setStatus(Status::ConfigurationError, "TFS driver requires a min and max level");
+            return Status(Status::ConfigurationError, "TFS driver requires a min and max level");
         }
 
         osg::ref_ptr<const Profile> profile = Profile::create(*options().profile());
         if (!profile.valid())
         {
-            return setStatus(Status::ConfigurationError, "Failed to establish valid Profile");
+            return Status(Status::ConfigurationError, "Failed to establish valid Profile");
         }
 
         fp = new FeatureProfile(profile->getExtent());
-        fp->setTiled(true);
         fp->setFirstLevel(*options().minLevel());
         fp->setMaxLevel(*options().maxLevel());
-        fp->setProfile(profile.get());
+        fp->setTilingProfile(profile.get());
         if (options().geoInterp().isSet())
         {
             fp->geoInterp() = options().geoInterp().get();
@@ -248,7 +246,7 @@ TFSFeatureSource::open()
 
     setFeatureProfile(fp);
 
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 
@@ -329,8 +327,17 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream")
     {
+#ifdef OSGEARTH_HAVE_MVT
         std::stringstream in(buffer);
         return MVT::readTile(in, key, features);
+#else
+        if (getStatus().isOK())
+        {
+            setStatus(Status::ResourceUnavailable, "osgEarth is not built with MVT/PBF support (mime-type=application/x-protobuf)");
+            OE_WARN << LC << getStatus().message() << std::endl;
+        }
+        return false;
+#endif
     }
     else
     {
@@ -449,7 +456,7 @@ TFSFeatureSource::createURL(const Query& query)
         // attempt to verify that the request is within the first and max level
         // of the data source.
         const FeatureProfile* fp = getFeatureProfile();
-        if (fp && fp->getTiled())
+        if (fp && fp->isTiled())
         {
             if (fp->getFirstLevel() > level || fp->getMaxLevel() < level)
             {

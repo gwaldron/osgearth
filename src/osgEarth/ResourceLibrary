@@ -29,7 +29,7 @@
 #include <osgEarth/Random>
 #include <map>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /** 
      * ResourceLibrary manages a collection of external resources that a

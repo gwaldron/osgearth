@@ -57,7 +57,7 @@
 #define PROMOTE_EQUIVALENT_DRAWABLE_VP_TO_GEODE 1
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 

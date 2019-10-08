@@ -306,8 +306,8 @@ LandCoverCoverageLayer::Options::map(int value, const std::string& lcClass)
 
 OE_LAYER_PROPERTY_IMPL(LandCoverCoverageLayer, float, Warp, warp);
 
-const Status&
-LandCoverCoverageLayer::open()
+Status
+LandCoverCoverageLayer::openImplementation()
 {
     if (!_imageLayer.valid())
     {
@@ -325,7 +325,7 @@ LandCoverCoverageLayer::open()
         return _imageLayer->open();
     }
 
-    return setStatus(Status::ConfigurationError, "No image layer");
+    return Status(Status::ConfigurationError, "No image layer");
 }
 
 void

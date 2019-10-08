@@ -196,8 +196,8 @@ ArcGISTilePackageImageLayer::~ArcGISTilePackageImageLayer()
     //nop
 }
 
-const Status&
-ArcGISTilePackageImageLayer::open()
+Status
+ArcGISTilePackageImageLayer::openImplementation()
 {
     readConf();
 
@@ -218,7 +218,7 @@ ArcGISTilePackageImageLayer::open()
         setProfile(profile);
     }
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void

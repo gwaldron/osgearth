@@ -71,16 +71,16 @@ FeatureElevationLayer::init()
     setProfile(Profile::create("global-geodetic"));
 }
 
-const Status&
-FeatureElevationLayer::open()
+Status
+FeatureElevationLayer::openImplementation()
 {
     Status fsStatus = _client.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-        return setStatus(fsStatus);
+        return fsStatus;
 
     FeatureSource* features = _client.getLayer();
     if (!features)
-        return setStatus(Status::ServiceUnavailable);
+        return Status::ServiceUnavailable;
 
     if (features->getFeatureProfile())
     {
@@ -110,8 +110,7 @@ FeatureElevationLayer::open()
         dataExtents().push_back(de);
     }
 
-
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 void

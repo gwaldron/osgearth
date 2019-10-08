@@ -24,7 +24,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Template that helps with the registration of plugins.

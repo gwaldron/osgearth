@@ -122,7 +122,7 @@
 
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 namespace osgEarth
 {
@@ -147,13 +147,13 @@ namespace osgEarth
 
 
 std::string
-osgEarth::Support::getAbsolutePath(const std::string& path)
+osgEarth::Util::getAbsolutePath(const std::string& path)
 {
     return osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(path) );
 }
 
 bool
-osgEarth::Support::isRelativePath(const std::string& fileName)
+osgEarth::Util::isRelativePath(const std::string& fileName)
 {
     //If it is a URL, it is not relative
     if (osgDB::containsServerAddress( fileName ) ) return false;
@@ -175,7 +175,7 @@ osgEarth::Support::isRelativePath(const std::string& fileName)
 }
 
 std::string
-osgEarth::Support::getFullPath(const std::string& relativeTo, const std::string &relativePath)
+osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &relativePath)
 {
     // A cache, since this method uses osgDB::getRealPath which can be quite slow.
     static Threading::Mutex s_cacheMutex;
@@ -273,19 +273,19 @@ osgEarth::Support::getFullPath(const std::string& relativeTo, const std::string 
 }
 
 bool
-osgEarth::Support::isArchive(const std::string& path)
+osgEarth::Util::isArchive(const std::string& path)
 {
     osgDB::Registry::ArchiveExtensionList list = osgDB::Registry::instance()->getArchiveExtensions();
     for( osgDB::Registry::ArchiveExtensionList::const_iterator i = list.begin(); i != list.end(); ++i )
     {
-        if ( osgEarth::Support::endsWith(path, ("."+*i), false) )
+        if ( osgEarth::Util::endsWith(path, ("."+*i), false) )
             return true;
     }
     return false;
 }
 
 bool
-osgEarth::Support::isPathToArchivedFile(const std::string& path)
+osgEarth::Util::isPathToArchivedFile(const std::string& path)
 {
     osgDB::Registry::ArchiveExtensionList list = osgDB::Registry::instance()->getArchiveExtensions();
     for( osgDB::Registry::ArchiveExtensionList::const_iterator i = list.begin(); i != list.end(); ++i )
@@ -300,7 +300,7 @@ osgEarth::Support::isPathToArchivedFile(const std::string& path)
 }
 
 std::string
-osgEarth::Support::getTempPath()
+osgEarth::Util::getTempPath()
 {
 #if defined(WIN32)  && !defined(__CYGWIN__)
     BOOL fSuccess  = FALSE;
@@ -324,7 +324,7 @@ osgEarth::Support::getTempPath()
 }
 
 std::string 
-osgEarth::Support::getTempName(const std::string& prefix, const std::string& suffix)
+osgEarth::Util::getTempName(const std::string& prefix, const std::string& suffix)
 {
     //tmpname is kind of busted on Windows, it always returns a file of the form \blah which gets put in your root directory but
     //oftentimes can't get opened by some drivers b/c it doesn't have a drive letter in front of it.
@@ -339,7 +339,7 @@ osgEarth::Support::getTempName(const std::string& prefix, const std::string& suf
 }
 
 bool 
-osgEarth::Support::makeDirectory( const std::string &path )
+osgEarth::Util::makeDirectory( const std::string &path )
 {    
     if (path.empty())
     {
@@ -426,14 +426,14 @@ osgEarth::Support::makeDirectory( const std::string &path )
 }
 
 bool 
-osgEarth::Support::makeDirectoryForFile( const std::string &path )
+osgEarth::Util::makeDirectoryForFile( const std::string &path )
 {
     return makeDirectory( osgDB::getFilePath( path ));
 }
 
 
 bool
-osgEarth::Support::touchFile(const std::string& path)
+osgEarth::Util::touchFile(const std::string& path)
 {
     DateTime now;
     struct ::utimbuf ut;
@@ -444,7 +444,7 @@ osgEarth::Support::touchFile(const std::string& path)
 
 
 TimeStamp
-osgEarth::Support::getLastModifiedTime(const std::string& path)
+osgEarth::Util::getLastModifiedTime(const std::string& path)
 {
     struct stat buf;
     if ( stat(path.c_str(), &buf) == 0 )

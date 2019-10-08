@@ -58,7 +58,7 @@ namespace osgEarth { namespace Util
         virtual void init();
         
         //! Establishes a connection to the WMS service
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Gets a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;

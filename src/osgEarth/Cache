@@ -47,7 +47,7 @@ namespace osgEarth
     class CachePolicy;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
 #define DEFAULT_BIN_ID ""
 
@@ -235,7 +235,7 @@ namespace osgEarth
 
 //----------------------------------------------------------------------
 
-    namespace Support
+    namespace Util
     {
         /**
          * Base class for a cache driver plugin.

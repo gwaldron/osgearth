@@ -78,21 +78,20 @@ ImageToFeatureSource::getImageLayer() const
     return _client.getLayer();
 }
 
-const Status&
-ImageToFeatureSource::open()
+Status
+ImageToFeatureSource::openImplementation()
 {           
     // Establish the feature profile.
     osg::ref_ptr<const Profile> globalGeodetic = Profile::create("global-geodetic");
 
     const GeoExtent& extent = globalGeodetic->getExtent();
     FeatureProfile* profile = new FeatureProfile(extent);
-    profile->setProfile(Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1));
+    profile->setTilingProfile(Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1));
     profile->setFirstLevel(options().level().get());
     profile->setMaxLevel(options().level().get());
-    profile->setTiled(true);
 
     setFeatureProfile(profile);
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 void

@@ -1667,8 +1667,8 @@ GDALImageLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-GDALImageLayer::open()
+Status
+GDALImageLayer::openImplementation()
 {
     _driver = new GDAL::Driver();
     
@@ -1692,13 +1692,15 @@ GDALImageLayer::open()
         dataExtents(),
         getReadOptions());
 
+    if (status.isError())
+        return status;
+
     if (_driver->getProfile())
     {
         setProfile(_driver->getProfile());
     }
 
-    setStatus(status);
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void
@@ -1762,8 +1764,8 @@ GDALElevationLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-GDALElevationLayer::open()
+Status
+GDALElevationLayer::openImplementation()
 {    
     _driver = new GDAL::Driver();
     
@@ -1786,13 +1788,15 @@ GDALElevationLayer::open()
         dataExtents(),
         getReadOptions());
 
+    if (status.isError())
+        return status;
+
     if (_driver->getProfile())
     {
         setProfile(_driver->getProfile());
     }
 
-    setStatus(status);
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 void

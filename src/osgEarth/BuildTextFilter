@@ -24,7 +24,7 @@
 #include <osgEarth/Filter>
 #include <osgEarth/Style>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Builds text labels from a stream of input features.

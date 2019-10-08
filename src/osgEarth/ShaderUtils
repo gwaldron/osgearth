@@ -29,7 +29,7 @@
 #include <osgDB/Options>
 #include <map>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * ShaderPolicy encodes general behavior when deciding how to

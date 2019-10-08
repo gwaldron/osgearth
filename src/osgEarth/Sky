@@ -206,7 +206,7 @@ namespace osgEarth
         void baseInit(const SkyOptions&);
     };
 
-    namespace Support 
+    namespace Util 
     {
         /**
          * Base class for an sky driver plugin implementation.

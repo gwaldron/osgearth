@@ -31,7 +31,7 @@
 #define LC "[DrawInstanced] "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 // Ref: http://sol.gfxile.net/instancing.html
 
@@ -42,7 +42,7 @@ using namespace osgEarth::Support;
 
 //----------------------------------------------------------------------
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class MakeTransformsStatic : public osg::NodeVisitor
     {

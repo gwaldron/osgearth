@@ -39,7 +39,7 @@ namespace osgEarth
 namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
-    using namespace osgEarth::Support;
+    using namespace osgEarth::Util;
 
     /**
      * SurfaceNode holds the proxy (physics) geometry of the terrain surface.

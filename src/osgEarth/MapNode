@@ -36,7 +36,7 @@ namespace osgEarth
     class DrapableNode;
     class ClampableNode;
 
-    namespace Support
+    namespace Util
     {
         class ResourceReleaser;
         class DrapingManager;

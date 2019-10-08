@@ -70,8 +70,8 @@ FileGDBFeatureSource::init()
     _table = NULL;
 }
 
-const Status&
-FileGDBFeatureSource::open()
+Status
+FileGDBFeatureSource::openImplementation()
 {
     if (!options().table().isSet())
         return setStatus(Status::ConfigurationError, "Missing required table name");
@@ -161,7 +161,7 @@ FileGDBFeatureSource::open()
     }
 
 
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 void

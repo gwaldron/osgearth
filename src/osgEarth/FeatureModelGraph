@@ -30,7 +30,7 @@
 #include <osg/Node>
 #include <set>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class Session;
 
@@ -60,12 +60,14 @@ namespace osgEarth { namespace Support
 
         //! Sets the object that creates geometry nodes.
         void setNodeFactory(FeatureNodeFactory* factory);
+        FeatureNodeFactory* getNodeFactory() const { return _factory.get(); }
 
         //! Sets the style sheet to use to render features 
         void setStyleSheet(StyleSheet* styles);
 
         //! Session associated with this feature graph.
         void setSession(Session* session);
+        const Session* getSession() const;
 
         //! Min visible range
         void setMinRange(float value);
@@ -75,28 +77,6 @@ namespace osgEarth { namespace Support
 
         //! Initialized the graph after setting all parameters.
         Status open();
-
-        /**
-         * Constructs a new model graph.
-         *
-         * @param session
-         *      Session under which to create elements in this graph
-         * @param options
-         *      Model source options
-         * @param factory
-         *      Node factory that will be invoked to compile feature data into nodes
-         * @param callbacks
-         *      List of callbacks to invoke as nodes are created and merged into the scene graph.
-         */
-#if 0
-        FeatureModelGraph(
-            Session*                     session,
-            const FeatureModelOptions&   featureOptions,
-            const VisibleLayer::Options& layerOptions,
-            FeatureNodeFactory*          factory,
-            ModelSource*                 modelSource,
-            SceneGraphCallbacks*         callbacks);
-#endif
 
         /**
          * Loads and returns a subnode. Used internally for paging.
@@ -115,6 +95,9 @@ namespace osgEarth { namespace Support
          * Access to the features levels
          */
         const std::vector<const FeatureLevel*>& getLevels() const { return _lodmap; };
+
+        //! Set the name of the object that owns this graph (for debugging)
+        void setOwnerName(const std::string& name);
 
     protected:
 
@@ -222,6 +205,8 @@ namespace osgEarth { namespace Support
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         osg::ref_ptr<osgDB::ObjectCache> _nodeCachingImageCache;
+
+        std::string _ownerName;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);

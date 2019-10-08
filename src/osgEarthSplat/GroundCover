@@ -24,7 +24,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LandCoverLayer>
 #include <osgEarth/ResourceLibrary>
-#include <osgEarth/Symbol>
+#include <osgEarth/BillboardSymbol>
 #include <osg/BoundingBox>
 #include <osg/Shader>
 
@@ -158,15 +158,14 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT GroundCoverBillboard : public GroundCoverObject
     {
     public:
-        GroundCoverBillboard(osg::Image* sideImage, osg::Image* topImage, float width, float height)
-            : _sideImage(sideImage), _topImage(topImage), _width(width), _height(height) { }
+        GroundCoverBillboard(osg::Image* sideImage, osg::Image* topImage, const BillboardSymbol* symbol)
+            : _sideImage(sideImage), _topImage(topImage), _symbol(symbol) { }
 
         virtual Type getType() const { return TYPE_BILLBOARD; }
 
         osg::ref_ptr<osg::Image> _sideImage;
         osg::ref_ptr<osg::Image> _topImage;
-        float                    _width;
-        float                    _height;
+        osg::ref_ptr<const BillboardSymbol> _symbol;
     };
 
     /**

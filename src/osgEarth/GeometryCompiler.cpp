@@ -46,7 +46,7 @@
 #define LC "[GeometryCompiler] "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 using namespace osgEarth::Util;
 
 //#define PROFILING 1

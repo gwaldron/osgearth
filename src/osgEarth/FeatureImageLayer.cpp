@@ -29,7 +29,7 @@
 
 using namespace osgEarth;
 
-#define LC "[FeatureImageLayer] "
+#define LC "[FeatureImageLayer] " << getName() << ": "
 
 
 REGISTER_OSGEARTH_LAYER(featureimage, FeatureImageLayer);
@@ -182,26 +182,29 @@ FeatureImageLayer::init()
     ImageLayer::init();
     setTileSourceExpected(false);
 
-    // Default profile (WGS84)
-    setProfile(Profile::create("global-geodetic"));
+    // Default profile (WGS84) if not set
+    if (!getProfile())
+    {
+        setProfile(Profile::create("global-geodetic"));
+    }
 }
 
-const Status&
-FeatureImageLayer::open()
+Status
+FeatureImageLayer::openImplementation()
 {
     // assert a feature source:
     Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-        return setStatus(fsStatus);
+        return fsStatus;
 
     Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
     if (ssStatus.isError())
-        return setStatus(ssStatus);
+        return ssStatus;
 
     if (!getFeatureSource() && !options().featureSourceLayer().isSet())
-        return setStatus(Status::ConfigurationError, "No features");
+        return Status(Status::ConfigurationError, "Required feature source is missing");
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void
@@ -265,15 +268,24 @@ FeatureImageLayer::establishSession()
         if (fp)
         {
             // recalculate the data extents based on the feature source.
-            if (fp->getProfile() != NULL)
+            if (fp->getTilingProfile() != NULL)
             {
                 // Use specified profile's GeoExtent
-                dataExtents().push_back(DataExtent(fp->getProfile()->getExtent()));
+                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent()));
             }
             else if (fp->getExtent().isValid() == true)
             {
                 // Use FeatureProfile's GeoExtent
                 dataExtents().push_back(DataExtent(fp->getExtent()));
+            }
+
+            // warn the user if the feature data is tiled and the
+            // layer profile doesn't match the feature source profile
+            if (fp->isTiled() &&
+                fp->getTilingProfile()->isHorizEquivalentTo(getProfile()) == false)
+            {
+                OE_WARN << LC << "Layer profile doesn't match feature tiling profile - data may not render properly" << std::endl;
+                OE_WARN << LC << "(Feature tiling profile = " << fp->getTilingProfile()->toString() << ")" << std::endl;
             }
         }
 

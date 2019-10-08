@@ -234,7 +234,7 @@ public:
                                 unsigned char *imgData = new unsigned char[image.image.size()];
                                 memcpy(imgData, &image.image.at(0), image.image.size());
                                 img->setImage(image.width, image.height, 1, format, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
-                            }
+                            }                            
 
                             tex->setImage(img);
                             geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
@@ -242,12 +242,7 @@ public:
                     }
                 }
             }
-
-            // Always make a color array with the base color
-            osg::Vec4Array* colors = new osg::Vec4Array();
-            geom->setColorArray(colors, osg::Array::BIND_OVERALL);
-            colors->push_back(baseColorFactor);
-
+            
             std::map<std::string, int>::const_iterator it(primitive.attributes.begin());
             std::map<std::string, int>::const_iterator itEnd(
                 primitive.attributes.end());
@@ -275,6 +270,7 @@ public:
                 }
                 else if (it->first.compare("COLOR_0") == 0)
                 {
+                    // TODO:  Multipy by the baseColorFactor here?
                     OE_DEBUG << "Setting color array " << arrays[it->second].get() << std::endl;
                     geom->setColorArray(arrays[it->second]);
                 }
@@ -282,6 +278,18 @@ public:
                 {
                     OE_DEBUG << "Skipping array " << it->first << std::endl;
                 }
+            }
+
+            // If there is no color array just add one that has the base color factor in it.
+            if (!geom->getColorArray())
+            {
+                osg::Vec4Array* colors = new osg::Vec4Array();
+                osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+                for (unsigned int i = 0; i < verts->size(); i++)
+                {
+                    colors->push_back(baseColorFactor);
+                }
+                geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
             }
 
             const tinygltf::Accessor &indexAccessor =

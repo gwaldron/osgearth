@@ -69,7 +69,7 @@ namespace osgEarth { namespace Splat
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         // Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;

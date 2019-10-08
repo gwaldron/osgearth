@@ -24,7 +24,7 @@
 #include <osgEarth/DateTime>
 #include <vector>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Converts a filename to an absolute path.

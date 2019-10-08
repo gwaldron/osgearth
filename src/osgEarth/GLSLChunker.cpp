@@ -20,7 +20,7 @@
 #include <osgEarth/StringUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 
 void
@@ -229,8 +229,8 @@ GLSLChunker::replace(Chunks& input, const std::string& pattern, const std::strin
     for(int i=0; i<input.size(); ++i)
     {
         Chunk& chunk = input[i];
-        osgEarth::Support::replaceIn(chunk.text, pattern, replacement);
+        osgEarth::Util::replaceIn(chunk.text, pattern, replacement);
         for (unsigned t = 0; t<chunk.tokens.size(); ++t)
-            osgEarth::Support::replaceIn(chunk.tokens[t], pattern, replacement);
+            osgEarth::Util::replaceIn(chunk.tokens[t], pattern, replacement);
     }
 }

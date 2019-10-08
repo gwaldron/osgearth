@@ -24,7 +24,7 @@
 #include <osgEarth/LineDrawable>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 int         Clamping::AnchorAttrLocation        = osg::Drawable::ATTRIBUTE_6;
 int         Clamping::HeightsAttrLocation       = osg::Drawable::FOG_COORDS;

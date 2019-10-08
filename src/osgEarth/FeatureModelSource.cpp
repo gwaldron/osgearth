@@ -302,10 +302,10 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     if (featureProfile == NULL)
         return Status::Error("Failed to establish a feature profile");
 
-    if (featureProfile->getProfile() != NULL)
+    if (featureProfile->getTilingProfile() != NULL)
     {
         // Use specified profile's GeoExtent
-        getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
+        getDataExtents().push_back(DataExtent(featureProfile->getTilingProfile()->getExtent()));
     }
     else if (featureProfile->getExtent().isValid() == true)
     {

@@ -563,6 +563,12 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         return osg::BoundingSphered();
     }
 
+    osg::ref_ptr<const Map> map = _session->getMap();
+    if (!map.valid())
+    {
+        return osg::BoundingSphered();
+    }
+
     if ( extent.getSRS()->isEquivalentTo( _usableMapExtent.getSRS() ) )
     {
         workingExtent = extent;
@@ -570,9 +576,9 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     else
     {
         if (tilingProfile)
-            workingExtent = _session->getMap()->getProfile()->clampAndTransformExtent(extent);
+            workingExtent = map->getProfile()->clampAndTransformExtent(extent);
         else
-            workingExtent = extent.transform(_session->getMap()->getSRS()); // _usableMapExtent.getSRS() );
+            workingExtent = extent.transform(map->getSRS()); // _usableMapExtent.getSRS() );
     }
 
 #if 0
@@ -586,7 +592,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     {
         // TODO: Use an appropriate resolution for this extents width
         unsigned lod = 23u;
-        osg::ref_ptr<ElevationEnvelope> env = _session->getMap()->getElevationPool()->createEnvelope(center.getSRS(), lod);
+        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
         float elevation = env->getElevation(center.x(), center.y());
 
         // Check for NO_DATA_VALUE and use zero instead.
@@ -600,12 +606,12 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
 
         // account for a worldwide bound:
         double minRadius = osg::minimum(
-            _session->getMap()->getSRS()->getEllipsoid()->getRadiusPolar(),
-            _session->getMap()->getSRS()->getEllipsoid()->getRadiusEquator());
+            map->getSRS()->getEllipsoid()->getRadiusPolar(),
+            map->getSRS()->getEllipsoid()->getRadiusEquator());
 
         double maxRadius = osg::maximum(
-            _session->getMap()->getSRS()->getEllipsoid()->getRadiusPolar(),
-            _session->getMap()->getSRS()->getEllipsoid()->getRadiusEquator());
+            map->getSRS()->getEllipsoid()->getRadiusPolar(),
+            map->getSRS()->getEllipsoid()->getRadiusEquator());
 
         if (bs.radius() > minRadius/2.0)
             return osg::BoundingSphered(osg::Vec3d(0,0,0), maxRadius);

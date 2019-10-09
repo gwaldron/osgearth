@@ -593,7 +593,11 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         // TODO: Use an appropriate resolution for this extents width
         unsigned lod = 23u;
         osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
-        float elevation = env->getElevation(center.x(), center.y());
+        float elevation = NO_DATA_VALUE;
+        if (env.valid())
+        {
+            elevation = env->getElevation(center.x(), center.y());
+        }
 
         // Check for NO_DATA_VALUE and use zero instead.
         if (elevation != NO_DATA_VALUE)

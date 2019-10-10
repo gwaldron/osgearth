@@ -1,0 +1,392 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_AERODROME_AERODROMEFEATUREOPTIONS
+#define OSGEARTH_AERODROME_AERODROMEFEATUREOPTIONS 1
+
+#include <osg/Group>
+
+#include "Common"
+#include <osgEarthFeatures/FeatureSource>
+
+namespace osgEarth { namespace Aerodrome
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+
+    class FeatureSelectorOptions : public ConfigOptions
+    {
+    public:
+        optional<std::string>& attr() { return _attr; }
+        const optional<std::string>& attr() const { return _attr; }    
+
+        optional<std::string>& value() { return _value; }
+        const optional<std::string>& value() const { return _value; }
+
+    public:
+        FeatureSelectorOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          ConfigOptions( opt )
+        {            
+            fromConfig( _conf );
+        }
+
+        virtual ~FeatureSelectorOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.set( "attr", _attr );
+            conf.set( "value", _value );  
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.get( "attr", _attr );
+            conf.get( "value", _value );
+        }
+     
+        optional<std::string>  _attr;
+        optional<std::string>  _value;
+    };
+} }
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Aerodrome::FeatureSelectorOptions);
+
+namespace osgEarth { namespace Aerodrome
+{
+    class TextureOptions : public ConfigOptions
+    {
+    public:
+        optional<URI>& url() { return _imageURI; }
+        const optional<URI>& url() const { return _imageURI; }    
+
+        optional<float>& length() { return _length; }
+        const optional<float>& length() const { return _length; }
+
+    public:
+        TextureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          ConfigOptions( opt )
+        {            
+            fromConfig( _conf );
+        }
+
+        virtual ~TextureOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.set( "url", _imageURI );
+            conf.set( "length", _length );  
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.get( "url", _imageURI );
+            conf.get( "length", _length );
+        }
+     
+        optional<URI>    _imageURI;
+        optional<float> _length;
+    };
+} }
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Aerodrome::TextureOptions);
+
+namespace osgEarth { namespace Aerodrome
+{
+    class ModelOptions : public ConfigOptions
+    {
+    public:
+        /** ICAO code attribute name */
+        optional<URI>& url() { return _imageURI; }
+        const optional<URI>& url() const { return _imageURI; }    
+
+        optional<float>& scale() { return _scale; }
+        const optional<float>& scale() const { return _scale; }
+
+        optional<FeatureSelectorOptions>& selector() { return _selector; }
+        const optional<FeatureSelectorOptions>& selector() const { return _selector; }
+
+        optional<std::string>& headingAttr() { return _headingAttr; }
+        const optional<std::string>& headingAttr() const { return _headingAttr; }
+
+    public:
+        ModelOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          _scale(1.0f), _headingAttr("true_headi", "true_headi"), ConfigOptions( opt )
+        {            
+            fromConfig( _conf );
+        }
+
+        virtual ~ModelOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.set( "url", _imageURI );
+            conf.set( "scale", _scale );
+            conf.set( "selector", _selector );
+            conf.set( "heading_attr", _headingAttr );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.get( "url", _imageURI );
+            conf.get( "scale", _scale );
+            conf.get( "selector", _selector );
+            conf.get( "heading_attr", _headingAttr );
+        }
+     
+        optional<URI>                    _imageURI;
+        optional<float>                  _scale;
+        optional<FeatureSelectorOptions> _selector;
+        optional<std::string>            _headingAttr;
+    };
+
+    typedef std::list<class ModelOptions> ModelOptionsSet;
+} }
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Aerodrome::ModelOptions);
+
+namespace osgEarth { namespace Aerodrome
+{
+    /**
+     * Options for the Aerodrome features
+     */
+    class AerodromeFeatureOptions : public ConfigOptions
+    {
+    public:
+        /** ICAO code attribute name */
+        optional<std::string>& icaoAttr() { return _icaoAttr; }
+        const optional<std::string>& icaoAttr() const { return _icaoAttr; }    
+
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+
+        optional<TextureOptions>& textureOptions() { return _textureOptions; }
+        const optional<TextureOptions>& textureOptions() const { return _textureOptions; }
+
+        //ModelOptionsSet& modelOptions() { return _modelOptions; }
+        const ModelOptionsSet& modelOptions() const { return _modelOptions; }
+
+    public:
+        AerodromeFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          ConfigOptions( opt ),
+          _icaoAttr("apt_icao")
+        {            
+            fromConfig( _conf );
+        }
+
+        virtual ~AerodromeFeatureOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.set( "icao_attr", _icaoAttr );
+            conf.set( "features", _featureOptions );
+            conf.set( "texture", _textureOptions );
+
+            for(ModelOptionsSet::const_iterator i = _modelOptions.begin(); i != _modelOptions.end(); ++i)
+                conf.add("model", i->getConfig());
+
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+        void fromConfig( const Config& conf ) {
+            conf.get( "icao_attr", _icaoAttr );
+            conf.get( "features", _featureOptions );
+            conf.get( "texture", _textureOptions );
+            
+            ConfigSet models = conf.children("model");
+            for (ConfigSet::const_iterator i = models.begin(); i != models.end(); i++)
+                _modelOptions.push_back(ModelOptions(*i));
+        }
+
+    private:
+     
+        optional<std::string> _icaoAttr;
+        optional<FeatureSourceOptions> _featureOptions;
+        optional<TextureOptions> _textureOptions;
+        ModelOptionsSet _modelOptions;
+    };
+
+    typedef std::list<class AerodromeFeatureOptions> AerodromeOptionsSet;
+} }
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Aerodrome::AerodromeFeatureOptions);
+
+namespace osgEarth { namespace Aerodrome
+{
+    /**
+     * Options for the Boundary features
+     */
+    class BoundaryFeatureOptions : public AerodromeFeatureOptions
+    {
+    public:
+        /** ICAO code attribute name */
+        optional<std::string>& elevationAttr() { return _elevationAttr; }
+        const optional<std::string>& elevationAttr() const { return _elevationAttr; }    
+
+    public:
+        BoundaryFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          AerodromeFeatureOptions( opt )
+        {            
+            fromConfig( _conf );
+        }
+
+        virtual ~BoundaryFeatureOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = AerodromeFeatureOptions::getConfig();
+            conf.set( "elevation_attr", _elevationAttr );
+
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            AerodromeFeatureOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+        void fromConfig( const Config& conf ) {
+            AerodromeFeatureOptions::fromConfig(conf);
+
+            conf.get( "elevation_attr", _elevationAttr );
+        }
+
+    private:
+     
+        optional<std::string> _elevationAttr;
+    };
+
+    typedef std::list<class BoundaryFeatureOptions> BoundaryOptionsSet;
+} }
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Aerodrome::BoundaryFeatureOptions);
+    
+namespace osgEarth { namespace Aerodrome
+{
+    /**
+     * Options for the Terminal features
+     */
+    class TerminalFeatureOptions : public AerodromeFeatureOptions
+    {
+    public:
+        optional<URI>& skinsUrl() { return _skinsURI; }
+        const optional<URI>& skinsUrl() const { return _skinsURI; }
+
+        const std::vector<std::string>& wallTags() const { return _wallTags; }
+
+        const std::vector<std::string>& roofTags() const { return _roofTags; }
+
+    public:
+        TerminalFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          AerodromeFeatureOptions( opt )
+        {            
+            fromConfig( _conf );
+        }
+
+        virtual ~TerminalFeatureOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = AerodromeFeatureOptions::getConfig();
+
+            if (_skinsURI.isSet())
+            {
+                Config skinsConf;
+
+                skinsConf.set("url", _skinsURI);
+
+                for (std::vector<std::string>::const_iterator it = _wallTags.begin(); it != _wallTags.end(); ++it)
+                    skinsConf.add("wall_tag", (*it));
+
+                for (std::vector<std::string>::const_iterator it = _roofTags.begin(); it != _roofTags.end(); ++it)
+                    skinsConf.add("roof_tag", (*it));
+
+                conf.set("skins", skinsConf);
+            }
+
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            AerodromeFeatureOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+        void fromConfig( const Config& conf ) {
+            AerodromeFeatureOptions::fromConfig(conf);
+
+            _wallTags.clear();
+            _roofTags.clear();
+            _skinsURI.unset();
+
+            Config skins = conf.child("skins");
+            if (!skins.empty())
+            {
+                skins.get("url", _skinsURI);
+
+                ConfigSet wallTags = skins.children("wall_tag");
+                for (ConfigSet::const_iterator i = wallTags.begin(); i != wallTags.end(); i++)
+                    _wallTags.push_back((*i).value());
+
+                ConfigSet roofTags = skins.children("roof_tag");
+                for (ConfigSet::const_iterator i = roofTags.begin(); i != roofTags.end(); i++)
+                    _roofTags.push_back((*i).value());
+            }
+        }
+
+    private:
+     
+        optional<URI>           _skinsURI;
+        std::vector<std::string>  _wallTags;
+        std::vector<std::string>  _roofTags;
+    };
+
+    typedef std::list<class TerminalFeatureOptions> TerminalOptionsSet;
+
+} } // namespace osgEarth::Aerodrome
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Aerodrome::TerminalFeatureOptions);
+
+#endif // OSGEARTH_AERODROME_AERODROMEFEATUREOPTIONS

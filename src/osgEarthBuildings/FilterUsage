@@ -1,0 +1,12 @@
+#pragma once
+
+
+namespace osgEarth {
+   namespace Buildings
+   {
+      enum FilterUsage
+      {
+         FILTER_USAGE_NORMAL = 0, FILTER_USAGE_ZERO_WORK_CALLBACK_BASED = 1
+      };
+   }
+}

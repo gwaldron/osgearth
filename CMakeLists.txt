@@ -359,10 +359,6 @@ set(OSGEARTHUTIL_LIBRARY "osgEarthUtil")
 set(OSGEARTHFEATURES_LIBRARY "osgEarthFeatures")
 set(OSGEARTHSYMBOLOGY_LIBRARY "osgEarthSymbology")
 set(OSGEARTH_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/osgearth/include")
-message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome")
-ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-aerodrome ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-aerodrome)
-ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-buildings ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-buildings)
-
 
 # Set defaults for Universal Binaries. We want 32-bit Intel/PPC on 10.4
 # and 32/64-bit Intel/PPC on >= 10.5. Anything <= 10.3 doesn't support.

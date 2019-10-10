@@ -1,0 +1,95 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_AERODROME_AERODROMEFACTORY
+#define OSGEARTH_AERODROME_AERODROMEFACTORY 1
+
+#include <osg/Group>
+
+#include "Common"
+#include "AerodromeNode"
+#include "AerodromeCatalog"
+#include "AerodromeFeatureOptions"
+#include "AerodromeRenderer"
+#include "StopwayNode"
+#include <osgEarth/Map>
+#include <osgEarth/SceneGraphCallback>
+
+
+namespace osgEarth { namespace Aerodrome
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    /**
+     * Aerodrome
+     */
+    class OSGEARTHAERODROME_EXPORT AerodromeFactory : public osg::Group
+    {
+    public:
+
+        AerodromeFactory(const Map* map, AerodromeCatalog* catalog, SceneGraphCallbacks* callbacks, const osgDB::Options* options);
+        AerodromeFactory(const Map* map, AerodromeCatalog* catalog, float lodRange, SceneGraphCallbacks* callbacks, const osgDB::Options* options);
+
+        virtual ~AerodromeFactory();
+
+        const Map* getMap() const { return _map.get(); }
+
+        AerodromeRenderer* getRenderer() { return _renderer.get(); }
+        void setRenderer(AerodromeRenderer* renderer) { _renderer = renderer; }
+
+        // creates an AerodromeNode from AerodromeCatalog
+        static AerodromeNode* createAerodrome(AerodromeCatalog* catalog, const std::string& icao, const osgDB::Options* options=0L);
+
+        AerodromeNode* getAerodromeNode(const std::string& icao);
+
+        /** Access a global AerodromeFactory singleton. */
+        static void setDefaultRenderer(AerodromeRenderer* renderer);
+        static AerodromeRenderer* getDefaultRenderer() { return s_renderer.get(); }
+
+        SceneGraphCallbacks* getSceneGraphCallbacks() const { return _sceneGraphCallbacks.get(); }
+
+    protected:
+
+        void init(const osgDB::Options* options);
+
+        // creates PagedLODs for delayed aerodrome creation from an AerodromeCatalog
+        void seedAerodromes(AerodromeCatalog* catalog, const osgDB::Options* options=0L);
+
+        template <typename T, typename Y, typename P> static void createFeatureNodes(P featureOpts, AerodromeNode* aerodrome, const osgDB::Options* options, void (*processor)(T* node, AerodromeNode* aerodrome)=0L);
+        template <typename T, typename Y, typename P> static void createMergedFeatureNodes(P featureOpts, AerodromeNode* aerodrome, const osgDB::Options* options, void (*processor)(T* node, AerodromeNode* aerodrome)=0L);
+        static void createBoundaryNodes(BoundaryFeatureOptions boundaryOpts, AerodromeNode* aerodrome, const osgDB::Options* options);
+
+        static void processStopwayNode(StopwayNode* stopway, AerodromeNode* aerodrome);
+
+
+        static osg::ref_ptr<AerodromeRenderer> s_renderer;
+
+        UID _uid;
+        osg::observer_ptr<const Map> _map;
+        osg::ref_ptr<AerodromeCatalog> _catalog;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<AerodromeRenderer> _renderer;
+        osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
+        mutable Threading::ReadWriteMutex _mutex;
+        float _lodRange;
+    };
+
+} } // namespace osgEarth::Aerodrome
+
+#endif // OSGEARTH_AERODROME_AERODROMEFACTORY

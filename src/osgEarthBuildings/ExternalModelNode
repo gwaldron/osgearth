@@ -1,0 +1,51 @@
+#pragma once
+
+#include "Common"
+
+#include <osgEarth/URI>
+#include <osg/Matrixd>
+
+namespace osgEarth {
+   namespace Buildings
+   {
+      using namespace osgEarth::Features;
+
+      class OSGEARTHBUILDINGS_EXPORT ExternalModel : public osg::Object
+      {
+      public:
+
+         ExternalModel() { ; }
+         ExternalModel(const ExternalModel& rhs, const osg::CopyOp& copyop);
+         ExternalModel& operator=(const ExternalModel& rhs) { 
+            modelName = rhs.modelName;
+            xform = rhs.xform;
+            return *this;
+         }
+
+         std::string modelName;
+         osg::Matrixd xform;
+         META_Object(osgEarth::Buildings, ExternalModel);
+
+         const std::string & getmodelName() const { return modelName; }
+         void setmodelName(const std::string & name) { modelName = name; }
+
+         const osg::Matrixd & getxform() const { return xform; }
+         void setxform(const osg::Matrixd & mat) { xform = mat; }
+      };
+
+      class ExternalModelNode : public osg::Object
+      {
+      public:
+         ExternalModelNode() { ; }
+         ExternalModelNode(const ExternalModelNode& rhs, const osg::CopyOp& copyop);
+
+         META_Object(osgEarth::Buildings, ExternalModelNode);
+         
+         const std::vector<osg::ref_ptr<ExternalModel> >  & getvectorExternalModels() const { return vectorExternalModels; }
+         void setvectorExternalModels(std::vector<osg::ref_ptr<ExternalModel> > & vec) { vectorExternalModels = vec; }
+
+         std::vector<osg::ref_ptr<ExternalModel> > vectorExternalModels;
+      };
+
+   }
+}

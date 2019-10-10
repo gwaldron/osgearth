@@ -16,7 +16,9 @@ ENDFOREACH( lib )
 FOREACH( lib
          osgEarthSplat
          osgEarthSilverLining
-         osgEarthTriton )
+         osgEarthTriton
+         osgEarthAerodromes
+         osgEarthBuildings )
     add_subdirectory( ${lib} )    
 ENDFOREACH( lib )
 

@@ -283,7 +283,7 @@ TileKey
 parseKey(const std::string& input, const Profile* profile)
 {
     std::vector<std::string> tileparts;
-    StringTokenizer(input, tileparts, "/", "", false, true);
+    StringTokenizer(input, tileparts, "_", "", false, true);
     if (tileparts.size() != 3)
         return TileKey::INVALID;
 
@@ -741,9 +741,200 @@ void addTileToQueue(const TileKey& key, const FeatureList& features, void* conte
     mvtContext.queue->add(new BuildTileOperator(key, features, mvtContext));
 }
 
+/**
+ * Given a directory of b3dm files writes out a tileset that can display them.
+ */
+int build_tilesets(osg::ArgumentParser& args)
+{
+    osg::Timer_t startTime = osg::Timer::instance()->tick();
 
+    std::string path;
+    if (!args.read("--path", path))
+        return usage("Missing required --path <tiledirectory>");
+
+    std::string outfile;
+    if (!args.read("--out", outfile))
+        return usage("Missing required --out tileset.json");
+
+    // Find all the b3dm files
+    std::vector< std::string > b3dms;
+    osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
+    for (unsigned int i = 0; i < files.size(); i++)
+    {
+        std::string filename = osgDB::concatPaths(path, files[i]);
+        if (osgDB::getFileExtension(filename) == "b3dm")
+        {
+            b3dms.push_back(filename);
+        }
+    }
+
+    SpatialReference* mapSRS = SpatialReference::create("epsg:4326");
+
+    TileMap leafTiles;
+
+    URIContext uriContext(outfile);
+
+    GeoExtent fullExtent;
+
+    const Profile* profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+
+    OE_NOTICE << "Found " << b3dms.size() << " b3dm files" << std::endl;
+
+
+    unsigned int zoomLevel = 0;
+
+    // Collect the leaf tiles
+    for (unsigned int i = 0; i < b3dms.size(); i++)
+    {
+        std::string relativePath = osgDB::getPathRelative(osgDB::getFilePath(outfile), b3dms[i]);
+        URI uri(relativePath, uriContext);
+        //OE_NOTICE << "Filename " << b3dms[i] << " outFile=" << outfile << " relativePath=" << relativePath << " uri=" << uri.full() << std::endl;
+        std::string shortName = osgDB::getSimpleFileName(b3dms[i]);
+        TileKey key = parseKey(shortName, profile);
+        if (key.valid())
+        {
+            // Assume they are all the same zoom level
+            zoomLevel = key.getLevelOfDetail();
+
+            osg::ref_ptr<TDTiles::Tile> tile = new TDTiles::Tile;
+            tile->geometricError() = 0.0;
+
+            // TODO: get the "refine" right
+            tile->refine() = TDTiles::REFINE_REPLACE;
+            tile->content()->uri() = uri;
+            
+            GeoExtent dataExtent = key.getExtent().transform(mapSRS);
+
+            if (fullExtent.isInvalid())
+            {
+                fullExtent = dataExtent;
+            }
+            else
+            {
+                fullExtent.expandToInclude(dataExtent);
+            }
+
+            // TODO:  Better bounding volume
+            double height = 10.0;
+            tile->boundingVolume()->region()->set(
+                osg::DegreesToRadians(dataExtent.xMin()), osg::DegreesToRadians(dataExtent.yMin()), 0.0,
+                osg::DegreesToRadians(dataExtent.xMax()), osg::DegreesToRadians(dataExtent.yMax()), height);
+
+            leafTiles[key] = tile.get();
+        }        
+    }
+
+    // Create a root Tile.
+    osg::ref_ptr<TDTiles::Tile> rootTile = new TDTiles::Tile();
+
+    TileMap parents;
+    TileMap children;
+
+    // Insert the leafs into the children list.
+    children = leafTiles;
+
+    float geometricError = 5;
+    float height = 20.0f;
+
+    // Now work our way up from the leaves, generating tiles until we get to level 0
+    for (int level = zoomLevel; level >= 0; level--)
+    {
+        OE_NOTICE << "Processing level " << level << " with " << children.size() << " children " << std::endl;
+        if (children.size() == 1)
+        {
+            // Just add to the root tile and quit
+            for (TileMap::iterator itr = children.begin(); itr != children.end(); ++itr)
+            {
+                rootTile->children().push_back(itr->second);
+                break;
+            }
+            break;
+        }
+
+
+        for (TileMap::iterator itr = children.begin(); itr != children.end(); ++itr)
+        {
+            OE_NOTICE << "Proessing child " << itr->first.str() << std::endl;
+            if (itr->first.getLevelOfDetail() == 0)
+            {
+                rootTile->children().push_back(itr->second);
+            }
+            else
+            {
+                // Get or create the parent tile from the parents list
+                TileKey parentKey = itr->first.createParentKey();
+                TileMap::iterator parentIter = parents.find(parentKey);
+                osg::ref_ptr< TDTiles::Tile> parentTile;
+                if (parentIter == parents.end())
+                {
+                    // Create the parent tile
+                    parentTile = new TDTiles::Tile;
+                    parentTile->geometricError() = geometricError;// arentKey.getExtent().width();/// *111000.0;
+                    GeoExtent dataExtent = parentKey.getExtent().transform(mapSRS);
+                    parentTile->boundingVolume()->region()->set(
+                        osg::DegreesToRadians(dataExtent.xMin()), osg::DegreesToRadians(dataExtent.yMin()), 0.0,
+                        osg::DegreesToRadians(dataExtent.xMax()), osg::DegreesToRadians(dataExtent.yMax()), height);
+                    parents[parentKey] = parentTile.get();
+                }
+                else
+                {
+                    parentTile = parentIter->second.get();
+                }
+
+                parentTile->children().push_back(itr->second);
+            }
+        }
+
+        geometricError *= 2.0f;
+        height *= 2.0f;
+
+        // The newly created parents are the new children
+        children = parents;
+        parents.clear();
+
+        if (level == 5)
+        {
+            for (TileMap::iterator itr = children.begin(); itr != children.end(); ++itr)
+            {
+                rootTile->children().push_back(itr->second);
+            }
+            break;
+        }
+    }
+
+    // Compute the root bounding sphere
+
+    // TODO:  The root tile should really have the extent of the top level parent tiles I think instead of the actual data.
+    rootTile->boundingVolume()->region()->set(
+        osg::DegreesToRadians(fullExtent.xMin()), osg::DegreesToRadians(fullExtent.yMin()), 0.0,
+        osg::DegreesToRadians(fullExtent.xMax()), osg::DegreesToRadians(fullExtent.yMax()), height);
+    rootTile->geometricError() = geometricError;
+
+    osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
+    tileset->root() = rootTile.get();
+    tileset->asset()->version() = "1.0";
+
+    std::ofstream fout(outfile);
+    Util::Json::Value json = tileset->getJSON();
+    Util::Json::StyledStreamWriter writer;
+    writer.write(fout, json);
+    fout.close();
+
+    OE_INFO << "Wrote tileset to " << outfile << std::endl;
+
+    osg::Timer_t endTime = osg::Timer::instance()->tick();
+    double time = osg::Timer::instance()->delta_s(startTime, endTime);
+    OE_NOTICE << "Completed generating tilesets in " << osgEarth::prettyPrintTime(time) << std::endl;    
+
+    return 0;
+}
+
+
+/**
+ * Builds b3dm files for all the leaf nodes in an mbtiles database.
+*/
 int
-threaded_tile(osg::ArgumentParser& args)
+build_leaves(osg::ArgumentParser& args)
 {
     osg::Timer_t startTime = osg::Timer::instance()->tick();
 
@@ -855,6 +1046,12 @@ main(int argc, char** argv)
 
     else if (arguments.read("--mvt_tile"))
         return mvt_tile(arguments);
+
+    else if (arguments.read("--build_leaves"))
+        return build_leaves(arguments);
+
+    else if (arguments.read("--build_tilesets"))
+        return build_tilesets(arguments);    
 
     else if (arguments.read("--view"))
         return main_view(arguments);

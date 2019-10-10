@@ -322,7 +322,7 @@ public:
                     // If the image has a filename try to hash it so we only write out one copy of it.  
                     if (!osgImage->getFileName().empty())
                     {
-                        std::string ext = osgDB::getFileExtension(osgImage->getFileName());
+                        std::string ext = "png";// osgDB::getFileExtension(osgImage->getFileName());
                         filename = Stringify() << std::hex << ::Strings::hashString(osgImage->getFileName()) << "." << ext;                        
 
                         if (!osgDB::fileExists(filename))

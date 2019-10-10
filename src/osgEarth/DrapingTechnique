@@ -35,7 +35,7 @@ namespace osgEarth
     class TerrainEngineNode;
 }
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Projects an overlay scene graph onto the main model.

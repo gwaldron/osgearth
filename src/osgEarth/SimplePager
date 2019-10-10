@@ -30,7 +30,7 @@
 #include <osg/Group>
 #include <osg/PagedLOD>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 

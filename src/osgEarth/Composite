@@ -53,7 +53,7 @@ namespace osgEarth
         
         //! Opens all composited layers and only returns OK if all layers
         //! open succesfully
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
@@ -102,7 +102,7 @@ namespace osgEarth
         
         //! Opens all composited layers and only returns OK if all layers
         //! open succesfully
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Creates a heightfield for the given tile key
         virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;

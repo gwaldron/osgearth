@@ -25,7 +25,7 @@
 
 #include <osgEarth/Common>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT Memory
     {

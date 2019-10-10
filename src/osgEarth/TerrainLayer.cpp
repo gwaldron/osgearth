@@ -290,15 +290,15 @@ TerrainLayer::setUpL2Cache(unsigned minSize)
     }
 }
 
-const Status&
-TerrainLayer::open()
+Status
+TerrainLayer::openImplementation()
 {
     if ( !_openCalled )
     {
         _openCalled = true;
 
         // Call base class
-        if (VisibleLayer::open().isError())
+        if (VisibleLayer::openImplementation().isError())
             return getStatus();
 
         // create the unique cache ID for the cache bin.

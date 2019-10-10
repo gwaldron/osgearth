@@ -138,7 +138,7 @@ namespace osgEarth
         typedef unsigned StageMask;
     }
 
-    namespace Support
+    namespace Util
     {
         /**
          * A Shader that can compile into different stages of the program pipeline
@@ -266,7 +266,7 @@ namespace osgEarth
 
 namespace osgEarth
 {
-    using namespace osgEarth::Support;
+    using namespace osgEarth::Util;
 
     /**
      * VirtualProgram enables GLSL shader composition within osgEarth. It automatically

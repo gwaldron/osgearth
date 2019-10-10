@@ -708,13 +708,13 @@ FlatteningLayer::init()
     _pool->setTileSize(257u);
 }
 
-const Status&
-FlatteningLayer::open()
+Status
+FlatteningLayer::openImplementation()
 {
     // ensure the caller named a feature source:
     Status fsStatus = _client.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-        return setStatus(fsStatus);
+        return fsStatus;
     
     const Profile* profile = getProfile();
     if ( !profile )
@@ -723,7 +723,7 @@ FlatteningLayer::open()
         setProfile( profile );
     }
 
-    return ElevationLayer::open();
+    return ElevationLayer::openImplementation();
 }
 
 FlatteningLayer::~FlatteningLayer()
@@ -820,10 +820,23 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
     // If the feature source has a tiling profile, we are going to have to map the incoming
     // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
-    GeoExtent queryExtent = key.getExtent().transform(featureSRS);
+    GeoExtent queryExtent;
+    if (featureProfile->getTilingProfile())
+        queryExtent = featureProfile->getTilingProfile()->clampAndTransformExtent(key.getExtent());
+    else
+        queryExtent = key.getExtent().transform(featureSRS);
+
+    if (!queryExtent.isValid())
+    {
+        return GeoHeightField::INVALID;
+    }
 
     // Lat/Long extent:
     GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
+    if (!geoExtent.isValid())
+    {
+        return GeoHeightField::INVALID;
+    }
 
     // Buffer the query extent to include the potentially flattened area.
     /*
@@ -866,11 +879,11 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
     MultiGeometry geoms;
     WidthsList widths;
 
-    if (featureProfile->getProfile())
+    if (featureProfile->getTilingProfile())
     {
         // Tiled source, must resolve complete set of intersecting tiles:
         std::vector<TileKey> intersectingKeys;
-        featureProfile->getProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
+        featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
 
         std::set<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
@@ -998,9 +1011,11 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         // Create an elevation query envelope at the LOD we are creating
         osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
 
-        bool fill = (options().fill() == true);     
-        
-        integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
+        if (envelope.valid())
+        {
+            bool fill = (options().fill() == true);             
+            integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
+        }
     }
 
     return GeoHeightField(hf.get(), key.getExtent());

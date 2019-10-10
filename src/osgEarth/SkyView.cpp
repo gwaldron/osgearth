@@ -65,17 +65,17 @@ SkyViewImageLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-SkyViewImageLayer::open()
+Status
+SkyViewImageLayer::openImplementation()
 {
     Status imageStatus = _client.open(options().imageLayer(), getReadOptions());
     if (imageStatus.isError())
-        return setStatus(imageStatus);
+        return imageStatus;
 
     // copy over the profile
     setProfile(getImageLayer()->getProfile());
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 GeoImage

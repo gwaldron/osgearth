@@ -34,7 +34,7 @@
 #include <set>
 #include <ctype.h>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     extern OSGEARTH_EXPORT const std::string EMPTY_STRING;
 
@@ -318,7 +318,7 @@ namespace osgEarth { namespace Support
 
 namespace osgEarth
 {
-    namespace Strings = osgEarth::Support;
+    namespace Strings = osgEarth::Util;
 }
 
 

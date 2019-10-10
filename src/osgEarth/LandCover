@@ -241,11 +241,13 @@ namespace osgEarth
 
     public: // Layer
 
-        const Status& open();
+        virtual void addedToMap(const class Map*);
 
-        void addedToMap(const class Map*);
+        virtual void removedFromMap(const class Map*);
 
-        void removedFromMap(const class Map*);
+    protected: // Layer
+
+        virtual Status openImplementation();
 
     private:
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;

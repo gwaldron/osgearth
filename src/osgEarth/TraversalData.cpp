@@ -20,7 +20,7 @@
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 bool
 TransientUserDataStore::isObserverInvalid(const Table::entry_t& p)

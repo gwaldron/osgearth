@@ -58,7 +58,7 @@ namespace osgEarth { namespace Contrib
         void init();
 
         //! Establishes a connection to the WMS service
-        const Status& open();
+        Status openImplementation();
 
         //! Return an image for a key.
         GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;

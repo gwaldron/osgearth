@@ -114,8 +114,8 @@ MBTilesImageLayer::init()
     _forceRGB = false;
 }
 
-const Status&
-MBTilesImageLayer::open()
+Status
+MBTilesImageLayer::openImplementation()
 {
     std::string fullFilename = options().url()->full();
     if (!osgDB::fileExists(fullFilename))
@@ -134,13 +134,13 @@ MBTilesImageLayer::open()
         // For a NEW database, the profile MUST be set prior to initialization.
         if (getProfile() == 0L)
         {
-            return setStatus(Status::ConfigurationError, 
+            return Status(Status::ConfigurationError, 
                 "Cannot create database; required Profile is missing");
         }
 
         if (!options().format().isSet())
         {
-            return setStatus(Status::ConfigurationError,
+            return Status(Status::ConfigurationError,
                 "Cannot create database; required format property is missing");
         }
 
@@ -158,7 +158,7 @@ MBTilesImageLayer::open()
     int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, flags, 0L);
     if (rc != 0)
     {
-        return setStatus(Status::ResourceUnavailable, Stringify()
+        return Status(Status::ResourceUnavailable, Stringify()
             << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(database));
     }
 
@@ -170,7 +170,7 @@ MBTilesImageLayer::open()
         _rw = getReaderWriter(_tileFormat);
         if (!_rw.valid())
         {
-            return setStatus(Status::ServiceUnavailable,
+            return Status(Status::ServiceUnavailable,
                 "No plugin found to load format \"" + _tileFormat + "\"");
         }
 
@@ -238,7 +238,7 @@ MBTilesImageLayer::open()
         // By this point, we require a valid tile format.
         if (_tileFormat.empty())
         {
-            return setStatus(Status::ConfigurationError, "Required format not in metadata, nor specified in the options.");
+            return Status(Status::ConfigurationError, "Required format not in metadata, nor specified in the options.");
         }
 
         // Make sure we have a readerwriter for the tile format:
@@ -256,7 +256,7 @@ MBTilesImageLayer::open()
         {
             _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor(compression);
             if (!_compressor.valid())
-                return setStatus(Status::ServiceUnavailable, "Cannot find compressor \"" + compression + "\"");
+                return Status(Status::ServiceUnavailable, "Cannot find compressor \"" + compression + "\"");
             else
                 OE_INFO << LC << "Data is compressed (" << compression << ")" << std::endl;
         }
@@ -297,10 +297,10 @@ MBTilesImageLayer::open()
             StringTokenizer(",").tokenize(boundsStr, tokens);
             if (tokens.size() == 4)
             {
-                double minLon = osgEarth::Support::as<double>(tokens[0], 0.0);
-                double minLat = osgEarth::Support::as<double>(tokens[1], 0.0);
-                double maxLon = osgEarth::Support::as<double>(tokens[2], 0.0);
-                double maxLat = osgEarth::Support::as<double>(tokens[3], 0.0);
+                double minLon = osgEarth::Util::as<double>(tokens[0], 0.0);
+                double minLat = osgEarth::Util::as<double>(tokens[1], 0.0);
+                double maxLon = osgEarth::Util::as<double>(tokens[2], 0.0);
+                double maxLat = osgEarth::Util::as<double>(tokens[3], 0.0);
 
                 GeoExtent extent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
                 if (extent.isValid())
@@ -336,7 +336,7 @@ MBTilesImageLayer::open()
     unsigned char *data = _emptyImage->data(0, 0);
     memset(data, 0, 4 * size * size);
     
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void
@@ -748,8 +748,8 @@ MBTilesElevationLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-MBTilesElevationLayer::open()
+Status
+MBTilesElevationLayer::openImplementation()
 {
     // Create an image layer under the hood. TMS fetch is the same for image and
     // elevation; we just convert the resulting image to a heightfield
@@ -758,17 +758,19 @@ MBTilesElevationLayer::open()
     // Initialize and open the image layer
     _imageLayer->setReadOptions(getReadOptions());
 
+    Status status;
+
     if (isWritingRequested())
-        setStatus(_imageLayer->openForWriting());
+        status = _imageLayer->openForWriting();
     else
-        setStatus(_imageLayer->open());
+        status = _imageLayer->open();
 
-    if (getStatus().isOK())
-    {
-        setProfile(_imageLayer->getProfile());            
-    }
+    if (status.isError())
+        return status;
 
-    return ElevationLayer::open();
+    setProfile(_imageLayer->getProfile());            
+
+    return ElevationLayer::openImplementation();
 }
 
 void

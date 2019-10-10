@@ -49,7 +49,7 @@ namespace osgEarth
     class TerrainEffect;
     class VirtualProgram;
 
-    namespace Support
+    namespace Util
     {
         class TerrainEngineNodeFactory;
     }
@@ -373,7 +373,7 @@ namespace osgEarth
         }
     };
 
-    namespace Support
+    namespace Util
     {
         /**
          * Factory class for creating terrain engine instances.

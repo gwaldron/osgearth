@@ -28,7 +28,7 @@
 /**
  * Classes for asynchronous loading of scene graph nodes.
  */
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Result returned from an asynchronous function

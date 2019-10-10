@@ -33,7 +33,7 @@
 #include <stack>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 #undef LC
 #define LC "[GLTFWriter] "

@@ -27,7 +27,7 @@
 #include <osgEarth/ColorFilter>
 #include <vector>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * A factory object that generates shader program "scaffolding" for VirtualProgram

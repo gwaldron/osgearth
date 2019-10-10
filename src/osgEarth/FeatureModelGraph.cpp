@@ -47,10 +47,10 @@
 #include <algorithm>
 #include <iterator>
 
-#define LC "[FeatureModelGraph] " << getName() << ": "
+#define LC "[FeatureModelGraph] " << _ownerName << ": "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 using namespace osgEarth::Util;
 
 #undef USE_PROXY_NODE_FOR_TESTING
@@ -184,7 +184,7 @@ namespace
             osg::ref_ptr<FeatureModelGraph> graph;
             if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
             {
-               OE_WARN << LC << "Internal error - no FeatureModelGraph object in OptionsData\n";
+               OE_WARN << "Internal error - no FeatureModelGraph object in OptionsData\n";
                return ReadResult::ERROR_IN_READING_FILE;
             }
 
@@ -274,6 +274,12 @@ FeatureModelGraph::setMaxRange(float value)
     _maxRange = value;
 }
 
+void
+FeatureModelGraph::setOwnerName(const std::string& value)
+{
+    _ownerName = value;
+}
+
 Status
 FeatureModelGraph::open()
 {
@@ -349,9 +355,9 @@ FeatureModelGraph::open()
 
 
     // A data source is either Tiled or Not Tiled. Set things up differently depending.
-    _useTiledSource = featureProfile->getTiled();
+    _useTiledSource = featureProfile->isTiled();
 
-    if (featureProfile->getTiled())
+    if (featureProfile->isTiled())
     {
         float maxRange = FLT_MAX;
 
@@ -380,7 +386,7 @@ FeatureModelGraph::open()
         if ( !_options.layout()->tileSizeFactor().isSet() )
         {
             double width, height;
-            featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+            featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
             GeoExtent ext(featureProfile->getSRS(),
                 featureProfile->getExtent().west(),
@@ -545,11 +551,15 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
     
     if ( mapf )
     {
-        // Use an appropriate resolution for this extents width
-        double resolution = workingExtent.width();
-        ElevationQuery query( *mapf );
-        GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
-        float elevation = query.getElevation( p, resolution );
+        // TODO: Use an appropriate resolution for this extents width
+        unsigned lod = 23u;
+        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
+        float elevation = NO_DATA_VALUE;
+        if (env.valid())
+        {
+            elevation = env->getElevation(center.x(), center.y());
+        }
+
         // Check for NO_DATA_VALUE and use zero instead.
         if (elevation == NO_DATA_VALUE)
         {
@@ -614,7 +624,7 @@ FeatureModelGraph::setupPaging()
         if ( _maxRange.isSet() )
             userMaxRange = osg::minimum(userMaxRange, _maxRange.get());
         
-        if ( !featureProfile->getTiled() )
+        if ( !featureProfile->isTiled() )
         {
             // user set a max_range, but we'd not tiled. Just override the top level plod.
             maxRangeOverride = userMaxRange;
@@ -689,19 +699,16 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             float tileFactor = _options.layout().isSet() ? _options.layout()->tileSizeFactor().get() : 15.0f;            
             double maxRange =  tileBound.radius() * tileFactor;
             FeatureLevel level( 0, maxRange );
-            //OE_NOTICE << "(" << lod << ": " << tileX << ", " << tileY << ")" << std::endl;
-            //OE_NOTICE << "  extent = " << tileExtent.width() << "x" << tileExtent.height() << std::endl;
-            //OE_NOTICE << "  tileFactor = " << tileFactor << " maxRange=" << maxRange << " radius=" << tileBound.radius() << std::endl;
             
 
             // Construct a tile key that will be used to query the source for this tile.            
             // The tilekey x, y, z that is computed in the FeatureModelGraph uses a lower left origin,
             // osgEarth tilekeys use a lower left so we need to invert it.
             unsigned int w, h;
-            featureProfile->getProfile()->getNumTiles(lod, w, h);
+            featureProfile->getTilingProfile()->getNumTiles(lod, w, h);
             int invertedTileY = h - tileY - 1;
 
-            TileKey key(lod, tileX, invertedTileY, featureProfile->getProfile());
+            TileKey key(lod, tileX, invertedTileY, featureProfile->getTilingProfile());
 
             geometry = buildTile( level, tileExtent, &key, readOptions );
             result = geometry;

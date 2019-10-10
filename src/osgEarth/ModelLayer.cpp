@@ -217,11 +217,12 @@ ModelLayer::init()
     _root->setName(getName());
 }
 
-const Status&
-ModelLayer::open()
+Status
+ModelLayer::openImplementation()
 {
-    if (VisibleLayer::open().isError())
-        return getStatus();
+    Status parentStatus = VisibleLayer::openImplementation();
+    if (parentStatus.isError())
+        return parentStatus;
 
     // Do we need to load a model source?
     if (!_modelSource.valid() && options().driver().isSet())
@@ -230,6 +231,8 @@ ModelLayer::open()
 
         OE_INFO << LC << "Opening; driver=\"" << driverName << "\"" << std::endl;
         
+        Status status;
+
         // Try to create the model source:
         _modelSource = ModelSourceFactory::create( options().driver().get() );
         if ( _modelSource.valid() )
@@ -250,24 +253,24 @@ ModelLayer::open()
                         const Status& maskStatus = _maskSource->open(_readOptions.get());
                         if (maskStatus.isError())
                         {
-                            setStatus(maskStatus);
+                            return maskStatus;
                         }
                     }
                     else
                     {
-                        setStatus(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << options().mask()->getDriver() << "\"");
+                        return Status(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << options().mask()->getDriver() << "\"");
                     }
                 }
             }
             else
             {
                 // propagate the model source's error status
-                setStatus(modelStatus);
+                return modelStatus;
             }
         }
         else
         {
-            setStatus(Status::ServiceUnavailable, Stringify() << "Failed to create driver \"" << driverName << "\"");
+            return Status(Status::ServiceUnavailable, Stringify() << "Failed to create driver \"" << driverName << "\"");
         }
     }
 
@@ -296,8 +299,8 @@ ModelLayer::open()
             ReadResult rr = options().url()->readNode(localReadOptions.get());
             if (rr.failed())
             {
-                return setStatus(Status(Status::ResourceUnavailable,
-                    Stringify() << "Failed to load model from URL ("<<rr.errorDetail()<<")"));
+                return Status(Status::ResourceUnavailable,
+                    Stringify() << "Failed to load model from URL ("<<rr.errorDetail()<<")");
             }
             modelNode = rr.getNode();
         }
@@ -429,7 +432,7 @@ ModelLayer::open()
         }
     }
 
-    return getStatus();
+    return STATUS_OK;
 }
 
 std::string

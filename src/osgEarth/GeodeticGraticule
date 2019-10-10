@@ -31,7 +31,7 @@
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Support;
+    using namespace osgEarth::Util;
 
     /**
      * Graticule that shows lat/long lines and automatically places labels.

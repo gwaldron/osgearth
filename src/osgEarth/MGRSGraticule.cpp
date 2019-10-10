@@ -38,7 +38,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 REGISTER_OSGEARTH_LAYER(mgrsgraticule, MGRSGraticule);
 REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
@@ -338,14 +338,14 @@ MGRSGraticule::init()
 
 }
 
-const Status&
-MGRSGraticule::open()
+Status
+MGRSGraticule::openImplementation()
 {
     Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
     if (ssStatus.isError())
-        return setStatus(ssStatus);
+        return ssStatus;
 
-    return VisibleLayer::open();
+    return VisibleLayer::openImplementation();
 }
 
 void
@@ -1043,7 +1043,7 @@ MGRSGraticule::rebuild()
         mapProfile->getExtent().yMax(),
         8, 4 );
 
-    _featureProfile = new FeatureProfile(_profile->getSRS());
+    _featureProfile = new FeatureProfile(_profile->getExtent()); //getSRS());
 
 
     // rebuild the graph:

@@ -91,7 +91,7 @@ namespace osgEarth { namespace Contrib
     public: // ElevationLayer
 
         // opens the layer and returns the status
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         virtual void init();
 

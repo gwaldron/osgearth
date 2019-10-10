@@ -84,7 +84,7 @@ namespace osgEarth
         osg::observer_ptr<osg::Object> _sender;
     };
 
-    namespace Support
+    namespace Util
     {
         /**
          * Extends the osg::PagedLOD class to invoke SceneGraphCallbacks

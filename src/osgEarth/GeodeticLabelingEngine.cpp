@@ -25,7 +25,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 //........................................................................
 

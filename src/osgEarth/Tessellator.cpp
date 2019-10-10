@@ -50,7 +50,7 @@ namespace mapbox {
 #endif
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 
 #define LC "[Tessellator] "

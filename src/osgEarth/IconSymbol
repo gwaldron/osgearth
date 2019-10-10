@@ -27,7 +27,7 @@
 namespace osgEarth
 {
     class Style;
-    namespace Support {
+    namespace Util {
         class InstanceResource;
     }
 

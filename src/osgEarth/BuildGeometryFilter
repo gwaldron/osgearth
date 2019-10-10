@@ -27,7 +27,7 @@
 #include <osgEarth/GeoMath>
 #include <osg/Geode>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Builds geometry from a stream of input features.

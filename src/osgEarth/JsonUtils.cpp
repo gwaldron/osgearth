@@ -40,7 +40,7 @@
 #define JSON_ASSERT_MESSAGE( condition, message ) if (!( condition )) throw std::runtime_error( message );
 
 using namespace osgEarth;
-using namespace osgEarth::Support::Json;
+using namespace osgEarth::Util::Json;
 
 const Value Value::null;
 const Value::Int Value::minInt = Value::Int( ~(Value::UInt(-1)/2) );
@@ -52,7 +52,7 @@ ValueAllocator::~ValueAllocator()
 {
 }
 
-namespace osgEarth { namespace Support { namespace Json {
+namespace osgEarth { namespace Util { namespace Json {
 
 class DefaultValueAllocator : public ValueAllocator
 {
@@ -1991,7 +1991,7 @@ Path::make( Value &root ) const
 
 
 
-namespace osgEarth { namespace Support { namespace Json
+namespace osgEarth { namespace Util { namespace Json
 {
     static inline bool
         in(Reader::Char c, Reader::Char c1, Reader::Char c2, Reader::Char c3, Reader::Char c4)
@@ -2731,14 +2731,14 @@ Reader::getFormatedErrorMessages() const
 
 std::istream& operator>>( std::istream &sin, Value &root )
 {
-    Support::Json::Reader reader;
+    Util::Json::Reader reader;
     bool ok = reader.parse(sin, root, true);
     //JSON_ASSERT( ok );
     if (!ok) throw std::runtime_error(reader.getFormatedErrorMessages());
     return sin;
 }
 
-namespace osgEarth { namespace Support { namespace Json
+namespace osgEarth { namespace Util { namespace Json
 {
     static void uintToString(unsigned int value,
         char *&current)
@@ -3522,7 +3522,7 @@ StyledStreamWriter::normalizeEOL( const std::string &text )
 
 std::ostream& operator<<( std::ostream &sout, const Value &root )
 {
-   Support::Json::StyledStreamWriter writer;
+   Util::Json::StyledStreamWriter writer;
    writer.write(sout, root);
    return sout;
 }

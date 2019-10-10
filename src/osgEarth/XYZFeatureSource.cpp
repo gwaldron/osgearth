@@ -65,20 +65,20 @@ OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, InvertY, invertY);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MinLevel, minLevel);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MaxLevel, maxLevel);
 
-const Status&
-XYZFeatureSource::open()
+Status
+XYZFeatureSource::openImplementation()
 {
     FeatureProfile* fp = 0L;
 
     // Try to get the results from the settings instead
     if (!options().profile().isSet())
     {
-        return setStatus(Status(Status::ConfigurationError, "XYZ driver requires an explicit profile"));
+        return Status(Status::ConfigurationError, "XYZ driver requires an explicit profile");
     }
 
     if (!options().minLevel().isSet() || !options().maxLevel().isSet())
     {
-        return setStatus(Status(Status::ConfigurationError, "XYZ driver requires a min and max level"));
+        return Status(Status::ConfigurationError, "XYZ driver requires a min and max level");
     }
 
     _template = options().url()->full();
@@ -94,10 +94,9 @@ XYZFeatureSource::open()
 
     osg::ref_ptr<const Profile> profile = Profile::create(options().profile().get());
     fp = new FeatureProfile(profile->getExtent());
-    fp->setTiled(true);
     fp->setFirstLevel(options().minLevel().get());
     fp->setMaxLevel(options().maxLevel().get());
-    fp->setProfile(profile.get());
+    fp->setTilingProfile(profile.get());
     if (options().geoInterp().isSet())
     {
         fp->geoInterp() = options().geoInterp().get();
@@ -105,7 +104,7 @@ XYZFeatureSource::open()
 
     setFeatureProfile(fp);
 
-    return FeatureSource::open();
+    return FeatureSource::openImplementation();
 }
 
 void

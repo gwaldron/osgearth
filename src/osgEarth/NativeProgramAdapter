@@ -35,7 +35,7 @@
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Wraps a native glProgram handle so we can earch it form uniforms and

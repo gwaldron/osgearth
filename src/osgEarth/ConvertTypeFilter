@@ -25,7 +25,7 @@
 #include <osgEarth/Filter>
 #include <osg/Geode>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 

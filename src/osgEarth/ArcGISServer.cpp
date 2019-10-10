@@ -444,8 +444,8 @@ ArcGISServerImageLayer::~ArcGISServerImageLayer()
     //nop
 }
 
-const Status&
-ArcGISServerImageLayer::open()
+Status
+ArcGISServerImageLayer::openImplementation()
 {
     // Default cache policy to NO_CACHE for public services
     if (options().cachePolicy().isSet() == false &&
@@ -475,7 +475,7 @@ ArcGISServerImageLayer::open()
 
     if (options().url().isSet() == false)
     {
-        return setStatus(Status::ConfigurationError, "Missing required endpoint URL");
+        return Status(Status::ConfigurationError, "Missing required endpoint URL");
     }
 
     // add the security token to the URL if necessary:
@@ -521,7 +521,7 @@ ArcGISServerImageLayer::open()
     {
         OE_INFO << LC << "_map_service.init failed: " << _map_service.getError() << std::endl;
 
-        return setStatus(
+        return Status(
             Status::ResourceUnavailable, Stringify()
             << "ArcGIS map service initialization failed: "
             << _map_service.getError());
@@ -557,7 +557,7 @@ ArcGISServerImageLayer::open()
         setProfile(profile);
     }
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void

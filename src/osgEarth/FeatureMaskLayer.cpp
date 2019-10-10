@@ -58,16 +58,14 @@ FeatureMaskLayer::getFeatureSource() const
     return _client.getLayer();
 }
 
-const Status&
-FeatureMaskLayer::open()
+Status
+FeatureMaskLayer::openImplementation()
 {
     Status fsStatus = _client.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
-    {
-        return setStatus(fsStatus);
-    }
+        return fsStatus;
 
-    return MaskLayer::open();
+    return MaskLayer::openImplementation();
 }
 
 osg::Vec3dArray*

@@ -24,7 +24,7 @@
 #include <osgEarth/Feature>
 #include <osgEarth/Filter>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class ResampleFilterOptions : public ConfigOptions
     {

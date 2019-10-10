@@ -26,7 +26,7 @@
 #include <string.h>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 class FastDXTProcessor : public osgDB::ImageProcessor
 {

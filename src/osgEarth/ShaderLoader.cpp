@@ -25,7 +25,7 @@
 #define LC "[ShaderLoader] "
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 
 typedef std::map<std::string,std::string> StringMap;

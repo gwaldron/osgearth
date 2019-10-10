@@ -198,8 +198,8 @@ LandCoverLayer::addCoverage(LandCoverCoverageLayer* value)
     _coverageLayers.push_back(value);
 }
 
-const Status&
-LandCoverLayer::open()
+Status
+LandCoverLayer::openImplementation()
 {
     const Profile* profile = getProfile();
     if (!profile)
@@ -242,7 +242,7 @@ LandCoverLayer::open()
             if (coverageStatus.isError())
             {
                 OE_WARN << LC << "One of the coverage layers failed to open; aborting" << std::endl;
-                return setStatus(coverageStatus);
+                return coverageStatus;
             }
 
             if (coverage->getImageLayer())
@@ -258,7 +258,7 @@ LandCoverLayer::open()
     // Since this is possibly a composited layer with warping, we just
     // let it default so we can oversample the data with warping.
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void

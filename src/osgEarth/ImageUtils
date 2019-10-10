@@ -44,7 +44,7 @@
     #define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG     0x8C03
 #endif
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT ImageUtils
     {

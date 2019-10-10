@@ -23,7 +23,7 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 
-namespace osgEarth { namespace Support
+namespace osgEarth { namespace Util
 {
     /**
      * Consolidates all the like-moded primitive sets in a geometry.

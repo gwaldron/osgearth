@@ -163,7 +163,7 @@ namespace osgEarth
     };
 
     
-    namespace Support
+    namespace Util
     {
         /**
          * A bounding sphere calculator that forces the center point

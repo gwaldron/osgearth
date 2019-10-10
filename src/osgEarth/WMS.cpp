@@ -26,7 +26,7 @@
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Support;
+using namespace osgEarth::Util;
 
 #undef LC
 #define LC "[WMS] "
@@ -766,8 +766,8 @@ WMSImageLayer::init()
     _isPlaying = false;
 }
 
-const Status&
-WMSImageLayer::open()
+Status
+WMSImageLayer::openImplementation()
 {
     WMS::Driver* driver = new WMS::Driver(options(), this, getReadOptions());
     _driver = driver;
@@ -778,12 +778,15 @@ WMSImageLayer::open()
         profile,
         dataExtents());
 
-    if (getStatus().isOK() && profile.get() != getProfile())
+    if (status.isError())
+        return status;
+
+    if (profile.get() != getProfile())
     {
         setProfile(profile.get());
     }
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 GeoImage

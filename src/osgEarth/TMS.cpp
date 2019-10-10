@@ -1097,24 +1097,27 @@ TMSImageLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-TMSImageLayer::open()
+Status
+TMSImageLayer::openImplementation()
 {
     osg::ref_ptr<const Profile> profile = getProfile();
 
-    setStatus(_driver.open(
+    Status status = _driver.open(
         options().url().get(),
         profile,
         options().format().get(),
         dataExtents(),
-        getReadOptions()));
+        getReadOptions());
 
-    if (getStatus().isOK() && profile.get() != getProfile())
+    if (status.isError())
+        return status;
+
+    if (profile.get() != getProfile())
     {
         setProfile(profile.get());
     }
 
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 GeoImage
@@ -1198,8 +1201,8 @@ TMSElevationLayer::init()
     setTileSourceExpected(false);
 }
 
-const Status&
-TMSElevationLayer::open()
+Status
+TMSElevationLayer::openImplementation()
 {
     // Create an image layer under the hood. TMS fetch is the same for image and
     // elevation; we just convert the resulting image to a heightfield
@@ -1207,15 +1210,15 @@ TMSElevationLayer::open()
 
     // Initialize and open the image layer
     _imageLayer->setReadOptions(getReadOptions());
-    setStatus( _imageLayer->open() );
+    Status status = _imageLayer->open();
 
-    if (getStatus().isOK())
-    {
-        setProfile(_imageLayer->getProfile());
-        dataExtents() = _imageLayer->getDataExtents();
-    }
+    if (status.isError())
+        return status;
 
-    return ElevationLayer::open();
+    setProfile(_imageLayer->getProfile());
+    dataExtents() = _imageLayer->getDataExtents();
+
+    return ElevationLayer::openImplementation();
 }
 
 GeoHeightField

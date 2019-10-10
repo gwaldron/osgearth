@@ -48,7 +48,11 @@ using namespace osgEarth;
 
 #define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
 
+//#define VRV_THROTTLING
+#ifdef VRV_THROTTLING
 const int MAX_NUM_CHILDREN_CREATED_PER_FRAME = 4;
+#endif
+
 // Whether to check the child nodes for culling before traversing them.
 // This could prevent premature Loader requests, but it increases cull time.
 //#define VISIBILITY_PRECHECK
@@ -469,8 +473,7 @@ TileNode::cull(TerrainCuller* culler)
         canLoadData       = false;
     }
 
-#if 0 // GW MERGE 2.10.x
-    // VRV_PATCH
+#ifdef VRV_THROTTLING
     if (culler->_numberChildrenCreated >= MAX_NUM_CHILDREN_CREATED_PER_FRAME) {
        canCreateChildren = false;
     }
@@ -484,6 +487,8 @@ TileNode::cull(TerrainCuller* culler)
         if ( !_childrenReady && canCreateChildren )
         {
             _mutex.lock();
+
+#ifdef VRV_THROTTLING
 
             if ( !_childrenReady )
             {
@@ -509,6 +514,19 @@ TileNode::cull(TerrainCuller* culler)
                 // This means that you cannot start loading data immediately; must wait a frame.
                 canLoadData = false;
             }
+#else
+
+            if ( !_childrenReady )
+            {
+                OE_START_TIMER(createChildren);
+                createChildren( context );
+                REPORT("TileNode::createChildren", createChildren);
+                _childrenReady = true;
+
+                // This means that you cannot start loading data immediately; must wait a frame.
+                canLoadData = false;
+            }
+#endif
 
             _mutex.unlock();
         }
@@ -689,12 +707,15 @@ TileNode::createChildren(EngineContext* context)
 
         // Add to the scene graph.
         addChild( node );
+
+#ifdef VRV_THROTTLING
         // 2 ms limit on tile splits
         if (timer.elapsedTime_m() > 2.0 ) {
            //osg::CVMarkerSeries series("Culling SubTasks");
            //series.write_alert("hit budget, %f", timer.elapsedTime_m());
            break;
         }
+#endif
     }
 }
 

@@ -635,8 +635,8 @@ mvt_tile(osg::ArgumentParser& args)
     tileset->asset()->version() = "1.0";
 
     std::ofstream fout(outfile);
-    Support::Json::Value json = tileset->getJSON();
-    Support::Json::StyledStreamWriter writer;
+    Util::Json::Value json = tileset->getJSON();
+    Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);
     fout.close();
    

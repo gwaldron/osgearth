@@ -589,7 +589,7 @@ MVTFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
 void
 MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoExtent& extent, FeatureTileCallback callback, void* context)
 {
-    const Profile* profile = getFeatureProfile()->getProfile();
+    const Profile* profile = getFeatureProfile()->getTilingProfile();
     unsigned int numRows, numCols;
     profile->getNumTiles(zoomLevel, numCols, numRows);
 

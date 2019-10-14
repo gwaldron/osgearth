@@ -137,7 +137,7 @@ osg::Node* createDrawables()
     // MapNode installs one automatically, but we're not using MapNode
     // in this example.
     osg::Group* group = new osg::Group();
-    group->addCullCallback(new InstallViewportSizeUniform());
+    group->addCullCallback(new InstallCameraUniform());
 
     float x = 10;
     float y = 10;

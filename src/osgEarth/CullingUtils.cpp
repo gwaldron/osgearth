@@ -1142,7 +1142,7 @@ CullDebugger::dumpRenderBin(osgUtil::RenderBin* bin) const
 //...................................................................
 
 void
-InstallViewportSizeUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
+InstallCameraUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
     const osg::Camera* camera = cv->getCurrentCamera();
@@ -1152,9 +1152,10 @@ InstallViewportSizeUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
     if (camera && camera->getViewport())
     {
         ss = new osg::StateSet();
-        ss->addUniform(new osg::Uniform("oe_ViewportSize", osg::Vec2f(
+        ss->addUniform(new osg::Uniform("oe_Camera", osg::Vec3f(
             camera->getViewport()->width(),
-            camera->getViewport()->height())));
+            camera->getViewport()->height(),
+            camera->getLODScale())));
         cv->pushStateSet(ss.get());
     }
 
@@ -1164,13 +1165,13 @@ InstallViewportSizeUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
         cv->popStateSet();
 }
 
-namespace osgEarth { namespace Serializers { namespace InstallViewportSizeUniform
+namespace osgEarth { namespace Serializers { namespace InstallCameraUniform
 {
     REGISTER_OBJECT_WRAPPER(
-        InstallViewportSizeUniform,
-        new osgEarth::InstallViewportSizeUniform,
-        osgEarth::InstallViewportSizeUniform,
-        "osg::Object osg::NodeCallback osgEarth::InstallViewportSizeUniform")
+        InstallCameraUniform,
+        new osgEarth::InstallCameraUniform,
+        osgEarth::InstallCameraUniform,
+        "osg::Object osg::NodeCallback osgEarth::InstallCameraUniform")
     {
         // no properties
     }

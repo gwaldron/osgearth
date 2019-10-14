@@ -237,18 +237,19 @@ namespace osgEarth
 
 
     /**
-     * Cull callback for cameras that sets the oe_ViewportSize uniform.
+     * Cull callback for cameras that sets the oe_Camera uniform.
      */
-    class OSGEARTH_EXPORT InstallViewportSizeUniform : public osg::NodeCallback
+    class OSGEARTH_EXPORT InstallCameraUniform : public osg::NodeCallback
     {
     public:
-        META_Object(osgEarth, InstallViewportSizeUniform);
+        META_Object(osgEarth, InstallCameraUniform);
         
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
-        InstallViewportSizeUniform() { }
+        InstallCameraUniform() { }
 
-        InstallViewportSizeUniform(const InstallViewportSizeUniform& rhs, const osg::CopyOp& copy) :
+    protected:
+        InstallCameraUniform(const InstallCameraUniform& rhs, const osg::CopyOp& copy) :
             osg::NodeCallback(rhs, copy) { }
     };
 

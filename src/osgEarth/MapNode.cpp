@@ -410,7 +410,7 @@ MapNode::init()
     dirtyBound();
 
     // install a callback that sets the viewport size uniform:
-    this->addCullCallback(new InstallViewportSizeUniform());
+    this->addCullCallback(new InstallCameraUniform());
 
     // install a callback that updates a horizon object and installs a clipping plane
     if (getMapSRS()->isGeographic())

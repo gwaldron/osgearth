@@ -197,6 +197,7 @@ MapNode::Options::getConfig() const
     conf.set( "overlay_resolution_ratio", overlayResolutionRatio() );
     conf.set( "cascade_draping",          useCascadeDraping() );
     conf.set( "projected",                projected() );
+    conf.set( "draping_render_bin_number",drapingRenderBinNumber() );
 
     if (terrain().isSet() && !terrain()->empty())
         conf.set( "terrain", terrain()->getConfig() );
@@ -216,6 +217,7 @@ MapNode::Options::fromConfig(const Config& conf)
     useCascadeDraping().init(false);
     projected().init(false);
     terrain().init(TerrainOptions());
+    drapingRenderBinNumber().init(1);
 
     conf.get( "proxy",                    proxySettings() );
     conf.get( "lighting",                 enableLighting() );
@@ -225,6 +227,7 @@ MapNode::Options::fromConfig(const Config& conf)
     conf.get( "overlay_resolution_ratio", overlayResolutionRatio() );
     conf.get( "cascade_draping",          useCascadeDraping() );
     conf.get( "projected",                projected() );
+    conf.get( "draping_render_bin_number",drapingRenderBinNumber() );
 
     // backwards-compat:
     optional<std::string> type;
@@ -415,6 +418,9 @@ MapNode::open()
         draping->reestablish( _terrainEngine );
         overlayDecorator->addTechnique( draping );
         _drapingManager = &draping->getDrapingManager();
+
+        if ( options().drapingRenderBinNumber().isSet() )
+            _drapingManager->setRenderBinNumber( options().drapingRenderBinNumber().get() );
 
         overlayDecorator->addChild(_terrainEngine);
     }

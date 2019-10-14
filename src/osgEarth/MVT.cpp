@@ -586,6 +586,95 @@ MVTFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
     return 0;
 }
 
+void
+MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoExtent& extent, FeatureTileCallback callback, void* context)
+{
+    const Profile* profile = getFeatureProfile()->getTilingProfile();
+    unsigned int numRows, numCols;
+    profile->getNumTiles(zoomLevel, numCols, numRows);
+
+    sqlite3_stmt* select = NULL;
+    std::stringstream buf;
+    buf << "SELECT zoom_level, tile_column, tile_row, tile_data from tiles";
+
+    if (extent.isValid())
+    {
+        GeoExtent featureExtent = extent.transform(profile->getSRS());
+
+        // Limit the x and y values based on the extent
+        osgEarth::TileKey ll = profile->createTileKey(featureExtent.xMin(), featureExtent.yMin(), zoomLevel);
+        osgEarth::TileKey ur = profile->createTileKey(featureExtent.xMax(), featureExtent.yMax(), zoomLevel);
+
+        unsigned int minX = ll.getTileX();
+        unsigned int maxX = ur.getTileX();
+        unsigned int minY = numRows - ll.getTileY() - 1;
+        unsigned int maxY = numRows - ur.getTileY() - 1;
+
+        buf << " WHERE tile_column >= " << minX << " AND tile_column <= " << maxX << " AND tile_row >= " << minY << " AND tile_row <= " << maxY;
+    }
+
+    if (limit > 0)
+    {
+        buf << " LIMIT " << limit;
+    }
+
+    if (offset > 0)
+    {
+        buf << " OFFSET " << offset;
+    }
+
+    std::string queryStr = buf.str();
+    OE_NOTICE << "Query =" << queryStr << std::endl;
+    int rc = sqlite3_prepare_v2((sqlite3*)_database, queryStr.c_str(), -1, &select, 0L);
+    if (rc != SQLITE_OK)
+    {
+        OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; "
+            << sqlite3_errmsg((sqlite3*)_database) << std::endl;
+    }    
+
+    while ((rc = sqlite3_step(select)) == SQLITE_ROW) {
+        int zoom = sqlite3_column_int(select, 0);
+        int tile_column = sqlite3_column_int(select, 1);
+        int tile_row = sqlite3_column_int(select, 2);
+
+        TileKey key(zoom, tile_column, numRows - tile_row - 1, profile);
+
+        // the pointer returned from _blob gets freed internally by sqlite, supposedly
+        const char* data = (const char*)sqlite3_column_blob(select, 3);
+        int dataLen = sqlite3_column_bytes(select, 3);
+        std::string dataBuffer(data, dataLen);
+        std::stringstream in(dataBuffer);
+
+        FeatureList features;
+
+        // If we have any features and we have an fid attribute, override the fid of the features
+        if (options().fidAttribute().isSet())
+        {
+            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+            {
+                std::string attr = itr->get()->getString(options().fidAttribute().get());
+                FeatureID fid = as<long>(attr, 0);
+                itr->get()->setFID(fid);
+
+            }
+        }
+
+
+        MVT::readTile(in, key, features);
+
+        // apply filters before returning.
+        applyFilters(features, key.getExtent());
+
+        if (features.size() > 0)
+        {
+            //tiles[key] = features;
+            callback(key, features, context);
+        }
+    }
+
+    sqlite3_finalize(select);
+}
+
 
 const FeatureProfile*
 MVTFeatureSource::createFeatureProfile()

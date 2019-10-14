@@ -37,6 +37,14 @@ uniform float oe_GroundCover_brightness;
 
 uniform vec3 oe_Camera; // (vp width, vp height, lodscale)
 
+// VRV: use a custom LOD scale uniform
+#pragma import_defines(VRV_OSG_LOD_SCALE)
+#ifdef VRV_OSG_LOD_SCALE
+uniform float VRV_OSG_LOD_SCALE;
+#else
+#define VRV_OSG_LOD_SCALE oe_Camera.z
+#endif
+
 // Noise texture:
 uniform sampler2D oe_GroundCover_noiseTex;
 
@@ -199,8 +207,8 @@ void oe_GroundCover_geom()
     // Clamp the center point to the elevation.
     oe_GroundCover_clamp(center_view, up_view, tileUV);
 
-    // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
-    float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
+    // Calculate the normalized camera range
+    float maxRange = oe_GroundCover_maxDistance / VRV_OSG_LOD_SCALE;
     float nRange = clamp(-center_view.z/maxRange, 0.0, 1.0);
 
     // Distance culling:

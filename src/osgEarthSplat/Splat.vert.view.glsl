@@ -20,11 +20,18 @@ uniform mat4 OE_SPLAT_COVERAGE_TEXMAT;   // assigned at runtime
 
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
+// VRV: use a custom LOD scale uniform
+#pragma import_defines(VRV_OSG_LOD_SCALE)
+#ifdef VRV_OSG_LOD_SCALE
+uniform float VRV_OSG_LOD_SCALE;
+#else
+#define VRV_OSG_LOD_SCALE oe_Camera.z
+#endif
 
 void oe_splat_vertex_view(inout vec4 VertexVIEW)
 {
     // range from camera to vertex
-    oe_splat_range = -VertexVIEW.z * oe_Camera.z; // apply LOD scale
+    oe_splat_range = -VertexVIEW.z * VRV_OSG_LOD_SCALE; // apply LOD scale
 
     // calculate the coverage sampling coordinates. The texture matrix accounts
     // for any super-sampling that might be in effect for the current LOD.

@@ -690,6 +690,16 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 NO_DATA_VALUE,
                 geoid );
         }
+        else
+        {
+           // Replace any invalid heights in the heightfield with 0
+           HeightFieldUtils::resolveInvalidHeights(
+              hf.get(),
+              result.getExtent(),
+              NO_DATA_VALUE,
+              0
+              );
+        }
     }
 
     // write to mem cache if needed:

@@ -690,16 +690,6 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 NO_DATA_VALUE,
                 geoid );
         }
-        else
-        {
-           // Replace any invalid heights in the heightfield with 0
-           HeightFieldUtils::resolveInvalidHeights(
-              hf.get(),
-              result.getExtent(),
-              NO_DATA_VALUE,
-              0
-              );
-        }
     }
 
     // write to mem cache if needed:
@@ -1246,6 +1236,9 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         std::cout << std::endl;
     }
 #endif
+
+    // Resolve any invalid heights in the output heightfield.
+    HeightFieldUtils::resolveInvalidHeights(hf, key.getExtent(), NO_DATA_VALUE, 0);
 
     if (progress && progress->isCanceled())
     {

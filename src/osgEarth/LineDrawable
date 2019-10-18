@@ -31,7 +31,7 @@ namespace osgEarth
      * Drawable that renders lines using the GPU. It will fall back on rendering
      * OpenGL lines when shader-based rendering is unavailable.
      *
-     * Note: If you use this class you must have the oe_ViewportSize
+     * Note: If you use this class you must have the oe_Camera
      * uniform set. MapNode sets it automatically so any LineDrawable under
      * a MapNode is fine. Otherwise, use the osgEarth::InstallViewportSizeUniform
      * callback on your scene graph.

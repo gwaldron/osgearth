@@ -403,10 +403,11 @@ ElevationLayer::assembleHeightField(const TileKey& key,
 
             for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
             {
-                if (itr->getHeightField()->getNumColumns() > width)
-                    width = itr->getHeightField()->getNumColumns();
-                if (itr->getHeightField()->getNumRows() > height) 
-                    height = itr->getHeightField()->getNumRows();                        
+                const osg::HeightField* heightField = itr->getHeightField();
+                if (heightField->getNumColumns() > width)
+                    width = heightField->getNumColumns();
+                if (heightField->getNumRows() > height)
+                    height = heightField->getNumRows();
             }
 
             //Now sort the heightfields by resolution to make sure we're sampling the highest resolution one first.
@@ -419,7 +420,8 @@ ElevationLayer::assembleHeightField(const TileKey& key,
 
             //Go ahead and set up the heightfield so we don't have to worry about it later
             double minx, miny, maxx, maxy;
-            key.getExtent().getBounds(minx, miny, maxx, maxy);
+            const GeoExtent& keyExtent = key.getExtent();
+            keyExtent.getBounds(minx, miny, maxx, maxy);
             double dx = (maxx - minx)/(double)(width-1);
             double dy = (maxy - miny)/(double)(height-1);
 
@@ -441,7 +443,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
                         // requesting key's vertical datum.
                         float e = 0.0;
                         osg::Vec3 n;
-                        if (itr->getElevationAndNormal(key.getExtent().getSRS(), x, y, INTERP_BILINEAR, key.getExtent().getSRS(), e, n))
+                        if (itr->getElevationAndNormal(keyExtent.getSRS(), x, y, INTERP_BILINEAR, keyExtent.getSRS(), e, n))
                         {
                             elevation = e;
                             normal = n;
@@ -969,26 +971,30 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         return false;
     }
 
+    const int contendersSize = contenders.size();
+    const int offsetsSize = offsets.size();
+
     // if everything is fallback data, bail out.
-    if ( contenders.size() + offsets.size() == numFallbackLayers )
+    if ( contendersSize + offsetsSize == numFallbackLayers )
     {
         return false;
     }
     
     // Sample the layers into our target.
-    unsigned numColumns = hf->getNumColumns();
-    unsigned numRows    = hf->getNumRows();    
-    double   xmin       = key.getExtent().xMin();
-    double   ymin       = key.getExtent().yMin();
-    double   dx         = key.getExtent().width() / (double)(numColumns-1);
-    double   dy         = key.getExtent().height() / (double)(numRows-1);
+    const GeoExtent& keyExtent = key.getExtent();
+    const unsigned numColumns  = hf->getNumColumns();
+    const unsigned numRows     = hf->getNumRows();
+    const double   xmin        = keyExtent.xMin();
+    const double   ymin        = keyExtent.yMin();
+    const double   dx          = keyExtent.width() / (double)(numColumns-1);
+    const double   dy          = keyExtent.height() / (double)(numRows-1);
    
     // We will load the actual heightfields on demand. We might not need them all.
-    GeoHeightFieldVector heightFields(contenders.size());
-    GeoHeightFieldVector offsetFields(offsets.size());
-    std::vector<bool>    heightFallback(contenders.size(), false);
-    std::vector<bool>    heightFailed(contenders.size(), false);
-    std::vector<bool>    offsetFailed(offsets.size(), false);
+    GeoHeightFieldVector heightFields(contendersSize);
+    GeoHeightFieldVector offsetFields(offsetsSize);
+    std::vector<bool>    heightFallback(contendersSize, false);
+    std::vector<bool>    heightFailed(contendersSize, false);
+    std::vector<bool>    offsetFailed(offsetsSize, false);
 
     // The maximum number of heightfields to keep in this local cache
     const unsigned maxHeightFields = 50;
@@ -1011,21 +1017,23 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
     // If we only have a single contender layer, and the tile is the same size as the requested 
     // heightfield then we just use it directly and avoid having to resample it
-    if (contenders.size() == 1 && offsets.empty())
+    if (contendersSize == 1 && offsets.empty())
     {
         ElevationLayer* layer = contenders[0].layer.get();
-        TileKey& contenderKey = contenders[0].key;
+        const TileKey& contenderKey = contenders[0].key;
 
         GeoHeightField layerHF = layer->createHeightField(contenderKey, progress);
         if (layerHF.valid())
         {
-            if (layerHF.getHeightField()->getNumColumns() == hf->getNumColumns() &&
-                layerHF.getHeightField()->getNumRows() == hf->getNumRows())
+            const osg::HeightField* layerHeightField = layerHF.getHeightField();
+            if (layerHeightField->getNumColumns() == hf->getNumColumns() &&
+                layerHeightField->getNumRows() == hf->getNumRows())
             {
                 requiresResample = false;
-                memcpy(hf->getFloatArray()->asVector().data(),
-                    layerHF.getHeightField()->getFloatArray()->asVector().data(),
-                    sizeof(float) * hf->getFloatArray()->size()
+                osg::FloatArray* hfFloatArray = hf->getFloatArray();
+                memcpy(hfFloatArray->asVector().data(),
+                    layerHeightField->getFloatArray()->asVector().data(),
+                    sizeof(float) * hfFloatArray->size()
                 );
                 deltaLOD->resize(hf->getFloatArray()->size(), 0);
                 realData = true;
@@ -1038,7 +1046,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     {
         for (unsigned c = 0; c < numColumns; ++c)
         {
-            double x = xmin + (dx * (double)c);
+            const double x = xmin + (dx * (double)c);
 
             // periodically check for cancelation
             if (progress && progress->isCanceled())
@@ -1048,14 +1056,14 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
             for (unsigned r = 0; r < numRows; ++r)
             {
-                double y = ymin + (dy * (double)r);
+                const double y = ymin + (dy * (double)r);
 
                 // Collect elevations from each layer as necessary.
                 int resolvedIndex = -1;
 
                 osg::Vec3 normal_sum(0, 0, 0);
 
-                for (int i = 0; i < contenders.size() && resolvedIndex < 0; ++i)
+                for (int i = 0; i < contendersSize && resolvedIndex < 0; ++i)
                 {
                     ElevationLayer* layer = contenders[i].layer.get();
                     TileKey& contenderKey = contenders[i].key;
@@ -1149,7 +1157,8 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                     if (numHeightFieldsInCache >= maxHeightFields)
                     {
                         //OE_NOTICE << "Clearing cache" << std::endl;
-                        for (unsigned int k = 0; k < heightFields.size(); k++)
+                        const unsigned int heightFieldsSize = heightFields.size();
+                        for (unsigned int k = 0; k < heightFieldsSize; k++)
                         {
                             heightFields[k] = GeoHeightField::INVALID;
                             heightFallback[k] = false;
@@ -1158,14 +1167,14 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                     }
                 }
 
-                for (int i = offsets.size() - 1; i >= 0; --i)
+                for (int i = offsetsSize - 1; i >= 0; --i)
                 {
                     // Only apply an offset layer if it sits on top of the resolved layer
                     // (or if there was no resolved layer).
                     if (resolvedIndex >= 0 && offsets[i].index < resolvedIndex)
                         continue;
 
-                    TileKey &contenderKey = offsets[i].key;
+                    const TileKey &contenderKey = offsets[i].key;
 
                     if (offsetFailed[i] == true)
                         continue;
@@ -1236,6 +1245,9 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         std::cout << std::endl;
     }
 #endif
+
+    // Resolve any invalid heights in the output heightfield.
+    HeightFieldUtils::resolveInvalidHeights(hf, key.getExtent(), NO_DATA_VALUE, 0);
 
     if (progress && progress->isCanceled())
     {

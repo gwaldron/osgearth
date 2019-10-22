@@ -49,7 +49,7 @@ namespace osgEarth { namespace Contrib
     public: // ImageLayer
 
         //! Opens the layer and returns a status
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         //! Creates a texture for a tile key
         virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const;

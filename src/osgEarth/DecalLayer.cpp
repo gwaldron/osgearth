@@ -120,10 +120,10 @@ DecalLayer::init()
     _placeholder = ImageUtils::createEmptyImage();
 }
 
-const Status&
-DecalLayer::open()
+Status
+DecalLayer::openImplementation()
 {
-    return ImageLayer::open();
+    return ImageLayer::openImplementation();
 }
 
 void

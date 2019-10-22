@@ -595,9 +595,24 @@ GroundCoverLayer::Renderer::DrawState::reset()
 #if 1
         for(unsigned i=0; i<numInstances; ++i)
         {
-            unsigned offset = i*8;
-            std::vector<GLuint> instanceIndicies = { (GLuint)(0 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(3 + offset),  (GLuint)(4 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(7 + offset) };
-            indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
+            unsigned offset = i * 8;
+            indices.push_back(0 + offset);
+            indices.push_back(1 + offset);
+            indices.push_back(2 + offset);
+            indices.push_back(1 + offset);
+            indices.push_back(2 + offset);
+            indices.push_back(3 + offset);
+            indices.push_back(4 + offset);
+            indices.push_back(5 + offset);
+            indices.push_back(6 + offset);
+            indices.push_back(5 + offset);
+            indices.push_back(6 + offset);
+            indices.push_back(7 + offset);
+            //std::vector<GLuint> instanceIndicies;
+            //instanceIndicies.reserve(8);
+            //for (size_t k = 0; k < 8; ++k)
+            //    instanceIndicies.push_back(static_cast<GLuint>(0 + offset));
+            //indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
         }
 #else
         unsigned offset = 0;

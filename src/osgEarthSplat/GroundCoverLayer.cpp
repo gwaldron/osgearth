@@ -47,7 +47,7 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 // billboards. Undef this to use a VS-only implementation (which is slower
 // and still needs some work with the colors, etc.) but could be useful if
 // GS are extremely slow or unavailable on your target platform.
-#define USE_GEOMETRY_SHADER
+//#define USE_GEOMETRY_SHADER
 
 // If we're not using the GS, we have the option of using instancing or not.
 // OFF by default since it benchmarks faster on older cards. On newer cards
@@ -581,11 +581,23 @@ GroundCoverLayer::Renderer::DrawState::reset()
         for (unsigned i = 0; i < numInstances; i++)
         {
             unsigned offset = i * 8;
-            std::vector<GLuint> instanceIndicies;
-            instanceIndicies.reserve(8);
-            for (size_t k = 0; k < 8; ++k)
-                instanceIndicies.push_back(static_cast<GLuint>(0 + offset));
-            indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
+            indices.push_back(0 + offset);
+            indices.push_back(1 + offset);
+            indices.push_back(2 + offset);
+            indices.push_back(1 + offset);
+            indices.push_back(2 + offset);
+            indices.push_back(3 + offset);
+            indices.push_back(4 + offset);
+            indices.push_back(5 + offset);
+            indices.push_back(6 + offset);
+            indices.push_back(5 + offset);
+            indices.push_back(6 + offset);
+            indices.push_back(7 + offset);
+            //std::vector<GLuint> instanceIndicies;
+            //instanceIndicies.reserve(8);
+            //for (size_t k = 0; k < 8; ++k)
+            //    instanceIndicies.push_back(static_cast<GLuint>(0 + offset));
+            //indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
         }
         _geom->addPrimitiveSet(new osg::DrawElementsUInt(GL_TRIANGLES, totalIndicies, indices.data(), 0));
 

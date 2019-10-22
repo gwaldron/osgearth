@@ -18,11 +18,13 @@ flat out float oe_splat_coverageTexSize;
 
 uniform mat4 OE_SPLAT_COVERAGE_TEXMAT;   // assigned at runtime
 
+uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
+
 
 void oe_splat_vertex_view(inout vec4 VertexVIEW)
 {
     // range from camera to vertex
-    oe_splat_range = -VertexVIEW.z;
+    oe_splat_range = -VertexVIEW.z * oe_Camera.z; // apply LOD scale
 
     // calculate the coverage sampling coordinates. The texture matrix accounts
     // for any super-sampling that might be in effect for the current LOD.

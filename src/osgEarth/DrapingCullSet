@@ -76,11 +76,18 @@ namespace osgEarth { namespace Util
     class OSGEARTH_INTERNAL DrapingManager
     {
     public:
+        DrapingManager() : _renderBinNum(1) { }
+
         //! Gets the draping cull set associated with a camera.
         DrapingCullSet& get(const osg::Camera*);
 
+        //! Sets the render bin number for DrapingCameras.
+        void setRenderBinNumber(int value) { _renderBinNum = value; }
+        int getRenderBinNumber() const { return _renderBinNum; }
+
     private:
         PerObjectFastMap<const osg::Camera*, DrapingCullSet> _sets;
+        int _renderBinNum;
     };
 
 } } // namespace osgEarth

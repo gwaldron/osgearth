@@ -20,6 +20,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+// TODO:  Reconfigure CMake to not require this.....
+#define OSGEARTH_HAVE_MVT 1
+#define OSGEARTH_HAVE_SQLITE3 1
+
 #include <osgViewer/Viewer>
 #include <osgDB/WriteFile>
 #include <osgEarth/EarthManipulator>
@@ -38,14 +42,17 @@
 #include <osgEarth/FeatureModelLayer>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/MVT>
 #include <osgEarth/Registry>
 #include <osgEarth/Async>
 #include <osgDB/FileUtils>
+#include <osgDB/WriteFile>
 #include <iostream>
 
 #define LC "[3dtiles test] "
 
 using namespace osgEarth;
+using namespace osgEarth::Strings;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 namespace ui = osgEarth::Util::Controls;
@@ -374,13 +381,460 @@ main_tile(osg::ArgumentParser& args)
     if (!tileset.valid())
         return usage("Failed to create a tileset from the feature source");
 
-    std::ofstream fout(outfile);
+    std::ofstream fout(outfile.c_str());
     Util::Json::Value json = tileset->getJSON();
     Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);
     fout.close();
     OE_INFO << "Wrote tileset to " << outfile << std::endl;
     
+    return 0;
+}
+
+typedef std::map< osgEarth::TileKey, osg::ref_ptr< TDTiles::Tile > > TileMap;
+
+struct MVTContext
+{
+    MVTContext():
+        numComplete(0),
+        format("b3dm")
+    {
+        queue = new osg::OperationQueue;
+    }
+
+    osg::ref_ptr< Map > map;
+    osg::ref_ptr< StyleSheet> styleSheet;
+    URIContext uriContext;
+    TileMap leafNodes;
+    GeoExtent fullExtent;
+    std::string format;
+    OpenThreads::Atomic numComplete;
+    osg::Timer_t startTime;
+    osg::ref_ptr< osg::OperationQueue > queue;
+};
+
+void featureTileCallback(const TileKey& key, const FeatureList& features, void* context)
+{   
+    MVTContext& mvtContext = *(MVTContext*)(context);
+
+    osg::Timer_t startTime = osg::Timer::instance()->tick();
+
+    std::string filename = Stringify() << key.getLevelOfDetail() << "_" << key.getTileX() << "_" << key.getTileY() << "." << mvtContext.format;
+
+    osg::ref_ptr< Session > session = new Session(mvtContext.map.get());
+    session->setStyles(mvtContext.styleSheet);
+
+    URI uri(filename, mvtContext.uriContext);
+
+    GeoExtent dataExtent = key.getExtent();
+    FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
+    GeometryCompiler gc;
+    FeatureList copy = features;
+
+    // TODO:  Just store the style instead?
+    const Style* style = mvtContext.styleSheet->getStyle("buildings");
+    osg::ref_ptr<osg::Node> node = gc.compile(copy, *style, fc);
+
+    if (node.valid())
+    {
+        osgDB::makeDirectoryForFile(uri.full());
+        osgDB::writeNodeFile(*node.get(), uri.full());
+    }
+    else
+    {
+        OE_NOTICE << "Failed to create node for " << filename << std::endl;
+    }
+
+    osg::ref_ptr<TDTiles::Tile> tile = new TDTiles::Tile;
+    tile->geometricError() = 0.0;
+
+    // TODO: get the "refine" right
+    tile->refine() = TDTiles::REFINE_REPLACE;
+    tile->content()->uri() = uri;
+
+    //OE_NOTICE << "Data extent " << dataExtent.toString() << std::endl;
+    dataExtent = dataExtent.transform(mvtContext.map->getSRS());
+
+    tile->boundingVolume()->region()->set(
+        osg::DegreesToRadians(dataExtent.xMin()), osg::DegreesToRadians(dataExtent.yMin()), 0.0,
+        osg::DegreesToRadians(dataExtent.xMax()), osg::DegreesToRadians(dataExtent.yMax()), 1.0);
+
+    mvtContext.leafNodes[key] = tile.get();
+
+    if (mvtContext.fullExtent.isInvalid())
+    {
+        mvtContext.fullExtent = dataExtent;
+    }
+    else
+    {
+        mvtContext.fullExtent.expandToInclude(dataExtent);
+    }
+
+    ++mvtContext.numComplete;
+    
+    double totalTime = osg::Timer::instance()->delta_s(mvtContext.startTime, osg::Timer::instance()->tick());
+    double tilesPerSecond = (double)mvtContext.numComplete / totalTime;
+
+    osg::Timer_t endTime = osg::Timer::instance()->tick();
+    OE_NOTICE << "Processed " << key.str() << " with " << features.size() << " features in " << osg::Timer::instance()->delta_s(startTime, endTime) << "s" << std::endl;
+    OE_NOTICE << "Completed " << mvtContext.numComplete << " tiles.  " << tilesPerSecond << " tiles/s" << std::endl;
+}
+
+int
+mvt_tile(osg::ArgumentParser& args)
+{    
+    osg::Timer_t startTime = osg::Timer::instance()->tick();
+
+    std::string infile;
+    if (!args.read("--in", infile))
+        return usage("Missing required --in <earthfile>");
+
+    std::string outfile;
+    if (!args.read("--out", outfile))
+        return usage("Missing required --out tileset.json");
+
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(infile);
+    MapNode* mapnode = MapNode::get(node.get());
+    if (!mapnode)
+        return usage("Input file is not a valid earth file");
+
+    Map* map = mapnode->getMap();
+
+    osgEarth::Features::MVTFeatureSource* fs = map->getLayer<MVTFeatureSource>();
+    if (!fs)
+        return usage("No feature source layer found in the map");
+
+    StyleSheet* sheet = map->getLayer<StyleSheet>();
+    if (!sheet)
+        return usage("No stylesheet found in the map");
+
+    const Style* style = sheet->getDefaultStyle();
+    if (!sheet)
+        return usage("No default style found in the stylesheet");
+
+    std::string format("b3dm");
+    args.read("--format", format);
+
+    unsigned int zoomLevel = 14;
+    args.read("--zoom", zoomLevel);
+
+    GeoExtent queryExtent;
+    double xmin = DBL_MAX, ymin = DBL_MAX, xmax = DBL_MIN, ymax = DBL_MIN;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax))
+    {
+        queryExtent = GeoExtent(osgEarth::SpatialReference::create("epsg:4326"), xmin, ymin, xmax, ymax);
+    }    
+
+    if (!map->getProfile())
+    {
+        const Profile* profile = map->calculateProfile();
+        map->setProfile(profile);
+    }    
+
+    // For best optimization
+    Registry::instance()->setMaxNumberOfVertsPerDrawable(UINT_MAX);
+
+    URIContext uriContext(outfile);
+    
+    MVTContext mvtContext;
+    mvtContext.map = map;
+    mvtContext.styleSheet = sheet;
+    mvtContext.uriContext = uriContext;
+    mvtContext.format = format;
+    mvtContext.startTime = osg::Timer::instance()->tick();
+
+    fs->iterateTiles(zoomLevel, 0, 0, queryExtent, featureTileCallback, &mvtContext);
+
+    // Create a root Tile.
+    osg::ref_ptr<TDTiles::Tile> rootTile = new TDTiles::Tile();
+
+    TileMap parents;
+    TileMap children;
+    
+    // Insert the leafs into the children list.
+    children = mvtContext.leafNodes;
+
+    float geometricError = 5;
+    float height = 20.0f;
+
+    // Now work our way up from the leaves, generating tiles until we get to level 0
+    for (int level = zoomLevel; level >= 0; level--)
+    {        
+        OE_NOTICE << "Processing level " << level << " with " << children.size() << " children " << std::endl;
+        if (children.size() == 1)
+        {
+            // Just add to the root tile and quit
+            for (TileMap::iterator itr = children.begin(); itr != children.end(); ++itr)
+            {
+                rootTile->children().push_back(itr->second);
+                break;
+            }
+            break;
+        }
+
+
+        for (TileMap::iterator itr = children.begin(); itr != children.end(); ++itr)
+        {
+            OE_NOTICE << "Proessing child " << itr->first.str() << std::endl;
+            if (itr->first.getLevelOfDetail() == 0)
+            {
+                rootTile->children().push_back(itr->second);
+            }
+            else
+            {
+                // Get or create the parent tile from the parents list
+                TileKey parentKey = itr->first.createParentKey();
+                TileMap::iterator parentIter = parents.find(parentKey);
+                osg::ref_ptr< TDTiles::Tile> parentTile;
+                if (parentIter == parents.end())
+                {
+                    // Create the parent tile
+                    parentTile = new TDTiles::Tile;
+                    parentTile->geometricError() = geometricError;// arentKey.getExtent().width();/// *111000.0;
+                    GeoExtent dataExtent = parentKey.getExtent().transform(map->getSRS());
+                    parentTile->boundingVolume()->region()->set(
+                        osg::DegreesToRadians(dataExtent.xMin()), osg::DegreesToRadians(dataExtent.yMin()), 0.0,
+                        osg::DegreesToRadians(dataExtent.xMax()), osg::DegreesToRadians(dataExtent.yMax()), height);
+                    parents[parentKey] = parentTile.get();
+                }
+                else
+                {
+                    parentTile = parentIter->second.get();
+                }
+
+                parentTile->children().push_back(itr->second);
+            }            
+        }
+
+        geometricError *= 2.0f;
+        height *= 2.0f;
+
+        // The newly created parents are the new children
+        children = parents;        
+        parents.clear();
+
+        if (level == 5)
+        {
+            for (TileMap::iterator itr = children.begin(); itr != children.end(); ++itr)
+            {
+                rootTile->children().push_back(itr->second);
+            }
+            break;
+        }
+    }
+    
+    // TODO:  The root tile should really have the extent of the top level parent tiles I think instead of the actual data.
+    rootTile->boundingVolume()->region()->set(
+        osg::DegreesToRadians(mvtContext.fullExtent.xMin()), osg::DegreesToRadians(mvtContext.fullExtent.yMin()), 0.0,
+        osg::DegreesToRadians(mvtContext.fullExtent.xMax()), osg::DegreesToRadians(mvtContext.fullExtent.yMax()), height);
+    rootTile->geometricError() = geometricError;// dataExtent.width() / 10000.0;// *111000.0;
+
+
+    osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
+    tileset->root() = rootTile.get();
+    tileset->asset()->version() = "1.0";
+
+    std::ofstream fout(outfile.c_str());
+    Util::Json::Value json = tileset->getJSON();
+    Util::Json::StyledStreamWriter writer;
+    writer.write(fout, json);
+    fout.close();
+   
+    OE_INFO << "Wrote tileset to " << outfile << std::endl;
+
+    osg::Timer_t endTime = osg::Timer::instance()->tick();
+    double time = osg::Timer::instance()->delta_s(startTime, endTime);
+    OE_NOTICE << "Completed tiling in " << osgEarth::prettyPrintTime(time) << std::endl;
+
+    return 0;
+}
+
+
+class BuildTileOperator : public osg::Operation
+{
+public:
+    BuildTileOperator(const TileKey& key, const FeatureList& features, MVTContext& context) :
+        _key(key),
+        _features(features),
+        _context(context)
+    {
+    }
+
+    void operator()(osg::Object* object)
+    {
+        osg::Timer_t startTime = osg::Timer::instance()->tick();
+
+        std::string filename = Stringify() << _key.getLevelOfDetail() << "_" << _key.getTileX() << "_" << _key.getTileY() << "." << _context.format;
+
+        osg::ref_ptr< Session > session = new Session(_context.map.get());
+        session->setStyles(_context.styleSheet);
+
+        URI uri(filename, _context.uriContext);
+
+        GeoExtent dataExtent = _key.getExtent();
+        FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
+        GeometryCompiler gc;        
+        
+        // TODO:  Just store the style instead?
+        const Style* style = _context.styleSheet->getStyle("buildings");
+        osg::ref_ptr<osg::Node> node = gc.compile(_features, *style, fc);
+
+        if (node.valid())
+        {
+            osgDB::makeDirectoryForFile(uri.full());
+            osgDB::writeNodeFile(*node.get(), uri.full());
+        }
+        else
+        {
+            OE_NOTICE << "Failed to create node for " << filename << std::endl;
+        }
+
+        osg::ref_ptr<TDTiles::Tile> tile = new TDTiles::Tile;
+        tile->geometricError() = 0.0;
+
+        // TODO: get the "refine" right
+        tile->refine() = TDTiles::REFINE_REPLACE;
+        tile->content()->uri() = uri;
+
+        //OE_NOTICE << "Data extent " << dataExtent.toString() << std::endl;
+        dataExtent = dataExtent.transform(_context.map->getSRS());
+
+        tile->boundingVolume()->region()->set(
+            osg::DegreesToRadians(dataExtent.xMin()), osg::DegreesToRadians(dataExtent.yMin()), 0.0,
+            osg::DegreesToRadians(dataExtent.xMax()), osg::DegreesToRadians(dataExtent.yMax()), 1.0);
+
+        //mvtContext.leafNodes[key] = tile.get();
+        /*
+        if (mvtContext.fullExtent.isInvalid())
+        {
+            mvtContext.fullExtent = dataExtent;
+        }
+        else
+        {
+            mvtContext.fullExtent.expandToInclude(dataExtent);
+        }
+        */
+
+        ++_context.numComplete;
+
+        double totalTime = osg::Timer::instance()->delta_s(_context.startTime, osg::Timer::instance()->tick());
+        double tilesPerSecond = (double)_context.numComplete / totalTime;
+
+        osg::Timer_t endTime = osg::Timer::instance()->tick();
+        OE_NOTICE << "Processed " << _key.str() << " with " << _features.size() << " features in " << osg::Timer::instance()->delta_s(startTime, endTime) << "s" << std::endl;
+
+        OE_NOTICE << "Completed " << _context.numComplete << " tiles.  " << tilesPerSecond << " tiles/s" << std::endl;
+    }
+
+    TileKey _key;
+    FeatureList _features;
+    MVTContext& _context;
+};
+
+void addTileToQueue(const TileKey& key, const FeatureList& features, void* context)
+{
+    MVTContext& mvtContext = *(MVTContext*)(context);
+    while (mvtContext.queue->getNumOperationsInQueue() > 100)
+    {
+        OpenThreads::Thread::YieldCurrentThread();
+    }
+    mvtContext.queue->add(new BuildTileOperator(key, features, mvtContext));
+}
+
+
+int
+threaded_tile(osg::ArgumentParser& args)
+{
+    osg::Timer_t startTime = osg::Timer::instance()->tick();
+
+    std::string infile;
+    if (!args.read("--in", infile))
+        return usage("Missing required --in <earthfile>");
+
+    std::string outfile;
+    if (!args.read("--out", outfile))
+        return usage("Missing required --out tileset.json");
+
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(infile);
+    MapNode* mapnode = MapNode::get(node.get());
+    if (!mapnode)
+        return usage("Input file is not a valid earth file");
+
+    Map* map = mapnode->getMap();
+
+    osgEarth::Features::MVTFeatureSource* fs = map->getLayer<MVTFeatureSource>();
+    if (!fs)
+        return usage("No feature source layer found in the map");
+
+    StyleSheet* sheet = map->getLayer<StyleSheet>();
+    if (!sheet)
+        return usage("No stylesheet found in the map");
+
+    const Style* style = sheet->getDefaultStyle();
+    if (!sheet)
+        return usage("No default style found in the stylesheet");
+
+    std::string format("b3dm");
+    args.read("--format", format);
+
+    unsigned int zoomLevel = 14;
+    args.read("--zoom", zoomLevel);
+
+    unsigned int numThreads = 4;
+    args.read("--numThreads", numThreads);
+
+    GeoExtent queryExtent;
+    double xmin = DBL_MAX, ymin = DBL_MAX, xmax = DBL_MIN, ymax = DBL_MIN;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax))
+    {
+        queryExtent = GeoExtent(osgEarth::SpatialReference::create("epsg:4326"), xmin, ymin, xmax, ymax);
+    }
+
+    if (!map->getProfile())
+    {
+        const Profile* profile = map->calculateProfile();
+        map->setProfile(profile);
+    }
+
+    // For best optimization
+    Registry::instance()->setMaxNumberOfVertsPerDrawable(UINT_MAX);
+
+    URIContext uriContext(outfile);
+
+    MVTContext mvtContext;
+    mvtContext.map = map;
+    mvtContext.styleSheet = sheet;
+    mvtContext.uriContext = uriContext;
+    mvtContext.format = format;
+    mvtContext.startTime = osg::Timer::instance()->tick();
+
+    std::vector< osg::ref_ptr< osg::OperationsThread > > threads;
+    for (unsigned int i = 0; i < numThreads; i++)
+    {
+        osg::OperationsThread* thread = new osg::OperationsThread();
+        thread->setOperationQueue(mvtContext.queue.get());
+        thread->start();
+        threads.push_back(thread);
+    }
+
+    fs->iterateTiles(zoomLevel, 0, 0, queryExtent, addTileToQueue, &mvtContext);
+
+    // Wait for all the workers to finish
+    // Wait for all operations to be done.
+    while (!mvtContext.queue.get()->empty())
+    {
+        OpenThreads::Thread::YieldCurrentThread();
+    }
+
+    for (unsigned int i = 0; i < numThreads; i++)
+    {
+        threads[i]->setDone(true);
+        threads[i]->join();
+    }
+
+    osg::Timer_t endTime = osg::Timer::instance()->tick();
+    double time = osg::Timer::instance()->delta_s(startTime, endTime);
+    OE_NOTICE << "Completed tiling in " << osgEarth::prettyPrintTime(time) << std::endl;
     return 0;
 }
 
@@ -398,6 +852,9 @@ main(int argc, char** argv)
 
     else if (arguments.read("--tile"))
         return main_tile(arguments);
+
+    else if (arguments.read("--mvt_tile"))
+        return mvt_tile(arguments);
 
     else if (arguments.read("--view"))
         return main_view(arguments);

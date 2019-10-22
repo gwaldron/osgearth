@@ -1011,9 +1011,11 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         // Create an elevation query envelope at the LOD we are creating
         osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
 
-        bool fill = (options().fill() == true);     
-        
-        integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
+        if (envelope.valid())
+        {
+            bool fill = (options().fill() == true);             
+            integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
+        }
     }
 
     return GeoHeightField(hf.get(), key.getExtent());

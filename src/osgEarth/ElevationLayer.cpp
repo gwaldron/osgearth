@@ -981,8 +981,12 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
     unsigned int total = numColumns * numRows;
 
-    // query resolution interval (x, y) of each sample.
-    osg::ref_ptr<osg::ShortArray> deltaLOD = new osg::ShortArray(total);
+    // query resolution interval (x, y) of each sample IF a normal map is requested.
+    osg::ref_ptr<osg::ShortArray> deltaLOD;
+    if (normalMap)
+    {
+        deltaLOD = new osg::ShortArray(total);
+    }
     
     int nodataCount = 0;
 
@@ -1008,7 +1012,10 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                     layerHF.getHeightField()->getFloatArray()->asVector().data(),
                     sizeof(float) * hf->getFloatArray()->size()
                 );
-                deltaLOD->resize(hf->getFloatArray()->size(), 0);
+                if (deltaLOD.valid())
+                {
+                    deltaLOD->resize(hf->getFloatArray()->size(), 0);
+                }
                 realData = true;
             }
         }
@@ -1113,7 +1120,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                                 layerAnalysis[layer].samples++;
 #endif
 
-                                if (deltaLOD)
+                                if (deltaLOD.valid())
                                 {
                                     (*deltaLOD)[r*numColumns + c] = key.getLOD() - actualKey->getLOD();
                                 }
@@ -1176,7 +1183,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                         // Update the resolution tracker to account for the offset. Sadly this
                         // will wipe out the resolution of the actual data, and might result in 
                         // normal faceting. See the comments on "createNormalMap" for more info
-                        if (deltaLOD)
+                        if (deltaLOD.valid())
                         {
                             (*deltaLOD)[r*numColumns + c] = key.getLOD() - contenderKey.getLOD();
                         }
@@ -1217,6 +1224,9 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         std::cout << std::endl;
     }
 #endif
+
+    // Resolve any invalid heights in the output heightfield.
+    HeightFieldUtils::resolveInvalidHeights(hf, key.getExtent(), NO_DATA_VALUE, 0L);
 
     if (progress && progress->isCanceled())
     {

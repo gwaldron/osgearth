@@ -2,11 +2,74 @@
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 #if(__VERSION__ < 400)
-#extension GL_ARB_gpu_shader5 : enable      // textureGather
+    #extension GL_ARB_gpu_shader5 : enable  // textureGather
 #endif
 
+#pragma vp_entryPoint oe_splat_sampleCoverage
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.0
+
+uniform sampler2D oe_splat_coverageTex;
+in vec2 oe_splat_covtc;
+flat in float oe_splat_coverageTexSize;
+
+// stage global: set this and read it in the splatter.
+vec4 oe_splat_coverage;
+
+// read the comment below regarding textureGather
+//#define USE_TEXTURE_GATHER
+
+void oe_splat_sampleCoverage(inout vec4 unused)
+{
+#ifdef USE_TEXTURE_GATHER
+
+    // A wee bit faster, but causes a rendering anomaly -- lines of 
+    // incorrectly splatted textures appear at lower resolutions.
+    // Problem may be in the bilinear weight calculation but not sure
+    oe_splat_coverage = textureGather(oe_splat_coverageTex, oe_splat_covtc, 0).wzxy;
+
+#else
+
+    float pixelWidth = 1.0/oe_splat_coverageTexSize;
+    float halfPixelWidth = pixelWidth * 0.5;
+
+    // Find the four quantized coverage coordinates that form a box around the actual
+    // coverage coordinates, where each quantized coord is at the center of a coverage texel.
+    vec2 rem = mod(oe_splat_covtc, pixelWidth);
+    vec2 sw;
+    sw.x = oe_splat_covtc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
+    sw.y = oe_splat_covtc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth); 
+    vec2 ne = sw + pixelWidth;
+    vec2 nw = vec2(sw.x, ne.y);
+    vec2 se = vec2(ne.x, sw.y);
+
+    oe_splat_coverage = vec4(
+        texture(oe_splat_coverageTex, sw).r,
+        texture(oe_splat_coverageTex, se).r,
+        texture(oe_splat_coverageTex, nw).r,
+        texture(oe_splat_coverageTex, ne).r );
+
+    //return vec4(
+    //    texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r,
+    //    texture(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r,
+    //    texture(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r,
+    //    texture(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r );
+#endif
+}
+
+
+
+[break]
+
+
+    
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+
+// order of 1.1 allows user the opportunity to override oe_splat_coverage stage global
 #pragma vp_entryPoint oe_splat_complex
 #pragma vp_location   fragment_coloring
+#pragma vp_order      1.1
 
 // include files
 #pragma include Splat.types.glsl
@@ -17,10 +80,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_SPLAT_GPU_NOISE)
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
 #pragma import_defines(OE_TERRAIN_BLEND_IMAGERY)
-
-// Uncomment this to use textureGather() in the oe_splat_bilinear function,
-// but read the comments there first!
-//#define USE_TEXTURE_GATHER
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
@@ -38,8 +97,10 @@ flat in float oe_splat_coverageTexSize;     // size of coverage texture
 
 in float oe_layer_opacity;
 
+// stage global: coverage quad-value set in oe_splat_sampleCoverage
+vec4 oe_splat_coverage;
+
 // from SplatLayerFactory:
-uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
 uniform int oe_splat_scaleOffsetInt;
 
@@ -172,9 +233,9 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 //............................................................................
 // Generates a texel using nearest-neighbor coverage sampling.
 
-vec4 oe_splat_nearest(in vec2 splat_tc, inout oe_SplatEnv env)
+vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
-    float coverageValue = texture(oe_splat_coverageTex, oe_splat_covtc).r;
+    float coverageValue = oe_splat_coverage[0];
     oe_SplatRenderInfo ri;
     oe_splat_getRenderInfo(coverageValue, env, ri);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
@@ -186,79 +247,19 @@ vec4 oe_splat_nearest(in vec2 splat_tc, inout oe_SplatEnv env)
 //............................................................................
 // Generates a texel using bilinear filtering on the coverage data.
 
-vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
+vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
 {
-    vec4 texel = vec4(0,0,0,1);
-
-    float size = oe_splat_coverageTexSize;
-
-#ifdef USE_TEXTURE_GATHER
-
-    // A wee bit faster, but causes a rendering anomaly -- lines of 
-    // incorrectly splatted textures appear at higher resolutions.
-    // Problem may be in the bilinear weight calculation but not sure
-
-    vec4 value = textureGather(oe_splat_coverageTex, oe_splat_covtc, 0);
-    float value_sw = value.w;
-    float value_se = value.z;
-    float value_ne = value.y;
-    float value_nw = value.x;
-
-#else
-        //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
-    vec2 tc = oe_splat_covtc;
-
-    float pixelWidth = 1.0/size;
-    float halfPixelWidth = pixelWidth * 0.5;
-    float pixelWidth2 = pixelWidth * pixelWidth;
-
-     // Find the four quantized coverage coordinates that form a box around the actual
-    // coverage coordinates, where each quantized coord is at the center of a coverage texel.
-    vec2 rem = mod(tc, pixelWidth);
-    vec2 sw;
-    sw.x = tc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
-    sw.y = tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth); 
-    vec2 ne = sw + pixelWidth;
-    vec2 nw = vec2(sw.x, ne.y);
-    vec2 se = vec2(ne.x, sw.y);
-
-    // Calculate the weighting for each corner.
-    vec2 dsw = tc-sw;
-    vec2 dse = tc-se;
-    vec2 dne = tc-ne;
-    vec2 dnw = tc-nw;
-
-    float sw_weight = max(pixelWidth2-dot(dsw,dsw),0.0);
-    float se_weight = max(pixelWidth2-dot(dse,dse),0.0);
-    float ne_weight = max(pixelWidth2-dot(dne,dne),0.0);
-    float nw_weight = max(pixelWidth2-dot(dnw,dnw),0.0);
-
-     // normalize the weights so they total 1.0
-    float invTotalWeight = 1.0/(sw_weight+se_weight+ne_weight+nw_weight);
-    sw_weight *= invTotalWeight;
-    se_weight *= invTotalWeight;
-    ne_weight *= invTotalWeight;
-    nw_weight *= invTotalWeight;
-
-     // Sample coverage values using quantized corner coords:
-    float value_sw = texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
-    float value_se = texture(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
-    float value_ne = texture(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
-    float value_nw = texture(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
-#endif
-
-
     // Build the render info data for each corner:
-    oe_SplatRenderInfo ri_sw; oe_splat_getRenderInfo(value_sw, env, ri_sw);
-    oe_SplatRenderInfo ri_se; oe_splat_getRenderInfo(value_se, env, ri_se);
-    oe_SplatRenderInfo ri_ne; oe_splat_getRenderInfo(value_ne, env, ri_ne);
-    oe_SplatRenderInfo ri_nw; oe_splat_getRenderInfo(value_nw, env, ri_nw);
+    oe_SplatRenderInfo ri_sw; oe_splat_getRenderInfo(oe_splat_coverage[0], env, ri_sw);
+    oe_SplatRenderInfo ri_se; oe_splat_getRenderInfo(oe_splat_coverage[1], env, ri_se);
+    oe_SplatRenderInfo ri_nw; oe_splat_getRenderInfo(oe_splat_coverage[2], env, ri_nw);
+    oe_SplatRenderInfo ri_ne; oe_splat_getRenderInfo(oe_splat_coverage[3], env, ri_ne);
 
     // Primary splat:
     vec4 sw_primary = oe_splat_getTexel(ri_sw.primaryIndex, splat_tc);
     vec4 se_primary = oe_splat_getTexel(ri_se.primaryIndex, splat_tc);
-    vec4 ne_primary = oe_splat_getTexel(ri_ne.primaryIndex, splat_tc);
     vec4 nw_primary = oe_splat_getTexel(ri_nw.primaryIndex, splat_tc);
+    vec4 ne_primary = oe_splat_getTexel(ri_ne.primaryIndex, splat_tc);
 
     // Detail splat - weighting is in the alpha channel
     // TODO: Pointless to have a detail range? -gw
@@ -274,14 +275,12 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     vec4 sw_mix = vec4(mix(sw_primary.rgb, sw_detail.rgb, sw_detail.a), sw_primary.a);
     vec4 se_mix = vec4(mix(se_primary.rgb, se_detail.rgb, se_detail.a), se_primary.a);
 
-    vec2 weight = fract( oe_splat_covtc*size - 0.5);
+    vec2 weight = fract(oe_splat_covtc*oe_splat_coverageTexSize - 0.5);
 
     vec4 temp0 = mix(nw_mix, ne_mix, weight.x);
     vec4 temp1 = mix(sw_mix, se_mix, weight.x);
 
-    texel = mix(temp1, temp0, weight.y);
-
-    return texel;
+    return mix(temp1, temp0, weight.y);
 }
 
 //............................................................................

@@ -101,25 +101,25 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             }
 
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
-            osg::ref_ptr< osg::Image > final = geoImage.getImage();
+            osg::ref_ptr< osg::Image > finalImage = geoImage.getImage();
 
             // convert to RGB if necessary
-            if ( _packager->getExtension() == "jpg" && final->getPixelFormat() != GL_RGB )
+            if ( _packager->getExtension() == "jpg" && finalImage->getPixelFormat() != GL_RGB )
             {
-                final = ImageUtils::convertToRGB8( final.get() );
+                finalImage = ImageUtils::convertToRGB8( finalImage.get() );
             }
 
             // use the TileSource provided if set, else use writeImageFile
             if (tileSource)
             {
-                tileSource->storeImage(key, final.get(), 0L);
+                tileSource->storeImage(key, finalImage.get(), 0L);
                 return true;
             }
             else
             {
                 // attempt to create the output folder:
                 osgEarth::makeDirectoryForFile( path );
-                return osgDB::writeImageFile(*final.get(), path, _packager->getOptions());
+                return osgDB::writeImageFile(*finalImage.get(), path, _packager->getOptions());
             }
         }
     }

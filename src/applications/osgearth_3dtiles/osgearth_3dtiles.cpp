@@ -381,7 +381,7 @@ main_tile(osg::ArgumentParser& args)
     if (!tileset.valid())
         return usage("Failed to create a tileset from the feature source");
 
-    std::ofstream fout(outfile);
+    std::ofstream fout(outfile.c_str());
     Util::Json::Value json = tileset->getJSON();
     Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);
@@ -634,7 +634,7 @@ mvt_tile(osg::ArgumentParser& args)
     tileset->root() = rootTile.get();
     tileset->asset()->version() = "1.0";
 
-    std::ofstream fout(outfile);
+    std::ofstream fout(outfile.c_str());
     Util::Json::Value json = tileset->getJSON();
     Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);

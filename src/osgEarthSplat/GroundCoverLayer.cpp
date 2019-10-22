@@ -581,7 +581,10 @@ GroundCoverLayer::Renderer::DrawState::reset()
         for (unsigned i = 0; i < numInstances; i++)
         {
             unsigned offset = i * 8;
-            std::vector<GLuint> instanceIndicies = { (GLuint)(0 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(3 + offset),  (GLuint)(4 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(7 + offset) };
+            std::vector<GLuint> instanceIndicies;
+            instanceIndicies.reserve(8);
+            for (size_t k = 0; k < 8; ++k)
+                instanceIndicies.push_back(static_cast<GLuint>(0 + offset));
             indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
         }
         _geom->addPrimitiveSet(new osg::DrawElementsUInt(GL_TRIANGLES, totalIndicies, indices.data(), 0));

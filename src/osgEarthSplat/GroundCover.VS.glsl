@@ -4,26 +4,30 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_name       GroundCover vertex shader
 #pragma vp_entryPoint oe_GroundCover_VS_MODEL
 #pragma vp_location   vertex_model
+#pragma vp_order      0.1
 
+#pragma import_defines(OE_LANDCOVER_TEX)
+#pragma import_defines(OE_LANDCOVER_TEX_MATRIX)
 #pragma import_defines(OE_GROUNDCOVER_USE_INSTANCING)
 
 uniform vec2 oe_GroundCover_numInstances;
 uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
 
-// Noise texture:
-uniform sampler2D oe_GroundCover_noiseTex;
-
 // different noise texture channels:
-#define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
-#define NOISE_CLUMPY   3
 
 vec3 vp_Normal;
 vec4 vp_Color;
 
-vec4 tileUV; // vertex stage global
+uniform sampler2D oe_GroundCover_noiseTex;
 vec4 noise;  // vertex stage global
+
+uniform sampler2D OE_LANDCOVER_TEX;
+uniform mat4 OE_LANDCOVER_TEX_MATRIX;
+
+vec4 oe_layer_tilec;
+flat out float oe_LandCover_coverage;
 
 void oe_GroundCover_VS_MODEL(inout vec4 vertex_model)
 {
@@ -39,24 +43,25 @@ void oe_GroundCover_VS_MODEL(inout vec4 vertex_model)
         float(instanceID % int(oe_GroundCover_numInstances.x)),
         float(instanceID / int(oe_GroundCover_numInstances.y)));
 
-    tileUV = vec4(offset/(oe_GroundCover_numInstances-1), 0, 1);
+    oe_layer_tilec = vec4(offset/(oe_GroundCover_numInstances-1), 0, 1);
 
     vec2 variation = 0.5 / (oe_GroundCover_numInstances-1);
 
     // sample the noise texture.
-    noise = texture(oe_GroundCover_noiseTex, tileUV.st);
+    noise = texture(oe_GroundCover_noiseTex, oe_layer_tilec.xy);
 
-    tileUV.xy += variation * vec2(noise[NOISE_RANDOM]*2-1, noise[NOISE_RANDOM_2]*2-1);
-    tileUV = clamp(tileUV,0,1);
+    oe_layer_tilec.xy += variation * vec2(noise[NOISE_RANDOM]*2-1, noise[NOISE_RANDOM_2]*2-1);
+    oe_layer_tilec.xy = clamp(oe_layer_tilec.xy,0,1);
 
     // just use average Z across tile - doesn't matter since we are going to clamp
-    float z = mix(oe_GroundCover_LL.z, oe_GroundCover_UR.z, 0.5*(tileUV.x+tileUV.y));
-
-    vertex_model.xyz = mix(oe_GroundCover_LL, oe_GroundCover_UR, vec3(tileUV.xy, z));
+    float z = mix(oe_GroundCover_LL.z, oe_GroundCover_UR.z, 0.5*(oe_layer_tilec.x+oe_layer_tilec.y));
+    vertex_model.xyz = mix(oe_GroundCover_LL, oe_GroundCover_UR, vec3(oe_layer_tilec.xy, z));
 
     vp_Normal = vec3(0,0,1);
-
     vp_Color = vec4(1);
+
+    vec2 coords = (OE_LANDCOVER_TEX_MATRIX * oe_layer_tilec).st;
+    oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, coords, 0).r;
 }
 
 
@@ -91,8 +96,8 @@ uniform float oe_GroundCover_brightness;
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-// Tile UV generated in MODEL stage
-vec4 tileUV;
+// Generated in model stage
+vec4 oe_layer_tilec;
 vec4 noise;
 
 // Stage globals
@@ -171,6 +176,8 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         return;
     else
         noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
+
+    vec4 tileUV = oe_layer_tilec;
 
     // Look up the biome at this point:
     int biomeIndex = oe_GroundCover_getBiomeIndex(tileUV);

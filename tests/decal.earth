@@ -1,31 +1,87 @@
-<Map name="ReadyMap.org">
-    
+<Map name="Press 'd' to drop the bomb">
+
+    <libraries>osgEarthSplat</libraries>
+
     <options>
         <terrain skirt_ratio="0.05"/>
     </options>
-    
+
     <ArcGISServerImage name="World Imagery">
         <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
-		<nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+        <nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
     </ArcGISServerImage>
+
+    <xi:include href="../data/land_cover_dictionary.xml"/>
+    <xi:include href="esa_land_cover.xml"/>
+
+    <SplatImage name="Procedural Imagery" land_cover_layer="LandCover" opacity="0.85">
+        <zones>
+            <zone name="default">
+                <surface>
+                    <catalog>../data/splat/splat_catalog.xml</catalog>
+                </surface>
+            </zone>                
+        </zones>
+    </SplatImage>
 
     <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </TMSElevation>
-    
+
     <!-- TODO: Should work with visible="false" but does not -->
     <Decal name="Damage" 
            visible="true"
-           opacity="0.0"
            min_level="14"
            shared="true"
            shared_sampler="decal_tex" 
-           shared_matrix="decal_mat"/>
-    
+           shared_matrix="decal_mat">
+
+        <shader>
+            <![CDATA[
+            #version 330
+            #pragma vp_entryPoint destroy_fs
+            #pragma vp_location fragment_coloring            
+            
+            uniform sampler2D decal_tex;
+            in vec2 decal_coords;
+            vec4 oe_splat_coverage;
+            
+            void destroy_fs(inout vec4 color)
+            {
+                vec4 texel = texture(decal_tex, decal_coords);
+                //color = vec4(0,0,0, clamp(texel.a,0,0.95));
+                color.a = 0;
+            }
+         ]]>
+        </shader>
+
+    </Decal>
+
+    <!-- GPU trees from land cover data -->
+    <GroundCover name="Trees" land_cover_layer="LandCover">
+        <lod>13</lod>
+        <cast_shadows>true</cast_shadows>
+        <zones>
+            <zone name="default">
+                <groundcover>
+                    <max_distance>6400</max_distance>
+                    <density>3.4</density>
+                    <fill>0.85</fill>
+                    <biomes>
+                        <biome classes="forest">
+                            <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
+                            <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                        </biome>
+                    </biomes>
+                </groundcover>
+            </zone>
+        </zones>
+    </GroundCover>
+
     <terrainshader>
         <code>
-          <![CDATA[
+            <![CDATA[
             #version 330
             #pragma vp_entryPoint destroy_vs
             #pragma vp_location vertex_model
@@ -45,33 +101,44 @@
                 decal_coords = (decal_mat * oe_layer_tilec).st;
                 vec4 texel = texture(decal_tex, decal_coords);
                 float damage = texel.a;
-                vertex.xyz += up * maxdrop * damage;
+                //vertex.xyz += up * maxdrop * damage;
             }
             
             [break]
             
             #version 330
-            #pragma vp_entryPoint destroy_fs
+            #pragma vp_entryPoint overrideCoverageFS
             #pragma vp_location fragment_coloring            
             
             uniform sampler2D decal_tex;
             in vec2 decal_coords;
+            vec4 oe_splat_coverage;
             
-            void destroy_fs(inout vec4 color)
+            void overrideCoverageFS(inout vec4 color)
             {
                 vec4 texel = texture(decal_tex, decal_coords);
-                color.rgb = mix(color.rgb, vec3(0,0,0), clamp(texel.a,0,0.95));
+                if (texel.a > 0.2)
+                    oe_splat_coverage = vec4(11);
             }
           ]]>
         </code>
     </terrainshader>
-    
+
     <Viewpoints time="0">
         <viewpoint name="Area 51">
             <lat>37.247145</lat>
             <long>-115.807340</long>
             <pitch>-45</pitch>
             <range>10000</range>
+        </viewpoint>
+        <viewpoint>
+            <heading>-17.9986</heading>
+            <pitch>-4.72049</pitch>
+            <range>4665.11m</range>
+            <long>-122.2649096606097</long>
+            <lat>37.42664796549958</lat>
+            <height>123.6462660189718</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
     </Viewpoints>
 </Map>

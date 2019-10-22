@@ -747,14 +747,22 @@ void convertToDrawElementsUInt(osg::Geometry* geometry)
  */
 bool tesselateGeometry(osg::Geometry* geometry)
 {
+#if 0
     osgEarth::Tessellator oeTess;
     if ( !oeTess.tessellateGeometry(*geometry) )
     {
         osgUtil::Tessellator tess;
         tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+        //tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+        tess.setWindingType(osgUtil::Tessellator::TESS_WINDING_ODD);
         tess.retessellatePolygons( *geometry );
     }
+#else
+    osgUtil::Tessellator tess;
+    tess.setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
+    tess.setWindingType(osgUtil::Tessellator::TESS_WINDING_ODD);
+    tess.retessellatePolygons(*geometry);
+#endif
 
     // Make sure all of the primitive sets are osg::DrawElementsUInt
     // The osgEarth tesselator will occassionally fail, and we fall back to the osgUtil::Tesselator which can produce a mix
@@ -1046,8 +1054,6 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
     if ( !ring->isValid() )
         return;
 
-    ring->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
-
     osg::ref_ptr<osg::Vec3Array> allPoints = new osg::Vec3Array();
     transformAndLocalize( ring->asVector(), featureSRS, allPoints.get(), outputSRS, world2local, makeECEF );
 
@@ -1062,8 +1068,6 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             Geometry* hole = h->get();
             if ( hole->isValid() )
             {
-                hole->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CW);
-
                 osg::ref_ptr<osg::Vec3Array> holePoints = new osg::Vec3Array();
                 transformAndLocalize( hole->asVector(), featureSRS, holePoints.get(), outputSRS, world2local, makeECEF );
 

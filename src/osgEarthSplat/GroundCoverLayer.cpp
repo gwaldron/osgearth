@@ -720,11 +720,10 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     // transmit the extents of this tile to the shader, skipping the glUniform
     // call if the values have not changed. The shader will calculate the
     // instance positions by interpolating across the tile extents.
-    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(tile._geom->getVertexArray());
+    const osg::BoundingBox& bbox = tile._geom->getBoundingBox();
 
-    // Re-think this, because it doesn't work if the terrain has skirts or mask geometry!
-    const osg::Vec3f& LL = verts->front();
-    const osg::Vec3f& UR = verts->back();
+    const osg::Vec3f& LL = bbox.corner(0);
+    const osg::Vec3f& UR = bbox.corner(7);
 
     if (LL != ds._LLAppliedValue)
     {

@@ -44,11 +44,6 @@ namespace osgEarth
     public:
         META_Layer(osgEarth, PatchLayer, Options, VisibleLayer, Patch);
 
-        struct TileData : public osg::Referenced
-        {
-            osg::ref_ptr<osg::Texture> _texture;
-        };
-
         //! API providing access to patch geometry 
         class OSGEARTH_EXPORT GeometryArrayProvider
         {
@@ -106,9 +101,6 @@ namespace osgEarth
          */
         void setAcceptCallback(AcceptCallback* value) { _acceptCallback = value; }
         AcceptCallback* getAcceptCallback() const { return _acceptCallback.get(); }
-
-
-        TileData* createTileData(const TileKey& key) { return 0L; }
 
     protected:
 

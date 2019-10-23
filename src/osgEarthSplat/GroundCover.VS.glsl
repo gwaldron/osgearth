@@ -6,62 +6,68 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 #pragma vp_order      0.1
 
+#pragma import_defines(OE_GROUNDCOVER_USE_INSTANCING)
 #pragma import_defines(OE_LANDCOVER_TEX)
 #pragma import_defines(OE_LANDCOVER_TEX_MATRIX)
-#pragma import_defines(OE_GROUNDCOVER_USE_INSTANCING)
 
 uniform vec2 oe_GroundCover_numInstances;
 uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
 
+// Noise texture:
+uniform sampler2D oe_GroundCover_noiseTex;
+
+// LandCover texture
+uniform sampler2D OE_LANDCOVER_TEX;
+uniform mat4 OE_LANDCOVER_TEX_MATRIX;
+float oe_LandCover_coverage;
+
 // different noise texture channels:
+//#define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
+//#define NOISE_CLUMPY   3
 
 vec3 vp_Normal;
 vec4 vp_Color;
-
-uniform sampler2D oe_GroundCover_noiseTex;
-vec4 noise;  // vertex stage global
-
-uniform sampler2D OE_LANDCOVER_TEX;
-uniform mat4 OE_LANDCOVER_TEX_MATRIX;
+vec4 oe_noise;  // vertex stage global
 
 vec4 oe_layer_tilec;
-flat out float oe_LandCover_coverage;
 
 void oe_GroundCover_VS_MODEL(inout vec4 vertex_model)
 {
+    // input: 8 verts per instance so we can expand into a dual billboard
 #ifdef OE_GROUNDCOVER_USE_INSTANCING
     int instanceID = gl_InstanceID;
 #else
     int instanceID = gl_VertexID / 8;
 #endif
 
-    // Instead of using oe_layer_tilec, generate the UV tile coordinates
-    // based on the current instance number
+    // Generate the UV tile coordinates (oe_layer_tilec) based on the current instance number
     vec2 offset = vec2(
         float(instanceID % int(oe_GroundCover_numInstances.x)),
         float(instanceID / int(oe_GroundCover_numInstances.y)));
 
-    oe_layer_tilec = vec4(offset/(oe_GroundCover_numInstances-1), 0, 1);
+    // half the distance between cell centers
+    vec2 halfSpacing = 0.5/oe_GroundCover_numInstances;
 
-    vec2 variation = 0.5 / (oe_GroundCover_numInstances-1);
+    oe_layer_tilec = vec4( halfSpacing + offset/oe_GroundCover_numInstances, 0, 1);
 
-    // sample the noise texture.
-    noise = texture(oe_GroundCover_noiseTex, oe_layer_tilec.xy);
+    oe_noise = texture(oe_GroundCover_noiseTex, oe_layer_tilec.st);
 
-    oe_layer_tilec.xy += variation * vec2(noise[NOISE_RANDOM]*2-1, noise[NOISE_RANDOM_2]*2-1);
-    oe_layer_tilec.xy = clamp(oe_layer_tilec.xy,0,1);
+    // randomly shift each point off center
+    vec2 shift = vec2(fract(oe_noise[NOISE_RANDOM]*5.5), fract(oe_noise[NOISE_RANDOM_2]*5.5))*2-1;
+    oe_layer_tilec.xy += shift*halfSpacing;
 
-    // just use average Z across tile - doesn't matter since we are going to clamp
-    float z = mix(oe_GroundCover_LL.z, oe_GroundCover_UR.z, 0.5*(oe_layer_tilec.x+oe_layer_tilec.y));
-    vertex_model.xyz = mix(oe_GroundCover_LL, oe_GroundCover_UR, vec3(oe_layer_tilec.xy, z));
+    // and place it correctly within the tile
+    vertex_model.xy = mix(oe_GroundCover_LL.xy, oe_GroundCover_UR.xy, oe_layer_tilec.xy);
+    vertex_model.z = 0.0;
+    vertex_model.w = 1.0;
 
     vp_Normal = vec3(0,0,1);
     vp_Color = vec4(1);
 
-    vec2 coords = (OE_LANDCOVER_TEX_MATRIX * oe_layer_tilec).st;
-    oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, coords, 0).r;
+    // sample the landcover data
+    oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*oe_layer_tilec).st, 0).r;
 }
 
 
@@ -96,9 +102,9 @@ uniform float oe_GroundCover_brightness;
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-// Generated in model stage
-vec4 oe_layer_tilec;
-vec4 noise;
+// Generated in MODEL stage
+vec4 oe_layer_tilec; // tile UV
+vec4 oe_noise;       // noise samples
 
 // Stage globals
 vec3 oe_UpVectorView;
@@ -138,7 +144,7 @@ void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
 // SDK import
 float oe_terrain_getElevation(in vec2);
 
-// Generated in code
+// Generated in GroundCover.cpp
 int oe_GroundCover_getBiomeIndex(in vec4);
 
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
@@ -172,15 +178,13 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
-    if ( noise[NOISE_SMOOTH] > oe_GroundCover_fill )
+    if ( oe_noise[NOISE_SMOOTH] > oe_GroundCover_fill )
         return;
     else
-        noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
-
-    vec4 tileUV = oe_layer_tilec;
+        oe_noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
 
     // Look up the biome at this point:
-    int biomeIndex = oe_GroundCover_getBiomeIndex(tileUV);
+    int biomeIndex = oe_GroundCover_getBiomeIndex(oe_layer_tilec);
     if ( biomeIndex < 0 )
     {
         // No biome defined; bail out without emitting any geometry.
@@ -189,7 +193,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     // If we're using a mask texture, sample it now:
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
-    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*tileUV).st).a;
+    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*oe_layer_tilec).st).a;
     if ( mask > 0.0 )
     {
         // Failed to pass the mask; no geometry emitted.
@@ -198,7 +202,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 #endif
 
     // Clamp the center point to the elevation.
-    oe_GroundCover_clamp(vertex_view, oe_UpVectorView, tileUV.st);
+    oe_GroundCover_clamp(vertex_view, oe_UpVectorView, oe_layer_tilec.st);
 
     // Calculate the normalized camera range:
     float nRange = clamp(-vertex_view.z/oe_GroundCover_maxDistance, 0.0, 1.0);
@@ -211,8 +215,8 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     oe_GroundCover_Biome biome;
     oe_GroundCover_getBiome(biomeIndex, biome);
 
-    // select a billboard seemingly at random. Need to scale n to account for the fill limit first though.
-    int objectIndex = biome.firstObjectIndex + int(floor(noise[NOISE_RANDOM] * float(biome.numObjects)));
+    // select a billboard at random
+    int objectIndex = biome.firstObjectIndex + int(floor(oe_noise[NOISE_RANDOM] * float(biome.numObjects)));
     objectIndex = min(objectIndex, biome.firstObjectIndex + biome.numObjects - 1);
 
     // Recover the object we randomly picked:
@@ -230,19 +234,17 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     float falloff = 1.0-(nRange*nRange*nRange);
 
     // a pseudo-random scale factor to the width and height of a billboard
-    float sizeScale = billboard.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
+    float sizeScale = billboard.sizeVariation * (oe_noise[NOISE_RANDOM_2]*2.0-1.0);
 
     float width = (billboard.width + billboard.width*sizeScale) * falloff;
 
     float height = (billboard.height + billboard.height*sizeScale) * falloff;
 
-
-    int which = gl_VertexID & 7; // mod8
+    int which = gl_VertexID & 7; // mod8 - there are 8 verts per instance
 
 #ifdef OE_IS_SHADOW_CAMERA
 
-    // For a shadow camera, draw the tree as a cross hatch model
-    // instead of a billboard.
+    // For a shadow camera, draw the tree as a cross hatch model instead of a billboard.
     vp_Color = vec4(1,1,1,falloff);
     vec3 heightVector = oe_UpVectorView*height;
     vec3 tangentVector;
@@ -264,10 +266,9 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         which==0? vertex_view.xyz - halfWidthTangentVector :
         which==1? vertex_view.xyz + halfWidthTangentVector :
         which==2? vertex_view.xyz - halfWidthTangentVector + heightVector :
-                  vertex_view.xyz + halfWidthTangentVector + heightVector;
+        vertex_view.xyz + halfWidthTangentVector + heightVector;
 
     vp_Normal = normalize(cross(tangentVector, heightVector));
-
 
 #else // normal render camera - draw as a billboard:
 
@@ -276,7 +277,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     vec3 heightVector = oe_UpVectorView*height;
 
     // Color variation, brightness, and contrast:
-    vec3 color = vec3( noise[NOISE_RANDOM_2] );
+    vec3 color = vec3( oe_noise[NOISE_RANDOM_2] );
     color = ( ((color - 0.5) * oe_GroundCover_contrast + 0.5) * oe_GroundCover_brightness);
 
     float billboardAmount = 1.0;
@@ -296,15 +297,15 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
             which == 1? vec4(vertex_view.xyz + halfWidthTangentVector, 1.0) :
             which == 2? vec4(vertex_view.xyz - halfWidthTangentVector + heightVector, 1.0) :
-                        vec4(vertex_view.xyz + halfWidthTangentVector + heightVector, 1.0);
+            vec4(vertex_view.xyz + halfWidthTangentVector + heightVector, 1.0);
 
         // animate based on wind parameters.
         if (which >= 2 && oe_GroundCover_windFactor > 0)
         {
-            float nw = noise[NOISE_SMOOTH];
+            float nw = oe_noise[NOISE_SMOOTH];
             float wind = width*oe_GroundCover_windFactor*nw;
-            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1+nw), wind, tileUV.s);
-            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1-nw), wind, tileUV.t);
+            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1+nw), wind, oe_layer_tilec.s);
+            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1-nw), wind, oe_layer_tilec.t);
         }
 
         // calculates normals:
@@ -323,11 +324,11 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         {
             vp_Color = vec4(color*oe_GroundCover_ao, falloff * billboardAmount);
 
-            float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
+            float blend = 0.25 + (oe_noise[NOISE_RANDOM_2]*0.25);
 
             vp_Normal =
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
-                                          mix( tangentVector, faceNormalVector, blend);
+                mix( tangentVector, faceNormalVector, blend);
 
             oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
         }
@@ -343,7 +344,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         vec3 N = cross(oe_UpVectorView, E);
 
         // now introduce a "random" rotation
-        vec2 b = vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2])*2.0-1.0;
+        vec2 b = vec2(oe_noise[NOISE_RANDOM], oe_noise[NOISE_RANDOM_2])*2.0-1.0;
         N = normalize(E*b.x + N*b.y);
         E = normalize(cross(N, U));
 
@@ -353,7 +354,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
             which == 4? vec4(C - E*k - N*k, 1.0) :
             which == 5? vec4(C + E*k - N*k, 1.0) :
             which == 6? vec4(C - E*k + N*k, 1.0) :
-                        vec4(C + E*k + N*k, 1.0);
+            vec4(C + E*k + N*k, 1.0);
 
         vp_Normal = vertex_view.xyz - C;
 
@@ -366,5 +367,5 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         which == 0 || which == 4? vec2(0, 0) :
         which == 1 || which == 5? vec2(1, 0) :
         which == 2 || which == 6? vec2(0, 1) :
-                                  vec2(1, 1);
+        vec2(1, 1);
 }

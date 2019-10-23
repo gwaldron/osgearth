@@ -427,9 +427,7 @@ GroundCoverLayer::buildStateSets()
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
                 shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
-                // This is the shader that samples the coverage data.
-                //osgEarth::Shaders coreShaders;
-                //coreShaders.load(vp, coreShaders.LandCoverVS, getReadOptions());
+                // Bind the coverage sampler and its matrix:
                 zoneStateSet->setDefine("OE_LANDCOVER_TEX", getLandCoverLayer()->shareTexUniformName().get());
                 zoneStateSet->setDefine("OE_LANDCOVER_TEX_MATRIX", getLandCoverLayer()->shareTexMatUniformName().get());
 
@@ -724,6 +722,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     // instance positions by interpolating across the tile extents.
     osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(tile._geom->getVertexArray());
 
+    // Re-think this, because it doesn't work if the terrain has skirts or mask geometry!
     const osg::Vec3f& LL = verts->front();
     const osg::Vec3f& UR = verts->back();
 

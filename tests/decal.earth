@@ -29,12 +29,21 @@
         <vdatum>egm96</vdatum>
     </TMSElevation>
 
-    <!-- TODO: Should work with visible="false" but does not -->
+    <!--
+    Notes:
+    * The min_level needs to be equal to or less than the LOD of groundcover in order
+      for the groundcover layer to see the shared sampler.
+    * Related to above, a lower LOD requires a larger tile_size to compensate, and this
+      in turn slows down the tile gen a lot AND requires a lot more memory!
+    * visible="false" doesn't work for some reason -- TODO fix a bug
+    -->
     <Decal name="Damage" 
            visible="true"
-           min_level="14"
+           attenuation_range="1500"
+           min_level="13"
+           max_data_level="16"
            shared="true"
-           shared_sampler="decal_tex" 
+           shared_sampler="decal_tex"
            shared_matrix="decal_mat">
 
         <shader>
@@ -50,14 +59,14 @@
             void destroy_fs(inout vec4 color)
             {
                 vec4 texel = texture(decal_tex, decal_coords);
-                //color = vec4(0,0,0, clamp(texel.a,0,0.95));
-                color.a = 0;
+                color = vec4(0,0,0, clamp(texel.a,0,0.65));
+                //color.a = 0;
             }
          ]]>
         </shader>
 
     </Decal>
-
+    
     <!-- GPU trees from land cover data -->
     <GroundCover name="Trees" land_cover_layer="LandCover">
         <lod>13</lod>
@@ -67,9 +76,12 @@
                 <groundcover>
                     <max_distance>6400</max_distance>
                     <density>3.4</density>
-                    <fill>0.85</fill>
+                    <fill>0.75</fill>
+                    <brightness>2.0</brightness>
+                    <contrast>0.5</contrast>
                     <biomes>
                         <biome classes="forest">
+                            <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
                             <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
                             <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
                         </biome>
@@ -77,7 +89,37 @@
                 </groundcover>
             </zone>
         </zones>
+        <shader>
+          <![CDATA[
+            #version 330
+            #pragma vp_entryPoint overrideCoverageVS
+            #pragma vp_location vertex_model
+            
+            uniform sampler2D decal_tex;
+            uniform mat4 decal_mat;
+            
+            vec3 vp_Normal;
+            vec4 oe_layer_tilec;
+            float oe_LandCover_coverage;
+            
+            void overrideCoverageVS(inout vec4 vertex)
+            {
+                vec2 decal_coords = (decal_mat * oe_layer_tilec).st;
+
+                vec4 texel = texture(decal_tex, decal_coords);
+                
+                if (texel.a > 0.2)
+                    oe_LandCover_coverage = 7;
+                    
+                // maximum distance to move the vertex:
+                const float maxdrop = -20.0;
+                float damage = texel.a;
+                vertex.xyz += vp_Normal * maxdrop * damage;
+            }
+          ]]>
+        </shader>
     </GroundCover>
+
 
     <terrainshader>
         <code>
@@ -93,6 +135,7 @@
             vec3 vp_Normal;
             out vec2 decal_coords;
             
+            // Alters the terrain to form a crater:
             void destroy_vs(inout vec4 vertex)
             {
                 // maximum distance to move the vertex:
@@ -101,7 +144,26 @@
                 decal_coords = (decal_mat * oe_layer_tilec).st;
                 vec4 texel = texture(decal_tex, decal_coords);
                 float damage = texel.a;
-                //vertex.xyz += up * maxdrop * damage;
+                vertex.xyz += up * maxdrop * damage;
+            }
+            
+            [break]
+            
+            #version 330
+            #pragma vp_entryPoint overrideCoverageVS
+            #pragma vp_location vertex_model
+            
+            uniform sampler2D decal_tex;
+            in vec2 decal_coords;
+            float oe_LandCover_coverage;
+            
+            // Overrides the land cover data for a crater
+            // (VS version for groundcover)
+            void overrideCoverageVS(inout vec4 unused)
+            {
+                vec4 texel = texture(decal_tex, decal_coords);
+                if (texel.a > 0.2)
+                    oe_LandCover_coverage = 7;
             }
             
             [break]
@@ -112,33 +174,19 @@
             
             uniform sampler2D decal_tex;
             in vec2 decal_coords;
-            vec4 oe_splat_coverage;
+            vec4 oe_LandCover_coverage;
             
+            // Overrides the land cover data for a crater
+            // (FS version for splatting)
             void overrideCoverageFS(inout vec4 color)
             {
                 vec4 texel = texture(decal_tex, decal_coords);
                 if (texel.a > 0.2)
-                    oe_splat_coverage = vec4(11);
+                    oe_LandCover_coverage = vec4(7);
             }
           ]]>
         </code>
     </terrainshader>
 
-    <Viewpoints time="0">
-        <viewpoint name="Area 51">
-            <lat>37.247145</lat>
-            <long>-115.807340</long>
-            <pitch>-45</pitch>
-            <range>10000</range>
-        </viewpoint>
-        <viewpoint>
-            <heading>-17.9986</heading>
-            <pitch>-4.72049</pitch>
-            <range>4665.11m</range>
-            <long>-122.2649096606097</long>
-            <lat>37.42664796549958</lat>
-            <height>123.6462660189718</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-        </viewpoint>
-    </Viewpoints>
+    <xi:include href="viewpoints.xml"/>
 </Map>

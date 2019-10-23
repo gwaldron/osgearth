@@ -89,35 +89,6 @@
                 </groundcover>
             </zone>
         </zones>
-        <shader>
-          <![CDATA[
-            #version 330
-            #pragma vp_entryPoint overrideCoverageVS
-            #pragma vp_location vertex_model
-            
-            uniform sampler2D decal_tex;
-            uniform mat4 decal_mat;
-            
-            vec3 vp_Normal;
-            vec4 oe_layer_tilec;
-            float oe_LandCover_coverage;
-            
-            void overrideCoverageVS(inout vec4 vertex)
-            {
-                vec2 decal_coords = (decal_mat * oe_layer_tilec).st;
-
-                vec4 texel = texture(decal_tex, decal_coords);
-                
-                if (texel.a > 0.2)
-                    oe_LandCover_coverage = 7;
-                    
-                // maximum distance to move the vertex:
-                const float maxdrop = -20.0;
-                float damage = texel.a;
-                vertex.xyz += vp_Normal * maxdrop * damage;
-            }
-          ]]>
-        </shader>
     </GroundCover>
 
 

@@ -62,18 +62,22 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
     case INTERP_BILINEAR:
     {
         //OE_INFO << "getHeightAtPixel: (" << c << ", " << r << ")" << std::endl;
+        const GLfloat* heights = (GLfloat*)(hf->getFloatArray()->getDataPointer());
+        const int cols = hf->getNumColumns();
+
         int rowMin = std::max((int)floor(r), 0);
-        int rowMax = std::max(std::min((int)ceil(r), (int)(hf->getNumRows() - 1)), 0);
+        const int rowMax = std::max(std::min((int)ceil(r), (int)(hf->getNumRows() - 1)), 0);
         int colMin = std::max((int)floor(c), 0);
-        int colMax = std::max(std::min((int)ceil(c), (int)(hf->getNumColumns() - 1)), 0);
+        const int colMax = std::max(std::min((int)ceil(c), cols - 1), 0);
 
         if (rowMin > rowMax) rowMin = rowMax;
         if (colMin > colMax) colMin = colMax;
 
-        float urHeight = hf->getHeight(colMax, rowMax);
-        float llHeight = hf->getHeight(colMin, rowMin);
-        float ulHeight = hf->getHeight(colMin, rowMax);
-        float lrHeight = hf->getHeight(colMax, rowMin);
+        // Bring in hf->getHeight(colMax, rowMax) calc
+        float urHeight = heights[colMax + rowMax * cols];
+        float llHeight = heights[colMin + rowMin * cols];
+        float ulHeight = heights[colMin + rowMax * cols];
+        float lrHeight = heights[colMax + rowMin * cols];
 
         //Make sure not to use NoData in the interpolation
         if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
@@ -90,7 +94,8 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         if (colSame && rowSame)
         {
             //OE_NOTICE << "Exact value" << std::endl;
-            result = hf->getHeight((int)c, (int)r);
+            // Bring in hf->getHeight(colMax, rowMax) calc
+            result = heights[(int)c + (int)r * cols];
         }
         else if (colSame)
         {

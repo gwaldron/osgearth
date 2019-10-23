@@ -234,7 +234,7 @@ DecalLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
         return TextureWindow();
     }
 
-    if (key.getLOD() != getMinLevel())
+    if (key.getLOD() < getMinLevel())
     {
         return TextureWindow();
     }

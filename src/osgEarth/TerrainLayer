@@ -209,7 +209,7 @@ namespace osgEarth
          * Data Extents reported for this layer are copied into output.
          * Returns true on success, false is there are no extents to report.
          */
-        const DataExtentList& getDataExtents() const;
+        virtual const DataExtentList& getDataExtents() const;
 
         /**
          * Gets an extent that is the union of all the extents in getDataExtents().

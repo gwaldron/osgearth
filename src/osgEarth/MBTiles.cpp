@@ -775,6 +775,16 @@ MBTilesElevationLayer::openImplementation()
     return ElevationLayer::openImplementation();
 }
 
+const DataExtentList&
+MBTilesElevationLayer::getDataExtents() const
+{
+    static const DataExtentList _def;
+    if (_imageLayer.valid())
+        return _imageLayer->getDataExtents();
+    else
+        return _def;
+}
+
 void
 MBTilesElevationLayer::setDataExtents(const DataExtentList& values)
 {

@@ -82,12 +82,7 @@ namespace osgEarth { namespace MBTiles
         bool _forceRGB;
 
         // because no one knows if/when sqlite3 is threadsafe.
-        mutable Threading::Mutex _mutex; 
-
-        bool getMetaData(const std::string& name, std::string& value);
-        bool putMetaData(const std::string& name, const std::string& value);
-        bool createTables();
-        void computeLevelsNow();
+        mutable Threading::Mutex _mutex;
     };
 } }
 
@@ -230,6 +225,9 @@ namespace osgEarth
 
         //! Writes a heightfield image for the given key (if the layer is open for writing)
         virtual Status writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
+
+        //! Returns the data extents for the underlying layer
+        virtual const DataExtentList& getDataExtents() const;
 
         //! Assigns data extents to this layer (if open for writing).
         virtual void setDataExtents(const DataExtentList&);

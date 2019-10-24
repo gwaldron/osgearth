@@ -281,7 +281,9 @@ MBTilesImageLayer::openImplementation()
 
             if (!profile)
             {
-                OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
+                if (profileStr.empty() == false)
+                    OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
+
                 profile = Profile::create("spherical-mercator");
             }
 

@@ -246,20 +246,6 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey& key,
 
         // Make it from the source:
         result = source->createHeightField( key, getOrCreatePreCacheOp(), progress );
-
-        // If the result is good, we how have a heightfield but it's vertical values
-        // are still relative to the tile source's vertical datum. Convert them.
-        if (result.valid())
-        {
-            if ( ! key.getExtent().getSRS()->isVertEquivalentTo( getProfile()->getSRS() ) )
-            {
-                VerticalDatum::transform(
-                    getProfile()->getSRS()->getVerticalDatum(),    // from
-                    key.getExtent().getSRS()->getVerticalDatum(),  // to
-                    key.getExtent(),
-                    result.get() );
-            }
-        }
         
         // Blacklist the tile if it is the same projection as the source and
         // we can't get it and it wasn't cancelled
@@ -585,6 +571,17 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
             {
                 OE_WARN << LC << "Generated an illegal heightfield!" << std::endl;
                 hf = 0L; // to fall back on cached data if possible.
+            }
+
+            // If the result is good, we now have a heightfield but its vertical values
+            // are still relative to the source's vertical datum. Convert them.
+            if (hf.valid() && !key.getExtent().getSRS()->isVertEquivalentTo(getProfile()->getSRS()))
+            {
+                VerticalDatum::transform(
+                    getProfile()->getSRS()->getVerticalDatum(),    // from
+                    key.getExtent().getSRS()->getVerticalDatum(),  // to
+                    key.getExtent(),
+                    hf.get() );
             }
 
             // Pre-caching operation. If there's a TileSource, it runs the precache

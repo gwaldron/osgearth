@@ -71,7 +71,7 @@ namespace
             setCullingActive( false );
             osg::StateSet* ss = getOrCreateStateSet();
             ss->setMode(GL_DEPTH_TEST, 0);
-            ss->setRenderBinDetails(1, "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
+            ss->setRenderBinDetails(dm.getRenderBinNumber(), "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
         }
 
     public: // osg::Node

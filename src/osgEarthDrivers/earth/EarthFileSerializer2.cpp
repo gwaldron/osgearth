@@ -383,6 +383,7 @@ namespace
             if (driver == "gdal") c.key() = "GDALImage";
             else if (driver == "mbtiles") c.key() = "MBTilesImage";
             else if (driver == "arcgisonline") c.key() = "ArcGISServerImage";
+            else if (driver == "arcgis") c.key() = "ArcGISServerImage";
             else if (driver == "tilepackage") c.key() = "ArcGISTilePackageImage";
             else if (driver == "bing") c.key() = "BingImage";
             else if (driver == "cesiumion") c.key() = "CesiumIonImage";
@@ -395,6 +396,15 @@ namespace
             else if (driver == "agglite") c.key() = "FeatureImage";
             else if (driver == "debug") c.key() = "DebugImage";
             else if (driver == "road_surface") c.key() = "RoadSurface";
+            else if (driver == "composite" && !c.children().empty())
+            {
+                ConfigSet children = c.children("image");
+                c.remove("image");
+                Config layers("layers");
+                layers.add(children);
+                c.add(layers);
+                c.key() = "CompositeImage";
+            }
         }
         else if (c.key() == "elevation" && c.hasValue("driver"))
         {
@@ -408,6 +418,15 @@ namespace
             else if (driver == "tilecache") c.key() = "TileCacheElevation";
             else if (driver == "flatten_elevation") c.key() = "FlattenElevation";
             else if (driver == "fractal_elevation") c.key() = "FractalElevation";
+            else if (driver == "composite" && !c.children().empty())
+            {
+                ConfigSet children = c.children("elevation");
+                c.remove("elevation");
+                Config layers("layers");
+                layers.add(children);
+                c.add(layers);
+                c.key() = "CompositeElevation";
+            }
         }
         else if (c.key() == "model" && c.hasValue("driver"))
         {

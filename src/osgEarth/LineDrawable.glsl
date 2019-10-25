@@ -67,8 +67,8 @@ void oe_LineDrawable_VS_VIEW(inout vec4 currView)
 #pragma vp_location vertex_clip
 #pragma import_defines(OE_LINE_SMOOTH)
 
-// Set by the InstallViewportUniform callback
-uniform vec2 oe_ViewportSize;
+// Set by the InstallCameraUniform callback
+uniform vec3 oe_Camera;
 
 // Set by GLUtils methods
 uniform float oe_GL_LineWidth;
@@ -101,9 +101,9 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec4 nextClip = gl_ProjectionMatrix * oe_LineDrawable_nextView;
 
     // Transform all points into pixel space
-    vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_ViewportSize;
-    vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_ViewportSize;
-    vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
+    vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_Camera.xy;
 
 #ifdef OE_LINE_SMOOTH
     float thickness = floor(oe_GL_LineWidth + 1.0);
@@ -174,7 +174,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec2 extrudePixel = vec2(-dir.y, dir.x) * len;
 
     // and convert to unit space:
-    vec2 extrudeUnit = extrudePixel / oe_ViewportSize;
+    vec2 extrudeUnit = extrudePixel / oe_Camera.xy;
         
     // calculate the offset in clip space and apply it.
     vec2 offset = extrudeUnit * oe_LineDrawable_lateral * currClip.w;

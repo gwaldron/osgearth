@@ -400,7 +400,7 @@ main_tile(osg::ArgumentParser& args)
     if (!tileset.valid())
         return usage("Failed to create a tileset from the feature source");
 
-    std::ofstream fout(outfile);
+    std::ofstream fout(outfile.c_str());
     Util::Json::Value json = tileset->getJSON();
     Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);
@@ -744,7 +744,7 @@ int build_tilesets(osg::ArgumentParser& args)
             }
         }
     }
-   
+
     rootTile->geometricError() = *rootTile->children()[0]->geometricError() * 2.0;
 
     // Offset the root b/c Cesium doesn't like having a 0,0,0 center for a Cartesian3.

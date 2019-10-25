@@ -104,6 +104,8 @@ namespace osgEarth { namespace REX
         bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
         void accept(osg::PrimitiveIndexFunctor&) const;
 
+        const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
+
     protected:
 
         virtual ~SharedGeometry();

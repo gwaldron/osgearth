@@ -1309,7 +1309,9 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
         {
             for (unsigned i = 0; i < tex->getNumImages(); ++i)
             {
-                if (tex->getImage(i)->getNumMipmapLevels() <= 1)
+                // Note: NVTT has trouble with single-channel images so skip them -GW 20191024
+                if (tex->getImage(i)->getNumMipmapLevels() <= 1 &&
+                    osg::Image::computeNumComponents(tex->getImage(1)->getPixelFormat()) >= 3)
                 {
                     ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
                 }

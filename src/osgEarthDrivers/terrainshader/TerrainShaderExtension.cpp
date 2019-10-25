@@ -57,7 +57,7 @@ namespace
         {
             if ( !engine ) return;
 
-            osg::StateSet* stateSet = engine->getSurfaceStateSet();
+            osg::StateSet* stateSet = engine->getStateSet();
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             vp->setName("TerrainShader");

@@ -54,7 +54,7 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
     // assemble all the components:
     addColorLayers(model.get(), map, requirements, key, filter, progress);
 
-    addPatchLayers(model.get(), map, key, filter, progress);
+    //addPatchLayers(model.get(), map, key, filter, progress);
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
@@ -177,6 +177,7 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
                                         const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
 {
+#if 0
     OE_START_TIMER(fetch_patch_layers);
 
     PatchLayerVector patchLayers;
@@ -211,6 +212,7 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
 
     if (progress)
         progress->stats()["fetch_patches_time"] += OE_STOP_TIMER(fetch_patch_layers);
+#endif
 }
 
 

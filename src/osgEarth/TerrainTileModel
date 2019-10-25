@@ -114,14 +114,9 @@ namespace osgEarth
         void setPatchLayer(PatchLayer* layer) { _layer = layer; }
         const PatchLayer* getPatchLayer() const { return _layer.get(); }
 
-        /** Patch data */
-        void setTileData(PatchLayer::TileData* data) { _tileData = data; }
-        PatchLayer::TileData* getTileData() const { return _tileData.get(); }
-
     protected:
         virtual ~TerrainTilePatchLayerModel() { }
         osg::ref_ptr<PatchLayer> _layer;
-        osg::ref_ptr<PatchLayer::TileData> _tileData;
     };
     typedef std::vector< osg::ref_ptr<TerrainTilePatchLayerModel> > TerrainTilePatchLayerModelVector;
 

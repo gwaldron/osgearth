@@ -27,15 +27,22 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL(billboard, BillboardSymbol);
 
 
 BillboardSymbol::BillboardSymbol(const BillboardSymbol& rhs,const osg::CopyOp& copyop):
-InstanceSymbol(rhs, copyop)//,
-//_image        (rhs._image.get())
+InstanceSymbol(rhs, copyop)
 {
-    //nop
+    width().init(15.0f);
+    height().init(10.0f);
+    sizeVariation().init(0.0f);
+    selectionWeight().init(1);
 }
 
 BillboardSymbol::BillboardSymbol( const Config& conf ) :
 InstanceSymbol( conf )
 {
+    width().init(15.0f);
+    height().init(10.0f);
+    sizeVariation().init(0.0f);
+    selectionWeight().init(1);
+
     mergeConfig( conf );
 }
 

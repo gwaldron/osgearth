@@ -246,20 +246,6 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey& key,
 
         // Make it from the source:
         result = source->createHeightField( key, getOrCreatePreCacheOp(), progress );
-
-        // If the result is good, we how have a heightfield but it's vertical values
-        // are still relative to the tile source's vertical datum. Convert them.
-        if (result.valid())
-        {
-            if ( ! key.getExtent().getSRS()->isVertEquivalentTo( getProfile()->getSRS() ) )
-            {
-                VerticalDatum::transform(
-                    getProfile()->getSRS()->getVerticalDatum(),    // from
-                    key.getExtent().getSRS()->getVerticalDatum(),  // to
-                    key.getExtent(),
-                    result.get() );
-            }
-        }
         
         // Blacklist the tile if it is the same projection as the source and
         // we can't get it and it wasn't cancelled
@@ -585,6 +571,17 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
             {
                 OE_WARN << LC << "Generated an illegal heightfield!" << std::endl;
                 hf = 0L; // to fall back on cached data if possible.
+            }
+
+            // If the result is good, we now have a heightfield but its vertical values
+            // are still relative to the source's vertical datum. Convert them.
+            if (hf.valid() && !key.getExtent().getSRS()->isVertEquivalentTo(getProfile()->getSRS()))
+            {
+                VerticalDatum::transform(
+                    getProfile()->getSRS()->getVerticalDatum(),    // from
+                    key.getExtent().getSRS()->getVerticalDatum(),  // to
+                    key.getExtent(),
+                    hf.get() );
             }
 
             // Pre-caching operation. If there's a TileSource, it runs the precache
@@ -981,8 +978,12 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
     unsigned int total = numColumns * numRows;
 
-    // query resolution interval (x, y) of each sample.
-    osg::ref_ptr<osg::ShortArray> deltaLOD = new osg::ShortArray(total);
+    // query resolution interval (x, y) of each sample IF a normal map is requested.
+    osg::ref_ptr<osg::ShortArray> deltaLOD;
+    if (normalMap)
+    {
+        deltaLOD = new osg::ShortArray(total);
+    }
     
     int nodataCount = 0;
 
@@ -1008,7 +1009,10 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                     layerHF.getHeightField()->getFloatArray()->asVector().data(),
                     sizeof(float) * hf->getFloatArray()->size()
                 );
-                deltaLOD->resize(hf->getFloatArray()->size(), 0);
+                if (deltaLOD.valid())
+                {
+                    deltaLOD->resize(hf->getFloatArray()->size(), 0);
+                }
                 realData = true;
             }
         }
@@ -1113,7 +1117,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                                 layerAnalysis[layer].samples++;
 #endif
 
-                                if (deltaLOD)
+                                if (deltaLOD.valid())
                                 {
                                     (*deltaLOD)[r*numColumns + c] = key.getLOD() - actualKey->getLOD();
                                 }
@@ -1176,7 +1180,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                         // Update the resolution tracker to account for the offset. Sadly this
                         // will wipe out the resolution of the actual data, and might result in 
                         // normal faceting. See the comments on "createNormalMap" for more info
-                        if (deltaLOD)
+                        if (deltaLOD.valid())
                         {
                             (*deltaLOD)[r*numColumns + c] = key.getLOD() - contenderKey.getLOD();
                         }
@@ -1217,6 +1221,9 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         std::cout << std::endl;
     }
 #endif
+
+    // Resolve any invalid heights in the output heightfield.
+    HeightFieldUtils::resolveInvalidHeights(hf, key.getExtent(), NO_DATA_VALUE, 0L);
 
     if (progress && progress->isCanceled())
     {

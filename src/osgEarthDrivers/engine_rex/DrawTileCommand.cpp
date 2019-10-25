@@ -131,16 +131,13 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         dc._range = _range;
         dc._geom = _geom.get();
         _drawCallback->draw(ri, dc, layerData);
-
-        // evaluate this.
-        //ds._samplerState.clear();
     }
 
     else
     // If there's a geometry, draw it now:
     if (_geom.valid())
     {
-        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode(); //GL_TRIANGLES;
+        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
         _geom->draw(ri);
     }    
 }

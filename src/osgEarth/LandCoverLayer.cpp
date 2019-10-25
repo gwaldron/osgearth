@@ -183,7 +183,7 @@ namespace
 
         osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
         
-        CachePolicy getCachePolicyHint() const {
+        CachePolicy getCachePolicyHint(const Profile* targetProfile) const {
             return CachePolicy::NO_CACHE;
         }
 

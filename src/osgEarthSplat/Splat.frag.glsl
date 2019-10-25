@@ -14,7 +14,7 @@ in vec2 oe_splat_covtc;
 flat in float oe_splat_coverageTexSize;
 
 // stage global: set this and read it in the splatter.
-vec4 oe_splat_coverage;
+vec4 oe_LandCover_coverage;
 
 // read the comment below regarding textureGather
 //#define USE_TEXTURE_GATHER
@@ -43,7 +43,7 @@ void oe_splat_sampleCoverage(inout vec4 unused)
     vec2 nw = vec2(sw.x, ne.y);
     vec2 se = vec2(ne.x, sw.y);
 
-    oe_splat_coverage = vec4(
+    oe_LandCover_coverage = vec4(
         texture(oe_splat_coverageTex, sw).r,
         texture(oe_splat_coverageTex, se).r,
         texture(oe_splat_coverageTex, nw).r,
@@ -98,7 +98,7 @@ flat in float oe_splat_coverageTexSize;     // size of coverage texture
 in float oe_layer_opacity;
 
 // stage global: coverage quad-value set in oe_splat_sampleCoverage
-vec4 oe_splat_coverage;
+vec4 oe_LandCover_coverage;
 
 // from SplatLayerFactory:
 uniform sampler2DArray oe_splatTex;
@@ -235,7 +235,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 
 vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
-    float coverageValue = oe_splat_coverage[0];
+    float coverageValue = oe_LandCover_coverage[0];
     oe_SplatRenderInfo ri;
     oe_splat_getRenderInfo(coverageValue, env, ri);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
@@ -250,10 +250,10 @@ vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
 {
     // Build the render info data for each corner:
-    oe_SplatRenderInfo ri_sw; oe_splat_getRenderInfo(oe_splat_coverage[0], env, ri_sw);
-    oe_SplatRenderInfo ri_se; oe_splat_getRenderInfo(oe_splat_coverage[1], env, ri_se);
-    oe_SplatRenderInfo ri_nw; oe_splat_getRenderInfo(oe_splat_coverage[2], env, ri_nw);
-    oe_SplatRenderInfo ri_ne; oe_splat_getRenderInfo(oe_splat_coverage[3], env, ri_ne);
+    oe_SplatRenderInfo ri_sw; oe_splat_getRenderInfo(oe_LandCover_coverage[0], env, ri_sw);
+    oe_SplatRenderInfo ri_se; oe_splat_getRenderInfo(oe_LandCover_coverage[1], env, ri_se);
+    oe_SplatRenderInfo ri_nw; oe_splat_getRenderInfo(oe_LandCover_coverage[2], env, ri_nw);
+    oe_SplatRenderInfo ri_ne; oe_splat_getRenderInfo(oe_LandCover_coverage[3], env, ri_ne);
 
     // Primary splat:
     vec4 sw_primary = oe_splat_getTexel(ri_sw.primaryIndex, splat_tc);

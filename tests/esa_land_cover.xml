@@ -1,5 +1,4 @@
 <LandCover name="LandCover" max_data_level="15">
-    <cache_policy usage="no_cache"/>
     <coverages>
         <coverage name="ESA GLOBCOVER">
             <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>

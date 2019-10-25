@@ -425,6 +425,7 @@ struct MVTContext
 
     osg::ref_ptr< Map > map;
     osg::ref_ptr< StyleSheet> styleSheet;
+    const Style* style;
     URIContext uriContext;
     TileMap leafNodes;
     std::string format;
@@ -432,63 +433,6 @@ struct MVTContext
     osg::Timer_t startTime;
     osg::ref_ptr< osg::OperationQueue > queue;
 };
-
-void featureTileCallback(const TileKey& key, const FeatureList& features, void* context)
-{   
-    MVTContext& mvtContext = *(MVTContext*)(context);
-
-    osg::Timer_t startTime = osg::Timer::instance()->tick();
-
-    std::string filename = Stringify() << key.getLevelOfDetail() << "_" << key.getTileX() << "_" << key.getTileY() << "." << mvtContext.format;
-
-    osg::ref_ptr< Session > session = new Session(mvtContext.map.get());
-    session->setStyles(mvtContext.styleSheet);
-
-    URI uri(filename, mvtContext.uriContext);
-
-    GeoExtent dataExtent = key.getExtent();
-    FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
-    GeometryCompiler gc;
-    FeatureList copy = features;
-
-    // TODO:  Just store the style instead?
-    const Style* style = mvtContext.styleSheet->getDefaultStyle();
-    osg::ref_ptr<osg::Node> node = gc.compile(copy, *style, fc);
-
-    if (node.valid())
-    {
-        osgDB::makeDirectoryForFile(uri.full());
-        osgDB::writeNodeFile(*node.get(), uri.full());
-    }
-    else
-    {
-        OE_NOTICE << "Failed to create node for " << filename << std::endl;
-    }
-
-    osg::ref_ptr<TDTiles::Tile> tile = new TDTiles::Tile;
-    tile->geometricError() = 0.0;
-
-    // TODO: get the "refine" right
-    tile->refine() = TDTiles::REFINE_REPLACE;
-    tile->content()->uri() = uri;
-
-    dataExtent = dataExtent.transform(mvtContext.map->getSRS());
-
-    tile->boundingVolume()->region()->set(
-        osg::DegreesToRadians(dataExtent.xMin()), osg::DegreesToRadians(dataExtent.yMin()), 0.0,
-        osg::DegreesToRadians(dataExtent.xMax()), osg::DegreesToRadians(dataExtent.yMax()), 1.0);
-
-    mvtContext.leafNodes[key] = tile.get();
-
-    ++mvtContext.numComplete;
-    
-    double totalTime = osg::Timer::instance()->delta_s(mvtContext.startTime, osg::Timer::instance()->tick());
-    double tilesPerSecond = (double)mvtContext.numComplete / totalTime;
-
-    osg::Timer_t endTime = osg::Timer::instance()->tick();
-    OE_NOTICE << "Processed " << key.str() << " with " << features.size() << " features in " << osg::Timer::instance()->delta_s(startTime, endTime) << "s" << std::endl;
-    OE_NOTICE << "Completed " << mvtContext.numComplete << " tiles.  " << tilesPerSecond << " tiles/s" << std::endl;
-}
 
 class BuildTileOperator : public osg::Operation
 {
@@ -515,8 +459,7 @@ public:
         FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
         GeometryCompiler gc;        
         
-        // TODO:  Just store the style instead?
-        const Style* style = _context.styleSheet->getStyle("buildings");
+        const Style* style = _context.style;
         osg::ref_ptr<osg::Node> node = gc.compile(_features, *style, fc);
 
         if (node.valid())
@@ -548,11 +491,14 @@ public:
 };
 
 
-float CesiumDeg2Rad(float deg)
+/**
+ * Specialized degress to radians function that makes sure that the radian values stay within a valid range for Cesium.
+ */
+float Deg2Rad(float deg)
 {                            
-    //const float CESIUM_PI = 3.141592653589793f;
-    const float CESIUM_PI = 3.1415926f;
-    float val = osg::clampBetween(deg * CESIUM_PI / 180.0f, -CESIUM_PI, CESIUM_PI);
+    //const float PI = 3.141592653589793f;
+    const float PI = 3.1415926f;
+    float val = osg::clampBetween(deg * PI / 180.0f, -PI, PI);
     return val;
 }
 
@@ -566,8 +512,8 @@ void setTileExtents(TDTiles::Tile* tile, const GeoExtent& extent, double minHeig
     tile->boundingVolume()->sphere()->set(bs.center(), bs.radius());
 #else
     tile->boundingVolume()->region()->set(
-        CesiumDeg2Rad(extent.xMin()), CesiumDeg2Rad(extent.yMin()), minHeight,
-        CesiumDeg2Rad(extent.xMax()), CesiumDeg2Rad(extent.yMax()), maxHeight);    
+        Deg2Rad(extent.xMin()), Deg2Rad(extent.yMin()), minHeight,
+        Deg2Rad(extent.xMax()), Deg2Rad(extent.yMax()), maxHeight);
 #endif
 }
 
@@ -655,14 +601,14 @@ int build_tilesets(osg::ArgumentParser& args)
     unsigned int numThreads = 8;
     args.read("--numThreads", numThreads);
 
-    bool force = args.read("--force");
-    OE_NOTICE << "Force = " << force << std::endl;
-
     SpatialReference* mapSRS = SpatialReference::create("epsg:4326");
     const Profile* profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
     LevelToTileKeyMap levelKeys;
 
-    std::ifstream fin("b3dms.txt");
+    std::string dataFiles;
+    args.read("--dataFiles", dataFiles);
+
+    std::ifstream fin(dataFiles);
     std::string line;
     unsigned int numRead = 0;
 
@@ -679,8 +625,9 @@ int build_tilesets(osg::ArgumentParser& args)
         std::string keyName = osgDB::getPathRelative(path, line);
         TileKey key = parseKey(keyName, profile);
         if (key.valid())
-        {
+        {            
             // Assume they are all the same zoom level
+            maxLevel = zoomLevel;
             zoomLevel = key.getLevelOfDetail();
             levelKeys[zoomLevel].insert(key);
 
@@ -718,8 +665,6 @@ int build_tilesets(osg::ArgumentParser& args)
     OE_NOTICE << "Writing tilesets" << std::endl;
 
     float height = 800.0;
-
-    //float geometricErrorDivisor = 8;
 
     osg::ref_ptr< TDTiles::Tile > rootTile = new TDTiles::Tile;
 
@@ -887,10 +832,6 @@ build_leaves(osg::ArgumentParser& args)
     if (!sheet)
         return usage("No stylesheet found in the map");
 
-    const Style* style = sheet->getDefaultStyle();
-    if (!sheet)
-        return usage("No default style found in the stylesheet");
-
     std::string format("b3dm");
     args.read("--format", format);
 
@@ -900,6 +841,23 @@ build_leaves(osg::ArgumentParser& args)
     unsigned int numThreads = 4;
     args.read("--numThreads", numThreads);
 
+    const Style* style = 0;
+
+    std::string styleName;
+    if (args.read("--style", styleName))
+    {
+        style = sheet->getStyle(styleName);
+    }
+    else
+    {
+        style = sheet->getDefaultStyle();
+    }
+
+    if (!style)
+    {
+        return usage("No style specified");
+    }
+    
     GeoExtent queryExtent;
     double xmin = DBL_MAX, ymin = DBL_MAX, xmax = DBL_MIN, ymax = DBL_MIN;
     while (args.read("--bounds", xmin, ymin, xmax, ymax))
@@ -921,6 +879,7 @@ build_leaves(osg::ArgumentParser& args)
     MVTContext mvtContext;
     mvtContext.map = map;
     mvtContext.styleSheet = sheet;
+    mvtContext.style = style;
     mvtContext.uriContext = uriContext;
     mvtContext.format = format;
     mvtContext.startTime = osg::Timer::instance()->tick();

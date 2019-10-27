@@ -50,7 +50,7 @@ void printStats(FeatureSource* features)
     std::cout << "Geometry Type:  " << osgEarth::Symbology::Geometry::toString( features->getGeometryType() ) << std::endl;
 
     //Print the schema
-    const FeatureSchema schema = features->getSchema();
+    const FeatureSchema& schema = features->getSchema();
     std::cout << "Schema:" << std::endl;
     for (FeatureSchema::const_iterator itr = schema.begin(); itr != schema.end(); ++itr)
     {

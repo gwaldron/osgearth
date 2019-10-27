@@ -419,7 +419,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
 
     // layer type
     std::string typeName = typeid(*layer).name();
-    typeName = typeName.substr(typeName.find_last_of(":")+1);
+    typeName = typeName.substr(typeName.find_last_of(':')+1);
     LabelControl* typeLabel = new LabelControl(typeName, osg::Vec4(.5,.7,.5,1));
     grid->setControl( gridCol, gridRow, typeLabel );
     gridCol++;

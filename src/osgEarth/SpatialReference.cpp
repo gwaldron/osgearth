@@ -240,7 +240,7 @@ SpatialReference::create(const Key& key)
         srs = createCube();
     }
 
-    else if (key.horizLower.find( "+" ) == 0 )
+    else if (key.horizLower.find( '+' ) == 0 )
     {
         srs = createFromPROJ4( key.horiz, key.horiz );
     }

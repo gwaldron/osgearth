@@ -55,7 +55,7 @@ CssUtils::readConfig( const std::string& css, const std::string& referrer, Confi
 
     // if there's no brackets, assume this is a single default block.
     std::string temp = css;
-    if ( css.find_first_of("{") == std::string::npos )
+    if ( css.find_first_of('{') == std::string::npos )
     {
         temp = "default { " + css + " }";
     }

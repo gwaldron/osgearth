@@ -378,7 +378,7 @@ TFSPackager::package( FeatureSource* features, const std::string& destination, c
     for (int i = 0; i <= highestLevel; ++i)
     {
         TileKey tileKey(i, 0, 0, profile.get());
-        GeoExtent tileExtent = tileKey.getExtent();
+        const GeoExtent& tileExtent = tileKey.getExtent();
         OE_NOTICE << "Level " << i << " tile size: " << tileExtent.width() << std::endl;
     }
 #endif

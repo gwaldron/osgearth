@@ -193,7 +193,7 @@ public:
                         OE_WARN << LC << "REST API request error!" << std::endl;
 
                         Config metadata;
-                        std::string content = metadataResult.getString();
+                        const std::string& content = metadataResult.getString();
                         metadata.fromJSON( content );
                         ConfigSet errors = metadata.child("errorDetails").children();
                         for(ConfigSet::const_iterator i = errors.begin(); i != errors.end(); ++i )
@@ -307,7 +307,7 @@ public:
                     OE_WARN << LC << "REST API request error!" << std::endl;
 
                     Config metadata;
-                    std::string content = result.getString();
+                    const std::string& content = result.getString();
                     OE_WARN << content << std::endl;
                     metadata.fromJSON(content);
                     ConfigSet errors = metadata.child("errorDetails").children();

@@ -932,7 +932,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         if ( cx._viewContextID != ~0u )
         {
             //the Text's autoTransformCache matrix puts some mojo on the bounding box
-            osg::Matrix m = t->getATMatrix( cx._viewContextID );
+            const osg::Matrix& m = t->getATMatrix( cx._viewContextID );
             _bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
             _bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
         }

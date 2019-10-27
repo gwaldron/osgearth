@@ -1381,8 +1381,8 @@ static std::string FindFile(const std::vector<std::string> &paths,
 }
 
 static std::string GetFilePathExtension(const std::string &FileName) {
-  if (FileName.find_last_of(".") != std::string::npos)
-    return FileName.substr(FileName.find_last_of(".") + 1);
+  if (FileName.find_last_of('.') != std::string::npos)
+    return FileName.substr(FileName.find_last_of('.') + 1);
   return "";
 }
 
@@ -4316,7 +4316,7 @@ static bool ValueToJson(const Value &value, json *ret) {
       break;
     case ARRAY_TYPE: {
       for (unsigned int i = 0; i < value.ArrayLen(); ++i) {
-        Value elementValue = value.Get(int(i));
+        const Value& elementValue = value.Get(int(i));
         json elementJson;
         if (ValueToJson(value.Get(int(i)), &elementJson))
           obj.push_back(elementJson);

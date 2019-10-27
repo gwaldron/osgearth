@@ -168,7 +168,7 @@ osg::BoundingSphere SimplePager::getBounds(const TileKey& key) const
 {
     int samples = 6;
 
-    GeoExtent extent = key.getExtent();
+    const GeoExtent& extent = key.getExtent();
 
     double xSample = extent.width() / (double)samples;
     double ySample = extent.height() / (double)samples;

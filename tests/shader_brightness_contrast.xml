@@ -1,0 +1,17 @@
+<shader>
+  <uniform name="brightness" value="1.0"/>
+  <uniform name="contrast" value="1.0"/>
+  <![CDATA[
+    #pragma vp_entryPoint applyBrightnessContrast
+    #pragma vp_location fragment_coloring
+    
+    uniform float brightness;
+    uniform float contrast;
+    
+    void applyBrightnessContrast(inout vec4 color) 
+    {
+        color.rgb = ((color.rgb - 0.5)*contrast + 0.5) * brightness;
+        color.rgb = clamp(color.rgb, 0, 1);
+    }
+  ]]>
+</shader>

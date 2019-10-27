@@ -1,0 +1,110 @@
+<shader>
+  <uniform name="adjustH" value="0.0"/>
+  <uniform name="adjustS" value="0.0"/>
+  <uniform name="adjustL" value="0.0"/>
+  <![CDATA[
+    #pragma vp_entryPoint applyAdjustHSL
+    #pragma vp_location fragment_coloring
+    
+    uniform float adjustH, adjustS, adjustL;
+    
+    void oe_hsl_RGB_2_HSL(in float r, in float g, in float b, out float h, out float s, out float l)
+    {
+        float var_Min = min( r, min(g, b) );    //Min. value of RGB
+        float var_Max = max( r, max(g, b) );    //Max. value of RGB
+        float del_Max = var_Max - var_Min;      //Delta RGB value
+   
+        l = ( var_Max + var_Min ) / 2.0;
+   
+        if ( del_Max == 0.0 )                     //This is a gray, no chroma...
+        {
+            h = 0.0;                              //HSL results from 0 to 1
+            s = 0.0;
+        }
+        else                                      //Chromatic data...
+        {
+            if ( l < 0.5 ) s = del_Max / ( var_Max + var_Min );
+            else           s = del_Max / ( 2.0 - var_Max - var_Min );
+   
+            float del_R = ( ( ( var_Max - r ) / 6.0 ) + ( del_Max / 2.0 ) ) / del_Max;
+            float del_G = ( ( ( var_Max - g ) / 6.0 ) + ( del_Max / 2.0 ) ) / del_Max;
+            float del_B = ( ( ( var_Max - b ) / 6.0 ) + ( del_Max / 2.0 ) ) / del_Max;
+            if      ( r == var_Max ) h = del_B - del_G;
+            else if ( g == var_Max ) h = ( 1.0 / 3.0 ) + del_R - del_B;
+            else if ( b == var_Max ) h = ( 2.0 / 3.0 ) + del_G - del_R;
+            if ( h < 0.0 ) h += 1.0;
+            if ( h > 1.0 ) h -= 1.0;
+        }
+    }
+
+    float oe_hsl_Hue_2_RGB(float v1, float v2, float vH )
+    {
+        float ret;
+        if ( vH < 0.0 )
+            vH += 1.0;
+        if ( vH > 1.0 )
+            vH -= 1.0;
+        if ( ( 6.0 * vH ) < 1.0 )
+          ret = ( v1 + ( v2 - v1 ) * 6.0 * vH );
+        else if ( ( 2.0 * vH ) < 1.0 )
+            ret = ( v2 );
+        else if ( ( 3.0 * vH ) < 2.0 )
+            ret = ( v1 + ( v2 - v1 ) * ( ( 2.0 / 3.0 ) - vH ) * 6.0 );
+        else
+            ret = v1;
+        return ret;
+    }
+
+    void oe_hsl_HSL_2_RGB(in float h, in float s, in float l, out float r, out float g, out float b)
+    {
+      float var_2, var_1;
+      if (s == 0.0)
+      {
+        r = l;
+        g = l;
+        b = l;
+      }
+      else
+      {
+        if ( l < 0.5 )
+        {
+          var_2 = l * ( 1.0 + s );
+        }
+        else
+        {
+          var_2 = ( l + s ) - ( s * l );
+        }
+
+        var_1 = 2.0 * l - var_2;
+    
+        r = oe_hsl_Hue_2_RGB( var_1, var_2, h + ( 1.0 / 3.0 ) );
+        g = oe_hsl_Hue_2_RGB( var_1, var_2, h );
+        b = oe_hsl_Hue_2_RGB( var_1, var_2, h - ( 1.0 / 3.0 ) );
+      }
+    }
+
+    void applyAdjustHSL(inout vec4 color) 
+    {
+        if (adjustH != 0.0 || adjustS != 0.0 || adjustL != 0.0)
+        {
+            float h, s, l;
+            oe_hsl_RGB_2_HSL( color.r, color.g, color.b, h, s, l);
+            h += adjustH;
+            s += adjustS;
+            l += adjustL;
+
+            // clamp H,S and L to [0..1]
+
+            h = clamp(h, 0.0, 1.0);
+            s = clamp(s, 0.0, 1.0);
+            l = clamp(l, 0.0, 1.0);
+
+            float r, g, b;
+            oe_hsl_HSL_2_RGB( h, s, l, r, g, b);
+            color.r = r;
+            color.g = g;
+            color.b = b;
+        }
+    }
+  ]]>
+</shader>

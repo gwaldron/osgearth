@@ -187,7 +187,8 @@ namespace
         Status initialize(const osgDB::Options* readOptions);
 
         osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
-		virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const {
+        
+        CachePolicy getCachePolicyHint(const Profile* targetProfile) const {
             return CachePolicy::NO_CACHE;
         }
 

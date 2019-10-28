@@ -332,7 +332,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
    // GNP previously we did this at the map level using frame.getMapOptions().name().get() 
    // but that had the downside of not sharing data between maps and being less editable at run time.
    // for now just restrict the caching to single layer maps
-   if (layers.size() == 1)
+   if (layers.size() == 1 && layers[0]->getEnabled() == true)
    {
       hfCacheKey = "elevationGPU/" + key.str();
       normalCacheKey = "normalGPU/" + key.str();
@@ -340,7 +340,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
       osg::ref_ptr< NormalMap > cachedNormalMap;
       if (map && map->getCache())
       {
-         cacheBin = map->getCache()->addBin(layers[0]->getName());
+         cacheBin = map->getCache()->addBin(layers[0]->getCacheID());
       }
 
       if (cacheBin)

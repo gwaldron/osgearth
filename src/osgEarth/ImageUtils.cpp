@@ -1293,48 +1293,42 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 void
 ImageUtils::activateMipMaps(osg::Image* image)
 {
-   if (image == 0L){
+#ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
+   if (image == 0L)
       return;
-   }
 
-   if (image->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
-       image->getInternalTextureFormat() == GL_LUMINANCE16F_ARB ||
-       image->getInternalTextureFormat() == GL_R16F ||
-       image->getInternalTextureFormat() == GL_R32F)
-   {
-       OE_DEBUG << LC << "WARNING! mipmapper can't currently handle luminance/red textures. Mipmapping: " << image->getName() << std::endl;
+   if (image->getNumMipmapLevels() > 1)
        return;
-   }
 
+   // NVTT doest not like 1-channel images; can crash
+   if (osg::Image::computeNumComponents(image->getPixelFormat()) < 3)
+       return;
+
+   // Fint the NVTT plugin
    osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
    if (!ip)
-   {
       return;
-   }
 
-   if (image->getNumMipmapLevels() <= 1)
-   {
+    ip->generateMipMap(*image, true, ip->USE_CPU);
 
-      ip->generateMipMap(*image, true, ip->USE_CPU);
-      //VRV_PATCH
-      //Withouth the format explicitly setup it just picked srgb8 which don't need
-      //gamma correction, but we gamma correction everything in vrv.
-      if (image->getInternalTextureFormat() == GL_RGB)
-      {
-         image->setInternalTextureFormat(GL_RGB8);
-      }
-      else if (image->getInternalTextureFormat() == GL_RGBA)
-      {
-         image->setInternalTextureFormat(GL_RGBA8);
-      }
-   }
-
+    //VRV_PATCH
+    //Withouth the format explicitly setup it just picked srgb8 which don't need
+    //gamma correction, but we gamma correction everything in vrv.
+    if (image->getInternalTextureFormat() == GL_RGB)
+    {
+        image->setInternalTextureFormat(GL_RGB8);
+    }
+    else if (image->getInternalTextureFormat() == GL_RGBA)
+    {
+        image->setInternalTextureFormat(GL_RGBA8);
+    }
+#endif
 }
 
 void
 ImageUtils::activateMipMaps(osg::Texture* tex)
 {
-   #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
+ #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
    // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
    
    if (tex == 0L)
@@ -1356,44 +1350,9 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
 
     if (needsMipmaps && tex->getNumImages() > 0)
     {
-        // See if we have a CPU mipmap generator:
-        osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
-        if (ip)
+        for (unsigned i = 0; i < tex->getNumImages(); ++i)
         {
-            for (unsigned i = 0; i < tex->getNumImages(); ++i)
-            {
-                //VRV_PATCH
-                if (tex->getImage(i) == 0L)
-                   continue;
-
-                if (tex->getImage(i)->getDataPointer() == 0L)
-                   continue;
-
-                if (tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE16F_ARB ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_R16F ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_R32F)
-                {
-                    //OE_DEBUG << LC << "WARNING! mipmapper can't currently handle luminance/red textures" << std::endl;
-                    continue;
-                }
-
-                if (tex->getImage(i)->getNumMipmapLevels() <= 1)
-		  	    {
-                   ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
-                   //VRV_PATCH
-                   //Withouth the format explicitly setup it just picked srgb8 which don't need
-                   //gamma correction, but we gamma correction everything in vrv.
-                   if (tex->getImage(i)->getInternalTextureFormat() == GL_RGB)
-                   {
-                       tex->getImage(i)->setInternalTextureFormat(GL_RGB8);
-                   }
-                   else if (tex->getImage(i)->getInternalTextureFormat() == GL_RGBA)
-                   {
-                       tex->getImage(i)->setInternalTextureFormat(GL_RGBA8);
-                   }
-                }
-            }
+            activateMipMaps(tex->getImage(i));
         }
     }
 #endif

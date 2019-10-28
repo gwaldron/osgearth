@@ -43,9 +43,12 @@ vec3 vp_Normal;
 vec4 oe_layer_tilec;
 int oe_terrain_vertexMarker;
 
-// Vertex Markers:
-#define VERTEX_MARKER_DISCARD  1
-#define VERTEX_MARKER_BOUNDARY 8
+// Vertex Markers (see MaskGenerator.cpp)
+#define VERTEX_MARKER_DISCARD   1    // do not draw
+#define VERTEX_MARKER_GRID      2    // regular grid vertex (not part of mask)
+#define VERTEX_MARKER_PATCH     4    // not subject to morphing
+#define VERTEX_MARKER_BOUNDARY  8    // not subject to elevation texture
+#define VERTEX_MARKER_SKIRT    16    // it's a skirt vertex (bitmask)
 
 // simplest possible pass-though:
 void oe_GroundCover_tessellate()
@@ -57,8 +60,10 @@ void oe_GroundCover_tessellate()
     for(int i=0; i<3; ++i)
     {
         VP_LoadVertex(i);
+
         if ((oe_terrain_vertexMarker & VERTEX_MARKER_BOUNDARY) != 0 ||
-            (oe_terrain_vertexMarker & VERTEX_MARKER_DISCARD) != 0)
+            (oe_terrain_vertexMarker & VERTEX_MARKER_DISCARD) != 0 ||
+            (oe_terrain_vertexMarker & VERTEX_MARKER_SKIRT) != 0)
         {
             skipVertex = true;
         }

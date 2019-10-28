@@ -41,9 +41,16 @@ Layer::Options::getConfig() const
     if (cachePolicy().isSet() && !cachePolicy()->empty())
         conf.set("cache_policy", cachePolicy());
     conf.set("shader_define", shaderDefine());
-    conf.set("shader", shader());
     conf.set("attribution", attribution());
     conf.set("terrain", terrainPatch());
+
+    for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
+        i != shaders().end();
+        ++i)
+    {
+        conf.add("shader", i->getConfig());
+    }
+
     return conf;
 }
 
@@ -70,7 +77,10 @@ Layer::Options::fromConfig(const Config& conf)
             _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
     }
     conf.get("shader_define", shaderDefine());
-    conf.get("shader", shader());
+
+    const ConfigSet& shadersConf = conf.children("shader");
+    for(ConfigSet::const_iterator i = shadersConf.begin(); i != shadersConf.end(); ++i)
+        shaders().push_back(ShaderOptions(*i));
 
     conf.get("terrain", terrainPatch());
     conf.get("patch", terrainPatch());
@@ -292,11 +302,13 @@ void
 Layer::setTerrainResources(TerrainResources* res)
 {
     // Install an earth-file shader if necessary (once)
-    if (options().shader().isSet() && !_shader.valid())
+    for(std::vector<ShaderOptions>::const_iterator i = options().shaders().begin();
+        i != options().shaders().end();
+        ++i)
     {
-        OE_INFO << LC << "Installing inline shader code" << std::endl;
-        _shader = new LayerShader(options().shader().get());
-        _shader->install(this, res);
+        LayerShader* shader = new LayerShader(*i);
+        shader->install(this, res);
+        _shaders.push_back(shader);
     }
 }
 

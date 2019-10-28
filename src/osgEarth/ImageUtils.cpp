@@ -1289,9 +1289,41 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 
 
 void
-ImageUtils::activateMipMaps(osg::Texture* tex)
+ImageUtils::activateMipMaps(osg::Image* image)
 {
 #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
+    if (image == 0L)
+        return;
+
+    if (image->getNumMipmapLevels() > 1)
+        return;
+
+    // NVTT doest not like 1-channel images; can crash
+    if (osg::Image::computeNumComponents(image->getPixelFormat()) < 3)
+        return;
+
+    // Fint the NVTT plugin
+    osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
+    if (!ip)
+        return;
+
+    ip->generateMipMap(*image, true, ip->USE_CPU);
+
+    if (image->getInternalTextureFormat() == GL_RGB)
+    {
+        image->setInternalTextureFormat(GL_RGB8);
+    }
+    else if (image->getInternalTextureFormat() == GL_RGBA)
+    {
+        image->setInternalTextureFormat(GL_RGBA8);
+    }
+#endif
+}
+
+
+void
+ImageUtils::activateMipMaps(osg::Texture* tex)
+{
     // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
 
@@ -1303,22 +1335,11 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
 
     if (needsMipmaps && tex->getNumImages() > 0)
     {
-        // See if we have a CPU mipmap generator:
-        osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
-        if (ip)
+        for (unsigned i = 0; i < tex->getNumImages(); ++i)
         {
-            for (unsigned i = 0; i < tex->getNumImages(); ++i)
-            {
-                // Note: NVTT has trouble with single-channel images so skip them -GW 20191024
-                if (tex->getImage(i)->getNumMipmapLevels() <= 1 &&
-                    osg::Image::computeNumComponents(tex->getImage(1)->getPixelFormat()) >= 3)
-                {
-                    ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
-                }
-            }
+            activateMipMaps(tex->getImage(i));
         }
     }
-#endif
 }
 
 

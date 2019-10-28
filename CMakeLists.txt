@@ -25,8 +25,8 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 
 PROJECT(OSGEARTH)
 
-SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 99)
+SET(OSGEARTH_MAJOR_VERSION 3)
+SET(OSGEARTH_MINOR_VERSION 0)
 SET(OSGEARTH_PATCH_VERSION 0)
 SET(OSGEARTH_SOVERSION     0)
 
@@ -209,3 +209,14 @@ ADD_SUBDIRECTORY(src)
 
 # Add the docs to the project for convenience
 ADD_SUBDIRECTORY(docs)
+
+
+#Setting some CMake variables that are needed by osgEarth-aerodrome
+set(OSGEARTH_LIBRARY "osgEarth")
+set(OSGEARTH_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/osgearth/include")
+
+message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome")
+ADD_SUBDIRECTORY(osgearth-aerodrome)
+
+message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-buildings")
+ADD_SUBDIRECTORY(osgearth-buildings)

@@ -24,6 +24,7 @@
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/CameraUtils>
+#include <osgEarth/Shaders>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
@@ -47,7 +48,7 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 // billboards. Undef this to use a VS-only implementation (which is slower
 // and still needs some work with the colors, etc.) but could be useful if
 // GS are extremely slow or unavailable on your target platform.
-#define USE_GEOMETRY_SHADER
+//#define USE_GEOMETRY_SHADER
 
 // If we're not using the GS, we have the option of using instancing or not.
 // OFF by default since it benchmarks faster on older cards. On newer cards
@@ -426,6 +427,10 @@ GroundCoverLayer::buildStateSets()
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
                 shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
+                // Bind the coverage sampler and its matrix:
+                zoneStateSet->setDefine("OE_LANDCOVER_TEX", getLandCoverLayer()->shareTexUniformName().get());
+                zoneStateSet->setDefine("OE_LANDCOVER_TEX_MATRIX", getLandCoverLayer()->shareTexMatUniformName().get());
+
                 // Generate the coverage acceptor shader
 #ifdef USE_GEOMETRY_SHADER
                 shaders.load(vp, shaders.GroundCover_TCS, getReadOptions());
@@ -437,10 +442,11 @@ GroundCoverLayer::buildStateSets()
                 covTest->setType(osg::Shader::GEOMETRY);
                 vp->setShader(covTest);
 
-                osg::Shader* covTest2 = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
-                covTest->setName(covTest->getName() + "_TESSCONTROL");
-                covTest2->setType(osg::Shader::TESSCONTROL);
-                vp->setShader(covTest2);
+                // If you define OE_GROUNDCOVER_COVERAGE_PRECHECK in the TCS, you'll need this:
+                //osg::Shader* covTest2 = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
+                //covTest->setName(covTest->getName() + "_TESSCONTROL");
+                //covTest2->setType(osg::Shader::TESSCONTROL);
+                //vp->setShader(covTest2);
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
                 layerShader->setType(osg::Shader::GEOMETRY);
@@ -567,6 +573,9 @@ GroundCoverLayer::Renderer::DrawState::reset()
         _geom->setDataVariance(osg::Object::STATIC);
         _geom->setUseVertexBufferObjects(true);
 
+        //osg::Vec2Array* tc = new osg::Vec2Array();
+        //_geom->setTexCoordArray(0, tc);
+
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
 
         static const GLubyte indices[12] = { 0,1,2,1,2,3, 4,5,6,5,6,7 };
@@ -578,12 +587,57 @@ GroundCoverLayer::Renderer::DrawState::reset()
         static const unsigned totalIndicies = numInstances * indiciesPerInstance;
         std::vector<GLuint> indices;
         indices.reserve(totalIndicies);
-        for (unsigned i = 0; i < numInstances; i++)
+
+//        tc->reserve(totalIndicies);
+
+#if 1
+        for(unsigned i=0; i<numInstances; ++i)
         {
             unsigned offset = i * 8;
-            std::vector<GLuint> instanceIndicies = { (GLuint)(0 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(1 + offset), (GLuint)(2 + offset), (GLuint)(3 + offset),  (GLuint)(4 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(5 + offset), (GLuint)(6 + offset), (GLuint)(7 + offset) };
-            indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
+            indices.push_back(0 + offset);
+            indices.push_back(1 + offset);
+            indices.push_back(2 + offset);
+            indices.push_back(1 + offset);
+            indices.push_back(2 + offset);
+            indices.push_back(3 + offset);
+            indices.push_back(4 + offset);
+            indices.push_back(5 + offset);
+            indices.push_back(6 + offset);
+            indices.push_back(5 + offset);
+            indices.push_back(6 + offset);
+            indices.push_back(7 + offset);
+            //std::vector<GLuint> instanceIndicies;
+            //instanceIndicies.reserve(8);
+            //for (size_t k = 0; k < 8; ++k)
+            //    instanceIndicies.push_back(static_cast<GLuint>(0 + offset));
+            //indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
         }
+#else
+        unsigned offset = 0;
+        for (unsigned i = 0; i < tileSize; i++)
+        {
+            float v = (float)i/(float)(tileSize-1);
+
+            for(unsigned j=0; j<tileSize; ++j)
+            {
+                float u = (float)j/(float)(tileSize-1);
+
+                indices.push_back(0 + offset);
+                indices.push_back(1 + offset);
+                indices.push_back(2 + offset);
+                indices.push_back(1 + offset);
+                indices.push_back(2 + offset);
+                indices.push_back(3 + offset);
+                indices.push_back(4 + offset);
+                indices.push_back(5 + offset);
+                indices.push_back(6 + offset);
+                indices.push_back(5 + offset);
+                indices.push_back(6 + offset);
+                indices.push_back(7 + offset);
+                offset += 8;
+            }
+        }
+#endif
         _geom->addPrimitiveSet(new osg::DrawElementsUInt(GL_TRIANGLES, totalIndicies, indices.data(), 0));
 
         //unsigned int numverts = numInstances * 8;
@@ -666,10 +720,10 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     // transmit the extents of this tile to the shader, skipping the glUniform
     // call if the values have not changed. The shader will calculate the
     // instance positions by interpolating across the tile extents.
-    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(tile._geom->getVertexArray());
+    const osg::BoundingBox& bbox = tile._geom->getBoundingBox();
 
-    const osg::Vec3f& LL = verts->front();
-    const osg::Vec3f& UR = verts->back();
+    const osg::Vec3f& LL = bbox.corner(0);
+    const osg::Vec3f& UR = bbox.corner(7);
 
     if (LL != ds._LLAppliedValue)
     {

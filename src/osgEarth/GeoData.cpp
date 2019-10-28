@@ -2037,7 +2037,7 @@ namespace
 
         osg::Image *result = new osg::Image();
         //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-        result->allocateImage(width, height, 1, image->getPixelFormat(), image->getDataType()); //GL_UNSIGNED_BYTE);
+        result->allocateImage(width, height, image->r(), image->getPixelFormat(), image->getDataType()); //GL_UNSIGNED_BYTE);
         result->setInternalTextureFormat(image->getInternalTextureFormat());
         ImageUtils::markAsUnNormalized(result, ImageUtils::isUnNormalized(image));
 
@@ -2066,56 +2066,61 @@ namespace
             dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
             dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
             srcPointsX, srcPointsY, width, height);
-
-        // Next, go through the source-SRS sample grid, read the color at each point from the source image,
-        // and write it to the corresponding pixel in the destination image.
-        int pixel = 0;
         ImageUtils::PixelReader ia(image);
         double xfac = (image->s() - 1) / src_extent.width();
         double yfac = (image->t() - 1) / src_extent.height();
-        for (unsigned int c = 0; c < width; ++c)
-        {
-            for (unsigned int r = 0; r < height; ++r)
-            {   
-                double src_x = srcPointsX[pixel];
-                double src_y = srcPointsY[pixel];
 
-                if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
-                {
+        for (int depth = 0; depth < image->r(); depth++)
+        {
+           // Next, go through the source-SRS sample grid, read the color at each point from the source image,
+           // and write it to the corresponding pixel in the destination image.
+           int pixel = 0;
+           ImageUtils::PixelReader ia(image);
+           double xfac = (image->s() - 1) / src_extent.width();
+           double yfac = (image->t() - 1) / src_extent.height();
+           for (unsigned int c = 0; c < width; ++c)
+           {
+              for (unsigned int r = 0; r < height; ++r)
+              {
+                 double src_x = srcPointsX[pixel];
+                 double src_y = srcPointsY[pixel];
+
+                 if (src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax())
+                 {
                     //If the sample point is outside of the bound of the source extent, increment the pixel and keep looping through.
                     //OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
                     pixel++;
                     continue;
-                }
+                 }
 
-                float px = (src_x - src_extent.xMin()) * xfac;
-                float py = (src_y - src_extent.yMin()) * yfac;
+                 float px = (src_x - src_extent.xMin()) * xfac;
+                 float py = (src_y - src_extent.yMin()) * yfac;
 
-                int px_i = osg::clampBetween( (int)osg::round(px), 0, image->s()-1 );
-                int py_i = osg::clampBetween( (int)osg::round(py), 0, image->t()-1 );
+                 int px_i = osg::clampBetween((int)osg::round(px), 0, image->s() - 1);
+                 int py_i = osg::clampBetween((int)osg::round(py), 0, image->t() - 1);
 
-                osg::Vec4 color(0,0,0,0);
+                 osg::Vec4 color(0, 0, 0, 0);
 
-                // TODO: consider this again later. Causes blockiness.
-                if ( !interpolate ) //! isSrcContiguous ) // non-contiguous space- use nearest neighbot
-                {
-                    color = ia(px_i, py_i);
-                }
+                 // TODO: consider this again later. Causes blockiness.
+                 if (!interpolate) //! isSrcContiguous ) // non-contiguous space- use nearest neighbot
+                 {
+                    color = ia(px_i, py_i, depth);
+                 }
 
-                else // contiguous space - use bilinear sampling
-                {
+                 else // contiguous space - use bilinear sampling
+                 {
                     int rowMin = osg::maximum((int)floor(py), 0);
-                    int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
+                    int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t() - 1)), 0);
                     int colMin = osg::maximum((int)floor(px), 0);
-                    int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s()-1)), 0);
+                    int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s() - 1)), 0);
 
                     if (rowMin > rowMax) rowMin = rowMax;
                     if (colMin > colMax) colMin = colMax;
 
-                    osg::Vec4 urColor = ia(colMax, rowMax);
-                    osg::Vec4 llColor = ia(colMin, rowMin);
-                    osg::Vec4 ulColor = ia(colMin, rowMax);
-                    osg::Vec4 lrColor = ia(colMax, rowMin);
+                    osg::Vec4 urColor = ia(colMax, rowMax, depth);
+                    osg::Vec4 llColor = ia(colMin, rowMin, depth);
+                    osg::Vec4 ulColor = ia(colMin, rowMax, depth);
+                    osg::Vec4 lrColor = ia(colMax, rowMin, depth);
 
                     /*Average Interpolation*/
                     /*double x_rem = px - (int)px;
@@ -2149,47 +2154,48 @@ namespace
                     //Check for exact value
                     if ((colMax == colMin) && (rowMax == rowMin))
                     {
-                        //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
-                        color = ia(px_i, py_i);
+                       //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
+                       color = ia(px_i, py_i, depth);
                     }
                     else if (colMax == colMin)
                     {
-                        //OE_NOTICE << "[osgEarth::GeoData] Vertically" << std::endl;
-                        //Linear interpolate vertically
-                        for (unsigned int i = 0; i < 4; ++i)
-                        {
-                            color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
-                        }
+                       //OE_NOTICE << "[osgEarth::GeoData] Vertically" << std::endl;
+                       //Linear interpolate vertically
+                       for (unsigned int i = 0; i < 4; ++i)
+                       {
+                          color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
+                       }
                     }
                     else if (rowMax == rowMin)
                     {
-                        //OE_NOTICE << "[osgEarth::GeoData] Horizontally" << std::endl;
-                        //Linear interpolate horizontally
-                        for (unsigned int i = 0; i < 4; ++i)
-                        {
-                            color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
-                        }
+                       //OE_NOTICE << "[osgEarth::GeoData] Horizontally" << std::endl;
+                       //Linear interpolate horizontally
+                       for (unsigned int i = 0; i < 4; ++i)
+                       {
+                          color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
+                       }
                     }
                     else
                     {
-                        //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
-                        //Bilinear interpolate
-                        float col1 = colMax - px, col2 = px - colMin;
-                        float row1 = rowMax - py, row2 = py - rowMin;
-                        for (unsigned int i = 0; i < 4; ++i)
-                        {
-                            float r1 = col1 * llColor[i] + col2 * lrColor[i];
-                            float r2 = col1 * ulColor[i] + col2 * urColor[i];
+                       //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
+                       //Bilinear interpolate
+                       float col1 = colMax - px, col2 = px - colMin;
+                       float row1 = rowMax - py, row2 = py - rowMin;
+                       for (unsigned int i = 0; i < 4; ++i)
+                       {
+                          float r1 = col1 * llColor[i] + col2 * lrColor[i];
+                          float r2 = col1 * ulColor[i] + col2 * urColor[i];
 
-                            //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
-                            color[i] = row1 * r1 + row2 * r2;
-                        }
+                          //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                          color[i] = row1 * r1 + row2 * r2;
+                       }
                     }
-                }
+                 }
 
-                writer(color, c, r);
-                pixel++;
-            }
+                 writer(color, c, r, depth);
+                 pixel++;
+              }
+           }
         }
 
         delete[] srcPointsX;

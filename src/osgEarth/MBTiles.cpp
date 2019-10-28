@@ -28,12 +28,11 @@
 #include <algorithm>
 #include <sqlite3.h>
 
-
 using namespace osgEarth;
 using namespace osgEarth::MBTiles;
 
 #undef LC
-#define LC "[MBTiles] "
+#define LC "[MBTiles] " << getName() << " : "
 
 //......................................................................
 
@@ -108,37 +107,255 @@ MBTilesImageLayer::init()
 {
     ImageLayer::init();
     setTileSourceExpected(false);
-    _database = 0L;
-    _minLevel = 0u;
-    _maxLevel = 20u;
-    _forceRGB = false;
+
+    // by default don't cache from local files
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 Status
 MBTilesImageLayer::openImplementation()
 {
-    std::string fullFilename = options().url()->full();
-    if (!osgDB::fileExists(fullFilename))
+    osg::ref_ptr<const Profile> profile = getProfile();
+
+    Status status = _driver.open(
+        getName(),
+        options(),
+        isWritingRequested(),
+        options().format(),
+        profile,
+        dataExtents(),
+        getReadOptions());
+
+    if (status.isError())
     {
-        fullFilename = osgDB::findDataFile(fullFilename, getReadOptions());
-        if (fullFilename.empty())
-            fullFilename = options().url()->full();
+        return status;
+    }
+    
+    // install the profile if there is one
+    if (getProfile() == NULL && profile.valid())
+    {
+        setProfile(profile.get());
     }
 
-    bool readWrite = isWritingRequested();
+    return ImageLayer::openImplementation();
+}
+
+void
+MBTilesImageLayer::setDataExtents(const DataExtentList& values)
+{
+    dataExtents() = values;
+
+    if (isWritingRequested())
+    {
+        _driver.setDataExtents(values);
+    }
+}
+
+GeoImage
+MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    if (getStatus().isError())
+        return GeoImage(getStatus());
+
+    ReadResult r = _driver.read(key, progress, getReadOptions());
+
+    if (r.succeeded() && r.getImage())
+    {
+        osg::Image* image = r.getImage();
+
+        if (options().coverage() == true)
+        {
+            image->setInternalTextureFormat(GL_R16F);
+            ImageUtils::markAsUnNormalized(image, true);
+        }
+
+        return GeoImage(image, key.getExtent());
+    }
+    else
+    {
+        return GeoImage(Status(r.errorDetail()));
+    }
+}
+
+Status
+MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const
+{
+    if (getStatus().isError())
+        return getStatus();
+
+    if (!isWritingRequested())
+        return Status::ServiceUnavailable;
+
+    return _driver.write( key, image, progress );
+}
+
+//...................................................................
+
+Config
+MBTilesElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+MBTilesElevationLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
+
+//........................................................................
+
+REGISTER_OSGEARTH_LAYER(mbtileselevation, MBTilesElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, Compress, compress);
+OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, ComputeLevels, computeLevels);
+
+void
+MBTilesElevationLayer::init()
+{
+    ElevationLayer::init();
+    setTileSourceExpected(false);
+
+    // by default don't cache from local files
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
+}
+
+Status
+MBTilesElevationLayer::openImplementation()
+{
+    osg::ref_ptr<const Profile> profile = getProfile();
+
+    Status status = _driver.open(
+        getName(),
+        options(),
+        isWritingRequested(),
+        options().format(),
+        profile,
+        dataExtents(),
+        getReadOptions());
+
+    if (status.isError())
+    {
+        return status;
+    }
+
+    // install the profile if there is one
+    if (getProfile() == NULL && profile.valid())
+    {
+        setProfile(profile.get());
+    }
+
+    return ElevationLayer::openImplementation();
+}
+
+void
+MBTilesElevationLayer::setDataExtents(const DataExtentList& values)
+{
+    dataExtents() = values;
+
+    if (isWritingRequested())
+    {
+        _driver.setDataExtents(values);
+    }
+}
+
+GeoHeightField
+MBTilesElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    if (getStatus().isError())
+        return GeoHeightField(getStatus());
+
+    ReadResult r = _driver.read(key, progress, getReadOptions());
+
+    if (r.succeeded() && r.getImage())
+    {
+        ImageToHeightFieldConverter conv;
+        osg::HeightField* hf = conv.convert( r.getImage() );
+        return GeoHeightField(hf, key.getExtent());
+    }
+    else
+    {
+        return GeoHeightField(Status(r.errorDetail()));
+    }
+}
+
+Status
+MBTilesElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
+{
+    if (getStatus().isError())
+        return getStatus();
+
+    if (!hf)
+        return Status::AssertionFailure;
+
+    if (!isWritingRequested())
+        return Status::ServiceUnavailable;
+
+    ImageToHeightFieldConverter conv;
+    osg::Image* image = conv.convert(hf);
+    if (image)
+    {
+        return _driver.write(key, image, progress);
+    }
+    else
+    {
+        return Status(Status::GeneralError, "Hf to Image conversion failed");
+    }
+}
+
+
+//...................................................................
+
+#undef LC
+#define LC "[MBTiles] Layer \"" << _name << "\" "
+
+MBTiles::Driver::Driver()
+{
+    _minLevel = 0;
+    _maxLevel = 20;
+    _forceRGB = false;
+    _database = NULL;
+}
+
+Status
+MBTiles::Driver::open(
+    const std::string& name,
+    const MBTiles::Options& options,
+    bool isWritingRequested,
+    const optional<std::string>& format,
+    osg::ref_ptr<const Profile>& inout_profile,
+    DataExtentList& out_dataExtents,
+    const osgDB::Options* readOptions)
+{
+    _name = name;
+
+    std::string fullFilename = options.url()->full();
+    if (!osgDB::fileExists(fullFilename))
+    {
+        fullFilename = osgDB::findDataFile(fullFilename, readOptions);
+        if (fullFilename.empty())
+            fullFilename = options.url()->full();
+    }
+
+    bool readWrite = isWritingRequested;
 
     bool isNewDatabase = readWrite && !osgDB::fileExists(fullFilename);
 
     if (isNewDatabase)
     {
         // For a NEW database, the profile MUST be set prior to initialization.
-        if (getProfile() == 0L)
+        if (inout_profile.valid() == false)
         {
-            return Status(Status::ConfigurationError, 
+            return Status(Status::ConfigurationError,
                 "Cannot create database; required Profile is missing");
         }
 
-        if (!options().format().isSet())
+        if (!format.isSet())
         {
             return Status(Status::ConfigurationError,
                 "Cannot create database; required format property is missing");
@@ -166,7 +383,7 @@ MBTilesImageLayer::openImplementation()
     if (isNewDatabase)
     {
         // Make sure we have a readerwriter for the underlying tile format:
-        _tileFormat = options().format().get();
+        _tileFormat = format.get();
         _rw = getReaderWriter(_tileFormat);
         if (!_rw.valid())
         {
@@ -178,14 +395,14 @@ MBTilesImageLayer::openImplementation()
         createTables();
 
         // write profile to metadata:
-        std::string profileJSON = getProfile()->toProfileOptions().getConfig().toJSON(false);
+        std::string profileJSON = inout_profile->toProfileOptions().getConfig().toJSON(false);
         putMetaData("profile", profileJSON);
 
         // write format to metadata:
         putMetaData("format", _tileFormat);
 
         // compression?
-        if (options().compress().isSetTo(true))
+        if (options.compress().isSetTo(true))
         {
             _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
             if (_compressor.valid())
@@ -199,7 +416,7 @@ MBTilesImageLayer::openImplementation()
     // If the database pre-existed, read in the information from the metadata.
     else // !isNewDatabase
     {
-        if (options().computeLevels() == true)
+        if (options.computeLevels() == true)
         {
             computeLevels();
         }
@@ -219,19 +436,19 @@ MBTilesImageLayer::openImplementation()
         // Try to get it from the options.
         if (_tileFormat.empty())
         {
-            if (options().format().isSet())
+            if (format.isSet())
             {
-                _tileFormat = options().format().value();
+                _tileFormat = format.get();
             }
         }
         else
         {
             // warn the user if the options format differs from the database format
-            if (options().format().isSet() && options().format().get() != _tileFormat)
+            if (format.isSet() && format.get() != _tileFormat)
             {
                 OE_WARN << LC
                     << "Database tile format (" << _tileFormat << ") will override the layer options format ("
-                    << options().format().get() << ")" << std::endl;
+                    << format.get() << ")" << std::endl;
             }
         }
 
@@ -245,7 +462,7 @@ MBTilesImageLayer::openImplementation()
         _rw = getReaderWriter(_tileFormat);
         if (!_rw.valid())
         {
-            return setStatus(Status::ServiceUnavailable,
+            return Status(Status::ServiceUnavailable,
                 "No plugin found to load format \"" + _tileFormat + "\"");
         }
 
@@ -262,7 +479,7 @@ MBTilesImageLayer::openImplementation()
         }
 
         // Set the profile
-        const Profile* profile = getProfile();
+        const Profile* profile = inout_profile.get();
         if (!profile)
         {
             if (!profileStr.empty())
@@ -281,12 +498,16 @@ MBTilesImageLayer::openImplementation()
 
             if (!profile)
             {
-                OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
+                if (profileStr.empty() == false)
+                    OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
+
                 profile = Profile::create("spherical-mercator");
             }
 
-            setProfile(profile);
+            inout_profile = profile;
             OE_INFO << LC << "Profile = " << profile->toString() << std::endl;
+            OE_INFO << LC << "Min=" << _minLevel << ", Max=" << _maxLevel 
+                << ", format=" << _tileFormat  << std::endl;
         }
 
         // Check for bounds and populate DataExtents.
@@ -307,7 +528,7 @@ MBTilesImageLayer::openImplementation()
                 {
                     // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
                     // since we don't really handle DataExtents with minLevels > 0 just yet.
-                    dataExtents().push_back(DataExtent(extent, 0, _maxLevel));
+                    out_dataExtents.push_back(DataExtent(extent, 0, _maxLevel));
                     OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
                 }
                 else
@@ -320,7 +541,7 @@ MBTilesImageLayer::openImplementation()
         {
             // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
             // since we don't really handle DataExtents with minLevels > 0 just yet.
-            this->dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, _maxLevel));
+            out_dataExtents.push_back(DataExtent(inout_profile->getExtent(), 0, _maxLevel));
         }
     }
 
@@ -335,39 +556,15 @@ MBTilesImageLayer::openImplementation()
     _emptyImage->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
     unsigned char *data = _emptyImage->data(0, 0);
     memset(data, 0, 4 * size * size);
-    
-    return ImageLayer::openImplementation();
+
+    return Status::OK();
 }
 
-void
-MBTilesImageLayer::setDataExtents(const DataExtentList& values)
-{
-    if (isWritingRequested() && _database != NULL)
-    {
-        // assign the collection:
-        dataExtents() = values;
-
-        // Write it to the database.
-        if (getDataExtents().size() > 0)
-        {
-            // Get the union of all the extents
-            GeoExtent e(getDataExtents()[0]);
-            for (unsigned int i = 1; i < getDataExtents().size(); i++)
-            {
-                e.expandToInclude(getDataExtents()[i]);
-            }
-
-            // Convert the bounds to wgs84
-            GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
-            std::stringstream boundsStr;
-            boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
-            putMetaData("bounds", boundsStr.str());
-        }
-    }
-}
-
-GeoImage
-MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+ReadResult
+MBTiles::Driver::read(
+    const TileKey& key,
+    ProgressCallback* progress,
+    const osgDB::Options* readOptions) const
 {
     Threading::ScopedMutexLock exclusiveLock(_mutex);
 
@@ -377,13 +574,13 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     if (z < (int)_minLevel)
     {
-        return GeoImage(_emptyImage.get(), key.getExtent());
+        return ReadResult::RESULT_NOT_FOUND;
     }
 
     if (z > (int)_maxLevel)
     {
         //If we're at the max level, just return NULL
-        return GeoImage::INVALID;
+        return ReadResult::RESULT_NOT_FOUND;
     }
 
     unsigned int numRows, numCols;
@@ -399,7 +596,7 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     if ( rc != SQLITE_OK )
     {
         OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(database) << std::endl;
-        return GeoImage::INVALID;
+        return ReadResult::RESULT_READER_ERROR;
     }
 
     bool valid = true;
@@ -425,10 +622,7 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
             std::string value;
             if ( !_compressor->decompress(inputStream, value) )
             {
-                if ( options().url().isSet() )
-                    OE_WARN << LC << "Decompression failed: " << options().url()->base() << std::endl;
-                else
-                    OE_WARN << LC << "Decompression failed" << std::endl;
+                OE_WARN << LC << "Decompression failed" << std::endl;
                 valid = false;
             }
             else
@@ -452,23 +646,18 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     sqlite3_finalize( select );
 
-    if (result)
-    {
-        if (options().coverage() == true)
-        {
-            result->setInternalTextureFormat(GL_R16F);
-            ImageUtils::markAsUnNormalized(result, true);
-        }
-    }
-
-    return GeoImage(result, key.getExtent());
+    return ReadResult(result);
 }
 
+
 Status
-MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const
+MBTiles::Driver::write(
+    const TileKey& key,
+    const osg::Image* image,
+    ProgressCallback* progress) const
 {
-    if (!isWritingRequested())
-        return Status::ServiceUnavailable;
+    if (!key.valid() || !image)
+        return Status::AssertionFailure;
 
     Threading::ScopedMutexLock exclusiveLock(_mutex);
 
@@ -477,6 +666,7 @@ MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image
     osgDB::ReaderWriter::WriteResult wr;
     if (_forceRGB && ImageUtils::hasAlphaChannel(image))
     {
+        //TODO: skip if unnecessary
         osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8(image);
         wr = _rw->writeImage(*(rgb.get()), buf, _dbOptions.get());
     }
@@ -551,14 +741,14 @@ MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image
 
     sqlite3_finalize(insert);
 
-    return Status::OK();
+    return Status::NoError;
 }
 
 bool
-MBTilesImageLayer::getMetaData(const std::string& key, std::string& value)
+MBTiles::Driver::getMetaData(const std::string& key, std::string& value)
 {
     Threading::ScopedMutexLock exclusiveLock(_mutex);
-    
+
     sqlite3* database = (sqlite3*)_database;
 
     //get the metadata
@@ -597,7 +787,7 @@ MBTilesImageLayer::getMetaData(const std::string& key, std::string& value)
 }
 
 bool
-MBTilesImageLayer::putMetaData(const std::string& key, const std::string& value)
+MBTiles::Driver::putMetaData(const std::string& key, const std::string& value)
 {
     Threading::ScopedMutexLock exclusiveLock(_mutex);
 
@@ -631,10 +821,8 @@ MBTilesImageLayer::putMetaData(const std::string& key, const std::string& value)
 }
 
 void
-MBTilesImageLayer::computeLevels()
+MBTiles::Driver::computeLevels()
 {
-    Threading::ScopedMutexLock exclusiveLock(_mutex);
-
     sqlite3* database = (sqlite3*)_database;
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     sqlite3_stmt* select = NULL;
@@ -662,12 +850,10 @@ MBTilesImageLayer::computeLevels()
 }
 
 bool
-MBTilesImageLayer::createTables()
+MBTiles::Driver::createTables()
 {
-    Threading::ScopedMutexLock exclusiveLock(_mutex);
-
     // https://github.com/mapbox/mbtiles-spec/blob/master/1.2/spec.md
-    
+
     sqlite3* database = (sqlite3*)_database;
 
     std::string query =
@@ -715,95 +901,22 @@ MBTilesImageLayer::createTables()
     return true;
 }
 
-//...................................................................
-
-Config
-MBTilesElevationLayer::Options::getConfig() const
-{
-    Config conf = ElevationLayer::Options::getConfig();
-    writeTo(conf);
-    return conf;
-}
-
 void
-MBTilesElevationLayer::Options::fromConfig(const Config& conf)
+MBTiles::Driver::setDataExtents(const DataExtentList& values)
 {
-    readFrom(conf);
-}
-
-
-//........................................................................
-
-REGISTER_OSGEARTH_LAYER(mbtileselevation, MBTilesElevationLayer);
-
-OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, URI, URL, url);
-OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, std::string, Format, format);
-OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, Compress, compress);
-OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, ComputeLevels, computeLevels);
-
-void
-MBTilesElevationLayer::init()
-{
-    ElevationLayer::init();
-    setTileSourceExpected(false);
-}
-
-Status
-MBTilesElevationLayer::openImplementation()
-{
-    // Create an image layer under the hood. TMS fetch is the same for image and
-    // elevation; we just convert the resulting image to a heightfield
-    _imageLayer = new MBTilesImageLayer(options());
-
-    // Initialize and open the image layer
-    _imageLayer->setReadOptions(getReadOptions());
-
-    Status status;
-
-    if (isWritingRequested())
-        status = _imageLayer->openForWriting();
-    else
-        status = _imageLayer->open();
-
-    if (status.isError())
-        return status;
-
-    setProfile(_imageLayer->getProfile());            
-
-    return ElevationLayer::openImplementation();
-}
-
-void
-MBTilesElevationLayer::setDataExtents(const DataExtentList& values)
-{
-    if (_imageLayer.valid())
+    if (_database != NULL && values.size() > 0)
     {
-        _imageLayer->setDataExtents(values);
-    }
-}
+        // Get the union of all the extents
+        GeoExtent e(values[0]);
+        for (unsigned int i = 1; i < values.size(); i++)
+        {
+            e.expandToInclude(values[i]);
+        }
 
-GeoHeightField
-MBTilesElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
-{
-    // Make an image, then convert it to a heightfield
-    GeoImage image = _imageLayer->createImageImplementation(key, progress);
-    if (image.valid())
-    {
-        ImageToHeightFieldConverter conv;
-        osg::HeightField* hf = conv.convert( image.getImage() );
-        return GeoHeightField(hf, key.getExtent());
+        // Convert the bounds to wgs84
+        GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
+        std::stringstream boundsStr;
+        boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
+        putMetaData("bounds", boundsStr.str());
     }
-    else return GeoHeightField::INVALID;
-}
-
-Status
-MBTilesElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
-{
-    if (hf)
-    {
-        ImageToHeightFieldConverter conv;
-        osg::Image* image = conv.convertToR32F(hf);
-        return _imageLayer->writeImageImplementation(key, image, progress);
-    }
-    return Status::ServiceUnavailable;
 }

@@ -96,6 +96,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_windows)
     #ADD_SUBDIRECTORY(osgearth_3dtiles)
     ADD_SUBDIRECTORY(osgearth_callouts)
+    ADD_SUBDIRECTORY(osgearth_decal)
 
     IF(SILVERLINING_FOUND)
         ADD_SUBDIRECTORY(osgearth_silverlining)

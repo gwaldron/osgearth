@@ -129,7 +129,7 @@ CompositeImageLayer::openImplementation()
             }
             else
             {
-                OE_WARN << LC << "This composite can only contains ImageLayers; discarding layer " << layer->getName() << std::endl;
+                OE_WARN << LC << "This composite can only contains ImageLayers; discarding a layer" << std::endl;
             }
         }
     }
@@ -473,7 +473,7 @@ CompositeElevationLayer::openImplementation()
             }
             else
             {
-                OE_WARN << LC << "This composite can only contains ElevationLayers; discarding layer " << layer->getName() << std::endl;
+                OE_WARN << LC << "This composite can only contains ElevationLayers; discarding a layer" << std::endl;
             }
         }
     }

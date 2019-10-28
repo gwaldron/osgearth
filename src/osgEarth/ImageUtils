@@ -347,7 +347,7 @@ namespace osgEarth { namespace Util
          */
         static void activateMipMaps(osg::Texture* texture);
 
-        static void activateMipMaps(osg::Image* texture);
+        static void activateMipMaps(osg::Image* image);
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.

@@ -536,7 +536,7 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     bool madeGeom = true;
 
     // 6 verts per face total (3 triangles)
-    unsigned numWallVerts = 6 * structure.getNumPoints();
+    unsigned numWallVerts = structure.getNumPoints();
 
     double texWidthM   = wallSkin ? *wallSkin->imageWidth()  : 1.0;
     double texHeightM  = wallSkin ? *wallSkin->imageHeight() : 1.0;

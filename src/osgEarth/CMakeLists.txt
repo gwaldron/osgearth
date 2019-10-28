@@ -100,6 +100,7 @@ SET(LIB_PUBLIC_HEADERS
     CullingUtils
     DateTime
     DateTimeRange
+    DecalLayer
     DepthOffset
     DrapeableNode
     DrapingCullSet
@@ -465,6 +466,7 @@ set(TARGET_SRC
     CullingUtils.cpp
     DateTime.cpp
     DateTimeRange.cpp
+    DecalLayer.cpp
     DepthOffset.cpp
     DrapeableNode.cpp
     DrapingCullSet.cpp

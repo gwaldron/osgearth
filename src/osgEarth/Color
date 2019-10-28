@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osg/Vec3f>
 #include <osg/Vec4f>
 #include <string>
 
@@ -44,6 +45,9 @@ namespace osgEarth
 
         /** Make from vec4 */
         Color( const osg::Vec4f& rgba ) : osg::Vec4f(rgba) { }
+
+        /** Make from vec3 */
+        Color( const osg::Vec3f& rgb ) : osg::Vec4f(rgb[0], rgb[1], rgb[2], 1.0f) { }
 
         /** Copy constructor with modified alpha value */
         Color( const Color& rhs, float a );

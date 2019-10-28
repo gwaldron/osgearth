@@ -322,7 +322,7 @@ public:
                     // If the image has a filename try to hash it so we only write out one copy of it.  
                     if (!osgImage->getFileName().empty())
                     {
-                        std::string ext = osgDB::getFileExtension(osgImage->getFileName());
+                        std::string ext = "png";// osgDB::getFileExtension(osgImage->getFileName());
                         filename = Stringify() << std::hex << ::Strings::hashString(osgImage->getFileName()) << "." << ext;                        
 
                         if (!osgDB::fileExists(filename))
@@ -345,8 +345,11 @@ public:
                     }
                                    
                     // Add the image
+                    // TODO:  Find a better way to write out the image url.  Right now it's assuming a ../.. scheme.
                     Image image;
-                    image.uri = filename;
+                    std::stringstream buf;
+                    buf << "../../" << filename;
+                    image.uri = buf.str();//filename;
                     _model.images.push_back(image);
 
                     // Add the sampler
@@ -377,8 +380,16 @@ public:
                     colorFactor.number_array.push_back(1.0);
                     colorFactor.number_array.push_back(1.0);
 
-                    mat.values["baseColorFactor"] = colorFactor;
-                    
+                    Parameter metallicFactor;
+                    metallicFactor.has_number_value = true;
+                    metallicFactor.number_value = 0.0;
+                    mat.values["metallicFactor"] = metallicFactor;
+
+                    Parameter roughnessFactor;
+                    roughnessFactor.number_value = 1.0;
+                    roughnessFactor.has_number_value = true;
+                    mat.values["roughnessFactor"] = roughnessFactor;
+
                     _model.materials.push_back(mat);
                     return index;
                 }

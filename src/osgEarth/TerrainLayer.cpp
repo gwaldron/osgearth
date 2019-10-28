@@ -372,6 +372,12 @@ TerrainLayer::openImplementation()
             _tileSource = createAndOpenTileSource();
         }
 
+        if (getProfile())
+        {
+            // create the final profile from any overrides:
+            applyProfileOverrides();
+        }
+
         // Finally, open and activate a caching bin for this layer if it
         // hasn't already been created.
         if (_cacheSettings->isCacheEnabled() && _cacheSettings->getCacheBin() == 0L)
@@ -787,13 +793,6 @@ TerrainLayer::createAndOpenTileSource()
         {
             OE_DEBUG << LC << "Get Profile from tile source" << std::endl;
             setProfile(ts->getProfile());
-        }
-
-
-        if (_profile.valid())
-        {
-            // create the final profile from any overrides:
-            applyProfileOverrides();
         }
     }
 

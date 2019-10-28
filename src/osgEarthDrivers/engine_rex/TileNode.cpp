@@ -731,6 +731,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     pass->samplers()[SamplerBinding::COLOR]._texture = model->getTexture();
                     pass->samplers()[SamplerBinding::COLOR]._matrix = *model->getMatrix();
 
+#if 0
                     // Handle an RTT image layer:
                     if (model->getImageLayer() && model->getImageLayer()->useCreateTexture())
                     {
@@ -745,13 +746,16 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                             _context->getTileRasterizer()->push(rttNode->_node.get(), model->getTexture(), rttNode->_extent);
                         }
                     }
+#endif
 
                     // check to see if this data requires an image update traversal.
                     if (_imageUpdatesActive == false)
                     {
-                        for(unsigned i=0; i<model->getTexture()->getNumImages(); ++i)
+                        osg::Texture* texture = model->getTexture();
+                        for(unsigned i=0; i<texture->getNumImages(); ++i)
                         {
-                            if (model->getTexture()->getImage(i)->requiresUpdateCall())
+                            const osg::Image* image = texture->getImage(i);
+                            if (image && image->requiresUpdateCall())
                             {
                                 ADJUST_UPDATE_TRAV_COUNT(this, +1);
                                 _imageUpdatesActive = true;

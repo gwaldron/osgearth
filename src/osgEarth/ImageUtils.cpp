@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Random>
 #include <osgDB/Registry>
-#include <osg/ConcurrencyViewerMacros>
 
 #include <osg/ValueObject>
 
@@ -841,7 +840,6 @@ osg::Image*
 ImageUtils::createEmptyImage(unsigned int s, unsigned int t)
 {
     osg::Image* empty = new osg::Image;
-    empty->setName("oe_empty_image");
     empty->allocateImage(s,t,1, GL_RGBA, GL_UNSIGNED_BYTE);
     empty->setInternalTextureFormat( GL_RGB8A_INTERNAL );
     unsigned char *data = empty->data(0,0);
@@ -1175,12 +1173,11 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
         unsigned char* pDstData = result->data();
         int srcIndex = 0;
         int dstIndex = 0;
-        const int numPixels = image->t()*image->s()*image->r() - 1;
 
         // Convert all pixels except last one by reading 32bits chunks
-        for (int i=0; i<numPixels; ++i)
+        for (int i=0; i<image->t()*image->s()*image->r()-1; i++)
         {
-            const unsigned int srcValue = *((const unsigned int*) (pSrcData + srcIndex)) | 0xFF000000;
+            unsigned int srcValue = *((const unsigned int*) (pSrcData + srcIndex)) | 0xFF000000;
             *((unsigned int*) (pDstData + dstIndex)) = srcValue;
 
             srcIndex += 3;
@@ -1294,59 +1291,40 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 void
 ImageUtils::activateMipMaps(osg::Image* image)
 {
-   if (image == 0L){
-      return;
-   }
+#ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
+    if (image == 0L)
+        return;
 
-   if (image->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
-       image->getInternalTextureFormat() == GL_LUMINANCE16F_ARB ||
-       image->getInternalTextureFormat() == GL_R16F ||
-       image->getInternalTextureFormat() == GL_R32F)
-   {
-       OE_DEBUG << LC << "WARNING! mipmapper can't currently handle luminance/red textures. Mipmapping: " << image->getName() << std::endl;
-       return;
-   }
+    if (image->getNumMipmapLevels() > 1)
+        return;
 
-   osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
-   if (!ip)
-   {
-      return;
-   }
+    // NVTT doest not like 1-channel images; can crash
+    if (osg::Image::computeNumComponents(image->getPixelFormat()) < 3)
+        return;
 
-   if (image->getNumMipmapLevels() <= 1)
-   {
+    // Fint the NVTT plugin
+    osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
+    if (!ip)
+        return;
 
-      ip->generateMipMap(*image, true, ip->USE_CPU);
-      //VRV_PATCH
-      //Withouth the format explicitly setup it just picked srgb8 which don't need
-      //gamma correction, but we gamma correction everything in vrv.
-      if (image->getInternalTextureFormat() == GL_RGB)
-      {
-         image->setInternalTextureFormat(GL_RGB8);
-      }
-      else if (image->getInternalTextureFormat() == GL_RGBA)
-      {
-         image->setInternalTextureFormat(GL_RGBA8);
-      }
-   }
+    ip->generateMipMap(*image, true, ip->USE_CPU);
 
+    if (image->getInternalTextureFormat() == GL_RGB)
+    {
+        image->setInternalTextureFormat(GL_RGB8);
+    }
+    else if (image->getInternalTextureFormat() == GL_RGBA)
+    {
+        image->setInternalTextureFormat(GL_RGBA8);
+    }
+#endif
 }
+
 
 void
 ImageUtils::activateMipMaps(osg::Texture* tex)
 {
-   #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
-   // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
-   
-   if (tex == 0L)
-        return;
-
-   osg::CVMarkerSeries objectCreation("SubloadTask");
-   osg::CVSpan creationSpan(objectCreation, 4, "oe::mipmap");
-   if (tex->getImage(0)->getFileName().length()) {
-      objectCreation.write_alert(tex->getImage(0)->getFileName().c_str());
-   }
-   // Verify that this texture requests mipmaps:
+    // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
 
     bool needsMipmaps =
@@ -1357,47 +1335,11 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
 
     if (needsMipmaps && tex->getNumImages() > 0)
     {
-        // See if we have a CPU mipmap generator:
-        osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
-        if (ip)
+        for (unsigned i = 0; i < tex->getNumImages(); ++i)
         {
-            for (unsigned i = 0; i < tex->getNumImages(); ++i)
-            {
-                //VRV_PATCH
-                if (tex->getImage(i) == 0L)
-                   continue;
-
-                if (tex->getImage(i)->getDataPointer() == 0L)
-                   continue;
-
-                if (tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE16F_ARB ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_R16F ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_R32F)
-                {
-                    //OE_DEBUG << LC << "WARNING! mipmapper can't currently handle luminance/red textures" << std::endl;
-                    continue;
-                }
-
-                if (tex->getImage(i)->getNumMipmapLevels() <= 1)
-		  	    {
-                   ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
-                   //VRV_PATCH
-                   //Withouth the format explicitly setup it just picked srgb8 which don't need
-                   //gamma correction, but we gamma correction everything in vrv.
-                   if (tex->getImage(i)->getInternalTextureFormat() == GL_RGB)
-                   {
-                       tex->getImage(i)->setInternalTextureFormat(GL_RGB8);
-                   }
-                   else if (tex->getImage(i)->getInternalTextureFormat() == GL_RGBA)
-                   {
-                       tex->getImage(i)->setInternalTextureFormat(GL_RGBA8);
-                   }
-                }
-            }
+            activateMipMaps(tex->getImage(i));
         }
     }
-#endif
 }
 
 

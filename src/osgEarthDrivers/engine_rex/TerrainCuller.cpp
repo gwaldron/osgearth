@@ -312,6 +312,9 @@ TerrainCuller::apply(SurfaceNode& node)
         for (unsigned p = 0; p < renderModel._passes.size(); ++p)
         {
             const RenderingPass& pass = renderModel._passes[p];
+
+            //TODO: see if we can skip adding a draw command for 1-pixel images
+            // or other "placeholder" textures
             DrawTileCommand* cmd = addDrawCommand(pass.sourceUID(), &renderModel, &pass, _currentTileNode);
             if (cmd)
             {

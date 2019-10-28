@@ -314,7 +314,7 @@ ElevationPool::getTile(const TileKey& key, const ElevationLayerVector& layers, o
 ElevationEnvelope*
 ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
-    ElevationEnvelope* e = new ElevationEnvelope();
+    osg::ref_ptr<ElevationEnvelope> e = new ElevationEnvelope();
     e->_inputSRS = srs; 
     e->_lod = lod;
     e->_pool = this;
@@ -335,8 +335,12 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 
         e->_mapProfile = map->getProfile();
     }
+    else
+    {
+        e = NULL;
+    }
 
-    return e;
+    return e.release();
 }
 
 //........................................................................

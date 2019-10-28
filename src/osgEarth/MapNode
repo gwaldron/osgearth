@@ -65,6 +65,7 @@ namespace osgEarth
             OE_OPTION(bool, useCascadeDraping);
             OE_OPTION(bool, projected);
             OE_OPTION(TerrainOptions, terrain);
+            OE_OPTION(int, drapingRenderBinNumber);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

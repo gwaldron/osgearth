@@ -147,9 +147,10 @@ namespace osgEarth
             OE_OPTION(std::string, cacheId);
             OE_OPTION(CachePolicy, cachePolicy);
             OE_OPTION(std::string, shaderDefine);
-            OE_OPTION(ShaderOptions, shader);
             OE_OPTION(bool, terrainPatch);
             OE_OPTION(std::string, attribution);
+            OE_OPTION(ShaderOptions, shader);
+            OE_OPTION_VECTOR(ShaderOptions, shaders);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -376,7 +377,7 @@ namespace osgEarth
         CallbackVector _callbacks;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
-        osg::ref_ptr<LayerShader> _shader;
+        std::vector<osg::ref_ptr<LayerShader> > _shaders;
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map; 

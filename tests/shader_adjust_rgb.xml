@@ -1,0 +1,18 @@
+<shader>
+  <uniform name="adjustRed" value="0.0"/>
+  <uniform name="adjustGreen" value="0.0"/>
+  <uniform name="adjustBlue" value="0.0"/>
+  <![CDATA[
+    #pragma vp_entryPoint adjustRGB
+    #pragma vp_location fragment_coloring
+    
+    uniform float adjustRed;
+    uniform float adjustGreen;
+    uniform float adjustBlue;
+    
+    void adjustRGB(inout vec4 color) 
+    {
+        color.rgb = clamp(color.rgb + vec3(adjustRed, adjustGreen, adjustBlue), 0.0, 1.0);
+    }
+  ]]>
+</shader>

@@ -1,0 +1,18 @@
+<shader>
+  <uniform name="chromakey_color" value="#000000"/>
+  <uniform name="chromakey_threshold" value="0.0"/>
+  <![CDATA[
+    #pragma vp_entryPoint applyChromaKey
+    #pragma vp_location fragment_coloring
+    
+    uniform vec3 chromakey_color;
+    uniform float chromakey_threshold;
+    
+    void applyChromaKey(inout vec4 color) 
+    {
+        float dist = distance(color.rgb, chromakey_color);
+        if (dist <= chromakey_threshold)
+            color.a = 0.0;
+    }
+  ]]>
+</shader>

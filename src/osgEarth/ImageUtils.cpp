@@ -1369,16 +1369,10 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
                 if (tex->getImage(i)->getDataPointer() == 0L)
                    continue;
 
-                if (tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE32F_ARB ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_LUMINANCE16F_ARB ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_R16F ||
-                    tex->getImage(i)->getInternalTextureFormat() == GL_R32F)
-                {
-                    //OE_DEBUG << LC << "WARNING! mipmapper can't currently handle luminance/red textures" << std::endl;
-                    continue;
-                }
+                // Note: NVTT has trouble with single-channel images so skip them -GW 20191024
+                if (tex->getImage(i)->getNumMipmapLevels() <= 1 &&
+                    osg::Image::computeNumComponents(tex->getImage(i)->getPixelFormat()) >= 3)
 
-                if (tex->getImage(i)->getNumMipmapLevels() <= 1)
 		  	    {
                    ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
                    //VRV_PATCH

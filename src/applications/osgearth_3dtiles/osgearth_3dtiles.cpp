@@ -505,16 +505,25 @@ float Deg2Rad(float deg)
 /**
  * Sets the extents of a Tile to given extent 
  */
-void setTileExtents(TDTiles::Tile* tile, const GeoExtent& extent, double minHeight, double maxHeight)
+void setTileExtents(TDTiles::Tile* tile, const TileKey& key, double minHeight, double maxHeight)
 {
-#if 0
-    osg::BoundingSphered bs = extent.createWorldBoundingSphere(minHeight, maxHeight);
-    tile->boundingVolume()->sphere()->set(bs.center(), bs.radius());
-#else
-    tile->boundingVolume()->region()->set(
-        Deg2Rad(extent.xMin()), Deg2Rad(extent.yMin()), minHeight,
-        Deg2Rad(extent.xMax()), Deg2Rad(extent.yMax()), maxHeight);
-#endif
+    // Make sure the key's extent is in wgs84
+    GeoExtent extent;
+    extent = key.getExtent().transform(SpatialReference::create("epsg:4326"));
+
+    // Use bounding spheres until we get to lod 4 to avoid culling issues with bounding regions in Cesium with large bounding regions
+    if (key.getLevelOfDetail() < 4)
+    {
+        osg::BoundingSphered bs = extent.createWorldBoundingSphere(minHeight, maxHeight);
+        tile->boundingVolume()->sphere()->set(bs.center(), bs.radius());
+    }
+    else
+    // Use bounding regions instead of spheres to provide tighter bounds to increase culling performance.
+    {
+        tile->boundingVolume()->region()->set(
+            Deg2Rad(extent.xMin()), Deg2Rad(extent.yMin()), minHeight,
+            Deg2Rad(extent.xMax()), Deg2Rad(extent.yMax()), maxHeight);
+    }
 }
 
 // Compute the geometric error of a mercator tile.
@@ -539,7 +548,7 @@ void addChildren(TDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& lev
             osg::ref_ptr< TDTiles::Tile > childTile = new TDTiles::Tile;
             childTile->geometricError() = computeGeometricError(key);
             GeoExtent childExtent = childKey.getExtent().transform(mapSRS);
-            setTileExtents(childTile, childExtent, 0.0, height);            
+            setTileExtents(childTile, childKey, 0.0, height);            
             tile->children().push_back(childTile);
             if (childKey.getLevelOfDetail() < maxLevel)
             {
@@ -569,7 +578,7 @@ void addChildrenForce(TDTiles::Tile* tile, const TileKey& key, int maxLevel)
         osg::ref_ptr< TDTiles::Tile > childTile = new TDTiles::Tile;
         childTile->geometricError() = computeGeometricError(key);
         GeoExtent childExtent = childKey.getExtent().transform(mapSRS);
-        setTileExtents(childTile, childExtent, 0.0, height);
+        setTileExtents(childTile, childKey, 0.0, height);
         tile->children().push_back(childTile);
         if (childKey.getLevelOfDetail() < maxLevel)
         {
@@ -679,7 +688,7 @@ int build_tilesets(osg::ArgumentParser& args)
         osg::ref_ptr< TDTiles::Tile> tile = new TDTiles::Tile;
         tile->geometricError() = computeGeometricError(key);
         GeoExtent dataExtent = key.getExtent().transform(mapSRS);
-        setTileExtents(tile, dataExtent, 0.0, height);
+        setTileExtents(tile, key, 0.0, height);
         addChildren(tile, key, levelKeys, maxLevel);
         std::string tilesetName = Stringify() << path << "/" << key.getLevelOfDetail() << "/" << key.getTileX() << "/" << key.getTileY() << ".json";
         saveTileSet(tile.get(), tilesetName);               
@@ -702,7 +711,7 @@ int build_tilesets(osg::ArgumentParser& args)
             osg::ref_ptr< TDTiles::Tile> tile = new TDTiles::Tile;
             tile->geometricError() = computeGeometricError(key);
             GeoExtent dataExtent = key.getExtent().transform(mapSRS);
-            setTileExtents(tile, dataExtent, 0.0, height);
+            setTileExtents(tile, key, 0.0, height);
 
             // Check to see if the children exist
             for (unsigned int c = 0; c < 4; c++)
@@ -717,7 +726,7 @@ int build_tilesets(osg::ArgumentParser& args)
                     childTile->geometricError() = computeGeometricError(childKey);
 
                     GeoExtent childExtent = childKey.getExtent().transform(mapSRS);
-                    setTileExtents(childTile, childExtent, 0.0, height);
+                    setTileExtents(childTile, childKey, 0.0, height);
 
                     std::string tilesetName;
                     if (z == minLevel)

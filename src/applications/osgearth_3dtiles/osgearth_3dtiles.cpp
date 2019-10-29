@@ -262,11 +262,13 @@ main_view(osg::ArgumentParser& arguments)
 
     // Generate shaders that will render with a texture:
     osg::StateSet* rootStateSet = app._tileset->getOrCreateStateSet();
-    rootStateSet->setTextureAttribute(0, new osg::Texture2D(ImageUtils::createEmptyImage(1,1)));
+    rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1,1)));
     osgEarth::ShaderGenerator gen;
     osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
     if (ss.valid())
+    {
         app._tileset->setStateSet(ss);
+    }
 
     // group to control the LOD scale dynamically:
     app._sseGroup = new LODScaleGroup();

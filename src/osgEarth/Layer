@@ -65,10 +65,10 @@ namespace osgDB {
         META_Object(LIBRARY, MYCLASS); \
         \
         OE_COMMENT("Construct a new layer with default options") \
-        MYCLASS () : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete) { MYCLASS##::init(); } \
+        MYCLASS () : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete) { MYCLASS::init(); } \
         \
         OE_COMMENT("Construct a new layer with user-defined options") \
-        MYCLASS (const OPTIONS& o) : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete), _optionsConcrete(o) { MYCLASS##::init(); } \
+        MYCLASS (const OPTIONS& o) : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete), _optionsConcrete(o) { MYCLASS::init(); } \
         \
         OE_COMMENT("Mutable options for this layer") \
         OPTIONS& options() { return *_options; } \

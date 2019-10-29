@@ -113,7 +113,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
                 ReadResult r = uri.readString(group->getReadOptions());
                 if (r.succeeded())
                 {
-                    TDTiles::Tileset* tileset = TDTiles::Tileset::create(r.getString(), uri.context());
+                    TDTiles::Tileset* tileset = TDTiles::Tileset::create(r.getString(), uri.full());
                     if (tileset)
                     {
                         return group->loadRoot(tileset);
@@ -607,6 +607,7 @@ TDTiles::ContentHandler::createNode(TDTiles::Tile* tile, const osgDB::Options* r
         if (rr.succeeded())
         {
             result = rr.releaseNode();
+            result->setName(tile->content()->uri()->full());
         }
         else
         {

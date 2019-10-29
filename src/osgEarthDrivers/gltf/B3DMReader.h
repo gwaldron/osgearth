@@ -26,6 +26,8 @@
 #include <osgEarth/URI>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
+#include <osgDB/FileNameUtils>
+#include <osgDB/ReadFile>
 #include "GLTFReader.h"
 
 using namespace osgEarth;
@@ -47,6 +49,14 @@ struct b3dmheader
 class B3DMReader
 {
 public:
+    static std::string ExpandFilePath(const std::string &filepath, void * userData)
+    {
+        const std::string& referrer = *(const std::string*)userData;
+        std::string path = osgDB::getRealPath(osgDB::isAbsolutePath(filepath) ? filepath : osgDB::concatPaths(osgDB::getFilePath(referrer), filepath));
+        //OSG_NOTICE << "ExpandFilePath: expanded " << filepath << " to " << path << std::endl;
+        return tinygltf::ExpandFilePath(path, userData);
+    }
+
     //! Read a B3DM file and return a node
     osg::Node* read(const std::string& location, const osgDB::Options* options) const
     {
@@ -150,8 +160,21 @@ public:
         tinygltf::TinyGLTF loader;
         std::string err;
         std::string warn;
+
+        FsCallbacks fs;
+        fs.FileExists = &tinygltf::FileExists;
+        fs.ExpandFilePath = &B3DMReader::ExpandFilePath;
+        fs.ReadWholeFile = &tinygltf::ReadWholeFile;
+        fs.WriteWholeFile = &tinygltf::WriteWholeFile;
+        fs.user_data = (void*)&location;
+        loader.SetFsCallbacks(fs);
+
         loader.LoadBinaryFromMemory(&model, &err, &warn, reinterpret_cast<unsigned char*>(&gltfData[0]), sz);
 
+        if (!err.empty())
+            OE_WARN << LC << "GLTF ERROR: " << err << std::endl;
+        if (!warn.empty())
+            OE_WARN << LC << "GLTF WARNING: " << warn << std::endl;
 
         osg::MatrixTransform *mt = new osg::MatrixTransform;
 

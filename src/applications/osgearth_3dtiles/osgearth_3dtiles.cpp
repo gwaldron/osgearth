@@ -225,7 +225,7 @@ main_view(osg::ArgumentParser& arguments)
     bool readFeatures = arguments.read("--features");
     app._randomColors = arguments.read("--random-colors");
 
-    app._maxSSE = 20.0f;
+    app._maxSSE = 1.0f;
     arguments.read("--maxsse", app._maxSSE);
 
     // load the tile set:
@@ -234,7 +234,9 @@ main_view(osg::ArgumentParser& arguments)
     if (rr.failed())
         return usage(Stringify()<<"Error loading tileset: " <<rr.errorDetail());
 
-    TDTiles::Tileset* tileset = TDTiles::Tileset::create(rr.getString(), tilesetLocation);
+    std::string fullPath = osgEarth::getAbsolutePath(tilesetLocation);
+
+    TDTiles::Tileset* tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
     if (!tileset)
         return usage("Bad tileset");
 
@@ -258,7 +260,15 @@ main_view(osg::ArgumentParser& arguments)
     else
         app._tileset = new TDTilesetGroup();
 
+    // Generate shaders that will render with a texture:
+    osg::StateSet* rootStateSet = app._tileset->getOrCreateStateSet();
+    rootStateSet->setTextureAttribute(0, new osg::Texture2D(ImageUtils::createEmptyImage(1,1)));
+    osgEarth::ShaderGenerator gen;
+    osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
+    if (ss.valid())
+        app._tileset->setStateSet(ss);
 
+    // group to control the LOD scale dynamically:
     app._sseGroup = new LODScaleGroup();
     app._sseGroup->addChild(app._tileset.get());
 

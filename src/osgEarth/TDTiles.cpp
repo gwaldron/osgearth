@@ -30,104 +30,89 @@
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 
 #define LC "[3DTiles] "
 
 //........................................................................
 
-#define PSEUDOLOADER_TILE_CONTENT_EXT "osgearth_3dtiles_content"
-#define PSEUDOLOADER_TILE_CHILDREN_EXT "osgearth_3dtiles_children"
-#define PSEUDOLOADER_EXTERNAL_TILESET_EXT "osgearth_3dtiles_external_tileset"
-#define TAG_INVOKER "osgEarth::TDTiles::Invoker"
+#define PSEUDOLOADER_LOAD_TILE_CONTENT "osgearth_3dtiles_content"
+#define PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN "osgearth_3dtiles_load_tile_children"
+#define PSEUDOLOADER_LOAD_ONE_TILE_CHILD "osgearth_3dtiles_load_tile_child"
+#define PSEUDOLOADER_LOAD_EXTERNAL_TILESET "osgearth_3dtiles_load_external_tileset"
+
+#define PSEUDOLOADER_TILESET_GROUP "osgearth_3dtiles_tileset_group"
+#define PSEUDOLOADER_TILE_NODE "osgearth_3dtiles_tilenode"
+#define PSEUDOLOADER_CHILD_INDEX "osgearth_3dtiles_tile_index"
 
 namespace osgEarth { namespace Contrib { namespace TDTiles
 {
-    //! Operation that loads all of a tilenode's children.
-    struct LoadChildren : public AsyncFunction
+    struct PagerPseudoLoader : public osgDB::ReaderWriter
     {
-        osg::observer_ptr<TDTiles::TileNode> _tileNode;
-        LoadChildren(TDTiles::TileNode* tileNode) : _tileNode(tileNode) { }
-        virtual ReadResult operator()() const
+        PagerPseudoLoader()
         {
-            OE_DEBUG << LC << "LoadChildren" << std::endl;
-            osg::ref_ptr<TDTiles::TileNode> tileNode;
-            if (_tileNode.lock(tileNode))
+            supportsExtension(PSEUDOLOADER_LOAD_EXTERNAL_TILESET, PSEUDOLOADER_LOAD_EXTERNAL_TILESET);
+            supportsExtension(PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN, PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN);
+            supportsExtension(PSEUDOLOADER_LOAD_ONE_TILE_CHILD, PSEUDOLOADER_LOAD_ONE_TILE_CHILD);
+            supportsExtension(PSEUDOLOADER_LOAD_TILE_CONTENT, PSEUDOLOADER_LOAD_TILE_CONTENT);
+        }
+
+        ReadResult readNode(const std::string& location, const osgDB::Options* rwOptions) const
+        {
+            std::string lcfe = osgDB::getLowerCaseFileExtension(location);
+
+            if (lcfe == PSEUDOLOADER_LOAD_EXTERNAL_TILESET)
             {
+                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                osg::ref_ptr<TDTilesetGroup> tilesetGroup = OptionsData<TDTilesetGroup>::get(rwOptions, PSEUDOLOADER_TILESET_GROUP);
+                if (!tilesetGroup.valid())
+                    return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tilesetGroup in options)");
+
+                return tilesetGroup->loadExternal();
+            }
+
+            else if (lcfe == PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN)
+            {
+
+                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                osg::ref_ptr<TDTiles::TileNode> tileNode = OptionsData<TDTiles::TileNode>::get(rwOptions, PSEUDOLOADER_TILE_NODE);
+                if (!tileNode.valid())
+                    return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tileNode in options)");
+
                 return tileNode->loadChildren();
             }
-            else return ReadResult(ReadResult::RESULT_NOT_FOUND);
-        }
-    };
 
-    //! Operation that loads one child of a TileNode.
-    struct LoadChild : public AsyncFunction
-    {
-        osg::observer_ptr<TDTiles::TileNode> _tileNode;
-        unsigned _index;
-        LoadChild(TDTiles::TileNode* tileNode, unsigned index) 
-            : _tileNode(tileNode), _index(index) { }
-        virtual ReadResult operator()() const
-        {
-            OE_DEBUG << LC << "LoadChild" << std::endl;
-            osg::ref_ptr<TDTiles::TileNode> tileNode;
-            if (_tileNode.lock(tileNode))
+            else if (lcfe == PSEUDOLOADER_LOAD_ONE_TILE_CHILD)
             {
-                return tileNode->loadChild(_index);
+
+                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                osg::ref_ptr<TDTiles::TileNode> tileNode = OptionsData<TDTiles::TileNode>::get(rwOptions, PSEUDOLOADER_TILE_NODE);
+                if (!tileNode.valid())
+                    return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tileNode in options)");
+
+                unsigned index = 0u;
+                if (!rwOptions->getUserValue(PSEUDOLOADER_CHILD_INDEX, index))
+                    return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tile index provided)");
+
+                return tileNode->loadChild(index);
             }
-            else return ReadResult(ReadResult::RESULT_NOT_FOUND);
-        }
-    };
 
-    //! Operation that loads the content of a TileNode (from a URI)
-    struct LoadTileContent : public AsyncFunction
-    {
-        osg::observer_ptr<TDTiles::TileNode> _tileNode;
-        LoadTileContent(TDTiles::TileNode* tileNode) : _tileNode(tileNode) { }
-        virtual ReadResult operator()() const
-        {
-            OE_DEBUG << LC << "LoadTileContent" << std::endl;
-            osg::ref_ptr<TDTiles::TileNode> tileNode;
-            if (_tileNode.lock(tileNode))
+            else if (lcfe == PSEUDOLOADER_LOAD_TILE_CONTENT)
             {
+
+                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                osg::ref_ptr<TDTiles::TileNode> tileNode = OptionsData<TDTiles::TileNode>::get(rwOptions, PSEUDOLOADER_TILE_NODE);
+                if (!tileNode.valid())
+                    return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tileNode in options)");
+
                 return tileNode->loadContent();
             }
-            else return ReadResult(ReadResult::RESULT_NOT_FOUND);
+
+            return ReadResult::FILE_NOT_HANDLED;
         }
     };
-
-    //! Operation that loads an external tile set
-    struct LoadExternalTileset : public AsyncFunction
-    {
-        osg::observer_ptr<TDTilesetGroup> _group;
-        LoadExternalTileset(TDTilesetGroup* group) : _group(group) { }
-        virtual ReadResult operator()() const
-        {
-            OE_DEBUG << LC << "LoadExternalTileset" << std::endl;
-            osg::ref_ptr<TDTilesetGroup> group;
-            if (_group.lock(group))
-            {
-                const URI& uri = group->getTilesetURL();
-                OE_INFO << LC << "Loading external tileset " << uri.full() << std::endl;
-
-                ReadResult r = uri.readString(group->getReadOptions());
-                if (r.succeeded())
-                {
-                    TDTiles::Tileset* tileset = TDTiles::Tileset::create(r.getString(), uri.full());
-                    if (tileset)
-                    {
-                        return group->loadRoot(tileset);
-                    }
-                    else
-                    {
-                        return ReadResult("Invalid tileset JSON");
-                    }
-                }
-                return ReadResult("Failed to load external tileset");
-            }
-            else return ReadResult();
-        }
-    };
+    REGISTER_OSGPLUGIN(osgearth_pseudo_3dtiles, PagerPseudoLoader);
 }}}
 
 //........................................................................
@@ -453,9 +438,6 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
             //bs.center().set(0,0,0);
         }
     }
-    // tag this object as the invoker of the paging request:
-    osg::ref_ptr<osgDB::Options> newOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
-    OptionsData<TDTiles::TileNode>::set(newOptions.get(), TAG_INVOKER, this);
 
     // aka "maximum meters per pixel for which to use me"
     float geometricError = tile->geometricError().getOrUse(FLT_MAX);
@@ -465,9 +447,8 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
 
     if (tile->refine() == REFINE_REPLACE)
     {
-        osg::ref_ptr<AsyncLOD> lod = new AsyncLOD();
-        lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
-        lod->setPolicy(AsyncLOD::POLICY_REPLACE);
+        osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
+        lod->setRangeMode(lod->PIXEL_SIZE_ON_SCREEN);
 
         if (bs.valid())
         {
@@ -478,16 +459,23 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         if (contentNode.valid())
         {
             lod->setName(_tile->content()->uri()->base());
-            lod->addChild(contentNode, 0.0f, FLT_MAX);
+            //lod->addChild(contentNode, 0.0f, FLT_MAX);
+            lod->addChild(contentNode, bs.valid() ? 1.0f : 0.0f, FLT_MAX);
         }
 
         if (tile->children().size() > 0)
         {
-            // Async children as a group. All must load before replacing child 0.
-            // TODO: consider a way to load each child asyncrhonously but still
-            // block the refinement until all are loaded.
-            lod->addChild(new LoadChildren(this), 0.0f, geometricError);            
+            osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(readOptions);
+
+            //lod->addChild(new LoadChildren(this), 0.0f, geometricError);
+            unsigned index = getNumChildren();
+            lod->setFileName(index, "." PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN);
+            //lod->setRange(1, geometricError, FLT_MAX); // TODO: revisit
+            lod->setRange(index, bs.valid() ? 1.0f : 0.0f, FLT_MAX); 
+            lod->setDatabaseOptions(local.get());
+            OptionsData<TileNode>::set(local, PSEUDOLOADER_TILE_NODE, this);
         }
+
         addChild(lod);
     }
 
@@ -502,17 +490,24 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         {
             // Each tile gets its own async load since they don't depend on each other
             // nor do they depend on a parent loading first.
-            osg::ref_ptr<AsyncLOD> lod = new AsyncLOD();
-            lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
-            lod->setPolicy(AsyncLOD::POLICY_ACCUMULATE);
+            osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
+            lod->setRangeMode(lod->PIXEL_SIZE_ON_SCREEN);
+            // TODO: deal with POLICY_ACCUMULATE ...
+                
+            //osg::ref_ptr<AsyncLOD> lod = new AsyncLOD();
+            //lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
+            //lod->setPolicy(AsyncLOD::POLICY_ACCUMULATE);
 
             TDTiles::Tile* childTile = _tile->children()[i].get();
+
+            osg::BoundingSphere myBS;
 
             if (childTile->boundingVolume().isSet())
             {
                 osg::BoundingSphere bs = childTile->boundingVolume()->asBoundingSphere();
                 if (bs.valid())
                 {
+                    myBS = bs;
                     lod->setCenter(bs.center());
                     lod->setRadius(bs.radius());
                 }
@@ -521,12 +516,18 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
             // backup plan if the child's BV isn't set - use parent BV
             else if (bs.valid())
             {
+                myBS = bs;
                 lod->setCenter(bs.center());
                 lod->setRadius(bs.radius());
             }
 
             // Load this child asynchronously:
-            lod->addChild(new LoadChild(this, i), 0.0, geometricError);
+            osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(readOptions);
+            lod->setFileName(0, "." PSEUDOLOADER_LOAD_ONE_TILE_CHILD);
+            lod->setRange(0, myBS.valid() ? 1.0f : 0.0f, FLT_MAX);
+            lod->setDatabaseOptions(local.get());
+            OptionsData<TileNode>::set(local.get(), PSEUDOLOADER_TILE_NODE, this);
+            local->setUserValue(PSEUDOLOADER_CHILD_INDEX, (unsigned)i);
 
             addChild(lod);
         }
@@ -563,7 +564,7 @@ TDTiles::TileNode::loadContent() const
     {
         // external tileset reference
         TDTilesetGroup* group = new TDTilesetGroup();
-        group->setTilesetURL(_tile->content()->uri().get());
+        group->setExternalTilesetURL(_tile->content()->uri().get(), getBound());
         result = group;
     }
     else if (_handler.valid())
@@ -663,13 +664,22 @@ TDTilesetGroup::loadRoot(TDTiles::Tileset* tileset) const
         float maxMetersPerPixel = tileset->geometricError().getOrUse(FLT_MAX);
 
         // create the root tile node and defer loading of its content:
-        osg::Node* tileNode = new TDTiles::TileNode(tileset->root().get(), _handler.get(), _readOptions.get());
+        TDTiles::TileNode* tileNode = new TDTiles::TileNode(tileset->root().get(), _handler.get(), _readOptions.get());
         tileNode->setName("Tileset Root");
 
-        AsyncLOD* lod = new AsyncLOD();
-        lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
-        lod->addChild(tileNode, 0.0, maxMetersPerPixel);
-        lod->setName("Root ALOD");
+        //AsyncLOD* lod = new AsyncLOD();
+        //lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
+        //lod->addChild(tileNode, 0.0, maxMetersPerPixel);
+        //lod->setName("Root ALOD");
+
+        osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
+        lod->setName("TileSet Root");
+        lod->setRangeMode(lod->PIXEL_SIZE_ON_SCREEN);
+        lod->addChild(tileNode, 1.0f, FLT_MAX);
+        
+        //osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(_readOptions.get());
+        //OptionsData<TDTiles::TileNode>::set(local.get(), PSEUDOLOADER_TILE_NODE, tileNode);
+        //lod->setDatabaseOptions(local.get());
 
         result = lod;
     }
@@ -692,26 +702,53 @@ TDTilesetGroup::setTileset(TDTiles::Tileset* tileset)
 }
 
 void
-TDTilesetGroup::setTilesetURL(const URI& location)
+TDTilesetGroup::setExternalTilesetURL(const URI& location, const osg::BoundingSphere& bound)
 {
     _tilesetURI = location;
 
     // reset:
     removeChildren(0, getNumChildren());
 
-    AsyncLOD* lod = new AsyncLOD();
-    lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
+    osg::PagedLOD* lod = new osg::PagedLOD();
+    lod->setCenter(bound.center());
+    lod->setRadius(bound.radius());
     lod->setName(location.base());
-    lod->addChild(new TDTiles::LoadExternalTileset(this), 0.0, FLT_MAX);
-    lod->setName("Tileset Load ExternalTiles ALOD");
+    lod->setRangeMode(lod->PIXEL_SIZE_ON_SCREEN);
+    lod->setFileName(0, "." PSEUDOLOADER_LOAD_EXTERNAL_TILESET);
+    lod->setRange(0, bound.valid() ? 1.0f : 0.0f, FLT_MAX);
 
+    osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(_readOptions.get());
+    OptionsData<TDTilesetGroup>::set(local.get(), PSEUDOLOADER_TILESET_GROUP, this);
+    lod->setDatabaseOptions(local.get());
     addChild(lod);
 }
 
 const URI&
-TDTilesetGroup::getTilesetURL() const
+TDTilesetGroup::getExternalTilesetURL() const
 {
     return _tilesetURI;
+}
+
+osgDB::ReaderWriter::ReadResult
+TDTilesetGroup::loadExternal() const
+{
+    const URI& uri = getExternalTilesetURL();
+    OE_INFO << LC << "Loading external tileset " << uri.full() << std::endl;
+
+    ReadResult r = uri.readString(getReadOptions());
+    if (r.succeeded())
+    {
+        TDTiles::Tileset* tileset = TDTiles::Tileset::create(r.getString(), uri.full());
+        if (tileset)
+        {
+            return loadRoot(tileset);
+        }
+        else
+        {
+            return osgDB::ReaderWriter::ReadResult("Invalid TileSet JSON");
+        }
+    }
+    return osgDB::ReaderWriter::ReadResult(r.errorDetail());
 }
 
 //........................................................................

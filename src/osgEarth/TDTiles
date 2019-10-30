@@ -210,12 +210,15 @@ namespace osgEarth { namespace Contrib
         void setTileset(TDTiles::Tileset* tileset);
 
         //! Sets the URL of the root tileset to load.
-        void setTilesetURL(const URI& location);
-        const URI& getTilesetURL() const;
+        void setExternalTilesetURL(const URI& location, const osg::BoundingSphere& bound);
+        const URI& getExternalTilesetURL() const;
 
     public:
         // internal
         osg::ref_ptr<osg::Node> loadRoot(TDTiles::Tileset*) const;
+
+        //! internal
+        osgDB::ReaderWriter::ReadResult loadExternal() const;
 
     protected:
         TDTilesetGroup(const TDTilesetGroup& rhs, const osg::CopyOp& op) { }

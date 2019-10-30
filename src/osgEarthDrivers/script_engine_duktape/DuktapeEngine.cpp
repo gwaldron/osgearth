@@ -185,6 +185,7 @@ namespace
                         case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
                         case ATTRTYPE_INT:    duk_push_int    (ctx, a->second.getInt()); break;             // [global] [feature] [properties] [name]
                         case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()); break;            // [global] [feature] [properties] [name]
+                        case ATTRTYPE_DOUBLEARRAY: break;
                         case ATTRTYPE_STRING:
                         default:              duk_push_string (ctx, a->second.getString().c_str()); break;  // [global] [feature] [properties] [name]
                         }

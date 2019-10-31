@@ -64,7 +64,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
             if (lcfe == PSEUDOLOADER_LOAD_EXTERNAL_TILESET)
             {
-                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                OE_DEBUG << "lcfe=[" << lcfe << "]" << std::endl;
                 osg::ref_ptr<TDTilesetGroup> tilesetGroup = OptionsData<TDTilesetGroup>::get(rwOptions, PSEUDOLOADER_TILESET_GROUP);
                 if (!tilesetGroup.valid())
                     return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tilesetGroup in options)");
@@ -74,8 +74,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
             else if (lcfe == PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN)
             {
-
-                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                OE_DEBUG << "lcfe=[" << lcfe << "]" << std::endl;
                 osg::ref_ptr<TDTiles::TileNode> tileNode = OptionsData<TDTiles::TileNode>::get(rwOptions, PSEUDOLOADER_TILE_NODE);
                 if (!tileNode.valid())
                     return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tileNode in options)");
@@ -85,8 +84,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
             else if (lcfe == PSEUDOLOADER_LOAD_ONE_TILE_CHILD)
             {
-
-                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                OE_DEBUG << "lcfe=[" << lcfe << "]" << std::endl;
                 osg::ref_ptr<TDTiles::TileNode> tileNode = OptionsData<TDTiles::TileNode>::get(rwOptions, PSEUDOLOADER_TILE_NODE);
                 if (!tileNode.valid())
                     return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tileNode in options)");
@@ -100,8 +98,7 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
             else if (lcfe == PSEUDOLOADER_LOAD_TILE_CONTENT)
             {
-
-                OE_WARN << "lcfe=[" << lcfe << "]" << std::endl;
+                OE_DEBUG << "lcfe=[" << lcfe << "]" << std::endl;
                 osg::ref_ptr<TDTiles::TileNode> tileNode = OptionsData<TDTiles::TileNode>::get(rwOptions, PSEUDOLOADER_TILE_NODE);
                 if (!tileNode.valid())
                     return ReadResult("osgEarth: INTERNAL ERROR in PagerPseudoLoader (no tileNode in options)");
@@ -113,6 +110,184 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         }
     };
     REGISTER_OSGPLUGIN(osgearth_pseudo_3dtiles, PagerPseudoLoader);
+
+
+    class PagedLODWithGeometricError : public osg::PagedLOD
+    {
+    public:
+        //float _geometricError;
+        std::vector<float> _geometricError;
+
+        PagedLODWithGeometricError() : osg::PagedLOD()
+        {
+            setRangeMode(PIXEL_SIZE_ON_SCREEN);
+        }
+
+        void setGeometricError(unsigned index, float value)
+        {
+            if (_geometricError.size() <= (int)0)
+                _geometricError.resize(index+1, 1.0f);
+
+            _geometricError[index] = osg::maximum(value, 1.0f);
+        }
+
+        void traverse(osg::NodeVisitor& nv)
+        {
+            // set the frame number of the traversal so that external nodes can find out how active this
+            // node is.
+            if (nv.getFrameStamp() &&
+                nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR)
+            {
+                setFrameNumberOfLastTraversal(nv.getFrameStamp()->getFrameNumber());
+            }
+
+            double timeStamp = nv.getFrameStamp()?nv.getFrameStamp()->getReferenceTime():0.0;
+            unsigned int frameNumber = nv.getFrameStamp()?nv.getFrameStamp()->getFrameNumber():0;
+            bool updateTimeStamp = nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR;
+
+            //float pixelSizeRatio = 1.0f;
+
+            switch(nv.getTraversalMode())
+            {
+                case(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN):
+                {
+                    std::for_each(_children.begin(),_children.end(),osg::NodeAcceptOp(nv));
+                    break;
+                }
+
+                case(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
+                {
+                    float nodeSizeInPixels = 0.0f;
+                    float metersPerPixel = 1.0f;
+
+                    osg::CullStack* cullStack = nv.asCullStack();
+                    if (cullStack && cullStack->getLODScale()>0.0f)
+                    {
+                        const osg::BoundingSphere& bound = getBound();
+                        nodeSizeInPixels = cullStack->clampedPixelSize(bound) / cullStack->getLODScale();
+
+                        // GOAL: only accept a child if it's screen resolution is >= _geometricError meters per pixel
+                        metersPerPixel = bound.radius()*2.0 / nodeSizeInPixels;
+                    }
+
+                    //if (metersPerPixel > _geometricError)
+                    //{
+                    //    return;
+                    //}
+
+                    int lastChildTraversed = -1;
+                    bool needToLoadChild = false;
+
+                    for(unsigned int i=0;i<_rangeList.size();++i)
+                    {
+                        float ge = _geometricError.size() > i? _geometricError[i] : 1.0f;
+
+                        //OE_NOTICE << "index=" << i  << ", R=" << getBound().radius() 
+                        //    << ", PSOS="<<nodeSizeInPixels<<", MPP="<<metersPerPixel<< ", GE=" << ge
+                        //    << ", pass?=" << (metersPerPixel<=ge?"yes":"no") << std::endl;
+
+                        if (metersPerPixel <= ge)
+                        {
+                            if (i<_children.size())
+                            {
+                                if (updateTimeStamp)
+                                {
+                                    _perRangeDataList[i]._timeStamp=timeStamp;
+                                    _perRangeDataList[i]._frameNumber=frameNumber;
+                                }
+
+                                _children[i]->accept(nv);
+                                lastChildTraversed = (int)i;
+                            }
+                            else
+                            {
+                                needToLoadChild = true;
+                            }
+                        }
+                    }
+
+                    if (needToLoadChild)
+                    {
+                        unsigned int numChildren = _children.size();
+
+                        // select the last valid child.
+                        if (numChildren>0 && ((int)numChildren-1)!=lastChildTraversed)
+                        {
+                            if (updateTimeStamp)
+                            {
+                                _perRangeDataList[numChildren-1]._timeStamp=timeStamp;
+                                _perRangeDataList[numChildren-1]._frameNumber=frameNumber;
+                            }
+                            _children[numChildren-1]->accept(nv);
+                        }
+
+                        // now request the loading of the next unloaded child.
+                        if (!_disableExternalChildrenPaging &&
+                            nv.getDatabaseRequestHandler() &&
+                            numChildren<_perRangeDataList.size())
+                        {
+                            // compute priority from where abouts in the required range the distance falls.
+                            float priority = (_rangeList[numChildren].second-nodeSizeInPixels)/(_rangeList[numChildren].second-_rangeList[numChildren].first);
+
+                            // invert priority for PIXEL_SIZE_ON_SCREEN mode
+                            if(_rangeMode==PIXEL_SIZE_ON_SCREEN)
+                            {
+                                priority = -priority;
+                            }
+
+                            // modify the priority according to the child's priority offset and scale.
+                            priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
+
+                            if (_databasePath.empty())
+                            {
+                                nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                            }
+                            else
+                            {
+                                // prepend the databasePath to the child's filename.
+                                nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                            }
+                        }
+                    }
+
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    };
+
+#if 0
+    /**
+     * Cull callback that will apply geometricError settings to an LOD
+     */
+    class GeometricErrorCullCallback : public osg::NodeCallback
+    {
+    public:
+        GeometricErrorCullCallback(float ge)
+        {
+            _geometricError = osg::maximum(ge, 1.0f);
+        }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            osg::CullStack* cs = nv->asCullStack();           
+            float lodScale = cs->getLODScale();
+
+            // adjust the LOD scale to account for the geometric error
+            float lodScaleRatio = node->getBound().radius()*2.0 / _geometricError;
+            cs->setLODScale(lodScale * lodScaleRatio);
+
+            traverse(node, nv);
+
+            // restore the LOD scale
+            cs->setLODScale(lodScale);
+        }
+
+        float _geometricError;
+    };
+#endif
 }}}
 
 //........................................................................
@@ -439,17 +614,16 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         }
     }
 
-    // aka "maximum meters per pixel for which to use me"
-    float geometricError = tile->geometricError().getOrUse(FLT_MAX);
+    float geometricError = tile->geometricError().getOrUse(1.0f);
 
     // actual content for this tile (optional)
     osg::ref_ptr<osg::Node> contentNode = loadContent();
 
     if (tile->refine() == REFINE_REPLACE)
     {
-        osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
-        lod->setRangeMode(lod->PIXEL_SIZE_ON_SCREEN);
-
+        //osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
+        osg::ref_ptr<TDTiles::PagedLODWithGeometricError> lod = new TDTiles::PagedLODWithGeometricError();
+        
         if (bs.valid())
         {
             lod->setCenter(bs.center());
@@ -459,8 +633,8 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         if (contentNode.valid())
         {
             lod->setName(_tile->content()->uri()->base());
-            //lod->addChild(contentNode, 0.0f, FLT_MAX);
             lod->addChild(contentNode, bs.valid() ? 1.0f : 0.0f, FLT_MAX);
+            lod->setGeometricError(lod->getNumChildren(), 1.0f);
         }
 
         if (tile->children().size() > 0)
@@ -470,8 +644,8 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
             //lod->addChild(new LoadChildren(this), 0.0f, geometricError);
             unsigned index = getNumChildren();
             lod->setFileName(index, "." PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN);
-            //lod->setRange(1, geometricError, FLT_MAX); // TODO: revisit
             lod->setRange(index, bs.valid() ? 1.0f : 0.0f, FLT_MAX); 
+            lod->setGeometricError(index, geometricError);
             lod->setDatabaseOptions(local.get());
             OptionsData<TileNode>::set(local, PSEUDOLOADER_TILE_NODE, this);
         }
@@ -490,7 +664,8 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         {
             // Each tile gets its own async load since they don't depend on each other
             // nor do they depend on a parent loading first.
-            osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
+            //osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
+            osg::ref_ptr<TDTiles::PagedLODWithGeometricError> lod = new TDTiles::PagedLODWithGeometricError();
             lod->setRangeMode(lod->PIXEL_SIZE_ON_SCREEN);
             // TODO: deal with POLICY_ACCUMULATE ...
                 
@@ -524,6 +699,7 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
             // Load this child asynchronously:
             osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(readOptions);
             lod->setFileName(0, "." PSEUDOLOADER_LOAD_ONE_TILE_CHILD);
+            lod->setGeometricError(0, geometricError);
             lod->setRange(0, myBS.valid() ? 1.0f : 0.0f, FLT_MAX);
             lod->setDatabaseOptions(local.get());
             OptionsData<TileNode>::set(local.get(), PSEUDOLOADER_TILE_NODE, this);
@@ -661,25 +837,23 @@ TDTilesetGroup::loadRoot(TDTiles::Tileset* tileset) const
     // Set up the root tile.
     if (tileset->root().valid())
     {
-        float maxMetersPerPixel = tileset->geometricError().getOrUse(FLT_MAX);
+        float geometricError;
+
+        if (tileset->geometricError().isSet())
+            geometricError = tileset->geometricError().get();
+        else if (tileset->root()->geometricError().isSet())
+            geometricError = tileset->root()->geometricError().get();
+        else
+            geometricError = 1.0f;
 
         // create the root tile node and defer loading of its content:
         TDTiles::TileNode* tileNode = new TDTiles::TileNode(tileset->root().get(), _handler.get(), _readOptions.get());
         tileNode->setName("Tileset Root");
 
-        //AsyncLOD* lod = new AsyncLOD();
-        //lod->setMode(AsyncLOD::MODE_GEOMETRIC_ERROR);
-        //lod->addChild(tileNode, 0.0, maxMetersPerPixel);
-        //lod->setName("Root ALOD");
-
-        osg::ref_ptr<osg::PagedLOD> lod = new osg::PagedLOD();
+        osg::ref_ptr<TDTiles::PagedLODWithGeometricError> lod = new TDTiles::PagedLODWithGeometricError();
         lod->setName("TileSet Root");
-        lod->setRangeMode(lod->PIXEL_SIZE_ON_SCREEN);
         lod->addChild(tileNode, 1.0f, FLT_MAX);
-        
-        //osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(_readOptions.get());
-        //OptionsData<TDTiles::TileNode>::set(local.get(), PSEUDOLOADER_TILE_NODE, tileNode);
-        //lod->setDatabaseOptions(local.get());
+        lod->setGeometricError(0, geometricError);
 
         result = lod;
     }

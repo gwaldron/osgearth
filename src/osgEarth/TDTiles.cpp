@@ -26,8 +26,11 @@
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/FeatureNode>
 #include <osgEarth/StyleSheet>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/LabelNode>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
+#include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -157,36 +160,38 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
                 case(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
                 {
-                    float nodeSizeInPixels = 0.0f;
-                    float metersPerPixel = 1.0f;
+                    float maxSSE = 1.0f;
+                    float metersToPixels = 1.0f;
+                    float nodeSizeInPixels = 1.0f;
 
-                    osg::CullStack* cullStack = nv.asCullStack();
-                    if (cullStack && cullStack->getLODScale()>0.0f)
+                    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+
+                    if (cv && cv->getCurrentCamera() && cv->getCurrentCamera()->getViewport())
                     {
-                        const osg::BoundingSphere& bound = getBound();
-                        nodeSizeInPixels = cullStack->clampedPixelSize(bound) / cullStack->getLODScale();
-
-                        // GOAL: only accept a child if it's screen resolution is >= _geometricError meters per pixel
-                        metersPerPixel = bound.radius()*2.0 / nodeSizeInPixels;
+                        nodeSizeInPixels = cv->clampedPixelSize(getBound()); // for setting priority only
+                        maxSSE = cv->getLODScale();
+                        double distance = nv.getDistanceToViewPoint(this->getBound().center(), false); //true);
+                        double fovy, ar, zn, zf;
+                        cv->getCurrentCamera()->getProjectionMatrix().getPerspective(fovy, ar, zn, zf);
+                        double height = cv->getCurrentCamera()->getViewport()->height();
+                        double sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
+                        metersToPixels = height / (distance*sseDenominator);
                     }
-
-                    //if (metersPerPixel > _geometricError)
-                    //{
-                    //    return;
-                    //}
 
                     int lastChildTraversed = -1;
                     bool needToLoadChild = false;
 
                     for(unsigned int i=0;i<_rangeList.size();++i)
                     {
-                        float ge = _geometricError.size() > i? _geometricError[i] : 1.0f;
+                        float errorMeters = _geometricError.size() > i? _geometricError[i] : FLT_MAX;
 
-                        //OE_NOTICE << "index=" << i  << ", R=" << getBound().radius() 
-                        //    << ", PSOS="<<nodeSizeInPixels<<", MPP="<<metersPerPixel<< ", GE=" << ge
-                        //    << ", pass?=" << (metersPerPixel<=ge?"yes":"no") << std::endl;
+                        float sse = 
+                            errorMeters == FLT_MAX ? FLT_MAX :
+                            errorMeters * metersToPixels;
 
-                        if (metersPerPixel <= ge)
+                        //OE_NOTICE << "SSE="<<sse<<", maxSSE="<<maxSSE<<", GE="<<errorMeters<<std::endl;
+
+                        if (sse > maxSSE)
                         {
                             if (i<_children.size())
                             {
@@ -258,36 +263,54 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         }
     };
 
-#if 0
-    /**
-     * Cull callback that will apply geometricError settings to an LOD
-     */
-    class GeometricErrorCullCallback : public osg::NodeCallback
+    osg::Node* makeDebugNode(const TDTiles::BoundingVolume& bv, const std::string& text)
     {
-    public:
-        GeometricErrorCullCallback(float ge)
+        osg::ref_ptr<const SpatialReference> wgs84 = SpatialReference::get("wgs84");
+
+        LineDrawable* line = new LineDrawable(GL_LINE_LOOP);
+        line->setColor(osg::Vec4(1,1,0,1));
+
+        GeoPoint labelPos;
+
+        if (bv.region().isSet())
         {
-            _geometricError = osg::maximum(ge, 1.0f);
+            osg::Vec3d sw(bv.region()->corner(0));
+            sw.x() = osg::RadiansToDegrees(sw.x()), sw.y() = osg::RadiansToDegrees(sw.y());
+
+            osg::Vec3d ne(bv.region()->corner(7));
+            ne.x() = osg::RadiansToDegrees(ne.x()), ne.y() = osg::RadiansToDegrees(ne.y());
+
+            std::vector<osg::Vec3d> v;
+            v.resize(8);
+
+            for(int i=0; i<8; ++i)
+            {
+                GeoPoint p(wgs84, bv.region()->corner(i));
+                p.x() = osg::RadiansToDegrees(p.x());
+                p.y() = osg::RadiansToDegrees(p.y());
+                p.toWorld(v[i]);
+
+                if (i==4)
+                    labelPos = p;
+            }
+
+            line->pushVertex(v[4]);
+            line->pushVertex(v[5]);
+            line->pushVertex(v[7]);
+            line->pushVertex(v[6]);
+
+            line->finish();
         }
 
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            osg::CullStack* cs = nv->asCullStack();           
-            float lodScale = cs->getLODScale();
+        osg::Group* g = new osg::Group();
+        g->addChild(line);
 
-            // adjust the LOD scale to account for the geometric error
-            float lodScaleRatio = node->getBound().radius()*2.0 / _geometricError;
-            cs->setLODScale(lodScale * lodScaleRatio);
+        LabelNode* label = new LabelNode(text);
+        label->setPosition(labelPos);
+        g->addChild(label);
 
-            traverse(node, nv);
-
-            // restore the LOD scale
-            cs->setLODScale(lodScale);
-        }
-
-        float _geometricError;
-    };
-#endif
+        return g;
+    }
 }}}
 
 //........................................................................
@@ -633,18 +656,20 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
         if (contentNode.valid())
         {
             lod->setName(_tile->content()->uri()->base());
-            lod->addChild(contentNode, bs.valid() ? 1.0f : 0.0f, FLT_MAX);
-            lod->setGeometricError(lod->getNumChildren(), 1.0f);
+            lod->addChild(contentNode, 0.0f, FLT_MAX);
+            lod->setGeometricError(0, FLT_MAX); // always draw.
         }
+
+        std::string text = Stringify() << "REFINE_REPLACE:: GE=" << geometricError << " MODE=" << (tile->refine()==REFINE_ADD?"add":"replace");
+        this->addChild(makeDebugNode(tile->boundingVolume().get(), text));
 
         if (tile->children().size() > 0)
         {
             osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(readOptions);
 
-            //lod->addChild(new LoadChildren(this), 0.0f, geometricError);
-            unsigned index = getNumChildren();
+            unsigned index = lod->getNumChildren();
             lod->setFileName(index, "." PSEUDOLOADER_LOAD_ALL_TILE_CHILDREN);
-            lod->setRange(index, bs.valid() ? 1.0f : 0.0f, FLT_MAX); 
+            lod->setRange(index, 0.0f, FLT_MAX); 
             lod->setGeometricError(index, geometricError);
             lod->setDatabaseOptions(local.get());
             OptionsData<TileNode>::set(local, PSEUDOLOADER_TILE_NODE, this);
@@ -696,11 +721,15 @@ TDTiles::TileNode::TileNode(TDTiles::Tile* tile,
                 lod->setRadius(bs.radius());
             }
 
+            std::string text = Stringify() << "REFINE_ADD:: GE=" << geometricError << " MODE=" << (tile->refine()==REFINE_ADD?"add":"replace");
+            this->addChild(makeDebugNode(tile->boundingVolume().get(), text));
+
             // Load this child asynchronously:
+            unsigned index = lod->getNumChildren();
             osg::ref_ptr<osgDB::Options> local = Registry::instance()->cloneOrCreateOptions(readOptions);
-            lod->setFileName(0, "." PSEUDOLOADER_LOAD_ONE_TILE_CHILD);
-            lod->setGeometricError(0, geometricError);
-            lod->setRange(0, myBS.valid() ? 1.0f : 0.0f, FLT_MAX);
+            lod->setFileName(index, "." PSEUDOLOADER_LOAD_ONE_TILE_CHILD);
+            lod->setGeometricError(index, geometricError);
+            lod->setRange(index, 0.0f, FLT_MAX);
             lod->setDatabaseOptions(local.get());
             OptionsData<TileNode>::set(local.get(), PSEUDOLOADER_TILE_NODE, this);
             local->setUserValue(PSEUDOLOADER_CHILD_INDEX, (unsigned)i);
@@ -852,7 +881,7 @@ TDTilesetGroup::loadRoot(TDTiles::Tileset* tileset) const
 
         osg::ref_ptr<TDTiles::PagedLODWithGeometricError> lod = new TDTiles::PagedLODWithGeometricError();
         lod->setName("TileSet Root");
-        lod->addChild(tileNode, 1.0f, FLT_MAX);
+        lod->addChild(tileNode, 0.0f, FLT_MAX);
         lod->setGeometricError(0, geometricError);
 
         result = lod;

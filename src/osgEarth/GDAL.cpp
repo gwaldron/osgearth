@@ -519,7 +519,9 @@ GDAL::Driver::open(const GDAL::Options& options,
         // Resolve the pathname...
         if (isFile && !osgDB::fileExists(input))
         {
-            input = osgDB::findDataFile(input);
+            std::string found = osgDB::findDataFile(input);
+            if (!found.empty())
+                input = found;
         }
 
         // Create the source dataset:
@@ -1713,11 +1715,11 @@ GDALImageLayer::openImplementation()
     return ImageLayer::openImplementation();
 }
 
-void
-GDALImageLayer::close()
+Status
+GDALImageLayer::closeImplementation()
 {
     _driver = 0L;
-    ImageLayer::close();
+    return ImageLayer::closeImplementation();
 }
 
 GeoImage
@@ -1789,9 +1791,6 @@ GDALElevationLayer::openImplementation()
         _driver->setOverrideProfile(getProfile());
     }
 
-    //GDAL::Options gdalOptions;
-    //gdalOptions.readFrom(options().getConfig());
-
     Status status = _driver->open(
         options(),
         options().tileSize().get(),
@@ -1809,11 +1808,11 @@ GDALElevationLayer::openImplementation()
     return ElevationLayer::openImplementation();
 }
 
-void
-GDALElevationLayer::close()
+Status
+GDALElevationLayer::closeImplementation()
 {
     _driver = 0L;
-    ElevationLayer::close();
+    return ElevationLayer::closeImplementation();
 }
 
 GeoHeightField

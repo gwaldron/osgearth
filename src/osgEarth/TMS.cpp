@@ -791,6 +791,14 @@ TileMapServiceReader::read( const Config& conf, TileMapEntryList& tileMaps)
     return false;
 }
 
+void
+TMS::Driver::close()
+{
+    _tileMap = NULL;
+    _writer = NULL;
+    _forceRGBWrites = false;
+}
+
 Status
 TMS::Driver::open(const URI& uri,
                   osg::ref_ptr<const Profile>& profile,
@@ -1120,6 +1128,13 @@ TMSImageLayer::openImplementation()
     return ImageLayer::openImplementation();
 }
 
+Status
+TMSImageLayer::closeImplementation()
+{
+    _driver.close();
+    return ImageLayer::closeImplementation();
+}
+
 GeoImage
 TMSImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
@@ -1219,6 +1234,17 @@ TMSElevationLayer::openImplementation()
     dataExtents() = _imageLayer->getDataExtents();
 
     return ElevationLayer::openImplementation();
+}
+
+Status
+TMSElevationLayer::closeImplementation()
+{
+    if (_imageLayer.valid())
+    {
+        _imageLayer->close();
+        _imageLayer = NULL;
+    }
+    return ElevationLayer::closeImplementation();
 }
 
 GeoHeightField

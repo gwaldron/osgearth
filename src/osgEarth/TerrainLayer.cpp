@@ -412,8 +412,8 @@ TerrainLayer::openForWriting()
     return setStatus(Status::ServiceUnavailable, "Layer does not support writing");
 }
 
-void
-TerrainLayer::close()
+Status
+TerrainLayer::closeImplementation()
 {
     setProfile(0L);
     _tileSource = 0L;
@@ -421,6 +421,7 @@ TerrainLayer::close()
     setStatus(Status());
     _readOptions = 0L;
     _cacheSettings = new CacheSettings();
+    return Layer::closeImplementation();
 }
 
 void

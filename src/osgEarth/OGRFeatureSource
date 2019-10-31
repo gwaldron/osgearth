@@ -90,7 +90,7 @@ namespace osgEarth
 
         virtual Status openImplementation();
 
-        virtual void close();
+        virtual Status closeImplementation();
 
     protected:
 

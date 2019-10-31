@@ -193,7 +193,10 @@ namespace osgEarth
         virtual const Status& open(const osgDB::Options* options) final;
 
         //! Close this layer.
-        virtual void close();
+        virtual Status close() final;
+
+        //! Whether the layer is open
+        bool isOpen() const;
 
         //! Status of this layer
         const Status& getStatus() const;
@@ -351,6 +354,9 @@ namespace osgEarth
         //! By default, returns STATUS_OK.
         virtual Status openImplementation();
 
+        //! Called by close() to shut down the resources associated with a layer.
+        virtual Status closeImplementation();
+
         //! Sets the status for this layer - internal
         const Status& setStatus(const Status& status) const;
         
@@ -371,6 +377,7 @@ namespace osgEarth
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
         Hints _hints;
+        bool _isOpen;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;

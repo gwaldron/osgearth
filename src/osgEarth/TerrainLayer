@@ -360,7 +360,7 @@ namespace osgEarth
 
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */
-        virtual void close();
+        virtual Status closeImplementation();
 
     };
 

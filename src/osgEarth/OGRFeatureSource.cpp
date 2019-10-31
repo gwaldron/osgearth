@@ -425,11 +425,9 @@ OGRFeatureSource::init()
     _geometryType = Geometry::TYPE_UNKNOWN;
 }
 
-void
-OGRFeatureSource::close()
+Status
+OGRFeatureSource::closeImplementation()
 {
-    FeatureSource::close();
-
     OGR_SCOPED_LOCK;
 
     if (_layerHandle)
@@ -455,6 +453,8 @@ OGRFeatureSource::close()
     }
 
     init();
+
+    return FeatureSource::closeImplementation();
 }
 
 OGRFeatureSource::~OGRFeatureSource()

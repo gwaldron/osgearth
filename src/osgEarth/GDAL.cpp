@@ -517,7 +517,10 @@ GDAL::Driver::open(const GDAL::Options& options,
         }
 
         // Resolve the pathname...
-        input = osgDB::findDataFile(input);
+        if (isFile && !osgDB::fileExists(input))
+        {
+            input = osgDB::findDataFile(input);
+        }
 
         // Create the source dataset:
         _srcDS = (GDALDataset*)GDALOpen(input.c_str(), GA_ReadOnly);

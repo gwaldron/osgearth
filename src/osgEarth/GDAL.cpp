@@ -464,7 +464,7 @@ GDAL::Driver::open(const GDAL::Options& options,
 {
     GDAL_SCOPED_LOCK;
 
-    _gdalOptions = options; //GDALLayerOptions<ImageLayer::Options>(options);
+    _gdalOptions = options;
 
     // Is a valid external GDAL dataset specified ?
     bool useExternalDataset = false;
@@ -482,6 +482,7 @@ GDAL::Driver::open(const GDAL::Options& options,
 
     // source connection:
     std::string source;
+    bool isFile = true;
 
     if (gdalOptions().url().isSet())
     {
@@ -498,6 +499,7 @@ GDAL::Driver::open(const GDAL::Options& options,
     else if (gdalOptions().connection().isSet())
     {
         source = gdalOptions().connection().get();
+        isFile = false;
     }
 
     if (useExternalDataset == false)
@@ -513,6 +515,9 @@ GDAL::Driver::open(const GDAL::Options& options,
         {
             return Status::Error(Status::ResourceUnavailable, "Could not find any valid input.");
         }
+
+        // Resolve the pathname...
+        input = osgDB::findDataFile(input);
 
         // Create the source dataset:
         _srcDS = (GDALDataset*)GDALOpen(input.c_str(), GA_ReadOnly);
@@ -1453,7 +1458,9 @@ GDAL::Driver::createImage(const TileKey& key,
                     if (getPalleteIndexColor(bandPalette, p, color) &&
                         isValidValue((float)color.r(), bandPalette)) // need this?
                     {
-                        pixel.r() = (float)color.r();
+                        // use the palette index directly for coverage data...?
+                        pixel.r() = (float)p;
+                        //pixel.r() = (float)color.r();
                     }
                     else
                     {

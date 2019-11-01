@@ -627,7 +627,7 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
         bool areChildrenReady = true;
         if (_children.valid())
         {
-            /*
+#if 1
             for (unsigned int i = 0; i < _children->getNumChildren(); i++)
             {
                 ThreeDTile* threeDTile = static_cast<ThreeDTile*>(_children->getChild(i));
@@ -642,11 +642,13 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
                 }
             }
 
+            /*
             if (!areChildrenReady)
             {
                 OE_NOTICE << "Waiting on children " << _children->getNumChildren() << std::endl;
             }
             */
+#endif
         }
         else
         {

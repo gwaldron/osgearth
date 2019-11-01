@@ -74,6 +74,13 @@ namespace osgEarth { namespace REX
             unsigned         minLevel,
             unsigned         maxLevel);
 
+        //! Forces regeneration of tiles in the given region for one layer.
+        void invalidateLayerRegion(
+            const Layer*     layer,
+            const GeoExtent& extent,
+            unsigned         minLevel,
+            unsigned         maxLevel);
+
         //! Get the stateset used to render the terrain surface.
         osg::StateSet* getSurfaceStateSet();
 

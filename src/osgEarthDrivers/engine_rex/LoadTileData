@@ -36,7 +36,14 @@ namespace osgEarth { namespace REX
 
         CreateTileModelFilter& filter() { return _filter; }
 
+        //! Whether to allow the request to cancel midstream. Default is true
         void setEnableCancelation(bool value) { _enableCancel = value; }
+
+        //! Sets the set of layers to load. Empty set = all layers
+        void setLayerFilter(const std::set<UID>& layers);
+
+        //! Clears the set of layers to load. Empty set = all layers
+        void clearLayerFilter();
 
     public: // Loader::Request
 
@@ -50,6 +57,7 @@ namespace osgEarth { namespace REX
         osg::StateSet* createStateSet() const;
 
     protected:
+        Threading::Mutex _mutex;
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
         osg::observer_ptr<EngineContext> _context;

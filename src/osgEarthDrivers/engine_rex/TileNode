@@ -66,8 +66,11 @@ namespace osgEarth { namespace REX
         /** Sets the map revision that this tile should be using. */
         void setMapRevision(Revision rev) { } // nyi - check for need
 
-        /** Tells this tile that it needs to request data. */
+        /** Tells this tile that it needs to request data (when set to true) */
         void setDirty(bool value);
+
+        /** Tells this tile that is need to request data for the specified layers. */
+        void refreshLayers(const std::set<UID>& layers);
 
         /** Creates the geometry and state for this tilenode. */
         void create(const TileKey& key, TileNode* parent, EngineContext* context);

@@ -45,9 +45,14 @@
 #include <osgEarth/MVT>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Async>
 #include <osgDB/FileUtils>
 #include <osgDB/WriteFile>
+#include <osgViewer/ViewerEventHandlers>
+#include <osg/Shape>
+#include <osg/ShapeDrawable>
+#include <osg/PolygonMode>
 #include <iostream>
 
 #define LC "[3dtiles test] "
@@ -58,13 +63,112 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 namespace ui = osgEarth::Util::Controls;
 
+static float maxSSE = 15.0f;
+
+
+/**
+ * Manages a TileSet
+ */
+class ThreeDTileset : public osg::MatrixTransform
+{
+public:
+    ThreeDTileset(TDTiles::Tileset* tileset);
+
+    osg::BoundingSphere computeBound() const;
+
+private:
+    osg::ref_ptr< TDTiles::Tileset > _tileset;
+};
+
+osg::ref_ptr< osg::OperationQueue > queue = new osg::OperationQueue;
+
+unsigned int numB3dmTiles = 0;
+unsigned int numTileSetContent = 0;
+
+
+class LoadNodeOperation : public osg::Operation
+{
+public:
+    LoadNodeOperation(const std::string& url, osgEarth::Threading::Promise<osg::Node> promise) :
+        _url(url),
+        _promise(promise)
+    {
+    }
+
+    void operator()(osg::Object*)
+    {
+        if (!_promise.isAbandoned())
+        {
+            _promise.resolve(osgDB::readNodeFile(_url));
+        }
+    }
+
+    osgEarth::Threading::Promise<osg::Node> _promise;
+    std::string _url;
+};
+
+class LoadTilesetOperation : public osg::Operation
+{
+public:
+    LoadTilesetOperation(const std::string& url, osgEarth::Threading::Promise<osg::Node> promise) :
+        _url(url),
+        _promise(promise)
+    {
+    }
+
+    void operator()(osg::Object*)
+    {
+        if (!_promise.isAbandoned())
+        {
+            // load the tile set:
+            URI tilesetURI(_url);
+            ReadResult rr = tilesetURI.readString();
+
+            std::string fullPath = osgEarth::getAbsolutePath(_url);
+
+            osg::ref_ptr< TDTiles::Tileset> tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
+            if (tileset)
+            {
+                OE_NOTICE << "Loaded external tileset " << _url << std::endl;
+                osg::ref_ptr<ThreeDTileset> tilesetNode = new ThreeDTileset(tileset);
+                tilesetNode->setName(_url);
+                _promise.resolve(tilesetNode);
+            }
+            else
+            {
+                OE_NOTICE << "Failed to load external tileset " << _url << std::endl;
+                _promise.resolve(0);
+            }
+        }
+    }
+
+    osgEarth::Threading::Promise<osg::Node> _promise;
+    std::string _url;
+};
+
+Threading::Future<osg::Node> readNodeAsync(const std::string& url)
+{
+    Threading::Promise<osg::Node> promise;
+
+    if (osgEarth::Strings::endsWith(url, ".json"))
+    {
+        queue->add(new LoadTilesetOperation(url, promise));
+    }
+    else
+    {
+        queue->add(new LoadNodeOperation(url, promise));
+    }    
+
+    return promise.getFuture();
+}
+
 struct App
 {
     MapNode* _mapNode;
     ui::HSliderControl* _sse;
     TDTiles::ContentHandler* _handler;
     EarthManipulator* _manip;
-    osg::ref_ptr<TDTilesetGroup> _tileset;
+    osg::ref_ptr<osg::Node> _tileset;
     osgViewer::View* _view;
     LODScaleGroup* _sseGroup;
     float _maxSSE;
@@ -72,13 +176,15 @@ struct App
 
     void changeSSE()
     {
-        _sseGroup->setLODScaleFactor(_sse->getValue());
+        //_sseGroup->setLODScaleFactor(_sse->getValue());
+        maxSSE = _sse->getValue();
     }
 
     void zoomToData()
     {
         if (_tileset->getBound().valid())
         {
+            OE_NOTICE << "Zooming to bound" << std::endl;
             const osg::BoundingSphere& bs = _tileset->getBound();
             
             const SpatialReference* wgs84 = SpatialReference::get("wgs84");
@@ -94,11 +200,15 @@ struct App
 
             _manip->setViewpoint(vp);
         }
+        else
+        {
+            OE_NOTICE << "No bounds" << std::endl;
+        }
     }
 
     void apply()
     {
-        changeSSE();
+        //changeSSE();
     }
 };
 
@@ -213,10 +323,314 @@ struct FeatureRenderer : public TDTiles::ContentHandler
     }
 };
 
+class ThreeDTile : public osg::MatrixTransform
+{
+public:
+    ThreeDTile(TDTiles::Tile* tile, bool immediateLoad=false) :
+        _tile(tile),
+        _requestedContent(false),
+        _immediateLoad(immediateLoad)
+    {
+        // the transform to localize this tile:
+        if (tile->transform().isSet())
+        {
+            setMatrix(tile->transform().get());
+        }
+
+        if (_immediateLoad && _tile->content().isSet())
+        {
+            OE_NOTICE << "Immediately Loading " << _tile->content()->uri()->full() << std::endl;
+            _content = _tile->content()->uri()->getNode();
+        }
+
+        /*
+        if (_tile->content().isSet() && osgEarth::Strings::endsWith(_tile->content()->uri()->full(), ".b3dm"))
+        {
+            createBoundingSphere();
+        }
+        */
+
+        if (_tile->children().size() > 0)
+        {
+            _children = new osg::Group;
+            for (unsigned int i = 0; i < _tile->children().size(); ++i)
+            {
+                _children->addChild(new ThreeDTile(_tile->children()[i], false));
+            }
+
+            if (_children->getNumChildren() == 0)
+            {
+                _children = 0;
+            }
+        }
+
+        
+    }
+
+    osg::BoundingSphere computeBound() const
+    {
+        /*
+        if (_content.valid())
+        {
+            return _content->getBound();
+        }
+        */
+
+        if (_tile->boundingVolume().isSet())
+        {
+            return _tile->boundingVolume()->asBoundingSphere();
+        }
+    }
+
+    bool hasContent()
+    {
+        return _tile->content().isSet() && _tile->content()->uri().isSet();
+    }
+
+    bool isContentReady()
+    {                
+        resolveContent();
+        return _content.valid();
+    }
+
+    void resolveContent()
+    {
+        // Resolve the future 
+        if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
+        {
+            OE_NOTICE << "Resolved " << _tile->content()->uri()->full() << std::endl;
+            _content = _contentFuture.get();            
+            //dirtyBound();
+            /*if (_boundsDebug.valid())
+            {
+                createBoundingSphere();
+            }
+            */
+
+            if (osgEarth::Strings::endsWith(_tile->content()->uri()->full(), ".json"))
+            {
+                numTileSetContent++;
+            }
+            if (osgEarth::Strings::endsWith(_tile->content()->uri()->full(), ".b3dm"))
+            {
+                numB3dmTiles++;
+            }
+        }
+        else if (!_content.valid() && hasContent() && _requestedContent)
+        {
+            OE_NOTICE << "Waiting to resolve " << _tile->content()->uri()->full() << std::endl;
+        }
+    }
+
+    void requestContent()
+    {
+        if (!_content.valid() && !_requestedContent && hasContent())
+        {
+            OE_NOTICE << "Requesting " << _tile->content()->uri()->full() << std::endl;
+            _contentFuture = readNodeAsync(_tile->content()->uri()->full());
+            _requestedContent = true;
+        }
+    }
+
+    void createBoundingSphere()
+    {
+        osg::ShapeDrawable*sd = new osg::ShapeDrawable(new osg::Sphere(getBound().center(), getBound().radius()));
+        sd->setColor(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+        osg::StateSet* stateset = sd->getOrCreateStateSet();
+        osg::PolygonMode* polymode = new osg::PolygonMode;
+        polymode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
+        stateset->setAttributeAndModes(polymode, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
+
+        stateset->setMode(GL_LIGHTING, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF);
+
+        stateset->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
+
+        _boundsDebug = sd;
+    }
+
+    void traverse(osg::NodeVisitor& nv)
+    {           
+        if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        {
+            if (_content.valid())
+            {
+                _content->accept(nv);
+            }
+
+            if (_children.valid())
+            {
+                _children->accept(nv);
+            }            
+        }
+        else if (nv.getVisitorType() == nv.CULL_VISITOR)
+        {
+            requestContent();
+            resolveContent();
+
+            osgUtil::CullVisitor* cv = nv.asCullVisitor();
+
+            // Compute the SSE
+
+            double distance = nv.getDistanceToViewPoint(getBound().center(), true);
+            double fovy, ar, zn, zf;
+            cv->getCurrentCamera()->getProjectionMatrix().getPerspective(fovy, ar, zn, zf);
+            double height = cv->getCurrentCamera()->getViewport()->height();
+            double sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
+            double error = (*_tile->geometricError() * height) / (distance * sseDenominator);
+
+            /*
+            float sizeInMeters = getBound().radius() * 2.0;
+            float sizeInPixels = cv->clampedPixelSize(getBound()) / cv->asCullStack()->getLODScale();
+            float metersPerPixel = sizeInPixels > 0.0 ? sizeInMeters / sizeInPixels : 0.0f;
+            double otherError = *_tile->geometricError() / metersPerPixel;
+            */
+            //OE_NOTICE << "error=" << error << " otherError=" << otherError << std::endl;
+            //error = otherError;
+
+            bool areChildrenReady = true;
+            if (_children.valid())
+            {
+                /*
+                for (unsigned int i = 0; i < _children->getNumChildren(); i++)
+                {
+                    ThreeDTile* threeDTile = static_cast<ThreeDTile*>(_children->getChild(i));
+                    if (threeDTile)
+                    {
+                        // Can we traverse the child?
+                        if (threeDTile->hasContent() && !threeDTile->isContentReady())
+                        {
+                            threeDTile->requestContent();
+                            areChildrenReady = false;
+                        }
+                    }
+                }
+
+                if (!areChildrenReady)
+                {
+                    OE_NOTICE << "Waiting on children " << _children->getNumChildren() << std::endl;
+                }
+                */
+            } 
+            else
+            {
+                areChildrenReady = false;
+            }            
+
+
+            if (areChildrenReady && error > maxSSE && _children.valid() && _children->getNumChildren() > 0)
+            {
+                if (_tile->refine().isSetTo(TDTiles::REFINE_ADD))
+                {
+                    _content->accept(nv);
+                }
+
+                if (_children.valid())
+                {
+                    _children->accept(nv);
+                }
+            }
+            else
+            {
+                if (_boundsDebug.valid())
+                {
+                    _boundsDebug->accept(nv);
+                }
+
+                if (_content.valid())
+                {
+                    _content->accept(nv);
+                }
+            }            
+        }    
+
+        osg::MatrixTransform::traverse(nv);
+    }
+
+private:
+    osg::ref_ptr< TDTiles::Tile > _tile;
+
+    osg::ref_ptr< osg::Node > _content;
+    osg::ref_ptr< osg::Group > _children;
+
+    osg::ref_ptr< osg::Node > _boundsDebug;
+
+    Threading::Future<osg::Node> _contentFuture;
+    bool _requestedContent;
+
+    bool _immediateLoad;
+
+    float _parentGeometricError;
+};
+
+ThreeDTileset::ThreeDTileset(TDTiles::Tileset* tileset) :
+    _tileset(tileset)
+{
+    // Set up the root tile.
+    if (tileset->root().valid())
+    {
+        float maxMetersPerPixel = tileset->geometricError().getOrUse(FLT_MAX);
+        addChild(new ThreeDTile(tileset->root().get(), true));
+    }
+}
+
+osg::BoundingSphere ThreeDTileset::computeBound() const
+{
+    return _tileset->root()->boundingVolume()->asBoundingSphere();
+}
+
+
 int
 main_view(osg::ArgumentParser& arguments)
 {
+    /*
+    osg::Group* group = new osg::Group;
+    for (unsigned int i = 0; i < 10; i++)
+    {
+        group->addChild(osgDB::readNodeFiles(arguments));
+        OE_NOTICE << "Load " << i << std::endl;
+    }
+    return 0;
+    */
+
+    /*
+    while (true)
+    {
+        osg::ref_ptr< osg::Node > node = osgDB::readNodeFiles(arguments);
+        OE_NOTICE << "Load" << std::endl;
+    }
+    */
+
+    /*
+    while (true)
+    {
+        std::string tilesetLocation = "tileset.json";
+        // load the tile set:
+        URI tilesetURI(tilesetLocation);
+        ReadResult rr = tilesetURI.readString();
+        if (rr.failed())
+            return usage(Stringify() << "Error loading tileset: " << rr.errorDetail());
+
+        std::string fullPath = osgEarth::getAbsolutePath(tilesetLocation);
+
+        osg::ref_ptr< TDTiles::Tileset > tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
+        OE_NOTICE << "Loaded tileset " << tileset.valid() << std::endl;
+    }
+    */
+
+
     App app;
+
+    // Make a threadpool.
+    unsigned int numThreads = 16;
+    std::vector< osg::ref_ptr< osg::OperationsThread > > threads;
+    for (unsigned int i = 0; i < numThreads; ++i)
+    {
+        osg::OperationsThread* thread = new osg::OperationsThread();
+        thread->setOperationQueue(queue.get());
+        thread->start();
+        threads.push_back(thread);
+    }
 
     std::string tilesetLocation;
     if (!arguments.read("--tileset", tilesetLocation))
@@ -246,6 +660,8 @@ main_view(osg::ArgumentParser& arguments)
 
     viewer.setCameraManipulator( app._manip = new EarthManipulator(arguments) );
 
+    viewer.addEventHandler(new osgViewer::LODScaleHandler());
+
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
     osg::ref_ptr<osg::Node> node = MapNodeHelper().load(arguments, &viewer);
@@ -255,33 +671,38 @@ main_view(osg::ArgumentParser& arguments)
     MapNode* mapNode = MapNode::get(node.get());
     app._mapNode = mapNode;
 
-    if (readFeatures)
-        app._tileset = new TDTilesetGroup(new FeatureRenderer(app));
-    else
-        app._tileset = new TDTilesetGroup();
+    //mapNode->getTerrainEngine()->setNodeMask(0);
 
+    ThreeDTileset* tilesetNode = new ThreeDTileset(tileset);
+    
+    // TODO:  This should run on the content, not on the root tileset.
     // Generate shaders that will render with a texture:
-    osg::StateSet* rootStateSet = app._tileset->getOrCreateStateSet();
+    osg::StateSet* rootStateSet = tilesetNode->getOrCreateStateSet();
     rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1,1)));
     osgEarth::ShaderGenerator gen;
     osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
     if (ss.valid())
     {
-        app._tileset->setStateSet(ss);
+        tilesetNode->setStateSet(ss);
     }
+    
+    
+    app._tileset = tilesetNode;
+
+    mapNode->addChild(tilesetNode);
 
     // group to control the LOD scale dynamically:
-    app._sseGroup = new LODScaleGroup();
-    app._sseGroup->addChild(app._tileset.get());
+    //app._sseGroup = new LODScaleGroup();
+    //app._sseGroup->addChild(app._tileset.get());
 
     ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
-    app._tileset->setTileset(tileset);
-    app._tileset->setReadOptions(mapNode->getMap()->getReadOptions());
+    //app._tileset->setTileset(tileset);
+    //app._tileset->setReadOptions(mapNode->getMap()->getReadOptions());
 
-    mapNode->addChild(app._sseGroup);
+    //mapNode->addChild(app._sseGroup);
 
-    mapNode->addChild(Registry::instance()->getAsyncMemoryManager());
+    //mapNode->addChild(Registry::instance()->getAsyncMemoryManager());
 
     viewer.setSceneData( node.get() );
 
@@ -289,7 +710,20 @@ main_view(osg::ArgumentParser& arguments)
 
     app.zoomToData();
 
-    return viewer.run();
+    while (!viewer.done())
+    {
+        unsigned int numOps = queue->getNumOperationsInQueue();
+        if (numOps > 0)
+        {
+            OE_NOTICE << numOps << " operations remaining" << std::endl;
+        }
+
+        OE_NOTICE << "B3DMs=" << numB3dmTiles << " TileSets=" << numTileSetContent << std::endl;
+        
+        viewer.frame();
+    }
+
+    return 0;
 }
 
 TileKey

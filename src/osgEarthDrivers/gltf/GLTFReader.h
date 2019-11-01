@@ -28,6 +28,7 @@
 #include <osg/Texture2D>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
+#include <osgDB/FileNameUtils>
 #include <osgEarth/Notify>
 
 #undef LC
@@ -36,6 +37,15 @@
 class GLTFReader
 {
 public:
+    static std::string ExpandFilePath(const std::string &filepath, void * userData)
+    {
+        const std::string& referrer = *(const std::string*)userData;
+        std::string path = osgDB::getRealPath(osgDB::isAbsolutePath(filepath) ? filepath : osgDB::concatPaths(osgDB::getFilePath(referrer), filepath));
+        OSG_NOTICE << "ExpandFilePath: expanded " << filepath << " to " << path << std::endl;
+        return tinygltf::ExpandFilePath(path, userData);
+    }
+
+public:
     osgDB::ReaderWriter::ReadResult read(const std::string& location, 
                                          bool isBinary,
                                          const osgDB::Options* options) const
@@ -43,6 +53,14 @@ public:
         std::string err, warn;
         tinygltf::Model model;
         tinygltf::TinyGLTF loader;
+
+        FsCallbacks fs;
+        fs.FileExists = &tinygltf::FileExists;
+        fs.ExpandFilePath = &GLTFReader::ExpandFilePath;
+        fs.ReadWholeFile = &tinygltf::ReadWholeFile;
+        fs.WriteWholeFile = &tinygltf::WriteWholeFile;
+        fs.user_data = (void*)&location;
+        loader.SetFsCallbacks(fs);
 
         if (isBinary)
         {
@@ -226,14 +244,14 @@ public:
                             const tinygltf::Image& image = model.images[texture.source];
                             osg::ref_ptr< osg::Image> img = new osg::Image;
 
-                            GLenum format = GL_RGB;
-                            if (image.component == 4) format = GL_RGBA;
+                            GLenum format = GL_RGB, texFormat = GL_RGB8;
+                            if (image.component == 4) format = GL_RGBA, texFormat = GL_RGBA8;
 
                             if (image.image.size() > 0)
                             {
                                 unsigned char *imgData = new unsigned char[image.image.size()];
-                                memcpy(imgData, &image.image.at(0), image.image.size());
-                                img->setImage(image.width, image.height, 1, format, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
+                                memcpy(imgData, &image.image[0], image.image.size());
+                                img->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
                             }                            
 
                             tex->setImage(img);

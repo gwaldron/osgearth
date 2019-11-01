@@ -464,7 +464,7 @@ GDAL::Driver::open(const GDAL::Options& options,
 {
     GDAL_SCOPED_LOCK;
 
-    _gdalOptions = options; //GDALLayerOptions<ImageLayer::Options>(options);
+    _gdalOptions = options;
 
     // Is a valid external GDAL dataset specified ?
     bool useExternalDataset = false;
@@ -482,6 +482,7 @@ GDAL::Driver::open(const GDAL::Options& options,
 
     // source connection:
     std::string source;
+    bool isFile = true;
 
     if (gdalOptions().url().isSet())
     {
@@ -498,6 +499,7 @@ GDAL::Driver::open(const GDAL::Options& options,
     else if (gdalOptions().connection().isSet())
     {
         source = gdalOptions().connection().get();
+        isFile = false;
     }
 
     if (useExternalDataset == false)
@@ -512,6 +514,14 @@ GDAL::Driver::open(const GDAL::Options& options,
         if (input.empty())
         {
             return Status::Error(Status::ResourceUnavailable, "Could not find any valid input.");
+        }
+
+        // Resolve the pathname...
+        if (isFile && !osgDB::fileExists(input))
+        {
+            std::string found = osgDB::findDataFile(input);
+            if (!found.empty())
+                input = found;
         }
 
         // Create the source dataset:
@@ -1453,7 +1463,9 @@ GDAL::Driver::createImage(const TileKey& key,
                     if (getPalleteIndexColor(bandPalette, p, color) &&
                         isValidValue((float)color.r(), bandPalette)) // need this?
                     {
-                        pixel.r() = (float)color.r();
+                        // use the palette index directly for coverage data...?
+                        pixel.r() = (float)p;
+                        //pixel.r() = (float)color.r();
                     }
                     else
                     {
@@ -1703,11 +1715,11 @@ GDALImageLayer::openImplementation()
     return ImageLayer::openImplementation();
 }
 
-void
-GDALImageLayer::close()
+Status
+GDALImageLayer::closeImplementation()
 {
     _driver = 0L;
-    ImageLayer::close();
+    return ImageLayer::closeImplementation();
 }
 
 GeoImage
@@ -1779,9 +1791,6 @@ GDALElevationLayer::openImplementation()
         _driver->setOverrideProfile(getProfile());
     }
 
-    //GDAL::Options gdalOptions;
-    //gdalOptions.readFrom(options().getConfig());
-
     Status status = _driver->open(
         options(),
         options().tileSize().get(),
@@ -1799,11 +1808,11 @@ GDALElevationLayer::openImplementation()
     return ElevationLayer::openImplementation();
 }
 
-void
-GDALElevationLayer::close()
+Status
+GDALElevationLayer::closeImplementation()
 {
     _driver = 0L;
-    ElevationLayer::close();
+    return ElevationLayer::closeImplementation();
 }
 
 GeoHeightField

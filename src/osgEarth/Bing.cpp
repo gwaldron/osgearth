@@ -106,10 +106,11 @@ BingImageLayer::openImplementation()
     return ImageLayer::openImplementation();
 }
 
-void
-BingImageLayer::close()
+Status
+BingImageLayer::closeImplementation()
 {
     _tileURICache->clear();
+    return ImageLayer::closeImplementation();
 }
 
 GeoImage

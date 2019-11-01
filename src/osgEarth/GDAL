@@ -206,7 +206,7 @@ namespace osgEarth
         virtual Status openImplementation();
 
         //! Closes down any GDAL connections
-        virtual void close();
+        virtual Status closeImplementation();
 
         //! Gets a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
@@ -269,7 +269,7 @@ namespace osgEarth
         virtual Status openImplementation();
 
         //! Closes down any GDAL connections
-        virtual void close();
+        virtual Status closeImplementation();
 
         //! Gets a heightfield for the given tile key
         virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;

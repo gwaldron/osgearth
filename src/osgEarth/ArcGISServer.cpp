@@ -560,12 +560,6 @@ ArcGISServerImageLayer::openImplementation()
     return ImageLayer::openImplementation();
 }
 
-void
-ArcGISServerImageLayer::close()
-{
-    //nop
-}
-
 GeoImage
 ArcGISServerImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {

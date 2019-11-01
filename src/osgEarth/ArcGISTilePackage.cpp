@@ -221,12 +221,6 @@ ArcGISTilePackageImageLayer::openImplementation()
     return ImageLayer::openImplementation();
 }
 
-void
-ArcGISTilePackageImageLayer::close()
-{
-    //nop
-}
-
 GeoImage
 ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {

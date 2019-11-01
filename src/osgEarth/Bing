@@ -71,7 +71,7 @@ namespace osgEarth
         virtual Status openImplementation();
 
         //! Closes all resources
-        virtual void close();
+        virtual Status closeImplementation();
 
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;

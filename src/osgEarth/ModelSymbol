@@ -94,6 +94,9 @@ namespace osgEarth
         optional<NumericExpression>& scaleZ() { return _scaleZ; }
         const optional<NumericExpression>& scaleZ() const { return _scaleZ; }
 
+        /** Calculate model orientation from components of feature */
+        optional<bool>& orientationFromFeature() { return _orientationFromFeature; };
+        const optional<bool>& orientationFromFeature() const { return _orientationFromFeature; };
         
         
     public: // non-serialized properties (for programmatic use only)
@@ -125,6 +128,7 @@ namespace osgEarth
         optional<NumericExpression>  _scaleX;
         optional<NumericExpression>  _scaleY;
         optional<NumericExpression>  _scaleZ;
+        optional<bool>               _orientationFromFeature;
     };
 } // namespace osgEarth
 

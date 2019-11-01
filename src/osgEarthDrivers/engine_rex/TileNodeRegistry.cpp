@@ -100,8 +100,9 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
             maxLevel >= key.getLOD() &&
             (extent.isInvalid() || extent.intersects(i->first.getExtent(), checkSRS)))
         {
-            i->second.tile->newLayers() = layers; // TODO: thread-safety
-            i->second.tile->setDirty( true ); // prob needs a timestamp, etc.
+            i->second.tile->refreshLayers(layers);
+            //i->second.tile->newLayers() = layers; // TODO: thread-safety
+            //i->second.tile->setDirty( true ); // prob needs a timestamp, etc.
         }
     }
 }

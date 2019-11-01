@@ -122,8 +122,6 @@ namespace osgEarth { namespace REX
 
         void loadSync();
 
-        std::set<UID>& newLayers() { return _newLayers; }
-
         void refreshSharedSamplers(const RenderBindings& bindings);
 
         bool isDirty() const { return _dirty; }
@@ -155,7 +153,6 @@ namespace osgEarth { namespace REX
         mutable osg::Vec4f                 _tileKeyValue;
         osg::Vec2f                         _morphConstants;
         TileRenderModel                    _renderModel;
-        std::set<UID>                      _newLayers;
         bool                               _empty;
         bool                               _isRootTile;
         bool                               _imageUpdatesActive;

@@ -34,8 +34,6 @@ namespace osgEarth { namespace REX
     public:
         LoadTileData(TileNode* tilenode, EngineContext* factory);
 
-        CreateTileModelFilter& filter() { return _filter; }
-
         //! Whether to allow the request to cancel midstream. Default is true
         void setEnableCancelation(bool value) { _enableCancel = value; }
 

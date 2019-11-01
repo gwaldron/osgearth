@@ -133,10 +133,9 @@ namespace
                 tileNode.setDirty(true);
             }
 
-            if (!_layersToLoad.empty())
+            else if (!_layersToLoad.empty())
             {
-                tileNode.newLayers().insert(_layersToLoad.begin(), _layersToLoad.end());
-                tileNode.setDirty(true);
+                tileNode.refreshLayers(_layersToLoad);
             }
 
         }

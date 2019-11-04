@@ -96,11 +96,9 @@ void ClipSpace::clampToLeft(GeoPoint& p, const GeoPoint& eye)
 
     const osg::Vec3d planeNormal(+1,0,0);
     const osg::Vec3d planePoint(-1,0,0);
-
     double t = ((planePoint-eyeClip)*planeNormal) / (vecClip*planeNormal);
     clip = eyeClip + vecClip*t;
 
-    //clip.x() = -1.0;
     world = clip * _clipToWorld;
     p.fromWorld(p.getSRS(), world);
 }

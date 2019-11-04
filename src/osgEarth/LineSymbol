@@ -59,6 +59,11 @@ namespace osgEarth
         optional<StringExpression>& imageURI() { return _imageURI; }
         const optional<StringExpression>& imageURI() const { return _imageURI; }
 
+        //! Whether to force the use of legacy OpenGL lines (default=false)
+        //! instead of the GPU-based lines that are required by GLCORE/GLES
+        optional<bool>& useGLLines() { return _useGLLines; }
+        const optional<bool>& useGLLines() const { return _useGLLines; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -70,11 +75,8 @@ namespace osgEarth
         optional<float>            _creaseAngle;
         optional<Distance>         _tessellationSize;
         optional<StringExpression> _imageURI;
+        optional<bool>             _useGLLines;
     };
-
-    namespace Symbology {
-        typedef osgEarth::LineSymbol LineSymbol;
-    }
 
 } // namespace osgEarth
 

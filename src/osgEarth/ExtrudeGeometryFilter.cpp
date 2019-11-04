@@ -814,6 +814,10 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure& structure)
     const float cosMinAngle = cos(osg::DegreesToRadians(_outlineSymbol->creaseAngle().get()));
 
     osg::ref_ptr<LineDrawable> lines = new LineDrawable(GL_LINES);
+
+    // if the user requested legacy lines:
+    if (_outlineSymbol->useGLLines() == true)
+        lines->setUseGPU(false);
     
     const optional<Stroke>& stroke = _outlineSymbol->stroke();
     if (stroke.isSet())

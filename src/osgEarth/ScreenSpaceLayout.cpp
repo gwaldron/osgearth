@@ -313,6 +313,7 @@ namespace osgEarth
     };
 
     REGISTER_OSGEARTH_EXTENSION(osgearth_screen_space_layout, ScreenSpaceLayoutExtension);
+    REGISTER_OSGEARTH_EXTENSION(osgearth_screenspacelayout,   ScreenSpaceLayoutExtension);
     REGISTER_OSGEARTH_EXTENSION(osgearth_decluttering,        ScreenSpaceLayoutExtension);
 }
 

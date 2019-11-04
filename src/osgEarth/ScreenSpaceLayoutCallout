@@ -77,6 +77,7 @@ namespace osgEarth { namespace Internal
             osg::Vec3d _offsetVector;
             double _offsetLength;
             unsigned _leaderLineIndex;
+            bool _declutter;
 
             Element();
             bool operator < (const Element&) const; // comparator
@@ -204,6 +205,17 @@ namespace osgEarth { namespace Internal
             element._drawable = drawable;
             element._text = dynamic_cast<osgEarth::Text*>(drawable);
             element._drawable->setDataVariance(osg::Object::DYNAMIC);
+            element._declutter = true;
+
+            const ScreenSpaceLayoutData* layoutData = dynamic_cast<const ScreenSpaceLayoutData*>(drawable->getUserData());
+            if (layoutData)
+            {
+                // FLT_MAX priority => don't declutter this element.
+                if (layoutData->getPriority() == FLT_MAX)
+                {
+                    element._declutter = false;
+                }
+            }
         }
 
         element._anchor = 
@@ -233,7 +245,7 @@ namespace osgEarth { namespace Internal
             local._leadersDirty = true;
         }
 
-        if (ScreenSpaceLayout::globallyEnabled)
+        if (element._declutter && ScreenSpaceLayout::globallyEnabled)
         {
             double leaderLen = osg::minimum((double)_context->_options.leaderLineMaxLength().get(), element._offsetLength);
             osg::Vec3d pos = element._anchor + element._offsetVector*leaderLen;
@@ -291,7 +303,7 @@ namespace osgEarth { namespace Internal
         {
             Element& element = i->second;
 
-            if (element._leaf != NULL)
+            if (element._leaf != NULL && element._declutter)
             {
                 if (element._frame == element._frame)
                 {

@@ -64,15 +64,54 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 namespace ui = osgEarth::Util::Controls;
 
-static float maxSSE = 15.0f;
-
-typedef std::list<osg::ref_ptr< osg::Node > > NodeList;
 typedef std::set< osg::ref_ptr< osg::Node > > NodeSet;
+
+/**
+ * Manages a TileSet
+ */
+class ThreeDTileset : public osg::MatrixTransform
+{
+public:
+    ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options);
+
+    osg::BoundingSphere computeBound() const;
+
+    float getMaximumScreenSpaceError() const;
+    void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
+    void touchTile(osg::Node* node);
+
+    void traverse(osg::NodeVisitor& nv);
+
+private:
+    void startCull();
+    void endCull();
+
+    osg::ref_ptr< TDTiles::Tileset > _tileset;
+    osg::ref_ptr< osgDB::Options > _options;
+    float _maximumScreenSpaceError;
+
+    NodeSet _liveTiles;
+    NodeSet _deadTiles;
+};
+
+class ThreeDTilesetContent : public osg::Group
+{
+public:
+    ThreeDTilesetContent(ThreeDTileset* tilesetNode, TDTiles::Tileset* tileset, osgDB::Options* options);
+
+    osg::BoundingSphere computeBound() const;
+
+private:
+    ThreeDTileset* _tilesetNode;
+    osg::ref_ptr< TDTiles::Tileset > _tileset;
+    osg::ref_ptr< osgDB::Options > _options;
+};
 
 class ThreeDTile : public osg::MatrixTransform
 {
 public:
-    ThreeDTile(TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options);
+    ThreeDTile(ThreeDTileset* tileset, TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options);
     osg::BoundingSphere computeBound() const;
 
     bool hasContent();
@@ -104,6 +143,7 @@ private:
     osg::ref_ptr< osg::Group > _children;
 
     osg::ref_ptr< osg::Node > _boundsDebug;
+    ThreeDTileset* _tileset;
 
     osg::BoundingBoxd _boundingBox;
 
@@ -114,161 +154,7 @@ private:
     bool _immediateLoad;
 
     bool _firstVisit;
-    NodeList::iterator _nodeIterator;
 
-    osg::ref_ptr< osgDB::Options > _options;
-};
-
-/**
- * Class to track the traversal of 3d tiles and manage expiration
- */
-class ThreeDTilesTracker : public osg::Referenced
-{
-public:
-    ThreeDTilesTracker()
-    {
-        _sentinal = new osg::Node;
-        _sentinalItr = _nodes.insert(_nodes.end(), _sentinal.get());
-    }
-
-    void beginFrame()
-    {
-        // Move the sentinal to the end of the list.
-        _nodes.splice(_nodes.end(), _nodes, _sentinalItr);
-    }
-
-    NodeList::iterator addTile(ThreeDTile* tile)
-    {
-        return _nodes.insert(_nodes.end(), tile);
-    }
-
-    void touchTile(NodeList::iterator itr)
-    {
-        // Move the tile to end of the list
-        _nodes.splice(_nodes.end(), _nodes, itr);        
-    }
-
-    void endFrame()
-    {
-        unsigned int maxSize = 30;
-
-        // At this point tiles to the left of the sentinal have been visited before but weren't visited on this frame
-        //OE_NOTICE << "Size of node list " << _nodes.size() << std::endl;
-        if (_nodes.size() > maxSize)
-        {
-            unsigned int numErased = 0;
-            unsigned int startSize = _nodes.size();
-
-            OE_NOTICE << "Expiring nodes " << _nodes.size() << std::endl;
-            NodeList::iterator itr = _nodes.begin();            
-            while (_nodes.size() > maxSize && itr != _sentinalItr && itr != _nodes.end())
-            {
-                osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(itr->get());
-                if (tile.valid())
-                {
-                    OE_NOTICE << "Unloading node with " << tile->referenceCount() << " references" << std::endl;
-                    tile->unloadContent();
-                }
-                else
-                {
-                    OE_NOTICE << "Invalid node in erase" << std::endl;
-                }
-
-                itr = _nodes.erase(itr);                
-
-                numErased++;
-                if (itr == _sentinalItr)
-                {
-                    OE_NOTICE << "Found sentinal, remaining nodes " << _nodes.size() << std::endl;
-                    break;
-                }
-            }
-
-            /*            
-            while (_nodes.size() > maxSize)
-            {
-                if (_nodes.front().get() == _sentinal.get())
-                {
-                    OE_NOTICE << "Found sentinal" << std::endl;
-                    break;
-                }
-
-                osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(_nodes.front().get());
-                tile->unloadContent();
-                _nodes.pop_front();
-                numErased++;
-            }
-            */
-            OE_NOTICE << "Erased " << numErased << " of " << startSize << " nodes" << std::endl;
-        }        
-    }
-
-private:
-    osg::ref_ptr< osg::Node > _sentinal;
-    NodeList::iterator _sentinalItr;
-    NodeList _nodes;
-
-};
-
-class ThreeDTilesTracker2 : public osg::Referenced
-{
-public:
-    ThreeDTilesTracker2()
-    {
-    }
-
-    void beginFrame()
-    {
-    }    
-
-    void touchTile(osg::Node* node)
-    {   
-        NodeSet::iterator itr = dead.find(node);
-        if (itr != dead.end())
-        {
-            dead.erase(itr);
-        }
-
-        live.insert(node);
-    }
-
-    void endFrame()
-    {        
-        // We can erase all of the tiles that are in the dead set
-        for (NodeSet::iterator itr = dead.begin(); itr != dead.end(); ++itr)
-        {
-            osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(itr->get());
-            if (tile.valid())
-            {
-                tile->unloadContent();
-            }
-        }
-        dead.clear();
-        
-        live.swap(dead);
-        live.clear();        
-    }
-
-
-private:
-    NodeSet live;
-    NodeSet dead;
-};
-
-static osg::ref_ptr< ThreeDTilesTracker2 > tracker = new ThreeDTilesTracker2();
-
-/**
- * Manages a TileSet
- */
-class ThreeDTileset : public osg::MatrixTransform
-{
-public:
-    ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options);
-
-    osg::BoundingSphere computeBound() const;
-
-private:
-    osg::ref_ptr< TDTiles::Tileset > _tileset;
     osg::ref_ptr< osgDB::Options > _options;
 };
 
@@ -317,42 +203,75 @@ public:
 class LoadTilesetOperation : public osg::Operation
 {
 public:
-    LoadTilesetOperation(const std::string& url, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
+    LoadTilesetOperation(ThreeDTileset* parentTileset, const std::string& url, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
         _url(url),
         _promise(promise),
-        _options(options)
+        _options(options),
+        _parentTileset(parentTileset)
     {
     }
 
     void operator()(osg::Object*)
     {
+        
         if (!_promise.isAbandoned())
         {
-            // load the tile set:
-            URI tilesetURI(_url);
-            ReadResult rr = tilesetURI.readString();
-
-            std::string fullPath = osgEarth::getAbsolutePath(_url);
-
-            osg::ref_ptr< TDTiles::Tileset> tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
-            if (tileset)
+            osg::ref_ptr<ThreeDTilesetContent> tilesetNode;
+            osg::ref_ptr< ThreeDTileset > parentTileset;
+            _parentTileset.lock(parentTileset);
+            if (parentTileset.valid())
             {
-                osg::ref_ptr<ThreeDTileset> tilesetNode = new ThreeDTileset(tileset, _options.get());
-                tilesetNode->setName(_url);
-                _promise.resolve(tilesetNode);
+                // load the tile set:
+                URI tilesetURI(_url);
+                ReadResult rr = tilesetURI.readString();
+
+                std::string fullPath = osgEarth::getAbsolutePath(_url);
+
+                osg::ref_ptr< TDTiles::Tileset> tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
+                if (tileset)
+                {
+                    tilesetNode = new ThreeDTilesetContent(parentTileset.get(), tileset, _options.get());
+                }                
             }
-            else
-            {
-                OE_NOTICE << "Failed to load external tileset " << _url << std::endl;
-                _promise.resolve(0);
-            }
+            _promise.resolve(tilesetNode.get());
         }
     }
 
     osgEarth::Threading::Promise<osg::Node> _promise;
     osg::ref_ptr< osgDB::Options > _options;
+    osg::observer_ptr< ThreeDTileset > _parentTileset;
     std::string _url;
 };
+
+Threading::Future<osg::Node> readTilesetAsync(ThreeDTileset* parentTileset, const std::string& url, osgDB::Options* options)
+{
+    osg::ref_ptr<ThreadPool> threadPool;
+    if (options)
+    {
+        threadPool = OptionsData<ThreadPool>::get(options, "threadpool");
+    }
+
+    Threading::Promise<osg::Node> promise;
+
+    osg::ref_ptr< osg::Operation > operation = new LoadTilesetOperation(parentTileset, url, options, promise);
+
+    if (operation.valid())
+    {
+        if (threadPool.valid())
+        {
+            threadPool->getQueue()->add(operation);
+        }
+        else
+        {
+            OE_WARN << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
+            operation->operator()(0);
+        }
+    }
+
+    return promise.getFuture();
+}
+
+
 
 Threading::Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options)
 {
@@ -364,16 +283,7 @@ Threading::Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::Incr
 
     Threading::Promise<osg::Node> promise;
 
-    osg::ref_ptr< osg::Operation > operation;
-
-    if (osgEarth::Strings::endsWith(url, ".json"))
-    {
-        operation = new LoadTilesetOperation(url, options, promise);
-    }
-    else
-    {
-        operation = new LoadNodeOperation(url, options, ico, promise);        
-    }
+    osg::ref_ptr< osg::Operation > operation = new LoadNodeOperation(url, options, ico, promise);
 
     if (operation.valid())
     {
@@ -397,16 +307,14 @@ struct App
     ui::HSliderControl* _sse;
     TDTiles::ContentHandler* _handler;
     EarthManipulator* _manip;
-    osg::ref_ptr<osg::Node> _tileset;
+    osg::ref_ptr<ThreeDTileset> _tileset;
     osgViewer::View* _view;
-    LODScaleGroup* _sseGroup;
     float _maxSSE;
     bool _randomColors;
 
     void changeSSE()
     {
-        //_sseGroup->setLODScaleFactor(_sse->getValue());
-        maxSSE = _sse->getValue();
+        _tileset->setMaximumScreenSpaceError(_sse->getValue());
     }
 
     void zoomToData()
@@ -433,12 +341,7 @@ struct App
         {
             OE_NOTICE << "No bounds" << std::endl;
         }
-    }
-
-    void apply()
-    {
-        //changeSSE();
-    }
+    }    
 };
 
 OE_UI_HANDLER(changeSSE);
@@ -450,7 +353,7 @@ ui::Control* makeUI(App& app)
 
     int r = 0;
     container->setControl(0, r, new ui::LabelControl("Screen-space error (px)"));
-    app._sse = container->setControl(1, r, new ui::HSliderControl(maxSSE, 1.0f, maxSSE, new changeSSE(app)));
+    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, app._maxSSE, app._tileset->getMaximumScreenSpaceError(), new changeSSE(app)));
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
     //++r;
@@ -554,7 +457,8 @@ struct FeatureRenderer : public TDTiles::ContentHandler
     }
 };
 
-ThreeDTile::ThreeDTile(TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options) :
+ThreeDTile::ThreeDTile(ThreeDTileset* tileset, TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options) :
+    _tileset(tileset),
     _tile(tile),
     _requestedContent(false),
     _immediateLoad(immediateLoad),
@@ -586,7 +490,7 @@ ThreeDTile::ThreeDTile(TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* 
         _children = new osg::Group;
         for (unsigned int i = 0; i < _tile->children().size(); ++i)
         {
-            _children->addChild(new ThreeDTile(_tile->children()[i], false, _options.get()));
+            _children->addChild(new ThreeDTile(_tileset, _tile->children()[i], false, _options.get()));
         }
 
         if (_children->getNumChildren() == 0)
@@ -630,7 +534,14 @@ void ThreeDTile::requestContent(osgUtil::IncrementalCompileOperation* ico)
 {
     if (!_content.valid() && !_requestedContent && hasContent())
     {        
-        _contentFuture = readNodeAsync(_tile->content()->uri()->full(), ico, _options.get());
+        if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
+        {
+            _contentFuture = readTilesetAsync(_tileset, _tile->content()->uri()->full(), _options.get());
+        }
+        else
+        {
+            _contentFuture = readNodeAsync(_tile->content()->uri()->full(), ico, _options.get());
+        }
         _requestedContent = true;
     }
 }
@@ -690,7 +601,7 @@ void ThreeDTile::updateTracking()
 {
     if (_content.valid())
     {
-        tracker->touchTile(this);
+        _tileset->touchTile(this);
     }
 }
 
@@ -729,7 +640,6 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
 
         updateTracking();
 
-
         bool areChildrenReady = true;
         if (_children.valid())
         {
@@ -757,7 +667,7 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
         }
 
 
-        if (areChildrenReady && error > maxSSE && _children.valid() && _children->getNumChildren() > 0)
+        if (areChildrenReady && error > _tileset->getMaximumScreenSpaceError() && _children.valid() && _children->getNumChildren() > 0)
         {
             if (_content.valid() && _tile->refine().isSetTo(TDTiles::REFINE_ADD))
             {             
@@ -788,13 +698,20 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
 
 ThreeDTileset::ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options) :
     _tileset(tileset),
-    _options(options)
+    _options(options),
+    _maximumScreenSpaceError(15.0f)
 {
-    // Set up the root tile.
-    if (tileset->root().valid())
-    {
-        addChild(new ThreeDTile(tileset->root().get(), true, _options.get()));
-    }
+    addChild(new ThreeDTilesetContent(this, tileset, _options.get()));
+}
+
+float ThreeDTileset::getMaximumScreenSpaceError() const
+{
+    return _maximumScreenSpaceError;
+}
+
+void ThreeDTileset::setMaximumScreenSpaceError(float maximumScreenSpaceError)
+{
+    _maximumScreenSpaceError = maximumScreenSpaceError;
 }
 
 osg::BoundingSphere ThreeDTileset::computeBound() const
@@ -802,6 +719,69 @@ osg::BoundingSphere ThreeDTileset::computeBound() const
     return _tileset->root()->boundingVolume()->asBoundingSphere();
 }
 
+void ThreeDTileset::touchTile(osg::Node* node)
+{
+    NodeSet::iterator itr = _deadTiles.find(node);
+    if (itr != _deadTiles.end())
+    {
+        _deadTiles.erase(itr);
+    }
+    _liveTiles.insert(node);
+}
+
+void ThreeDTileset::startCull()
+{
+}
+
+void ThreeDTileset::endCull()
+{
+    // We can erase all of the tiles that are in the dead set
+    for (NodeSet::iterator itr = _deadTiles.begin(); itr != _deadTiles.end(); ++itr)
+    {
+        osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(itr->get());
+        if (tile.valid())
+        {
+            tile->unloadContent();
+        }
+    }
+    _deadTiles.clear();
+
+    _liveTiles.swap(_deadTiles);
+    _liveTiles.clear();
+}
+
+
+
+void ThreeDTileset::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        startCull();
+        osg::Group::traverse(nv);
+        endCull();
+    }
+    else
+    {
+        osg::Group::traverse(nv);
+    }
+}
+
+ThreeDTilesetContent::ThreeDTilesetContent(ThreeDTileset* tilesetNode, TDTiles::Tileset* tileset, osgDB::Options* options):
+    _tilesetNode(tilesetNode),
+    _tileset(tileset),
+    _options(options)
+{
+    // Set up the root tile.
+    if (tileset->root().valid())
+    {
+        addChild(new ThreeDTile(_tilesetNode, tileset->root().get(), true, _options.get()));
+    }
+}
+
+osg::BoundingSphere ThreeDTilesetContent::computeBound() const
+{
+    return _tileset->root()->boundingVolume()->asBoundingSphere();
+}
 
 int
 main_view(osg::ArgumentParser& arguments)
@@ -819,7 +799,7 @@ main_view(osg::ArgumentParser& arguments)
     bool readFeatures = arguments.read("--features");
     app._randomColors = arguments.read("--random-colors");
 
-    maxSSE = 15.0f;
+    float maxSSE = 15.0f;
     arguments.read("--maxsse", maxSSE);
 
     // load the tile set:
@@ -838,6 +818,7 @@ main_view(osg::ArgumentParser& arguments)
     osgViewer::Viewer viewer(arguments);
     
     app._view = &viewer;
+    app._maxSSE = maxSSE;
 
     viewer.setCameraManipulator(app._manip = new EarthManipulator(arguments));
 
@@ -859,6 +840,7 @@ main_view(osg::ArgumentParser& arguments)
     OptionsData<ThreadPool>::set(options, "threadpool", threadPool.get());
 
     ThreeDTileset* tilesetNode = new ThreeDTileset(tileset, options.get());
+    tilesetNode->setMaximumScreenSpaceError(maxSSE);
 
     // TODO:  This should run on the content, not on the root tileset.
     // Generate shaders that will render with a texture:
@@ -871,7 +853,6 @@ main_view(osg::ArgumentParser& arguments)
         tilesetNode->setStateSet(ss);
     }
 
-
     app._tileset = tilesetNode;
 
     mapNode->addChild(tilesetNode);
@@ -880,15 +861,11 @@ main_view(osg::ArgumentParser& arguments)
 
     viewer.setSceneData(node.get());
 
-    app.apply();
-
     app.zoomToData();
 
     while (!viewer.done())
     {
-        tracker->beginFrame();
-        viewer.frame();
-        tracker->endFrame();        
+        viewer.frame();     
     }
 
     return 0;

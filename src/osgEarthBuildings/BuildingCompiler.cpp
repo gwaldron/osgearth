@@ -29,8 +29,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Buildings;
-using namespace osgEarth::Features;
-using namespace osgEarth;
 
 
 BuildingCompiler::BuildingCompiler(Session* session) :

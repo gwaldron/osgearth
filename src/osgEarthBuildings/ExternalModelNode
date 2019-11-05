@@ -8,7 +8,7 @@
 namespace osgEarth {
    namespace Buildings
    {
-      using namespace osgEarth::Features;
+      using namespace osgEarth;
 
       class OSGEARTHBUILDINGS_EXPORT ExternalModel : public osg::Object
       {

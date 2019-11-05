@@ -29,7 +29,6 @@
 
 namespace osgEarth { namespace Buildings 
 {
-    using namespace osgEarth::Features;
     using namespace osgEarth;
 
     class BuildingLayerOptions : public VisibleLayer::Options

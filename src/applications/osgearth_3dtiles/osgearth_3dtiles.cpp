@@ -65,8 +65,9 @@ namespace ui = osgEarth::Util::Controls;
 
 static float maxSSE = 15.0f;
 
-
 typedef std::list<osg::ref_ptr< osg::Node > > NodeList;
+
+typedef std::set< osg::ref_ptr< osg::Node > > NodeSet;
 
 class ThreeDTile : public osg::MatrixTransform
 {
@@ -80,7 +81,9 @@ public:
 
     void resolveContent();
 
-    void requestContent();
+    void updateTracking();
+
+    void requestContent(osgUtil::IncrementalCompileOperation* ico);
 
     void createBoundingSphere();
 
@@ -91,6 +94,8 @@ public:
     void traverse(osg::NodeVisitor& nv);
 
     void unloadContent();
+
+    const TDTiles::Tile* getTile() const { return _tile.get(); }
 
 private:
     osg::ref_ptr< TDTiles::Tile > _tile;
@@ -104,6 +109,7 @@ private:
 
     Threading::Future<osg::Node> _contentFuture;
     bool _requestedContent;
+    bool _contentUnloaded;
 
     bool _immediateLoad;
 
@@ -117,8 +123,7 @@ private:
 class ThreeDTilesTracker : public osg::Referenced
 {
 public:
-    ThreeDTilesTracker() :
-        _numTilesVisited(0)
+    ThreeDTilesTracker()
     {
         _sentinal = new osg::Node;
         _sentinalItr = _nodes.insert(_nodes.end(), _sentinal.get());
@@ -126,7 +131,6 @@ public:
 
     void beginFrame()
     {
-        _numTilesVisited = 0;
         // Move the sentinal to the end of the list.
         _nodes.splice(_nodes.end(), _nodes, _sentinalItr);
     }
@@ -139,7 +143,7 @@ public:
     void touchTile(NodeList::iterator itr)
     {
         // Move the tile to end of the list
-        _nodes.splice(_nodes.end(), _nodes, itr);
+        _nodes.splice(_nodes.end(), _nodes, itr);        
     }
 
     void endFrame()
@@ -150,32 +154,106 @@ public:
         //OE_NOTICE << "Size of node list " << _nodes.size() << std::endl;
         if (_nodes.size() > maxSize)
         {
+            unsigned int numErased = 0;
+            unsigned int startSize = _nodes.size();
+
             OE_NOTICE << "Expiring nodes " << _nodes.size() << std::endl;
             NodeList::iterator itr = _nodes.begin();            
-            while (_nodes.size() > maxSize && itr != _sentinalItr)
+            while (_nodes.size() > maxSize && itr != _sentinalItr && itr != _nodes.end())
             {
                 osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(itr->get());
-                tile->unloadContent();
+                if (tile.valid())
+                {
+                    OE_NOTICE << "Unloading node with " << tile->referenceCount() << " references" << std::endl;
+                    tile->unloadContent();
+                }
+                else
+                {
+                    OE_NOTICE << "Invalid node in erase" << std::endl;
+                }
 
                 itr = _nodes.erase(itr);                
+
+                numErased++;
                 if (itr == _sentinalItr)
                 {
                     OE_NOTICE << "Found sentinal, remaining nodes " << _nodes.size() << std::endl;
+                    break;
                 }
             }
+
+            /*            
+            while (_nodes.size() > maxSize)
+            {
+                if (_nodes.front().get() == _sentinal.get())
+                {
+                    OE_NOTICE << "Found sentinal" << std::endl;
+                    break;
+                }
+
+                osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(_nodes.front().get());
+                tile->unloadContent();
+                _nodes.pop_front();
+                numErased++;
+            }
+            */
+            OE_NOTICE << "Erased " << numErased << " of " << startSize << " nodes" << std::endl;
         }        
     }
 
 private:
-    unsigned int _numTilesVisited;
-
     osg::ref_ptr< osg::Node > _sentinal;
     NodeList::iterator _sentinalItr;
     NodeList _nodes;
 
 };
 
-static osg::ref_ptr< ThreeDTilesTracker > tracker = new ThreeDTilesTracker();
+class ThreeDTilesTracker2 : public osg::Referenced
+{
+public:
+    ThreeDTilesTracker2()
+    {
+    }
+
+    void beginFrame()
+    {
+    }    
+
+    void touchTile(osg::Node* node)
+    {   
+        NodeSet::iterator itr = dead.find(node);
+        if (itr != dead.end())
+        {
+            dead.erase(itr);
+        }
+
+        live.insert(node);
+    }
+
+    void endFrame()
+    {        
+        // We can erase all of the tiles that are in the dead set
+        for (NodeSet::iterator itr = dead.begin(); itr != dead.end(); ++itr)
+        {
+            osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(itr->get());
+            if (tile.valid())
+            {
+                tile->unloadContent();
+            }
+        }
+        dead.clear();
+        
+        live.swap(dead);
+        live.clear();        
+    }
+
+
+private:
+    NodeSet live;
+    NodeSet dead;
+};
+
+static osg::ref_ptr< ThreeDTilesTracker2 > tracker = new ThreeDTilesTracker2();
 
 /**
  * Manages a TileSet
@@ -193,16 +271,13 @@ private:
 
 osg::ref_ptr< osg::OperationQueue > queue = new osg::OperationQueue;
 
-//unsigned int numB3dmTiles = 0;
-//unsigned int numTileSetContent = 0;
-
-
 class LoadNodeOperation : public osg::Operation
 {
 public:
-    LoadNodeOperation(const std::string& url, osgEarth::Threading::Promise<osg::Node> promise) :
+    LoadNodeOperation(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgEarth::Threading::Promise<osg::Node> promise) :
         _url(url),
-        _promise(promise)
+        _promise(promise),
+        _ico(ico)
     {
     }
 
@@ -210,11 +285,29 @@ public:
     {
         if (!_promise.isAbandoned())
         {
-            _promise.resolve(osgDB::readNodeFile(_url));
+            // Read the node
+            osg::ref_ptr< osg::Node > result = osgDB::readNodeFile(_url);
+
+            // If we have an ICO, wait for it to be compiled
+            if (result.valid() && _ico.valid())
+            {
+                osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> compileSet =
+                    new osgUtil::IncrementalCompileOperation::CompileSet(result.get());
+
+                _ico->add(compileSet.get());
+
+                while (!compileSet->compiled())
+                {
+                    OpenThreads::Thread::YieldCurrentThread();
+                }
+            }
+
+            _promise.resolve(result.get());
         }
     }
 
     osgEarth::Threading::Promise<osg::Node> _promise;
+    osg::ref_ptr< osgUtil::IncrementalCompileOperation > _ico;
     std::string _url;
 };
 
@@ -240,7 +333,7 @@ public:
             osg::ref_ptr< TDTiles::Tileset> tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
             if (tileset)
             {
-                OE_NOTICE << "Loaded external tileset " << _url << std::endl;
+                //OE_NOTICE << "Loaded external tileset " << _url << std::endl;
                 osg::ref_ptr<ThreeDTileset> tilesetNode = new ThreeDTileset(tileset);
                 tilesetNode->setName(_url);
                 _promise.resolve(tilesetNode);
@@ -257,7 +350,7 @@ public:
     std::string _url;
 };
 
-Threading::Future<osg::Node> readNodeAsync(const std::string& url)
+Threading::Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico)
 {
     Threading::Promise<osg::Node> promise;
 
@@ -267,7 +360,7 @@ Threading::Future<osg::Node> readNodeAsync(const std::string& url)
     }
     else
     {
-        queue->add(new LoadNodeOperation(url, promise));
+        queue->add(new LoadNodeOperation(url, ico, promise));
     }
 
     return promise.getFuture();
@@ -440,7 +533,8 @@ ThreeDTile::ThreeDTile(TDTiles::Tile* tile, bool immediateLoad) :
     _tile(tile),
     _requestedContent(false),
     _immediateLoad(immediateLoad),
-    _firstVisit(true)
+    _firstVisit(true),
+    _contentUnloaded(false)
 {
     // the transform to localize this tile:
     if (tile->transform().isSet())
@@ -502,40 +596,15 @@ void ThreeDTile::resolveContent()
     // Resolve the future 
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
-        //OE_NOTICE << "Resolved " << _tile->content()->uri()->full() << std::endl;
         _content = _contentFuture.get();
-        //dirtyBound();
-        /*if (_boundsDebug.valid())
-        {
-            createBoundingSphere();
-        }
-        */
-
-        /*
-        if (osgEarth::Strings::endsWith(_tile->content()->uri()->full(), ".json"))
-        {
-            numTileSetContent++;
-        }
-        if (osgEarth::Strings::endsWith(_tile->content()->uri()->full(), ".b3dm"))
-        {
-            numB3dmTiles++;
-        }
-        */
-    }
-    /*
-    else if (!_content.valid() && hasContent() && _requestedContent)
-    {
-        OE_NOTICE << "Waiting to resolve " << _tile->content()->uri()->full() << std::endl;
-    }
-    */
+    }    
 }
 
-void ThreeDTile::requestContent()
+void ThreeDTile::requestContent(osgUtil::IncrementalCompileOperation* ico)
 {
     if (!_content.valid() && !_requestedContent && hasContent())
-    {
-        //OE_NOTICE << "Requesting " << _tile->content()->uri()->full() << std::endl;
-        _contentFuture = readNodeAsync(_tile->content()->uri()->full());
+    {        
+        _contentFuture = readNodeAsync(_tile->content()->uri()->full(), ico);
         _requestedContent = true;
     }
 }
@@ -577,12 +646,25 @@ void ThreeDTile::unloadContent()
 {
     if (_content)
     {        
-        OE_NOTICE << "Unloading content " << _tile->content()->uri()->full() << std::endl;
+        // Don't unload the content of tiles that were loaded immediately.
+        if (_immediateLoad)
+        {
+            return;
+        }
         _content->releaseGLObjects(0);
         _firstVisit = true;
         _content = 0;
         _requestedContent = false;
         _contentFuture = Future<osg::Node>();
+        _contentUnloaded = true;
+    }
+}
+
+void ThreeDTile::updateTracking()
+{
+    if (_content.valid())
+    {
+        tracker->touchTile(this);
     }
 }
 
@@ -602,27 +684,25 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
     }
     else if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        requestContent();
-        resolveContent();
-
-        if (_content.valid())
+        osgUtil::CullVisitor* cv = nv.asCullVisitor();
+       
+        // Get the ICO so we can do incremental compiliation
+        osgUtil::IncrementalCompileOperation* ico = 0;
+        osgViewer::ViewerBase* viewerBase = dynamic_cast<osgViewer::ViewerBase*>(cv->getCurrentCamera()->getView());       
+        if (viewerBase)
         {
-            // Tell the tracker we were visited this frame
-            if (_firstVisit)
-            {
-                _nodeIterator = tracker->addTile(this);
-                _firstVisit = false;
-            }
-            else
-            {
-                tracker->touchTile(_nodeIterator);
-            }
+            ico = viewerBase->getIncrementalCompileOperation();
         }
 
-        osgUtil::CullVisitor* cv = nv.asCullVisitor();
+        // This allows nodes to reload themselves
+        requestContent(ico);
+        resolveContent();
 
         // Compute the SSE
         double error = computeScreenSpaceError(cv);
+
+        updateTracking();
+
 
         bool areChildrenReady = true;
         if (_children.valid())
@@ -630,24 +710,19 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
 #if 1
             for (unsigned int i = 0; i < _children->getNumChildren(); i++)
             {
-                ThreeDTile* threeDTile = static_cast<ThreeDTile*>(_children->getChild(i));
-                if (threeDTile)
+                osg::ref_ptr< ThreeDTile > childTile = dynamic_cast<ThreeDTile*>(_children->getChild(i));
+                if (childTile.valid())
                 {
+                    childTile->updateTracking();
+
                     // Can we traverse the child?
-                    if (threeDTile->hasContent() && !threeDTile->isContentReady())
+                    if (childTile->hasContent() && !childTile->isContentReady())
                     {
-                        threeDTile->requestContent();
+                        childTile->requestContent(ico);
                         areChildrenReady = false;
                     }
                 }
             }
-
-            /*
-            if (!areChildrenReady)
-            {
-                OE_NOTICE << "Waiting on children " << _children->getNumChildren() << std::endl;
-            }
-            */
 #endif
         }
         else
@@ -658,14 +733,14 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
 
         if (areChildrenReady && error > maxSSE && _children.valid() && _children->getNumChildren() > 0)
         {
-            if (_tile->refine().isSetTo(TDTiles::REFINE_ADD))
-            {
+            if (_content.valid() && _tile->refine().isSetTo(TDTiles::REFINE_ADD))
+            {             
                 _content->accept(nv);
             }
 
             if (_children.valid())
             {
-                _children->accept(nv);
+                _children->accept(nv);             
             }
         }
         else
@@ -691,7 +766,6 @@ ThreeDTileset::ThreeDTileset(TDTiles::Tileset* tileset) :
     // Set up the root tile.
     if (tileset->root().valid())
     {
-        float maxMetersPerPixel = tileset->geometricError().getOrUse(FLT_MAX);
         addChild(new ThreeDTile(tileset->root().get(), true));
     }
 }
@@ -707,8 +781,9 @@ main_view(osg::ArgumentParser& arguments)
 {
     App app;
 
-    // Make a threadpool.
-    unsigned int numThreads = 16;
+    unsigned int numThreads = 8;
+    arguments.read("--numThreads", numThreads);
+    
     std::vector< osg::ref_ptr< osg::OperationsThread > > threads;
     for (unsigned int i = 0; i < numThreads; ++i)
     {
@@ -742,6 +817,7 @@ main_view(osg::ArgumentParser& arguments)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
+    
     app._view = &viewer;
 
     viewer.setCameraManipulator(app._manip = new EarthManipulator(arguments));
@@ -798,11 +874,13 @@ main_view(osg::ArgumentParser& arguments)
 
     while (!viewer.done())
     {
+        /*
         unsigned int numOps = queue->getNumOperationsInQueue();
         if (numOps > 0)
         {
             OE_NOTICE << numOps << " operations remaining" << std::endl;
         }
+        */
 
         /*
         if (viewer.getFrameStamp()->getFrameNumber() % 200 == 0)
@@ -813,7 +891,7 @@ main_view(osg::ArgumentParser& arguments)
 
         tracker->beginFrame();
         viewer.frame();
-        tracker->endFrame();
+        tracker->endFrame();        
     }
 
     return 0;

@@ -19,6 +19,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
+#include <osgEarth/Version>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
 #include <curl/curl.h>
@@ -420,7 +421,6 @@ void
 HTTPClient::initializeImpl()
 {
     _previousHttpAuthentication = 0;
-    _curl_handle = curl_easy_init();
 
     //Get the user agent
     std::string userAgent = s_userAgent;
@@ -429,6 +429,7 @@ HTTPClient::initializeImpl()
     {
         userAgent = std::string(userAgentEnv);
     }
+    OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
 
     //Check for a response-code simulation (for testing)
     const char* simCode = getenv("OSGEARTH_SIMULATE_HTTP_RESPONSE_CODE");
@@ -453,7 +454,26 @@ HTTPClient::initializeImpl()
         OE_WARN << LC << "HTTP debugging enabled" << std::endl;
     }
 
-    OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
+    long timeout = s_timeout;
+    const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
+    if (timeoutEnv)
+    {
+        timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
+    }
+    OE_DEBUG << LC << "Setting timeout to " << timeout << std::endl;
+
+    long connectTimeout = s_connectTimeout;
+    const char* connectTimeoutEnv = getenv("OSGEARTH_HTTP_CONNECTTIMEOUT");
+    if (connectTimeoutEnv)
+    {
+        connectTimeout = osgEarth::as<long>(std::string(connectTimeoutEnv), 0);
+    }
+    OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
+
+#ifdef OSGEARTH_USE_WININET_FOR_HTTP
+    OE_DEBUG << LC << "Using WinINET implementation" << std::endl;
+#else
+    _curl_handle = curl_easy_init();
 
     curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, userAgent.c_str() );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
@@ -473,22 +493,10 @@ HTTPClient::initializeImpl()
         curlConfigHandler->onInitialize(_curl_handle);
     }
 
-    long timeout = s_timeout;
-    const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
-    if (timeoutEnv)
-    {
-        timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
-    }
-    OE_DEBUG << LC << "Setting timeout to " << timeout << std::endl;
     curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, timeout );
-    long connectTimeout = s_connectTimeout;
-    const char* connectTimeoutEnv = getenv("OSGEARTH_HTTP_CONNECTTIMEOUT");
-    if (connectTimeoutEnv)
-    {
-        connectTimeout = osgEarth::as<long>(std::string(connectTimeoutEnv), 0);
-    }
-    OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
+
     curl_easy_setopt( _curl_handle, CURLOPT_CONNECTTIMEOUT, connectTimeout );
+#endif
 
     _initialized = true;
 }
@@ -563,7 +571,9 @@ void HTTPClient::setCurlConfighandler(CurlConfigHandler* handler)
 void
 HTTPClient::globalInit()
 {
+#ifndef OSGEARTH_USE_WININET_FOR_HTTP
     curl_global_init(CURL_GLOBAL_ALL);
+#endif
 }
 
 void
@@ -918,7 +928,6 @@ HTTPClient::doGet(const HTTPRequest&    request,
     }
 
     int statusCode = 0;
-    std::string contentType;
 
     char  buffer[4096];
     DWORD bufferLen = 4096;
@@ -942,8 +951,6 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {
         response._lastModified = as<long>(std::string(buffer, bufferLen), 0L);
     }
-
-    response._mimeType = contentType;
 
     if ( statusCode == 200 )
     {

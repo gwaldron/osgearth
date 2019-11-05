@@ -42,6 +42,7 @@
 #include <osgEarth/FeatureModelLayer>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/Utils>
 #include <osgEarth/MVT>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
@@ -66,13 +67,12 @@ namespace ui = osgEarth::Util::Controls;
 static float maxSSE = 15.0f;
 
 typedef std::list<osg::ref_ptr< osg::Node > > NodeList;
-
 typedef std::set< osg::ref_ptr< osg::Node > > NodeSet;
 
 class ThreeDTile : public osg::MatrixTransform
 {
 public:
-    ThreeDTile(TDTiles::Tile* tile, bool immediateLoad = false);
+    ThreeDTile(TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options);
     osg::BoundingSphere computeBound() const;
 
     bool hasContent();
@@ -115,6 +115,8 @@ private:
 
     bool _firstVisit;
     NodeList::iterator _nodeIterator;
+
+    osg::ref_ptr< osgDB::Options > _options;
 };
 
 /**
@@ -261,23 +263,23 @@ static osg::ref_ptr< ThreeDTilesTracker2 > tracker = new ThreeDTilesTracker2();
 class ThreeDTileset : public osg::MatrixTransform
 {
 public:
-    ThreeDTileset(TDTiles::Tileset* tileset);
+    ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options);
 
     osg::BoundingSphere computeBound() const;
 
 private:
     osg::ref_ptr< TDTiles::Tileset > _tileset;
+    osg::ref_ptr< osgDB::Options > _options;
 };
-
-osg::ref_ptr< osg::OperationQueue > queue = new osg::OperationQueue;
 
 class LoadNodeOperation : public osg::Operation
 {
 public:
-    LoadNodeOperation(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgEarth::Threading::Promise<osg::Node> promise) :
+    LoadNodeOperation(const std::string& url, osgDB::Options* options, osgUtil::IncrementalCompileOperation* ico, osgEarth::Threading::Promise<osg::Node> promise) :
         _url(url),
         _promise(promise),
-        _ico(ico)
+        _ico(ico),
+        _options(options)
     {
     }
 
@@ -286,7 +288,7 @@ public:
         if (!_promise.isAbandoned())
         {
             // Read the node
-            osg::ref_ptr< osg::Node > result = osgDB::readNodeFile(_url);
+            osg::ref_ptr< osg::Node > result = osgDB::readNodeFile(_url, _options.get());
 
             // If we have an ICO, wait for it to be compiled
             if (result.valid() && _ico.valid())
@@ -308,15 +310,17 @@ public:
 
     osgEarth::Threading::Promise<osg::Node> _promise;
     osg::ref_ptr< osgUtil::IncrementalCompileOperation > _ico;
+    osg::ref_ptr< osgDB::Options > _options;
     std::string _url;
 };
 
 class LoadTilesetOperation : public osg::Operation
 {
 public:
-    LoadTilesetOperation(const std::string& url, osgEarth::Threading::Promise<osg::Node> promise) :
+    LoadTilesetOperation(const std::string& url, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
         _url(url),
-        _promise(promise)
+        _promise(promise),
+        _options(options)
     {
     }
 
@@ -333,8 +337,7 @@ public:
             osg::ref_ptr< TDTiles::Tileset> tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
             if (tileset)
             {
-                //OE_NOTICE << "Loaded external tileset " << _url << std::endl;
-                osg::ref_ptr<ThreeDTileset> tilesetNode = new ThreeDTileset(tileset);
+                osg::ref_ptr<ThreeDTileset> tilesetNode = new ThreeDTileset(tileset, _options.get());
                 tilesetNode->setName(_url);
                 _promise.resolve(tilesetNode);
             }
@@ -347,20 +350,42 @@ public:
     }
 
     osgEarth::Threading::Promise<osg::Node> _promise;
+    osg::ref_ptr< osgDB::Options > _options;
     std::string _url;
 };
 
-Threading::Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico)
+Threading::Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options)
 {
+    osg::ref_ptr<ThreadPool> threadPool;
+    if (options)
+    {
+        threadPool = OptionsData<ThreadPool>::get(options, "threadpool");
+    }
+
     Threading::Promise<osg::Node> promise;
+
+    osg::ref_ptr< osg::Operation > operation;
 
     if (osgEarth::Strings::endsWith(url, ".json"))
     {
-        queue->add(new LoadTilesetOperation(url, promise));
+        operation = new LoadTilesetOperation(url, options, promise);
     }
     else
     {
-        queue->add(new LoadNodeOperation(url, ico, promise));
+        operation = new LoadNodeOperation(url, options, ico, promise);        
+    }
+
+    if (operation.valid())
+    {
+        if (threadPool.valid())
+        {
+            threadPool->getQueue()->add(operation);
+        }        
+        else
+        {
+            OE_WARN << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
+            operation->operator()(0);
+        }
     }
 
     return promise.getFuture();
@@ -529,12 +554,13 @@ struct FeatureRenderer : public TDTiles::ContentHandler
     }
 };
 
-ThreeDTile::ThreeDTile(TDTiles::Tile* tile, bool immediateLoad) :
+ThreeDTile::ThreeDTile(TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options) :
     _tile(tile),
     _requestedContent(false),
     _immediateLoad(immediateLoad),
     _firstVisit(true),
-    _contentUnloaded(false)
+    _contentUnloaded(false),
+    _options(options)
 {
     // the transform to localize this tile:
     if (tile->transform().isSet())
@@ -560,7 +586,7 @@ ThreeDTile::ThreeDTile(TDTiles::Tile* tile, bool immediateLoad) :
         _children = new osg::Group;
         for (unsigned int i = 0; i < _tile->children().size(); ++i)
         {
-            _children->addChild(new ThreeDTile(_tile->children()[i], false));
+            _children->addChild(new ThreeDTile(_tile->children()[i], false, _options.get()));
         }
 
         if (_children->getNumChildren() == 0)
@@ -604,7 +630,7 @@ void ThreeDTile::requestContent(osgUtil::IncrementalCompileOperation* ico)
 {
     if (!_content.valid() && !_requestedContent && hasContent())
     {        
-        _contentFuture = readNodeAsync(_tile->content()->uri()->full(), ico);
+        _contentFuture = readNodeAsync(_tile->content()->uri()->full(), ico, _options.get());
         _requestedContent = true;
     }
 }
@@ -685,7 +711,7 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
     else if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         osgUtil::CullVisitor* cv = nv.asCullVisitor();
-       
+
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;
         osgViewer::ViewerBase* viewerBase = dynamic_cast<osgViewer::ViewerBase*>(cv->getCurrentCamera()->getView());       
@@ -760,13 +786,14 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
     osg::MatrixTransform::traverse(nv);
 }
 
-ThreeDTileset::ThreeDTileset(TDTiles::Tileset* tileset) :
-    _tileset(tileset)
+ThreeDTileset::ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options) :
+    _tileset(tileset),
+    _options(options)
 {
     // Set up the root tile.
     if (tileset->root().valid())
     {
-        addChild(new ThreeDTile(tileset->root().get(), true));
+        addChild(new ThreeDTile(tileset->root().get(), true, _options.get()));
     }
 }
 
@@ -781,17 +808,9 @@ main_view(osg::ArgumentParser& arguments)
 {
     App app;
 
-    unsigned int numThreads = 8;
-    arguments.read("--numThreads", numThreads);
     
-    std::vector< osg::ref_ptr< osg::OperationsThread > > threads;
-    for (unsigned int i = 0; i < numThreads; ++i)
-    {
-        osg::OperationsThread* thread = new osg::OperationsThread();
-        thread->setOperationQueue(queue.get());
-        thread->start();
-        threads.push_back(thread);
-    }
+    unsigned int numThreads = 8;
+    arguments.read("--numThreads", numThreads);   
 
     std::string tilesetLocation;
     if (!arguments.read("--tileset", tilesetLocation))
@@ -833,9 +852,13 @@ main_view(osg::ArgumentParser& arguments)
     MapNode* mapNode = MapNode::get(node.get());
     app._mapNode = mapNode;
 
-    //mapNode->getTerrainEngine()->setNodeMask(0);
+    // Create a ThreadPool for loading files in the background
+    osg::ref_ptr< osgDB::Options > options;
+    options = new osgDB::Options;
+    osg::ref_ptr< ThreadPool > threadPool = new ThreadPool(numThreads);
+    OptionsData<ThreadPool>::set(options, "threadpool", threadPool.get());
 
-    ThreeDTileset* tilesetNode = new ThreeDTileset(tileset);
+    ThreeDTileset* tilesetNode = new ThreeDTileset(tileset, options.get());
 
     // TODO:  This should run on the content, not on the root tileset.
     // Generate shaders that will render with a texture:
@@ -853,18 +876,7 @@ main_view(osg::ArgumentParser& arguments)
 
     mapNode->addChild(tilesetNode);
 
-    // group to control the LOD scale dynamically:
-    //app._sseGroup = new LODScaleGroup();
-    //app._sseGroup->addChild(app._tileset.get());
-
     ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
-
-    //app._tileset->setTileset(tileset);
-    //app._tileset->setReadOptions(mapNode->getMap()->getReadOptions());
-
-    //mapNode->addChild(app._sseGroup);
-
-    //mapNode->addChild(Registry::instance()->getAsyncMemoryManager());
 
     viewer.setSceneData(node.get());
 
@@ -874,21 +886,6 @@ main_view(osg::ArgumentParser& arguments)
 
     while (!viewer.done())
     {
-        /*
-        unsigned int numOps = queue->getNumOperationsInQueue();
-        if (numOps > 0)
-        {
-            OE_NOTICE << numOps << " operations remaining" << std::endl;
-        }
-        */
-
-        /*
-        if (viewer.getFrameStamp()->getFrameNumber() % 200 == 0)
-        {
-            OE_NOTICE << "B3DMs=" << numB3dmTiles << " TileSets=" << numTileSetContent << std::endl;
-        }
-        */
-
         tracker->beginFrame();
         viewer.frame();
         tracker->endFrame();        

@@ -241,6 +241,8 @@ Layer::getCachePolicy() const
 void
 Layer::init()
 {
+    _isOpen = false;
+
     // For detecting scene graph changes at runtime
     _sceneGraphCallbacks = new SceneGraphCallbacks(this);
 
@@ -255,6 +257,11 @@ Layer::init()
 const Status&
 Layer::open()
 {
+    if (_isOpen)
+    {
+        return getStatus();
+    }
+
     // Copy the layer options name into the Object name.
     if (options().name().isSet())
     {
@@ -269,6 +276,8 @@ Layer::open()
     }
 
     setStatus(openImplementation());
+
+    _isOpen = getStatus().isOK();
 
     return getStatus();
 }
@@ -286,10 +295,25 @@ Layer::openImplementation()
     return STATUS_OK;
 }
 
-void
+Status
+Layer::closeImplementation()
+{
+    return STATUS_OK;
+}
+
+Status
 Layer::close()
 {
+    Status s = closeImplementation();
     setStatus(Status::OK());
+    _isOpen = false;
+    return s;
+}
+
+bool
+Layer::isOpen() const
+{
+    return _isOpen;
 }
 
 const Status&

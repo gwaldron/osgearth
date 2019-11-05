@@ -133,10 +133,9 @@ namespace
                 tileNode.setDirty(true);
             }
 
-            if (!_layersToLoad.empty())
+            else if (!_layersToLoad.empty())
             {
-                tileNode.newLayers().insert(_layersToLoad.begin(), _layersToLoad.end());
-                tileNode.setDirty(true);
+                tileNode.refreshLayers(_layersToLoad);
             }
 
         }
@@ -402,12 +401,38 @@ RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
     {
         GeoExtent extentLocal = extent;
 
-        if ( !extent.getSRS()->isEquivalentTo(this->getMap()->getSRS()) )
+        if ( extent.isValid() && !extent.getSRS()->isHorizEquivalentTo(this->getMap()->getSRS()) )
         {
             extent.transform(this->getMap()->getSRS(), extentLocal);
         }
 
-        _liveTiles->setDirty(extentLocal, minLevel, maxLevel);
+        std::set<UID> layers;
+        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, layers);
+    }
+}
+
+void
+RexTerrainEngineNode::invalidateLayerRegion(const Layer* layer,
+                                            const GeoExtent& extent,
+                                            unsigned minLevel,
+                                            unsigned maxLevel)
+{
+    if ( _liveTiles.valid() )
+    {
+        GeoExtent extentLocal = extent;
+
+        if ( extent.isValid() && !extent.getSRS()->isHorizEquivalentTo(this->getMap()->getSRS()) )
+        {
+            extent.transform(this->getMap()->getSRS(), extentLocal);
+        }
+
+        std::set<UID> layers;
+        if (layer)
+        {
+            layers.insert(layer->getUID());
+        }
+
+        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, layers);
     }
 }
 

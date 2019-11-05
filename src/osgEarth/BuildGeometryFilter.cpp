@@ -508,6 +508,10 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // construct a drawable for the lines
             LineDrawable* drawable = new LineDrawable(isRing? GL_LINE_LOOP : GL_LINE_STRIP);
 
+            // if the user requested legacy rendering:
+            if (line->useGLLines() == true)
+                drawable->setUseGPU(false);
+
             drawable->importVertexArray(allPoints.get());
 
             if (line->stroke().isSet())

@@ -72,6 +72,7 @@ SceneGraphCallbacks::firePreMergeNode(osg::Node* node)
 void
 SceneGraphCallbacks::firePostMergeNode(osg::Node* node)
 {
+    Threading::ScopedMutexLock lock(_mutex); // prob not necessary but good measure
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
@@ -81,6 +82,7 @@ SceneGraphCallbacks::firePostMergeNode(osg::Node* node)
 void
 SceneGraphCallbacks::fireRemoveNode(osg::Node* node)
 {
+    Threading::ScopedMutexLock lock(_mutex); // prob not necessary but good measure
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)

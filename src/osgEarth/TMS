@@ -477,6 +477,8 @@ namespace osgEarth { namespace TMS
             DataExtentList& out_dataExtents,
             const osgDB::Options* readOptions);
 
+        void close();
+
         ReadResult read(
             const URI& uri,
             const TileKey& key, 
@@ -553,6 +555,7 @@ namespace osgEarth
         
         //! Establishes a connection to the TMS repository
         virtual Status openImplementation();
+        virtual Status closeImplementation();
 
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
@@ -611,6 +614,7 @@ namespace osgEarth
         
         //! Establishes a connection to the TMS repository
         virtual Status openImplementation();
+        virtual Status closeImplementation();
 
         //! Creates a heightfield for the given tile key
         virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;

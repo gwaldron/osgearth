@@ -165,10 +165,12 @@ GraticuleLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data
 {    
     osg::Camera* cam = nv.getCurrentCamera();
 
+#if 0
     // Don't draw the labels if we are too far from North-Up:
     double heading = getCameraHeading(cam->getViewMatrix());
     if (osg::RadiansToDegrees(fabs(heading)) > 7.0)
         return false;
+#endif
 
     // Initialize the label pool for this camera if we have not done so:
     if (data.xLabels.empty())

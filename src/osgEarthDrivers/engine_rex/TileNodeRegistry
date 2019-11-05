@@ -158,7 +158,11 @@ namespace osgEarth { namespace REX
          * NOTE: Input extent SRS must match the terrain's SRS exactly.
          *       The method does not check.
          */
-        void setDirty(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
+        void setDirty(
+            const GeoExtent& extent, 
+            unsigned minLevel, 
+            unsigned maxLevel,
+            const std::set<UID>& layers);
 
         /**
          * Sets the current cull traversal frame number so that tiles have

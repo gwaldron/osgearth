@@ -146,6 +146,7 @@ GeodeticGraticule::Options::fromConfig(const Config& conf)
     Style labelStyle;
     TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
     t->fill()->color().set(1, 1, 1, 1);
+    t->declutter() = false;
     _gridLabelStyle.init(labelStyle);
     _edgeLabelStyle.init(labelStyle);
 

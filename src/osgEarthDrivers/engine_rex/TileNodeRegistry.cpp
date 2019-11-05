@@ -86,7 +86,8 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
 void
 TileNodeRegistry::setDirty(const GeoExtent& extent,
                            unsigned         minLevel,
-                           unsigned         maxLevel)
+                           unsigned         maxLevel,
+                           const std::set<UID>& layers)
 {
     Threading::ScopedWriteLock exclusive( _tilesMutex );
     
@@ -94,11 +95,14 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
     for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
     {
         const TileKey& key = i->first;
+
         if (minLevel <= key.getLOD() && 
             maxLevel >= key.getLOD() &&
-            extent.intersects(i->first.getExtent(), checkSRS) )
+            (extent.isInvalid() || extent.intersects(i->first.getExtent(), checkSRS)))
         {
-            i->second.tile->setDirty( true );
+            i->second.tile->refreshLayers(layers);
+            //i->second.tile->newLayers() = layers; // TODO: thread-safety
+            //i->second.tile->setDirty( true ); // prob needs a timestamp, etc.
         }
     }
 }

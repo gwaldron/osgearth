@@ -101,6 +101,8 @@ namespace osgEarth
          */
         void run(osg::Node* graph, const std::string& name, StateSetCache* cache);
 
+        //! Run the shader generator on a single state set.
+        osg::ref_ptr<osg::StateSet> run(osg::StateSet* stateSet);
 
     public: // statics
 

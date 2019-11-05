@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 #include <osg/Texture2D>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
-#include <osgUtil/Optimizer>
+#include <osgDB/FileNameUtils>
 #include <osgEarth/Notify>
 
 #undef LC
@@ -37,6 +37,15 @@
 class GLTFReader
 {
 public:
+    static std::string ExpandFilePath(const std::string &filepath, void * userData)
+    {
+        const std::string& referrer = *(const std::string*)userData;
+        std::string path = osgDB::getRealPath(osgDB::isAbsolutePath(filepath) ? filepath : osgDB::concatPaths(osgDB::getFilePath(referrer), filepath));
+        OSG_NOTICE << "ExpandFilePath: expanded " << filepath << " to " << path << std::endl;
+        return tinygltf::ExpandFilePath(path, userData);
+    }
+
+public:
     osgDB::ReaderWriter::ReadResult read(const std::string& location, 
                                          bool isBinary,
                                          const osgDB::Options* options) const
@@ -44,6 +53,14 @@ public:
         std::string err, warn;
         tinygltf::Model model;
         tinygltf::TinyGLTF loader;
+
+        FsCallbacks fs;
+        fs.FileExists = &tinygltf::FileExists;
+        fs.ExpandFilePath = &GLTFReader::ExpandFilePath;
+        fs.ReadWholeFile = &tinygltf::ReadWholeFile;
+        fs.WriteWholeFile = &tinygltf::WriteWholeFile;
+        fs.user_data = (void*)&location;
+        loader.SetFsCallbacks(fs);
 
         if (isBinary)
         {
@@ -65,7 +82,9 @@ public:
 
     osg::Node* makeNodeFromModel(const tinygltf::Model &model) const
     {
-        osg::Group* group = new osg::Group();
+        // Rotate y-up to z-up
+        osg::MatrixTransform* transform = new osg::MatrixTransform;
+        transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
 
         for (unsigned int i = 0; i < model.scenes.size(); i++)
         {
@@ -75,11 +94,12 @@ public:
                 osg::Node* node = createNode(model, model.nodes[scene.nodes[j]]);
                 if (node)
                 {
-                    group->addChild(node);
+                    transform->addChild(node);
                 }
             }
         }
-        return group;
+
+        return transform;
     }
 
     osg::Node* createNode(const tinygltf::Model &model, const tinygltf::Node& node) const
@@ -134,13 +154,10 @@ public:
 
     osg::Node* makeMesh(const tinygltf::Model &model, const tinygltf::Mesh& mesh) const
     {
-        osg::ref_ptr<osg::Group> group = new osg::Group;
+        osg::Group *group = new osg::Group;
 
         std::vector< osg::ref_ptr< osg::Array > > arrays;
         extractArrays(model, arrays);
-
-        // Transforms verts and normals from Y-UP (GLTF spec) to Z-UP (OSG)
-        const osg::Matrixd YUP2ZUP(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1);
 
         OE_DEBUG << "Drawing " << mesh.primitives.size() << " primitives in mesh" << std::endl;
 
@@ -227,14 +244,14 @@ public:
                             const tinygltf::Image& image = model.images[texture.source];
                             osg::ref_ptr< osg::Image> img = new osg::Image;
 
-                            GLenum format = GL_RGB;
-                            if (image.component == 4) format = GL_RGBA;
+                            GLenum format = GL_RGB, texFormat = GL_RGB8;
+                            if (image.component == 4) format = GL_RGBA, texFormat = GL_RGBA8;
 
                             if (image.image.size() > 0)
                             {
                                 unsigned char *imgData = new unsigned char[image.image.size()];
-                                memcpy(imgData, &image.image.at(0), image.image.size());
-                                img->setImage(image.width, image.height, 1, format, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
+                                memcpy(imgData, &image.image[0], image.image.size());
+                                img->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
                             }                            
 
                             tex->setImage(img);
@@ -255,21 +272,11 @@ public:
                 if (it->first.compare("POSITION") == 0)
                 {
                     geom->setVertexArray(arrays[it->second]);
-
-                    // convert Y-UP to Z-UP
-                    osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
-                    for(unsigned i=0; i<verts->size(); ++i)
-                        (*verts)[i] = (*verts)[i] * YUP2ZUP;
                 }
 
                 else if (it->first.compare("NORMAL") == 0)
                 {
                     geom->setNormalArray(arrays[it->second]);
-
-                    // convert Y-UP to Z-UP
-                    osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
-                    for (unsigned i = 0; i < normals->size(); ++i)
-                        (*normals)[i] = osg::Matrixd::transform3x3((*normals)[i], YUP2ZUP);
                 }
                 else if (it->first.compare("TEXCOORD_0") == 0)
                 {

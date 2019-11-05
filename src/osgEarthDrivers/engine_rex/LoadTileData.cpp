@@ -41,6 +41,21 @@ _enableCancel(true)
     _engine = context->getEngine();
 }
 
+void
+LoadTileData::setLayerFilter(const std::set<UID>& layers)
+{
+    ScopedMutexLock lock(_mutex);
+    _filter.clear();
+    _filter.layers() = layers;
+}
+
+void
+LoadTileData::clearLayerFilter()
+{
+    ScopedMutexLock lock(_mutex);
+    _filter.clear();
+}
+
 // invoke runs in the background pager thread.
 void
 LoadTileData::invoke(ProgressCallback* progress)
@@ -57,11 +72,17 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (!_map.lock(map))
         return;
 
+    CreateTileModelFilter filter;
+    {
+        ScopedMutexLock lock(_mutex);
+        filter = _filter;
+    }
+
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
         tilenode->getKey(),
-        _filter,
+        filter,
         _enableCancel? progress : 0L);
 
     // if the operation was canceled, set the request to idle and delete the tile model.

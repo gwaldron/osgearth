@@ -145,6 +145,10 @@ UTMLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world
         unsigned numLabels = left.LL_utm.distanceTo(left.LR_utm) / utmInterval;
         if (numLabels < 2) numLabels = 2;
 
+        osg::Vec3d p0, p1;
+        left.UL_utm.toWorld(p0);
+        left.LL_utm.toWorld(p1);
+
         // For now lets just draw 10 labels. Later we'll figure out the proper scale
         for (unsigned i = 0; i < numLabels && xi < data.xLabels.size(); ++i, ++xi)
         {
@@ -152,8 +156,9 @@ UTMLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world
             double x = xStart + utmInterval * i;
             double y = left.LL_utm.y();
             GeoPoint p(left.utmSRS.get(), x, y, 0, ALTMODE_ABSOLUTE);
+            GeoPoint eye(left.utmSRS.get(), x, left.UL_utm.y(), 0, ALTMODE_ABSOLUTE);
             int xx = ((int)x % 100000) / utmInterval;
-            window.clampToBottom(p); // also xforms to geographic
+            window.clampToBottom(p, eye); // also xforms to geographic
             if (p.y() < 84.0 && p.y() > -80.0)
             {
                 data.xLabels[xi]->setPosition(p);
@@ -174,7 +179,8 @@ UTMLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world
             double y = yStart + utmInterval * i;
             int yy = ((10000000 + (int)y) % 100000) / utmInterval;
             GeoPoint p(left.utmSRS.get(), x, y, 0, ALTMODE_ABSOLUTE);
-            window.clampToLeft(p); // also xforms to geographic
+            GeoPoint eye(left.utmSRS.get(), left.LR_utm.x(), y, 0, ALTMODE_ABSOLUTE);
+            window.clampToLeft(p, eye); // also xforms to geographic
             if (p.y() < 84.0 && p.y() > -80.0)
             {
                 data.yLabels[yi]->setPosition(p);
@@ -199,8 +205,9 @@ UTMLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world
             double x = xStart + utmInterval * i;
             double y = right.LL_utm.y();
             GeoPoint p(right.utmSRS.get(), x, y, 0, ALTMODE_ABSOLUTE);
+            GeoPoint eye(right.utmSRS.get(), x, right.LR_utm.y(), 0, ALTMODE_ABSOLUTE);
             int xx = ((int)x % 100000) / utmInterval;
-            window.clampToBottom(p); // also xforms to geographic
+            window.clampToBottom(p, eye); // also xforms to geographic
             if (p.y() < 84.0 && p.y() > -80.0)
             {
                 data.xLabels[xi]->setPosition(p);

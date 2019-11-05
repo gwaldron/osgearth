@@ -88,7 +88,8 @@ GeodeticLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_
     {
         GeoPoint p(wgs84, -180.0 + (double)i * resDegrees, minLat, 0, ALTMODE_ABSOLUTE);
         std::string text = getText(p, false);
-        window.clampToBottom(p); // also xforms to geographic
+        GeoPoint eye(wgs84, -180.0 + (double)i * resDegrees, minLat+0.1, 0, ALTMODE_ABSOLUTE);
+        window.clampToBottom(p, eye); // also xforms to geographic
         data.xLabels[xi]->setPosition(p);
         data.xLabels[xi]->setText(text);
         data.xLabels[xi]->setNodeMask(~0);
@@ -101,7 +102,8 @@ GeodeticLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_
     {
         GeoPoint p(wgs84, minLon, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
         std::string text = getText(p, true);
-        window.clampToLeft(p); // also xforms to geographic
+        GeoPoint eye(wgs84, minLon+0.01, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+        window.clampToLeft(p, eye); // also xforms to geographic
         data.yLabels[yi]->setPosition(p);
         data.yLabels[yi]->setText(text);
         data.yLabels[yi]->setNodeMask(~0);

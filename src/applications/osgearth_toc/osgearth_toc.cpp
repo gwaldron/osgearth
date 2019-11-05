@@ -30,6 +30,7 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/LabelNode>
 #include <osgEarth/AnnotationLayer>
+#include <osgEarth/TerrainEngineNode>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -42,6 +43,7 @@ using namespace osgEarth::Util::Controls;
 void createControlPanel(Container*);
 void updateControlPanel();
 
+static osg::ref_ptr<MapNode> s_mapNode;
 static osg::ref_ptr<Map> s_activeMap;
 static LabelControl* s_mapTitle;
 static Grid* s_activeBox;
@@ -191,18 +193,15 @@ main( int argc, char** argv )
     createControlPanel(uiRoot);
 
     osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, uiRoot);
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::get(loaded);
-    if ( !mapNode ) {
+    s_mapNode = osgEarth::MapNode::get(loaded);
+    if ( !s_mapNode.valid() ) {
         OE_WARN << "No osgEarth MapNode found in the loaded file(s)." << std::endl;
         return -1;
     }
 
     // the displayed Map:
-    s_activeMap = mapNode->getMap();
+    s_activeMap = s_mapNode->getMap();
     s_activeMap->addMapCallback( new MyMapListener() );
-
-    //osg::Group* root = new osg::Group();
-    //root->addChild( loaded );
 
     // update the control panel with the two Maps:
     updateControlPanel();
@@ -212,9 +211,9 @@ main( int argc, char** argv )
     // install our control panel updater
     viewer.addUpdateOperation( new UpdateOperation() );
 
-    viewer.addEventHandler(new DumpElevation(mapNode, 'E'));
+    viewer.addEventHandler(new DumpElevation(s_mapNode.get(), 'E'));
 
-    viewer.addEventHandler(new DumpLabel(mapNode, 'L'));
+    viewer.addEventHandler(new DumpLabel(s_mapNode.get(), 'L'));
 
     viewer.run();
 }
@@ -230,6 +229,16 @@ struct EnableDisableHandler : public ControlEventHandler
         updateControlPanel();
     }
     Layer* _layer;
+};
+
+struct RefreshHandler : public ControlEventHandler
+{
+    RefreshHandler(const Layer* layer) : _layer(layer) { }
+    void onClick(Control* control)
+    {
+        s_mapNode->getTerrainEngine()->invalidateLayerRegion(_layer, GeoExtent::INVALID);
+    }
+    const Layer* _layer;
 };
 
 struct ToggleLayerVisibility : public ControlEventHandler
@@ -483,6 +492,17 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     enableDisable->addEventHandler( new EnableDisableHandler(layer) );
     grid->setControl( gridCol, gridRow, enableDisable );
     gridCol++;
+
+    // refresh button (for image layers)
+    if (imageLayer)
+    {
+        LabelControl* refresh = new LabelControl("REFRESH", 14);
+        refresh->setBackColor( .4,.4,.4,1 );
+        refresh->setActiveColor( .8,0,0,1 );
+        refresh->addEventHandler( new RefreshHandler(layer) );
+        grid->setControl( gridCol, gridRow, refresh );
+        gridCol++;
+    }
 
     if (layer->getStatus().isError())
     {

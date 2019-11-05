@@ -69,7 +69,7 @@ using namespace osgEarth::Util;
 #   define LOWP           "lowp "
 #   define HIGHP          "highp "
 #else
-#   define GLSL_PRECISION ""
+#   define GLSL_PRECISION
 #   define MEDIUMP        ""
 #   define LOWP           ""
 #   define HIGHP          ""
@@ -431,6 +431,19 @@ ShaderGenerator::run(osg::Node*         graph,
             vp->setName( vpName );
         }
     }
+}
+
+osg::ref_ptr<osg::StateSet>
+ShaderGenerator::run(osg::StateSet* ss)
+{
+    if (!ss)
+        return NULL;
+
+    _state->pushStateSet(ss);
+    osg::ref_ptr<osg::StateSet> replacement;
+    processGeometry(ss, replacement);
+    _state->popStateSet();
+    return replacement;
 }
 
 void

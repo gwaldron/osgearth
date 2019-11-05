@@ -1,0 +1,153 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_AERODROME_AERODROMERENDERVISITOR
+#define OSGEARTH_AERODROME_AERODROMERENDERVISITOR 1
+
+#include <osg/Group>
+#include <osg/NodeVisitor>
+
+#include <osgEarth/Feature>
+#include <osgEarth/Session>
+#include <osgEarth/StyleSheet>
+#include <osgEarth/Map>
+
+#include "Common"
+#include "AerodromeNode"
+#include "LightBeaconNode"
+#include "LightIndicatorNode"
+#include "LinearFeatureNode"
+#include "PavementNode"
+#include "RunwayNode"
+#include "RunwayThresholdNode"
+#include "StartupLocationNode"
+#include "StopwayNode"
+#include "TaxiwayNode"
+#include "TaxiwaySignNode"
+#include "TerminalNode"
+#include "WindsockNode"
+
+namespace osgEarth { namespace Aerodrome
+{
+    using namespace osgEarth;
+
+    class AerodromeFactory;
+
+    /**
+     * Aerodrome
+     */
+    class OSGEARTHAERODROME_EXPORT AerodromeRenderer : public osg::NodeVisitor
+    {
+    public:
+
+        /** Constructor */
+        AerodromeRenderer();
+
+        /* Destructor */
+        virtual ~AerodromeRenderer();
+
+        /** Sets the starting render bin number for ordered drawing */
+        void setBaseRenderBinNum(int base) { _baseRenderBinNum = base; }
+
+        virtual void apply(AerodromeNode& node);
+        virtual void apply(LightBeaconNode& node);
+        virtual void apply(LightIndicatorNode& node);
+        virtual void apply(LinearFeatureNode& node);
+        virtual void apply(PavementNode& node);
+        virtual void apply(RunwayNode& node);
+        virtual void apply(RunwayThresholdNode& node);
+        virtual void apply(StartupLocationNode& node);
+        virtual void apply(StopwayNode& node);
+        virtual void apply(TaxiwayNode& node);
+        virtual void apply(TaxiwaySignNode& node);
+        virtual void apply(TerminalNode& node);
+        virtual void apply(WindsockNode& node);
+
+        virtual void apply(LightBeaconGroup& group);
+        virtual void apply(LightIndicatorGroup& group);
+        virtual void apply(LinearFeatureGroup& group);
+        virtual void apply(PavementGroup& group);
+        virtual void apply(RunwayGroup& group);
+        virtual void apply(RunwayThresholdGroup& group);
+        virtual void apply(StartupLocationGroup& group);
+        virtual void apply(StopwayGroup& group);
+        virtual void apply(TaxiwayGroup& group);
+        virtual void apply(TaxiwaySignGroup& group);
+        virtual void apply(TerminalGroup& group);
+        virtual void apply(WindsockGroup& group);
+
+        virtual void apply(osg::Group& node);
+
+        // Set whether to use reverse Z buffer
+        // Should be called early, before apply(...)
+        // functions are called
+        void setUseReverseZBuffer(bool useReverseZ);
+
+        // Are we using the reverse Z buffer?
+        bool getUseReverseZBuffer();
+
+    protected:
+
+        friend class AerodromeFactory;
+
+        void initialize(const Map* map, const osgDB::Options* options=0L);
+
+        void createLocalizations(const osgEarth::Bounds& bounds, BoundaryNode* boundary=0L);
+
+        void transformAndLocalize(const std::vector<osg::Vec3d>& input,
+                                  const SpatialReference*        inputSRS,
+                                  osg::Vec3Array*                output_verts,
+                                  osg::Vec3Array*                output_normals);
+
+        osg::Vec3d transformAndLocalize(const osg::Vec3d& input, const SpatialReference* inputSRS);
+
+        template <typename T, typename Y> osgEarth::Geometry* combineGeometries(T& group);
+
+        
+        osg::Node* featureSingleTextureRenderer(osgEarth::Feature* feature, const osgEarth::URI& uri, float length);
+        osg::Node* featureModelRenderer(osgEarth::Feature* feature, const ModelOptionsSet& modelOptions);
+
+        osg::Node* defaultFeatureRenderer(osgEarth::Feature* feature, float height=-1.0f);
+        osg::Node* defaultFeatureRenderer(osgEarth::Feature* feature, const Color& color, float height=-1.0f);
+        osg::Node* defaultFeatureRenderer(osgEarth::Feature* feature, const Style& style, StyleSheet* styleSheet=0L);
+
+        // Set up the renderin and polygon offset for this
+        // aerodrome feature (ex. LinearFeatureNode, bin=ORDER_LINEARFEATURE)
+        // offset different for normal vs. reverse Z buffer
+        void setBinAndOffset(AerodromeFeatureNode& node, int bin);
+
+        // Set up the depth comparison (different for normal
+        // vs. reverse Z buffer)
+        void setDepthState(osg::ref_ptr<osg::Node> geom);
+
+        osg::observer_ptr<const Map> _map;
+        osg::ref_ptr<osgDB::Options> _dbOptions;
+        double _elevation;
+        osg::Matrixd _world2local;
+        osg::Matrixd _local2world;
+        osg::Vec3d _localMin;
+        osg::ref_ptr<Session> _session;
+        int _baseRenderBinNum;
+
+        // For reverse Z support - set up initially like normal Z buffer
+        bool _useReverseZBuffer;
+    };
+
+} } // namespace osgEarth::Aerodrome
+
+#endif // OSGEARTH_AERODROME_AERODROMERENDERVISITOR

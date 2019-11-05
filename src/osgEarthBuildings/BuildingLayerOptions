@@ -1,0 +1,137 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_BUILDING_OPTIONS_H
+#define OSGEARTH_BUILDINGS_BUILDING_OPTIONS_H
+
+#include "Common"
+#include "CompilerSettings"
+#include "FilterUsage"
+#include <osgEarth/Layer>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FeatureModelSource>
+#include <osgEarth/StyleSheet>
+
+namespace osgEarth { namespace Buildings 
+{
+    using namespace osgEarth::Features;
+    using namespace osgEarth;
+
+    class BuildingLayerOptions : public VisibleLayer::Options
+    {
+    public:
+        /** Location of the building template catalog */
+        optional<URI>& buildingCatalog() { return _buildingCatalogURI; }
+        const optional<URI>& buildingCatalog() const { return _buildingCatalogURI; }
+
+        /** Whether building style LODs add geometry to lower LODs (additive=true)
+            instead of replacing them (additive=false). */
+        optional<bool>& additiveLODs() { return _additiveLODs; }
+        const optional<bool>& additiveLODs() const { return _additiveLODs; }
+
+        /** LOD bins and other rendering settings */
+        optional<CompilerSettings>& compilerSettings() { return _settings; }
+        const optional<CompilerSettings>& compilerSettings() const { return _settings; }
+
+        /** Whether to tag features for indexing (default is false) */
+        optional<bool>& createIndex() { return _createIndex; }
+        const optional<bool>& createIndex() const { return _createIndex; }
+
+        /** Paging priority offset (relative to terrain) */
+        optional<float>& priorityOffset() { return _priorityOffset; }
+        const optional<float>& priorityOffset() const { return _priorityOffset; }
+
+        /** Paging priority scale (relative to terrain) */
+        optional<float>& priorityScale() { return _priorityScale; }
+        const optional<float>& priorityScale() const { return _priorityScale; }
+
+        /** Whether cancelation of tiles is enabled (default = true) */
+        optional<bool>& enableCancelation() { return _enableCancelation; }
+        const optional<bool>& enableCancelation() const { return _enableCancelation; }
+
+        optional<FilterUsage>& filterUsage() { return _filterUsage; }
+        const optional<FilterUsage>& filterUsage() const { return _filterUsage; }
+
+        OE_OPTION(StyleSheet::Options, styleSheet);
+        OE_OPTION(std::string, styleSheetLayer);
+
+        OE_OPTION(FeatureSource::Options, featureSource);
+        OE_OPTION(std::string, featureSourceLayer);
+
+    public:
+        BuildingLayerOptions( const ConfigOptions& opt =ConfigOptions() ) : VisibleLayer::Options( opt )
+        {
+            _lod.init( 14u );
+            _additiveLODs.init(false);
+            _createIndex.init(false);
+            _priorityOffset.init(0.0f);
+            _priorityScale.init(1.0f);
+            _enableCancelation.init(true);
+            fromConfig( _conf );
+        }
+
+    public:
+        Config getConfig() const
+        {
+            Config conf = VisibleLayer::Options::getConfig();
+            conf.set("building_catalog", _buildingCatalogURI);
+            conf.set("additive_lods",    _additiveLODs);
+            conf.set("settings",         _settings);
+            conf.set("create_index",     _createIndex);
+            conf.set("priority_offset",  _priorityOffset);
+            conf.set("priority_scale",   _priorityScale);
+            conf.set("enable_cancelation", _enableCancelation);
+            LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+            LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+            return conf;
+        }
+
+    protected:
+        void mergeConfig(const Config& conf)
+        {
+            VisibleLayer::Options::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig(const Config& conf)
+        {
+            conf.get("building_catalog", _buildingCatalogURI);
+            conf.get("additive_lods",    _additiveLODs);
+            conf.get("settings",         _settings);
+            conf.get("create_index",     _createIndex);
+            conf.get("priority_offset",  _priorityOffset);
+            conf.get("priority_scale",   _priorityScale);
+            conf.get("enable_cancelation", _enableCancelation);
+            LayerClient<StyleSheet>::fromConfig(conf, "styles", _styleSheetLayer, _styleSheet);
+            LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+        }
+
+        optional<URI> _buildingCatalogURI;
+        optional<unsigned> _lod;
+        optional<bool> _additiveLODs;
+        optional<CompilerSettings> _settings;
+        optional<bool> _createIndex;
+        optional<float> _priorityOffset;
+        optional<float> _priorityScale;
+        optional<bool> _enableCancelation;
+        optional<FilterUsage> _filterUsage;
+    };
+} }
+
+#endif // OSGEARTH_BUILDINGS_BUILDING_OPTIONS_H

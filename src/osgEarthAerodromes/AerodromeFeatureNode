@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_AERODROME_AERODROMEFEATURENODE
+#define OSGEARTH_AERODROME_AERODROMEFEATURENODE 1
+
+#include <osg/Group>
+
+#include "Common"
+#include "AerodromeFeatureOptions"
+#include <osgEarth/Feature>
+
+namespace osgEarth { namespace Aerodrome
+{
+    using namespace osgEarth;
+
+    /**
+     * Runway
+     */
+    class OSGEARTHAERODROME_EXPORT AerodromeFeatureNode : public osg::Group
+    {
+    public:
+        AerodromeFeatureNode(const AerodromeFeatureOptions& options, const std::string& icao, FeatureSource* featureSource, FeatureID fid) : _options(options), _source(featureSource), _icao(icao), _fid(fid) { }
+        AerodromeFeatureNode(const AerodromeFeatureOptions& options, const std::string& icao, Feature* feature=0L) : _options(options), _icao(icao), _feature(feature) { }
+
+        virtual ~AerodromeFeatureNode() { }
+
+    public: // properties
+
+        /** ICAO code */
+        const std::string& icao() { return _icao; }
+
+        /** Options */
+        const AerodromeFeatureOptions& getOptions() const { return _options; }
+
+        /** The underlying feature. */
+        Feature* getFeature()
+        { 
+            if (!_feature.valid() && _source.valid())
+            {
+                OE_DEBUG << "Reading feature: " << _fid << " from aerodrome: " << icao() << std::endl;
+                _feature = _source->getFeature(_fid);
+            }
+
+            return _feature.get();
+        }
+
+    protected:
+
+        std::string _icao;
+        osg::ref_ptr<FeatureSource> _source;
+        FeatureID _fid;
+        osg::ref_ptr<Feature> _feature;
+        AerodromeFeatureOptions _options;
+    };
+
+} } // namespace osgEarth::Aerodrome
+
+#endif // OSGEARTH_AERODROME_AERODROMEFEATURENODE

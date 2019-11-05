@@ -1,0 +1,100 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_COMPILER_SETTINGS_H
+#define OSGEARTH_BUILDINGS_COMPILER_SETTINGS_H
+
+#include "Common"
+#include <osgEarth/Tags>
+
+namespace osgEarth { namespace Buildings
+{
+    using namespace osgEarth;
+
+    /**
+     * Settings that control the BuildingCompiler and CompilerOutput processes
+     */
+    class OSGEARTHBUILDINGS_EXPORT CompilerSettings
+    {
+    public:
+        /** LODBin groups objects together for LOD purposes. */
+        struct LODBin
+        {
+            std::string tag;
+            float lodScale;
+            float minLodScale;
+        };
+        typedef std::vector<LODBin> LODBins;
+
+    public:
+        /** Constructor */
+        CompilerSettings();
+        CompilerSettings(const CompilerSettings& rhs);
+
+        /** Display bins for customizing display by tag */
+        LODBins& getLODBins()             { return _lodBins; }
+        const LODBins& getLODBins() const { return _lodBins; }
+        LODBin& addLODBin();
+
+        /** Given a tag or tag set, return the display bin. */
+        const LODBin* getLODBin(const std::string& tag) const;
+        const LODBin* getLODBin(const TagSet& tags) const;
+
+        /**
+         * The LOD distance for a tile will be the tile's radius multiplied
+         * by this number. The default value is 6.
+         */
+        optional<float>& rangeFactor() { return _rangeFactor; }
+        const optional<float>& rangeFactor() const { return _rangeFactor; }
+        
+        /**
+         * Substituted instance models are drawn using GL DrawInstanced by default.
+         * Set this to true to use clustering instead. Clustering will attempt to
+         * combine all the model instances into a minimal single geometry, which
+         * sometimes results in better draw performance.
+         */
+        optional<bool>& useClustering() { return _useClustering; }
+        const optional<bool>& useClustering() const { return _useClustering; }
+
+        /**
+         * When clustering is enabled, this is the target number of vertices
+         * to gather in each cluster. Too low and you won't get the benefits of 
+         * clustering (too many drawables). Too high and you will overload the GPU
+         * with VBOs that are too large and hurt performance.
+         *
+         * This value is paseed to the osgUtil::Optimizer::MergeGeometryFilter.
+         */
+        optional<unsigned>& maxVertsPerCluster() { return _maxVertsPerCluster; }
+        const optional<unsigned>& maxVertsPerCluster() const { return _maxVertsPerCluster; }
+
+    public:
+        CompilerSettings(const Config& conf);
+        Config getConfig() const;
+
+    protected:
+        optional<float> _rangeFactor;
+        optional<bool>  _useClustering;
+        optional<unsigned> _maxVertsPerCluster;
+        LODBins _lodBins;
+    };
+
+} } // namespace
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Buildings::CompilerSettings);
+
+#endif // OSGEARTH_BUILDINGS_COMPILER_SETTINGS_H

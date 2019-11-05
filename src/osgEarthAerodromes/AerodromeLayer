@@ -1,0 +1,138 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_AERODROME_LAYER
+#define OSGEARTH_AERODROME_LAYER 1
+
+#include "Common"
+#include "AerodromeCatalog"
+#include <osgEarth/Map>
+#include <osgEarth/URI>
+#include <osgEarth/VisibleLayer>
+
+namespace osgEarth { namespace Aerodrome
+{
+    using namespace osgEarth;
+
+    /**
+     * Options structure used to configure an AerodromLayer
+     */
+    class AerodromeLayerOptions : public VisibleLayer::Options
+    {
+    public:
+        AerodromeLayerOptions( const ConfigOptions& opt =ConfigOptions() ) : VisibleLayer::Options( opt ),
+            _range(50000.0f)
+        {
+            // init properties here
+            fromConfig( _conf );
+        }
+
+        //! XML file containing aerodrome definitions
+        optional<URI>& catalog() { return _catalog; }
+        const optional<URI>& catalog() const { return _catalog; }
+
+        //! Range at which aerodromes whould appear
+        optional<float>& range() { return _range; }
+        const optional<float>& range() const { return _range; }
+
+        //! Render bin number
+        optional<int>& renderOrder() { return _renderOrder; }
+        const optional<int>& renderOrder() const { return _renderOrder; }
+
+        //! Render bin name
+        optional<std::string>& renderBin() { return _renderBin; }
+        const optional<std::string>& renderBin() const { return _renderBin; }
+
+    public:
+        Config getConfig() const
+        {
+            Config conf = VisibleLayer::Options::getConfig();
+            conf.set("catalog", _catalog);
+            conf.set("range", _range);
+            conf.set("render_order", _renderOrder);
+            conf.set("render_bin", _renderBin);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig(const Config& conf)
+        {
+            VisibleLayer::Options::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig(const Config& conf)
+        {
+            conf.get("catalog", _catalog);
+            conf.get("range", _range);
+            conf.get("render_order", _renderOrder);
+            conf.get("render_bin", _renderBin);
+        }
+
+        optional<URI> _catalog;
+        optional<float> _range;
+        optional<int> _renderOrder;
+        optional<std::string> _renderBin;
+    };
+
+
+    /**
+     * Layer displaying one or more Aerodromes.
+     */
+    class OSGEARTHAERODROME_EXPORT AerodromeLayer : public VisibleLayer
+    {
+    public:
+        META_Layer(osgEarthAerodrome, AerodromeLayer, AerodromeLayerOptions, VisibleLayer, Aerodromes);
+
+    public: // Layer
+
+        //! The root node of this layer's scene graph
+        virtual osg::Node* getNode() const;
+
+    protected: // Layer
+
+        //! Opens any data stores associated with the layer
+        virtual Status openImplementation();
+
+        //! Called after this layer is added to the map
+        virtual void addedToMap(const Map* map);
+
+        //! Called after this layer is removed from the map
+        virtual void removedFromMap(const Map* map);
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        /** DTOR is protected to prevent this object from being allocated on the stack */
+        virtual ~AerodromeLayer() { }
+
+        osg::ref_ptr<AerodromeCatalog> _catalog;
+        osg::ref_ptr<osg::Group> _root;
+        osg::observer_ptr<const Map> _map;
+
+        void createSceneGraph();
+    };
+
+} } // namespace osgEarth::Aerodrome
+
+#endif // OSGEARTH_AERODROME_LAYER
+

@@ -1,0 +1,99 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_BUILDING_PAGER_H
+#define OSGEARTH_BUILDINGS_BUILDING_PAGER_H
+
+#include "Common"
+#include "BuildingFactory"
+#include "BuildingCompiler"
+#include "CompilerSettings"
+#include "FilterUsage"
+
+#include <osgEarth/CacheBin>
+#include <osgEarth/StateSetCache>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FeatureIndex>
+#include <osgEarth/SimplePager>
+
+#include <osgDB/ObjectCache>
+
+
+namespace osgEarth { namespace Buildings
+{
+    using namespace osgEarth;
+
+    class OSGEARTHBUILDINGS_EXPORT BuildingPager : public osgEarth::Util::SimplePager
+    {
+    public:
+
+        /** Constructs the pager with a target profile */
+        BuildingPager(const Profile* profile);
+
+        /** Session under which to load buildings */
+        void setSession(Session* session);
+
+        /** Source from which to query features */
+        void setFeatureSource(FeatureSource* features);
+
+        /** Build catalog to use for creating building templates */
+        void setCatalog(BuildingCatalog* catalog);
+
+        /** Settings the dictate how the compiler builds the scene graph */
+        void setCompilerSettings(const CompilerSettings& settings);
+
+        /** Feature index to populate */
+        void setIndex(FeatureIndexBuilder* index);
+
+        /** Elevation pool to use for clamping */
+        void setElevationPool(ElevationPool* pool);
+
+        void setFilterUsage(FilterUsage usage);
+
+    public: // SimplePager
+
+        osg::Node* createNode(const TileKey& key, ProgressCallback* progress);
+
+    protected:
+
+        virtual ~BuildingPager() { }
+
+    private:
+
+        osg::ref_ptr<Session>             _session;
+        osg::ref_ptr<FeatureSource>       _features;
+        osg::ref_ptr<BuildingCatalog>     _catalog;
+        osg::ref_ptr<BuildingCompiler>    _compiler;
+        CompilerSettings                  _compilerSettings;
+        FeatureIndexBuilder*              _index;
+        osg::observer_ptr<ElevationPool>  _elevationPool;
+        bool                              _profile;
+        osg::ref_ptr<osgDB::ObjectCache>  _artCache;
+        Threading::Mutex                  _globalMutex;
+        osg::ref_ptr<TextureCache>        _texCache;
+        FilterUsage _filterUsage;
+
+        bool cacheReadsEnabled(const osgDB::Options*) const;
+        bool cacheWritesEnabled(const osgDB::Options*) const;
+
+        void applyRenderSymbology(osg::Node*, const Style& style) const;
+    };
+
+} } // namespace
+
+#endif // OSGEARTH_BUILDINGS_BUILDING_PAGER_H

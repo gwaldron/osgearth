@@ -1,0 +1,86 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_BUILDING_COMPILER_H
+#define OSGEARTH_BUILDINGS_BUILDING_COMPILER_H
+
+#include "Compiler"
+#include "CompilerOutput"
+#include "Building"
+#include "ElevationCompiler"
+#include "FlatRoofCompiler"
+#include "GableRoofCompiler"
+#include "InstancedRoofCompiler"
+#include "InstancedBuildingCompiler"
+#include "FilterUsage"
+
+#include <osgEarth/Progress>
+#include <osgEarth/FeatureCursor>
+
+namespace osgEarth { namespace Buildings
+{
+    using namespace osgEarth;
+
+    /** 
+     * Created an OSG graph from one or more Building objects.
+     */
+    class OSGEARTHBUILDINGS_EXPORT BuildingCompiler : public Compiler
+    {
+    public:
+        /** Constructor */
+        BuildingCompiler(Session* session);
+
+        /**
+         * Compile a collection of Buildings into an OSG graph.
+         * @param[in ] input    Building data
+         * @param[in ] progress Progress/error tracking token
+         * @return              OSG scene graph with building geometry.
+         */
+        virtual bool compile(
+            const BuildingVector& input,
+            CompilerOutput&       output,
+            const osgDB::Options* readOptions,
+            ProgressCallback*     progress =0L);
+
+        void setUsage(FilterUsage filterUsage);
+    protected:
+        virtual ~BuildingCompiler() { }
+
+        const Style& getStyle() const;
+
+        virtual bool addExternalModel(CompilerOutput&, const Building*, const osg::Matrix&, const osgDB::Options* readOptions, ProgressCallback*) const;
+
+        virtual bool addElevations(CompilerOutput&, const Building*, const ElevationVector&, const osg::Matrix&, const osgDB::Options* readOptions) const;
+
+        virtual bool addRoof(CompilerOutput&, const Building*, const Elevation*, const osg::Matrix&, const osgDB::Options* readOptions) const;
+
+    protected:
+        osg::ref_ptr<Session>                   _session;
+        osg::ref_ptr<FeatureIndex>              _featureIndex;
+        osg::ref_ptr<InstancedBuildingCompiler> _instancedBuildingCompiler;
+        osg::ref_ptr<ElevationCompiler>         _elevationCompiler;
+        osg::ref_ptr<FlatRoofCompiler>          _flatRoofCompiler;
+        osg::ref_ptr<GableRoofCompiler>         _gableRoofCompiler;
+        osg::ref_ptr<InstancedRoofCompiler>     _instancedRoofCompiler;
+        FilterUsage _filterUsage;
+    };
+
+} } // namespace
+
+
+#endif // OSGEARTH_BUILDINGS_BUILDING_COMPILER_H

@@ -1,0 +1,53 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_ELEVATION_COMPILER_H
+#define OSGEARTH_BUILDINGS_ELEVATION_COMPILER_H
+
+#include "Compiler"
+#include "CompilerOutput"
+#include "Building"
+#include <osgEarth/Session>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Buildings
+{
+    using namespace osgEarth;
+
+    /**
+     * Buildings an elevation as OSG geometry.
+     */
+    class OSGEARTHBUILDINGS_EXPORT ElevationCompiler : public Compiler
+    {
+    public:
+        ElevationCompiler(Session* session) : _session(session) { }
+
+    public:
+        virtual bool compile(
+            CompilerOutput&       output,
+            const Building*       building,
+            const Elevation*      elevation,
+            const osg::Matrix&    world2local,
+            const osgDB::Options* readOptions) const;
+
+    protected:
+        osg::ref_ptr<Session> _session;
+    };
+} }
+
+#endif // OSGEARTH_BUILDINGS_ELEVATION_COMPILER_H

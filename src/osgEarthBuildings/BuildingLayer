@@ -1,0 +1,87 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_LAYER_H
+#define OSGEARTH_BUILDINGS_LAYER_H
+
+#include "Common"
+#include "BuildingLayerOptions"
+#include "BuildingCatalog"
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/SimplePager>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/Session>
+
+namespace osgEarth { namespace Buildings 
+{
+    using namespace osgEarth;
+
+    class BuildingPager;
+
+    class OSGEARTHBUILDINGS_EXPORT BuildingLayer : public VisibleLayer
+    {
+    public:
+        META_Layer(osgEarthBuildings, BuildingLayer, BuildingLayerOptions, VisibleLayer, Buildings);
+
+        //! Sets the source of buildings data - call before opening layer
+        void setFeatureSource(FeatureSource*);
+        FeatureSource* getFeatureSource() const { return _featureSource.getLayer(); }
+
+        BuildingPager* pager();
+
+    public: // Layer
+
+        // The Node representing this layer.
+        virtual osg::Node* getNode() const;
+
+        //! Extent of the feature layer, if available (INVALID if not)
+        virtual const GeoExtent& getExtent() const;
+
+    protected: // Layer
+
+        // opens the layer and returns the status
+        virtual Status openImplementation();
+        
+        // called by the map when this layer is added
+        virtual void addedToMap(const class Map*);
+
+        // called by the map when this layer is removed
+        virtual void removedFromMap(const class Map*);
+
+        // post-ctor initialization
+        virtual void init();
+
+    private:
+
+        osg::ref_ptr<osg::Group> _root;
+        osg::ref_ptr<BuildingCatalog> _catalog;
+        osg::ref_ptr<Session> _session;
+        osg::observer_ptr<const Map> _map;
+        LayerClient<StyleSheet> _styleSheet;
+        LayerClient<FeatureSource> _featureSource;
+
+        void createSceneGraph();
+        
+    protected:
+
+        //! Destructor
+        virtual ~BuildingLayer();
+    };
+} }
+
+#endif // OSGEARTH_BUILDINGS_EXTENSION_H

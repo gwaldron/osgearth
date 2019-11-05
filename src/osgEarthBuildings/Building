@@ -1,0 +1,175 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_BUILDING_H
+#define OSGEARTH_BUILDINGS_BUILDING_H
+
+#include "Common"
+#include "Elevation"
+#include "Zoning"
+#include <vector>
+#include <osgEarth/Geometry>
+#include <osgEarth/Tags>
+#include <osg/Referenced>
+
+namespace osgEarth { namespace Buildings 
+{
+    using namespace osgEarth;
+
+    class BuildingVisitor;
+    class BuildContext;
+
+    /**
+     * Building represents one complete structure, comprised of 
+     * at least one elevation and a roof.
+     */
+    class OSGEARTHBUILDINGS_EXPORT Building : public Taggable<osg::Object>
+    {
+    public:
+        META_Object(osgEarthBuildings, Building);
+
+        /** Construct a new Building */
+        Building();
+
+        /** Copy constructor */
+        Building(const Building& rhs, const osg::CopyOp& copy);
+
+        /**
+         * Building's unique identifier.
+         */
+        void setUID(UID uid) { _uid = uid; }
+        UID getUID() const   { return _uid; }
+
+        /**
+         * Reference frame for all coordinates used to define the building.
+         */
+        void setReferenceFrame(const osg::Matrix& local2world) { _local2world = local2world; }
+        const osg::Matrix& getReferenceFrame() const           { return _local2world; }
+        
+        /**
+         * Sets the overall height of the building in meters.
+         * This method will traverse all the elevations and resolve any heights
+         * that are set as percentages into actual height values.
+         */
+        void setHeight(float value);
+
+        /**
+         * One or more elevations that comprise the facade of the building.
+         */
+        ElevationVector& getElevations()             { return _elevations; }
+        const ElevationVector& getElevations() const { return _elevations; }
+
+        /**
+         * Zoning for this building 
+         */
+        void setZoning(const Zoning::Type& zoning) { _zoning = zoning; }
+        const Zoning::Type& getZoning() const      { return _zoning; }
+
+        /**
+         * Minimum height for which to use this building. 
+         */
+        void setMinHeight(float value) { _minHeight = value; }
+        float getMinHeight() const     { return _minHeight; }
+
+        /**
+         * Maximum height for which to use this building.
+         */
+        void setMaxHeight(float value) { _maxHeight = value; }
+        float getMaxHeight() const     { return _maxHeight; }
+
+        /**
+         * Minimum are for which to use this building as a template (sqm)
+         */
+        void setMinArea(float value) { _minArea = value; }
+        float getMinArea() const     { return _minArea; }
+
+        /**
+         * Maximum area for which to use this building as a template (sqm)
+         */
+        void setMaxArea(float value) { _maxArea = value; }
+        float getMaxArea() const     { return _maxArea; }
+
+        /**
+         * Whether to load an instanced model for this building instead of
+         * generating geometry
+         */
+        void setInstanced(bool value) { _instanced = value; }
+        bool getInstanced() const     { return _instanced; }
+
+        /**
+         * URI of an external model to use instead of creating geometry or
+         * using an instanced model.
+         */
+        void setExternalModelURI(const URI& uri)      { _externalModelURI = uri; }
+        const optional<URI>& externalModelURI() const { return _externalModelURI; }
+        const URI& getExternalModelURI() const        { return _externalModelURI.get(); }
+
+        /**
+         * Symbol for instanced model replacement instead of creating geometry.
+         * An instanced model differs from an extern model (see setModelURI) in
+         * that an instanced model comes from the ResourceLibrary and is scaled
+         * and rotated to match the footprint's bounding box.
+         */
+        void setInstancedModelSymbol(ModelSymbol* symbol) { _instancedModelSymbol = symbol; }
+        ModelSymbol* getInstancedModelSymbol() const      { return _instancedModelSymbol.get(); }
+
+        /**
+         * Model resource resolved from the instanced model symbol above.
+         */
+        void setInstancedModelResource(ModelResource* res) { _instancedModelResource = res; }
+        ModelResource* getInstancedModelResource() const   { return _instancedModelResource.get(); }
+
+        /**
+         * Build the internal structure of the building and its components.
+         * You must call setFootprint() before calling this function.
+         */
+        bool build(const Polygon*, BuildContext& bi);
+
+        /**
+         * Visit this building.
+         */
+        void accept(BuildingVisitor& bv);
+
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~Building() { }
+
+        UID                     _uid;
+        osg::ref_ptr<Polygon>   _footprint;
+        optional<URI>           _externalModelURI;
+        ElevationVector         _elevations;
+        osg::ref_ptr<Roof>      _roof;
+        Zoning::Type            _zoning;
+        osg::Matrix             _local2world;
+        float                   _minHeight;
+        float                   _maxHeight;
+        float                   _minArea;
+        float                   _maxArea;
+        bool                    _instanced;
+
+        osg::ref_ptr<ModelSymbol>   _instancedModelSymbol;
+        osg::ref_ptr<ModelResource> _instancedModelResource;
+
+        void resolveInstancedModel(BuildContext&);
+    };
+
+    typedef std::vector< osg::ref_ptr<Building> > BuildingVector;
+} }
+
+#endif // OSGEARTH_BUILDINGS_BUILDING_H

@@ -1,0 +1,63 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_AERODROME_TERMINALNODE
+#define OSGEARTH_AERODROME_TERMINALNODE 1
+
+#include <osg/Group>
+
+#include "Common"
+#include "AerodromeFeatureNode"
+#include "AerodromeFeatureOptions"
+#include <osgEarth/Feature>
+
+namespace osgEarth { namespace Aerodrome
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Aerodrome;
+
+    /**
+     * Terminal
+     */
+    class OSGEARTHAERODROME_EXPORT TerminalNode : public AerodromeFeatureNode
+    {
+    public:
+        TerminalNode(const TerminalFeatureOptions& options, const std::string& icao, FeatureSource* featureSource, FeatureID fid) : AerodromeFeatureNode(options, icao, featureSource, fid), _terminalOptions(options) { }
+        TerminalNode(const TerminalFeatureOptions& options, const std::string& icao, Feature* feature=0L) : AerodromeFeatureNode(options, icao, feature), _terminalOptions(options) { }
+
+        virtual ~TerminalNode() { }
+
+    public:
+        const TerminalFeatureOptions& getOptions() const { return _terminalOptions; }
+
+    protected:
+        TerminalFeatureOptions _terminalOptions;
+    };
+
+
+    class OSGEARTHAERODROME_EXPORT TerminalGroup : public osg::Group
+    {
+    public:
+        TerminalGroup() { }
+
+        virtual ~TerminalGroup() { }
+    };
+
+} } // namespace osgEarth::Aerodrome
+
+#endif // OSGEARTH_AERODROME_TERMINALNODE

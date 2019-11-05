@@ -1,0 +1,121 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_AERODROME_AERODROMECATALOG
+#define OSGEARTH_AERODROME_AERODROMECATALOG 1
+
+#include <osg/Group>
+
+#include "Common"
+#include "AerodromeNode"
+#include "AerodromeFeatureOptions"
+#include <osgEarth/Config>
+#include <osg/Referenced>
+#include <osgEarth/URI>
+#include <osgEarth/FeatureSource>
+
+namespace osgEarth { namespace Aerodrome
+{
+    using namespace osgEarth;
+
+    /**
+     * Aerodrome
+     */
+    class OSGEARTHAERODROME_EXPORT AerodromeCatalog : public osg::Referenced
+    {
+    public:
+
+        AerodromeCatalog();
+
+        virtual ~AerodromeCatalog() { }
+
+    public: // properties
+
+        BoundaryOptionsSet& boundaryOptions() { return _boundaryOptions; }
+        const BoundaryOptionsSet& boundaryOptions() const { return _boundaryOptions; }
+
+        AerodromeOptionsSet& lightBeaconOptions() { return _lightBeaconOptions; }
+        const AerodromeOptionsSet& lightBeaconOptions() const { return _lightBeaconOptions; }
+
+        AerodromeOptionsSet& lightIndicatorOptions() { return _lightIndicatorOptions; }
+        const AerodromeOptionsSet& lightIndicatorOptions() const { return _lightIndicatorOptions; }
+
+        AerodromeOptionsSet& linearFeatureOptions() { return _linearFeatureOptions; }
+        const AerodromeOptionsSet& linearFeatureOptions() const { return _linearFeatureOptions; }
+
+        AerodromeOptionsSet& pavementOptions() { return _pavementOptions; }
+        const AerodromeOptionsSet& pavementOptions() const { return _pavementOptions; }
+
+        AerodromeOptionsSet& runwayOptions() { return _runwayOptions; }
+        const AerodromeOptionsSet& runwayOptions() const { return _runwayOptions; }
+
+        AerodromeOptionsSet& runwayThresholdOptions() { return _runwayThresholdOptions; }
+        const AerodromeOptionsSet& runwayThresholdOptions() const { return _runwayThresholdOptions; }
+
+        AerodromeOptionsSet& startupLocationOptions() { return _startupLocationOptions; }
+        const AerodromeOptionsSet& startupLocationOptions() const { return _startupLocationOptions; }
+
+        AerodromeOptionsSet& stopwayOptions() { return _stopwayOptions; }
+        const AerodromeOptionsSet& stopwayOptions() const { return _stopwayOptions; }
+
+        AerodromeOptionsSet& taxiwayOptions() { return _taxiwayOptions; }
+        const AerodromeOptionsSet& taxiwayOptions() const { return _taxiwayOptions; }
+
+        AerodromeOptionsSet& taxiwaySignOptions() { return _taxiwaySignOptions; }
+        const AerodromeOptionsSet& taxiwaySignOptions() const { return _taxiwaySignOptions; }
+
+        TerminalOptionsSet& terminalOptions() { return _terminalOptions; }
+        const TerminalOptionsSet& terminalOptions() const { return _terminalOptions; }
+
+        AerodromeOptionsSet& windsockOptions() { return _windsockOptions; }
+        const AerodromeOptionsSet& windsockOptions() const { return _windsockOptions; }
+
+    public: // serialization
+
+        // populate this object from a Config
+        void fromConfig(const Config& conf);
+
+        // serialize this object to a Config.
+        Config getConfig() const;
+
+    public: // static utility
+
+        /** Reads an aerodrome catalog from a URI. */
+        static AerodromeCatalog* read(const URI& uri, const osgDB::Options* options);
+
+    protected:
+
+        optional<int> _version;
+        BoundaryOptionsSet _boundaryOptions;
+        AerodromeOptionsSet _lightBeaconOptions;
+        AerodromeOptionsSet _lightIndicatorOptions;
+        AerodromeOptionsSet _linearFeatureOptions;
+        AerodromeOptionsSet _pavementOptions;
+        AerodromeOptionsSet _runwayOptions;
+        AerodromeOptionsSet _runwayThresholdOptions;
+        AerodromeOptionsSet _startupLocationOptions;
+        AerodromeOptionsSet _stopwayOptions;
+        AerodromeOptionsSet _taxiwayOptions;
+        AerodromeOptionsSet _taxiwaySignOptions;
+        TerminalOptionsSet _terminalOptions;
+        AerodromeOptionsSet _windsockOptions;
+    };
+
+} } // namespace osgEarth::Aerodrome
+
+#endif // OSGEARTH_AERODROME_AERODROMECATALOG

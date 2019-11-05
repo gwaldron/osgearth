@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_BUILDING_SYMBOL_H
+#define OSGEARTH_BUILDINGS_BUILDING_SYMBOL_H
+
+#include "Common"
+#include <osgEarth/Style>
+#include <osgEarth/Symbol>
+
+namespace osgEarth { namespace Buildings
+{
+    using namespace osgEarth;
+
+    /**
+     * Styling information for constructing buildings.
+     */
+    class OSGEARTHBUILDINGS_EXPORT BuildingSymbol : public Symbol
+    {
+    public:
+        META_Object(osgEarth::Buildings, BuildingSymbol);
+        
+        /** construct a render symbol */
+        BuildingSymbol(const Config& conf =Config());
+        BuildingSymbol(const BuildingSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+
+        /** Number of meters in a floor, approximately */
+        optional<float>& floorHeight() { return _floorHeight; }
+        const optional<float>& floorHeight() const { return _floorHeight; }
+
+        /** Expression resolving to the height (in meters) of a building.
+            A height of zero means the building will be discarded. */
+        optional<NumericExpression>& height() { return _heightExpr; }
+        const optional<NumericExpression>& height() const { return _heightExpr; }
+
+        /** Expression resolving to one or more building selection tags */
+        optional<StringExpression>& tags() { return _tagsExpr; }
+        const optional<StringExpression>& tags() const { return _tagsExpr; }
+
+        /** Expression resolving to an external model to use instead of creating geometry */
+        optional<StringExpression>& modelURI() { return _modelURIExpr; }
+        const optional<StringExpression>& modelURI() const { return _modelURIExpr; }
+
+        /** Resource library name */
+        optional<StringExpression>& library() { return _libraryName; }
+        const optional<StringExpression>& library() const { return _libraryName; }
+
+    public: // serialization support
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+        optional<float>             _floorHeight;
+        optional<NumericExpression> _heightExpr;
+        optional<StringExpression>  _tagsExpr;
+        optional<StringExpression>  _modelURIExpr;
+        optional<StringExpression>  _libraryName;
+    };
+} }
+
+#endif // OSGEARTH_BUILDINGS_BUILDING_SYMBOL_H

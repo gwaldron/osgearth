@@ -209,14 +209,3 @@ ADD_SUBDIRECTORY(src)
 
 # Add the docs to the project for convenience
 ADD_SUBDIRECTORY(docs)
-
-
-#Setting some CMake variables that are needed by osgEarth-aerodrome
-set(OSGEARTH_LIBRARY "osgEarth")
-set(OSGEARTH_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/osgearth/include")
-
-message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome")
-ADD_SUBDIRECTORY(osgearth-aerodrome)
-
-message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-buildings")
-ADD_SUBDIRECTORY(osgearth-buildings)

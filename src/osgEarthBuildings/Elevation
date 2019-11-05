@@ -1,0 +1,298 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_ELEVATION_H
+#define OSGEARTH_BUILDINGS_ELEVATION_H
+
+#include "Common"
+#include "Roof"
+#include <osg/BoundingBox>
+#include <osg/Vec3d>
+#include <osg/Texture>
+#include <osgEarth/Skins>
+#include <osgEarth/Geometry>
+#include <vector>
+#include <list>
+
+namespace osgEarth { namespace Buildings
+{
+    using namespace osgEarth;
+
+    class BuildContext;
+
+    /**
+     * A vertical section of a building.
+     */
+    class OSGEARTHBUILDINGS_EXPORT Elevation : public osg::Referenced
+    {
+    public:
+        typedef std::vector<osg::ref_ptr<Elevation> > Vector;
+
+        /** Constructor */
+        Elevation();
+
+        Elevation(const Elevation& rhs);
+
+        virtual Elevation* clone() const;
+
+        /**
+         * Sets the parent elevation of this elevation. If an elevation
+         * has a parent, that means that it sits on top of the parent
+         * elevation, and its height is height above the parent.
+         */
+        void setParent(Elevation* parent) { _parent = parent; }
+        Elevation* getParent() const      { return _parent; }
+
+        /**
+         * Child elevations. You should call setParent() on a child elevation
+         * before adding it to this list.
+         */
+        Vector& getElevations()             { return _elevations; }
+        const Vector& getElevations() const { return _elevations; }
+
+        /**
+         * Height of this elevation, in meters. If the heightPercentage
+         * property is set, this method will resolve the actual height 
+         * by mutliplying the input value by that percentage.
+         */
+        void setHeight(float value);
+        float getHeight() const { return _height.get(); }
+
+        void setAbsoluteHeight(float value);
+
+        /**
+         * Height of this elevation as a percantage of total height.
+         */
+        optional<float>& heightPercentage()             { return _heightPercentage; }
+        const optional<float>& heightPercentage() const { return _heightPercentage; }
+        void setHeightPercentage(float value)           { _heightPercentage = value; }
+        float getHeightPercentage() const               { return _heightPercentage.get(); }
+
+        /**
+         * The absolute bottom of this elevation (accounting for parent).
+         */
+        void setBottom(float value) { _bottom = value; }
+        float getBottom() const;
+
+        /**
+         * The absolute top of this elevation (accounting for parents).
+         */
+        float getTop() const;
+
+        /**
+         * Number of floors in this elevation.
+         */
+        void setNumFloors(unsigned value) { _numFloors = value; }
+        float getNumFloors() const        { return _numFloors.get(); }
+
+        /**
+         * Inset in meters of this elevation from its parent elevation
+         */
+        void setInset(float inset)   { _inset = inset; }
+        const float getInset() const { return _inset; }
+
+        /**
+         * Offset in meters of this elevation from its parent elevation
+         */
+        void setXOffset(float value) { _xoffset = value; }
+        float getXOffset() const     { return _xoffset; }
+
+        void setYOffset(float value) { _yoffset = value; }
+        float getYOffset() const     { return _yoffset; }
+
+        /**
+         * The roof.
+         */
+        void setRoof(Roof* roof);
+        Roof* getRoof() const    { return _roof.get(); }
+
+        /**
+         * Elevation color. If a skin is set, it will be modulated
+         * by the color.
+         */
+        void setColor(const Color& color) { _color = color; }
+        const Color& getColor() const     { return _color; }
+
+        /**
+         * Whether to substitute the aligned bounding box for the footprint.
+         */
+        void setRenderAsBox(bool value) { _renderAABB = value; }
+        bool getRenderAsBox() const     { return _renderAABB; }
+
+        /**
+         * The skin (texture and properties) for the elevation walls.
+         */
+        void setSkinResource(SkinResource* res) { _skinResource = res; }
+        SkinResource* getSkinResource() const   { return _skinResource.get(); }
+
+        /**
+         * Skin to use to texture this elevation. (optional)
+         */
+        void setSkinSymbol(SkinSymbol* sym) { _skinSymbol = sym; }
+        SkinSymbol* getSkinSymbol() const    { return _skinSymbol.get(); }
+
+        /**
+         * An optional tag that identifies this element to the compiler.
+         */
+        void setTag(const std::string& tag) { _tag = tag; }
+        const std::string& getTag() const   { return _tag; }
+
+        /**
+         * Builds an internal structure for this elevation. If this returns
+         * true, you can then call getWalls() to access the structure.
+         */
+        virtual bool build(const Polygon* footprint, BuildContext& bc);
+
+        virtual Config getConfig() const;
+
+    public: // structural data model elements
+
+        // A Corner is one vertex in the footprint extruded from bottom to top
+        struct Corner
+        {
+            osg::Vec3d lower, upper;
+            osg::Vec2f roofUV;
+            float      offsetX;
+            bool       isFromSource;
+            float      cosAngle;
+            float      height;            
+        };
+        typedef std::list<Corner> Corners; // use a list to prevent iterator invalidations
+
+        // A Face joins two Corners.
+        struct Face
+        {
+            Corner left;
+            Corner right;
+            float widthM;
+        };
+        typedef std::vector<Face> Faces;
+
+        // A wall is a closed collection of Faces.
+        struct Wall
+        {
+            Faces  faces;
+            float texHeightAdjustedM;
+
+            unsigned getNumPoints() const {
+                return faces.size() * 6;
+            }
+        };
+        typedef std::vector<Wall> Walls;
+
+        /**
+         * The structure of the elevation that was created by buildStructure.
+         */
+        Walls& getWalls() { return _walls; }
+        const Walls& getWalls() const { return _walls; }
+
+        /** Gets the uppermost Z value in the wall geometry */
+        float getUppermostZ() const;
+
+        virtual bool isDetail() const { return false; }
+
+    public:
+        
+        /**
+         * Calculates a rotation that will rotate the (first) longest segment in 
+         * the polygon so it is parallel with the Y axis.
+         */
+        void calculateRotations(const Polygon*);
+
+        const osg::BoundingBox& getAxisAlignedBoundingBox() const { return _aabb; }
+
+        const osg::Vec3d& getLongEdgeMidpoint() const { return _longEdgeMidpoint; }
+
+        const osg::Vec3d& getLongEdgeInsideNormal() const { return _longEdgeInsideNormal; }
+
+        /**
+         * rotates a 2D point based on the rotation calculated
+         * in calculateRotations().
+         */
+        inline void rotate(float& x, float& y) const {
+            float x2 = _cosR*x - _sinR*y, y2 = _sinR*x + _cosR*y;
+            x = x2, y = y2;
+        }
+        inline void rotate(osg::Vec2f& v) const {
+            rotate(v.x(), v.y());
+        }
+        inline void rotate(osg::Vec3f& v) const {
+            rotate(v.x(), v.y());
+        }
+        inline void rotate(osg::Vec3d& v) const {
+            float x = v.x(), y = v.y();
+            rotate(x, y);
+            v.x() = x, v.y() = y;
+        }
+        inline void unrotate(float& x, float& y) const {
+            float x2 = _cosR*x + _sinR*y, y2 = - _sinR*x + _cosR*y;
+            x = x2, y = y2;
+        }
+        inline void unrotate(osg::Vec2f& v) const {
+            unrotate(v.x(), v.y());
+        }
+        inline void unrotate(osg::Vec3f& v) const {
+            unrotate(v.x(), v.y());
+        }
+        inline void unrotate(osg::Vec3d& v) const {
+            float x = v.x(), y = v.y();
+            unrotate(x, y);
+            v.x() = x, v.y() = y;
+        }
+        
+        osg::Matrix getRotation() const {
+            return osg::Matrix( _cosR, -_sinR, 0, 0, _sinR, _cosR, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+        }
+
+    protected:
+        optional<float>    _height;
+        optional<float>    _heightPercentage;
+        optional<unsigned> _numFloors;
+        optional<float>    _bottom;
+        float              _inset;
+        float              _xoffset;
+        float              _yoffset;
+        Color              _color;
+        osg::ref_ptr<Roof> _roof;
+        Vector             _elevations;
+        osg::BoundingBox   _aabb;
+        float              _cosR, _sinR;
+        osg::Vec3d         _longEdgeMidpoint;
+        osg::Vec3d         _longEdgeInsideNormal;
+        bool               _renderAABB;
+        std::string        _tag;
+
+        osg::ref_ptr<SkinResource> _skinResource;
+        osg::ref_ptr<SkinSymbol>   _skinSymbol;
+
+        Elevation* _parent;
+        Walls      _walls;
+
+    protected:
+        virtual ~Elevation() { }
+
+        bool buildImpl(const Polygon*, BuildContext& bc);
+        
+        void resolveSkin(BuildContext& bc);
+    };
+
+    typedef Elevation::Vector ElevationVector;
+
+} }
+
+#endif // OSGEARTH_BUILDINGS_ELEVATION_H

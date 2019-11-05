@@ -1,0 +1,118 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_BUILDING_FACTORY_H
+#define OSGEARTH_BUILDINGS_BUILDING_FACTORY_H
+
+#include "Common"
+#include "Building"
+#include "BuildingCatalog"
+#include "BuildingSymbol"
+#include <osgEarth/Progress>
+#include <osgEarth/Session>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/AltitudeFilter>
+
+namespace osgEarth { namespace Buildings
+{
+    class BuildingSymbol;
+
+    using namespace osgEarth;
+
+    /** 
+     * Creates one or more Building instances based on Feature input.
+     */
+    class OSGEARTHBUILDINGS_EXPORT BuildingFactory : public osg::Referenced
+    {
+    public:
+        /**
+         * Constructs a building factory.
+         * The factory will have to geospatial context or access to scripting. 
+         * For that, please use the constructor that accepts a Session.
+         */
+        BuildingFactory();
+
+        /**
+         * Session under which to create building DOM.
+         */
+        void setSession(Session* session);
+        Session* getSession() const { return _session.get(); }
+
+        /**
+         * Sets a building catalog to use
+         */
+        void setCatalog(BuildingCatalog* catalog) { _catalog = catalog; }
+        BuildingCatalog* getCatalog() const       { return _catalog.get(); }
+
+        /**
+         * The output SRS of the building models
+         */
+        void setOutputSRS(const SpatialReference* srs) { _outSRS = srs; }
+        const SpatialReference* getOutputSRS() const   { return _outSRS.get(); }
+        
+        /**
+         * Given a single feature, produce a correspond set of Building objects.
+         * @param[in ] input    Input feature
+         * @param[in ] cropTo   Extent to which to crop features (based on centroid).
+         *                      Set to GeoExtent::INVALID to disable cropping.
+         * @param[in ] style    Style to apply when creating buildings
+         * @param[out] output   Resulting building data models
+         * @param[in ] progress Progress/error tracking token
+         */
+        virtual bool create(
+            Feature*                input,
+            const GeoExtent&        cropTo,
+            ElevationEnvelope*      terrain,
+            const Style*            style,
+            BuildingVector&         output,
+            const osgDB::Options*   readOptions,
+            ProgressCallback*       progress =0L);
+
+        /**
+         * Create a building object form a feature.
+         * @param[in ] feature Feature from which to create a Building.
+         */
+        virtual Building* createBuilding(
+            Feature*          feature,
+            ProgressCallback* progress =0L);
+
+    protected:
+        virtual ~BuildingFactory() { }
+
+        /** Cleans up a polygon geometry so it's suitable for use */
+        virtual void cleanPolygon(Polygon* polygon);
+
+        /** Creates a building meant to load an external model */
+        virtual Building* createExternalModelBuilding(Feature*, const URI& modelURI, BuildContext&);
+
+        /** Add Elevation objects to a Building */
+        virtual Building* createSampleBuilding(const Feature* feature);
+
+        /** True if the feature's centroid falls within the extent */
+        virtual bool cropToCentroid(const Feature* feature, const GeoExtent& extent) const;
+
+    protected: 
+        osg::ref_ptr<Session>                _session;
+        osg::ref_ptr<BuildingCatalog>        _catalog;
+        osg::ref_ptr<const SpatialReference> _outSRS;
+    };
+
+} } // namespace
+
+
+#endif // OSGEARTH_BUILDINGS_BUILDING_FACTORY_H

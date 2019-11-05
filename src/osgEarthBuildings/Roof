@@ -1,0 +1,138 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_ROOF_H
+#define OSGEARTH_BUILDINGS_ROOF_H
+
+#include "Common"
+#include <osgEarth/Geometry>
+#include <osgEarth/Color>
+#include <osgEarth/Skins>
+#include <osgEarth/ModelResource>
+#include <osgEarth/ModelSymbol>
+#include <vector>
+
+namespace osgEarth { namespace Buildings
+{
+    using namespace osgEarth;
+
+    class Elevation;
+    class BuildContext;
+
+    /**
+     * Top of a building.
+     */
+    class OSGEARTHBUILDINGS_EXPORT Roof : public osg::Referenced
+    {
+    public:
+        enum Type {
+            TYPE_FLAT,
+            TYPE_GABLE,
+            TYPE_INSTANCED
+        };
+
+    public:
+        /** Constructor */
+        Roof();
+        Roof(const Roof& rhs);
+
+        /** Roof type */
+        void setType(const Type& type) { _type = type; }
+        const Type& getType() const    { return _type; }
+
+        /**
+         * Parent elevation.
+         */
+        void setParent(Elevation* elevation) { _parent = elevation; }
+        Elevation* getParent() const         { return _parent; }
+
+        /**
+         * Roof color. If there is a skin, it will be modulated
+         * by this color.
+         */
+        void setColor(const Color& color) { _color = color; }
+        const Color& getColor() const     { return _color; }
+
+        /**
+         * Symbol defining how to texture the roof
+         */
+        void setSkinSymbol(SkinSymbol* symbol)   { _skinSymbol = symbol; }
+        SkinSymbol* getSkinSymbol() const        { return _skinSymbol.get(); }
+
+        /**
+         * Texture and properties for texturing this roof 
+         */
+        void setSkinResource(SkinResource* skin) { _skin = skin; }
+        SkinResource* getSkinResource() const    { return _skin.get(); }
+
+        /**
+         * Symbol defining how to select roof models
+         */
+        void setModelSymbol(ModelSymbol* symbol) { _modelSymbol = symbol; }
+        ModelSymbol* getModelSymbol() const      { return _modelSymbol.get(); }
+
+        /**
+         * Model to place on the roof.
+         */
+        void setModelResource(ModelResource* model) { _model = model; }
+        ModelResource* getModelResource() const     { return _model.get(); }
+
+        /**
+         * An optional tag that identifies this element to the compiler.
+         */
+        void setTag(const std::string& tag) { _tag = tag; }
+        const std::string& getTag() const   { return _tag; }
+
+        /**
+         * Bounding polygon (4-point box) for rooftop models.
+         * Available after calling build().
+         */
+        const osg::Vec3d* getModelBox() const { return _modelBox; }
+        bool hasModelBox() const              { return _hasModelBox; }
+
+    public:
+
+        virtual bool build(const Polygon*, BuildContext& bc);
+
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~Roof() { }
+
+        Type                        _type;
+        Elevation*                  _parent;
+        Color                       _color;
+        osg::ref_ptr<SkinSymbol>    _skinSymbol;
+        osg::ref_ptr<SkinResource>  _skin;
+        osg::ref_ptr<ModelSymbol>   _modelSymbol;
+        osg::ref_ptr<ModelResource> _model;
+        std::string                 _tag;
+        bool                        _hasModelBox;
+        osg::Vec3d                  _modelBox[4];
+
+        bool findRectangle(const Ring*, osg::Vec3d* output) const;
+
+        void resolveSkin(const Polygon*, BuildContext&);
+
+        void resolveClutterModel(const Polygon*, BuildContext&);
+
+        void resolveInstancedModel(const Polygon*, BuildContext&);
+    };
+} }
+
+#endif // OSGEARTH_BUILDINGS_ROOF_H

@@ -1,0 +1,61 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_BUILDINGS_BUILD_CONTEXT_H
+#define OSGEARTH_BUILDINGS_BUILD_CONTEXT_H
+
+#include "Common"
+#include <osgEarth/Random>
+#include <osgEarth/ResourceLibrary>
+#include <osgDB/Options>
+
+namespace osgEarth { namespace Buildings 
+{
+    using namespace osgEarth;
+
+    class /*header-only*/ BuildContext
+    {
+    public:
+        BuildContext() : _seed(0), _terrainMin(0.0f), _terrainMax(0.0f) { }
+
+        void setDBOptions(const osgDB::Options* dbo) { _dbo = dbo; }
+        const osgDB::Options* getDBOptions() const   { return _dbo.get(); }
+
+        /** Seeding value for pseudo-random number generation */
+        void setSeed(unsigned seed) { _seed = seed; }
+        unsigned getSeed() const    { return _seed; }
+
+        void setTerrainMinMax(float min, float max) { _terrainMin = min, _terrainMax = max; }
+        float getTerrainMin() const                 { return _terrainMin; }
+        float getTerrainMax() const                 { return _terrainMax; }
+
+        /** Resource library for shared textures and models */
+        void setResourceLibrary(ResourceLibrary* reslib) { _reslib = reslib; }
+        ResourceLibrary* getResourceLibrary() const      { return _reslib.get(); }
+
+    private:
+        unsigned                           _seed;
+        osg::ref_ptr<ResourceLibrary>      _reslib;
+        osg::ref_ptr<const osgDB::Options> _dbo;
+        float                              _terrainMin;
+        float                              _terrainMax;
+    };
+
+} } // namespace
+
+#endif // OSGEARTH_BUILDINGS_BUILD_CONTEXT_H

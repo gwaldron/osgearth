@@ -223,3 +223,41 @@ void ReadWriteMutex::decrementReaderCount()
     if (_readerCount <= 0)      // if that was the last one, signal that writers are now allowed
         _noReadersEvent.set();
 }
+
+ThreadPool::ThreadPool(unsigned int numThreads) :
+    _numThreads(numThreads)
+{
+    _queue = new osg::OperationQueue;
+    startThreads();
+}
+
+ThreadPool::~ThreadPool()
+{
+    stopThreads();
+}
+
+osg::OperationQueue* ThreadPool::getQueue() const
+{
+    return _queue.get();
+}
+
+void ThreadPool::startThreads()
+{
+    for (unsigned int i = 0; i < _numThreads; ++i)
+    {
+        osg::OperationsThread* thread = new osg::OperationsThread();
+        thread->setOperationQueue(_queue.get());
+        thread->start();
+        _threads.push_back(thread);
+    }
+}
+
+void ThreadPool::stopThreads()
+{
+    for (unsigned int i = 0; i < _threads.size(); ++i)
+    {
+        osg::ref_ptr< osg::OperationsThread > thread = _threads[i].get();
+        thread->setDone(true);
+        thread->join();
+    }
+}

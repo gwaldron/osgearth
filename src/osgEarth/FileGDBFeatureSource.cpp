@@ -73,6 +73,10 @@ FileGDBFeatureSource::init()
 Status
 FileGDBFeatureSource::openImplementation()
 {
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (!options().table().isSet())
         return setStatus(Status::ConfigurationError, "Missing required table name");
 
@@ -161,7 +165,7 @@ FileGDBFeatureSource::openImplementation()
     }
 
 
-    return FeatureSource::openImplementation();
+    return Status::NoError;
 }
 
 void

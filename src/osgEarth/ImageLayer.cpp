@@ -246,6 +246,10 @@ OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
 Status
 ImageLayer::openImplementation()
 {
+    Status parent = TerrainLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (!_emptyImage.valid())
         _emptyImage = ImageUtils::createEmptyImage();
 
@@ -266,7 +270,7 @@ ImageLayer::openImplementation()
         setTileSourceExpected(false);
     }
 
-    return TerrainLayer::openImplementation();
+    return Status::NoError;
 }
 
 void

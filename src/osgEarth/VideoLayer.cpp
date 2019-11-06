@@ -58,6 +58,10 @@ VideoLayer::openImplementation()
 {
     if ( !_openCalled )
     {
+        Status parent = ImageLayer::openImplementation();
+        if (parent.isError())
+            return parent;
+
         if (!options().url().isSet())
         {
             return Status(Status::ConfigurationError, "Missing required url");
@@ -89,11 +93,6 @@ VideoLayer::openImplementation()
         }
 
         setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-
-        if (getStatus().isOK())
-        {
-            return ImageLayer::openImplementation();
-        }
     }
 
     return getStatus();

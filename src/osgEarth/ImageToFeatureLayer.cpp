@@ -80,7 +80,11 @@ ImageToFeatureSource::getImageLayer() const
 
 Status
 ImageToFeatureSource::openImplementation()
-{           
+{
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // Establish the feature profile.
     osg::ref_ptr<const Profile> globalGeodetic = Profile::create("global-geodetic");
 
@@ -91,7 +95,8 @@ ImageToFeatureSource::openImplementation()
     profile->setMaxLevel(options().level().get());
 
     setFeatureProfile(profile);
-    return FeatureSource::openImplementation();
+
+    return Status::NoError;
 }
 
 void

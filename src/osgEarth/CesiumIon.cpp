@@ -163,6 +163,10 @@ CesiumIonImageLayer::init()
 Status
 CesiumIonImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     osg::ref_ptr<const Profile> profile = getProfile();
 
     Status status = _driver.open(
@@ -178,7 +182,7 @@ CesiumIonImageLayer::openImplementation()
         setProfile(profile.get());
     }    
 
-    return status.isOK() ? ImageLayer::openImplementation() : status;
+    return status;
 }
 
 GeoImage

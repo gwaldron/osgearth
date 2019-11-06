@@ -868,7 +868,7 @@ TMS::Driver::open(const URI& uri,
     else
     {
         // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-        _tileMap = TMS::TileMapReaderWriter::read( uri.full(), readOptions );
+        _tileMap = TMS::TileMapReaderWriter::read( uri, readOptions );
 
         if (!_tileMap.valid())
         {
@@ -1108,6 +1108,10 @@ TMSImageLayer::init()
 Status
 TMSImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     osg::ref_ptr<const Profile> profile = getProfile();
 
     Status status = _driver.open(
@@ -1125,7 +1129,7 @@ TMSImageLayer::openImplementation()
         setProfile(profile.get());
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 Status
@@ -1219,6 +1223,10 @@ TMSElevationLayer::init()
 Status
 TMSElevationLayer::openImplementation()
 {
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // Create an image layer under the hood. TMS fetch is the same for image and
     // elevation; we just convert the resulting image to a heightfield
     _imageLayer = new TMSImageLayer(options());
@@ -1233,7 +1241,7 @@ TMSElevationLayer::openImplementation()
     setProfile(_imageLayer->getProfile());
     dataExtents() = _imageLayer->getDataExtents();
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 Status

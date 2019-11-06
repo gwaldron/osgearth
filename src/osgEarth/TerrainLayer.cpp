@@ -297,9 +297,9 @@ TerrainLayer::openImplementation()
     {
         _openCalled = true;
 
-        // Call base class
-        if (VisibleLayer::openImplementation().isError())
-            return getStatus();
+        Status parent = VisibleLayer::openImplementation();
+        if (parent.isError())
+            return parent;
 
         // create the unique cache ID for the cache bin.
         if (options().cacheId().isSet() && !options().cacheId()->empty())

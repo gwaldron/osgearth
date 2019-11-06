@@ -173,6 +173,10 @@ FeatureModelLayer::getNode() const
 Status
 FeatureModelLayer::openImplementation()
 {
+    Status parent = VisibleLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
@@ -181,7 +185,7 @@ FeatureModelLayer::openImplementation()
     if (ssStatus.isError())
         return ssStatus;
 
-    return VisibleLayer::openImplementation();
+    return Status::NoError;
 }
 
 const GeoExtent&

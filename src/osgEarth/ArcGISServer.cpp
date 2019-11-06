@@ -447,6 +447,10 @@ ArcGISServerImageLayer::~ArcGISServerImageLayer()
 Status
 ArcGISServerImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // Default cache policy to NO_CACHE for public services
     if (options().cachePolicy().isSet() == false &&
         options().url()->full().find("arcgisonline.com") != std::string::npos)
@@ -557,7 +561,7 @@ ArcGISServerImageLayer::openImplementation()
         setProfile(profile);
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoImage

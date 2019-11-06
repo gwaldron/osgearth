@@ -309,6 +309,10 @@ OE_LAYER_PROPERTY_IMPL(LandCoverCoverageLayer, float, Warp, warp);
 Status
 LandCoverCoverageLayer::openImplementation()
 {
+    Status parent = Layer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (!_imageLayer.valid())
     {
         if (options().layer().isSet())
@@ -318,14 +322,21 @@ LandCoverCoverageLayer::openImplementation()
         }
     }
 
+    Status status;
+
     if (_imageLayer.valid())
     {
         _imageLayer->setReadOptions(getReadOptions());
         _imageLayer->setCoverage(true);
-        return _imageLayer->open();
+        status = _imageLayer->open();
+    }
+    else
+    {
+        status = Status(Status::ConfigurationError, "No image layer");
     }
 
-    return Status(Status::ConfigurationError, "No image layer");
+    return status;
+
 }
 
 void

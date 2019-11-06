@@ -432,7 +432,7 @@ ModelLayer::openImplementation()
         }
     }
 
-    return STATUS_OK;
+    return Status::NoError;
 }
 
 std::string

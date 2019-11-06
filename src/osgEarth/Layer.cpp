@@ -292,13 +292,13 @@ Layer::open(const osgDB::Options* readOptions)
 Status
 Layer::openImplementation()
 {
-    return STATUS_OK;
+    return Status::NoError;
 }
 
 Status
 Layer::closeImplementation()
 {
-    return STATUS_OK;
+    return Status::NoError;
 }
 
 Status

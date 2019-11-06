@@ -68,6 +68,10 @@ SkyViewImageLayer::init()
 Status
 SkyViewImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     Status imageStatus = _client.open(options().imageLayer(), getReadOptions());
     if (imageStatus.isError())
         return imageStatus;
@@ -75,7 +79,7 @@ SkyViewImageLayer::openImplementation()
     // copy over the profile
     setProfile(getImageLayer()->getProfile());
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoImage

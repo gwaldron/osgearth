@@ -124,6 +124,10 @@ DebugImageLayer::init()
 Status
 DebugImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     _color = osgEarth::htmlColorToVec4f(options().colorCode().get());
 
     if (!getProfile())
@@ -131,7 +135,7 @@ DebugImageLayer::openImplementation()
         setProfile( Profile::create("global-geodetic") );
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoImage

@@ -78,6 +78,10 @@ RoadSurfaceLayer::init()
 Status
 RoadSurfaceLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // assert a feature source:
     Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
@@ -87,7 +91,7 @@ RoadSurfaceLayer::openImplementation()
     if (ssStatus.isError())
         return ssStatus;
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 void

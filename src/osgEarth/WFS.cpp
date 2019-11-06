@@ -243,6 +243,10 @@ WFSFeatureSource::init()
 Status
 WFSFeatureSource::openImplementation()
 {
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // parse the WFS capabilities URL
     std::string capUrl;
     if (options().url().isSet())
@@ -305,7 +309,7 @@ WFSFeatureSource::openImplementation()
 
     setFeatureProfile(fp);
 
-    return FeatureSource::openImplementation();
+    return Status::NoError;
 }
 
 

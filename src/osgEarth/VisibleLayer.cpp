@@ -75,6 +75,10 @@ VisibleLayer::init()
 Status
 VisibleLayer::openImplementation()
 {
+    Status parent = Layer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (options().visible().isSet())
     {
         setVisible(options().visible().get());
@@ -87,7 +91,7 @@ VisibleLayer::openImplementation()
         initializeMinMaxRangeOpacity();
     }
 
-    return Layer::openImplementation();
+    return Status::NoError;
 }
 
 void

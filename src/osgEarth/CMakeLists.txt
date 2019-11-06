@@ -8,7 +8,7 @@ ENDIF(DYNAMIC_OSGEARTH)
 OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
 MARK_AS_ADVANCED(CURL_IS_STATIC)
 
-# NVTT mipmap generation 
+# NVTT mipmap generation
 option(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS "Use NVTT, if available, to generate texture mipmaps on the CPU" OFF)
 mark_as_advanced(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
 if(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
@@ -184,7 +184,7 @@ SET(LIB_PUBLIC_HEADERS
     SceneGraphCallback
     ScreenSpaceLayout
     ScreenSpaceLayoutImpl
-    ScreenSpaceLayoutDeclutter    
+    ScreenSpaceLayoutDeclutter
     ScreenSpaceLayoutCallout
     Shaders
     ShaderFactory
@@ -211,6 +211,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileNode
     Tessellator
     Text
+    ThreeDTilesLayer
     TileKey
     TileHandler
     TileRasterizer
@@ -233,7 +234,7 @@ SET(LIB_PUBLIC_HEADERS
     WMS
     XmlUtils
     XYZ
-    
+
     ActivityMonitorTool
     AutoClipPlaneHandler
     AutoScaleCallback
@@ -284,16 +285,16 @@ SET(LIB_PUBLIC_HEADERS
     UTMGraticule
     UTMLabelingEngine
     ViewFitter
-    
+
     AltitudeFilter
     BufferFilter
-    BuildGeometryFilter  
+    BuildGeometryFilter
     BuildTextFilter
     CentroidFilter
     Common
     ConvertTypeFilter
     CropFilter
-    ExtrudeGeometryFilter    
+    ExtrudeGeometryFilter
     Feature
     FeatureCursor
     FeatureDisplayLayout
@@ -331,7 +332,7 @@ SET(LIB_PUBLIC_HEADERS
     TransformFilter
     XYZFeatureSource
     WFS
-    
+
     AGG.h
     AltitudeSymbol
     BBoxSymbol
@@ -372,7 +373,7 @@ SET(LIB_PUBLIC_HEADERS
     Symbol
     Tags
     TextSymbol
-    
+
     AnnotationSettings
     AnnotationData
     AnnotationLayer
@@ -396,9 +397,9 @@ SET(LIB_PUBLIC_HEADERS
     PlaceNode
     RectangleNode
     TrackNode
-    
-    rtree.h    
-    
+
+    rtree.h
+
     FileGDBFeatureSource
 )
 
@@ -556,6 +557,7 @@ set(TARGET_SRC
     TerrainTileModelFactory.cpp
     Tessellator.cpp
     Text.cpp
+    ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp
     TileKey.cpp
     TileHandler.cpp
@@ -579,7 +581,7 @@ set(TARGET_SRC
     WMS.cpp
     XmlUtils.cpp
     XYZ.cpp
-    
+
     ActivityMonitorTool.cpp
     AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
@@ -623,15 +625,15 @@ set(TARGET_SRC
     UTMGraticule.cpp
     UTMLabelingEngine.cpp
     ViewFitter.cpp
-    
+
     AltitudeFilter.cpp
     BufferFilter.cpp
-    BuildGeometryFilter.cpp 
+    BuildGeometryFilter.cpp
     BuildTextFilter.cpp
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
-    ExtrudeGeometryFilter.cpp    
+    ExtrudeGeometryFilter.cpp
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
@@ -660,13 +662,13 @@ set(TARGET_SRC
     ScriptEngine.cpp
     ScriptFilter.cpp
     SubstituteModelFilter.cpp
-    TessellateOperator.cpp    
+    TessellateOperator.cpp
     TextSymbolizer.cpp
     TFS.cpp
     TransformFilter.cpp
     XYZFeatureSource.cpp
     WFS.cpp
-    
+
     AltitudeSymbol.cpp
     BBoxSymbol.cpp
     BillboardResource.cpp
@@ -704,7 +706,7 @@ set(TARGET_SRC
     StyleSheet.cpp
     Symbol.cpp
     TextSymbol.cpp
-    
+
     AnnotationSettings.cpp
     AnnotationData.cpp
     AnnotationLayer.cpp
@@ -726,10 +728,10 @@ set(TARGET_SRC
     ModelNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
-    
+
     FileGDBFeatureSource.cpp
-    
-    ${SHADERS_CPP} 
+
+    ${SHADERS_CPP}
 )
 
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
@@ -746,7 +748,7 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   )
 
   ADD_DEFINITIONS(-DOSGEARTH_HAVE_MVT)
-  
+
   IF (PROTOBUF_USE_DLLS)
     ADD_DEFINITIONS(-DPROTOBUF_USE_DLLS)
   ENDIF()
@@ -799,11 +801,11 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
     ${TARGET_SRC}
     ${PROTO_VECTOR_TILE_CPP}
   )
-  ADD_DEFINITIONS(-DOSGEARTH_HAVE_MVT)  
+  ADD_DEFINITIONS(-DOSGEARTH_HAVE_MVT)
   IF (PROTOBUF_USE_DLLS)
     ADD_DEFINITIONS(-DPROTOBUF_USE_DLLS)
-  ENDIF()  
-  
+  ENDIF()
+
   LINK_WITH_VARIABLES(${LIB_NAME} Protobuf_LIBRARIES)
 ENDIF()
 

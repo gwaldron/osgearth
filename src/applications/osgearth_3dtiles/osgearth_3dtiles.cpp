@@ -281,17 +281,6 @@ main_view(osg::ArgumentParser& arguments)
     ThreeDTileset* tilesetNode = new ThreeDTileset(tileset, options.get());
     tilesetNode->setMaximumScreenSpaceError(maxSSE);
 
-    // TODO:  This should run on the content, not on the root tileset.
-    // Generate shaders that will render with a texture:
-    osg::StateSet* rootStateSet = tilesetNode->getOrCreateStateSet();
-    rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
-    osgEarth::ShaderGenerator gen;
-    osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
-    if (ss.valid())
-    {
-        tilesetNode->setStateSet(ss);
-    }
-
     app._tileset = tilesetNode;
 
     mapNode->addChild(tilesetNode);

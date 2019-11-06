@@ -26,6 +26,7 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/GeoData>
 #include <osgEarth/Feature>
+#include <osgEarth/StyleSheet>
 #include <osg/Group>
 #include <osg/LOD>
 #include <osg/PagedLOD>
@@ -38,7 +39,6 @@ using namespace osgEarth;
 namespace osgEarth {
     class Map;
     class OGRFeatureSource;
-    class StyleSheet;
 }
 
 /**

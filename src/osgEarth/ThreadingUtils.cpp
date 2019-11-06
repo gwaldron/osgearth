@@ -18,6 +18,9 @@
  */
 #include <osgEarth/ThreadingUtils>
 
+#include <osgDB/ReadFile>
+#include <osgEarth/Utils>
+
 #ifdef _WIN32
     extern "C" unsigned long __stdcall GetCurrentThreadId();
 #elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__ANDROID__)
@@ -28,6 +31,7 @@
 #endif
 
 using namespace osgEarth::Threading;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 
@@ -260,4 +264,76 @@ void ThreadPool::stopThreads()
         thread->setDone(true);
         thread->join();
     }
+}
+
+namespace {
+    class LoadNodeOperation : public osg::Operation
+    {
+    public:
+        LoadNodeOperation(const std::string& url, osgDB::Options* options, osgUtil::IncrementalCompileOperation* ico, osgEarth::Threading::Promise<osg::Node> promise) :
+            _url(url),
+            _promise(promise),
+            _ico(ico),
+            _options(options)
+        {
+        }
+
+        void operator()(osg::Object*)
+        {
+            if (!_promise.isAbandoned())
+            {
+                // Read the node
+                osg::ref_ptr< osg::Node > result = osgDB::readNodeFile(_url, _options.get());
+
+                // If we have an ICO, wait for it to be compiled
+                if (result.valid() && _ico.valid())
+                {
+                    osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> compileSet =
+                        new osgUtil::IncrementalCompileOperation::CompileSet(result.get());
+
+                    _ico->add(compileSet.get());
+
+                    while (!compileSet->compiled())
+                    {
+                        OpenThreads::Thread::YieldCurrentThread();
+                    }
+                }
+
+                _promise.resolve(result.get());
+            }
+        }
+
+        osgEarth::Threading::Promise<osg::Node> _promise;
+        osg::ref_ptr< osgUtil::IncrementalCompileOperation > _ico;
+        osg::ref_ptr< osgDB::Options > _options;
+        std::string _url;
+    };
+}
+
+Future<osg::Node> osgEarth::Threading::readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options)
+{
+    osg::ref_ptr<ThreadPool> threadPool;
+    if (options)
+    {
+        threadPool = OptionsData<ThreadPool>::get(options, "threadpool");
+    }
+
+    Promise<osg::Node> promise;
+
+    osg::ref_ptr< osg::Operation > operation = new LoadNodeOperation(url, options, ico, promise);
+
+    if (operation.valid())
+    {
+        if (threadPool.valid())
+        {
+            threadPool->getQueue()->add(operation);
+        }
+        else
+        {
+            OE_WARN << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
+            operation->operator()(0);
+        }
+    }
+
+    return promise.getFuture();
 }

@@ -24,6 +24,8 @@
 #include <OpenThreads/Mutex>
 #include <OpenThreads/Thread>
 #include <osg/OperationThread>
+#include <osgUtil/IncrementalCompileOperation>
+#include <osgDB/Options>
 #include <osg/ref_ptr>
 #include <set>
 #include <map>
@@ -311,6 +313,9 @@ namespace osgEarth { namespace Threading
         std::vector< osg::ref_ptr< osg::OperationsThread > > _threads;
         unsigned int _numThreads;
     };
+
+
+    extern OSGEARTH_EXPORT Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options);
 
 } } // namepsace osgEarth::Threading
 

@@ -186,6 +186,100 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         std::string _format;
         URIContext _uriContext;
     };
+
+
+
+    /**
+ * Manages a TileSet
+ */
+    class OSGEARTH_EXPORT ThreeDTileset : public osg::MatrixTransform
+    {
+    public:
+        ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options);
+
+        osg::BoundingSphere computeBound() const;
+
+        float getMaximumScreenSpaceError() const;
+        void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
+        void touchTile(osg::Node* node);
+
+        void traverse(osg::NodeVisitor& nv);
+
+    private:
+        void startCull();
+        void endCull();
+
+        osg::ref_ptr< TDTiles::Tileset > _tileset;
+        osg::ref_ptr< osgDB::Options > _options;
+        float _maximumScreenSpaceError;
+
+        typedef std::set< osg::ref_ptr< osg::Node > > NodeSet;
+
+        NodeSet _liveTiles;
+        NodeSet _deadTiles;
+    };
+
+    class OSGEARTH_EXPORT ThreeDTilesetContent : public osg::Group
+    {
+    public:
+        ThreeDTilesetContent(ThreeDTileset* tilesetNode, TDTiles::Tileset* tileset, osgDB::Options* options);
+
+        osg::BoundingSphere computeBound() const;
+
+    private:
+        ThreeDTileset* _tilesetNode;
+        osg::ref_ptr< TDTiles::Tileset > _tileset;
+        osg::ref_ptr< osgDB::Options > _options;
+    };
+
+    class OSGEARTH_EXPORT ThreeDTile : public osg::MatrixTransform
+    {
+    public:
+        ThreeDTile(ThreeDTileset* tileset, TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options);
+        osg::BoundingSphere computeBound() const;
+
+        bool hasContent();
+
+        bool isContentReady();
+
+        void resolveContent();
+
+        void updateTracking();
+
+        void requestContent(osgUtil::IncrementalCompileOperation* ico);
+
+        double getDistanceToTile(osgUtil::CullVisitor* cv);
+
+        double computeScreenSpaceError(osgUtil::CullVisitor* cv);
+
+        void traverse(osg::NodeVisitor& nv);
+
+        void unloadContent();
+
+        const TDTiles::Tile* getTile() const { return _tile.get(); }
+
+    private:
+        osg::ref_ptr< TDTiles::Tile > _tile;
+
+        osg::ref_ptr< osg::Node > _content;
+        osg::ref_ptr< osg::Group > _children;
+
+        osg::ref_ptr< osg::Node > _boundsDebug;
+        ThreeDTileset* _tileset;
+
+        osg::BoundingBoxd _boundingBox;
+
+        Threading::Future<osg::Node> _contentFuture;
+        bool _requestedContent;
+        bool _contentUnloaded;
+
+        bool _immediateLoad;
+
+        bool _firstVisit;
+
+        osg::ref_ptr< osgDB::Options > _options;
+    };
 } } }
 
 namespace osgEarth { namespace Contrib

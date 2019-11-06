@@ -432,7 +432,7 @@ namespace osgEarth { namespace GDAL
 #endif
         if (err != CE_None)
         {
-            OE_WARN << LC << "RasterIO failed.\n";
+            //OE_WARN << LC << "RasterIO failed.\n";
         }
         return (err == CE_None);
     }
@@ -457,13 +457,15 @@ GDAL::Driver::setExternalDataset(GDAL::ExternalDataset* value)
 
 // Open the data source and prepare it for reading
 Status
-GDAL::Driver::open(const GDAL::Options& options,
+GDAL::Driver::open(const std::string& name,
+                   const GDAL::Options& options,
                    unsigned tileSize,
                    DataExtentList& layerDataExtents,
                    const osgDB::Options* readOptions)
 {
     GDAL_SCOPED_LOCK;
 
+    _name = name;
     _gdalOptions = options;
 
     // Is a valid external GDAL dataset specified ?
@@ -563,12 +565,6 @@ GDAL::Driver::open(const GDAL::Options& options,
         warpProfile = Profile::create(gdalOptions().warpProfile().value());
     }
 
-    if (warpProfile.valid())
-    {
-        OE_INFO << LC << INDENT << "Created warp profile " << warpProfile->toString() << std::endl;
-    }
-
-
     //Create a spatial reference for the source.
     std::string srcProj = _srcDS->GetProjectionRef();
 
@@ -578,10 +574,9 @@ GDAL::Driver::open(const GDAL::Options& options,
         srcProj = _srcDS->GetGCPProjection();
     }
 
-
     if (!srcProj.empty() && _profile.valid())
     {
-        OE_WARN << LC << "Overriding profile of a layer that already defines its own SRS" << std::endl;
+        //OE_WARN << "Overriding profile of a layer that already defines its own SRS" << std::endl;
     }
 
     osg::ref_ptr<const SpatialReference> src_srs;
@@ -594,7 +589,7 @@ GDAL::Driver::open(const GDAL::Options& options,
         src_srs = SpatialReference::create(srcProj);
         if (!src_srs.valid())
         {
-            OE_DEBUG << LC << "Cannot create source SRS from its projection info: " << srcProj << std::endl;
+            OE_DEBUG << "Cannot create source SRS from its projection info: " << srcProj << std::endl;
         }
     }
 
@@ -622,10 +617,10 @@ GDAL::Driver::open(const GDAL::Options& options,
 
     bool hasGCP = _srcDS->GetGCPCount() > 0 && _srcDS->GetGCPProjection();
     bool isRotated = _geotransform[2] != 0.0 || _geotransform[4];
-    if (hasGCP) 
-        OE_DEBUG << LC << source << " has GCP georeferencing" << std::endl;
-    if (isRotated)
-        OE_DEBUG << LC << source << " is rotated " << std::endl;
+    //if (hasGCP) 
+    //    OE_DEBUG << LC << source << " has GCP georeferencing" << std::endl;
+    //if (isRotated)
+    //    OE_DEBUG << LC << source << " is rotated " << std::endl;
     bool requiresReprojection = hasGCP || isRotated;
 
     const Profile* profile = NULL;
@@ -634,28 +629,19 @@ GDAL::Driver::open(const GDAL::Options& options,
     if (warpProfile)
     {
         profile = warpProfile.get();
-        if (profile)
-        {
-            OE_DEBUG << LC << INDENT << "Using warp Profile: " << profile->toString() << std::endl;
-        }
     }
 
     // If we have an override profile, just take it.
     if (_profile.valid())
     {
         profile = _profile.get();
-        if (profile)
-        {
-            OE_DEBUG << LC << INDENT << "Using override Profile: " << profile->toString() << std::endl;
-        }
     }
 
     // If neither a warp nor override profile were provided, work out the profile from the source's own SRS.
     if (!profile && src_srs->isGeographic())
     {
-        OE_DEBUG << LC << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() << std::endl;
+        OE_DEBUG << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() << std::endl;
         profile = Profile::create(src_srs.get(), -180.0, -90.0, 180.0, 90.0, 2u, 1u);
-        //profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         if (!profile)
         {
             return Status::Error(Status::ResourceUnavailable, Stringify()
@@ -708,7 +694,6 @@ GDAL::Driver::open(const GDAL::Options& options,
     //Get the _geotransform
     if (_profile.valid())
     {
-        OE_DEBUG << LC << INDENT << "Get geotransform from Override Profile" << std::endl;
         _geotransform[0] = _profile->getExtent().xMin(); //Top left x
         _geotransform[1] = _profile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
         _geotransform[2] = 0;
@@ -720,13 +705,13 @@ GDAL::Driver::open(const GDAL::Options& options,
     }
     else
     {
-        OE_DEBUG << LC << INDENT << "Get geotransform from warped dataset" << std::endl;
         _warpedDS->GetGeoTransform(_geotransform);
     }
 
     if (GDALInvGeoTransform(_geotransform, _invtransform) == 0)
     {
-        OE_WARN << LC << INDENT << "_geotransform not invertible" << std::endl;
+        //OE_WARN << LC << INDENT << "_geotransform not invertible" << std::endl;
+        //TODO: error?
     }
 
     double minX, minY, maxX, maxY;
@@ -762,9 +747,6 @@ GDAL::Driver::open(const GDAL::Options& options,
         pixelToGeo(0.0, _warpedDS->GetRasterYSize(), minX, minY);
         pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
     }
-
-
-
 
     OE_DEBUG << LC << INDENT << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
 
@@ -1703,6 +1685,7 @@ GDALImageLayer::openImplementation()
     }
     
     Status status = _driver->open(
+        getName(),
         options(),
         options().tileSize().get(),
         dataExtents(),
@@ -1800,6 +1783,7 @@ GDALElevationLayer::openImplementation()
     }
 
     Status status = _driver->open(
+        getName(),
         options(),
         options().tileSize().get(),
         dataExtents(),

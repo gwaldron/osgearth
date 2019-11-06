@@ -105,8 +105,8 @@ namespace osgEarth { namespace GDAL
 
         //! Opens and initializes the connection to the dataset
         Status open(
+            const std::string& name,
             const GDAL::Options& options,
-            //const GDALLayerOptions<ImageLayer::Options>& options,
             unsigned tileSize,
             DataExtentList& out_dataExtents,
             const osgDB::Options* readOptions);
@@ -149,6 +149,9 @@ namespace osgEarth { namespace GDAL
         GDAL::Options _gdalOptions;
         const GDAL::Options& gdalOptions() const { return _gdalOptions; }
         osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
+        std::string _name;
+
+        const std::string& getName() const { return _name; }
     };
 } }
 

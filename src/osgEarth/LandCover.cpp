@@ -326,8 +326,16 @@ LandCoverCoverageLayer::openImplementation()
 
     if (_imageLayer.valid())
     {
+        // pass along the read options
         _imageLayer->setReadOptions(getReadOptions());
+
+        // disable caching for coverage layers so they don't inherit the wrong bin
+        // (they are always used in composited form)
+        _imageLayer->setCachePolicy(CachePolicy::NO_CACHE);
+
+        // force the "coverage" flag on to generate unnormalized and unfiltered data
         _imageLayer->setCoverage(true);
+
         status = _imageLayer->open();
     }
     else

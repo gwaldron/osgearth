@@ -228,6 +228,7 @@ LandCoverLayer::openImplementation()
 
             // Create the coverage layer:
             LandCoverCoverageLayer* coverage = new LandCoverCoverageLayer(coverageOptions);
+            coverage->setCachePolicy(CachePolicy::NO_CACHE);
             coverage->setReadOptions(getReadOptions());
             addCoverage(coverage);
         }

@@ -43,7 +43,7 @@ using namespace osgEarth;
 using namespace osgEarth::GDAL;
 
 #undef LC
-#define LC "[GDAL] "
+#define LC "[GDAL] Layer \"" << getName() << "\" "
 
 #define INDENT ""
 

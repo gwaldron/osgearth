@@ -192,6 +192,10 @@ FeatureImageLayer::init()
 Status
 FeatureImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // assert a feature source:
     Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
@@ -204,7 +208,7 @@ FeatureImageLayer::openImplementation()
     if (!getFeatureSource() && !options().featureSourceLayer().isSet())
         return Status(Status::ConfigurationError, "Required feature source is missing");
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 void

@@ -722,6 +722,10 @@ FlatteningLayer::init()
 Status
 FlatteningLayer::openImplementation()
 {
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // ensure the caller named a feature source:
     Status fsStatus = _client.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
@@ -734,7 +738,7 @@ FlatteningLayer::openImplementation()
         setProfile( profile );
     }
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 FlatteningLayer::~FlatteningLayer()

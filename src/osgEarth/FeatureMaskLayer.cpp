@@ -61,11 +61,15 @@ FeatureMaskLayer::getFeatureSource() const
 Status
 FeatureMaskLayer::openImplementation()
 {
+    Status parent = MaskLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     Status fsStatus = _client.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    return MaskLayer::openImplementation();
+    return Status::NoError;
 }
 
 osg::Vec3dArray*

@@ -1682,6 +1682,10 @@ GDALImageLayer::init()
 Status
 GDALImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     _driver = new GDAL::Driver();
     
     if (options().noDataValue().isSet())
@@ -1712,7 +1716,7 @@ GDALImageLayer::openImplementation()
         setProfile(_driver->getProfile());
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 Status
@@ -1779,6 +1783,10 @@ GDALElevationLayer::init()
 Status
 GDALElevationLayer::openImplementation()
 {    
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     _driver = new GDAL::Driver();
     
     _driver->setNoDataValue( options().noDataValue().get() );
@@ -1805,7 +1813,7 @@ GDALElevationLayer::openImplementation()
         setProfile(_driver->getProfile());
     }
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 Status

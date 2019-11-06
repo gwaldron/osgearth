@@ -769,6 +769,10 @@ WMSImageLayer::init()
 Status
 WMSImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     WMS::Driver* driver = new WMS::Driver(options(), this, getReadOptions());
     _driver = driver;
 
@@ -786,7 +790,7 @@ WMSImageLayer::openImplementation()
         setProfile(profile.get());
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoImage

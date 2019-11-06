@@ -92,6 +92,10 @@ BingImageLayer::~BingImageLayer()
 Status
 BingImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (_key.empty())
     {
         return Status(Status::ConfigurationError, "Bing API key is required");
@@ -103,7 +107,7 @@ BingImageLayer::openImplementation()
             MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
             2u, 2u));
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 Status
@@ -304,6 +308,10 @@ BingElevationLayer::~BingElevationLayer()
 Status
 BingElevationLayer::openImplementation()
 {
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (_key.empty())
     {
         return Status(Status::ConfigurationError, "Bing API key is required");
@@ -315,7 +323,7 @@ BingElevationLayer::openImplementation()
         MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
         2u, 2u));
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoHeightField

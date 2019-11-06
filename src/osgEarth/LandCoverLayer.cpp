@@ -201,6 +201,10 @@ LandCoverLayer::addCoverage(LandCoverCoverageLayer* value)
 Status
 LandCoverLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     const Profile* profile = getProfile();
     if (!profile)
     {
@@ -258,7 +262,7 @@ LandCoverLayer::openImplementation()
     // Since this is possibly a composited layer with warping, we just
     // let it default so we can oversample the data with warping.
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 void

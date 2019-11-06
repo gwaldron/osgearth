@@ -465,6 +465,10 @@ OGRFeatureSource::~OGRFeatureSource()
 Status
 OGRFeatureSource::openImplementation()
 {
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // Data source at a URL?
     if (options().url().isSet())
     {
@@ -689,7 +693,7 @@ OGRFeatureSource::openImplementation()
 
     OE_INFO << LC << getName() << " : opened OK" << std::endl;
 
-    return FeatureSource::openImplementation();
+    return Status::NoError;
 }
 
 const Status&

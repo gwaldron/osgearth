@@ -99,7 +99,11 @@ CompositeImageLayer::init()
 
 Status
 CompositeImageLayer::openImplementation()
-{    
+{
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     _open = true;
 
     osg::ref_ptr<const Profile> profile;
@@ -211,7 +215,7 @@ CompositeImageLayer::openImplementation()
 
     setProfile( profile.get() );
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoImage
@@ -444,6 +448,10 @@ CompositeElevationLayer::init()
 Status
 CompositeElevationLayer::openImplementation()
 {
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     _open = true;
 
     osg::ref_ptr<const Profile> profile;
@@ -554,7 +562,7 @@ CompositeElevationLayer::openImplementation()
 
     setProfile( profile.get() );
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoHeightField

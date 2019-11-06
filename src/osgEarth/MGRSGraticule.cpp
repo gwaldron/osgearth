@@ -341,11 +341,15 @@ MGRSGraticule::init()
 Status
 MGRSGraticule::openImplementation()
 {
+    Status parent = VisibleLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
 
-    return VisibleLayer::openImplementation();
+    return Status::NoError;
 }
 
 void

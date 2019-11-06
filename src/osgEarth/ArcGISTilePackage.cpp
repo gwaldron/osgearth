@@ -199,6 +199,10 @@ ArcGISTilePackageImageLayer::~ArcGISTilePackageImageLayer()
 Status
 ArcGISTilePackageImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     readConf();
 
     // establish a profile if we don't already have one:
@@ -218,7 +222,7 @@ ArcGISTilePackageImageLayer::openImplementation()
         setProfile(profile);
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoImage

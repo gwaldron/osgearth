@@ -68,6 +68,10 @@ OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MaxLevel, maxLevel);
 Status
 XYZFeatureSource::openImplementation()
 {
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
     FeatureProfile* fp = 0L;
 
     // Try to get the results from the settings instead
@@ -104,7 +108,7 @@ XYZFeatureSource::openImplementation()
 
     setFeatureProfile(fp);
 
-    return FeatureSource::openImplementation();
+    return Status::NoError;
 }
 
 void

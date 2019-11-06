@@ -74,6 +74,10 @@ FeatureElevationLayer::init()
 Status
 FeatureElevationLayer::openImplementation()
 {
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     Status fsStatus = _client.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
@@ -110,7 +114,7 @@ FeatureElevationLayer::openImplementation()
         dataExtents().push_back(de);
     }
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 void

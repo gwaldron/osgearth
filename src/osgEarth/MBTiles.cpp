@@ -115,6 +115,10 @@ MBTilesImageLayer::init()
 Status
 MBTilesImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     osg::ref_ptr<const Profile> profile = getProfile();
 
     Status status = _driver.open(
@@ -137,7 +141,7 @@ MBTilesImageLayer::openImplementation()
         setProfile(profile.get());
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 void
@@ -228,6 +232,10 @@ MBTilesElevationLayer::init()
 Status
 MBTilesElevationLayer::openImplementation()
 {
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     osg::ref_ptr<const Profile> profile = getProfile();
 
     Status status = _driver.open(
@@ -250,7 +258,7 @@ MBTilesElevationLayer::openImplementation()
         setProfile(profile.get());
     }
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 void

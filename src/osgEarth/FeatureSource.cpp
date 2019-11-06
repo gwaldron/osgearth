@@ -105,6 +105,10 @@ FeatureSource::init()
 Status
 FeatureSource::openImplementation()
 {
+    Status parent = Layer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // Create and initialize the filters.
     for(unsigned i=0; i<options().filters().size(); ++i)
     {
@@ -124,7 +128,7 @@ FeatureSource::openImplementation()
         }
     }
 
-    return Layer::openImplementation();
+    return Status::NoError;
 }
 
 const Status&

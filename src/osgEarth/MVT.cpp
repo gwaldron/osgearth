@@ -476,6 +476,10 @@ OE_LAYER_PROPERTY_IMPL(MVTFeatureSource, URI, URL, url);
 Status
 MVTFeatureSource::openImplementation()
 {
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
     std::string fullFilename = options().url()->full();
 
     sqlite3** dbptr = (sqlite3**)(&_database);
@@ -487,7 +491,7 @@ MVTFeatureSource::openImplementation()
 
     setFeatureProfile(createFeatureProfile());
 
-    return FeatureSource::openImplementation();
+    return Status::NoError;
 }
 
 void

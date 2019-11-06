@@ -197,6 +197,10 @@ TFSFeatureSource::init()
 Status
 TFSFeatureSource::openImplementation()
 {
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
     FeatureProfile* fp = 0L;
 
     // Try to read the TFS metadata:
@@ -246,7 +250,7 @@ TFSFeatureSource::openImplementation()
 
     setFeatureProfile(fp);
 
-    return FeatureSource::openImplementation();
+    return Status::NoError;
 }
 
 

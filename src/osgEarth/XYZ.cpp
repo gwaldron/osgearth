@@ -202,6 +202,10 @@ XYZImageLayer::init()
 Status
 XYZImageLayer::openImplementation()
 {
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     osg::ref_ptr<const Profile> profile = getProfile();
 
     Status status = _driver.open(
@@ -219,7 +223,7 @@ XYZImageLayer::openImplementation()
         setProfile(profile.get());
     }
 
-    return ImageLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoImage
@@ -270,6 +274,10 @@ XYZElevationLayer::init()
 Status
 XYZElevationLayer::openImplementation()
 {
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     // Create an image layer under the hood. TMS fetch is the same for image and
     // elevation; we just convert the resulting image to a heightfield
     _imageLayer = new XYZImageLayer(options());
@@ -283,7 +291,7 @@ XYZElevationLayer::openImplementation()
 
     setProfile(_imageLayer->getProfile());            
 
-    return ElevationLayer::openImplementation();
+    return Status::NoError;
 }
 
 GeoHeightField

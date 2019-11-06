@@ -4,7 +4,6 @@
     <xi:include href="viewpoints.xml"/>
 
     <LandCover name="Land Cover Raster" max_data_level="15">
-        <cache_policy usage="no_cache"/>
 
         <coverages>
             <coverage name="ESA GLOBCOVER">

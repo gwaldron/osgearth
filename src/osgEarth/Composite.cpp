@@ -104,6 +104,10 @@ CompositeImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
+    // If we're in cache-only mode, do not attempt to open the component layers!
+    if (getCacheSettings()->cachePolicy()->isCacheOnly())
+        return Status::NoError;
+
     _open = true;
 
     osg::ref_ptr<const Profile> profile;
@@ -153,54 +157,63 @@ CompositeImageLayer::openImplementation()
     {
         ImageLayer* layer = i->get();
 
-        // TODO: disable the L2 cache...used to be in the tile source
-        // TODO: replacement for "dynamic" tile sources
+        // Must disable cacheing for the component layers; otherwise they
+        // will inherit the same cache bin as the parent and that's bad.
+        layer->setCachePolicy(CachePolicy::NO_CACHE);
 
         layer->setReadOptions(getReadOptions());
 
         Status status = layer->open();
 
-        if (status.isError())
+        if (status.isOK())
         {
-            return status;
-        }
+            OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
 
-        OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
-
-        // If no profile is specified assume they want to use the profile of the first layer in the list.
-        if (!profile.valid())
-        {
-            profile = layer->getProfile();
+            // If no profile is specified assume they want to use the profile of the first layer in the list.
             if (!profile.valid())
             {
-                return Status(
-                    Status::ResourceUnavailable, 
-                    Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                profile = layer->getProfile();
+                if (!profile.valid())
+                {
+                    return Status(
+                        Status::ResourceUnavailable, 
+                        Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                }
+            }
+
+            // gather extents                        
+            const DataExtentList& extents = layer->getDataExtents();  
+
+            // If even one of the layers' data extents is unknown, the entire composite
+            // must have unknown data extents:
+            if (extents.empty())
+            {
+                dataExtentsValid = false;
+                dataExtents().clear();
+            }
+
+            if (dataExtentsValid)
+            {
+                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                {                
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;                
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
+                    dataExtents().push_back( dataExtent );
+                }
             }
         }
 
-        // gather extents                        
-        const DataExtentList& extents = layer->getDataExtents();  
-
-        // If even one of the layers' data extents is unknown, the entire composite
-        // must have unknown data extents:
-        if (extents.empty())
+        else
         {
-            dataExtentsValid = false;
-            dataExtents().clear();
-        }
-
-        if (dataExtentsValid)
-        {
-            for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-            {                
-                // Convert the data extent to the profile that is actually used by this TileSource
-                DataExtent dataExtent = *j;                
-                GeoExtent ext = dataExtent.transform(profile->getSRS());
-                unsigned int minLevel = 0;
-                unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
-                dataExtent = DataExtent(ext, minLevel, maxLevel);                                
-                dataExtents().push_back( dataExtent );
+            OE_WARN << LC << "...failed to open " << layer->getName() << ": " << status.message() << std::endl;
+            if (getCacheSettings()->isCacheEnabled())
+            {
+                OE_WARN << LC << "...cache writes will be DISABLED for this layer" << std::endl;
+                getCacheSettings()->integrateCachePolicy(CachePolicy(CachePolicy::USAGE_READ_ONLY));
             }
         }
     }
@@ -210,7 +223,14 @@ CompositeImageLayer::openImplementation()
     // off the cache even if all components fail to initialize for some reason.
     if (profile.valid() == false)
     {
-        profile = Profile::create("global-geodetic");
+        if (getCacheSettings()->isCacheEnabled())
+        {
+            profile = Profile::create("global-geodetic");
+        }
+        else
+        {
+            return Status(Status::ResourceUnavailable, "Unable to open any component layers");
+        }
     }
 
     setProfile( profile.get() );
@@ -450,7 +470,11 @@ CompositeElevationLayer::openImplementation()
 {
     Status parent = ElevationLayer::openImplementation();
     if (parent.isError())
-        return parent;
+        return parent;    
+    
+    // If we're in cache-only mode, do not attempt to open the component layers!
+    if (getCacheSettings() && getCacheSettings()->cachePolicy()->isCacheOnly())
+        return Status::NoError;
 
     _open = true;
 
@@ -501,53 +525,62 @@ CompositeElevationLayer::openImplementation()
     {
         ElevationLayer* layer = i->get();
 
-        // TODO: disable the L2 cache...used to be in the tile source
-        // TODO: replacement for "dynamic" tile sources
+        // Must disable cacheing for the component layers; otherwise they
+        // will inherit the same cache bin as the parent and that's bad.
+        layer->setCachePolicy(CachePolicy::NO_CACHE);
 
         layer->setReadOptions(getReadOptions());
 
         Status status = layer->open();
 
-        if (status.isError())
+        if (status.isOK())
         {
-            return status;
-        }
+            OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
 
-        OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
-
-        // If no profile is specified assume they want to use the profile of the first layer in the list.
-        if (!profile.valid())
-        {
-            profile = layer->getProfile();
+            // If no profile is specified assume they want to use the profile of the first layer in the list.
             if (!profile.valid())
             {
-                return Status(Status::ResourceUnavailable, 
-                    Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                profile = layer->getProfile();
+                if (!profile.valid())
+                {
+                    return Status(Status::ResourceUnavailable, 
+                        Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                }
+            }
+
+            // gather extents                        
+            const DataExtentList& extents = layer->getDataExtents();  
+
+            // If even one of the layers' data extents is unknown, the entire composite
+            // must have unknown data extents:
+            if (extents.empty())
+            {
+                dataExtentsValid = false;
+                dataExtents().clear();
+            }
+
+            if (dataExtentsValid)
+            {
+                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                {                
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;                
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
+                    dataExtents().push_back( dataExtent );
+                }
             }
         }
 
-        // gather extents                        
-        const DataExtentList& extents = layer->getDataExtents();  
-
-        // If even one of the layers' data extents is unknown, the entire composite
-        // must have unknown data extents:
-        if (extents.empty())
+        else
         {
-            dataExtentsValid = false;
-            dataExtents().clear();
-        }
-
-        if (dataExtentsValid)
-        {
-            for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-            {                
-                // Convert the data extent to the profile that is actually used by this TileSource
-                DataExtent dataExtent = *j;                
-                GeoExtent ext = dataExtent.transform(profile->getSRS());
-                unsigned int minLevel = 0;
-                unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
-                dataExtent = DataExtent(ext, minLevel, maxLevel);                                
-                dataExtents().push_back( dataExtent );
+            OE_WARN << LC << "...failed to open " << layer->getName() << ": " << status.message() << std::endl;
+            if (getCacheSettings()->isCacheEnabled())
+            {
+                OE_WARN << LC << "...cache writes will be DISABLED for this layer" << std::endl;
+                getCacheSettings()->integrateCachePolicy(CachePolicy(CachePolicy::USAGE_READ_ONLY));
             }
         }
     }
@@ -557,7 +590,14 @@ CompositeElevationLayer::openImplementation()
     // off the cache even if all components fail to initialize for some reason.
     if (profile.valid() == false)
     {
-        profile = Profile::create("global-geodetic");
+        if (getCacheSettings()->isCacheEnabled())
+        {
+            profile = Profile::create("global-geodetic");
+        }
+        else
+        {
+            return Status(Status::ResourceUnavailable, "Unable to open any component layers");
+        }
     }
 
     setProfile( profile.get() );

@@ -372,12 +372,6 @@ TerrainLayer::openImplementation()
             _tileSource = createAndOpenTileSource();
         }
 
-        if (getProfile())
-        {
-            // create the final profile from any overrides:
-            applyProfileOverrides();
-        }
-
         // Finally, open and activate a caching bin for this layer if it
         // hasn't already been created.
         if (_cacheSettings->isCacheEnabled() && _cacheSettings->getCacheBin() == 0L)
@@ -389,12 +383,6 @@ TerrainLayer::openImplementation()
                 OE_INFO << LC << "Cache bin is [" << bin->getID() << "]\n";
             }
         }
-
-        OE_INFO << LC
-            << (getProfile()? getProfile()->toString() : "[no profile]") << " "
-            << (_cacheSettings.valid()? _cacheSettings->toString() : "[no cache settings]")
-            << std::endl;
-
     }
 
     return getStatus();
@@ -464,6 +452,17 @@ void
 TerrainLayer::setProfile(const Profile* profile)
 {
     _profile = profile;
+
+    if (getProfile())
+    {
+        // augment the final profile with any overrides:
+        applyProfileOverrides();
+
+        OE_INFO << LC
+            << (getProfile()? getProfile()->toString() : "[no profile]") << " "
+            << (_cacheSettings.valid()? _cacheSettings->toString() : "[no cache settings]")
+            << std::endl;
+    }
 }
 
 bool

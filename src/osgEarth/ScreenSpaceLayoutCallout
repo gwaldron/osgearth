@@ -155,6 +155,7 @@ namespace osgEarth { namespace Internal
         _leaders = new LineDrawable(GL_LINES);
         _leaders->setCullingActive(false);
         _leaders->setDataVariance(osg::Object::DYNAMIC);
+        _leaders->setUseGPU(false);
         _leaders->setColor(_leaderColor);
         _leaders->setLineSmooth(true);
         GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
@@ -617,7 +618,8 @@ namespace osgEarth { namespace Internal
                 renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
 
                 renderInfo.getState()->apply(local._leaders->getStateSet());
-                renderInfo.getState()->apply(local._leaders->getGPUStateSet());
+                // don't need when setting setUseGPU(false)
+                //renderInfo.getState()->apply(local._leaders->getGPUStateSet());
                 glDepthFunc(GL_ALWAYS);
                 glDepthMask(GL_FALSE);
                 glEnable(GL_BLEND);

@@ -207,20 +207,32 @@ Registry::instance(bool reset)
 }
 
 void
-Registry::release()
+Registry::releaseGLObjects(osg::State* state) const
 {
     // Clear out the state set cache
     if (_stateSetCache.valid())
     {
-        _stateSetCache->releaseGLObjects(NULL);
-        _stateSetCache->clear();
+        _stateSetCache->releaseGLObjects(state);
     }
 
     // Clear out the VirtualProgram shared program repository
     _programRepo.lock();
-    _programRepo.releaseGLObjects(NULL);
+    _programRepo.releaseGLObjects(state);
     _programRepo.unlock();
-    
+}
+
+void
+Registry::release()
+{
+    // GL resources (all GCs):
+    releaseGLObjects(NULL);
+
+    // Clear out the state set cache
+    if (_stateSetCache.valid())
+    {
+        _stateSetCache->clear();
+    }
+
     // SpatialReference cache
     _srsMutex.lock();
     _srsCache.clear();

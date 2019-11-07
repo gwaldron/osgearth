@@ -107,12 +107,12 @@ ProgramRepo::~ProgramRepo()
 }
 
 void
-ProgramRepo::lock()
+ProgramRepo::lock() const
 {
     _m.lock();
 }
 
-void ProgramRepo::unlock()
+void ProgramRepo::unlock() const
 {
     _m.unlock();
 }

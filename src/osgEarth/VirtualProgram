@@ -233,10 +233,10 @@ namespace osgEarth
 
             //! Exclusive lock on the repo - enclose any calls to this object
             //! with a lock/unlock pair
-            void lock();
+            void lock() const;
 
             //! unlock the repo
-            void unlock();
+            void unlock() const;
 
             //! Search for a program matching the key and return it, adding the user
             //! to its users list and updating the frame number.

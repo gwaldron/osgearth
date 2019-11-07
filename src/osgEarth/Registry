@@ -300,6 +300,11 @@ namespace osgEarth
          */
         void setMaxNumberOfVertsPerDrawable(unsigned value);
         unsigned getMaxNumberOfVertsPerDrawable() const;
+
+        /**
+         * Release OpenGL resources associated with anything in the reigstry
+         */
+        void releaseGLObjects(class osg::State*) const;
         
         //! Release any resources held by the registry so it can be re-used
         void release();

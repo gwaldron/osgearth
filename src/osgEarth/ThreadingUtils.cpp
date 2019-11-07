@@ -293,9 +293,10 @@ namespace {
 
                     _ico->add(compileSet.get());
 
+                    // spin wait
                     while (!compileSet->compiled())
                     {
-                        OpenThreads::Thread::YieldCurrentThread();
+                        OpenThreads::Thread::microSleep(1000);
                     }
                 }
 

@@ -8,45 +8,46 @@
 
 namespace osg
 {
-   class Group;
+    class Group;
 }
 
-namespace osgEarth
-   {
-      class OSGEARTH_EXPORT ExtrudeGeometryFilterNode : public osg::Object
-      {
-      public:
-         struct ModelSymbol
-         {
+namespace osgEarth { namespace Util
+{
+    class ExtrudeGeometryFilterNode : public osg::Object
+    {
+    public:
+        struct ModelSymbol
+        {
             URI instanceURI;
             osg::Matrixd xform;
-         };
+        };
 
-         ExtrudeGeometryFilterNode();
-         ExtrudeGeometryFilterNode(osg::Group* extrusionGroup, const osg::Matrixd& xform);
-         ExtrudeGeometryFilterNode(const ExtrudeGeometryFilterNode & rhs, const osg::CopyOp& copyop);
+        ExtrudeGeometryFilterNode();
+        ExtrudeGeometryFilterNode(osg::Group* extrusionGroup, const osg::Matrixd& xform);
+        ExtrudeGeometryFilterNode(const ExtrudeGeometryFilterNode & rhs, const osg::CopyOp& copyop);
 
-         META_Object(osgEarth::Features, ExtrudeGeometryFilterNode);
+        META_Object(osgEarth::Features, ExtrudeGeometryFilterNode);
 
-         const osg::Group * extrusionGroup() const { return _extrusionGroup.get(); }
+        const osg::Group * extrusionGroup() const { return _extrusionGroup.get(); }
 
-         void set_extrusionGroup(osg::Group * group) { _extrusionGroup = group; }
+        void set_extrusionGroup(osg::Group * group) { _extrusionGroup = group; }
 
-         const osg::Matrixd& xform() const { return _xform; }
-         void set_xform(const osg::Matrixd& xform) { _xform = xform; }
-        
+        const osg::Matrixd& xform() const { return _xform; }
+        void set_xform(const osg::Matrixd& xform) { _xform = xform; }
 
-         // needed for serialization
-         const osg::Group * get_extrusionGroup() const { return _extrusionGroup.get(); }
-         const osg::Matrixd& get_xform() const { return _xform; }
 
-         void clearExtrusionGroup()
-         {
+        // needed for serialization
+        const osg::Group * get_extrusionGroup() const { return _extrusionGroup.get(); }
+        const osg::Matrixd& get_xform() const { return _xform; }
+
+        void clearExtrusionGroup()
+        {
             _extrusionGroup = 0;
-         }
-       
-      private:
-         osg::ref_ptr<osg::Group> _extrusionGroup;
-         osg::Matrixd _xform;
-      };
-}
+        }
+
+    private:
+        osg::ref_ptr<osg::Group> _extrusionGroup;
+        osg::Matrixd _xform;
+    };
+
+} }

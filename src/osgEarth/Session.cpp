@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -114,7 +114,7 @@ Session::getDBOptions() const
     // otherwise get them from the map if possible:
     osg::ref_ptr<const Map> map;
     if (_map.lock(map))
-       return map->getReadOptions();
+        return map->getReadOptions();
 
     return 0L;
 }

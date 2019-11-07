@@ -22,9 +22,9 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Filter>
+#include <osgEarth/FilterUsage>
 #include <osgEarth/Expression>
 #include <osgEarth/Style>
-#include <osgEarth/FilterUsage>
 #include <osg/Geode>
 #include <vector>
 #include <list>
@@ -71,7 +71,6 @@ namespace osgEarth { namespace Util
 
         void setFilterUsage(FilterUsage usage) { _filterUsage = usage; }
         FilterUsage getFilterUsage(void) const{ return _filterUsage; }
-
     public: // properties
 
         /**

@@ -190,13 +190,14 @@ bool GeomFeatureNodeFactory::createOrUpdateNode(
     return node.valid();
 }
 
-//...................................................................
 
-// STUFF Deprecated/Removed in osgEarth 3.x
+
+
+// VRV - for backwards compatibility
 
 FeatureModelSourceOptions::FeatureModelSourceOptions(const ConfigOptions& options) :
     ModelSourceOptions(options),
-    FeatureModelOptions()
+    FeatureModelOptions(options)
 {
     fromConfig( _conf );
 }
@@ -204,23 +205,7 @@ FeatureModelSourceOptions::FeatureModelSourceOptions(const ConfigOptions& option
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    FeatureModelOptions::fromConfig(conf);
-
     conf.get( "features", _featureOptions );
-
-    conf.get( "layout",           _layout );
-    conf.get( "fading",           _fading );
-    conf.get( "feature_name",     _featureNameExpr );
-    conf.get( "feature_indexing", _featureIndexing );
-
-    conf.get( "lighting",         _lit );
-    conf.get( "max_granularity",  _maxGranularity_deg );
-    conf.get( "cluster_culling",  _clusterCulling );
-    conf.get( "backface_culling", _backfaceCulling );
-    conf.get( "alpha_blending",   _alphaBlending );
-    conf.get( "node_caching",     _nodeCaching );
-
-    conf.get( "session_wide_resource_cache", _sessionWideResourceCache );
 }
 
 Config
@@ -229,22 +214,7 @@ FeatureModelSourceOptions::getConfig() const
     Config conf = ModelSourceOptions::getConfig();
     conf.merge(FeatureModelOptions::getConfig());
 
-    conf.set( "features", _featureOptions );
-
-    conf.set( "layout",           _layout );
-    conf.set( "fading",           _fading );
-    conf.set( "feature_name",     _featureNameExpr );
-    conf.set( "feature_indexing", _featureIndexing );
-
-    conf.set( "lighting",         _lit );
-    conf.set( "max_granularity",  _maxGranularity_deg );
-    conf.set( "cluster_culling",  _clusterCulling );
-    conf.set( "backface_culling", _backfaceCulling );
-    conf.set( "alpha_blending",   _alphaBlending );
-    conf.set( "node_caching",     _nodeCaching );
-
-    conf.set( "session_wide_resource_cache", _sessionWideResourceCache );
-
+    conf.set("features", _featureOptions);
     return conf;
 }
 
@@ -276,19 +246,20 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     if (readOptions)
         setReadOptions(readOptions);
 
-    // the data source from which to pull features:
-    //if ( _options.featureSource().valid() )
-    //{
-    //    _features = _options.featureSource().get();
-    //}
-
-    else if ( _options.featureOptions().isSet() )
+    if ( _options.featureOptions().isSet() )
     {
         _features = FeatureSource::create( _options.featureOptions().value() );
     }
 
     if (!_features.valid())
         return Status::Error(Status::ServiceUnavailable, "Failed to create a feature driver");
+
+    if ( _options.styleSheet().isSet() )
+    {
+        Status s =_styleSheet.open(_options.styleSheet(), readOptions);
+        if (s.isError())
+            return s;
+    }
 
     // open the feature source if it exists:
     _features->setReadOptions(_readOptions.get());
@@ -313,14 +284,6 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
         getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
     }
 
-    // Materialize the stylesheet
-    // Layer reference is not supported -- only embedded since this is
-    // a deprecated class -gw
-    if (_options.styleSheet().isSet())
-    {
-        _styleSheet = new StyleSheet(_options.styleSheet().get());
-    }
-
     return Status::OK();
 }
 
@@ -339,7 +302,7 @@ FeatureModelSource::setReadOptions(const osgDB::Options* readOptions)
 }
 
 osg::Node*
-FeatureModelSource::createNodeImplementation(const Map* map, ProgressCallback* progress )
+FeatureModelSource::createNodeImplementation(const Map* map,  ProgressCallback* progress )
 {
     // trivial bailout.
     if (!getStatus().isOK())
@@ -370,8 +333,7 @@ FeatureModelSource::createNodeImplementation(const Map* map, ProgressCallback* p
     // Session holds data that's shared across the life of the FMG
     Session* session = new Session( 
         map, 
-        _styleSheet.get(),
-        //_options.styles().get(), 
+        _styleSheet.getLayer(),
         _features.get(), 
         _readOptions.get() );
 
@@ -379,7 +341,6 @@ FeatureModelSource::createNodeImplementation(const Map* map, ProgressCallback* p
     session->setName( this->getName() );
 
     // Graph that will render feature models. May included paged data.
-    //FeatureModelGraph* graph = new FeatureModelGraph(session, _options, factory, getSceneGraphCallbacks());
     FeatureModelGraph* graph = new FeatureModelGraph(_options);
     graph->setSession(session);
     graph->setNodeFactory(factory);

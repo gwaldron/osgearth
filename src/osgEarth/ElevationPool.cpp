@@ -346,8 +346,7 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 //........................................................................
 
 ElevationEnvelope::ElevationEnvelope() :
-_pool(0L),
-_lod(0)
+_pool(0L)
 {
     //nop
 }
@@ -413,7 +412,6 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
     }
     else
     {
-        // map probably deleted and threads still paging
         OE_WARN << LC << "sample: xform failed" << std::endl;
     }
 

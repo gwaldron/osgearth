@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2018 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 
 #ifndef OSGEARTH_REGISTRY
 #define OSGEARTH_REGISTRY 1
@@ -63,8 +63,8 @@ namespace osgEarth
     extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
 
     /**
-     * Application-wide global repository.
-     */
+    * Application-wide global repository.
+    */
     class OSGEARTH_EXPORT Registry : public osg::Referenced
     {
     public:
@@ -90,7 +90,7 @@ namespace osgEarth
         OpenThreads::ReentrantMutex& getGDALMutex();
 
         /** Gets a default cache object - based on environment settings - unless setDefaultCache
-            was called to override it. */
+        was called to override it. */
         Cache* getDefaultCache() const;
 
         /** Sets a default cache that a Map will use if none other is specified. */
@@ -109,166 +109,166 @@ namespace osgEarth
         const std::string& getDefaultCacheDriverName() const;
 
         /**
-         * Given a CachePolicy, composites in the default and override cache policies
-         * as necessary to create an effective CachePolicy. First it will populate
-         * any unset properties in "cp" with defaults if they are available. Then it
-         * will override any properties in "cp" with overrides that are available.
-         */
+        * Given a CachePolicy, composites in the default and override cache policies
+        * as necessary to create an effective CachePolicy. First it will populate
+        * any unset properties in "cp" with defaults if they are available. Then it
+        * will override any properties in "cp" with overrides that are available.
+        */
         bool resolveCachePolicy(optional<CachePolicy>& cp) const;
 
         /**
-         * Whether the given filename is blacklisted
-         */
+        * Whether the given filename is blacklisted
+        */
         bool isBlacklisted(const std::string &filename);
 
         /**
-         * Blacklist the given filename
-         */
+        * Blacklist the given filename
+        */
         void blacklist(const std::string &filename);
 
         /**
-         * Gets the number of blacklisted filenames
-         */
+        * Gets the number of blacklisted filenames
+        */
         unsigned int getNumBlacklistedFilenames();
 
         /**
-         * Clears the blacklist
-         */
+        * Clears the blacklist
+        */
         void clearBlacklist();
 
         /**
-         * Sets or gets a default system font to use
-         */
+        * Sets or gets a default system font to use
+        */
         void setDefaultFont( osgText::Font* font );
         osgText::Font* getDefaultFont();
 
         /**
-         * The graphics hardware capabilities for this platform.
-         */
+        * The graphics hardware capabilities for this platform.
+        */
         bool hasCapabilities() const;
         const Capabilities& getCapabilities() const;
         void setCapabilities( Capabilities* caps );
         static const Capabilities& capabilities() { return instance()->getCapabilities(); }
 
         /**
-         * Gets or sets the default shader factory. You can replace the default
-         * shader factory if you want to alter any of osgEarth's baseline shaders
-         * (advanced usage).
-         */
+        * Gets or sets the default shader factory. You can replace the default
+        * shader factory if you want to alter any of osgEarth's baseline shaders
+        * (advanced usage).
+        */
         ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
         static ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
 
         /**
-         * The default shader generator.
-         */
+        * The default shader generator.
+        */
         ShaderGeneratorProxy getShaderGenerator() const;
         void setShaderGenerator(ShaderGenerator* gen);
         static ShaderGeneratorProxy shaderGenerator() { return instance()->getShaderGenerator(); }
 
         /**
-         * Global object index.
-         */
+        * Global object index.
+        */
         ObjectIndex* getObjectIndex() const;
         static ObjectIndex* objectIndex() { return instance()->getObjectIndex(); }
 
         /**
-         * A default StateSetCache to use by any process that uses one.
-         * A StateSetCache assist in stateset sharing across multiple nodes.
-         * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
-         * the Registry.cpp comments for details.
-         */
+        * A default StateSetCache to use by any process that uses one.
+        * A StateSetCache assist in stateset sharing across multiple nodes.
+        * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
+        * the Registry.cpp comments for details.
+        */
         StateSetCache* getStateSetCache() const;
         void setStateSetCache( StateSetCache* cache );
         static StateSetCache* stateSetCache() { return instance()->getStateSetCache(); }
 
         /**
-         * A shared cache for osg::Program objects created by the shader
-         * composition subsystem (VirtualProgram).
-         */
+        * A shared cache for osg::Program objects created by the shader
+        * composition subsystem (VirtualProgram).
+        */
         ProgramRepo& getProgramRepo();
         static ProgramRepo& programRepo() { return instance()->getProgramRepo(); }
 
         /**
-         * Gets a reference to the global task service manager.
-         */
+        * Gets a reference to the global task service manager.
+        */
         TaskServiceManager* getTaskServiceManager() {
             return _taskServiceManager.get(); }
 
         /**
-         * Generates an instance-wide global unique ID.
-         */
+        * Generates an instance-wide global unique ID.
+        */
         UID createUID();
 
         /**
-         * Sets a global read callback for URI objects.
-         */
+        * Sets a global read callback for URI objects.
+        */
         void setURIReadCallback( URIReadCallback* callback );
 
         /**
-         * Gets the global read callback for URI objects.
-         */
+        * Gets the global read callback for URI objects.
+        */
         URIReadCallback* getURIReadCallback() const;
 
         /**
-         * Gets the default set of osgDB::Options to use.
-         */
+        * Gets the default set of osgDB::Options to use.
+        */
         const osgDB::Options* getDefaultOptions() const;
 
         /**
-         * Clones an options structure (fixing the archive caching), or creates
-         * a new one.
-         */
+        * Clones an options structure (fixing the archive caching), or creates
+        * a new one.
+        */
         static osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L );
 
         /**
-         * Registers a Units definition.
-         */
+        * Registers a Units definition.
+        */
         void registerUnits( const Units* staticInstance );
 
         const Units* getUnits(const std::string& name) const;
 
         /**
-         * The name of the default terrain engine driver
-         */
+        * The name of the default terrain engine driver
+        */
         //void setDefaultTerrainEngineDriverName( const std::string& name );
         const std::string& getDefaultTerrainEngineDriverName() const { return _terrainEngineDriver; }
 
         /**
-         * If set, all MapNodes will use the terrain driver specified here regardless
-         * of the driver in the TerrainOptions/earth file.
-         */
+        * If set, all MapNodes will use the terrain driver specified here regardless
+        * of the driver in the TerrainOptions/earth file.
+        */
         optional<std::string>& overrideTerrainEngineDriverName() { return _overrideTerrainEngineDriverName; }
         const optional<std::string>& overrideTerrainEngineDriverName() const { return _overrideTerrainEngineDriverName; }
 
         /**
-         * For debugging - tracks activities in progress.
-         */
+        * For debugging - tracks activities in progress.
+        */
         void startActivity(const std::string& name);
         void startActivity(const std::string& name, const std::string& text);
         void endActivity(const std::string& name);
         void getActivities(std::set<std::string>& output);
 
         /**
-         * Gets the mime-type corresponding to a given extension.
-         */
+        * Gets the mime-type corresponding to a given extension.
+        */
         std::string getMimeTypeForExtension(const std::string& extension);
 
         /**
-         * Gets the file extension corresponding to a given mime-type.
-         */
+        * Gets the file extension corresponding to a given mime-type.
+        */
         std::string getExtensionForMimeType(const std::string& mimeType);
 
         /**
-         * Sets the policy for calling osg::Texture::setUnRefImageDataAfterApply
-         * in the osgEarth terrain engine.
-         */
+        * Sets the policy for calling osg::Texture::setUnRefImageDataAfterApply
+        * in the osgEarth terrain engine.
+        */
         optional<bool>& unRefImageDataAfterApply() { return _unRefImageDataAfterApply; }
         const optional<bool>& unRefImageDataAfterApply() const { return _unRefImageDataAfterApply; }
 
         /**
-         * Adds a texture image unit number that osgEarth should never use.
-         */
+        * Adds a texture image unit number that osgEarth should never use.
+        */
         void setTextureImageUnitOffLimits(int unit);
         const std::set<int> getOffLimitsTextureImageUnits() const;
 
@@ -283,8 +283,8 @@ namespace osgEarth
         AsyncMemoryManager* getAsyncMemoryManager() const;
 
         /**
-         * Gets the device pixel ratio.
-         */
+        * Gets the device pixel ratio.
+        */
         float getDevicePixelRatio() const;
 
         /**
@@ -294,13 +294,18 @@ namespace osgEarth
         void setDevicePixelRatio(float devicePixelRatio);
 
         /**
-         * Maximum number of vertices to allow in a single osg::Geometry drawable
-         * when performing optimization processing. This varies based on hardware
-         * capabilities. Default is 65535.
-         */
+        * Maximum number of vertices to allow in a single osg::Geometry drawable
+        * when performing optimization processing. This varies based on hardware
+        * capabilities. Default is 65535.
+        */
         void setMaxNumberOfVertsPerDrawable(unsigned value);
         unsigned getMaxNumberOfVertsPerDrawable() const;
-        
+
+        /**
+        * Release OpenGL resources associated with anything in the reigstry
+        */
+        void releaseGLObjects(class osg::State*) const;
+
         //! Release any resources held by the registry so it can be re-used
         void release();
 
@@ -384,7 +389,7 @@ namespace osgEarth
         unsigned _threadPoolSize;
 
         float _devicePixelRatio;
-        
+
         typedef std::map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
         mutable SRSCache _srsCache;
         mutable Threading::Mutex _srsMutex;
@@ -410,7 +415,7 @@ namespace
     extern "C" void osgearth_units_##NAME(void) {} \
     static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)
 
-    
+
 #define USE_OSGEARTH_UNITS(NAME ) \
     extern "C" void osgearth_units_##NAME(void); \
     static osgDB::PluginFunctionProxy proxy_osgearth_units_##NAME(osgearth_units_##NAME);

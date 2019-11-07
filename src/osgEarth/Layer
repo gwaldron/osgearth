@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -115,7 +115,6 @@ namespace osgEarth
     //! Base class for layer property callbacks
     struct LayerCallback : public osg::Referenced
     {
-        // MERGE: This was NOP with 'shadow changes from Glen' so check with shadows
         //! Called after Layer::setEnabled changes the enabled state
         virtual void onEnabledChanged(class Layer* layer) { }
         typedef void (LayerCallback::*MethodPtr)(class Layer* layer);

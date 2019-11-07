@@ -426,7 +426,7 @@ namespace osgEarth { namespace GDAL
 #else
         if (interpolation != INTERP_NEAREST)
         {
-            OE_DEBUG << LC << "RasterIO falling back to INTERP_NEAREST.\n";
+            //OE_DEBUG << LC << "RasterIO falling back to INTERP_NEAREST.\n";
         }
         CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace);
 #endif

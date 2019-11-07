@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -100,15 +100,6 @@ namespace osgEarth
          */
         bool add( ElevationLayer* layer );
 
-        /**
-         * Return contained elevation layers.
-         */
-        const ElevationLayerVector& getElevationLayers() const { return _elevationLayers; }
-
-        /**
-        * Return contained imagery layers.
-        */
-        const ImageLayerVector& getImageLayers() const { return _imageLayers; }
 
     public: // TileSource overrides
         

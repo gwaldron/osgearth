@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -1115,7 +1115,7 @@ void
 ConstGeometryIterator::fetchNext()
 {
     _next = 0L;
-    if ( _stack.empty() )
+    if ( _stack.size() == 0 )
         return;
 
     const Geometry* current = _stack.top();
@@ -1124,16 +1124,14 @@ ConstGeometryIterator::fetchNext()
     if ( current->getType() == Geometry::TYPE_MULTI && _traverseMulti )
     {
         const MultiGeometry* m = static_cast<const MultiGeometry*>(current);
-        const GeometryCollection::const_iterator geomComponentsEnd = m->getComponents().end();
-        for( GeometryCollection::const_iterator i = m->getComponents().begin(); i != geomComponentsEnd; ++i )
+        for( GeometryCollection::const_iterator i = m->getComponents().begin(); i != m->getComponents().end(); ++i )
             _stack.push( i->get() );
         fetchNext();
     }
     else if ( current->getType() == Geometry::TYPE_POLYGON && _traversePolyHoles )
     {
         const Polygon* p = static_cast<const Polygon*>(current);
-        const RingCollection::const_iterator holeEnd = p->getHoles().end();
-        for( RingCollection::const_iterator i = p->getHoles().begin(); i != holeEnd; ++i )
+        for( RingCollection::const_iterator i = p->getHoles().begin(); i != p->getHoles().end(); ++i )
             _stack.push( i->get() );
         _next = current;
     }

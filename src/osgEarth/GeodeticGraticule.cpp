@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -551,7 +551,6 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     }
     else
     {
-        Horizon* h = Horizon::get(*cullVisitor);
         double f, a, zn, zf;
         proj.getPerspective(f,a,zn,zf);
         zf = Horizon::get(*cullVisitor)->getDistanceToVisibleHorizon();

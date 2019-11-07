@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -407,30 +407,17 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // matrix uniforms. Why except vertex? OSG<3.5.8 only replaces these
     // in the vertex shader and not other stages.
 
-    if (osg::State::getUseUboTransformStack())
-    {
-       gl_ModelViewMatrix = "osg.ModelViewMatrix";
-       gl_ProjectionMatrix = "osg.ProjectionMatrix";
-       gl_ModelViewProjectionMatrix = "osg.ModelViewProjectionMatrix";
-       gl_NormalMatrix = "osg.NormalMatrix";
-       gl_FrontColor = "osg_FrontColor";
-
-       glMatrixUniforms = osg::State::getTransformUboDeclaration();
-    }
-    else {
-       gl_ModelViewMatrix = "osg_ModelViewMatrix",
-          gl_ProjectionMatrix = "osg_ProjectionMatrix",
-          gl_ModelViewProjectionMatrix = "osg_ModelViewProjectionMatrix",
-          gl_NormalMatrix = "osg_NormalMatrix",
-          gl_FrontColor = "osg_FrontColor";
-
-       glMatrixUniforms =
-          "uniform mat4 osg_ModelViewMatrix;\n"
-          "uniform mat4 osg_ModelViewProjectionMatrix;\n"
-          "uniform mat4 osg_ProjectionMatrix;\n"
-          "uniform mat3 osg_NormalMatrix;\n";
-    }
-
+    gl_ModelViewMatrix           = "osg_ModelViewMatrix",
+    gl_ProjectionMatrix          = "osg_ProjectionMatrix",
+    gl_ModelViewProjectionMatrix = "osg_ModelViewProjectionMatrix",
+    gl_NormalMatrix              = "osg_NormalMatrix",
+    gl_FrontColor                = "osg_FrontColor";
+    
+    glMatrixUniforms =
+        "uniform mat4 osg_ModelViewMatrix;\n"
+        "uniform mat4 osg_ModelViewProjectionMatrix;\n"
+        "uniform mat4 osg_ProjectionMatrix;\n"
+        "uniform mat3 osg_NormalMatrix;\n";
 #endif
 
     if ( hasTCS )

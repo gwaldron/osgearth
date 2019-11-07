@@ -249,7 +249,7 @@ ScreenSpaceLayout::setOptions( const ScreenSpaceLayoutOptions& options )
     {
         // activate priority-sorting through the options.
         if ( options.sortByPriority().isSetTo( true ) &&
-             bin->_context->_options.sortByPriority() == false )
+            bin->_context->_options.sortByPriority() == false )
         {
             ScreenSpaceLayout::setSortFunctor(new SortByPriorityPreservingGeodeTraversalOrder());
         }
@@ -296,7 +296,7 @@ namespace
 namespace osgEarth
 {
     class ScreenSpaceLayoutExtension : public Extension,
-                                       public ScreenSpaceLayoutOptions
+        public ScreenSpaceLayoutOptions
     {
     public:
         META_OE_Extension(osgEarth, ScreenSpaceLayoutExtension, screen_space_layout);

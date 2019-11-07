@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,6 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
-#include <osg/ConcurrencyViewerMacros>
-
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -45,7 +43,7 @@ ImageLayer::Options::fromConfig(const Config& conf)
     _magFilter.init( osg::Texture::LINEAR );
     _textureCompression.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
     _shared.init( false );
-    _coverage.init( false );    
+    _coverage.init( false );  
     _reprojectedTileSize.init( 256 );  
 
     conf.get( "nodata_image",   _noDataImageFilename );
@@ -173,7 +171,7 @@ ImageLayer::TileProcessor::TileProcessor()
 
 void
 ImageLayer::TileProcessor::init(const ImageLayer::Options& options,
-                              const osgDB::Options*    dbOptions, 
+                              const osgDB::Options*        dbOptions, 
                               bool                         mosaicingPossible )
 {
     _options = options;
@@ -526,7 +524,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         return GeoImage::INVALID;
     }
 
-    // validate the existence of a valid layer profile (unless we're in cache-only mode, in which
+    // validate the existance of a valid layer profile (unless we're in cache-only mode, in which
     // case there is no layer profile)
     if ( !policy.isCacheOnly() && !getProfile() )
     {
@@ -534,20 +532,16 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         return GeoImage::INVALID;
     }
 
-    osg::CVMarkerSeries series("SubloadTask");
     osg::ref_ptr< osg::Image > cachedImage;
 
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     if ( cacheBin && policy.isCacheReadable() )
     {
-        osg::CVSpan UpdateTick(series, 5, "readImage");
         ReadResult r = cacheBin->readImage(cacheKey, 0L);
         if ( r.succeeded() )
         {
-            series.write_message("successfully loaded %s:%s",getName().c_str(), cacheKey.c_str());
             cachedImage = r.releaseImage();
-            cachedImage->setName(cacheKey);
             ImageUtils::fixInternalFormat( cachedImage.get() );            
             bool expired = policy.isExpired(r.lastModifiedTime());
             if (!expired)
@@ -562,7 +556,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         }
     }
     
-    // The data was not in the cache. If we are cache-only, fail silently
+    // The data was not in the cache. If we are cache-only, fail sliently
     if ( policy.isCacheOnly() )
     {
         // If it's cache only and we have an expired but cached image, just return it.
@@ -621,18 +615,11 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         cacheBin        && 
         policy.isCacheWriteable())
     {
-        series.write_message(cacheKey.c_str());
         if ( key.getExtent() != result.getExtent() )
         {
             OE_INFO << LC << "WARNING! mismatched extents." << std::endl;
         }
 
-        {
-           osg::CVSpan UpdateTick(series, 2, "mipMapImagePreSave");
-           ImageUtils::activateMipMaps(result.getImage());
-        }
-
-        osg::CVSpan UpdateTick(series, 4, "saveImage");
         cacheBin->write(cacheKey, result.getImage(), 0L);
     }
 

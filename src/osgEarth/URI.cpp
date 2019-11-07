@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -624,7 +624,7 @@ namespace
                             }
 
                             // write the result to the cache if possible:
-                            if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
+                            if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() && bin )
                             {
                                 OE_DEBUG << LC << "Writing " << uri.cacheKey() << " to cache" << std::endl;
                                 bin->write( uri.cacheKey(), result.getObject(), result.metadata(), remoteOptions.get() );

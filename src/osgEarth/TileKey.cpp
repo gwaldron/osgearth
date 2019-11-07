@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,8 +18,6 @@
  */
 
 #include <osgEarth/TileKey>
-
-#include <stdio.h>
 
 using namespace osgEarth;
 
@@ -48,11 +46,7 @@ TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, con
 
         _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
 
-        // Faster than the Stringify() stringstream. However, I am assuming
-        // 50 characters for the keyChars. The max I've seen is 19 characters.
-        // Tilekey also gets called a lot for some reason.
-        sprintf(_keyChars, "%u/%u/%u", _lod, _x, _y);
-        _key = _keyChars;
+        _key = Stringify() << _lod << "/" << _x << "/" << _y;
     }
     else
     {
@@ -69,7 +63,7 @@ _y(rhs._y),
 _profile( rhs._profile.get() ),
 _extent( rhs._extent )
 {
-    memset(_keyChars, 0, sizeof(_keyChars));
+    //NOP
 }
 
 const Profile*

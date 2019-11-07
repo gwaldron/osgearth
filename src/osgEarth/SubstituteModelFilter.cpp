@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/SubstituteModelFilter>
+#include <osgEarth/SubstituteModelFilterNode>
 #include <osgEarth/FeatureSourceIndexNode>
 #include <osgEarth/FilterContext>
 #include <osgEarth/GeometryUtils>
@@ -33,8 +34,6 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/OEAssert>
 
-#include <osgEarth/SubstituteModelFilterNode>
-
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -49,6 +48,7 @@
 #endif
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 
@@ -240,11 +240,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         scaleMatrix = osg::Matrix::scale(scaleVec);
 
-        osg::Matrixd headingRotation;
+        osg::Matrixd rotationMatrix;
         if (modelSymbol && modelSymbol->heading().isSet())
         {
             float heading = input->eval(headingEx, &context);
-            headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+            rotationMatrix.makeRotate(osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1)));
         }
 
         // how that we have a marker source, create a node for it
@@ -336,7 +336,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     if (modelSymbol && modelSymbol->heading().isSet())
                     {
                         float heading = input->eval(headingEx, &context);
-                        headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+                        rotationMatrix.makeRotate(osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1)));
                     }
 
                     osg::Vec3d point = (*geom)[i];
@@ -346,13 +346,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
                         // could take a shortcut and just use the current extent's local2world matrix for this,
                         // but if the tile is big enough the up vectors won't be quite right.
-                        osg::Matrixd upRotation;
-                        ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, targetSRS, upRotation );
-                        mat = scaleMatrix * headingRotation * upRotation * osg::Matrixd::translate( point ) * _world2local;
+                        osg::Matrixd rotation;
+                        ECEF::transformAndGetRotationMatrix(point, context.profile()->getSRS(), point, targetSRS, rotation);
+                        mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate(point); // * _world2local;
                     }
                     else
                     {
-                        mat = scaleMatrix * headingRotation * osg::Matrixd::translate( point ) * _world2local;
+                        mat = scaleMatrix * rotationMatrix *  osg::Matrixd::translate(point); //* _world2local;
                     }
 
                     if (_filterUsage == FILTER_USAGE_NORMAL)
@@ -402,7 +402,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
 
         // activate horizon culling if we are in geocentric space
-        if ( context.getSession() && context.getSession()->isMapGeocentric() )
+        if (context.getSession() && context.getSession()->isMapGeocentric())
         {
             // should this use clipping, or a horizon cull callback?
 

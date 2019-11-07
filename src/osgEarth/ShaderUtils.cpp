@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -200,44 +200,35 @@ namespace
     {
 #if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE) //osg state convertVertexShaderSourceToOsgBuiltIns inserts these and the double declaration is causing an error in gles
 
-       GLSLChunker chunker;
+        // for geometry and tessellation shaders, replace the built-ins with 
+        // osg uniform aliases.
+        const char* lines[4] = {
+            "uniform mat4 osg_ModelViewMatrix;",
+            "uniform mat4 osg_ProjectionMatrix;",
+            "uniform mat4 osg_ModelViewProjectionMatrix;",
+            "uniform mat3 osg_NormalMatrix;"
+        };
+    
+        GLSLChunker chunker;
 
-        if (!osg::State::getUseUboTransformStack())
+        for (GLSLChunker::Chunks::iterator chunk = chunks.begin(); chunk != chunks.end(); ++chunk)
         {
-           // for geometry and tessellation shaders, replace the built-ins with 
-          // osg uniform aliases.
-           const char* lines[4] = {
-               "uniform mat4 osg_ModelViewMatrix;",
-               "uniform mat4 osg_ProjectionMatrix;",
-               "uniform mat4 osg_ModelViewProjectionMatrix;",
-               "uniform mat3 osg_NormalMatrix;"
-           };
-     
-     
-           for (GLSLChunker::Chunks::iterator chunk = chunks.begin(); chunk != chunks.end(); ++chunk)
-           {
-              if (chunk->type != GLSLChunker::Chunk::TYPE_DIRECTIVE ||
-                 (chunk->tokens.size() > 0 && chunk->tokens[0].compare(0, 3, "#if") == 0))
-              {
-                 for (unsigned line = 0; line < 4; ++line) {
+            if (chunk->type != GLSLChunker::Chunk::TYPE_DIRECTIVE ||
+                (chunk->tokens.size()>0 && chunk->tokens[0].compare(0, 3, "#if")==0))
+            {
+                for (unsigned line = 0; line < 4; ++line) {
                     chunk = chunks.insert(chunk, chunker.chunkLine(lines[line]));
                     ++chunk;
-                 }
-                 break;
-              }
-           }
-           chunker.replace(chunks, "gl_ModelViewMatrix", "osg_ModelViewMatrix");
-           chunker.replace(chunks, "gl_ProjectionMatrix", "osg_ProjectionMatrix");
-           chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg_ModelViewProjectionMatrix");
-           chunker.replace(chunks, "gl_NormalMatrix", "osg_NormalMatrix");
+                }
+                break;
+            }
         }
-        else 
-        {
-           chunker.replace(chunks, "gl_ModelViewMatrix", "osg.ModelViewMatrix");
-           chunker.replace(chunks, "gl_ProjectionMatrix", "osg.ProjectionMatrix");
-           chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg.ModelViewProjectionMatrix");
-           chunker.replace(chunks, "gl_NormalMatrix", "osg.NormalMatrix");
-        }
+
+        chunker.replace(chunks, "gl_ModelViewMatrix", "osg_ModelViewMatrix");
+        chunker.replace(chunks, "gl_ProjectionMatrix", "osg_ProjectionMatrix");
+        chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg_ModelViewProjectionMatrix");
+        chunker.replace(chunks, "gl_NormalMatrix", "osg_NormalMatrix");
+    
 #endif // !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
     }
 }

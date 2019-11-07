@@ -23,13 +23,13 @@
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
 #include <osgEarth/Filter>
+#include <osgEarth/FilterUsage>
 #include <osgEarth/Style>
 #include <osgEarth/Containers>
-#include <osgEarth/FilterUsage>
 
 namespace osgEarth { namespace Util
 {
-        class ResourceLibrary;
+    class ResourceLibrary;
 
     /**
      * Feature filter that will substitute external nodes for feature geometry.
@@ -97,6 +97,7 @@ namespace osgEarth { namespace Util
         
         bool findResource( const URI& instanceURI, const InstanceSymbol* symbol, FilterContext& context, std::set<URI>& missing, osg::ref_ptr<InstanceResource>& output );
     };
+
 } }
 
 #endif // OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H

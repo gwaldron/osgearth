@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2018 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
@@ -57,18 +57,18 @@ namespace
 }
 
 Registry::Registry() :
-osg::Referenced     ( true ),
-_gdal_registered    ( false ),
-_numGdalMutexGets   ( 0 ),
-_uidGen             ( 0 ),
-_caps               ( 0L ),
-_defaultFont        ( 0L ),
-_terrainEngineDriver( "rex" ),
-_cacheDriver        ( "filesystem" ),
-_overrideCachePolicyInitialized( false ),
-_threadPoolSize(2u),
-_devicePixelRatio(1.0f),
-_maxVertsPerDrawable(65535)
+    osg::Referenced     ( true ),
+    _gdal_registered    ( false ),
+    _numGdalMutexGets   ( 0 ),
+    _uidGen             ( 0 ),
+    _caps               ( 0L ),
+    _defaultFont        ( 0L ),
+    _terrainEngineDriver( "rex" ),
+    _cacheDriver        ( "filesystem" ),
+    _overrideCachePolicyInitialized( false ),
+    _threadPoolSize(2u),
+    _devicePixelRatio(1.0f),
+    _maxVertsPerDrawable(65535)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -207,20 +207,32 @@ Registry::instance(bool reset)
 }
 
 void
-Registry::release()
+Registry::releaseGLObjects(osg::State* state) const
 {
     // Clear out the state set cache
     if (_stateSetCache.valid())
     {
-        _stateSetCache->releaseGLObjects(NULL);
-        _stateSetCache->clear();
+        _stateSetCache->releaseGLObjects(state);
     }
 
     // Clear out the VirtualProgram shared program repository
     _programRepo.lock();
-    _programRepo.releaseGLObjects(NULL);
+    _programRepo.releaseGLObjects(state);
     _programRepo.unlock();
-    
+}
+
+void
+Registry::release()
+{
+    // GL resources (all GCs):
+    releaseGLObjects(NULL);
+
+    // Clear out the state set cache
+    if (_stateSetCache.valid())
+    {
+        _stateSetCache->clear();
+    }
+
     // SpatialReference cache
     _srsMutex.lock();
     _srsCache.clear();
@@ -304,7 +316,7 @@ SpatialReference*
 Registry::getOrCreateSRS(const SpatialReference::Key& key)
 {
     Threading::ScopedMutexLock exclusiveLock(_srsMutex);
-    
+
     SpatialReference* srs;
 
     SRSCache::iterator i = _srsCache.find(key);
@@ -674,7 +686,7 @@ Registry::startActivity(const std::string& activity)
 
 void
 Registry::startActivity(const std::string& activity,
-                        const std::string& value)
+    const std::string& value)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
     _activities.erase(Activity(activity,std::string()));
@@ -787,10 +799,10 @@ namespace
     public:
         RegisterEarthTileExtension()
         {
-    #if OSG_VERSION_LESS_THAN(3,5,4)
+#if OSG_VERSION_LESS_THAN(3,5,4)
             // Method deprecated beyone 3.5.4 since all ref counting is thread-safe by default
             osg::Referenced::setThreadSafeReferenceCounting( true );
-    #endif
+#endif
             osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
         }
     };

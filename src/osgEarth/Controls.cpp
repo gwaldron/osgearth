@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -1024,8 +1024,7 @@ LabelControl(text)
 ImageControl::ImageControl( osg::Image* image ) :
 _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
-_opacity      ( 1.0f ),
-_geom         ( NULL )
+_opacity      ( 1.0f )
 {
     setStateSet(getImageStateSet());
     setImage( image );

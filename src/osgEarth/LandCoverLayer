@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,15 +33,15 @@ namespace osgEarth
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
-    public:
+        public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_VECTOR(ConfigOptions, coverages);
             OE_OPTION(float, warpFactor);
             OE_OPTION(unsigned, noiseLOD);
-        virtual Config getConfig() const;
+            virtual Config getConfig() const;
         private:
-        void fromConfig(const Config& conf);
-    };
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, LandCoverLayer, Options, ImageLayer, LandCover);

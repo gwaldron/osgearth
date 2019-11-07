@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2019 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #ifndef OSGEARTH_FEATURES_GEOMETRY_COMPILER_H
 #define OSGEARTH_FEATURES_GEOMETRY_COMPILER_H 1
 
@@ -23,26 +23,27 @@
 #include <osgEarth/Feature>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/ResampleFilter>
+#include <osgEarth/FilterUsage>
 #include <osgEarth/Style>
 #include <osgEarth/GeoMath>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/FilterUsage>
 
 namespace osgEarth
 {
-    /** TODO: refactor into GeometryCompiler::Options */
+    using namespace osgEarth;
+
     class OSGEARTH_EXPORT GeometryCompilerOptions
     {
     public:
         /**
-         * Set the global default values for the options.
-         */
+        * Set the global default values for the options.
+        */
         static void setDefaults(const GeometryCompilerOptions& defaults);
 
     public:
         /**
-         * Construct new copiler options, optionally deserializing them
-         */
+        * Construct new copiler options, optionally deserializing them
+        */
         GeometryCompilerOptions(const ConfigOptions& conf =ConfigOptions());
 
     public:
@@ -110,6 +111,10 @@ namespace osgEarth
         optional<float>& maxPolygonTilingAngle() { return _maxPolyTilingAngle; }
         const optional<float>& maxPolygonTilingAngle() const { return _maxPolyTilingAngle; }
 
+        /** Whether to use GPU-generated geometry for screen-space (pixel) width lines (default=false) */
+        optional<bool>& useGPUScreenSpaceLines() { return _useGPULines; }
+        const optional<bool>& useGPUScreenSpaceLines() const { return _useGPULines; }
+
     public:
         Config getConfig() const;
 
@@ -133,18 +138,19 @@ namespace osgEarth
         optional<bool>                 _optimizeVertexOrdering;
         optional<bool>                 _validate;
         optional<float>                _maxPolyTilingAngle;
+        optional<bool>                 _useGPULines;
 
 
         static GeometryCompilerOptions s_defaults;
 
     public:
-       GeometryCompilerOptions(bool); // internal
+        GeometryCompilerOptions(bool); // internal
     };
 
 
     /**
-     * Compiles a collection of features against a style.
-     */
+    * Compiles a collection of features against a style.
+    */
     class OSGEARTH_EXPORT GeometryCompiler
     {
     public:
@@ -154,9 +160,9 @@ namespace osgEarth
 
         /** Constructs a new compiler with preconfigured options. */
         GeometryCompiler( const GeometryCompilerOptions& options );
-        
+
         virtual ~GeometryCompiler() { }
-        
+
         /** Access the options read-only */
         const GeometryCompilerOptions& options() const { return _options; }
 
@@ -201,11 +207,6 @@ namespace osgEarth
     protected:
         GeometryCompilerOptions _options;
     };
-
-    namespace Features {
-        typedef osgEarth::GeometryCompilerOptions GeometryCompilerOptions;
-        typedef osgEarth::GeometryCompiler GeometryCompiler;
-    }
 
 } // namespace osgEarth
 

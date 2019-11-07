@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -50,11 +50,7 @@ namespace osgEarth { namespace Util
         virtual CacheBin* getOrCreateDefaultBin();
     
     private:
-        MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) 
-        : Cache( rhs, op )
-        , _maxBinSize(1) 
-        {
-        }
+        MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : Cache( rhs, op ) { }
 
         unsigned _maxBinSize;
     };

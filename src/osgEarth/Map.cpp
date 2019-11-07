@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -124,7 +124,7 @@ Map::init()
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer. These will be stored in the readOptions
     // (and ONLY there)
-    osg::ref_ptr<CacheSettings> cacheSettings = new CacheSettings();
+    CacheSettings* cacheSettings = new CacheSettings();
 
     // Set up a cache if there's one in the options:
     if (options().cache().isSet())
@@ -672,7 +672,7 @@ Map::clear()
         // calculate a new revision.
         newRevision = ++_dataModelRevision;
     }
-    
+
     // a separate block b/c we don't need the mutex
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {

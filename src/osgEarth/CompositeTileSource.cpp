@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -165,7 +165,7 @@ CompositeTileSource::createImage(const TileKey&    key,
             // If the progress got cancelled (due to any reason, including network error)
             // then return NULL to prevent this tile from being built and cached with
             // incomplete or partial data.
-            if (progress && progress->isCanceled()) 
+            if (progress && progress->isCanceled())
             {
                 OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
                 return 0L;
@@ -426,49 +426,43 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             i = _options._components.erase( i );
         }
         else
-        {
+        {            
             TileSource* source = i->_layer->getTileSource();
-            if (source)
+
+            // If no profile is specified assume they want to use the profile of the first layer in the list.
+            if (!profile.valid())
             {
-                // If no profile is specified assume they want to use the profile of the first layer in the list.
-                if (!profile.valid())
-                {
-                    profile = source->getProfile();
-                }
-
-                _dynamic = _dynamic || source->isDynamic();
-                
-                // gather extents                        
-                const DataExtentList& extents = source->getDataExtents();  
-
-                // If even one of the layers' data extents is unknown, the entire composite
-                // must have unknown data extents:
-                if (extents.empty())
-                {
-                    dataExtentsValid = false;
-                    getDataExtents().clear();
-                }
-
-                if (dataExtentsValid)
-                {
-                    for (DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j)
-                    {
-                        // Convert the data extent to the profile that is actually used by this TileSource
-                        DataExtent dataExtent = *j;
-                        GeoExtent ext = dataExtent.transform(profile->getSRS());
-                        unsigned int minLevel = 0;
-                        unsigned int maxLevel = profile->getEquivalentLOD(source->getProfile(), *dataExtent.maxLevel() );
-                        dataExtent = DataExtent(ext, minLevel, maxLevel);
-                        getDataExtents().push_back( dataExtent );
-                    }
-                }
-            }
-            else
-            {
-                OE_WARN << LC << "Tile Source is NULL (" << i->_layer->getName() << ") ... " << std::endl;
+                profile = source->getProfile();
             }
 
-            ++i;        
+            _dynamic = _dynamic || source->isDynamic();
+            
+            // gather extents                        
+            const DataExtentList& extents = source->getDataExtents();  
+
+            // If even one of the layers' data extents is unknown, the entire composite
+            // must have unknown data extents:
+            if (extents.empty())
+            {
+                dataExtentsValid = false;
+                getDataExtents().clear();
+            }
+
+            if (dataExtentsValid)
+            {
+                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                {                
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;                
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
+                    getDataExtents().push_back( dataExtent );
+                }
+            }            
+
+            ++i;
         }
     }
 

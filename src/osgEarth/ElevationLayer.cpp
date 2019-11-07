@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
 #include <osgEarth/URI>
-#include <osg/ConcurrencyViewerMacros>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -443,7 +442,7 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     {
         return GeoHeightField::INVALID;
     }
-  
+
     GeoHeightField result;
     osg::ref_ptr<osg::HeightField> hf;
 
@@ -722,23 +721,23 @@ namespace
     //! Gets the normal vector for elevation data at column s, row t.
     osg::Vec3 getNormal(const GeoExtent& extent, const osg::HeightField* hf, int s, int t)
     {
-        const int w = hf->getNumColumns();
-        const int h = hf->getNumRows();
+        int w = hf->getNumColumns();
+        int h = hf->getNumRows();
 
         osg::Vec2d res(
             extent.width() / (double)(w-1),
             extent.height() / (double)(h-1));
 
-        const double e = hf->getHeight(s, t);
+        float e = hf->getHeight(s, t);
 
         double dx = res.x(), dy = res.y();
 
         if (extent.getSRS()->isGeographic())
         {
-            const double R = extent.getSRS()->getEllipsoid()->getRadiusEquator();
-            const double mPerDegAtEquator = (2.0 * osg::PI * R) / 360.0;
+            double R = extent.getSRS()->getEllipsoid()->getRadiusEquator();
+            double mPerDegAtEquator = (2.0 * osg::PI * R) / 360.0;
             dy = dy * mPerDegAtEquator;
-            const double lat = extent.yMin() + res.y()*(double)t;
+            double lat = extent.yMin() + res.y()*(double)t;
             dx = dx * mPerDegAtEquator * cos(osg::DegreesToRadians(lat));
         }
         
@@ -749,7 +748,7 @@ namespace
         if (t > 0)     south.set(0, -dy, hf->getHeight(s, t-1));
         if (t < h - 1) north.set(0,  dy, hf->getHeight(s, t+1));
 
-        const osg::Vec3d normal = (east - west) ^ (north - south);
+        osg::Vec3d normal = (east - west) ^ (north - south);
         return normal;
     }
 
@@ -769,17 +768,16 @@ namespace
     //! normals) in order to maintain terrain correlation. Maybe someday.
     void createNormalMap(const GeoExtent& extent, const osg::HeightField* hf, const osg::ShortArray* deltaLOD, NormalMap* normalMap)
     {
-        const int w = hf->getNumColumns();
-        const int h = hf->getNumRows();
+        int w = hf->getNumColumns();
+        int h = hf->getNumRows();
 
-        osg::Vec3 normal;
-
-        // parallel for or compute shader please
-        for (int t = 0; t < h; ++t)
+        for (int t = 0; t < (int)hf->getNumRows(); ++t)
         {
-            for (int s = 0; s < w; ++s)
+            for (int s = 0; s<(int)hf->getNumColumns(); ++s)
             {
-                const int step = 1 << (*deltaLOD)[t*h + s];
+                int step = 1 << (*deltaLOD)[t*h + s];
+
+                osg::Vec3 normal;
 
                 // four corners:
                 int s0=s, s1=s, t0=t, t1=t;
@@ -791,12 +789,10 @@ namespace
                 }
                 else
                 {
-                    const int sMod = s % step;
-                    const int tMod = t % step;
-                    const int s0 = std::max(s - sMod, 0);
-                    const int s1 = (sMod == 0)? s0 : std::min(s0+step, w-1);
-                    const int t0 = std::max(t - tMod, 0);
-                    const int t1 = (tMod == 0)? t0 : std::min(t0+step, h-1);
+                    int s0 = osg::maximum(s - (s % step), 0);
+                    int s1 = (s%step == 0)? s0 : osg::minimum(s0+step, w-1);
+                    int t0 = osg::maximum(t - (t % step), 0);
+                    int t1 = (t%step == 0)? t0 : osg::minimum(t0+step, h-1);
                     
                     if (s0 == s1 && t0 == t1)
                     {
@@ -806,29 +802,27 @@ namespace
                     else if (s0 == s1)
                     {
                         // same column; linear interpolate along row
-                        const osg::Vec3 S = getNormal(extent, hf, s0, t0);
-                        const osg::Vec3 N = getNormal(extent, hf, s0, t1);
+                        osg::Vec3 S = getNormal(extent, hf, s0, t0);
+                        osg::Vec3 N = getNormal(extent, hf, s0, t1);
                         normal = S*(double)(t1 - t) + N*(double)(t - t0);
                     }
                     else if (t0 == t1)
                     {
                         // same row; linear interpolate along column
-                        const osg::Vec3 W = getNormal(extent, hf, s0, t0);
-                        const osg::Vec3 E = getNormal(extent, hf, s1, t0);
+                        osg::Vec3 W = getNormal(extent, hf, s0, t0);
+                        osg::Vec3 E = getNormal(extent, hf, s1, t0);
                         normal = W*(double)(s1 - s) + E*(double)(s - s0);
                     }
                     else
                     {
                         // bilinear interpolate
-                        const osg::Vec3 SW = getNormal(extent, hf, s0, t0);
-                        const osg::Vec3 SE = getNormal(extent, hf, s1, t0);
-                        const osg::Vec3 NW = getNormal(extent, hf, s0, t1);
-                        const osg::Vec3 NE = getNormal(extent, hf, s1, t1);
+                        osg::Vec3 SW = getNormal(extent, hf, s0, t0);
+                        osg::Vec3 SE = getNormal(extent, hf, s1, t0);
+                        osg::Vec3 NW = getNormal(extent, hf, s0, t1);
+                        osg::Vec3 NE = getNormal(extent, hf, s1, t1);
 
-                        const double s1ms = s1 - s;
-                        const double sms0 = s - s0;
-                        const osg::Vec3 S = SW*s1ms + SE*sms0;
-                        const osg::Vec3 N = NW*s1ms + NE*sms0;
+                        osg::Vec3 S = SW*(double)(s1 - s) + SE*(double)(s - s0);
+                        osg::Vec3 N = NW*(double)(s1 - s) + NE*(double)(s - s0);
                         normal = S*(double)(t1 - t) + N*(double)(t - t0);
                     }
                 }
@@ -854,8 +848,6 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         return false;
 
     METRIC_SCOPED("ElevationLayer.populateHeightField");
-    osg::CVMarkerSeries objectCreation("SubloadTask");
-    osg::CVSpan creationSpan(objectCreation, 3, "ElevationLayer.populateHeightFieldAndNormal");
 
     // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
     // the map profile has a vertical datum. This is the usual case when building the 3D
@@ -1006,7 +998,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         ElevationLayer* layer = contenders[0].layer.get();
         TileKey& contenderKey = contenders[0].key;
 
-        GeoHeightField layerHF = layer->createHeightField(contenderKey, progress);
+        GeoHeightField layerHF = layer->createHeightField(contenderKey, 0);
         if (layerHF.valid())
         {
             if (layerHF.getHeightField()->getNumColumns() == hf->getNumColumns() &&

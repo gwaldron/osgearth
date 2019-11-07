@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -498,16 +498,12 @@ FeatureSourceIndex::update(osg::Drawable* drawable, std::map<ObjectID,ObjectID>&
     unsigned count = 0;
     if (_masterIndex->updateObjectIDs(drawable, oldToNew, this))
     {
-        std::map<ObjectID, ObjectID>::const_iterator oldtoNewEnd = oldToNew.end();
-        FIDMap::const_iterator oldBegin = oldFIDMap.begin();
-        FIDMap::const_iterator oldEnd = oldFIDMap.end();
-
-        for (std::map<ObjectID, ObjectID>::const_iterator i = oldToNew.begin(); i != oldtoNewEnd; ++i)
+        for (std::map<ObjectID, ObjectID>::const_iterator i = oldToNew.begin(); i != oldToNew.end(); ++i)
         {
             const ObjectID& oldoid = i->first;
             const ObjectID& newoid = i->second;
 
-            for (FIDMap::const_iterator j = oldBegin; j != oldEnd; ++j)
+            for (FIDMap::const_iterator j = oldFIDMap.begin(); j != oldFIDMap.end(); ++j)
             {
                 const RefIDPair* rip = j->second.get();
                 if (rip && rip->_oid == oldoid)

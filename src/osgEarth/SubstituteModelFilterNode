@@ -6,48 +6,48 @@
 #include <osg/Object>
 #include <osg/Matrixd>
 
-namespace osgEarth
-   {
-      class OSGEARTH_EXPORT SubstituteModelFilterNode : public osg::Object
-      {
-      public:
-       
-         struct ModelSymbol
-         {
+namespace osgEarth { namespace Util
+{
+    class OSGEARTH_EXPORT SubstituteModelFilterNode : public osg::Object
+    {
+    public:
+
+        struct ModelSymbol
+        {
             URI instanceURI;
             osg::Matrixd xform;
-         };
+        };
 
-         SubstituteModelFilterNode();
-       
-         SubstituteModelFilterNode(const SubstituteModelFilterNode& rhs, const osg::CopyOp& copyop);
+        SubstituteModelFilterNode();
 
-         virtual ~SubstituteModelFilterNode()
-         {
+        SubstituteModelFilterNode(const SubstituteModelFilterNode& rhs, const osg::CopyOp& copyop);
 
-         }
-         
-         META_Object(osgEarth::Features, SubstituteModelFilterNode);
+        virtual ~SubstituteModelFilterNode()
+        {
+
+        }
+
+        META_Object(osgEarth::Features, SubstituteModelFilterNode);
 
 
-         typedef std::list<ModelSymbol> ModelSymbolList;
+        typedef std::list<ModelSymbol> ModelSymbolList;
 
-         ModelSymbolList& modelSymbolList()
-         {
+        ModelSymbolList& modelSymbolList()
+        {
             return _modelSymbolList;
-         }
-         const ModelSymbolList& modelSymbolList() const
-         {
+        }
+        const ModelSymbolList& modelSymbolList() const
+        {
             return _modelSymbolList;
-         }
-         bool getInstanced(void) const { return _instanced; }
-         void setInstanced(bool instanced) { _instanced = instanced; }
+        }
+        bool getInstanced(void) const { return _instanced; }
+        void setInstanced(bool instanced) { _instanced = instanced; }
 
-         bool getClustered(void) const { return _clustered; }
-         void setClustered(bool clustered) { _clustered = clustered; }
-      private:
-         bool _instanced;
-         bool _clustered;
-         ModelSymbolList _modelSymbolList;
-      };
-}
+        bool getClustered(void) const { return _clustered; }
+        void setClustered(bool clustered) { _clustered = clustered; }
+    private:
+        bool _instanced;
+        bool _clustered;
+        ModelSymbolList _modelSymbolList;
+    };
+} }

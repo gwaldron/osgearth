@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,9 +26,11 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+// VRV PATCH
 namespace osgEarth {
-   OcclusionQueryNodeFactory* OcclusionQueryNodeFactory::_occlusionFactory = NULL;
+    OcclusionQueryNodeFactory* OcclusionQueryNodeFactory::_occlusionFactory = NULL;
 }
+// VRV PATCH
 
 namespace
 {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -83,7 +83,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-
+        
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
@@ -103,7 +103,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         optional<double> offsetZ( 0.0 );
         if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
             offsetZ = feature->eval( offsetExpr, &cx );       
-
+        
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
         {
@@ -153,7 +153,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
     // the map against which we'll be doing elevation clamping
     osg::ref_ptr<const Map> map = session->getMap();
-    if (!map.valid() || !map->getSRS())
+    if (!map.valid())
         return;
 
     const SpatialReference* mapSRS = map->getSRS();
@@ -186,7 +186,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-
+        
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
@@ -226,7 +226,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                 centroidElevation = 0.0;
             }
         }
-
+        
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
         {
@@ -319,7 +319,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                 {
                     std::vector<float> elevations;
                     elevations.reserve( geom->size() );
-
+                    
                     if ( eq.getElevations( geom->asVector(), featureSRS.get(), elevations, _maxRes ) )
                     {
                         for( unsigned i=0; i<geom->size(); ++i )
@@ -391,7 +391,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                 if ( perVertex )
                 {
                     eq.getElevations( geom->asVector(), featureSRS.get(), true, _maxRes );
-
+                    
                     // if necessary, transform the Z values (which are now in the map SRS) back
                     // into the feature's SRS.
                     if ( !vertEquiv )

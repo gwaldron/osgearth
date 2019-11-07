@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2019 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #include <osgEarth/StateSetCache>
 #include <osg/NodeVisitor>
 #include <osg/BufferIndexBinding>
@@ -90,9 +90,9 @@ namespace
     }
 
     /**
-     * Visitor that calls StateSetCache::share on all attributes found
-     * in a scene graph.
-     */
+    * Visitor that calls StateSetCache::share on all attributes found
+    * in a scene graph.
+    */
     struct ShareStateAttributes : public osg::NodeVisitor
     {
         StateSetCache* _cache;
@@ -124,21 +124,21 @@ namespace
 
         void apply(osg::ProxyNode& proxyNode)
         {
-           if (_traverseProxies)
-           {
-              if (proxyNode.getStateSet())
-              {
-                 // ref for thread-safety; another thread might replace this stateset
-                 // during optimization while we're looking at it.
-                 osg::ref_ptr<osg::StateSet> stateset = proxyNode.getStateSet();
-                 if (stateset.valid() &&
-                    stateset->getDataVariance() != osg::Object::DYNAMIC)
-                 {
-                    applyStateSet(stateset.get());
-                 }
-              }
-              traverse(proxyNode);
-           }
+            if (_traverseProxies)
+            {
+                if (proxyNode.getStateSet())
+                {
+                    // ref for thread-safety; another thread might replace this stateset
+                    // during optimization while we're looking at it.
+                    osg::ref_ptr<osg::StateSet> stateset = proxyNode.getStateSet();
+                    if (stateset.valid() &&
+                        stateset->getDataVariance() != osg::Object::DYNAMIC)
+                    {
+                        applyStateSet(stateset.get());
+                    }
+                }
+                traverse(proxyNode);
+            }
         }
 
         // assume: stateSet is safely referenced by caller
@@ -175,9 +175,9 @@ namespace
 
 
     /**
-     * Visitor that calls StateSetCache::share on all statesets found
-     * in a scene graph.
-     */
+    * Visitor that calls StateSetCache::share on all statesets found
+    * in a scene graph.
+    */
     struct ShareStateSets : public osg::NodeVisitor
     {
         StateSetCache* _cache;
@@ -188,9 +188,9 @@ namespace
 
         ShareStateSets(StateSetCache* cache, bool traverseProxies)
             : _cache(cache),
-              _stateSets( 0 ),
-              _shares   ( 0 ),
-              _traverseProxies(traverseProxies)
+            _stateSets( 0 ),
+            _shares   ( 0 ),
+            _traverseProxies(traverseProxies)
 
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
@@ -220,26 +220,26 @@ namespace
 
         void apply(osg::ProxyNode& proxyNode)
         {
-           if (_traverseProxies)
-           {
-              if (proxyNode.getStateSet())
-              {
-                 osg::ref_ptr<osg::StateSet> stateset = proxyNode.getStateSet();
+            if (_traverseProxies)
+            {
+                if (proxyNode.getStateSet())
+                {
+                    osg::ref_ptr<osg::StateSet> stateset = proxyNode.getStateSet();
 
-                 if (isEligible(stateset.get()))
-                 {
-                    _stateSets++;
-                    osg::ref_ptr<osg::StateSet> shared;
-                    if (_cache->share(stateset, shared))
+                    if (isEligible(stateset.get()))
                     {
-                       proxyNode.setStateSet(shared.get());
-                       _shares++;
+                        _stateSets++;
+                        osg::ref_ptr<osg::StateSet> shared;
+                        if (_cache->share(stateset, shared))
+                        {
+                            proxyNode.setStateSet(shared.get());
+                            _shares++;
+                        }
+                        //else _misses.push_back(in.get());
                     }
-                    //else _misses.push_back(in.get());
-                 }
-              }
-              traverse(proxyNode);
-           }
+                }
+                traverse(proxyNode);
+            }
         }
     };
 }
@@ -247,12 +247,12 @@ namespace
 //------------------------------------------------------------------------
 
 StateSetCache::StateSetCache() :
-_pruneCount       ( 0 ),
-_maxSize          ( DEFAULT_PRUNE_ACCESS_COUNT ),
-_attrShareAttempts( 0 ),
-_attrsIneligible  ( 0 ),
-_attrShareHits    ( 0 ),
-_attrShareMisses  ( 0 )
+    _pruneCount       ( 0 ),
+    _maxSize          ( DEFAULT_PRUNE_ACCESS_COUNT ),
+    _attrShareAttempts( 0 ),
+    _attrsIneligible  ( 0 ),
+    _attrShareHits    ( 0 ),
+    _attrShareMisses  ( 0 )
 {
     //nop
 }
@@ -271,7 +271,7 @@ StateSetCache::releaseGLObjects(osg::State* state) const
     {
         i->get()->releaseGLObjects(state);
     }
-    
+
 }
 
 void
@@ -311,8 +311,8 @@ StateSetCache::optimize(osg::Node* node, bool traverseProxies)
 {
     if ( node )
     {
-       consolidateStateAttributes(node, traverseProxies);
-       consolidateStateSets(node, traverseProxies);
+        consolidateStateAttributes(node, traverseProxies);
+        consolidateStateSets(node, traverseProxies);
     }
 }
 
@@ -333,8 +333,8 @@ StateSetCache::eligible(osg::StateAttribute* attr) const
 
 bool
 StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
-                     osg::ref_ptr<osg::StateSet>& output,
-                     bool                         checkEligible)
+    osg::ref_ptr<osg::StateSet>& output,
+    bool                         checkEligible)
 {
     bool shared     = false;
     //bool shareattrs = true;
@@ -382,8 +382,8 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
 
 bool
 StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
-                     osg::ref_ptr<osg::StateAttribute>& output,
-                     bool                               checkEligible)
+    osg::ref_ptr<osg::StateAttribute>& output,
+    bool                               checkEligible)
 {
     _attrShareAttempts++;
 

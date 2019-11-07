@@ -1,8 +1,6 @@
 #include <osgEarth/SimplePager> 
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
-#include <osgEarth/SceneGraphCallback>
-#include <osgEarth/CullingUtils>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/ShapeDrawable>
@@ -215,29 +213,12 @@ osg::Node* SimplePager::createNode(const TileKey& key, ProgressCallback* progres
     osg::BoundingSphere bounds = getBounds( key );
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
-    mt->setName(key.str());
     mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
-    
-    osg::ref_ptr<osg::Group> oqn;
-    if (OcclusionQueryNodeFactory::_occlusionFactory) {
-       oqn = OcclusionQueryNodeFactory::_occlusionFactory->createQueryNode();
-    }
-
-
     osg::Geode* geode = new osg::Geode;
     osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), bounds.radius()) );
     sd->setColor( osg::Vec4(1,0,0,1 ) );
     geode->addDrawable( sd );
-    if (oqn.get())
-    {
-       oqn->setName("SimplePager::OQN");
-       oqn.get()->addChild(geode);
-       mt->addChild(oqn);
-    }
-    else {
     mt->addChild(geode);
-    }
-
     return mt;
 }
 
@@ -260,7 +241,6 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         if ( node.valid() )
         {
             tileBounds = node->getBound();
-          
         }
         else
         {
@@ -271,7 +251,6 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     if ( !node.valid() )
     {
         node = new osg::Group();
-        node.get()->setName(key.str());
     }
 
     // notify any callbacks.
@@ -284,11 +263,9 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         getSceneGraphCallbacks() ? new PagedLODWithSceneGraphCallbacks(getSceneGraphCallbacks()) :
         new osg::PagedLOD();
 
-    plod->setName("pagedLOD");
     plod->setCenter( tileBounds.center() ); 
     plod->setRadius( tileRadius );
 
-    
     plod->addChild( node.get() );
 
     if ( hasChildren )
@@ -340,7 +317,6 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         // no children, so max out the visibility range.
         plod->setRange( 0, 0, FLT_MAX );
     }
-    
 
     return plod;
 }
@@ -352,7 +328,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 osg::Node* SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
 {       
     osg::ref_ptr< osg::Group >  group = new osg::Group;
-    group->setName(key.str() + "-group");
+
     for (unsigned int i = 0; i < 4; i++)
     {
         TileKey childKey = key.createChildKey( i );

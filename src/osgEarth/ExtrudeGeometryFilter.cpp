@@ -536,7 +536,7 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     bool madeGeom = true;
 
     // 6 verts per face total (3 triangles)
-    unsigned numWallVerts = structure.getNumPoints();
+    unsigned numWallVerts = 6 * structure.getNumPoints();
 
     double texWidthM   = wallSkin ? *wallSkin->imageWidth()  : 1.0;
     double texHeightM  = wallSkin ? *wallSkin->imageHeight() : 1.0;
@@ -816,10 +816,6 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure& structure)
     const float cosMinAngle = cos(osg::DegreesToRadians(_outlineSymbol->creaseAngle().get()));
 
     osg::ref_ptr<LineDrawable> lines = new LineDrawable(GL_LINES);
-
-    // if the user requested legacy lines:
-    if (_outlineSymbol->useGLLines() == true)
-        lines->setUseGPU(false);
     
     const optional<Stroke>& stroke = _outlineSymbol->stroke();
     if (stroke.isSet())

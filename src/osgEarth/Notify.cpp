@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,6 @@
 #include <osg/ref_ptr>
 #include <sstream>
 #include <iostream>
-#include <iomanip>
-#include <vector>
 
 #include <stdlib.h>
 
@@ -225,19 +223,6 @@ osg::NotifyHandler* osgEarth::getNotifyHandler()
 }
 
 
-std::vector<std::ostream*> osgearth_g_OutputStreams;
-
-void
-osgEarth::setNotifyStream(const osg::NotifySeverity severity, std::ostream* stream)
-{
-   if (severity >= osgearth_g_OutputStreams.size())
-   {
-      osgearth_g_OutputStreams.resize(severity + 1);
-   }
-
-   osgearth_g_OutputStreams[severity] = stream;
-}
-
 #ifndef OSGEARTH_NOTIFY_DISABLED
 bool osgEarth::isNotifyEnabled( osg::NotifySeverity severity )
 {
@@ -249,19 +234,8 @@ std::ostream& osgEarth::notify(const osg::NotifySeverity severity)
 {
     if (osgEarth::isNotifyEnabled(severity))
     {
-        // MERGE: Do DKomisar's version or else do 2.10.2 way
-        std::ostream* out = 0;
-        if (severity < osgearth_g_OutputStreams.size() && osgearth_g_OutputStreams[severity] != 0)
-        {
-            out = osgearth_g_OutputStreams[severity];
-            (*out) << std::setprecision(8);
-            return *out;
-        }
-        else
-        {
-            getNotifySingleton()._notifyStream.setCurrentSeverity(severity);
-            return getNotifySingleton()._notifyStream;
-        }
+        getNotifySingleton()._notifyStream.setCurrentSeverity(severity);
+        return getNotifySingleton()._notifyStream;
     }
     return getNotifySingleton()._nullStream;
 }

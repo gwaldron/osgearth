@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -195,6 +195,7 @@ SkinResource::createStateSet( osg::Image* image ) const
             if ( _texEnvMode.isSet() )
             {
                 osg::TexEnv* texenv = new osg::TexEnv();
+                texenv = new osg::TexEnv();
                 texenv->setMode( *_texEnvMode );
                 stateSet->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
             }

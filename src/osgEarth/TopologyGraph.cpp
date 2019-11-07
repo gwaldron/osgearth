@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -31,8 +31,7 @@ using namespace osgEarth::Util;
 
 
 TopologyGraph::TopologyGraph() :
-_maxGraphID(0u),
-_totalVerts(0)
+_maxGraphID(0u)
 {
     //nop
 }
@@ -291,8 +290,8 @@ TopologyBuilder::assignAndPropagate(TopologyGraph::Index& vertex, unsigned graph
             endPoint != endPoints.end();
             ++endPoint)
         {
-            TopologyGraph::Index endPointVertex = *endPoint;
-            assignAndPropagate(endPointVertex, graphID);
+            TopologyGraph::Index vertex = *endPoint;
+            assignAndPropagate(vertex, graphID);
         }
     }
 }

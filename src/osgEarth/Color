@@ -1,21 +1,21 @@
 /* --*-c++-*-- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 #ifndef OSGEARTH_COLOR_H
 #define OSGEARTH_COLOR_H 1
 
@@ -28,8 +28,8 @@
 namespace osgEarth
 {
     /**
-    * Color.
-    */
+     * Pre-set colors (convenience class).
+     */
     struct OSGEARTH_EXPORT Color : public osg::Vec4f
     {
         enum Format {
@@ -60,12 +60,12 @@ namespace osgEarth
         Color( unsigned value, Format format =RGBA );
 
         /**
-        * Construct a color from a hex string in one of the following formats, (with or
-        * without the component order reversed):
-        *   RRGGBB or RRGGBBAA
-        *   #RRGGBB or #RRGGBBAA (HTML style - preceding hash)
-        *   0xRRGGBB or 0xRRGGBBAA (C style - preceding "0x")
-        */
+         * Construct a color from a hex string in one of the following formats, (with or
+         * without the component order reversed):
+         *   RRGGBB or RRGGBBAA
+         *   #RRGGBB or #RRGGBBAA (HTML style - preceding hash)
+         *   0xRRGGBB or 0xRRGGBBAA (C style - preceding "0x")
+         */
         Color( const std::string& html, Format format =RGBA );
 
         virtual ~Color() { }
@@ -115,14 +115,14 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-
-  //------------------------------------------------------------------------
+    
+//------------------------------------------------------------------------
 
 namespace osgEarth
 {
     // Config specializations for Color:
     template<> inline
-        void Config::set<Color>( const std::string& key, const optional<Color>& opt ) {
+    void Config::set<Color>( const std::string& key, const optional<Color>& opt ) {
         if ( opt.isSet() ) {
             remove( key );
             set( key, opt->toHTML() );
@@ -130,7 +130,7 @@ namespace osgEarth
     }
 
     template<> inline
-        bool Config::get<Color>( const std::string& key, optional<Color>& output ) const {
+    bool Config::get<Color>( const std::string& key, optional<Color>& output ) const {
         if ( hasValue( key ) ) {
             output = Color( value(key) );
             return true;

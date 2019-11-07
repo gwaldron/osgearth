@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -65,7 +65,7 @@ TerrainLayer::Options::fromConfig(const Config& conf)
     conf.get( "min_resolution", _minResolution );
     conf.get( "max_resolution", _maxResolution );
     conf.get( "max_data_level", _maxDataLevel );
-    conf.get( "proxy",        _proxySettings );
+    conf.get( "proxy", _proxySettings );
     conf.get( "no_data_value", _noDataValue);
     conf.get( "nodata_value", _noDataValue); // back compat
     conf.get( "min_valid_value", _minValidValue);
@@ -262,32 +262,32 @@ TerrainLayer::setUpL2Cache(unsigned minSize)
     // Check the layer hints
     unsigned l2CacheSize = layerHints().L2CacheSize().getOrUse(minSize);
 
-        // Create an L2 mem cache that sits atop the main cache, if necessary.
-        // For now: use the same L2 cache size at the driver.
+    // Create an L2 mem cache that sits atop the main cache, if necessary.
+    // For now: use the same L2 cache size at the driver.
     if (l2CacheSize == 0u && options().driver()->L2CacheSize().isSet())
         l2CacheSize = options().driver()->L2CacheSize().get();
 
-        // See if it was overridden with an env var.
+    // See if it was overridden with an env var.
     char const* l2env = ::getenv("OSGEARTH_L2_CACHE_SIZE");
     if (l2env)
-        {
+    {
         l2CacheSize = as<int>(std::string(l2env), 0);
-            OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
-        }
+        OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
+    }
 
-        // Env cache-only mode also disables the L2 cache.
+    // Env cache-only mode also disables the L2 cache.
     char const* noCacheEnv = ::getenv("OSGEARTH_MEMORY_PROFILE");
     if (noCacheEnv)
-        {
-            l2CacheSize = 0;
-        }
+    {
+        l2CacheSize = 0;
+    }
 
-        // Initialize the l2 cache if it's size is > 0
+    // Initialize the l2 cache if it's size is > 0
     if (l2CacheSize > 0)
-        {
+    {
         _memCache = new MemCache(l2CacheSize);
         OE_INFO << LC << "L2 cache size = " << l2CacheSize << std::endl;
-        }
+    }
 }
 
 Status
@@ -431,7 +431,7 @@ TerrainLayer::setTileSource(TileSource* value)
     {
         OE_WARN << LC << "Illegal: cannot call setTileSource after Layer is open" << std::endl;
         return;
-        }
+    }
     _tileSource = value;
     setTileSourceExpected(true);    
 }
@@ -1141,11 +1141,8 @@ TerrainLayer::getBestAvailableTileKey(const TileKey& key) const
         return localLOD > MDL ? key.createAncestorKey(MDL) : key;
     }
 
-    // Transform the key's extent to the layer's extent
-    GeoExtent localKeyExtent = getProfile()->clampAndTransformExtent(key.getExtent());
-
     // Reject if the extents don't overlap at all.
-    if (!getDataExtentsUnion().intersects(localKeyExtent))
+    if (!getDataExtentsUnion().intersects(key.getExtent()))
     {
         return TileKey::INVALID;
     }
@@ -1157,7 +1154,7 @@ TerrainLayer::getBestAvailableTileKey(const TileKey& key) const
     for (DataExtentList::const_iterator itr = de.begin(); itr != de.end(); ++itr)
     {
         // check for 2D intersection:
-        if (itr->intersects(localKeyExtent))
+        if (key.getExtent().intersects(*itr))
         {
             // check that the extent isn't higher-resolution than our key:
             if ( !itr->minLevel().isSet() || localLOD >= (int)itr->minLevel().get() )

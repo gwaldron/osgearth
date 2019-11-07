@@ -9,7 +9,7 @@ OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
 MARK_AS_ADVANCED(CURL_IS_STATIC)
 
 # NVTT mipmap generation 
-option(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS "Use NVTT, if available, to generate texture mipmaps on the CPU" ON)
+option(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS "Use NVTT, if available, to generate texture mipmaps on the CPU" OFF)
 mark_as_advanced(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
 if(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
     add_definitions(-DOSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
@@ -197,7 +197,7 @@ SET(LIB_PUBLIC_HEADERS
     StateSetCache
     Status
     StringUtils
-    #TDTiles
+    TDTiles
     TaskService
     Terrain
     TerrainEffect
@@ -293,7 +293,8 @@ SET(LIB_PUBLIC_HEADERS
     Common
     ConvertTypeFilter
     CropFilter
-    ExtrudeGeometryFilter    
+    ExtrudeGeometryFilter
+    ExtrudeGeometryFilterNode 
     Feature
     FeatureCursor
     FeatureDisplayLayout
@@ -308,7 +309,6 @@ SET(LIB_PUBLIC_HEADERS
     FeatureSourceIndexNode
     Filter
     FilterContext
-    FilterUsage
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
@@ -326,6 +326,7 @@ SET(LIB_PUBLIC_HEADERS
     ScriptFilter
     Shaders
     SubstituteModelFilter
+    SubstituteModelFilterNode
     TessellateOperator
     TextSymbolizer
     TFS
@@ -401,9 +402,6 @@ SET(LIB_PUBLIC_HEADERS
     rtree.h    
     
     FileGDBFeatureSource
-    
-    ExtrudeGeometryFilterNode
-    SubstituteModelFilterNode
 )
 
 
@@ -550,7 +548,7 @@ set(TARGET_SRC
     Status.cpp
     StringUtils.cpp
     TaskService.cpp
-    #TDTiles.cpp
+    TDTiles.cpp
     Terrain.cpp
     TerrainLayer.cpp
     TerrainOptions.cpp
@@ -635,7 +633,8 @@ set(TARGET_SRC
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
-    ExtrudeGeometryFilter.cpp    
+    ExtrudeGeometryFilter.cpp  
+    ExtrudeGeometryFilterNode.cpp  
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
@@ -664,6 +663,7 @@ set(TARGET_SRC
     ScriptEngine.cpp
     ScriptFilter.cpp
     SubstituteModelFilter.cpp
+    SubstituteModelFilterNode.cpp
     TessellateOperator.cpp    
     TextSymbolizer.cpp
     TFS.cpp
@@ -732,9 +732,6 @@ set(TARGET_SRC
     TrackNode.cpp
     
     FileGDBFeatureSource.cpp
-    
-    ExtrudeGeometryFilterNode.cpp
-    SubstituteModelFilterNode.cpp
     
     ${SHADERS_CPP} 
 )

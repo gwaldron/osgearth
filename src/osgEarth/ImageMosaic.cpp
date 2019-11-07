@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,7 +66,7 @@ ImageMosaic::createImage()
 {
     if (_images.size() == 0)
     {
-        OE_DEBUG << "ImageMosaic has no images..." << std::endl;
+        OE_INFO << "ImageMosaic has no images..." << std::endl;
         return 0;
     }
 

@@ -96,6 +96,8 @@ uniform float oe_GroundCover_maxDistance;     // distance at which flora disappe
 uniform float oe_GroundCover_contrast;
 uniform float oe_GroundCover_brightness;
 
+uniform vec3 oe_Camera;  // (vp width, vp height, lodscale)
+
 // different noise texture channels:
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
@@ -204,8 +206,9 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     // Clamp the center point to the elevation.
     oe_GroundCover_clamp(vertex_view, oe_UpVectorView, oe_layer_tilec.st);
 
-    // Calculate the normalized camera range:
-    float nRange = clamp(-vertex_view.z/oe_GroundCover_maxDistance, 0.0, 1.0);
+    // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
+    float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
+    float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
     // Distance culling:
     if ( nRange == 1.0 )

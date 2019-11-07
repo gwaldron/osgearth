@@ -539,7 +539,7 @@ RexTerrainEngineNode::dirtyTerrain()
     getMap()->getProfile()->getAllKeysAtLOD(options().firstLOD().get(), keys );
 
     // create a root node for each root tile key.
-    OE_DEBUG << LC << "Creating " << keys.size() << " root keys." << std::endl;
+    OE_INFO << LC << "Creating " << keys.size() << " root keys." << std::endl;
 
     // We need to take a self-ref here to ensure that the TileNode's data loader
     // can use its observer_ptr back to the terrain engine.
@@ -566,6 +566,8 @@ RexTerrainEngineNode::dirtyTerrain()
 
         // And load the tile's data synchronously (only for root tiles)
         tileNode->loadSync();
+
+        OE_DEBUG << " - " << (i+1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;
     }
 
     // release the self-ref.

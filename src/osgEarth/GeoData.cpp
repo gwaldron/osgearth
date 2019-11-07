@@ -2302,17 +2302,26 @@ GeoImage::takeImage()
 
 /***************************************************************************/
 
-#define DEFAULT_NORMAL osg::Vec3(0,0,1)
-#define DEFAULT_CURVATURE 0.0f
+namespace
+{
+    // For initialization help in NormalMap ctor
+    struct PixelData
+    {
+        unsigned char x;
+        unsigned char y;
+        unsigned char z;
+        unsigned char w;
+    };
+    const osg::Vec3 DEFAULT_NORMAL(0,0,1);
+    const float DEFAULT_CURVATURE(0.0f);
+}
+
 
 NormalMap::NormalMap(unsigned s, unsigned t) :
-osg::Image(),
-_write(0L),
-_read(0L)
+    osg::Image(),
+    _write(0L),
+    _read(0L)
 {
-    const osg::Vec3 defaultNormal(DEFAULT_NORMAL);
-    const float defaultCurvature(DEFAULT_CURVATURE);
-
     if ( s > 0 && t > 0 )
     {
         allocateImage(s, t, 1, GL_RGBA, GL_UNSIGNED_BYTE, 1);
@@ -2320,10 +2329,27 @@ _read(0L)
         _write = new ImageUtils::PixelWriter(this);
         _read = new ImageUtils::PixelReader(this);
 
-        for (unsigned y=0; y<t; ++y)
-            for (unsigned x=0; x<s; ++x)
-                set(x, y, defaultNormal, defaultCurvature);
+        // optimization for creating initial normal map image
+        unsigned char* ptr = (unsigned char*)_write->data(0, 0, 0 /*r*/, 0 /*m*/);
+
+        // if GL_RGBA or GL_UNSIGNED_BYTE changes, this code needs to change
+        PixelData pixData;
+
+        // 0 0 1 0 -> 0.5 0.5 1 0.5 -> 127 127 255 127
+        pixData.x = (0.5f*(DEFAULT_NORMAL.x() + 1.0f)) * 255;
+        pixData.y = (0.5f*(DEFAULT_NORMAL.y() + 1.0f)) * 255;
+        pixData.z = (0.5f*(DEFAULT_NORMAL.z() + 1.0f)) * 255;
+        pixData.w = (0.5f*(DEFAULT_CURVATURE + 1.0f)) * 255;
+
+        // TODO: We could just have a 257x257 image and just do mem copy?
+        std::fill_n((PixelData*)ptr, s*t, pixData);
     }
+}
+
+NormalMap::NormalMap(const osg::Image& image) : osg::Image(image)
+{
+    _write = new ImageUtils::PixelWriter(this);
+    _read = new ImageUtils::PixelReader(this);
 }
 
 NormalMap::~NormalMap()
@@ -2349,7 +2375,7 @@ NormalMap::set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature)
 osg::Vec3
 NormalMap::getNormal(unsigned s, unsigned t) const
 {
-    if (!_read) return osg::Vec3(0,0,1);
+    if (!_read) return DEFAULT_NORMAL;
 
     osg::Vec4 encoding = (*_read)(s, t);
     return osg::Vec3(
@@ -2361,7 +2387,7 @@ NormalMap::getNormal(unsigned s, unsigned t) const
 osg::Vec3
 NormalMap::getNormalByUV(double u, double v) const
 {
-    if (!_read) return osg::Vec3(0,0,1);
+    if (!_read) return DEFAULT_NORMAL;
 
     double c = u * (double)(s()-1);
     double r = v * (double)(t()-1);
@@ -2416,7 +2442,7 @@ NormalMap::getNormalByUV(double u, double v) const
 float
 NormalMap::getCurvature(unsigned s, unsigned t) const
 {
-    if (!_read) return 0.0f;
+    if (!_read) return DEFAULT_CURVATURE;
     return (*_read)(s, t).a() * 2.0f - 1.0f;
 }
 

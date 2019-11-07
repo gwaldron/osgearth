@@ -33,7 +33,7 @@
 
 namespace osgEarth
 {    
-    class FeatureModelOptions
+    class OSGEARTH_EXPORT FeatureModelOptions
     {
     public: //properties
         

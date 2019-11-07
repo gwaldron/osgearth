@@ -97,9 +97,16 @@ namespace
             {
                 ImageLayer* imageLayer = sourceLayer->getImageLayer();
 
-                for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
+                for(TileKey k = key; k.valid() && !image.valid() && imageLayer->isKeyInLegalRange(k); k = k.createParentKey())
                 {
-                    image = imageLayer->createImage(k, progress);
+                    // Check is there is the possibility of data for this key
+                    // If not, proceed to the parent (since we are potentially mosaicing)
+                    // We may want to check isKeyInLegalRange here as well, since putting it
+                    // in the for loop will only work for min_level (but that is probably OK)
+                    if (imageLayer->mayHaveData(key))
+                    {
+                        image = imageLayer->createImage(k, progress);
+                    }
 
                     // check for cancelation:
                     if (progress && progress->isCanceled())
@@ -242,11 +249,13 @@ LandCoverLayer::openImplementation()
         LandCoverCoverageLayer* coverage = _coverageLayers[i].get();
         if (coverage->getEnabled())
         {
+            OE_INFO << LC << "Opening coverage layer \"" << coverage->getName() << std::endl;
+
             // Open the coverage layer and bail if it fails.
             const Status& coverageStatus = coverage->open();
             if (coverageStatus.isError())
             {
-                OE_WARN << LC << "One of the coverage layers failed to open; aborting" << std::endl;
+                OE_WARN << LC << "Coverage layer failed to open; aborting" << std::endl;
                 return coverageStatus;
             }
 
@@ -371,21 +380,24 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     MetaImage metaImage;
 
     // Grab a test sample to see what the output parameters should be:
-    osg::Vec4f dummy;
-    if (!readMetaImage(metaImage, getBestAvailableTileKey(key), 0.5, 0.5, dummy, progress))
-        return GeoImage::INVALID;
-    osg::Image* mainImage = metaImage.begin()->second.image.get();
+    //osg::Vec4f dummy;
+    //if (!readMetaImage(metaImage, getBestAvailableTileKey(key), 0.5, 0.5, dummy, progress))
+    //    return GeoImage::INVALID;
+    //osg::Image* mainImage = metaImage.begin()->second.image.get();
         
     // Allocate the output image:
     osg::ref_ptr<osg::Image> output = new osg::Image();
     output->allocateImage(
-        mainImage->s(),
-        mainImage->t(),
-        mainImage->r(),
-        mainImage->getPixelFormat(),
-        mainImage->getDataType(),
-        mainImage->getPacking());
-    output->setInternalTextureFormat(mainImage->getInternalTextureFormat());
+        getTileSize(), //mainImage->s(),
+        getTileSize(), //mainImage->t(),
+        1, //mainImage->r(),
+        GL_RED,
+        GL_FLOAT);
+        //mainImage->getPixelFormat(),
+        //mainImage->getDataType(),
+        //mainImage->getPacking());
+    output->setInternalTextureFormat(GL_R16F);
+    //output->setInternalTextureFormat(mainImage->getInternalTextureFormat());
     ImageUtils::markAsUnNormalized(output.get(), true);
     ImageUtils::PixelWriter write(output.get());
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -431,15 +431,15 @@ GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
         out_up.set(0, 0, 1);
         return true;
     }
-    else if (_srs->isGeographic())
+    else if ( _srs->isGeographic() )
     {
-       double coslon = cos(osg::DegreesToRadians(x()));
-       double coslat = cos(osg::DegreesToRadians(y()));
-       double sinlon = sin(osg::DegreesToRadians(x()));
-       double sinlat = sin(osg::DegreesToRadians(y()));
+        double coslon = cos( osg::DegreesToRadians(x()) );
+        double coslat = cos( osg::DegreesToRadians(y()) );
+        double sinlon = sin( osg::DegreesToRadians(x()) );
+        double sinlat = sin( osg::DegreesToRadians(y()) );
 
-       out_up.set(coslon*coslat, sinlon*coslat, sinlat);
-       return true;
+        out_up.set( coslon*coslat, sinlon*coslat, sinlat );
+        return true;
     }
     else
     {
@@ -463,98 +463,127 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
     GeoPoint result;
 
-    // Geometric slerp in unit sphere space
-    // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+    GeoPoint to = rhs.transform(getSRS());
 
-    GeoPoint p1 = transform(getSRS()->getGeodeticSRS());
-    GeoPoint p2 = rhs.transform(p1.getSRS());
+    if (getSRS()->isProjected())
+    {
+        osg::Vec3d w1, w2;
+        toWorld(w1);
+        rhs.toWorld(w2);
 
-    double deltaZ = p2.z()-p1.z();
-
-    // Convert each point to unit sphere world space:
-    osg::Vec3d unitToEllip(
-        getSRS()->getEllipsoid()->getRadiusEquator(),
-        getSRS()->getEllipsoid()->getRadiusEquator(),
-        getSRS()->getEllipsoid()->getRadiusPolar());
-
-    osg::Vec3d ellipToUnit = osg::componentDivide(
-        osg::Vec3d(1,1,1), unitToEllip);
+        osg::Vec3d r(
+            w1.x() + (w2.x()-w1.x())*t,
+            w1.y() + (w2.y()-w1.y())*t,
+            w1.z() + (w2.z()-w1.z())*t);
         
-    osg::Vec3d w1;
-    p1.toWorld(w1);
-    w1 = osg::componentMultiply(w1, ellipToUnit);
-    w1.normalize();
+        result.fromWorld(getSRS(), r);
+    }
 
-    osg::Vec3d w2;
-    p2.toWorld(w2);
-    w2 = osg::componentMultiply(w2, ellipToUnit);
-    w2.normalize();
+    else // geographic
+    {
+        // Geometric slerp in unit sphere space
+        // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
 
-    // perform geometric slerp:
-    double dp = w1*w2;
-    if (dp == 1.0)
-        return *this;
+        double deltaZ = to.z()-z();
 
-    double angle = acos(dp);
+        // Convert each point to unit sphere world space:
+        osg::Vec3d unitToEllip(
+            getSRS()->getEllipsoid()->getRadiusEquator(),
+            getSRS()->getEllipsoid()->getRadiusEquator(),
+            getSRS()->getEllipsoid()->getRadiusPolar());
 
-    double s = sin(angle);
-    if (s == 0.0)
-        return *this;
+        osg::Vec3d ellipToUnit = osg::componentDivide(
+            osg::Vec3d(1,1,1), unitToEllip);
+        
+        osg::Vec3d w1;
+        toWorld(w1);
+        w1 = osg::componentMultiply(w1, ellipToUnit);
+        w1.normalize();
 
-    double c1 = sin((1.0-t)*angle)/s;
-    double c2 = sin(t*angle)/s;
+        osg::Vec3d w2;
+        to.toWorld(w2);
+        w2 = osg::componentMultiply(w2, ellipToUnit);
+        w2.normalize();
 
-    osg::Vec3d n = w1*c1 + w2*c2;
+        // perform geometric slerp:
+        double dp = w1*w2;
+        if (dp == 1.0)
+            return *this;
 
-    // convert back to world space and apply altitude lerp
-    n = osg::componentMultiply(n, unitToEllip);
-    result.fromWorld(getSRS(), n);
-    result.z() = p1.z() + t*deltaZ;
+        double angle = acos(dp);
 
-    result.transformInPlace(getSRS());
+        double s = sin(angle);
+        if (s == 0.0)
+            return *this;
+
+        double c1 = sin((1.0-t)*angle)/s;
+        double c2 = sin(t*angle)/s;
+
+        osg::Vec3d n = w1*c1 + w2*c2;
+
+        // convert back to world space and apply altitude lerp
+        n = osg::componentMultiply(n, unitToEllip);
+        result.fromWorld(getSRS(), n);
+        result.z() = z() + t*deltaZ;
+    }
+
     return result;
 }
-   
+
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const
 {
-    // https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal-surface_formulae
+    if ( getSRS()->isProjected() && rhs.getSRS()->isProjected() )
+    {
+        if ( getSRS()->isEquivalentTo(rhs.getSRS()) )
+        {
+            return (vec3d() - rhs.vec3d()).length();
+        }
+        else
+        {
+            GeoPoint rhsT = rhs.transform(getSRS());
+            return (vec3d() - rhsT.vec3d()).length();
+        }
+    }
+    else
+    {
+        // https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal-surface_formulae
 
-    // Convert both points to geographic
-    GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
-    GeoPoint p2 = rhs.transform( p1.getSRS() );
+        GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
+        GeoPoint p2 = rhs.transform( p1.getSRS() );
 
-    double Re = getSRS()->getEllipsoid()->getRadiusEquator();
-    double Rp = getSRS()->getEllipsoid()->getRadiusPolar();
-    double F  = (Re-Rp)/Re; // flattening
+        double Re = getSRS()->getEllipsoid()->getRadiusEquator();
+        double Rp = getSRS()->getEllipsoid()->getRadiusPolar();
+        double F  = (Re-Rp)/Re; // flattening
 
-    double
-        lat1 = osg::DegreesToRadians(p1.y()),
-        lon1 = osg::DegreesToRadians(p1.x()),
-        lat2 = osg::DegreesToRadians(p2.y()),
-        lon2 = osg::DegreesToRadians(p2.x());
+        double
+            lat1 = osg::DegreesToRadians(p1.y()),
+            lon1 = osg::DegreesToRadians(p1.x()),
+            lat2 = osg::DegreesToRadians(p2.y()),
+            lon2 = osg::DegreesToRadians(p2.x());
 
-    double B1 = atan( (1.0-F)*tan(lat1) );
-    double B2 = atan( (1.0-F)*tan(lat2) );
+        double B1 = atan( (1.0-F)*tan(lat1) );
+        double B2 = atan( (1.0-F)*tan(lat2) );
 
-    double P = (B1+B2)/2.0;
-    double Q = (B2-B1)/2.0;
+        double P = (B1+B2)/2.0;
+        double Q = (B2-B1)/2.0;
 
-    double G = acos(sin(B1)*sin(B2) + cos(B1)*cos(B2)*cos(fabs(lon2-lon1)));
+        double G = acos(sin(B1)*sin(B2) + cos(B1)*cos(B2)*cos(fabs(lon2-lon1)));
 
-    double 
-        sinG = sin(G), 
-        sinP = sin(P), sinQ = sin(Q), 
-        cosP = cos(P), cosQ = cos(Q), 
-        sinG2 = sin(G/2.0), cosG2 = cos(G/2.0);
+        double 
+            sinG = sin(G), 
+            sinP = sin(P), sinQ = sin(Q), 
+            cosP = cos(P), cosQ = cos(Q), 
+            sinG2 = sin(G/2.0), cosG2 = cos(G/2.0);
 
-    double X = (G-sinG)*((sinP*sinP*cosQ*cosQ)/(cosG2*cosG2));
-    double Y = (G+sinG)*((cosP*cosP*sinQ*sinQ)/(sinG2*sinG2));
+        double X = (G-sinG)*((sinP*sinP*cosQ*cosQ)/(cosG2*cosG2));
+        double Y = (G+sinG)*((cosP*cosP*sinQ*sinQ)/(sinG2*sinG2));
 
-    double dist = Re*(G-(F/2.0)*(X+Y));
+        double dist = Re*(G-(F/2.0)*(X+Y));
 
-    // NaN could mean start/end points are the same
-    return osg::isNaN(dist)? 0.0 : dist;
+        // NaN could mean start/end points are the same
+        return osg::isNaN(dist)? 0.0 : dist;
+    }
 }
 
 std::string
@@ -912,51 +941,41 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
         return false;
 
     osg::Vec3d xy( x, y, 0 );
-    osg::Vec3d local(x, y, 0);
-    const SpatialReference* pSrs = _srs.get();
+    osg::Vec3d local = xy;
 
     // See if we need to xform the input:
-    if (srs && srs->isHorizEquivalentTo(pSrs) == false)
+    if (srs && srs->isHorizEquivalentTo(_srs.get()) == false)
     {
         // If the transform fails, bail out with error
-        if (srs->transform(xy, pSrs, local) == false)
+        if (srs->transform(xy, _srs.get(), local) == false)
         {
             return false;
         }
     }
 
-    const double epsilon = 1e-6;
-    const double lsouth = south();
-    const double lnorth = north();
-    const double least = east();
-    const double lwest = west();
-    const double lwidth = width();
-    double& localx = local.x();
-    double& localy = local.y();
-
     // Quantize the Y coordinate to account for tiny rounding errors:
-    if (fabs(lsouth - localy) < epsilon)
-        localy = lsouth;
-    if (fabs(lnorth - localy) < epsilon)
-        localy = lnorth;
+    if (osg::equivalent(south(), local.y()))
+        local.y() = south();
+    if (osg::equivalent(north(), local.y()))
+        local.y() = north();
 
     // Test the Y coordinate:
-    if (localy < lsouth || localy > lnorth)
+    if (local.y() < south() || local.y() > north())
         return false;
 
     // Bring the X coordinate into normal range:
-    localx = normalizeX(localx);
+    local.x() = normalizeX(local.x());
     
     // Quantize the X coordinate to account for tiny rounding errors:
-    if (fabs(lwest - localx) < epsilon)
-        localx = lwest;
-    if (fabs(least - localx) < epsilon)
-        localx = least;
+    if (osg::equivalent(west(), local.x()))
+        local.x() = west();
+    if (osg::equivalent(east(), local.x()))
+        local.x() = east();
 
     // account for the antimeridian wrap-around:
-    const double a0 = lwest, a1 = lwest + lwidth;
-    const double b0 = least - lwidth, b1 = least;
-    return (a0 <= localx && localx <= a1) || (b0 <= localx && localx <= b1);
+    double a0 = west(), a1 = west() + width();
+    double b0 = east() - width(), b1 = east();
+    return (a0 <= local.x() && local.x() <= a1) || (b0 <= local.x() && local.x() <= b1);
 }
 
 bool
@@ -1171,15 +1190,6 @@ GeoExtent::expandToInclude(double x, double y)
         clamp();
     }
 }
-/*
-void
-GeoExtent::expandToInclude(const Bounds& rhs)
-{
-    expandToInclude( rhs.center() );
-    expandToInclude( rhs.xMin(), rhs.yMin() );
-    expandToInclude( rhs.xMax(), rhs.yMax() );
-}
-*/
 
 bool
 GeoExtent::expandToInclude(const GeoExtent& rhs)
@@ -2310,31 +2320,10 @@ _read(0L)
         _write = new ImageUtils::PixelWriter(this);
         _read = new ImageUtils::PixelReader(this);
 
-
-        // optimization for creating initial normal map image
-        unsigned char* ptr = (unsigned char*)_write->data(0, 0, 0 /*r*/, 0 /*m*/);
-
-        // don't use ved3f, use unsigned char and fill the array with the data 
-        // instead of using the slow osgEarth write mechanism
-        // if GL_RGBA or GL_UNSIGNED_BYTE changes, this code needs to change
-        pixelData pixData;
-        // 0 0 1 0 -> 0.5 0.5 1 0.5 -> 127 127 255 127
-        pixData.x = (0.5f*(defaultNormal.x() + 1.0f)) * 255;
-        pixData.y = (0.5f*(defaultNormal.y() + 1.0f)) * 255;
-        pixData.z = (0.5f*(defaultNormal.z() + 1.0f)) * 255;
-        pixData.w = (0.5f*(defaultCurvature + 1.0f)) * 255;
-
-        // TODO: We could just have a 257x257 image and just do mem copy?
-        std::fill_n((pixelData*)ptr, s*t, pixData);
-   }
-}
-
-NormalMap::NormalMap(const osg::Image & rhs) : osg::Image(rhs)
-{
-
-   _write = new ImageUtils::PixelWriter(this);
-   _read = new ImageUtils::PixelReader(this);
-
+        for (unsigned y=0; y<t; ++y)
+            for (unsigned x=0; x<s; ++x)
+                set(x, y, defaultNormal, defaultCurvature);
+    }
 }
 
 NormalMap::~NormalMap()

@@ -32,6 +32,8 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 #include <osg/CoordinateSystemNode>
+#include <osg/Version>
+#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -1591,7 +1593,11 @@ void ThreeDTile::traverse(osg::NodeVisitor& nv)
     }
     else if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
         osgUtil::CullVisitor* cv = nv.asCullVisitor();
+#else
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+#endif
 
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;

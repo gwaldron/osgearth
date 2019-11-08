@@ -41,6 +41,10 @@ namespace osgEarth {
     class OGRFeatureSource;
 }
 
+namespace osgUtil {
+    class CullVisitor;
+}
+
 /**
  * 3D Tiles
  * https://github.com/AnalyticalGraphicsInc/3d-tiles

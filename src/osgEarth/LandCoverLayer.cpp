@@ -261,7 +261,7 @@ LandCoverLayer::openImplementation()
 
             if (coverage->getImageLayer())
             {
-                coverage->getImageLayer()->setUpL2Cache(64u);
+                coverage->getImageLayer()->setUpL2Cache(9u);
             }
 
             _codemaps.resize(_codemaps.size()+1);

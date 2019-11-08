@@ -28,6 +28,7 @@
 #include <osgEarth/StyleSheet>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/LabelNode>
+#include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 #include <osg/CoordinateSystemNode>
@@ -35,6 +36,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
+using namespace osgEarth::Contrib::TDTiles;
 
 #define LC "[3DTiles] "
 
@@ -1364,4 +1366,395 @@ TDTiles::TilesetFactory::create(OGRFeatureSource* source,
     tileset->root() = root.get();
     tileset->asset()->version() = "1.0";
     return tileset.release();
+}
+
+ThreeDTile::ThreeDTile(ThreeDTileset* tileset, TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options) :
+    _tileset(tileset),
+    _tile(tile),
+    _requestedContent(false),
+    _immediateLoad(immediateLoad),
+    _firstVisit(true),
+    _contentUnloaded(false),
+    _options(options)
+{
+    // the transform to localize this tile:
+    if (tile->transform().isSet())
+    {
+        setMatrix(tile->transform().get());
+    }
+
+    if (_immediateLoad && _tile->content().isSet())
+    {
+        //OE_NOTICE << "Immediately Loading " << _tile->content()->uri()->full() << std::endl;
+        _content = _tile->content()->uri()->getNode();
+    }
+
+    /*
+    if (_tile->content().isSet() && osgEarth::Strings::endsWith(_tile->content()->uri()->full(), ".b3dm"))
+    {
+        createBoundingSphere();
+    }
+    */
+
+    if (_tile->children().size() > 0)
+    {
+        _children = new osg::Group;
+        for (unsigned int i = 0; i < _tile->children().size(); ++i)
+        {
+            _children->addChild(new ThreeDTile(_tileset, _tile->children()[i], false, _options.get()));
+        }
+
+        if (_children->getNumChildren() == 0)
+        {
+            _children = 0;
+        }
+    }
+}
+
+
+
+osg::BoundingSphere ThreeDTile::computeBound() const
+{
+    if (_tile->boundingVolume().isSet())
+    {
+        return _tile->boundingVolume()->asBoundingSphere();
+    }
+}
+
+bool ThreeDTile::hasContent()
+{
+    return _tile->content().isSet() && _tile->content()->uri().isSet();
+}
+
+bool ThreeDTile::isContentReady()
+{
+    resolveContent();
+    return _content.valid();
+}
+
+void ThreeDTile::resolveContent()
+{
+    // Resolve the future 
+    if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
+    {
+        _content = _contentFuture.get();
+    }
+}
+
+
+namespace
+{
+    class LoadTilesetOperation : public osg::Operation
+    {
+    public:
+        LoadTilesetOperation(ThreeDTileset* parentTileset, const std::string& url, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
+            _url(url),
+            _promise(promise),
+            _options(options),
+            _parentTileset(parentTileset)
+        {
+        }
+
+        void operator()(osg::Object*)
+        {
+
+            if (!_promise.isAbandoned())
+            {
+                osg::ref_ptr<ThreeDTilesetContent> tilesetNode;
+                osg::ref_ptr< ThreeDTileset > parentTileset;
+                _parentTileset.lock(parentTileset);
+                if (parentTileset.valid())
+                {
+                    // load the tile set:
+                    URI tilesetURI(_url);
+                    ReadResult rr = tilesetURI.readString();
+
+                    std::string fullPath = osgEarth::getAbsolutePath(_url);
+
+                    osg::ref_ptr< TDTiles::Tileset> tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
+                    if (tileset)
+                    {
+                        tilesetNode = new ThreeDTilesetContent(parentTileset.get(), tileset, _options.get());
+                    }
+                }
+                _promise.resolve(tilesetNode.get());
+            }
+        }
+
+        osgEarth::Threading::Promise<osg::Node> _promise;
+        osg::ref_ptr< osgDB::Options > _options;
+        osg::observer_ptr< ThreeDTileset > _parentTileset;
+        std::string _url;
+    };
+
+    Threading::Future<osg::Node> readTilesetAsync(ThreeDTileset* parentTileset, const std::string& url, osgDB::Options* options)
+    {
+        osg::ref_ptr<ThreadPool> threadPool;
+        if (options)
+        {
+            threadPool = OptionsData<ThreadPool>::get(options, "threadpool");
+        }
+
+        Threading::Promise<osg::Node> promise;
+
+        osg::ref_ptr< osg::Operation > operation = new LoadTilesetOperation(parentTileset, url, options, promise);
+
+        if (operation.valid())
+        {
+            if (threadPool.valid())
+            {
+                threadPool->getQueue()->add(operation);
+            }
+            else
+            {
+                OE_WARN << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
+                operation->operator()(0);
+            }
+        }
+
+        return promise.getFuture();
+    }
+}
+
+
+void ThreeDTile::requestContent(osgUtil::IncrementalCompileOperation* ico)
+{
+    if (!_content.valid() && !_requestedContent && hasContent())
+    {
+        if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
+        {
+            _contentFuture = readTilesetAsync(_tileset, _tile->content()->uri()->full(), _options.get());
+        }
+        else
+        {
+            _contentFuture = readNodeAsync(_tile->content()->uri()->full(), ico, _options.get());
+        }
+        _requestedContent = true;
+    }
+}
+
+double ThreeDTile::getDistanceToTile(osgUtil::CullVisitor* cv)
+{
+    return (double)cv->getDistanceToViewPoint(getBound().center(), true) - getBound().radius();
+}
+
+double ThreeDTile::computeScreenSpaceError(osgUtil::CullVisitor* cv)
+{
+    double distance = osg::maximum(getDistanceToTile(cv), 0.0000001);
+    double fovy, ar, zn, zf;
+    cv->getCurrentCamera()->getProjectionMatrix().getPerspective(fovy, ar, zn, zf);
+    double height = cv->getCurrentCamera()->getViewport()->height();
+    double sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
+    double error = (*_tile->geometricError() * height) / (distance * sseDenominator);
+    return error;
+}
+
+void ThreeDTile::unloadContent()
+{
+    if (_content)
+    {
+        // Don't unload the content of tiles that were loaded immediately.
+        if (_immediateLoad)
+        {
+            return;
+        }
+        _content->releaseGLObjects(0);
+        _firstVisit = true;
+        _content = 0;
+        _requestedContent = false;
+        _contentFuture = Future<osg::Node>();
+        _contentUnloaded = true;
+    }
+}
+
+void ThreeDTile::updateTracking()
+{
+    if (_content.valid())
+    {
+        _tileset->touchTile(this);
+    }
+}
+
+void ThreeDTile::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        if (_content.valid())
+        {
+            _content->accept(nv);
+        }
+
+        if (_children.valid())
+        {
+            _children->accept(nv);
+        }
+    }
+    else if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = nv.asCullVisitor();
+
+        // Get the ICO so we can do incremental compiliation
+        osgUtil::IncrementalCompileOperation* ico = 0;
+        osgViewer::ViewerBase* viewerBase = dynamic_cast<osgViewer::ViewerBase*>(cv->getCurrentCamera()->getView());
+        if (viewerBase)
+        {
+            ico = viewerBase->getIncrementalCompileOperation();
+        }
+
+        // This allows nodes to reload themselves
+        requestContent(ico);
+        resolveContent();
+
+        // Compute the SSE
+        double error = computeScreenSpaceError(cv);
+
+        updateTracking();
+
+        bool areChildrenReady = true;
+        if (_children.valid())
+        {
+#if 1
+            for (unsigned int i = 0; i < _children->getNumChildren(); i++)
+            {
+                osg::ref_ptr< ThreeDTile > childTile = dynamic_cast<ThreeDTile*>(_children->getChild(i));
+                if (childTile.valid())
+                {
+                    childTile->updateTracking();
+
+                    // Can we traverse the child?
+                    if (childTile->hasContent() && !childTile->isContentReady())
+                    {
+                        childTile->requestContent(ico);
+                        areChildrenReady = false;
+                    }
+                }
+            }
+#endif
+        }
+        else
+        {
+            areChildrenReady = false;
+        }
+
+
+        if (areChildrenReady && error > _tileset->getMaximumScreenSpaceError() && _children.valid() && _children->getNumChildren() > 0)
+        {
+            if (_content.valid() && _tile->refine().isSetTo(TDTiles::REFINE_ADD))
+            {
+                _content->accept(nv);
+            }
+
+            if (_children.valid())
+            {
+                _children->accept(nv);
+            }
+        }
+        else
+        {
+            if (_content.valid())
+            {
+                _content->accept(nv);
+            }
+        }
+    }
+
+    osg::MatrixTransform::traverse(nv);
+}
+
+ThreeDTileset::ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options) :
+    _tileset(tileset),
+    _options(options),
+    _maximumScreenSpaceError(15.0f)
+{
+    // TODO:  This should run on the content, not on the root tileset.
+    // Generate shaders that will render with a texture:
+    osg::StateSet* rootStateSet = getOrCreateStateSet();
+    rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
+    osgEarth::ShaderGenerator gen;
+    osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
+    if (ss.valid())
+    {
+        setStateSet(ss);
+    }
+
+    addChild(new ThreeDTilesetContent(this, tileset, _options.get()));
+}
+
+float ThreeDTileset::getMaximumScreenSpaceError() const
+{
+    return _maximumScreenSpaceError;
+}
+
+void ThreeDTileset::setMaximumScreenSpaceError(float maximumScreenSpaceError)
+{
+    _maximumScreenSpaceError = maximumScreenSpaceError;
+}
+
+osg::BoundingSphere ThreeDTileset::computeBound() const
+{
+    return _tileset->root()->boundingVolume()->asBoundingSphere();
+}
+
+void ThreeDTileset::touchTile(osg::Node* node)
+{
+    NodeSet::iterator itr = _deadTiles.find(node);
+    if (itr != _deadTiles.end())
+    {
+        _deadTiles.erase(itr);
+    }
+    _liveTiles.insert(node);
+}
+
+void ThreeDTileset::startCull()
+{
+}
+
+void ThreeDTileset::endCull()
+{
+    // We can erase all of the tiles that are in the dead set
+    for (NodeSet::iterator itr = _deadTiles.begin(); itr != _deadTiles.end(); ++itr)
+    {
+        osg::ref_ptr< ThreeDTile > tile = dynamic_cast<ThreeDTile*>(itr->get());
+        if (tile.valid())
+        {
+            tile->unloadContent();
+        }
+    }
+    _deadTiles.clear();
+
+    _liveTiles.swap(_deadTiles);
+    _liveTiles.clear();
+}
+
+
+
+void ThreeDTileset::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        startCull();
+        osg::Group::traverse(nv);
+        endCull();
+    }
+    else
+    {
+        osg::Group::traverse(nv);
+    }
+}
+
+ThreeDTilesetContent::ThreeDTilesetContent(ThreeDTileset* tilesetNode, TDTiles::Tileset* tileset, osgDB::Options* options) :
+    _tilesetNode(tilesetNode),
+    _tileset(tileset),
+    _options(options)
+{
+    // Set up the root tile.
+    if (tileset->root().valid())
+    {
+        addChild(new ThreeDTile(_tilesetNode, tileset->root().get(), true, _options.get()));
+    }
+}
+
+osg::BoundingSphere ThreeDTilesetContent::computeBound() const
+{
+    return _tileset->root()->boundingVolume()->asBoundingSphere();
 }

@@ -230,16 +230,19 @@ public:
 
                             const tinygltf::Texture& texture = model.textures[index];
 
-                            osg::Texture2D* tex = new osg::Texture2D;
+                            osg::ref_ptr< osg::Texture2D > tex = new osg::Texture2D;
                             if (texture.sampler >= 0 && texture.sampler < model.samplers.size())
                             {
                                 const tinygltf::Sampler& sampler = model.samplers[texture.sampler];
+                                //tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)sampler.minFilter);
+                                //tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)sampler.magFilter);
                                 tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR); //sampler.minFilter);
                                 tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR); //sampler.magFilter);
                                 tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)sampler.wrapS);
                                 tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)sampler.wrapT);
                                 tex->setWrap(osg::Texture::WRAP_R, (osg::Texture::WrapMode)sampler.wrapR);
                             }
+
 
                             const tinygltf::Image& image = model.images[texture.source];
                             osg::ref_ptr< osg::Image> img = new osg::Image;
@@ -249,12 +252,14 @@ public:
 
                             if (image.image.size() > 0)
                             {
+                                //OE_NOTICE << "Loading image of size " << image.width << "x" << image.height << " components = " << image.component << " totalSize=" << image.image.size() << std::endl;
                                 unsigned char *imgData = new unsigned char[image.image.size()];
                                 memcpy(imgData, &image.image[0], image.image.size());
                                 img->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
                             }                            
 
                             tex->setImage(img);
+                            tex->setUnRefImageDataAfterApply(true);
                             geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
                         }
                     }

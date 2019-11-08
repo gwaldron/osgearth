@@ -1248,7 +1248,6 @@ LineDrawable::setupShaders()
             if (s_gpuStateSet.lock(_gpuStateSet) == false)
             {
                 s_gpuStateSet = _gpuStateSet = new osg::StateSet();
-                s_gpuStateSet = _gpuStateSet = new osg::StateSet();
 
                 VirtualProgram* vp = VirtualProgram::getOrCreate(s_gpuStateSet.get());
                 vp->setName("osgEarth::LineDrawable");

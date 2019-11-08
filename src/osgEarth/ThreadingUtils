@@ -23,6 +23,9 @@
 #include <OpenThreads/Condition>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/Thread>
+#include <osg/OperationThread>
+#include <osgUtil/IncrementalCompileOperation>
+#include <osgDB/Options>
 #include <osg/ref_ptr>
 #include <set>
 #include <map>
@@ -288,6 +291,31 @@ namespace osgEarth { namespace Threading
     typedef OpenThreads::ScopedReadLock  ScopedReadLock;
 
 #endif
+
+
+    /**
+     * A ThreadPool that contains a work queue and it's threads that process the queue
+     */
+    class OSGEARTH_EXPORT ThreadPool : public osg::Referenced
+    {
+    public:
+        ThreadPool(unsigned int numThreads = 2);
+
+        ~ThreadPool();
+
+        osg::OperationQueue* getQueue() const;
+
+    private:
+        void startThreads();
+        void stopThreads();
+
+        osg::ref_ptr< osg::OperationQueue > _queue;
+        std::vector< osg::ref_ptr< osg::OperationsThread > > _threads;
+        unsigned int _numThreads;
+    };
+
+
+    extern OSGEARTH_EXPORT Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options);
 
 } } // namepsace osgEarth::Threading
 

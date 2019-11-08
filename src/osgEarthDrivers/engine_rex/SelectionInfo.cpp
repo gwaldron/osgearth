@@ -71,7 +71,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         double range = c.getRadius() * mtrf * 2.0 * (1.0/1.405);
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
-        _lods[lod]._maxValidTY = INT32_MAX;
+        _lods[lod]._maxValidTY = 0xFFFFFFFF;
     }
     
     double metersPerEquatorialDegree = (profile->getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;

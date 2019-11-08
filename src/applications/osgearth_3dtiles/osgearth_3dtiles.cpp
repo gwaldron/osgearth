@@ -42,12 +42,18 @@
 #include <osgEarth/FeatureModelLayer>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/Utils>
 #include <osgEarth/MVT>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Async>
 #include <osgDB/FileUtils>
 #include <osgDB/WriteFile>
+#include <osgViewer/ViewerEventHandlers>
+#include <osg/Shape>
+#include <osg/ShapeDrawable>
+#include <osg/PolygonMode>
 #include <iostream>
 
 #define LC "[3dtiles test] "
@@ -56,7 +62,9 @@ using namespace osgEarth;
 using namespace osgEarth::Strings;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
+using namespace osgEarth::Contrib::TDTiles;
 namespace ui = osgEarth::Util::Controls;
+
 
 struct App
 {
@@ -64,23 +72,23 @@ struct App
     ui::HSliderControl* _sse;
     TDTiles::ContentHandler* _handler;
     EarthManipulator* _manip;
-    osg::ref_ptr<TDTilesetGroup> _tileset;
+    osg::ref_ptr<ThreeDTileset> _tileset;
     osgViewer::View* _view;
-    LODScaleGroup* _sseGroup;
     float _maxSSE;
     bool _randomColors;
 
     void changeSSE()
     {
-        _sseGroup->setLODScaleFactor(_sse->getValue());
+        _tileset->setMaximumScreenSpaceError(_sse->getValue());
     }
 
     void zoomToData()
     {
         if (_tileset->getBound().valid())
         {
+            OE_NOTICE << "Zooming to bound" << std::endl;
             const osg::BoundingSphere& bs = _tileset->getBound();
-            
+
             const SpatialReference* wgs84 = SpatialReference::get("wgs84");
 
             std::vector<GeoPoint> points;
@@ -94,12 +102,11 @@ struct App
 
             _manip->setViewpoint(vp);
         }
-    }
-
-    void apply()
-    {
-        changeSSE();
-    }
+        else
+        {
+            OE_NOTICE << "No bounds" << std::endl;
+        }
+    }    
 };
 
 OE_UI_HANDLER(changeSSE);
@@ -109,12 +116,11 @@ ui::Control* makeUI(App& app)
 {
     ui::Grid* container = new ui::Grid();
 
-    int r=0;
+    int r = 0;
     container->setControl(0, r, new ui::LabelControl("Screen-space error (px)"));
-    app._sse = container->setControl(1, r, new ui::HSliderControl(app._maxSSE, 1.0f, app._maxSSE, new changeSSE(app)));
+    app._sse = container->setControl(1, r, new ui::HSliderControl(1.0f, app._maxSSE, app._tileset->getMaximumScreenSpaceError(), new changeSSE(app)));
     app._sse->setHorizFill(true, 300.0f);
     container->setControl(2, r, new ui::LabelControl(app._sse));
-
     //++r;
     //container->setControl(0, r, new ui::ButtonControl("Zoom to data", new zoomToData(app)));
 
@@ -124,7 +130,7 @@ ui::Control* makeUI(App& app)
 int
 usage(const std::string& message)
 {
-    OE_WARN 
+    OE_WARN
         << "\n\n" << message
         << "\n\nUsage: osgearth_3dtiles"
         << "\n"
@@ -142,6 +148,9 @@ usage(const std::string& message)
 
     return -1;
 }
+
+
+
 
 /**
  * Custom TDTiles ContentHandler that reads feature data from a URL
@@ -163,7 +172,7 @@ struct FeatureRenderer : public TDTiles::ContentHandler
             if (osgEarth::Strings::endsWith(tile->content()->uri()->base(), ".shp"))
             {
                 OE_INFO << "Rendering: " << tile->content()->uri()->full() << std::endl;
-        
+
                 osg::ref_ptr<OGRFeatureSource> fs = new OGRFeatureSource();
                 fs->setURL(tile->content()->uri().get());
                 if (fs->open().isOK())
@@ -218,6 +227,10 @@ main_view(osg::ArgumentParser& arguments)
 {
     App app;
 
+    
+    unsigned int numThreads = 8;
+    arguments.read("--numThreads", numThreads);   
+
     std::string tilesetLocation;
     if (!arguments.read("--tileset", tilesetLocation))
         return usage("Missing required --tileset");
@@ -225,14 +238,14 @@ main_view(osg::ArgumentParser& arguments)
     bool readFeatures = arguments.read("--features");
     app._randomColors = arguments.read("--random-colors");
 
-    app._maxSSE = 1.0f;
-    arguments.read("--maxsse", app._maxSSE);
+    float maxSSE = 15.0f;
+    arguments.read("--maxsse", maxSSE);
 
     // load the tile set:
     URI tilesetURI(tilesetLocation);
     ReadResult rr = tilesetURI.readString();
     if (rr.failed())
-        return usage(Stringify()<<"Error loading tileset: " <<rr.errorDetail());
+        return usage(Stringify() << "Error loading tileset: " << rr.errorDetail());
 
     std::string fullPath = osgEarth::getAbsolutePath(tilesetLocation);
 
@@ -242,9 +255,13 @@ main_view(osg::ArgumentParser& arguments)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
+    
     app._view = &viewer;
+    app._maxSSE = maxSSE;
 
-    viewer.setCameraManipulator( app._manip = new EarthManipulator(arguments) );
+    viewer.setCameraManipulator(app._manip = new EarthManipulator(arguments));
+
+    viewer.addEventHandler(new osgViewer::LODScaleHandler());
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -255,41 +272,31 @@ main_view(osg::ArgumentParser& arguments)
     MapNode* mapNode = MapNode::get(node.get());
     app._mapNode = mapNode;
 
-    if (readFeatures)
-        app._tileset = new TDTilesetGroup(new FeatureRenderer(app));
-    else
-        app._tileset = new TDTilesetGroup();
+    // Create a ThreadPool for loading files in the background
+    osg::ref_ptr< osgDB::Options > options;
+    options = new osgDB::Options;
+    osg::ref_ptr< ThreadPool > threadPool = new ThreadPool(numThreads);
+    OptionsData<ThreadPool>::set(options, "threadpool", threadPool.get());
 
-    // Generate shaders that will render with a texture:
-    osg::StateSet* rootStateSet = app._tileset->getOrCreateStateSet();
-    rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1,1)));
-    osgEarth::ShaderGenerator gen;
-    osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
-    if (ss.valid())
-    {
-        app._tileset->setStateSet(ss);
-    }
+    ThreeDTileset* tilesetNode = new ThreeDTileset(tileset, options.get());
+    tilesetNode->setMaximumScreenSpaceError(maxSSE);
 
-    // group to control the LOD scale dynamically:
-    app._sseGroup = new LODScaleGroup();
-    app._sseGroup->addChild(app._tileset.get());
+    app._tileset = tilesetNode;
+
+    mapNode->addChild(tilesetNode);
 
     ui::ControlCanvas::get(&viewer)->addControl(makeUI(app));
 
-    app._tileset->setTileset(tileset);
-    app._tileset->setReadOptions(mapNode->getMap()->getReadOptions());
-
-    mapNode->addChild(app._sseGroup);
-
-    mapNode->addChild(Registry::instance()->getAsyncMemoryManager());
-
-    viewer.setSceneData( node.get() );
-
-    app.apply();
+    viewer.setSceneData(node.get());
 
     app.zoomToData();
 
-    return viewer.run();
+    while (!viewer.done())
+    {
+        viewer.frame();     
+    }
+
+    return 0;
 }
 
 TileKey
@@ -320,7 +327,7 @@ void saveTileSet(TDTiles::Tile* tile, const std::string& filename)
 
     std::ofstream fout(filename);
     Util::Json::Value json = tileset->getJSON();
-    Util::Json::StyledStreamWriter writer;    
+    Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);
     fout.close();
 }
@@ -418,7 +425,7 @@ main_tile(osg::ArgumentParser& args)
     writer.write(fout, json);
     fout.close();
     OE_INFO << "Wrote tileset to " << outfile << std::endl;
-    
+
     return 0;
 }
 
@@ -428,7 +435,7 @@ typedef std::map< unsigned int, std::set< TileKey > > LevelToTileKeyMap;
 
 struct MVTContext
 {
-    MVTContext():
+    MVTContext() :
         numComplete(0),
         format("b3dm")
     {
@@ -469,8 +476,8 @@ public:
 
         GeoExtent dataExtent = _key.getExtent();
         FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
-        GeometryCompiler gc;        
-        
+        GeometryCompiler gc;
+
         const Style* style = _context.style;
         osg::ref_ptr<osg::Node> node = gc.compile(_features, *style, fc);
 
@@ -482,7 +489,7 @@ public:
         else
         {
             OE_NOTICE << "Failed to create node for " << filename << std::endl;
-        }     
+        }
 
         ++_context.numComplete;
 
@@ -507,7 +514,7 @@ public:
  * Specialized degress to radians function that makes sure that the radian values stay within a valid range for Cesium.
  */
 float Deg2Rad(float deg)
-{                            
+{
     //const float PI = 3.141592653589793f;
     const float PI = 3.1415926f;
     float val = osg::clampBetween(deg * PI / 180.0f, -PI, PI);
@@ -515,7 +522,7 @@ float Deg2Rad(float deg)
 }
 
 /**
- * Sets the extents of a Tile to given extent 
+ * Sets the extents of a Tile to given extent
  */
 void setTileExtents(TDTiles::Tile* tile, const TileKey& key, double minHeight, double maxHeight)
 {
@@ -530,7 +537,7 @@ void setTileExtents(TDTiles::Tile* tile, const TileKey& key, double minHeight, d
         tile->boundingVolume()->sphere()->set(bs.center(), bs.radius());
     }
     else
-    // Use bounding regions instead of spheres to provide tighter bounds to increase culling performance.
+        // Use bounding regions instead of spheres to provide tighter bounds to increase culling performance.
     {
         tile->boundingVolume()->region()->set(
             Deg2Rad(extent.xMin()), Deg2Rad(extent.yMin()), minHeight,
@@ -560,7 +567,7 @@ void addChildren(TDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& lev
             osg::ref_ptr< TDTiles::Tile > childTile = new TDTiles::Tile;
             childTile->geometricError() = computeGeometricError(key);
             GeoExtent childExtent = childKey.getExtent().transform(mapSRS);
-            setTileExtents(childTile, childKey, 0.0, height);            
+            setTileExtents(childTile, childKey, 0.0, height);
             tile->children().push_back(childTile);
             if (childKey.getLevelOfDetail() < maxLevel)
             {
@@ -570,7 +577,7 @@ void addChildren(TDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& lev
             {
                 childTile->geometricError() = 0.0;
                 // TODO: get the "refine" right
-                tile->refine() = TDTiles::REFINE_REPLACE;                
+                tile->refine() = TDTiles::REFINE_REPLACE;
                 std::string uri = Stringify() << "../../" << childKey.getLevelOfDetail() << "/" << childKey.getTileX() << "/" << childKey.getTileY() << ".b3dm";
                 childTile->content()->uri() = uri;
             }
@@ -646,7 +653,7 @@ int build_tilesets(osg::ArgumentParser& args)
         std::string keyName = osgDB::getPathRelative(path, line);
         TileKey key = parseKey(keyName, profile);
         if (key.valid())
-        {            
+        {
             // Assume they are all the same zoom level
             maxLevel = zoomLevel;
             zoomLevel = key.getLevelOfDetail();
@@ -703,10 +710,10 @@ int build_tilesets(osg::ArgumentParser& args)
         setTileExtents(tile, key, 0.0, height);
         addChildren(tile, key, levelKeys, maxLevel);
         std::string tilesetName = Stringify() << path << "/" << key.getLevelOfDetail() << "/" << key.getTileX() << "/" << key.getTileY() << ".json";
-        saveTileSet(tile.get(), tilesetName);               
+        saveTileSet(tile.get(), tilesetName);
         OE_NOTICE << "Saved tileset to " << tilesetName << std::endl;
         numSaved++;
-        OE_NOTICE << "Completed " << numSaved << " of " << levelKeys[maxWriteLevel].size() << std::endl;        
+        OE_NOTICE << "Completed " << numSaved << " of " << levelKeys[maxWriteLevel].size() << std::endl;
     }
 
     for (unsigned int z = minLevel; z < maxWriteLevel; z++)
@@ -718,7 +725,7 @@ int build_tilesets(osg::ArgumentParser& args)
         // For each key in this zoom level, write out a tileset.
         for (std::set<TileKey>::iterator itr = levelKeys[z].begin(); itr != levelKeys[z].end(); ++itr)
         {
-            const TileKey key = *itr;            
+            const TileKey key = *itr;
 
             osg::ref_ptr< TDTiles::Tile> tile = new TDTiles::Tile;
             tile->geometricError() = computeGeometricError(key);
@@ -878,7 +885,7 @@ build_leaves(osg::ArgumentParser& args)
     {
         return usage("No style specified");
     }
-    
+
     GeoExtent queryExtent;
     double xmin = DBL_MAX, ymin = DBL_MAX, xmax = DBL_MIN, ymax = DBL_MIN;
     while (args.read("--bounds", xmin, ymin, xmax, ymax))
@@ -915,7 +922,7 @@ build_leaves(osg::ArgumentParser& args)
     }
 
     fs->iterateTiles(zoomLevel, 0, 0, queryExtent, addTileToQueue, &mvtContext);
-    
+
     // Wait for all operations to be done.
     while (!mvtContext.queue.get()->empty())
     {
@@ -952,8 +959,8 @@ main(int argc, char** argv)
     else if (arguments.read("--build_leaves"))
         return build_leaves(arguments);
 
-    else if (arguments.read("--build_tilesets"))    
-        return build_tilesets(arguments);                
+    else if (arguments.read("--build_tilesets"))
+        return build_tilesets(arguments);
 
     else if (arguments.read("--build_test_tilesets"))
         return build_test_tilesets(arguments);

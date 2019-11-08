@@ -114,6 +114,9 @@ namespace osgEarth { namespace Util
         void loadGZDFeatures(const SpatialReference* srs, FeatureList& output) const;
 
         LayerClient<StyleSheet> _styleSheet;
+
+        typedef std::map<std::string, osg::ref_ptr<osgText::Text> > TextObjects;
+        TextObjects _textObjects;
     };
 
 } }

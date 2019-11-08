@@ -79,6 +79,8 @@ MGRSGraticule::Options::fromConfig(const Config& conf)
 
 namespace
 {
+    typedef std::map<std::string, osg::ref_ptr<osgText::Text> > TextObjects;
+
     void simplify(Vec3dVector& vec)
     {
         int count = vec.size();
@@ -102,7 +104,7 @@ namespace
     void writeSQIDfile(const URI& uri)
     {
         osg::ref_ptr<OGRFeatureSource> sqid_fs = new OGRFeatureSource();
-        sqid_fs->setURL("H:/data/nga/mgrs/MGRS_100kmSQ_ID/WGS84/ALL_SQID.shp");
+        sqid_fs->setURL("OUTPUT_ALL_SQID.shp");
         sqid_fs->setBuildSpatialIndex(false);
 
         if (sqid_fs->open().isOK())
@@ -233,7 +235,7 @@ namespace
             }
             else
             {
-                OE_INFO << LC << "Empty SQID geom at " << gzd << " " << sqid << std::endl;
+                OE_DEBUG << LC << "Empty SQID geom at " << gzd << " " << sqid << std::endl;
             }
         }
         return true;
@@ -847,24 +849,9 @@ namespace
 
     struct SQIDTextGrid : public osg::Group
     {
-        SQIDTextGrid(const std::string& name, FeatureList& features, const MGRSGraticule* parent)
+        SQIDTextGrid(const std::string& name, FeatureList& features, TextObjects& textObjects, const MGRSGraticule* parent)
         {
             setName(name);
-
-            const Style& style = *parent->getStyleSheet()->getStyle("100000", true);
-            if (style.has<TextSymbol>() == false)
-                return;
-
-            const TextSymbol* textSymPrototype = style.get<TextSymbol>();
-            osg::ref_ptr<TextSymbol> textSym = new TextSymbol(*style.get<TextSymbol>());
-
-            if (textSym->size().isSet() == false)
-                textSym->size() = 24.0f;
-
-            if (textSym->alignment().isSet() == false)
-                textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
-        
-            TextSymbolizer symbolizer( textSym.get() );
             
             GeoExtent fullExtent;
 
@@ -872,15 +859,8 @@ namespace
             {
                 const Feature* feature = f->get();
                 std::string sqid = feature->getString("sqid");
-                osgText::Text* drawable = new osgEarth::Text(sqid);
-                symbolizer.apply(drawable);
-#ifdef USE_SCREEN_COORDS
-                drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
-#else
-                drawable->setCharacterSizeMode(osgText::Text::OBJECT_COORDS);
-                drawable->setCharacterSize(13000);
-#endif
-                drawable->getOrCreateStateSet()->setRenderBinToInherit();
+
+                osg::ref_ptr<osgText::Text>& drawable = textObjects[sqid];
             
                 GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
 
@@ -921,9 +901,11 @@ namespace
     {
         const MGRSGraticule* _parent;
         FeatureList  _sqidFeatures;
+        TextObjects& _textObjects;
         osg::BoundingSphere _bs;
 
-        GZDText(const std::string& name, const osg::BoundingSphere& bs)
+        GZDText(const std::string& name, const osg::BoundingSphere& bs, TextObjects& textObjects) :
+            _textObjects(textObjects)
         {
             setName(name);     
             _bs = bs;
@@ -940,7 +922,7 @@ namespace
 
         osg::Node* loadChild()
         {
-            return new SQIDTextGrid(getName(), _sqidFeatures, _parent);
+            return new SQIDTextGrid(getName(), _sqidFeatures, _textObjects, _parent);
         }
 
         osg::BoundingSphere getChildBound() const
@@ -957,32 +939,9 @@ namespace
 
         osg::Node* buildGZD(const Feature* f)
         {
-            Style style = *_parent->getStyleSheet()->getStyle("gzd", true);
-
-            const TextSymbol* textSymPrototype = style.get<TextSymbol>();
-
             GeoExtent extent(f->getSRS(), f->getGeometry()->getBounds());
 
-            osg::ref_ptr<TextSymbol> textSym = textSymPrototype ? new TextSymbol(*textSymPrototype) : new TextSymbol();
-
-            if (textSym->size().isSet() == false)
-                textSym->size() = 32.0f;
-            if (textSym->alignment().isSet() == false)
-                textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
-        
-            TextSymbolizer symbolizer( textSym.get() );
-            osgText::Text* drawable = new osgEarth::Text(getName());
-            symbolizer.apply(drawable);
-
-#ifdef USE_SCREEN_COORDS
-            drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
-            //drawable->setPosition(osg::Vec3(0,0,0));
-            //drawable->setCharacterSize(36);
-#else
-            drawable->setCharacterSizeMode(osgText::Text::OBJECT_COORDS);
-            drawable->setCharacterSize(130000);
-#endif
-            drawable->getOrCreateStateSet()->setRenderBinToInherit();
+            osg::ref_ptr<osgText::Text>& drawable = _textObjects[getName()];
 
             const SpatialReference* ecef = f->getSRS()->getGeocentricSRS();
             osg::Vec3d positionECEF;
@@ -1067,6 +1026,35 @@ MGRSGraticule::rebuild()
         for (FeatureList::iterator i = sqids.begin(); i != sqids.end(); ++i)
         {
             table[i->get()->getString("gzd")].push_back(i->get());
+
+            // pre-generate all the SQIDs text labels - OSG bug workaround
+            std::string sqid = i->get()->getString("sqid");
+            if ( !sqid.empty())
+            {
+                osg::ref_ptr<osgText::Text>& sqidText = _textObjects[sqid];
+                if (!sqidText.valid())
+                {
+                    // Prepare a text symbolizer for the SQID level
+                    const Style& style = *getStyleSheet()->getStyle("100000", true);
+                    const TextSymbol* textSymPrototype = style.get<TextSymbol>();
+                    osg::ref_ptr<TextSymbol> textSym = textSymPrototype? new TextSymbol(*style.get<TextSymbol>()) : new TextSymbol();
+                    if (textSym->size().isSet() == false) textSym->size() = 24.0f;
+                    if (textSym->alignment().isSet() == false) textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
+                    TextSymbolizer sqidSymbolizer( textSym.get() );
+
+                    sqidText = new osgEarth::Text(sqid);
+                    sqidSymbolizer.apply(sqidText);
+#ifdef USE_SCREEN_COORDS
+                    sqidText->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
+#else
+                    sqidText->setCharacterSizeMode(osgText::Text::OBJECT_COORDS);
+                    sqidText->setCharacterSize(13000);
+#endif
+                    sqidText->getOrCreateStateSet()->setRenderBinToInherit();
+
+                    //OE_INFO << LC << "Made text for SQID " << sqid << std::endl;
+                }
+            }
         }
 
         // Root of the geometry tree
@@ -1076,7 +1064,6 @@ MGRSGraticule::rebuild()
         // Root of the text tree
         osg::Group* textTop = new osg::Group();
         osg::StateSet* textSS = textTop->getOrCreateStateSet();
-        //TextSymbolizer::insta(textSS);
         top->addChild(textTop);
 
         // build the GZD feature set
@@ -1086,10 +1073,40 @@ MGRSGraticule::rebuild()
 
         unsigned count = 0u;
 
+        // generate the top level GZD cells
         while (gzd_cursor.valid() && gzd_cursor->hasMore())
         {
             osg::ref_ptr<Feature> feature = gzd_cursor->nextFeature();
             std::string gzd = feature->getString("gzd");
+
+            // pre-generate all the GZD labels - OSG bug workaround
+            if (!gzd.empty())
+            {
+                osg::ref_ptr<osgText::Text>& gzdText = _textObjects[gzd];
+                if (!gzdText.valid())
+                {
+                    Style style = *getStyleSheet()->getStyle("gzd", true);
+                    const TextSymbol* textSymPrototype = style.get<TextSymbol>();
+                    osg::ref_ptr<TextSymbol> textSym = textSymPrototype ? new TextSymbol(*textSymPrototype) : new TextSymbol();
+                    if (textSym->size().isSet() == false)
+                        textSym->size() = 32.0f;
+                    if (textSym->alignment().isSet() == false)
+                        textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
+
+                    TextSymbolizer symbolizer( textSym.get() );
+                    gzdText = new osgEarth::Text(gzd);
+                    symbolizer.apply(gzdText);
+
+#ifdef USE_SCREEN_COORDS
+                    gzdText->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
+#else
+                    gzdText->setCharacterSizeMode(osgText::Text::OBJECT_COORDS);
+                    gzdText->setCharacterSize(130000);
+#endif
+                    gzdText->getOrCreateStateSet()->setRenderBinToInherit();
+                }            
+            }
+
             if (!gzd.empty())
             {
                 GZDGeom* geom = new GZDGeom(gzd);
@@ -1097,7 +1114,7 @@ MGRSGraticule::rebuild()
                 geom->setupPaging();
                 geomTop->addChild(geom);
 
-                GZDText* text = new GZDText(gzd, geom->getBound());
+                GZDText* text = new GZDText(gzd, geom->getBound(), _textObjects);
                 text->setupData(feature.get(), table[gzd], this);
                 text->setupPaging();
                 textTop->addChild(text);

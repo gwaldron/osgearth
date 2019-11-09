@@ -59,38 +59,6 @@ namespace osgEarth { namespace Util
         static osg::Image* cloneImage( const osg::Image* image );
 
         /**
-         * Tweaks an image for consistency. OpenGL allows enums like "GL_RGBA" et.al. to be
-         * used in the internal texture format, when really "GL_RGBA8" is the proper things
-         * to use. This method accounts for that. Some parts of osgEarth (like the texture-
-         * array compositor) rely on the internal texture format being correct.
-         * (http://http.download.nvidia.com/developer/Papers/2005/Fast_Texture_Transfers/Fast_Texture_Transfers.pdf)
-         */
-        static void fixInternalFormat(osg::Image* image);
-
-        /**
-         * Marks an image as containing un-normalized data values.
-         *
-         * Normally the values in an image are "normalized", i.e. scaled so they are in the
-         * range [0..1]. This is normal for color values. But when the image is being used
-         * for coverage data (a value lookup table) it is desireable to store the raw 
-         * values instead.
-         */
-        static void markAsUnNormalized(osg::Image* image, bool value);
-
-        /** Inverse of above. */
-        static void markAsNormalized(osg::Image* image, bool value) { markAsUnNormalized(image, !value); }
-
-        /**
-         * Whether the image has been marked as containing un-normalized values.
-         */
-        static bool isUnNormalized(const osg::Image* image);
-
-        /**
-         * Whether the image has been marked as containing normalized values.
-         */
-        static bool isNormalized(const osg::Image* image) { return !isUnNormalized(image); }
-
-        /**
          * Copys a portion of one image into another.
          */
         static bool copyAsSubImage(
@@ -376,6 +344,9 @@ namespace osgEarth { namespace Util
             /** Sets an image to read. */
             void setImage(const osg::Image* image);
 
+            //! Whether to denormalize data upon reading or to leave it as-is
+            void setDenormalize(bool value) { _normalized = value; }
+
             /** Whether to use bilinear interpolation when reading with u,v coords (default=true) */
             void setBilinear(bool value) { _bilinear = value; }
 
@@ -429,6 +400,9 @@ namespace osgEarth { namespace Util
              * before writing.
              */
             PixelWriter(osg::Image* image);
+
+            //! Whether data should be normalized to [0..1] or left as-is
+            void setNormalize(bool value) { _normalized = value; }
 
             /** Whether PixelWriter can write to an image with the given format/datatype combo. */
             static bool supports( GLenum pixelFormat, GLenum dataType );

@@ -163,22 +163,10 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     ReadResult r = _driver.read(key, progress, getReadOptions());
 
-    if (r.succeeded() && r.getImage())
-    {
-        osg::Image* image = r.getImage();
-
-        if (options().coverage() == true)
-        {
-            image->setInternalTextureFormat(GL_R16F);
-            ImageUtils::markAsUnNormalized(image, true);
-        }
-
-        return GeoImage(image, key.getExtent());
-    }
-    else
-    {
+    if (r.succeeded())
+        return GeoImage(r.releaseImage(), key.getExtent());
+    else 
         return GeoImage(Status(r.errorDetail()));
-    }
 }
 
 Status

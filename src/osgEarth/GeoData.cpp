@@ -2049,7 +2049,6 @@ namespace
         //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
         result->allocateImage(width, height, image->r(), image->getPixelFormat(), image->getDataType()); //GL_UNSIGNED_BYTE);
         result->setInternalTextureFormat(image->getInternalTextureFormat());
-        ImageUtils::markAsUnNormalized(result, ImageUtils::isUnNormalized(image));
 
         //Initialize the image to be completely transparent/black
         memset(result->data(), 0, result->getImageSizeInBytes());
@@ -2229,13 +2228,13 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
 
     osg::Image* resultImage = 0L;
 
-    bool isNormalized = ImageUtils::isNormalized(getImage());
+    bool isNormalized = getImage()->getDataType() != GL_UNSIGNED_BYTE;
     
     if ( getSRS()->isUserDefined()      || 
         to_srs->isUserDefined()         ||
         getSRS()->isSphericalMercator() ||
         to_srs->isSphericalMercator()   ||
-        !isNormalized )
+        isNormalized )
     {
         // if either of the SRS is a custom projection, we have to do a manual reprojection since
         // GDAL will not recognize the SRS.

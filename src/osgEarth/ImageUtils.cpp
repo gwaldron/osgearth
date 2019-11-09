@@ -53,42 +53,7 @@ ImageUtils::cloneImage( const osg::Image* input )
     
     osg::Image* clone = osg::clone( input, osg::CopyOp::DEEP_COPY_ALL );
     clone->dirty();
-    if (isNormalized(input) != isNormalized(clone)) {
-        OE_WARN << LC << "Fail in clone.\n";
-    }
     return clone;
-}
-
-void
-ImageUtils::fixInternalFormat( osg::Image* image )
-{
-    // OpenGL is lax about internal texture formats, and e.g. allows GL_RGBA to be used
-    // instead of the proper GL_RGBA8, etc. Correct that here, since some of our compositors
-    // rely on having a proper internal texture format.
-    if ( image->getDataType() == GL_UNSIGNED_BYTE )
-    {
-        if ( image->getPixelFormat() == GL_RGB )
-            image->setInternalTextureFormat( GL_RGB8_INTERNAL );
-        else if ( image->getPixelFormat() == GL_RGBA )
-            image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
-    }
-}
-
-void
-ImageUtils::markAsUnNormalized(osg::Image* image, bool value)
-{
-    if ( image )
-    {
-        image->setUserValue("osgEarth.unnormalized", value);
-    }
-}
-
-bool
-ImageUtils::isUnNormalized(const osg::Image* image)
-{
-    if ( !image ) return false;
-    bool result;
-    return image->getUserValue("osgEarth.unnormalized", result) && (result == true);
 }
 
 bool
@@ -228,7 +193,6 @@ ImageUtils::resizeImage(const osg::Image* input,
         {
             output->allocateImage( out_s, out_t, input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
             output->setInternalTextureFormat( input->getInternalTextureFormat() );
-            markAsNormalized(output.get(), isNormalized(input));
         }
         else
         {
@@ -354,7 +318,6 @@ ImageUtils::flattenImage(osg::Image*                             input,
         osg::Image* layer = new osg::Image();
         layer->allocateImage(input->s(), input->t(), 1, input->getPixelFormat(), input->getDataType(), input->getPacking());
         layer->setPixelAspectRatio(input->getPixelAspectRatio());
-        markAsNormalized(layer, isNormalized(input));
 
         layer->setRowLength(input->getRowLength());
         layer->setOrigin(input->getOrigin());
@@ -758,7 +721,6 @@ ImageUtils::cropImage(const osg::Image* image,
     osg::Image* cropped = new osg::Image;
     cropped->allocateImage(windowWidth, windowHeight, image->r(), image->getPixelFormat(), image->getDataType());
     cropped->setInternalTextureFormat( image->getInternalTextureFormat() );
-    ImageUtils::markAsNormalized( cropped, ImageUtils::isNormalized(image) );    
     
     for (int layer=0; layer<image->r(); ++layer)
     {
@@ -1201,8 +1163,7 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     osg::Image* result = new osg::Image();
     result->allocateImage(image->s(), image->t(), image->r(), pixelFormat, dataType);
     memset(result->data(), 0, result->getTotalSizeInBytes());
-    markAsNormalized(result, isNormalized(image));
-
+    
     if ( pixelFormat == GL_RGB && dataType == GL_UNSIGNED_BYTE )
         result->setInternalTextureFormat( GL_RGB8_INTERNAL );
     else if ( pixelFormat == GL_RGBA && dataType == GL_UNSIGNED_BYTE )
@@ -1974,7 +1935,7 @@ ImageUtils::PixelReader::setImage(const osg::Image* image)
     _image = image;
     if (image)
     {
-        _normalized = ImageUtils::isNormalized(image);
+        _normalized = image->getDataType() == GL_UNSIGNED_BYTE;
         _colMult = _image->getPixelSizeInBits() / 8;
         _rowMult = _image->getRowSizeInBytes();
         _imageSize = _image->getImageSizeInBytes();
@@ -2114,7 +2075,7 @@ _image(image)
 {
     if (image)
     {
-        _normalized = ImageUtils::isNormalized(image);
+        _normalized = image->getDataType() == GL_UNSIGNED_BYTE;
         _colMult = _image->getPixelSizeInBits() / 8;
         _rowMult = _image->getRowSizeInBytes();
         _imageSize = _image->getImageSizeInBytes();

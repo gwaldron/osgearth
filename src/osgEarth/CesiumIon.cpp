@@ -194,21 +194,8 @@ CesiumIonImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
         progress,
         getReadOptions());
 
-    osg::ref_ptr<osg::Image> image = r.getImage();
-    if (image.valid())
-    {
-        if (options().coverage() == true)
-        {
-            image->setInternalTextureFormat(GL_R16F);
-            ImageUtils::markAsUnNormalized(image.get(), true);
-        }
-
-        return GeoImage(image.get(), key.getExtent());
-    }
+    if (r.succeeded())
+        return GeoImage(r.releaseImage(), key.getExtent());
     else
-    {
-        // NOP....silent fail....more detail later if there's a real problem
-    }
-
-    return GeoImage::INVALID;
+        return GeoImage(Status(r.errorDetail()));
 }

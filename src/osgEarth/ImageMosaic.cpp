@@ -109,7 +109,6 @@ ImageMosaic::createImage()
     osg::ref_ptr<osg::Image> image = new osg::Image;
     image->allocateImage(pixelsWide, pixelsHigh, tileDepth, tile->_image->getPixelFormat(), tile->_image->getDataType());
     image->setInternalTextureFormat(tile->_image->getInternalTextureFormat());
-    ImageUtils::markAsNormalized(image.get(), ImageUtils::isNormalized(tile->getImage()));
 
     //Initialize the image to be completely white!
     //memset(image->data(), 0xFF, image->getImageSizeInBytes());

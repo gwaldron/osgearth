@@ -1286,7 +1286,6 @@ GDAL::Driver::createImage(const TileKey& key,
             image = new osg::Image();
             image->allocateImage(tileSize, tileSize, 1, GL_RED, glDataType);
             image->setInternalTextureFormat(internalFormat);
-            ImageUtils::markAsUnNormalized(image.get(), true);
             memset(image->data(), 0, image->getImageSizeInBytes());
 
             ImageUtils::PixelWriter write(image.get());
@@ -1406,7 +1405,6 @@ GDAL::Driver::createImage(const TileKey& key,
         {
             image->allocateImage(tileSize, tileSize, 1, GL_RED, GL_FLOAT);
             image->setInternalTextureFormat(GL_R16F);
-            ImageUtils::markAsUnNormalized(image.get(), true);
 
             // initialize all coverage texels to NODATA. -gw
             osg::Vec4 temp;

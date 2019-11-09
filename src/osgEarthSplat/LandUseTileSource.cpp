@@ -190,7 +190,6 @@ LandUseTileSource::createImage(const TileKey&    key,
 
     // Allocate the new coverage image; it will contain unnormalized values.
     osg::Image* out = new osg::Image();
-    ImageUtils::markAsUnNormalized(out, true);
 
     // Allocate a suitable format:
     GLenum dataType;

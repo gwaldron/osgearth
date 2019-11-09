@@ -43,8 +43,8 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     image->setInternalTextureFormat(textureFormat);
 
     // 0 = rocky mountains
-    // 1 = white noise   (not used)
-    // 2 = white noise 2 (not used)
+    // 1 = white noise
+    // 2 = white noise 2
     // 3 = super-clumpy
     const float F[4] = { 4.0f, 64.0f, 33.0f, 1.2f };
     const float P[4] = { 0.8f,  1.0f,  0.9f, 0.9f };
@@ -69,13 +69,15 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
         // write repeating noise to the image:
         ImageUtils::PixelReader read ( image );
         ImageUtils::PixelWriter write( image );
+        osg::Vec4f v;
+
         for(int t=0; t<(int)dim; ++t)
         {
             double rt = (double)t/(double)dim;
             for(int s=0; s<(int)dim; ++s)
             {
                 double rs = (double)s/(double)dim;
-                osg::Vec4f v = read(s, t);
+                read(v, s, t);
                 double n;
 
                 if ( k == 1 || k == 2 )
@@ -102,7 +104,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
             for(int x=0; x<(int)(dim*dim); ++x)
             {
                 int s = x%int(dim), t = x/(int)dim;
-                osg::Vec4f v = read(s, t);
+                read(v, s, t);
                 v[k] = osg::clampBetween((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
                 write(v, s, t);
             }

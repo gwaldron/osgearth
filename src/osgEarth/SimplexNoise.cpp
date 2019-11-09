@@ -703,7 +703,7 @@ SimplexNoise::createSeamlessImage(unsigned dim) const
         {
             for (unsigned t = 0; t < dim; ++t)
             {
-                value = read(s, t);
+                read(value, s, t);
                 value.r() = (value.r()+bias)*scale;
                 write(value, s, t);
             }

@@ -772,7 +772,6 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
                                   const GeoExtent& extent)
 {   
     ImageUtils::PixelReader readElevation(elevation);
-    //ImageUtils::PixelWriter writeNormal(normalMap);
 
     int sMax = (int)elevation->s()-1;
     int tMax = (int)elevation->t()-1;
@@ -785,6 +784,8 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
     double mPerDegAtEquator = (srs->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
     double dy = srs->isGeographic() ? yInterval * mPerDegAtEquator : yInterval;
 
+    osg::Vec4f sample;
+
     for (int t = 0; t<(int)elevation->t(); ++t)
     {
         double lat = extent.yMin() + yInterval*(double)t;
@@ -792,7 +793,8 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
 
         for(int s=0; s<(int)elevation->s(); ++s)
         {
-            float h = readElevation(s, t).r();
+            readElevation(sample, s, t);
+            float h = sample.r();
 
             osg::Vec3f west ( s > 0 ? -dx : 0, 0, h );
             osg::Vec3f east ( s < sMax ?  dx : 0, 0, h );

@@ -256,6 +256,8 @@ FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
         lcTile = lcLayer->createImage(key, progress);
     }
 
+    osg::Vec4f sample;
+
     for (int s = 0; s < (int)getTileSize(); ++s)
     {
         for (int t = 0; t < (int)getTileSize(); ++t)
@@ -277,7 +279,8 @@ FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
                 double uMod = fmod(uScaled, 1.0);
                 double vMod = fmod(vScaled, 1.0);
 
-                n += noise1(uMod, vMod).r() - 0.5;
+                noise1(sample, uMod, vMod);
+                n += sample.r() - 0.5;
                 finalScale *= 0.5;
             }
 
@@ -288,7 +291,8 @@ FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
 
                 double uMod = fmod(uScaled, 1.0);
                 double vMod = fmod(vScaled, 1.0);
-                n += noise2(uMod, vMod).r() - 0.5;
+                noise2(sample, uMod, vMod);
+                n += sample.r() - 0.5;
                 finalScale *= 0.5;
             }
 

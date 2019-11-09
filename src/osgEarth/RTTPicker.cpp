@@ -438,7 +438,7 @@ RTTPicker::checkForPickResult(Pick& pick, unsigned frameNumber)
     SpiralIterator iter(image->s(), image->t(), osg::maximum(_buffer,1), pick._u, pick._v);
     while (iter.next() && (hit == false))
     {
-        value = read(iter.s(), iter.t());
+        read(value, iter.s(), iter.t());
 
         ObjectID id = (ObjectID)(
             ((unsigned)(value.r()*255.0) << 24) +

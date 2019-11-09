@@ -367,7 +367,7 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u
             // scale/bias to this tile's extent and sample the image.
             u = u * comp->scaleBias(0, 0) + comp->scaleBias(3, 0);
             v = v * comp->scaleBias(1, 1) + comp->scaleBias(3, 1);
-            output = comp->pixel(u, v);
+            comp->pixel(output, u, v);
             return true;
         }
     }

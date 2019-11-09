@@ -98,7 +98,7 @@ MetaImage::read(double u, double v, osg::Vec4& output) const
     u = u * tile._scaleBias(0, 0) + tile._scaleBias(3, 0);
     v = v * tile._scaleBias(1, 1) + tile._scaleBias(3, 1);
 
-    output = tile._read(u, v);
+    tile._read(output, u, v);
     return true;
 }
 

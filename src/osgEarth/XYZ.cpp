@@ -297,11 +297,13 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
             hf->allocate(image->s(), image->t());
 
             ImageUtils::PixelReader reader(image);
+            osg::Vec4f pixel;
+
             for (int c = 0; c < image->s(); c++)
             {
                 for (int r = 0; r < image->t(); r++)
                 {
-                    osg::Vec4 pixel = reader(c, r);
+                    reader(pixel, c, r);
                     pixel.r() *= 255.0;
                     pixel.g() *= 255.0;
                     pixel.b() *= 255.0;

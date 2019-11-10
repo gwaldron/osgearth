@@ -57,17 +57,7 @@ namespace osgEarth { namespace REX
     protected:
         virtual ~RexTerrainEngineNode();
 
-    public: // TerrainEngineNode public
-
-        //! for standalone tile creation outside of a terrain
-        osg::Node* createTile(const TileKey& key);
-
-        //! Create a standalone tile from a tile model (experimental)
-        osg::Node* createTile(
-            const TerrainTileModel* model,
-            int createTileFlags,
-            unsigned referenceLOD,
-            const TileKey& area);
+    public:
         
         //! Forces regeneration of tiles in the given region.
         void invalidateRegion(
@@ -116,8 +106,6 @@ namespace osgEarth { namespace REX
         virtual void dirtyState();
 
     private:
-        void init();
-        void syncMapModel();
 
         //! Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);

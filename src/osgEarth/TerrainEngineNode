@@ -285,16 +285,6 @@ namespace osgEarth
 
     public: // utility
 
-        /**
-         * Utility function that will return an osg::Node representing the geometry
-         * for a tile key. The node is standalone; it has no ability to load children
-         * or receive updates.
-         *
-         * TODO: deprecate in favor of a separate utility for creating simple
-         * geometry out of a TerrainTileModel. -gw
-         */
-        virtual osg::Node* createTile(const TileKey& key) =0;
-
         //! Flags that affect the createTile behavior.
         enum CreateTileFlags
         {

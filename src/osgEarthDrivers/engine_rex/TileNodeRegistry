@@ -23,7 +23,6 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-//#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ResourceReleaser>
 #include <OpenThreads/Atomic>
 #include <osgUtil/RenderBin>
@@ -32,6 +31,8 @@
 namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
+
+    typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
 
     struct RandomAccessTileMap
     {
@@ -182,15 +183,6 @@ namespace osgEarth { namespace REX
 
         /** Removes a tile */
         void remove( TileNode* tile );
-
-        /** Clears all tiles from the registry */
-        //void clear();
-
-        /** Moves a tile from this registry to another registry */
-        //void move( TileNode* tile, TileNodeRegistry* destination );
-
-        /** Moves all tiles to another registry. */
-        //void moveAll(TileNodeRegistry* destinataion);
 
         /** Finds a tile in the registry */
         bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );

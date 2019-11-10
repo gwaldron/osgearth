@@ -69,7 +69,6 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
 
                 for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
                 {
-                    i->second.tile->setMapRevision( _maprev );
                     if ( setToDirty )
                     {
                         i->second.tile->setDirty( true );
@@ -111,9 +110,6 @@ void
 TileNodeRegistry::addSafely(TileNode* tile)
 {
     _tiles.insert( tile->getKey(), tile );
-    
-    if ( _revisioningEnabled )
-        tile->setMapRevision( _maprev );
     
     // Start waiting on our neighbors
     if (_notifyNeighbors)

@@ -29,16 +29,8 @@
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/TraversalData>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/TraversalData>
-
-#include <osg/Uniform>
-#include <osg/ComputeBoundsVisitor>
-#include <osg/ValueObject>
-
-#include <osgDB/WriteFile>
 
 using namespace osgEarth::REX;
 using namespace osgEarth;
@@ -69,14 +61,9 @@ namespace
 TileNode::TileNode() : 
 _dirty        ( false ),
 _childrenReady( false ),
-_minExpiryTime( 0.0 ),
-_minExpiryFrames( 0 ),
 _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
-_count(0),
-_stitchNormalMap(false),
 _empty(false),              // an "empty" node exists but has no geometry or children.,
-_isRootTile(false),
 _imageUpdatesActive(false)
 {
     //nop
@@ -136,9 +123,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _loadRequest = new LoadTileData( this, context );
     _loadRequest->setName( _key.str() );
     _loadRequest->setTileKey( _key );
-
-    // whether the stitch together normal maps for adjacent tiles.
-    _stitchNormalMap = options().normalizeEdges() == true;
 
     // Encode the tile key in a uniform. Note! The X and Y components are presented
     // modulo 2^16 form so they don't overrun single-precision space.
@@ -249,7 +233,7 @@ TileNode::computeBound() const
     if (_surface.valid())
     {
         bs = _surface->getBound();
-        const osg::BoundingBox bbox = _surface->getAlignedBoundingBox();
+        const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
         _tileKeyValue.a() = osg::maximum( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
     }    
     return bs;
@@ -262,8 +246,8 @@ TileNode::isDormant(const osg::FrameStamp* fs) const
 
     bool dormant = 
            fs &&
-           fs->getFrameNumber() - _lastTraversalFrame > osg::maximum(_minExpiryFrames, minMinExpiryFrames) &&
-           fs->getReferenceTime() - _lastTraversalTime > _minExpiryTime;
+           fs->getFrameNumber() - _lastTraversalFrame > osg::maximum(options().minExpiryFrames().get(), minMinExpiryFrames) &&
+           fs->getReferenceTime() - _lastTraversalTime > options().minExpiryTime().get();
     return dormant;
 }
 
@@ -279,9 +263,6 @@ TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix
     {
         if ( _surface.valid() )
             _surface->setElevationRaster( image, matrix );
-
-        if ( _patch.valid() )
-            _patch->setElevationRaster( image, matrix );
     }
 }
 
@@ -320,9 +301,6 @@ TileNode::releaseGLObjects(osg::State* state) const
     if ( _surface.valid() )
         _surface->releaseGLObjects(state);
 
-    if ( _patch.valid() )
-        _patch->releaseGLObjects(state);
-
     _renderModel.releaseGLObjects(state);
 }
 
@@ -333,9 +311,6 @@ TileNode::resizeGLObjectBuffers(unsigned maxSize)
 
     if ( _surface.valid() )
         _surface->resizeGLObjectBuffers(maxSize);
-
-    if ( _patch.valid() )
-        _patch->resizeGLObjectBuffers(maxSize);
 
     _renderModel.resizeGLObjectBuffers(maxSize);
 }
@@ -468,7 +443,7 @@ TileNode::cull(TerrainCuller* culler)
         {
             _mutex.lock();
 
-            if ( !_childrenReady )
+            if ( !_childrenReady ) // double check inside mutex
             {
                 OE_START_TIMER(createChildren);
                 createChildren( context );
@@ -641,14 +616,6 @@ TileNode::createChildren(EngineContext* context)
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {
         TileNode* node = new TileNode();
-        if (options().minExpiryFrames().isSet())
-        {
-            node->setMinimumExpirationFrames(options().minExpiryFrames().get());
-        }
-        if (context->options().minExpiryTime().isSet())
-        {         
-            node->setMinimumExpirationTime(options().minExpiryTime().get());
-        }
 
         // Build the surface geometry:
         node->create( getKey().createChildKey(quadrant), this, context );
@@ -1004,7 +971,6 @@ TileNode::passInLegalRange(const RenderingPass& pass) const
     return 
         pass.terrainLayer() == 0L ||
         pass.terrainLayer()->isKeyInVisualRange(getKey());
-        //pass.terrainLayer()->isKeyInLegalRange(getKey());
 }
 
 void
@@ -1068,19 +1034,22 @@ TileNode::removeSubTiles()
 void
 TileNode::notifyOfArrival(TileNode* that)
 {
-    if (_key.createNeighborKey(1, 0) == that->getKey())
-        _eastNeighbor = that;
+    if (options().normalizeEdges() == true)
+    {
+        if (_key.createNeighborKey(1, 0) == that->getKey())
+            _eastNeighbor = that;
 
-    if (_key.createNeighborKey(0, 1) == that->getKey())
-        _southNeighbor = that;
+        if (_key.createNeighborKey(0, 1) == that->getKey())
+            _southNeighbor = that;
 
-    updateNormalMap();
+        updateNormalMap();
+    }
 }
 
 void
 TileNode::updateNormalMap()
 {
-    if ( !_stitchNormalMap )
+    if (options().normalizeEdges() == false)
         return;
 
     Sampler& thisNormalMap = _renderModel._sharedSamplers[SamplerBinding::NORMAL];

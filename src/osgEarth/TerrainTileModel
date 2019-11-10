@@ -24,8 +24,6 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/PatchLayer>
 #include <osgEarth/Revisioning>
-#include <osgEarth/MapInfo>
-#include <osgEarth/Locators>
 #include <osgEarth/HeightFieldUtils>
 #include <osg/Texture>
 #include <osg/Matrix>

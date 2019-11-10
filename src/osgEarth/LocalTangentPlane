@@ -23,7 +23,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
 #include <osgEarth/TileKey>
-#include <osgEarth/Locators>
 
 namespace osgEarth
 {

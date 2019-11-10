@@ -130,11 +130,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     surfaceDrawable->setModifyBBoxCallback(context->getModifyBBoxCallback());
 
     // Create the node to house the tile drawable:
-    _surface = new SurfaceNode(
-        key,
-        MapInfo(map.get()),
-        context->getRenderBindings(),
-        surfaceDrawable );
+    _surface = new SurfaceNode(key, surfaceDrawable);
     
     // create a data load request for this new tile:
     _loadRequest = new LoadTileData( this, context );

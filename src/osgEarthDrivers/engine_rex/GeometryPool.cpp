@@ -300,12 +300,13 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     geom->setTexCoordArray(texCoords.get());
     
-    float delta = 1.0/(tileSize-1);
-    osg::Vec3d tdelta(delta,0,0);
-    tdelta.normalize();
-    osg::Vec3d vZero(0,0,0);
+    GeoLocator locator(tileKey.getExtent());
 
-    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
+    osg::Vec3d unit;
+    osg::Vec3d model;
+    osg::Vec3d modelLTP;
+    osg::Vec3d modelPlusOne;
+    osg::Vec3d normal;
 
     for(unsigned row=0; row<tileSize; ++row)
     {
@@ -314,10 +315,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         {
             float nx = (float)col/(float)(tileSize-1);
 
-            osg::Vec3d model;
-            locator->unitToModel(osg::Vec3d(nx, ny, 0.0f), model);
-            osg::Vec3d modelLTP = model*world2local;
+            unit.set(nx, ny, 0.0f);
+            locator.unitToWorld(unit, model);
+            modelLTP = model*world2local;
             verts->push_back( modelLTP );
+
             tileBound.expandBy( verts->back() );
 
             if ( populateTexCoords )
@@ -327,11 +329,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                 texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }
 
-            osg::Vec3d modelPlusOne;
-            locator->unitToModel(osg::Vec3d(nx, ny, 1.0f), modelPlusOne);
-            osg::Vec3d normal = (modelPlusOne*world2local)-modelLTP;                
+            unit.z() = 1.0f;
+            locator.unitToWorld(unit, modelPlusOne);
+            normal = (modelPlusOne*world2local)-modelLTP;                
             normal.normalize();
-            normals->push_back( normal );
+            normals->push_back(normal);
 
             // neighbor:
             if ( neighbors )
@@ -428,7 +430,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     if (tessellateSurface)
     {
         // TODO: do we really need this??
-        bool swapOrientation = !locator->orientationOpenGL();
+        bool swapOrientation = false; //!locator->orientationOpenGL();
 
         for(unsigned j=0; j<tileSize-1; ++j)
         {

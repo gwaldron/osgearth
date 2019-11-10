@@ -19,6 +19,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Registry>
 #include <osgEarth/MapModelChange>
+#include <osgEarth/MapInfo>
 
 #define LC "[TerrainEngineNode] "
 

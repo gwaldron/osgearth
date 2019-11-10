@@ -182,10 +182,11 @@ void
 MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary)
 {
     // Make a "locator" for this key so we can do coordinate conversion:
-    osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
+    GeoLocator geoLocator(_key.getExtent());
+    //osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
 
-    if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
-        geoLocator = geoLocator->getGeographicFromGeocentric();
+    //if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
+    //    geoLocator = geoLocator->getGeographicFromGeocentric();
 
     if ( boundary )
     {
@@ -210,8 +211,8 @@ MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary
 
         // convert that bounding box to "unit" space (0..1 across the tile)
         osg::Vec3d min_ndc, max_ndc;
-        geoLocator->modelToUnit(min, min_ndc);
-        geoLocator->modelToUnit(max, max_ndc);
+        geoLocator.mapToUnit(min, min_ndc);
+        geoLocator.mapToUnit(max, max_ndc);
 
         // true if boundary overlaps tile in X dimension:
         bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
@@ -257,10 +258,11 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
     {
         return R_BOUNDARY_DOES_NOT_INTERSECT_TILE;
     }
-
-    osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
-    if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
-        geoLocator = geoLocator->getGeographicFromGeocentric();
+    
+    GeoLocator geoLocator(_key.getExtent());
+    //osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
+    //if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
+    //    geoLocator = geoLocator->getGeographicFromGeocentric();
 
     // Configure up a local tangent plane at the centroid of the tile:
     GeoPoint centroid;
@@ -392,7 +394,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
         for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
         {
             osg::Vec3d local;
-            geoLocator->convertModelToLocal(*it, local);
+            geoLocator.mapToUnit(*it, local);
             boundaryPoly->push_back(local);
         }
             
@@ -605,7 +607,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
         neighborNormals->reserve(neighborNormals->size() + trigPoints->size()); 
 
     // Iterate through point to convert to model coords, calculate normals, and set up tex coords
-    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
+    //osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
 
     unsigned vertsOffset = verts->size();
 
@@ -616,12 +618,12 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
 
         // get local coords
         osg::Vec3d local;
-        locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), local);
+        geoLocator.unitToWorld(osg::Vec3d(it->x(), it->y(), 0.0f), local);
         local = local * world2local;
 
         // calc normals
         osg::Vec3d localPlusOne;
-        locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), localPlusOne);
+        geoLocator.unitToWorld(osg::Vec3d(it->x(), it->y(), 1.0f), localPlusOne);
         osg::Vec3d normal = (localPlusOne*world2local)-local;                
         normal.normalize();
         normals->push_back( normal );

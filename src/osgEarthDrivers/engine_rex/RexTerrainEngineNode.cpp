@@ -555,15 +555,6 @@ RexTerrainEngineNode::dirtyTerrain()
     {
         TileNode* tileNode = new TileNode();
 
-        if (options().minExpiryFrames().isSet())
-        {
-            tileNode->setMinimumExpirationFrames(options().minExpiryFrames().get());
-        }
-        if (options().minExpiryTime().isSet())
-        {
-            tileNode->setMinimumExpirationTime(options().minExpiryTime().get());
-        }
-
         // Next, build the surface geometry for the node.
         tileNode->create( keys[i], 0L, _engineContext.get() );
 

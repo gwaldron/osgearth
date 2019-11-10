@@ -2049,7 +2049,6 @@ namespace
         //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
         result->allocateImage(width, height, image->r(), image->getPixelFormat(), image->getDataType()); //GL_UNSIGNED_BYTE);
         result->setInternalTextureFormat(image->getInternalTextureFormat());
-        ImageUtils::markAsUnNormalized(result, ImageUtils::isUnNormalized(image));
 
         //Initialize the image to be completely transparent/black
         memset(result->data(), 0, result->getImageSizeInBytes());
@@ -2076,7 +2075,14 @@ namespace
             dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
             dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
             srcPointsX, srcPointsY, width, height);
+
         ImageUtils::PixelReader ia(image);
+        osg::Vec4 color;
+        osg::Vec4 urColor;
+        osg::Vec4 llColor;
+        osg::Vec4 ulColor;
+        osg::Vec4 lrColor;
+
         double xfac = (image->s() - 1) / src_extent.width();
         double yfac = (image->t() - 1) / src_extent.height();
 
@@ -2085,7 +2091,6 @@ namespace
            // Next, go through the source-SRS sample grid, read the color at each point from the source image,
            // and write it to the corresponding pixel in the destination image.
            int pixel = 0;
-           ImageUtils::PixelReader ia(image);
            double xfac = (image->s() - 1) / src_extent.width();
            double yfac = (image->t() - 1) / src_extent.height();
            for (unsigned int c = 0; c < width; ++c)
@@ -2109,12 +2114,12 @@ namespace
                  int px_i = osg::clampBetween((int)osg::round(px), 0, image->s() - 1);
                  int py_i = osg::clampBetween((int)osg::round(py), 0, image->t() - 1);
 
-                 osg::Vec4 color(0, 0, 0, 0);
+                 color.set(0,0,0,0);
 
                  // TODO: consider this again later. Causes blockiness.
                  if (!interpolate) //! isSrcContiguous ) // non-contiguous space- use nearest neighbot
                  {
-                    color = ia(px_i, py_i, depth);
+                    ia(color, px_i, py_i, depth);
                  }
 
                  else // contiguous space - use bilinear sampling
@@ -2127,45 +2132,17 @@ namespace
                     if (rowMin > rowMax) rowMin = rowMax;
                     if (colMin > colMax) colMin = colMax;
 
-                    osg::Vec4 urColor = ia(colMax, rowMax, depth);
-                    osg::Vec4 llColor = ia(colMin, rowMin, depth);
-                    osg::Vec4 ulColor = ia(colMin, rowMax, depth);
-                    osg::Vec4 lrColor = ia(colMax, rowMin, depth);
-
-                    /*Average Interpolation*/
-                    /*double x_rem = px - (int)px;
-                    double y_rem = py - (int)py;
-
-                    double w00 = (1.0 - y_rem) * (1.0 - x_rem);
-                    double w01 = (1.0 - y_rem) * x_rem;
-                    double w10 = y_rem * (1.0 - x_rem);
-                    double w11 = y_rem * x_rem;
-                    double wsum = w00 + w01 + w10 + w11;
-                    wsum = 1.0/wsum;
-
-                    color.r() = (w00 * llColor.r() + w01 * lrColor.r() + w10 * ulColor.r() + w11 * urColor.r()) * wsum;
-                    color.g() = (w00 * llColor.g() + w01 * lrColor.g() + w10 * ulColor.g() + w11 * urColor.g()) * wsum;
-                    color.b() = (w00 * llColor.b() + w01 * lrColor.b() + w10 * ulColor.b() + w11 * urColor.b()) * wsum;
-                    color.a() = (w00 * llColor.a() + w01 * lrColor.a() + w10 * ulColor.a() + w11 * urColor.a()) * wsum;*/
-
-                    /*Nearest Neighbor Interpolation*/
-                    /*if (px_i >= 0 && px_i < image->s() &&
-                    py_i >= 0 && py_i < image->t())
-                    {
-                    //OE_NOTICE << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
-                    color = ImageUtils::getColor(image, px_i, py_i);
-                    }
-                    else
-                    {
-                    OE_NOTICE << "[osgEarth::GeoData] Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
-                    }*/
+                    ia(urColor, colMax, rowMax, depth);
+                    ia(llColor, colMin, rowMin, depth);
+                    ia(ulColor, colMin, rowMax, depth);
+                    ia(lrColor, colMax, rowMin, depth);
 
                     /*Bilinear interpolation*/
                     //Check for exact value
                     if ((colMax == colMin) && (rowMax == rowMin))
                     {
                        //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
-                       color = ia(px_i, py_i, depth);
+                       ia(color, px_i, py_i, depth);
                     }
                     else if (colMax == colMin)
                     {
@@ -2229,13 +2206,13 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
 
     osg::Image* resultImage = 0L;
 
-    bool isNormalized = ImageUtils::isNormalized(getImage());
+    bool isNormalized = getImage()->getDataType() != GL_UNSIGNED_BYTE;
     
     if ( getSRS()->isUserDefined()      || 
         to_srs->isUserDefined()         ||
         getSRS()->isSphericalMercator() ||
         to_srs->isSphericalMercator()   ||
-        !isNormalized )
+        isNormalized )
     {
         // if either of the SRS is a custom projection, we have to do a manual reprojection since
         // GDAL will not recognize the SRS.
@@ -2274,6 +2251,8 @@ GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
     double sInterval = _extent.width()/(double)_image->s();
     double tInterval = _extent.height()/(double)_image->t();
 
+    osg::Vec4f pixel;
+
     for( int t=0; t<_image->t(); ++t )
     {
         double y = _extent.south() + tInterval*(double)t;
@@ -2286,8 +2265,9 @@ GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
             {
                 if ( !maskingExtentLocal.contains(x, y) )
                 {
-                    osg::Vec4f pixel = read(s,t,r);
-                    write(osg::Vec4f(pixel.r(), pixel.g(), pixel.b(), 0.0f), s, t, r);
+                    read(pixel, s, t, r);
+                    pixel.a() = 0.0f;
+                    write(pixel, s, t, r);
                 }
             }
         }
@@ -2377,7 +2357,9 @@ NormalMap::getNormal(unsigned s, unsigned t) const
 {
     if (!_read) return DEFAULT_NORMAL;
 
-    osg::Vec4 encoding = (*_read)(s, t);
+    osg::Vec4f encoding;
+    (*_read)(encoding, s, t);
+
     return osg::Vec3(
         encoding.x()*2.0 - 1.0,
         encoding.y()*2.0 - 1.0,

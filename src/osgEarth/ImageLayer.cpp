@@ -542,7 +542,6 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         if ( r.succeeded() )
         {
             cachedImage = r.releaseImage();
-            ImageUtils::fixInternalFormat( cachedImage.get() );            
             bool expired = policy.isExpired(r.lastModifiedTime());
             if (!expired)
             {
@@ -578,12 +577,6 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     {
         // If the profiles are different, use a compositing method to assemble the tile.
         result = assembleImage( key, progress );
-    }
-
-    // Normalize the image if necessary
-    if ( result.valid() )
-    {
-        ImageUtils::fixInternalFormat( result.getImage() );
     }
 
     // Check for cancelation before writing to a cache:
@@ -753,8 +746,6 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
             {
                 if ( !isCoverage() )
                 {
-                    ImageUtils::fixInternalFormat(image.getImage());
-
                     // Make sure all images in mosaic are based on "RGBA - unsigned byte" pixels.
                     // This is not the smarter choice (in some case RGB would be sufficient) but
                     // it ensure consistency between all images / layers.
@@ -816,7 +807,6 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
                     if ( !isCoverage() )
                     {
-                        ImageUtils::fixInternalFormat(image.getImage());
                         if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
                             || (image.getImage()->getPixelFormat() != GL_RGBA) )
                         {

@@ -236,23 +236,10 @@ XYZImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* p
         progress,
         getReadOptions());
 
-    osg::ref_ptr<osg::Image> image = r.getImage();
-    if (image.valid())
-    {
-        if (options().coverage() == true)
-        {
-            image->setInternalTextureFormat(GL_R16F);
-            ImageUtils::markAsUnNormalized(image.get(), true);
-        }
-
-        return GeoImage(image.get(), key.getExtent());
-    }
+    if (r.succeeded())
+        return GeoImage(r.releaseImage(), key.getExtent());
     else
-    {
-        // NOP....silent fail....more detail later if there's a real problem
-    }
-
-    return GeoImage::INVALID;
+        return GeoImage(Status(r.errorDetail()));
 }
 
 //........................................................................
@@ -310,11 +297,13 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
             hf->allocate(image->s(), image->t());
 
             ImageUtils::PixelReader reader(image);
+            osg::Vec4f pixel;
+
             for (int c = 0; c < image->s(); c++)
             {
                 for (int r = 0; r < image->t(); r++)
                 {
-                    osg::Vec4 pixel = reader(c, r);
+                    reader(pixel, c, r);
                     pixel.r() *= 255.0;
                     pixel.g() *= 255.0;
                     pixel.b() *= 255.0;

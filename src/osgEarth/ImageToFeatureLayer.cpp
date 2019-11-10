@@ -138,7 +138,9 @@ ImageToFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* 
         {
             double pixWidth = key.getExtent().width() / (double)image.getImage()->s();
             double pixHeight = key.getExtent().height() / (double)image.getImage()->t();
+
             ImageUtils::PixelReader reader(image.getImage());
+            osg::Vec4f color;
 
             for (unsigned int r = 0; r < (unsigned)image.getImage()->t(); r++)
             {
@@ -152,7 +154,7 @@ ImageToFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* 
                 {
                     double x = key.getExtent().xMin() + (double)c * pixWidth;
 
-                    osg::Vec4f color = reader(c, r);
+                    reader(color, c, r);
 
                     // Starting a new row.  Initialize the values.
                     if (c == 0)

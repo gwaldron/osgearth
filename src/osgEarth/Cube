@@ -87,30 +87,6 @@ namespace osgEarth { namespace Contrib
     };
 
     /**
-     * osgTerrain locator for positioning data on the terrain using a cube-face
-     * coordinate system.
-     */
-    class OSGEARTH_EXPORT CubeFaceLocator : public GeoLocator
-    {
-    public:
-        CubeFaceLocator(unsigned int face);
-
-        /** dtor */
-        virtual ~CubeFaceLocator();
-
-        // This method will generate geocentric vertex coordinates, given local tile
-        // coordinates (0=>1).
-        bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& world) const;
-
-        // This method will generate the texture coordinates for a given location on
-        // the globe.
-        bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
-
-    private:
-        unsigned int _face;
-    };
-
-    /**
      * The "Cube" SRS represents a 6-face cube, each face being in unit coordinates (0,0=>1,1).
      * the cube as whole lays out all six faces side by side, resulting in a space 
      * measuring (0,0=>6,1). The face number corresponds to the x-axis ordinal.
@@ -122,8 +98,6 @@ namespace osgEarth { namespace Contrib
 
         /** dtor */
         virtual ~CubeSpatialReference();
-
-        virtual GeoLocator* createLocator(double xmin, double ymin, double xmax, double ymax) const;
 
         // CUBE is a projected coordinate system.
         virtual bool isGeographic() const { return false; }

@@ -884,32 +884,6 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
     return true;
 }
 
-GeoLocator*
-SpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax ) const
-{
-    if ( !_initialized )
-        const_cast<SpatialReference*>(this)->init();
-
-    GeoLocator* locator = new GeoLocator( GeoExtent(this, xmin, ymin, xmax, ymax) );
-    locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
-    locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
-    // note: not setting the format/cs on purpose.
-
-    if ( isGeographic() )
-    {
-        locator->setTransform( getTransformFromExtents(
-            osg::DegreesToRadians( xmin ),
-            osg::DegreesToRadians( ymin ),
-            osg::DegreesToRadians( xmax ),
-            osg::DegreesToRadians( ymax ) ) );
-    }
-    else
-    {
-        locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
-    }
-    return locator;
-}
-
 bool
 SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {

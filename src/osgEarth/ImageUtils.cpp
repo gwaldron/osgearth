@@ -53,42 +53,7 @@ ImageUtils::cloneImage( const osg::Image* input )
     
     osg::Image* clone = osg::clone( input, osg::CopyOp::DEEP_COPY_ALL );
     clone->dirty();
-    if (isNormalized(input) != isNormalized(clone)) {
-        OE_WARN << LC << "Fail in clone.\n";
-    }
     return clone;
-}
-
-void
-ImageUtils::fixInternalFormat( osg::Image* image )
-{
-    // OpenGL is lax about internal texture formats, and e.g. allows GL_RGBA to be used
-    // instead of the proper GL_RGBA8, etc. Correct that here, since some of our compositors
-    // rely on having a proper internal texture format.
-    if ( image->getDataType() == GL_UNSIGNED_BYTE )
-    {
-        if ( image->getPixelFormat() == GL_RGB )
-            image->setInternalTextureFormat( GL_RGB8_INTERNAL );
-        else if ( image->getPixelFormat() == GL_RGBA )
-            image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
-    }
-}
-
-void
-ImageUtils::markAsUnNormalized(osg::Image* image, bool value)
-{
-    if ( image )
-    {
-        image->setUserValue("osgEarth.unnormalized", value);
-    }
-}
-
-bool
-ImageUtils::isUnNormalized(const osg::Image* image)
-{
-    if ( !image ) return false;
-    bool result;
-    return image->getUserValue("osgEarth.unnormalized", result) && (result == true);
 }
 
 bool
@@ -228,7 +193,6 @@ ImageUtils::resizeImage(const osg::Image* input,
         {
             output->allocateImage( out_s, out_t, input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
             output->setInternalTextureFormat( input->getInternalTextureFormat() );
-            markAsNormalized(output.get(), isNormalized(input));
         }
         else
         {
@@ -354,7 +318,6 @@ ImageUtils::flattenImage(osg::Image*                             input,
         osg::Image* layer = new osg::Image();
         layer->allocateImage(input->s(), input->t(), 1, input->getPixelFormat(), input->getDataType(), input->getPacking());
         layer->setPixelAspectRatio(input->getPixelAspectRatio());
-        markAsNormalized(layer, isNormalized(input));
 
         layer->setRowLength(input->getRowLength());
         layer->setOrigin(input->getOrigin());
@@ -758,7 +721,6 @@ ImageUtils::cropImage(const osg::Image* image,
     osg::Image* cropped = new osg::Image;
     cropped->allocateImage(windowWidth, windowHeight, image->r(), image->getPixelFormat(), image->getDataType());
     cropped->setInternalTextureFormat( image->getInternalTextureFormat() );
-    ImageUtils::markAsNormalized( cropped, ImageUtils::isNormalized(image) );    
     
     for (int layer=0; layer<image->r(); ++layer)
     {
@@ -1201,8 +1163,7 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     osg::Image* result = new osg::Image();
     result->allocateImage(image->s(), image->t(), image->r(), pixelFormat, dataType);
     memset(result->data(), 0, result->getTotalSizeInBytes());
-    markAsNormalized(result, isNormalized(image));
-
+    
     if ( pixelFormat == GL_RGB && dataType == GL_UNSIGNED_BYTE )
         result->setInternalTextureFormat( GL_RGB8_INTERNAL );
     else if ( pixelFormat == GL_RGBA && dataType == GL_UNSIGNED_BYTE )
@@ -1561,11 +1522,11 @@ namespace
     template<typename T>
     struct ColorReader<GL_DEPTH_COMPONENT, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float l = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(l, l, l, 1.0f);
+            float d = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            out.set(d, d, d, 1.0f);
         }
     };
 
@@ -1582,11 +1543,11 @@ namespace
     template<typename T>
     struct ColorReader<GL_LUMINANCE, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float l = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(l, l, l, 1.0f);
+            float red = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            out.set(red, red, red, 1.0f);
         }
     };
 
@@ -1603,11 +1564,11 @@ namespace
     template<typename T>
     struct ColorReader<GL_RED, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float l = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(l, l, l, 1.0f);
+            float red = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            out.set(red, red, red, 1.0f);
         }
     };
 
@@ -1624,11 +1585,11 @@ namespace
     template<typename T>
     struct ColorReader<GL_ALPHA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
             float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(1.0f, 1.0f, 1.0f, a);
+            out.set(1.0f, 1.0f, 1.0f, a);
         }
     };
 
@@ -1645,12 +1606,12 @@ namespace
     template<typename T>
     struct ColorReader<GL_LUMINANCE_ALPHA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
             float l = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(l, l, l, a);
+            out.set(l, l, l, a);
         }
     };
 
@@ -1668,13 +1629,13 @@ namespace
     template<typename T>
     struct ColorReader<GL_RGB, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float d = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float b = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(d, g, b, 1.0f);
+            out.set(red, g, b, 1.0f);
         }
     };
 
@@ -1693,14 +1654,14 @@ namespace
     template<typename T>
     struct ColorReader<GL_RGBA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float d = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(d, g, b, a);
+            out.set(red, g, b, a);
         }
     };
 
@@ -1720,13 +1681,13 @@ namespace
     template<typename T>
     struct ColorReader<GL_BGR, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
             float b = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
             float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float d = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(d, g, b, 1.0f);
+            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            out.set(red, g, b, 1.0f);
         }
     };
 
@@ -1745,14 +1706,14 @@ namespace
     template<typename T>
     struct ColorReader<GL_BGRA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
             float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float d = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
-            return osg::Vec4(d, g, b, a);
+            out.set(red, g, b, a);
         }
     };
 
@@ -1772,9 +1733,9 @@ namespace
     template<typename T>
     struct ColorReader<0, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
-            return osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f);
+            out.set(1.0f, 1.0f, 1.0f, 1.0f);
         }
     };
 
@@ -1790,11 +1751,11 @@ namespace
     template<>
     struct ColorReader<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             GLushort p = *(const GLushort*)ia->data(s, t, r, m);
             //internal format GL_RGB5_A1 is implied
-            return osg::Vec4(
+            out.set(
                 r5*(float)(p>>11), 
                 r5*(float)((p&0x7c0)>>6), 
                 r5*(float)((p&0x3e)>>1), 
@@ -1821,11 +1782,11 @@ namespace
     template<>
     struct ColorReader<GL_UNSIGNED_BYTE_3_3_2, GLubyte>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
-              GLubyte p = *(const GLubyte*)ia->data(s,t,r,m);
+            GLubyte p = *(const GLubyte*)ia->data(s,t,r,m);
             // internal format GL_R3_G3_B2 is implied
-            return osg::Vec4( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
+            out.set( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
         }
     };
 
@@ -1842,7 +1803,7 @@ namespace
     template<>
     struct ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* pr, int s, int t, int r, int m)
+        static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
         {
             static const int BLOCK_BYTES = 8;
 
@@ -1887,7 +1848,10 @@ namespace
 
             unsigned int index = (table >> (2*x)) & 0x00000003;
 
-            return index==0? c0 : index==1? c1 : index==2? c2 : c3;
+            out =
+                index == 0? c0 :
+                index == 1? c1 :
+                index == 2? c2 : c3;
         }
     };
 
@@ -1976,7 +1940,7 @@ ImageUtils::PixelReader::setImage(const osg::Image* image)
     _image = image;
     if (image)
     {
-        _normalized = ImageUtils::isNormalized(image);
+        _normalized = image->getDataType() == GL_UNSIGNED_BYTE;
         _colMult = _image->getPixelSizeInBits() / 8;
         _rowMult = _image->getRowSizeInBytes();
         _imageSize = _image->getImageSizeInBytes();
@@ -1996,9 +1960,15 @@ ImageUtils::PixelReader::operator()(float u, float v, int r, int m) const
     return operator()((double)u, (double)v, r, m);
 }
 
-osg::Vec4
-ImageUtils::PixelReader::operator()(double u, double v, int r, int m) const
- {
+void
+ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, int m) const
+{
+    return operator()(out, (double)u, (double)v, r, m);
+}
+
+void
+ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, int m) const
+{
      if ( _bilinear )
      {
          double sizeS = (double)(_image->s()-1);
@@ -2016,23 +1986,34 @@ ImageUtils::PixelReader::operator()(double u, double v, int r, int m) const
          double t1 = osg::minimum(t0+1.0f, sizeT);
          double tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
 
-         osg::Vec4 UL = (*_reader)(this, (int)s0, (int)t0, r, m); // upper left
-         osg::Vec4 UR = (*_reader)(this, (int)s1, (int)t0, r, m); // upper right
-         osg::Vec4 LL = (*_reader)(this, (int)s0, (int)t1, r, m); // lower left
-         osg::Vec4 LR = (*_reader)(this, (int)s1, (int)t1, r, m); // lower right
+         osg::Vec4f UL, UR, LL, LR;
 
-         osg::Vec4 TOP = UL*(1.0f-smix) + UR*smix;
-         osg::Vec4 BOT = LL*(1.0f-smix) + LR*smix;
+         (*_reader)(this, UL, (int)s0, (int)t0, r, m); // upper left
+         (*_reader)(this, UR, (int)s1, (int)t0, r, m); // upper right
+         (*_reader)(this, LL, (int)s0, (int)t1, r, m); // lower left
+         (*_reader)(this, LR, (int)s1, (int)t1, r, m); // lower right
 
-         return TOP*(1.0f-tmix) + BOT*tmix;
+         osg::Vec4f TOP = UL*(1.0f-smix) + UR*smix;
+         osg::Vec4f BOT = LL*(1.0f-smix) + LR*smix;
+
+         out = TOP*(1.0f-tmix) + BOT*tmix;
      }
      else
      {
-         return (*_reader)(this,
+         (*_reader)(this,
+             out,
              (int)(u * (double)(_image->s()-1)),
              (int)(v * (double)(_image->t()-1)),
              r, m);
      }
+}
+
+osg::Vec4f
+ImageUtils::PixelReader::operator()(double u, double v, int r, int m) const
+{
+    osg::Vec4f temp;
+    this->operator()(temp, u, v, r, m);
+    return temp;
 }
 
 bool
@@ -2116,7 +2097,7 @@ _image(image)
 {
     if (image)
     {
-        _normalized = ImageUtils::isNormalized(image);
+        _normalized = image->getDataType() == GL_UNSIGNED_BYTE;
         _colMult = _image->getPixelSizeInBits() / 8;
         _rowMult = _image->getRowSizeInBytes();
         _imageSize = _image->getImageSizeInBytes();

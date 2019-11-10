@@ -124,8 +124,9 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
 
         //OE_INFO << LC << _key.str() << " - rebuilding height cache" << std::endl;
 
-        ImageUtils::PixelReader elevation(_elevationRaster.get());
-        elevation.setBilinear(true);
+        ImageUtils::PixelReader readElevation(_elevationRaster.get());
+        readElevation.setBilinear(true);
+        osg::Vec4f sample;
 
         float
             scaleU = _elevationScaleBias(0,0),
@@ -149,7 +150,10 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
                 u = u*scaleU + biasU;
 
                 unsigned index = t*_tileSize+s;
-                _mesh[index] = verts[index] + normals[index] * elevation(u, v).r();
+
+                readElevation(sample, u, v);
+
+                _mesh[index] = verts[index] + normals[index] * sample.r();
             }
         }
     }

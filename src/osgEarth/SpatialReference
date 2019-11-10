@@ -305,15 +305,6 @@ namespace osgEarth
         /** Populates the provided CSN with information from this SRS. */
         bool populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const;
 
-        /**
-         * Creates a new Locator object based on this spatial reference.
-         *
-         * @param xmin, ymin, xmax, ymax
-         *      Extents of the tile for which to create a locator. These should
-         *      be in degrees for a geographic/geocentric scene.
-         */
-        virtual GeoLocator* createLocator(double xmin, double ymin, double xmax, double ymax) const;
-
 		/**
 		 * Gets the underlying OGRLayerH that this SpatialReference owns.
 		 * Don't use this unless you know what you're doing.

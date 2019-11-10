@@ -49,7 +49,7 @@ namespace osgEarth
         OE_OPTION(bool, gpuTessellation);
         OE_OPTION(bool, debug);
         OE_OPTION(int, renderBinNumber);
-        OE_OPTION(int, minExpiryFrames);
+        OE_OPTION(unsigned, minExpiryFrames);
         OE_OPTION(double, minExpiryTime);
         OE_OPTION(float, minExpiryRange);
         OE_OPTION(unsigned, expirationThreshold);
@@ -154,8 +154,8 @@ namespace osgEarth
         const int& getRenderBinNumber() const;
 
         //! Minimum number of frames before unused terrain data is eligible to expire
-        void setMinExpiryFrames(const int& value);
-        const int& getMinExpiryFrames() const;
+        void setMinExpiryFrames(const unsigned& value);
+        const unsigned& getMinExpiryFrames() const;
 
         //! Minimum time (seconds) before unused terrain data is eligible to expire
         void setMinExpiryTime(const double& value);

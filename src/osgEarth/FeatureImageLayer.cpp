@@ -342,7 +342,6 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     {
         image->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_FLOAT);
         image->setInternalTextureFormat(GL_R16F);
-        ImageUtils::markAsUnNormalized(image.get(), true);
     }
     else
     {

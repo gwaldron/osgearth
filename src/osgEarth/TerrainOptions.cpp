@@ -158,7 +158,7 @@ OE_PROPERTY_IMPL(TerrainOptionsAPI, int, RenderBinNumber, renderBinNumber);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, CastShadows, castShadows);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, osg::LOD::RangeMode, RangeMode, rangeMode);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, TilePixelSize, tilePixelSize);
-OE_PROPERTY_IMPL(TerrainOptionsAPI, int, MinExpiryFrames, minExpiryFrames);
+OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MinExpiryFrames, minExpiryFrames);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, double, MinExpiryTime, minExpiryTime);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, MinExpiryRange, minExpiryRange);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, ExpirationThreshold, expirationThreshold);

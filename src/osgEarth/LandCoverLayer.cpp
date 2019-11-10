@@ -261,7 +261,7 @@ LandCoverLayer::openImplementation()
 
             if (coverage->getImageLayer())
             {
-                coverage->getImageLayer()->setUpL2Cache(64u);
+                coverage->getImageLayer()->setUpL2Cache(9u);
             }
 
             _codemaps.resize(_codemaps.size()+1);
@@ -367,7 +367,7 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u
             // scale/bias to this tile's extent and sample the image.
             u = u * comp->scaleBias(0, 0) + comp->scaleBias(3, 0);
             v = v * comp->scaleBias(1, 1) + comp->scaleBias(3, 1);
-            output = comp->pixel(u, v);
+            comp->pixel(output, u, v);
             return true;
         }
     }
@@ -398,8 +398,8 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         //mainImage->getPacking());
     output->setInternalTextureFormat(GL_R16F);
     //output->setInternalTextureFormat(mainImage->getInternalTextureFormat());
-    ImageUtils::markAsUnNormalized(output.get(), true);
     ImageUtils::PixelWriter write(output.get());
+    write.setNormalize(false);
 
     // Configure the noise function:
     SimplexNoise noiseGen;
@@ -494,6 +494,7 @@ LandCoverLayer::getClassByUV(const GeoImage& tile, double u, double v) const
 
     ImageUtils::PixelReader read(tile.getImage());
     read.setBilinear(false); // nearest neighbor only!
+    read.setDenormalize(false);
     float value = read(u, v).r();
 
     return _lcDictionary->getClassByValue((int)value);
@@ -509,7 +510,6 @@ LandCoverLayer::createMetaImageComponent(const TileKey& key, ProgressCallback* p
 
     // Allocate the new coverage image; it will contain unnormalized values.
     osg::ref_ptr<osg::Image> out = new osg::Image();
-    ImageUtils::markAsUnNormalized(out.get(), true);
 
     // Allocate a suitable format:
     GLint internalFormat = GL_R16F;
@@ -522,6 +522,7 @@ LandCoverLayer::createMetaImageComponent(const TileKey& key, ProgressCallback* p
     osg::Vec2 cov;    // coverage coordinates
 
     ImageUtils::PixelWriter write(out.get());
+    write.setNormalize(false);
 
     float du = 1.0f / (float)(out->s() - 1);
     float dv = 1.0f / (float)(out->t() - 1);

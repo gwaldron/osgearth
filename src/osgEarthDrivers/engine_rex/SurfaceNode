@@ -62,10 +62,8 @@ namespace osgEarth { namespace REX
     {
     public:
         SurfaceNode(
-            const TileKey&        tilekey,
-            const MapInfo&        mapinfo,
-            const RenderBindings& bindings,
-            TileDrawable*         drawable);
+            const TileKey& tilekey,
+            TileDrawable* drawable);
 
         virtual const char* className() const { return "Rex::SurfaceNode"; }
 

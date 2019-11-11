@@ -1,44 +1,125 @@
-include(SelectLibraryConfigurations)
-include(FindPackageHandleStandardArgs)
+# This module defines
 
-find_path(OSG_INCLUDE_DIR "osg/Node")
-find_path(OSG_GEN_INCLUDE_DIR "osg/Config") 
+# OSG_LIBRARY
+# OSG_FOUND, if false, do not try to link to osg
+# OSG_INCLUDE_DIRS, where to find the headers
+# OSG_INCLUDE_DIR, where to find the source headers
+# OSG_GEN_INCLUDE_DIR, where to find the generated headers
 
-macro(add_lib LIB_NAME)
-	STRING(TOUPPER "${LIB_NAME}" LIB_NAME_U) 
-	
-	find_library(${LIB_NAME_U}_LIBRARY_RELEASE NAMES ${LIB_NAME}${CMAKE_RELEASE_POSTFIX} )
-	find_library(${LIB_NAME_U}_LIBRARY_DEBUG NAMES ${LIB_NAME}${CMAKE_DEBUG_POSTFIX} )
-	select_library_configurations(${LIB_NAME_U})
-	mark_as_advanced(${LIB_NAME_U}_LIBRARY_DEBUG ${LIB_NAME_U}_LIBRARY_RELEASE )
-	if( NOT "${LIB_NAME_U}" STREQUAL "OSG")
-		set(OSG_LIBRARIES ${OSG_LIBRARIES} ${${LIB_NAME_U}_LIBRARY})
-	endif()
-endmacro()
+###### headers ######
 
-add_lib(osg)
-add_lib(osgUtil)
-add_lib(osgDB)
-add_lib(osgGA)
-add_lib(osgText)
-add_lib(osgSim)
-add_lib(osgViewer)
-add_lib(osgManipulator)
-add_lib(osgShadow)
-add_lib(OpenThreads)
+SET(OSG_DIR "" CACHE PATH "Set to base OpenSceneGraph install path")
 
-find_package_handle_standard_args(OSG
-	FOUND_VAR 
-	  OSG_FOUND
-	REQUIRED_VARS
-	  OSG_LIBRARIES
-	  OSG_INCLUDE_DIR
-	VERSION_VAR
-	  OSG_VERSION
-	FAIL_MESSAGE
-	  "Could NOT find OSG, try to set the path to OSG root folder"
+FIND_PATH(OSG_INCLUDE_DIR osg/Node
+    PATHS
+        ${OSG_DIR}
+        $ENV{OSG_SOURCE_DIR}
+        $ENV{OSGDIR}
+        $ENV{OSG_DIR}
+        $ENV{OSG}
+        $ENV{OSG}
+        /usr/local/
+        /usr/
+        /sw/ # Fink
+        /opt/local/ # DarwinPorts
+        /opt/csw/ # Blastwave
+        /opt/
+        [HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session\ Manager\\Environment;OSG_ROOT]/
+        ~/Library/Frameworks
+        /Library/Frameworks
+    PATH_SUFFIXES
+        /include
 )
 
-if(OSG_FOUND)
-	SET( OSG_INCLUDE_DIRS ${OSG_INCLUDE_DIR} ${OSG_GEN_INCLUDE_DIR} )
-endif()
+FIND_PATH(OSG_GEN_INCLUDE_DIR osg/Config
+    PATHS
+        ${OSG_DIR}
+        $ENV{OSG_SOURCE_DIR}
+        $ENV{OSGDIR}
+        $ENV{OSG_DIR}
+        $ENV{OSG}
+        /usr/local/
+        /usr/
+        /sw/ # Fink
+        /opt/local/ # DarwinPorts
+        /opt/csw/ # Blastwave
+        /opt/
+        [HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session\ Manager\\Environment;OSG_ROOT]/
+        ~/Library/Frameworks
+        /Library/Frameworks
+    PATH_SUFFIXES
+        /include
+)
+
+###### libraries ######
+
+MACRO( FIND_OSG_LIBRARY MYLIBRARY MYLIBRARYNAME )
+
+FIND_LIBRARY(${MYLIBRARY}
+    NAMES
+        ${MYLIBRARYNAME}
+    PATHS
+        ${OSG_DIR}
+        $ENV{OSG_BUILD_DIR}
+        $ENV{OSG_DIR}
+        $ENV{OSGDIR}
+        $ENV{OSG_ROOT}
+        $ENV{OSG}
+        ~/Library/Frameworks
+        /Library/Frameworks
+        /usr/local
+        /usr
+        /sw
+        /opt/local
+        /opt/csw
+        /opt
+        [HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session\ Manager\\Environment;OSG_ROOT]/lib
+        /usr/freeware
+    PATH_SUFFIXES
+        /lib/
+        /lib64/
+        /build/lib/
+        /build/lib64/
+        /Build/lib/
+        /Build/lib64/
+     )
+
+ENDMACRO(FIND_OSG_LIBRARY LIBRARY LIBRARYNAME)
+
+FIND_OSG_LIBRARY( OSG_LIBRARY osg )
+FIND_OSG_LIBRARY( OSG_LIBRARY_DEBUG osgd)
+
+FIND_OSG_LIBRARY( OSGUTIL_LIBRARY osgUtil )
+FIND_OSG_LIBRARY( OSGUTIL_LIBRARY_DEBUG osgUtild)
+
+FIND_OSG_LIBRARY( OSGDB_LIBRARY osgDB )
+FIND_OSG_LIBRARY( OSGDB_LIBRARY_DEBUG osgDBd)
+
+FIND_OSG_LIBRARY( OSGTEXT_LIBRARY osgText )
+FIND_OSG_LIBRARY( OSGTEXT_LIBRARY_DEBUG osgTextd )
+
+FIND_OSG_LIBRARY( OSGSIM_LIBRARY osgSim )
+FIND_OSG_LIBRARY( OSGSIM_LIBRARY_DEBUG osgSimd )
+
+FIND_OSG_LIBRARY( OSGVIEWER_LIBRARY osgViewer )
+FIND_OSG_LIBRARY( OSGVIEWER_LIBRARY_DEBUG osgViewerd )
+
+FIND_OSG_LIBRARY( OSGGA_LIBRARY osgGA )
+FIND_OSG_LIBRARY( OSGGA_LIBRARY_DEBUG osgGAd )
+
+FIND_OSG_LIBRARY( OSGSHADOW_LIBRARY osgShadow )
+FIND_OSG_LIBRARY( OSGSHADOW_LIBRARY_DEBUG osgShadowd )
+
+FIND_OSG_LIBRARY( OSGMANIPULATOR_LIBRARY osgManipulator )
+FIND_OSG_LIBRARY( OSGMANIPULATOR_LIBRARY_DEBUG osgManipulatord )
+
+FIND_OSG_LIBRARY( OPENTHREADS_LIBRARY OpenThreads )
+FIND_OSG_LIBRARY( OPENTHREADS_LIBRARY_DEBUG OpenThreadsd )
+
+SET( OSG_FOUND "NO" )
+IF( OSG_LIBRARY AND OSG_INCLUDE_DIR )
+    SET( OSG_FOUND "YES" )
+    SET( OSG_INCLUDE_DIRS ${OSG_INCLUDE_DIR} ${OSG_GEN_INCLUDE_DIR} )
+    GET_FILENAME_COMPONENT( OSG_LIBRARIES_DIR ${OSG_LIBRARY} PATH )
+ENDIF( OSG_LIBRARY AND OSG_INCLUDE_DIR )
+

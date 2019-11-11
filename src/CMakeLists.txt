@@ -1,10 +1,10 @@
 add_subdirectory(osgEarth)
 set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
-FOREACH( lib
+FOREACH( lib         
          osgEarthSplat
-         osgEarthSilverLining
-         osgEarthTriton
+         osgEarthAerodromes
+         osgEarthBuildings
          osgEarthDrivers )
     add_subdirectory( ${lib} )
 ENDFOREACH( lib )

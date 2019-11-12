@@ -62,7 +62,6 @@ using namespace osgEarth;
 using namespace osgEarth::Strings;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
-using namespace osgEarth::Contrib::TDTiles;
 namespace ui = osgEarth::Util::Controls;
 
 
@@ -70,9 +69,8 @@ struct App
 {
     MapNode* _mapNode;
     ui::HSliderControl* _sse;
-    TDTiles::ContentHandler* _handler;
     EarthManipulator* _manip;
-    osg::ref_ptr<ThreeDTileset> _tileset;
+    osg::ref_ptr<ThreeDTiles::ThreeDTilesetNode> _tileset;
     osgViewer::View* _view;
     float _maxSSE;
     bool _randomColors;
@@ -149,79 +147,6 @@ usage(const std::string& message)
     return -1;
 }
 
-
-
-
-/**
- * Custom TDTiles ContentHandler that reads feature data from a URL
- * and renders a simple osg::Node from it.
- */
-struct FeatureRenderer : public TDTiles::ContentHandler
-{
-    App& _app;
-    mutable Random _random;
-
-    FeatureRenderer(App& app) : _app(app) { }
-
-    osg::ref_ptr<osg::Node> createNode(TDTiles::Tile* tile, const osgDB::Options* readOptions) const
-    {
-        osg::ref_ptr<osg::Node> node;
-
-        if (tile->content().isSet() && tile->content()->uri().isSet() && !tile->content()->uri()->empty())
-        {
-            if (osgEarth::Strings::endsWith(tile->content()->uri()->base(), ".shp"))
-            {
-                OE_INFO << "Rendering: " << tile->content()->uri()->full() << std::endl;
-
-                osg::ref_ptr<OGRFeatureSource> fs = new OGRFeatureSource();
-                fs->setURL(tile->content()->uri().get());
-                if (fs->open().isOK())
-                {
-                    Query query;
-
-                    // Gather features whose centroid falls within the query bounds
-                    FeatureList features;
-                    osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(query, NULL);
-                    if (cursor.valid())
-                        cursor->fill(features);
-                    fs->close();
-
-                    if (!features.empty())
-                    {
-                        Style style;
-                        osg::Vec4 color;
-                        if (_app._randomColors)
-                            color.set(_random.next(), _random.next(), _random.next(), 1.0f);
-                        else
-                            color.set(1.0, 0.6, 0.0, 1.0);
-
-                        style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
-                        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-                        //style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-                        ExtrusionSymbol* ext = style.getOrCreate<ExtrusionSymbol>();
-                        ext->heightExpression() = NumericExpression("[height]");
-
-                        FeatureNode* fn = new FeatureNode(features, style);
-                        fn->setMapNode(_app._mapNode);
-                        node = fn;
-                        osg::BoundingSphere bs = node->getBound();
-                    }
-                }
-            }
-            else
-            {
-                node = osgDB::readRefNodeFile(tile->content()->uri()->full());
-            }
-        }
-        else
-        {
-            //nop - skip tile with no content
-        }
-
-        return node;
-    }
-};
-
 int
 main_view(osg::ArgumentParser& arguments)
 {
@@ -249,7 +174,7 @@ main_view(osg::ArgumentParser& arguments)
 
     std::string fullPath = osgEarth::getAbsolutePath(tilesetLocation);
 
-    TDTiles::Tileset* tileset = TDTiles::Tileset::create(rr.getString(), fullPath);
+    ThreeDTiles::Tileset* tileset = ThreeDTiles::Tileset::create(rr.getString(), fullPath);
     if (!tileset)
         return usage("Bad tileset");
 
@@ -278,7 +203,7 @@ main_view(osg::ArgumentParser& arguments)
     osg::ref_ptr< ThreadPool > threadPool = new ThreadPool(numThreads);
     OptionsData<ThreadPool>::set(options, "threadpool", threadPool.get());
 
-    ThreeDTileset* tilesetNode = new ThreeDTileset(tileset, options.get());
+    ThreeDTiles::ThreeDTilesetNode* tilesetNode = new ThreeDTiles::ThreeDTilesetNode(tileset, options.get());
     tilesetNode->setMaximumScreenSpaceError(maxSSE);
 
     app._tileset = tilesetNode;
@@ -317,11 +242,11 @@ parseKey(const std::string& input, const Profile* profile)
 /**
 * Saves a tileset with the given tile as the root.
 */
-void saveTileSet(TDTiles::Tile* tile, const std::string& filename)
+void saveTileSet(ThreeDTiles::Tile* tile, const std::string& filename)
 {
     osgDB::makeDirectoryForFile(filename);
 
-    osg::ref_ptr<TDTiles::Tileset> tileset = new TDTiles::Tileset();
+    osg::ref_ptr<ThreeDTiles::Tileset> tileset = new ThreeDTiles::Tileset();
     tileset->root() = tile;
     tileset->asset()->version() = "1.0";
 
@@ -332,8 +257,8 @@ void saveTileSet(TDTiles::Tile* tile, const std::string& filename)
     fout.close();
 }
 
-TDTiles::Tile*
-createTile(osg::Node* node, const GeoExtent& extent, double error, const std::string& filenamePrefix, TDTiles::RefinePolicy refine)
+ThreeDTiles::Tile*
+createTile(osg::Node* node, const GeoExtent& extent, double error, const std::string& filenamePrefix, ThreeDTiles::RefinePolicy refine)
 {
     std::string filename = Stringify() << filenamePrefix << "_" << int(error) << ".b3dm";
 
@@ -343,7 +268,7 @@ createTile(osg::Node* node, const GeoExtent& extent, double error, const std::st
         return NULL;
     }
 
-    osg::ref_ptr<TDTiles::Tile> tile = new TDTiles::Tile();
+    osg::ref_ptr<ThreeDTiles::Tile> tile = new ThreeDTiles::Tile();
     tile->content()->uri() = filename;
 
     // Set up a bounding region (radians)
@@ -362,74 +287,7 @@ createTile(osg::Node* node, const GeoExtent& extent, double error, const std::st
     return tile.release();
 }
 
-int
-main_tile(osg::ArgumentParser& args)
-{
-    // 1. Load an earth file
-    // 2. Find the first FeatureSource Layer and StyleSheet Layer
-    // 3. Create a 3D-Tiles Tileset object from it
-    // 4. Write the tileset to disk.
-    std::string infile;
-    if (!args.read("--in", infile))
-        return usage("Missing required --in <earthfile>");
-
-    std::string outfile;
-    if (!args.read("--out", outfile))
-        return usage("Missing required --out tileset.json");
-
-    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(infile);
-    MapNode* mapnode = MapNode::get(node.get());
-    if (!mapnode)
-        return usage("Input file is not a valid earth file");
-
-    Map* map = mapnode->getMap();
-
-    OGRFeatureSource* fs = map->getLayer<OGRFeatureSource>();
-    if (!fs)
-        return usage("No feature source layer found in the map");
-
-    StyleSheet* sheet = map->getLayer<StyleSheet>();
-    if (!sheet)
-        return usage("No stylesheet found in the map");
-
-    const Style* style = sheet->getDefaultStyle();
-    if (!sheet)
-        return usage("No default style found in the stylesheet");
-
-    std::string format("b3dm");
-    args.read("--format", format);
-
-    if (!map->getProfile())
-    {
-        const Profile* profile = map->calculateProfile();
-        map->setProfile(profile);
-    }
-
-    // For best optimization
-    Registry::instance()->setMaxNumberOfVertsPerDrawable(UINT_MAX);
-
-    TDTiles::TilesetFactory factory;
-    factory.setMap(map);
-    factory.setGeometryFormat(format);
-    factory.setStyleSheet(sheet);
-    factory.setURIContext(URIContext(outfile));
-
-    Query query;
-    osg::ref_ptr<TDTiles::Tileset> tileset = factory.create(fs, query, NULL);
-    if (!tileset.valid())
-        return usage("Failed to create a tileset from the feature source");
-
-    std::ofstream fout(outfile.c_str());
-    Util::Json::Value json = tileset->getJSON();
-    Util::Json::StyledStreamWriter writer;
-    writer.write(fout, json);
-    fout.close();
-    OE_INFO << "Wrote tileset to " << outfile << std::endl;
-
-    return 0;
-}
-
-typedef std::map< osgEarth::TileKey, osg::ref_ptr< TDTiles::Tile > > TileMap;
+typedef std::map< osgEarth::TileKey, osg::ref_ptr< ThreeDTiles::Tile > > TileMap;
 
 typedef std::map< unsigned int, std::set< TileKey > > LevelToTileKeyMap;
 
@@ -524,7 +382,7 @@ float Deg2Rad(float deg)
 /**
  * Sets the extents of a Tile to given extent
  */
-void setTileExtents(TDTiles::Tile* tile, const TileKey& key, double minHeight, double maxHeight)
+void setTileExtents(ThreeDTiles::Tile* tile, const TileKey& key, double minHeight, double maxHeight)
 {
     // Make sure the key's extent is in wgs84
     GeoExtent extent;
@@ -552,7 +410,7 @@ float computeGeometricError(const TileKey& key)
 }
 
 
-void addChildren(TDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& levelKeys, int maxLevel)
+void addChildren(ThreeDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& levelKeys, unsigned maxLevel)
 {
     SpatialReference* mapSRS = SpatialReference::create("epsg:4326");
     double height = 2000.0;
@@ -564,7 +422,7 @@ void addChildren(TDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& lev
         std::set< TileKey >::iterator childItr = levelKeys[childKey.getLevelOfDetail()].find(childKey);
         if (childItr != levelKeys[childKey.getLevelOfDetail()].end())
         {
-            osg::ref_ptr< TDTiles::Tile > childTile = new TDTiles::Tile;
+            osg::ref_ptr< ThreeDTiles::Tile > childTile = new ThreeDTiles::Tile;
             childTile->geometricError() = computeGeometricError(key);
             GeoExtent childExtent = childKey.getExtent().transform(mapSRS);
             setTileExtents(childTile, childKey, 0.0, height);
@@ -577,7 +435,7 @@ void addChildren(TDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& lev
             {
                 childTile->geometricError() = 0.0;
                 // TODO: get the "refine" right
-                tile->refine() = TDTiles::REFINE_REPLACE;
+                tile->refine() = ThreeDTiles::REFINE_REPLACE;
                 std::string uri = Stringify() << "../../" << childKey.getLevelOfDetail() << "/" << childKey.getTileX() << "/" << childKey.getTileY() << ".b3dm";
                 childTile->content()->uri() = uri;
             }
@@ -585,7 +443,7 @@ void addChildren(TDTiles::Tile* tile, const TileKey& key, LevelToTileKeyMap& lev
     }
 }
 
-void addChildrenForce(TDTiles::Tile* tile, const TileKey& key, int maxLevel)
+void addChildrenForce(ThreeDTiles::Tile* tile, const TileKey& key, unsigned maxLevel)
 {
     SpatialReference* mapSRS = SpatialReference::create("epsg:4326");
     double height = 800.0;
@@ -594,7 +452,7 @@ void addChildrenForce(TDTiles::Tile* tile, const TileKey& key, int maxLevel)
     for (unsigned int c = 0; c < 4; c++)
     {
         TileKey childKey = key.createChildKey(c);
-        osg::ref_ptr< TDTiles::Tile > childTile = new TDTiles::Tile;
+        osg::ref_ptr< ThreeDTiles::Tile > childTile = new ThreeDTiles::Tile;
         childTile->geometricError() = computeGeometricError(key);
         GeoExtent childExtent = childKey.getExtent().transform(mapSRS);
         setTileExtents(childTile, childKey, 0.0, height);
@@ -607,7 +465,7 @@ void addChildrenForce(TDTiles::Tile* tile, const TileKey& key, int maxLevel)
         {
             childTile->geometricError() = 0.0;
             // TODO: get the "refine" right
-            tile->refine() = TDTiles::REFINE_REPLACE;
+            tile->refine() = ThreeDTiles::REFINE_REPLACE;
             std::string uri = Stringify() << "../../" << childKey.getLevelOfDetail() << "/" << childKey.getTileX() << "/" << childKey.getTileY() << ".b3dm";
             childTile->content()->uri() = uri;
         }
@@ -694,7 +552,7 @@ int build_tilesets(osg::ArgumentParser& args)
 
     float height = 800.0;
 
-    osg::ref_ptr< TDTiles::Tile > rootTile = new TDTiles::Tile;
+    osg::ref_ptr< ThreeDTiles::Tile > rootTile = new ThreeDTiles::Tile;
 
     unsigned int numSaved = 0;
     // Build a full tileset for each tile at the min level
@@ -704,7 +562,7 @@ int build_tilesets(osg::ArgumentParser& args)
 
         OE_NOTICE << "Generating tileset for " << key.str() << std::endl;
 
-        osg::ref_ptr< TDTiles::Tile> tile = new TDTiles::Tile;
+        osg::ref_ptr< ThreeDTiles::Tile> tile = new ThreeDTiles::Tile;
         tile->geometricError() = computeGeometricError(key);
         GeoExtent dataExtent = key.getExtent().transform(mapSRS);
         setTileExtents(tile, key, 0.0, height);
@@ -727,7 +585,7 @@ int build_tilesets(osg::ArgumentParser& args)
         {
             const TileKey key = *itr;
 
-            osg::ref_ptr< TDTiles::Tile> tile = new TDTiles::Tile;
+            osg::ref_ptr< ThreeDTiles::Tile> tile = new ThreeDTiles::Tile;
             tile->geometricError() = computeGeometricError(key);
             GeoExtent dataExtent = key.getExtent().transform(mapSRS);
             setTileExtents(tile, key, 0.0, height);
@@ -741,7 +599,7 @@ int build_tilesets(osg::ArgumentParser& args)
                 {
                     // don't actually add the child tile, add a reference to a tile that points to the child
                     // Create the parent tile
-                    osg::ref_ptr< TDTiles::Tile > childTile = new TDTiles::Tile;
+                    osg::ref_ptr< ThreeDTiles::Tile > childTile = new ThreeDTiles::Tile;
                     childTile->geometricError() = computeGeometricError(childKey);
 
                     GeoExtent childExtent = childKey.getExtent().transform(mapSRS);
@@ -803,7 +661,7 @@ int build_test_tilesets(osg::ArgumentParser& args)
     SpatialReference* mapSRS = SpatialReference::create("epsg:4326");
     const Profile* profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
 
-    osg::ref_ptr< TDTiles::Tile > rootTile = new TDTiles::Tile;
+    osg::ref_ptr< ThreeDTiles::Tile > rootTile = new ThreeDTiles::Tile;
     std::vector< TileKey > rootKeys;
     profile->getRootKeys(rootKeys);
 
@@ -952,9 +810,6 @@ main(int argc, char** argv)
 
     if (arguments.read("--help"))
         return usage("Help!");
-
-    else if (arguments.read("--tile"))
-        return main_tile(arguments);
 
     else if (arguments.read("--build_leaves"))
         return build_leaves(arguments);

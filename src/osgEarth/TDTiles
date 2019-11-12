@@ -25,21 +25,9 @@
 #include <osgEarth/URI>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/GeoData>
-#include <osgEarth/Feature>
-#include <osgEarth/StyleSheet>
 #include <osg/Group>
-#include <osg/LOD>
-#include <osg/PagedLOD>
 #include <osg/MatrixTransform>
 #include <osgDB/Options>
-#include "rtree.h"
-
-using namespace osgEarth;
-
-namespace osgEarth {
-    class Map;
-    class OGRFeatureSource;
-}
 
 namespace osgUtil {
     class CullVisitor;
@@ -50,8 +38,10 @@ namespace osgUtil {
  * https://github.com/AnalyticalGraphicsInc/3d-tiles
  * EXPERIMENTAL
  */
-namespace osgEarth { namespace Contrib { namespace TDTiles
+namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 {
+    using namespace osgEarth;
+
     enum RefinePolicy
     {
         REFINE_REPLACE,
@@ -134,72 +124,13 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         static Tileset* create(const std::string& tilesetJSON, const URIContext& uc);
     };
 
-    //! Object that takes a Tile and generates a node.
-    //! This object is installed by default, but you can subclass it
-    //! and replace it if you want.
-    class OSGEARTH_EXPORT ContentHandler : public osg::Referenced
-    {
-    public:
-        ContentHandler();
-        virtual osg::ref_ptr<osg::Node> createNode(Tile* tile, const osgDB::Options*) const;
-    protected:
-        virtual ~ContentHandler() { }
-    };
-
-    class OSGEARTH_EXPORT TileNode : public osg::MatrixTransform
-    {
-    public:
-        META_Node(osgEarth, TileNode);
-
-        TileNode(Tile* tile, ContentHandler* factory, const osgDB::Options*);
-        osg::ref_ptr<TDTiles::Tile> _tile;
-        osg::ref_ptr<ContentHandler> _handler;
-        osg::ref_ptr<const osgDB::Options> _readOptions;
-        osg::ref_ptr<osg::Node> loadContent() const;
-        osg::ref_ptr<osg::Node> loadChild(unsigned i) const;
-        osg::ref_ptr<osg::Node> loadChildren() const;
-
-    protected:
-        TileNode() { }
-        TileNode(const TileNode& rhs, const osg::CopyOp& op) { }
-        virtual ~TileNode() { }
-    };
-
-    class OSGEARTH_EXPORT TilesetFactory
-    {
-    public:
-        TilesetFactory();
-        ~TilesetFactory();
-
-        void setMap(const Map* map);
-
-        void setStyleSheet(StyleSheet* sheet);
-
-        void setGeometryFormat(const std::string& format);
-
-        void setURIContext(const URIContext& value);
-
-        Tileset* create(
-            OGRFeatureSource* source,
-            const Query& query,
-            ProgressCallback* progress) const;
-
-    private:
-        const Map* _map;
-        osg::ref_ptr<StyleSheet> _sheet;
-        std::string _format;
-        URIContext _uriContext;
-    };
-
-
-
     /**
- * Manages a TileSet
- */
-    class OSGEARTH_EXPORT ThreeDTileset : public osg::MatrixTransform
+    * Node representing a 3D-Tiles Tileet.
+    */
+    class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::MatrixTransform
     {
     public:
-        ThreeDTileset(TDTiles::Tileset* tileset, osgDB::Options* options);
+        ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options);
 
         osg::BoundingSphere computeBound() const;
 
@@ -214,8 +145,8 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         void startCull();
         void endCull();
 
-        osg::ref_ptr< TDTiles::Tileset > _tileset;
-        osg::ref_ptr< osgDB::Options > _options;
+        osg::ref_ptr<Tileset> _tileset;
+        osg::ref_ptr<osgDB::Options> _options;
         float _maximumScreenSpaceError;
 
         typedef std::set< osg::ref_ptr< osg::Node > > NodeSet;
@@ -224,23 +155,29 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
         NodeSet _deadTiles;
     };
 
-    class OSGEARTH_EXPORT ThreeDTilesetContent : public osg::Group
+    /**
+     * Node that renders a 3D-Tiles content record
+     */
+    class OSGEARTH_EXPORT ThreeDTilesetContentNode : public osg::Group
     {
     public:
-        ThreeDTilesetContent(ThreeDTileset* tilesetNode, TDTiles::Tileset* tileset, osgDB::Options* options);
+        ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNode, Tileset* tileset, osgDB::Options* options);
 
         osg::BoundingSphere computeBound() const;
 
     private:
-        ThreeDTileset* _tilesetNode;
-        osg::ref_ptr< TDTiles::Tileset > _tileset;
+        ThreeDTilesetNode* _tilesetNode;
+        osg::ref_ptr< Tileset > _tileset;
         osg::ref_ptr< osgDB::Options > _options;
     };
 
-    class OSGEARTH_EXPORT ThreeDTile : public osg::MatrixTransform
+    /**
+     * Node that renders a 3D-Tiles Tile
+     */
+    class OSGEARTH_EXPORT ThreeDTileNode : public osg::MatrixTransform
     {
     public:
-        ThreeDTile(ThreeDTileset* tileset, TDTiles::Tile* tile, bool immediateLoad, osgDB::Options* options);
+        ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool immediateLoad, osgDB::Options* options);
         osg::BoundingSphere computeBound() const;
 
         bool hasContent();
@@ -261,16 +198,16 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
 
         void unloadContent();
 
-        const TDTiles::Tile* getTile() const { return _tile.get(); }
+        const Tile* getTile() const { return _tile.get(); }
 
     private:
-        osg::ref_ptr< TDTiles::Tile > _tile;
+        osg::ref_ptr< Tile > _tile;
 
         osg::ref_ptr< osg::Node > _content;
         osg::ref_ptr< osg::Group > _children;
 
         osg::ref_ptr< osg::Node > _boundsDebug;
-        ThreeDTileset* _tileset;
+        ThreeDTilesetNode* _tileset;
 
         osg::BoundingBoxd _boundingBox;
 
@@ -286,46 +223,5 @@ namespace osgEarth { namespace Contrib { namespace TDTiles
     };
 } } }
 
-namespace osgEarth { namespace Contrib
-{
-    class OSGEARTH_EXPORT TDTilesetGroup : public osg::Group
-    {
-    public:
-        META_Node(osgEarth, TDTilesetGroup);
-
-        TDTilesetGroup();
-
-        TDTilesetGroup(TDTiles::ContentHandler* handler);
-
-        //! Read options for this group and its children
-        void setReadOptions(const osgDB::Options*);
-        const osgDB::Options* getReadOptions() const;
-
-        //! Content handler for 3DTiles data.
-        TDTiles::ContentHandler* getContentHandler() const;
-
-        //! Assign tile set to this group
-        void setTileset(TDTiles::Tileset* tileset);
-
-        //! Sets the URL of the root tileset to load.
-        void setExternalTilesetURL(const URI& location, const osg::BoundingSphere& bound);
-        const URI& getExternalTilesetURL() const;
-
-    public:
-        // internal
-        osg::ref_ptr<osg::Node> loadRoot(TDTiles::Tileset*) const;
-
-        //! internal
-        osgDB::ReaderWriter::ReadResult loadExternal() const;
-
-    protected:
-        TDTilesetGroup(const TDTilesetGroup& rhs, const osg::CopyOp& op) { }
-        virtual ~TDTilesetGroup() { }
-
-        osg::ref_ptr<TDTiles::ContentHandler> _handler;
-        osg::ref_ptr<const osgDB::Options> _readOptions;
-        URI _tilesetURI;
-    };
-} }
 
 #endif // OSGEARTH_TDTILES_H

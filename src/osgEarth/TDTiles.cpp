@@ -631,7 +631,7 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     // TODO:  This should run on the content, not on the root tileset.
     // Generate shaders that will render with a texture:
     osg::StateSet* rootStateSet = getOrCreateStateSet();
-    rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
+    rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), osg::StateAttribute::ON);
     osgEarth::ShaderGenerator gen;
     osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
     if (ss.valid())
@@ -693,12 +693,12 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         startCull();
-        osg::Group::traverse(nv);
+        osg::MatrixTransform::traverse(nv);
         endCull();
     }
     else
     {
-        osg::Group::traverse(nv);
+        osg::MatrixTransform::traverse(nv);
     }
 }
 

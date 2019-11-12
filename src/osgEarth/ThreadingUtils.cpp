@@ -294,7 +294,10 @@ namespace {
                     _ico->add(compileSet.get());
 
                     // spin wait
-                    while (!compileSet->compiled())
+                    while (
+                        !_promise.isAbandoned() &&          // user hasn't gone away?
+                        !compileSet->compiled() &&          // compilation not finished?
+                        compileSet->referenceCount() > 1)   // compiler disappeared?
                     {
                         OpenThreads::Thread::microSleep(1000);
                     }

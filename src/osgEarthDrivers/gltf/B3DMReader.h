@@ -49,6 +49,17 @@ struct b3dmheader
 class B3DMReader
 {
 public:
+    mutable GLTFReader::TextureCache* _texCache;
+
+    B3DMReader() : _texCache(NULL)
+    {
+    }
+
+    void setTextureCache(GLTFReader::TextureCache* cache) const
+    {
+        _texCache = cache;
+    }
+
     static std::string ExpandFilePath(const std::string &filepath, void * userData)
     {
         const std::string& referrer = *(const std::string*)userData;
@@ -58,7 +69,7 @@ public:
     }
 
     //! Read a B3DM file and return a node
-    osg::Node* read(const std::string& location, const osgDB::Options* options) const
+    osg::Node* read(const std::string& location, const osgDB::Options* readOptions) const
     {
         // Load the whole thing into memory
         URIStream inputStream(location, std::ifstream::binary);
@@ -179,7 +190,9 @@ public:
         osg::MatrixTransform *mt = new osg::MatrixTransform;
 
         GLTFReader gltfReader;
-        osg::Node* modelNode = gltfReader.makeNodeFromModel(model);
+        gltfReader.setTextureCache(_texCache);
+        GLTFReader::Env env(location, readOptions);
+        osg::Node* modelNode = gltfReader.makeNodeFromModel(model, env);
         if (rtc_center.x() == 0.0 && rtc_center.y() == 0.0 && rtc_center.z() == 0.0)
         {
             return modelNode;

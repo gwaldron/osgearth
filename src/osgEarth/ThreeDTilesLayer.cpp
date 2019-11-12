@@ -96,7 +96,7 @@ ThreeDTilesLayer::openImplementation()
     osg::ref_ptr< ThreadPool > threadPool = OptionsData<ThreadPool>::get(readOptions.get(), "threadpool");
     if (!threadPool.valid())
     {
-        unsigned int numThreads = 8;
+        unsigned int numThreads = 1;
         _threadPool = new ThreadPool(numThreads);
         OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", _threadPool.get());
     }

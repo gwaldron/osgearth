@@ -27,7 +27,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/ThreadingUtils>
 
-namespace osgEarth
+namespace osgEarth { namespace Contrib
 {    
     /**
      * Layer that contains a 3D tiles tileset
@@ -76,10 +76,10 @@ namespace osgEarth
 
         virtual ~ThreeDTilesLayer();
 
-        osg::ref_ptr<osgEarth::Contrib::TDTiles::ThreeDTileset> _tilesetNode;
+        osg::ref_ptr<osgEarth::Contrib::ThreeDTiles::ThreeDTilesetNode> _tilesetNode;
     };
-}
+} }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ThreeDTilesLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::ThreeDTilesLayer::Options);
 
 #endif // OSGEARTH_THREED_TILES_LAYER_H

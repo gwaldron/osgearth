@@ -26,7 +26,8 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Contrib::TDTiles;
+using namespace osgEarth::Contrib;
+using namespace osgEarth::Contrib::ThreeDTiles;
 using namespace osgEarth::Threading;
 
 //------------------------------------------------------------------------
@@ -79,7 +80,7 @@ ThreeDTilesLayer::openImplementation()
     ReadResult rr = _options->url()->readString();
     if (rr.failed())
     {
-        Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
+        return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
     }
 
     std::string fullPath = osgEarth::getAbsolutePath(_options->url()->full());
@@ -100,7 +101,7 @@ ThreeDTilesLayer::openImplementation()
         OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", _threadPool.get());
     }
 
-    _tilesetNode = new ThreeDTileset(tileset, readOptions.get());
+    _tilesetNode = new ThreeDTilesetNode(tileset, readOptions.get());
     _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());    
 
     return STATUS_OK;

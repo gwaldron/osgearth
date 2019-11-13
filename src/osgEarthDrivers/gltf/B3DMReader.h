@@ -69,38 +69,42 @@ public:
     }
 
     //! Read a B3DM file and return a node
-    osg::Node* read(const std::string& location, const osgDB::Options* readOptions) const
+    //osg::Node* read(const std::string& location, const osgDB::Options* readOptions) const
+    //{
+    //    // Load the whole thing into memory
+    //    URIStream inputStream(location, std::ifstream::binary);
+    //    return read(location, inputStream, readOptions);
+    //}
+
+    //! Read a B3DM data package and return a node.
+    osg::Node* read(const std::string& location, const std::string& inputStream, const osgDB::Options* readOptions) const
     {
-        // Load the whole thing into memory
-        URIStream inputStream(location, std::ifstream::binary);
-
-        std::istreambuf_iterator<char> eof;
-        std::string data(std::istreambuf_iterator<char>(inputStream), eof);
-
         // Check the header's magic string. If it's not there, attempt
         // to run a decompressor on it
 
-        std::string magic(data, 0, 4);
+        std::string decompressedData;
+        const std::string* data = &inputStream;
+
+        std::string magic(*data, 0, 4);
         if (magic != "b3dm")
         {
             osg::ref_ptr<osgDB::BaseCompressor> compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
             if (compressor.valid())
             {
-                std::stringstream in_data(data);
-                std::string temp;
-                if (!compressor->decompress(in_data, temp))
+                std::stringstream in_data(inputStream);
+                if (!compressor->decompress(in_data, decompressedData))
                 {
                     OE_WARN << LC << "Invalid b3dm" << std::endl;
                     return NULL;
                 }
-                data = temp;
+                data = &decompressedData;
             }
         }
 
         b3dmheader header;
         unsigned bytesRead = 0;
 
-        std::stringstream buf(data);
+        std::stringstream buf(*data);
         buf.read(reinterpret_cast<char*>(&header), sizeof(b3dmheader));
         bytesRead += sizeof(b3dmheader);
 

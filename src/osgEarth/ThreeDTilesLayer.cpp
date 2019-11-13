@@ -83,9 +83,7 @@ ThreeDTilesLayer::openImplementation()
         return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
     }
 
-    std::string fullPath = osgEarth::getAbsolutePath(_options->url()->full());
-
-    Tileset* tileset = Tileset::create(rr.getString(), fullPath);
+    Tileset* tileset = Tileset::create(rr.getString(), _options->url()->full());
     if (!tileset)
     {
         return Status(Status::GeneralError, "Bad tileset");
@@ -96,7 +94,7 @@ ThreeDTilesLayer::openImplementation()
     osg::ref_ptr< ThreadPool > threadPool = OptionsData<ThreadPool>::get(readOptions.get(), "threadpool");
     if (!threadPool.valid())
     {
-        unsigned int numThreads = 1;
+        unsigned int numThreads = 8;
         _threadPool = new ThreadPool(numThreads);
         OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", _threadPool.get());
     }

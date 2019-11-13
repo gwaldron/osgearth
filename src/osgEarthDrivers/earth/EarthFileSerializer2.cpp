@@ -463,6 +463,33 @@ namespace
             updateVersion2ToVersion3(*j);
         }
     }
+
+    // Look for the first layer with basemap=true set, and adopt this layer's
+    // profile as the map profile.
+    void checkForProfileLayer(Map* map)
+    {
+        const std::string& profileLayer = const_cast<const Map*>(map)->options().profileLayer().get();
+        if (profileLayer.empty())
+            return;
+
+        TerrainLayerVector layers;
+        map->getLayers(layers);
+        for(TerrainLayerVector::const_iterator i = layers.begin();
+            i != layers.end();
+            ++i)
+        {
+            const TerrainLayer* layer = i->get();
+            if (profileLayer == layer->getName())
+            {
+                const Profile* profile = layer->getProfile();
+                if (profile)
+                {
+                    map->setProfile(profile);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 EarthFileSerializer2::EarthFileSerializer2() :
@@ -492,6 +519,14 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
         if ( conf.hasValue("name") ) temp.set( "name", conf.value("name") );
         if ( conf.hasValue("type") ) temp.set( "type", conf.value("type") );
         mapOptions.merge(ConfigOptions(temp));
+    }
+
+    // Check for profile layer setting
+    if (conf.hasValue("profile_layer"))
+    {
+        std::string profileLayer = conf.value("profile_layer");
+        if (!profileLayer.empty())
+            mapOptions.profileLayer() = profileLayer;
     }
 
     osg::ref_ptr<Map> map = new Map(mapOptions);
@@ -561,6 +596,9 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
 
     // Complete the batch update of the map
     map->endUpdate();
+    
+    // Check for a "basemap" layer that will set the map's profile.
+    checkForProfileLayer(map.get());
 
     // If any errors occurred, report them now.
     reportErrors(map.get());

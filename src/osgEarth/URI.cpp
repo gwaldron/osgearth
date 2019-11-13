@@ -21,9 +21,11 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/Utils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
+#include <osgUtil/IncrementalCompileOperation>
 
 #define LC "[URI] "
 
@@ -31,6 +33,7 @@
 //#define OE_TEST OE_NOTICE
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
 
 //------------------------------------------------------------------------
 
@@ -53,6 +56,52 @@ namespace
             return Registry::instance()->cloneOrCreateOptions( input );
         }
     }
+    
+    class LoadNodeOperation : public osg::Operation
+    {
+    public:
+        LoadNodeOperation(const URI& uri, const osgDB::Options* options, osgUtil::IncrementalCompileOperation* ico, Promise<osg::Node> promise) :
+            _uri(uri),
+            _promise(promise),
+            _ico(ico),
+            _options(options)
+        {
+        }
+
+        void operator()(osg::Object*)
+        {
+            if (!_promise.isAbandoned())
+            {
+                // Read the node
+                osgEarth::ReadResult result = _uri.readNode(_options.get());
+
+                // If we have an ICO, wait for it to be compiled
+                if (result.succeeded() && _ico.valid())
+                {
+                    osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> compileSet =
+                        new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
+
+                    _ico->add(compileSet.get());
+
+                    // spin wait
+                    while (
+                        !_promise.isAbandoned() &&          // user hasn't gone away?
+                        !compileSet->compiled() &&          // compilation not finished?
+                        compileSet->referenceCount() > 1)   // compiler disappeared?
+                    {
+                        OpenThreads::Thread::microSleep(1000);
+                    }
+                }
+
+                _promise.resolve(result.getNode());
+            }
+        }
+
+        Promise<osg::Node> _promise;
+        osg::ref_ptr< osgUtil::IncrementalCompileOperation > _ico;
+        osg::ref_ptr< const osgDB::Options > _options;
+        URI _uri;
+    };
 }
 
 //------------------------------------------------------------------------
@@ -704,6 +753,37 @@ URI::readString(const osgDB::Options* dbOptions,
     return doRead<ReadString>( *this, dbOptions, progress );
 }
 
+
+Future<osg::Node>
+URI::readNodeAsync(const osgDB::Options* dbOptions,
+                   ProgressCallback*     progress,
+                   osgUtil::IncrementalCompileOperation* ico) const
+{
+    osg::ref_ptr<ThreadPool> threadPool;
+    if (dbOptions)
+    {
+        threadPool = OptionsData<ThreadPool>::get(dbOptions, "threadpool");
+    }
+
+    Promise<osg::Node> promise;
+
+    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, ico, promise);
+
+    if (operation.valid())
+    {
+        if (threadPool.valid())
+        {
+            threadPool->getQueue()->add(operation);
+        }
+        else
+        {
+            OE_DEBUG << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
+            operation->operator()(0);
+        }
+    }
+
+    return promise.getFuture();
+}
 
 //------------------------------------------------------------------------
 

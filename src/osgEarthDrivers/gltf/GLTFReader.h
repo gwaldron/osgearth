@@ -195,7 +195,7 @@ public:
 
         // Load any children.
         for (unsigned int i = 0; i < node.children.size(); i++)
-        {
+        {            
             osg::Node* child = createNode(model, model.nodes[node.children[i]], env);
             if (child)
             {
@@ -466,6 +466,7 @@ public:
                 {
                     osg::DrawElementsUShort* drawElements = new osg::DrawElementsUShort(mode);
                     unsigned short* indices = (unsigned short*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
+                    drawElements->reserve(indexAccessor.count);
                     for (unsigned int j = 0; j < indexAccessor.count; j++)
                     {
                         unsigned short index = indices[j];
@@ -476,6 +477,7 @@ public:
                 else if (indexAccessor.componentType == GL_UNSIGNED_INT)
                 {
                     osg::DrawElementsUInt* drawElements = new osg::DrawElementsUInt(mode);
+                    drawElements->reserve(indexAccessor.count);
                     unsigned int* indices = (unsigned int*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
                     for (unsigned int j = 0; j < indexAccessor.count; j++)
                     {
@@ -487,6 +489,7 @@ public:
                 else if (indexAccessor.componentType == GL_UNSIGNED_BYTE)
                 {
                     osg::DrawElementsUByte* drawElements = new osg::DrawElementsUByte(mode);
+                    drawElements->reserve(indexAccessor.count);
                     unsigned char* indices = (unsigned char*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
                     for (unsigned int j = 0; j < indexAccessor.count; j++)
                     {
@@ -521,6 +524,7 @@ public:
 
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    floatArray->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float s = array[pos];
@@ -544,6 +548,7 @@ public:
 
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    vec2Array->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float s = array[pos];
@@ -565,6 +570,7 @@ public:
                     osg::Vec3Array* vec3Array = new osg::Vec3Array;
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    vec3Array->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float x = array[pos];
@@ -587,6 +593,7 @@ public:
                     osg::Vec4Array* vec4Array = new osg::Vec4Array;
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    vec4Array->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float r = array[pos];

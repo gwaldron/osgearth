@@ -24,6 +24,7 @@
 
 #include <osgEarth/Endian>
 #include <osgEarth/URI>
+#include <osgEarth/JsonUtils>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
@@ -128,6 +129,21 @@ public:
             buf.read(reinterpret_cast<char*>(&featureTableJson[0]), header.featureTableJSONByteLength);
             OE_DEBUG << "Read featureTableJson " << featureTableJson << std::endl;
 
+            osgEarth::Json::Reader reader;
+            osgEarth::Json::Value doc;
+            if (reader.parse(featureTableJson, doc))
+            {
+                Json::Value RTC_CENTER = doc["RTC_CENTER"];
+                if (!RTC_CENTER.empty())
+                {
+                    Json::Value::iterator i = RTC_CENTER.begin();
+                    rtc_center.x() = (*i++).asDouble();
+                    rtc_center.y() = (*i++).asDouble();
+                    rtc_center.z() = (*i++).asDouble();
+                }
+            }          
+
+            /*
             json ftJson = json::parse(featureTableJson);
             if (ftJson.find("RTC_CENTER") != ftJson.end()) {
                 json RTC_CENTER = ftJson["RTC_CENTER"];
@@ -136,6 +152,7 @@ public:
                 rtc_center.z() = RTC_CENTER[2];
             }
             OE_DEBUG << LC << "Read rtc_center " << rtc_center.x() << ", " << rtc_center.y() << ", " << rtc_center.z() << std::endl;
+            */
 
             bytesRead += header.featureTableJSONByteLength;
         }

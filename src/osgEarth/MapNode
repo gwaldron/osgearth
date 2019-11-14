@@ -234,7 +234,6 @@ namespace osgEarth
         osg::Group*        _maskLayerNode;
         unsigned           _lastNumBlacklistedFilenames;
         TerrainEngineNode* _terrainEngine;
-        bool               _terrainEngineInitialized;
         osg::Group*        _terrainGroup;
         ResourceReleaser*  _resourceReleaser;
         DrapingManager*    _drapingManager;

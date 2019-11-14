@@ -102,7 +102,7 @@ namespace osgEarth
     public:
 
         //! @deprecated
-        //! Adds a color filter to the filter chain
+        //! Adds a color filter to the filter chain.
         void addColorFilter( ColorFilter* filter );
 
         //! @deprecated

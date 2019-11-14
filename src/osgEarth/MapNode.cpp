@@ -319,8 +319,7 @@ MapNode::open()
     }
 
     // load and attach the terrain engine.
-    _terrainEngine = TerrainEngineNodeFactory::create(options().terrain().get());
-    _terrainEngineInitialized = false;
+    _terrainEngine = TerrainEngineNode::create(options().terrain().get());
 
     // Callback listens for changes in the Map:
     _mapCallback = new MapNodeMapCallbackProxy(this);
@@ -385,9 +384,6 @@ MapNode::open()
 
         if ( options().overlayMipMapping().isSet() )
             draping->setMipMapping( options().overlayMipMapping().get() );
-
-        //if ( options().overlayAttachStencil().isSet() )
-        //    draping->setAttachStencil( *options().overlayAttachStencil() );
 
         if ( options().overlayResolutionRatio().isSet() )
             draping->setResolutionRatio( options().overlayResolutionRatio().get() );
@@ -591,6 +587,8 @@ MapNode::getTerrain()
 const Terrain*
 MapNode::getTerrain() const
 {
+    if (getTerrainEngine() == NULL)
+        return NULL;
     return getTerrainEngine()->getTerrain();
 }
 
@@ -724,10 +722,6 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     
     // Communicate terrain resources to the layer:
     layer->setTerrainResources(getTerrainEngine()->getResources());
-
-    // Each layer gets a callback to change the MapNode if necessary
-    // REMOVED this for osgEarth 3.0
-    //layer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getNode();

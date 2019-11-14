@@ -196,7 +196,6 @@ MapNode::Options::getConfig() const
     conf.set( "overlay_mipmapping",       overlayMipMapping() );
     conf.set( "overlay_resolution_ratio", overlayResolutionRatio() );
     conf.set( "cascade_draping",          useCascadeDraping() );
-    conf.set( "projected",                projected() );
     conf.set( "draping_render_bin_number",drapingRenderBinNumber() );
 
     if (terrain().isSet() && !terrain()->empty())
@@ -215,7 +214,6 @@ MapNode::Options::fromConfig(const Config& conf)
     overlayTextureSize().init(4096);
     overlayResolutionRatio().init(3.0f);
     useCascadeDraping().init(false);
-    projected().init(false);
     terrain().init(TerrainOptions());
     drapingRenderBinNumber().init(1);
 
@@ -226,16 +224,7 @@ MapNode::Options::fromConfig(const Config& conf)
     conf.get( "overlay_mipmapping",       overlayMipMapping() );
     conf.get( "overlay_resolution_ratio", overlayResolutionRatio() );
     conf.get( "cascade_draping",          useCascadeDraping() );
-    conf.get( "projected",                projected() );
     conf.get( "draping_render_bin_number",drapingRenderBinNumber() );
-
-    // backwards-compat:
-    optional<std::string> type;
-    if (conf.get("type", type)) {
-        if (type->compare("projected")==0 || type->compare("flat")==0) {
-            projected() = true;
-        }
-    }
 
     if ( conf.hasChild( "terrain" ) )
         terrain() = TerrainOptions( conf.child("terrain") );
@@ -330,23 +319,11 @@ MapNode::open()
     }
 
     // load and attach the terrain engine.
-    _terrainEngine = TerrainEngineNodeFactory::create(options().terrain().get());
-    _terrainEngineInitialized = false;
+    _terrainEngine = TerrainEngineNode::create(options().terrain().get());
 
     // Callback listens for changes in the Map:
     _mapCallback = new MapNodeMapCallbackProxy(this);
     _map->addMapCallback( _mapCallback.get() );
-    
-    // Now that layers exist, establish a map profile. This is guaranteed
-    // to result in a map profile being set.
-    if (!_map->getProfile())
-    {
-        osg::ref_ptr<const Profile> profile = _map->calculateProfile(options().projected().get());
-        if (profile.valid())
-        {
-            _map->setProfile(profile.get());
-        }
-    }
 
     // Give the terrain engine a map to render.
     if ( _terrainEngine )
@@ -361,7 +338,6 @@ MapNode::open()
     // Invoke the callback manually to add all existing layers to this node.
     // This needs to happen AFTER calling _terrainEngine->setMap().
     _mapCallback->invokeOnLayerAdded(_map.get());
-
 
     // initialize terrain-level lighting:
     if ( options().terrain()->enableLighting().isSet() )
@@ -408,9 +384,6 @@ MapNode::open()
 
         if ( options().overlayMipMapping().isSet() )
             draping->setMipMapping( options().overlayMipMapping().get() );
-
-        //if ( options().overlayAttachStencil().isSet() )
-        //    draping->setAttachStencil( *options().overlayAttachStencil() );
 
         if ( options().overlayResolutionRatio().isSet() )
             draping->setResolutionRatio( options().overlayResolutionRatio().get() );
@@ -614,6 +587,8 @@ MapNode::getTerrain()
 const Terrain*
 MapNode::getTerrain() const
 {
+    if (getTerrainEngine() == NULL)
+        return NULL;
     return getTerrainEngine()->getTerrain();
 }
 
@@ -747,10 +722,6 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     
     // Communicate terrain resources to the layer:
     layer->setTerrainResources(getTerrainEngine()->getResources());
-
-    // Each layer gets a callback to change the MapNode if necessary
-    // REMOVED this for osgEarth 3.0
-    //layer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getNode();

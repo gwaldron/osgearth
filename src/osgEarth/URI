@@ -25,16 +25,24 @@
 #include <osgEarth/Containers>
 #include <osgEarth/IOTypes>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
 #include <iostream>
 #include <sstream>
 
+namespace osgUtil
+{
+    class IncrementalCompileOperation;
+}
+
 namespace osgEarth
 {
     class URI;
     class ProgressCallback;
+
+    using namespace Threading;
 
     /**
      * Context for resolving relative URIs.
@@ -231,6 +239,11 @@ namespace osgEarth
         ReadResult readConfig(
             const osgDB::Options* dbOptions   =0L,
             ProgressCallback*     progress    =0L ) const;
+
+        Future<osg::Node> readNodeAsync(
+            const osgDB::Options* dbOptions   =0L,
+            ProgressCallback*     progress    =0L,
+            osgUtil::IncrementalCompileOperation* ico =NULL) const;
 
     public: // get methods call the read* methods, then just return the raw data.
 

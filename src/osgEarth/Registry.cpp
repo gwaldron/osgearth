@@ -166,11 +166,16 @@ Registry::Registry() :
     }
 #endif
 
+    const char* maxVerts = getenv("OSGEARTH_MAX_VERTS_PER_DRAWABLE");
+    if (maxVerts)
+    {
+        sscanf(maxVerts, "%u", &_maxVertsPerDrawable);
+        if (_maxVertsPerDrawable < 1024)
+            _maxVertsPerDrawable = 65536;
+    }
+
     // register the system stock Units.
     Units::registerAll( this );
-
-    // create an async mem mgr for AsyncLODs.
-    _asyncMemoryManager = new AsyncMemoryManager();
 }
 
 Registry::~Registry()

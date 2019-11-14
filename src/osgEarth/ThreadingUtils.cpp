@@ -20,6 +20,7 @@
 
 #include <osgDB/ReadFile>
 #include <osgEarth/Utils>
+#include <osgEarth/URI>
 
 #ifdef _WIN32
     extern "C" unsigned long __stdcall GetCurrentThreadId();
@@ -266,12 +267,13 @@ void ThreadPool::stopThreads()
     }
 }
 
+#if 0
 namespace {
     class LoadNodeOperation : public osg::Operation
     {
     public:
-        LoadNodeOperation(const std::string& url, osgDB::Options* options, osgUtil::IncrementalCompileOperation* ico, osgEarth::Threading::Promise<osg::Node> promise) :
-            _url(url),
+        LoadNodeOperation(const URI& uri, osgDB::Options* options, osgUtil::IncrementalCompileOperation* ico, osgEarth::Threading::Promise<osg::Node> promise) :
+            _uri(uri),
             _promise(promise),
             _ico(ico),
             _options(options)
@@ -283,35 +285,39 @@ namespace {
             if (!_promise.isAbandoned())
             {
                 // Read the node
-                osg::ref_ptr< osg::Node > result = osgDB::readNodeFile(_url, _options.get());
+                osgEarth::ReadResult result = _uri.readNode(_options.get());
+                //osg::ref_ptr< osg::Node > result = osgDB::readNodeFile(_url, _options.get());
 
                 // If we have an ICO, wait for it to be compiled
-                if (result.valid() && _ico.valid())
+                if (result.succeeded() && _ico.valid())
                 {
                     osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> compileSet =
-                        new osgUtil::IncrementalCompileOperation::CompileSet(result.get());
+                        new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
 
                     _ico->add(compileSet.get());
 
                     // spin wait
-                    while (!compileSet->compiled())
+                    while (
+                        !_promise.isAbandoned() &&          // user hasn't gone away?
+                        !compileSet->compiled() &&          // compilation not finished?
+                        compileSet->referenceCount() > 1)   // compiler disappeared?
                     {
                         OpenThreads::Thread::microSleep(1000);
                     }
                 }
 
-                _promise.resolve(result.get());
+                _promise.resolve(result.getNode());
             }
         }
 
         osgEarth::Threading::Promise<osg::Node> _promise;
         osg::ref_ptr< osgUtil::IncrementalCompileOperation > _ico;
         osg::ref_ptr< osgDB::Options > _options;
-        std::string _url;
+        URI _uri;
     };
 }
 
-Future<osg::Node> osgEarth::Threading::readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options)
+Future<osg::Node> osgEarth::Threading::readNodeAsync(const URI& uri, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options)
 {
     osg::ref_ptr<ThreadPool> threadPool;
     if (options)
@@ -321,7 +327,7 @@ Future<osg::Node> osgEarth::Threading::readNodeAsync(const std::string& url, osg
 
     Promise<osg::Node> promise;
 
-    osg::ref_ptr< osg::Operation > operation = new LoadNodeOperation(url, options, ico, promise);
+    osg::ref_ptr< osg::Operation > operation = new LoadNodeOperation(uri, options, ico, promise);
 
     if (operation.valid())
     {
@@ -338,3 +344,4 @@ Future<osg::Node> osgEarth::Threading::readNodeAsync(const std::string& url, osg
 
     return promise.getFuture();
 }
+#endif

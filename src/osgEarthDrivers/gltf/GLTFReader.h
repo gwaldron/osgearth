@@ -30,6 +30,8 @@
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/Notify>
+#include <osgEarth/URI>
+#include <osgEarth/Containers>
 
 #undef LC
 #define LC "[GLTFWriter] "
@@ -37,6 +39,16 @@
 class GLTFReader
 {
 public:
+    struct TextureCache
+    {
+        std::map<std::string, osg::ref_ptr<osg::Texture2D> > _map;
+        mutable osgEarth::Threading::Mutex _mutex;
+        void lock() { _mutex.lock(); }
+        void unlock() { _mutex.unlock(); }
+    };
+
+    //typedef osgEarth::LRUCache<std::string, osg::ref_ptr<osg::Texture> > TextureCache;
+
     static std::string ExpandFilePath(const std::string &filepath, void * userData)
     {
         const std::string& referrer = *(const std::string*)userData;
@@ -45,16 +57,35 @@ public:
         return tinygltf::ExpandFilePath(path, userData);
     }
 
+    struct Env
+    {
+        Env(const std::string& loc, const osgDB::Options* opt) : referrer(loc), readOptions(opt) { }
+        const std::string referrer;
+        const osgDB::Options* readOptions;
+    };
+
 public:
-    osgDB::ReaderWriter::ReadResult read(const std::string& location, 
+    mutable TextureCache* _texCache;
+
+    GLTFReader::GLTFReader() : _texCache(NULL)
+    {
+        //NOP
+    }
+
+    void setTextureCache(TextureCache* cache) const
+    {
+        _texCache = cache;
+    }
+
+    osgDB::ReaderWriter::ReadResult read(const std::string& location,
                                          bool isBinary,
-                                         const osgDB::Options* options) const
+                                         const osgDB::Options* readOptions) const
     {
         std::string err, warn;
         tinygltf::Model model;
         tinygltf::TinyGLTF loader;
 
-        FsCallbacks fs;
+        tinygltf::FsCallbacks fs;
         fs.FileExists = &tinygltf::FileExists;
         fs.ExpandFilePath = &GLTFReader::ExpandFilePath;
         fs.ReadWholeFile = &tinygltf::ReadWholeFile;
@@ -62,13 +93,35 @@ public:
         fs.user_data = (void*)&location;
         loader.SetFsCallbacks(fs);
 
-        if (isBinary)
+        if (osgDB::containsServerAddress(location))
         {
-            loader.LoadBinaryFromFile(&model, &err, &warn, location);
+            osgEarth::ReadResult rr = osgEarth::URI(location).readString(readOptions);
+            if (rr.failed())
+            {
+                return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
+            }
+
+            std::string mem = rr.getString();
+
+            if (isBinary)
+            {
+                loader.LoadBinaryFromMemory(&model, &err, &warn, (const unsigned char*)mem.data(), mem.size(), location);
+            }
+            else
+            {
+                loader.LoadASCIIFromString(&model, &err, &warn, mem.data(), mem.size(), location);
+            }
         }
         else
         {
-            loader.LoadASCIIFromFile(&model, &err, &warn, location);
+            if (isBinary)
+            {
+                loader.LoadBinaryFromFile(&model, &err, &warn, location);
+            }
+            else
+            {
+                loader.LoadASCIIFromFile(&model, &err, &warn, location);
+            }
         }
 
         if (!err.empty()) {
@@ -77,10 +130,11 @@ public:
             return osgDB::ReaderWriter::ReadResult::ERROR_IN_READING_FILE;
         }
 
-        return makeNodeFromModel(model);
+        Env env(location, readOptions);
+        return makeNodeFromModel(model, env);
     }
 
-    osg::Node* makeNodeFromModel(const tinygltf::Model &model) const
+    osg::Node* makeNodeFromModel(const tinygltf::Model &model, const Env& env) const
     {
         // Rotate y-up to z-up
         osg::MatrixTransform* transform = new osg::MatrixTransform;
@@ -91,7 +145,7 @@ public:
             const tinygltf::Scene &scene = model.scenes[i];
 
             for (size_t j = 0; j < scene.nodes.size(); j++) {
-                osg::Node* node = createNode(model, model.nodes[scene.nodes[j]]);
+                osg::Node* node = createNode(model, model.nodes[scene.nodes[j]], env);
                 if (node)
                 {
                     transform->addChild(node);
@@ -102,7 +156,7 @@ public:
         return transform;
     }
 
-    osg::Node* createNode(const tinygltf::Model &model, const tinygltf::Node& node) const
+    osg::Node* createNode(const tinygltf::Model &model, const tinygltf::Node& node, const Env& env) const
     {
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setName(node.name);
@@ -136,13 +190,13 @@ public:
         // todo transformation
         if (node.mesh >= 0)
         {
-            mt->addChild(makeMesh(model, model.meshes[node.mesh]));
+            mt->addChild(makeMesh(model, model.meshes[node.mesh], env));
         }
 
         // Load any children.
         for (unsigned int i = 0; i < node.children.size(); i++)
-        {
-            osg::Node* child = createNode(model, model.nodes[node.children[i]]);
+        {            
+            osg::Node* child = createNode(model, model.nodes[node.children[i]], env);
             if (child)
             {
                 mt->addChild(child);
@@ -152,7 +206,7 @@ public:
     }
 
 
-    osg::Node* makeMesh(const tinygltf::Model &model, const tinygltf::Mesh& mesh) const
+    osg::Node* makeMesh(const tinygltf::Model &model, const tinygltf::Mesh& mesh, const Env& env) const
     {
         osg::Group *group = new osg::Group;
 
@@ -229,38 +283,105 @@ public:
                             int index = i->second;
 
                             const tinygltf::Texture& texture = model.textures[index];
+                            const tinygltf::Image& image = model.images[texture.source];
 
-                            osg::ref_ptr< osg::Texture2D > tex = new osg::Texture2D;
-                            if (texture.sampler >= 0 && texture.sampler < model.samplers.size())
+                            // don't cache embedded textures!
+                            bool imageEmbedded = 
+                                tinygltf::IsDataURI(image.uri) ||
+                                image.image.size() > 0;
+
+                            osgEarth::URI imageURI(image.uri, env.referrer);
+
+                            osg::ref_ptr<osg::Texture2D> tex = NULL;
+                            osg::ref_ptr<osg::Texture2D>* cachedTex = NULL;
+
+                            if (!imageEmbedded && _texCache)
                             {
-                                const tinygltf::Sampler& sampler = model.samplers[texture.sampler];
-                                //tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)sampler.minFilter);
-                                //tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)sampler.magFilter);
-                                tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR); //sampler.minFilter);
-                                tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR); //sampler.magFilter);
-                                tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)sampler.wrapS);
-                                tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)sampler.wrapT);
-                                tex->setWrap(osg::Texture::WRAP_R, (osg::Texture::WrapMode)sampler.wrapR);
+                                _texCache->lock();
+                                cachedTex = &_texCache->_map[imageURI.full()];
+                                tex = cachedTex->get();
                             }
 
-
-                            const tinygltf::Image& image = model.images[texture.source];
-                            osg::ref_ptr< osg::Image> img = new osg::Image;
-
-                            GLenum format = GL_RGB, texFormat = GL_RGB8;
-                            if (image.component == 4) format = GL_RGBA, texFormat = GL_RGBA8;
-
-                            if (image.image.size() > 0)
+                            if (!tex.valid())
                             {
-                                //OE_NOTICE << "Loading image of size " << image.width << "x" << image.height << " components = " << image.component << " totalSize=" << image.image.size() << std::endl;
-                                unsigned char *imgData = new unsigned char[image.image.size()];
-                                memcpy(imgData, &image.image[0], image.image.size());
-                                img->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
-                            }                            
+                                OE_DEBUG << "New Texture: " << imageURI.full() << ", embedded=" << imageEmbedded << std::endl;
 
-                            tex->setImage(img);
-                            tex->setUnRefImageDataAfterApply(true);
-                            geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
+                                // First load the image
+                                const tinygltf::Image& image = model.images[texture.source];
+                                osg::ref_ptr<osg::Image> img;
+
+                                if (image.image.size() > 0)
+                                {
+                                    GLenum format = GL_RGB, texFormat = GL_RGB8;
+                                    if (image.component == 4) format = GL_RGBA, texFormat = GL_RGBA8;
+
+                                    img = new osg::Image();
+                                    //OE_NOTICE << "Loading image of size " << image.width << "x" << image.height << " components = " << image.component << " totalSize=" << image.image.size() << std::endl;
+                                    unsigned char *imgData = new unsigned char[image.image.size()];
+                                    memcpy(imgData, &image.image[0], image.image.size());
+                                    img->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
+                                }      
+
+                                else if (!imageEmbedded) // load from URI
+                                {
+                                    osgEarth::ReadResult rr = imageURI.readImage(env.readOptions);
+                                    if(rr.succeeded())
+                                    {
+                                        img = rr.releaseImage();          
+                                        if (img.valid())
+                                        {
+                                            img->flipVertical();
+                                        }
+                                    }
+                                }
+
+                                // If the image loaded OK, create the texture
+                                if (img.valid())
+                                {
+                                    if(img->getPixelFormat() == GL_RGB)
+                                        img->setInternalTextureFormat(GL_RGB8);
+                                    else if (img->getPixelFormat() == GL_RGBA)
+                                        img->setInternalTextureFormat(GL_RGBA8);
+                                    
+                                    tex = new osg::Texture2D(img.get());
+                                    tex->setUnRefImageDataAfterApply(imageEmbedded);
+                                    tex->setResizeNonPowerOfTwoHint(false);
+
+                                    if (texture.sampler >= 0 && texture.sampler < model.samplers.size())
+                                    {
+                                        const tinygltf::Sampler& sampler = model.samplers[texture.sampler];
+                                        //tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)sampler.minFilter);
+                                        //tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)sampler.magFilter);
+                                        tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR); //sampler.minFilter);
+                                        tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR); //sampler.magFilter);
+                                        tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)sampler.wrapS);
+                                        tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)sampler.wrapT);
+                                        tex->setWrap(osg::Texture::WRAP_R, (osg::Texture::WrapMode)sampler.wrapR);
+                                    }
+                                    else
+                                    {
+                                        tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR);
+                                        tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR);
+                                        tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
+                                        tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
+                                    }
+                                }
+                            }
+
+                            if (tex.valid())
+                            {
+                                if (cachedTex && !cachedTex->valid())
+                                {
+                                    (*cachedTex) = tex.get();
+                                }
+
+                                geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), osg::StateAttribute::ON);
+                            }
+
+                            if (cachedTex)
+                            {
+                                _texCache->unlock();
+                            }
                         }
                     }
                 }
@@ -278,7 +399,6 @@ public:
                 {
                     geom->setVertexArray(arrays[it->second]);
                 }
-
                 else if (it->first.compare("NORMAL") == 0)
                 {
                     geom->setNormalArray(arrays[it->second]);
@@ -346,6 +466,7 @@ public:
                 {
                     osg::DrawElementsUShort* drawElements = new osg::DrawElementsUShort(mode);
                     unsigned short* indices = (unsigned short*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
+                    drawElements->reserve(indexAccessor.count);
                     for (unsigned int j = 0; j < indexAccessor.count; j++)
                     {
                         unsigned short index = indices[j];
@@ -356,6 +477,7 @@ public:
                 else if (indexAccessor.componentType == GL_UNSIGNED_INT)
                 {
                     osg::DrawElementsUInt* drawElements = new osg::DrawElementsUInt(mode);
+                    drawElements->reserve(indexAccessor.count);
                     unsigned int* indices = (unsigned int*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
                     for (unsigned int j = 0; j < indexAccessor.count; j++)
                     {
@@ -367,6 +489,7 @@ public:
                 else if (indexAccessor.componentType == GL_UNSIGNED_BYTE)
                 {
                     osg::DrawElementsUByte* drawElements = new osg::DrawElementsUByte(mode);
+                    drawElements->reserve(indexAccessor.count);
                     unsigned char* indices = (unsigned char*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
                     for (unsigned int j = 0; j < indexAccessor.count; j++)
                     {
@@ -401,6 +524,7 @@ public:
 
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    floatArray->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float s = array[pos];
@@ -424,6 +548,7 @@ public:
 
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    vec2Array->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float s = array[pos];
@@ -445,6 +570,7 @@ public:
                     osg::Vec3Array* vec3Array = new osg::Vec3Array;
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    vec3Array->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float x = array[pos];
@@ -467,6 +593,7 @@ public:
                     osg::Vec4Array* vec4Array = new osg::Vec4Array;
                     float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
                     unsigned int pos = 0;
+                    vec4Array->reserve(accessor.count);
                     for (unsigned int j = 0; j < accessor.count; j++)
                     {
                         float r = array[pos];

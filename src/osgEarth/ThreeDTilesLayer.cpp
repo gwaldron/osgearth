@@ -83,9 +83,7 @@ ThreeDTilesLayer::openImplementation()
         return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
     }
 
-    std::string fullPath = osgEarth::getAbsolutePath(_options->url()->full());
-
-    Tileset* tileset = Tileset::create(rr.getString(), fullPath);
+    Tileset* tileset = Tileset::create(rr.getString(), _options->url()->full());
     if (!tileset)
     {
         return Status(Status::GeneralError, "Bad tileset");

@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TDTiles>
-#include <osgEarth/Async>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
@@ -32,14 +31,65 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 #include <osg/CoordinateSystemNode>
-#include <osg/Version>
-#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib::ThreeDTiles;
 
 #define LC "[3DTiles] "
+
+//........................................................................
+
+namespace osgEarth { namespace Contrib { namespace ThreeDTiles
+{
+    class ThreeDTilesJSONReaderWriter : public osgDB::ReaderWriter
+    {
+    public:
+        ThreeDTilesJSONReaderWriter()
+        {
+            supportsExtension("3dtiles", "3D-Tiles JSON TileSet");
+        }
+
+        virtual const char* className() const { return "3D-Tiles JSON TileSet"; }
+
+        virtual ReadResult readObject(const std::string& location, const osgDB::Options* options) const
+        {
+            return readNode(location, options);
+        }
+
+        virtual ReadResult readNode(const std::string& location, const osgDB::Options* options) const
+        {
+            std::string ext = osgDB::getFileExtension(location);
+            if (!acceptsExtension(ext))
+                return ReadResult::FILE_NOT_HANDLED;
+
+            std::string uristring = osgDB::getNameLessExtension(location);
+
+            osgEarth::ReadResult rr = URI(uristring).readString(options);
+            if (rr.failed())
+                return ReadResult(rr.errorDetail());
+
+            Tileset* tileset = Tileset::create(rr.getString(), uristring);
+            if (!tileset)
+                return ReadResult("Unable to parse tileset");
+
+            // Clone the read options and if there isn't a ThreadPool create one.
+            osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
+            osg::ref_ptr< ThreadPool > threadPool = OptionsData<ThreadPool>::get(readOptions.get(), "threadpool");
+            if (!threadPool.valid())
+            {
+                unsigned int numThreads = 8;
+                threadPool = new ThreadPool(numThreads);
+                OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", threadPool.get());
+            }
+
+            osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, readOptions.get());
+            node->setMaximumScreenSpaceError(15.0f);
+            return node.release();
+        }
+    };
+    REGISTER_OSGPLUGIN(3dtiles, ThreeDTilesJSONReaderWriter)
+}}}
 
 //........................................................................
 
@@ -346,6 +396,14 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _contentUnloaded(false),
     _options(options)
 {
+    // If this tile has content, store a URI Context to that relative-path external file
+    // references (textures) will resolve correctly.
+    if (_tile->content().isSet())
+    {
+        _options = Registry::instance()->cloneOrCreateOptions(options);
+        URIContext(_tile->content()->uri()->full()).store(_options.get());
+    }
+
     // the transform to localize this tile:
     if (tile->transform().isSet())
     {
@@ -354,8 +412,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
 
     if (_immediateLoad && _tile->content().isSet())
     {
-        //OE_NOTICE << "Immediately Loading " << _tile->content()->uri()->full() << std::endl;
-        _content = _tile->content()->uri()->getNode();
+        _content = _tile->content()->uri()->getNode(_options.get());
     }
 
     if (_tile->children().size() > 0)
@@ -411,8 +468,8 @@ namespace
     class LoadTilesetOperation : public osg::Operation
     {
     public:
-        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const std::string& url, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
-            _url(url),
+        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
+            _uri(uri),
             _promise(promise),
             _options(options),
             _parentTileset(parentTileset)
@@ -421,7 +478,6 @@ namespace
 
         void operator()(osg::Object*)
         {
-
             if (!_promise.isAbandoned())
             {
                 osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
@@ -430,12 +486,16 @@ namespace
                 if (parentTileset.valid())
                 {
                     // load the tile set:
-                    URI tilesetURI(_url);
-                    ReadResult rr = tilesetURI.readString();
+                    ReadResult rr = _uri.readString(_options.get());
 
-                    std::string fullPath = osgEarth::getAbsolutePath(_url);
+                    if (rr.failed())
+                    {
+                        OE_WARN << "Fail to read tileset \"" << _uri.full() << ": " << rr.errorDetail() << std::endl;
+                    }
 
-                    osg::ref_ptr<Tileset> tileset = Tileset::create(rr.getString(), fullPath);
+                    //std::string fullPath = osgEarth::getAbsolutePath(_url);
+
+                    osg::ref_ptr<Tileset> tileset = Tileset::create(rr.getString(), _uri.full());
                     if (tileset)
                     {
                         tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset, _options.get());
@@ -448,10 +508,10 @@ namespace
         osgEarth::Threading::Promise<osg::Node> _promise;
         osg::ref_ptr< osgDB::Options > _options;
         osg::observer_ptr<ThreeDTilesetNode> _parentTileset;
-        std::string _url;
+        URI _uri;
     };
 
-    Threading::Future<osg::Node> readTilesetAsync(ThreeDTilesetNode* parentTileset, const std::string& url, osgDB::Options* options)
+    Threading::Future<osg::Node> readTilesetAsync(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options)
     {
         osg::ref_ptr<ThreadPool> threadPool;
         if (options)
@@ -461,7 +521,7 @@ namespace
 
         Threading::Promise<osg::Node> promise;
 
-        osg::ref_ptr< osg::Operation > operation = new LoadTilesetOperation(parentTileset, url, options, promise);
+        osg::ref_ptr< osg::Operation > operation = new LoadTilesetOperation(parentTileset, uri, options, promise);
 
         if (operation.valid())
         {
@@ -487,11 +547,11 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
     {
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            _contentFuture = readTilesetAsync(_tileset, _tile->content()->uri()->full(), _options.get());
+            _contentFuture = readTilesetAsync(_tileset, _tile->content()->uri().get(), _options.get());
         }
         else
         {
-            _contentFuture = readNodeAsync(_tile->content()->uri()->full(), ico, _options.get());
+            _contentFuture = _tile->content()->uri()->readNodeAsync(_options.get(), NULL, ico);
         }
         _requestedContent = true;
     }
@@ -522,7 +582,7 @@ void ThreeDTileNode::unloadContent()
         {
             return;
         }
-        _content->releaseGLObjects(0);
+        //_content->releaseGLObjects(0);
         _firstVisit = true;
         _content = 0;
         _requestedContent = false;
@@ -555,11 +615,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
     }
     else if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
         osgUtil::CullVisitor* cv = nv.asCullVisitor();
-#else
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-#endif
 
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;
@@ -629,6 +685,23 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
     osg::MatrixTransform::traverse(nv);
 }
 
+namespace {
+    const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        "out vec2 tdt_coords;\n"
+        "void tdt_vs(inout vec4 vertex) { \n"
+        "    tdt_coords = gl_MultiTexCoord0.st;\n"
+        "}\n";
+
+    const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        "uniform sampler2D tdt_tex;\n"
+        "in vec2 tdt_coords;\n"
+        "void tdt_fs(inout vec4 color) { \n"
+        "    color = texture(tdt_tex, tdt_coords);\n"
+        "}\n";
+}
+
 ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :
     _tileset(tileset),
     _options(options),
@@ -636,14 +709,22 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
 {
     // TODO:  This should run on the content, not on the root tileset.
     // Generate shaders that will render with a texture:
-    osg::StateSet* rootStateSet = getOrCreateStateSet();
-    rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
-    osgEarth::ShaderGenerator gen;
-    osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
-    if (ss.valid())
-    {
-        setStateSet(ss);
-    }
+    osg::StateSet* ss = getOrCreateStateSet();
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->setFunction("tdt_vs", vs, ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction("tdt_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
+
+    ss->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), osg::StateAttribute::ON);
+    ss->addUniform(new osg::Uniform("tdt_tex", 0));
+
+    //rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), osg::StateAttribute::ON);
+    //osgEarth::ShaderGenerator gen;
+    //osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
+    //if (ss.valid())
+    //{
+    //    setStateSet(ss);
+    //}
 
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
 }
@@ -699,12 +780,12 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         startCull();
-        osg::Group::traverse(nv);
+        osg::MatrixTransform::traverse(nv);
         endCull();
     }
     else
     {
-        osg::Group::traverse(nv);
+        osg::MatrixTransform::traverse(nv);
     }
 }
 

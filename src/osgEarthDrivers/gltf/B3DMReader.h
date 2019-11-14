@@ -24,6 +24,7 @@
 
 #include <osgEarth/Endian>
 #include <osgEarth/URI>
+#include <osgEarth/JsonUtils>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
@@ -49,6 +50,17 @@ struct b3dmheader
 class B3DMReader
 {
 public:
+    mutable GLTFReader::TextureCache* _texCache;
+
+    B3DMReader() : _texCache(NULL)
+    {
+    }
+
+    void setTextureCache(GLTFReader::TextureCache* cache) const
+    {
+        _texCache = cache;
+    }
+
     static std::string ExpandFilePath(const std::string &filepath, void * userData)
     {
         const std::string& referrer = *(const std::string*)userData;
@@ -58,38 +70,42 @@ public:
     }
 
     //! Read a B3DM file and return a node
-    osg::Node* read(const std::string& location, const osgDB::Options* options) const
+    //osg::Node* read(const std::string& location, const osgDB::Options* readOptions) const
+    //{
+    //    // Load the whole thing into memory
+    //    URIStream inputStream(location, std::ifstream::binary);
+    //    return read(location, inputStream, readOptions);
+    //}
+
+    //! Read a B3DM data package and return a node.
+    osg::Node* read(const std::string& location, const std::string& inputStream, const osgDB::Options* readOptions) const
     {
-        // Load the whole thing into memory
-        URIStream inputStream(location, std::ifstream::binary);
-
-        std::istreambuf_iterator<char> eof;
-        std::string data(std::istreambuf_iterator<char>(inputStream), eof);
-
         // Check the header's magic string. If it's not there, attempt
         // to run a decompressor on it
 
-        std::string magic(data, 0, 4);
+        std::string decompressedData;
+        const std::string* data = &inputStream;
+
+        std::string magic(*data, 0, 4);
         if (magic != "b3dm")
         {
             osg::ref_ptr<osgDB::BaseCompressor> compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
             if (compressor.valid())
             {
-                std::stringstream in_data(data);
-                std::string temp;
-                if (!compressor->decompress(in_data, temp))
+                std::stringstream in_data(inputStream);
+                if (!compressor->decompress(in_data, decompressedData))
                 {
                     OE_WARN << LC << "Invalid b3dm" << std::endl;
                     return NULL;
                 }
-                data = temp;
+                data = &decompressedData;
             }
         }
 
         b3dmheader header;
         unsigned bytesRead = 0;
 
-        std::stringstream buf(data);
+        std::stringstream buf(*data);
         buf.read(reinterpret_cast<char*>(&header), sizeof(b3dmheader));
         bytesRead += sizeof(b3dmheader);
 
@@ -113,6 +129,21 @@ public:
             buf.read(reinterpret_cast<char*>(&featureTableJson[0]), header.featureTableJSONByteLength);
             OE_DEBUG << "Read featureTableJson " << featureTableJson << std::endl;
 
+            osgEarth::Json::Reader reader;
+            osgEarth::Json::Value doc;
+            if (reader.parse(featureTableJson, doc))
+            {
+                Json::Value RTC_CENTER = doc["RTC_CENTER"];
+                if (!RTC_CENTER.empty())
+                {
+                    Json::Value::iterator i = RTC_CENTER.begin();
+                    rtc_center.x() = (*i++).asDouble();
+                    rtc_center.y() = (*i++).asDouble();
+                    rtc_center.z() = (*i++).asDouble();
+                }
+            }          
+
+            /*
             json ftJson = json::parse(featureTableJson);
             if (ftJson.find("RTC_CENTER") != ftJson.end()) {
                 json RTC_CENTER = ftJson["RTC_CENTER"];
@@ -121,6 +152,7 @@ public:
                 rtc_center.z() = RTC_CENTER[2];
             }
             OE_DEBUG << LC << "Read rtc_center " << rtc_center.x() << ", " << rtc_center.y() << ", " << rtc_center.z() << std::endl;
+            */
 
             bytesRead += header.featureTableJSONByteLength;
         }
@@ -179,7 +211,9 @@ public:
         osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform;
 
         GLTFReader gltfReader;
-        osg::Node* modelNode = gltfReader.makeNodeFromModel(model);
+        gltfReader.setTextureCache(_texCache);
+        GLTFReader::Env env(location, readOptions);
+        osg::Node* modelNode = gltfReader.makeNodeFromModel(model, env);
         if (rtc_center.x() == 0.0 && rtc_center.y() == 0.0 && rtc_center.z() == 0.0)
         {
             return modelNode;

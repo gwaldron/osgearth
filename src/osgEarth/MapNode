@@ -63,7 +63,6 @@ namespace osgEarth
             OE_OPTION(bool, overlayMipMapping);
             OE_OPTION(float, overlayResolutionRatio);
             OE_OPTION(bool, useCascadeDraping);
-            OE_OPTION(bool, projected);
             OE_OPTION(TerrainOptions, terrain);
             OE_OPTION(int, drapingRenderBinNumber);
             virtual Config getConfig() const;
@@ -235,7 +234,6 @@ namespace osgEarth
         osg::Group*        _maskLayerNode;
         unsigned           _lastNumBlacklistedFilenames;
         TerrainEngineNode* _terrainEngine;
-        bool               _terrainEngineInitialized;
         osg::Group*        _terrainGroup;
         ResourceReleaser*  _resourceReleaser;
         DrapingManager*    _drapingManager;

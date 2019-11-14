@@ -47,6 +47,7 @@ namespace osgEarth
             OE_OPTION(CacheOptions, cache);
             OE_OPTION(CachePolicy, cachePolicy);
             OE_OPTION(RasterInterpolation, elevationInterpolation);
+            OE_OPTION(std::string, profileLayer);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config&);
@@ -179,12 +180,6 @@ namespace osgEarth
 
         //! List of attribution strings to be displayed by the application
         void getAttributions(StringSet& attributions) const;
-
-        //! Compute a map profile based on the existing map layers
-        //! and an optional flag specifying a projected profile.
-        //! This method will be called automatically by MapNode if a
-        //! profile has not already been set via setProfile().
-        const Profile* calculateProfile(bool makeProjected =false) const;
 
     protected:
 

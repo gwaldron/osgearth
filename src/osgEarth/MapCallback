@@ -39,9 +39,6 @@ namespace osgEarth
      */
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
-        //! Invoked when a Map first establishes a valid profile.
-        virtual void onMapInfoEstablished( const Util::MapInfo& mapInfo ) { } 
-
         //! Invoked when a batch operation begins.
         virtual void onBeginUpdate() { }
 

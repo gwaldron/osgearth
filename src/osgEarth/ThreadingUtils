@@ -315,7 +315,7 @@ namespace osgEarth { namespace Threading
     };
 
 
-    extern OSGEARTH_EXPORT Future<osg::Node> readNodeAsync(const std::string& url, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options);
+    //extern OSGEARTH_EXPORT Future<osg::Node> readNodeAsync(const URI& uri, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options);
 
 } } // namepsace osgEarth::Threading
 

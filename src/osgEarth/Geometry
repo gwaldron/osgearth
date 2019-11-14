@@ -78,12 +78,12 @@ namespace osgEarth
 
         static std::string toString( Type t ) {
             return 
-                t == TYPE_POINTSET ?   "pointset" :
-                t == TYPE_LINESTRING ? "linestring" :
-                t == TYPE_RING ?       "ring" :
-                t == TYPE_POLYGON ?    "polygon" :
-                t == TYPE_MULTI ?      "multi" :
-                "unknown";
+                t == TYPE_POINTSET ?   "PointSet" :
+                t == TYPE_LINESTRING ? "LineString" :
+                t == TYPE_RING ?       "Ring" :
+                t == TYPE_POLYGON ?    "Polygon" :
+                t == TYPE_MULTI ?      "MultiGeometry" :
+                                       "Unknown";
         }
 
         /** Creates a geometry from a vector array */

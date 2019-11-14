@@ -72,8 +72,8 @@ StyleSheet::Options::getConfig() const
             scriptConf.set("language", _script->language);
         if (_script->uri.isSet())
             scriptConf.set("url", _script->uri->base());
-        if (!_script->profile.empty())
-            scriptConf.set("profile", _script->profile);
+        //if (!_script->profile.empty())
+        //    scriptConf.set("profile", _script->profile);
         else if (!_script->code.empty())
             scriptConf.setValue(_script->code);
 
@@ -126,8 +126,8 @@ StyleSheet::Options::fromConfig(const Config& conf)
         std::string lang = scriptConf.value("language");
         _script->language = lang.empty() ? "javascript" : lang;
 
-        std::string profile = scriptConf.value("profile");
-        _script->profile = profile;
+        //std::string profile = scriptConf.value("profile");
+        //_script->profile = profile;
     }
 
     // read any style class definitions. either "class" or "selector" is allowed

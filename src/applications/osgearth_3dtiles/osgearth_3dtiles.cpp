@@ -751,12 +751,6 @@ build_leaves(osg::ArgumentParser& args)
         queryExtent = GeoExtent(osgEarth::SpatialReference::create("epsg:4326"), xmin, ymin, xmax, ymax);
     }
 
-    if (!map->getProfile())
-    {
-        const Profile* profile = map->calculateProfile();
-        map->setProfile(profile);
-    }
-
     // For best optimization
     Registry::instance()->setMaxNumberOfVertsPerDrawable(UINT_MAX);
 

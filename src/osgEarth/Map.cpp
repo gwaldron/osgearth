@@ -51,6 +51,8 @@ Map::Options::getConfig() const
     conf.set( "elevation_interpolation", "bilinear",    elevationInterpolation(), INTERP_BILINEAR);
     conf.set( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
 
+    conf.set( "profile_layer", profileLayer() );
+
     return conf;
 }
 
@@ -75,6 +77,8 @@ Map::Options::fromConfig(const Config& conf)
     conf.get( "elevation_interpolation", "average",     elevationInterpolation(), INTERP_AVERAGE);
     conf.get( "elevation_interpolation", "bilinear",    elevationInterpolation(), INTERP_BILINEAR);
     conf.get( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
+
+    conf.get( "profile_layer", profileLayer() );
 }
 
 //...................................................................
@@ -106,6 +110,13 @@ Map::init()
 
     // Generate a UID.
     _uid = Registry::instance()->createUID();
+
+    // Set up the map's profile
+    if (options().profile().isSet())
+        setProfile(Profile::create(options().profile().get()));
+
+    if (getProfile() == NULL)
+        setProfile( Profile::create("global-geodetic") );
 
     // If the registry doesn't have a default cache policy, but the
     // map options has one, make the map policy the default.
@@ -690,63 +701,6 @@ Map::clear()
 
     // Invalidate the elevation pool.
     getElevationPool()->clear();
-}
-
-const Profile*
-Map::calculateProfile(bool makeProjected) const
-{
-    // collect the terrain layers; we will need them later
-    TerrainLayerVector layers;
-    getLayers(layers);
-
-    // Figure out the map profile:
-    osg::ref_ptr<const Profile> profile;
-
-    // Do the map options contain a profile? If so, try to use it:
-    if ( options().profile().isSet() )
-    {
-        profile = Profile::create( options().profile().value() );
-    }
-
-    // Do the map options ask for a projected map?
-    if (makeProjected)
-    {
-        // Is there no profile set try to derive one from the Map layers:
-        if (!profile.valid())
-        {
-            for (TerrainLayerVector::iterator i = layers.begin(); !profile.valid() && i != layers.end(); ++i)
-            {
-                profile = i->get()->getProfile();
-            }
-        }
-
-        // If we have a profile now, but it's geographic, switch over to a
-        // flat plate carre setup.
-        if (profile.valid() && profile->getSRS()->isGeographic())
-        {
-            OE_WARN << LC << "Projected map type conflicts with the geographic SRS profile; converting to Equirectangular projection\n";
-            unsigned u, v;
-            profile->getNumTiles(0, u, v);
-            const osgEarth::SpatialReference* eqc = profile->getSRS()->createEquirectangularSRS();
-            osgEarth::GeoExtent e = profile->getExtent().transform( eqc );
-            profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
-        }
-
-        // Still nothing? Pick Mercator.
-        if (!profile.valid())
-        {
-            OE_WARN << LC << "No profile information available; defaulting to Spherical Mercator projection\n";
-            profile = Registry::instance()->getSphericalMercatorProfile();
-        }
-    }
-
-    // Finally, if there is still no profile, default to global geodetic.
-    if (!profile.valid())
-    {
-        profile = Registry::instance()->getGlobalGeodeticProfile();
-    }
-
-    return profile.release();
 }
 
 const SpatialReference*

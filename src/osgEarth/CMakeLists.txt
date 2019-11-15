@@ -117,6 +117,7 @@ SET(LIB_PUBLIC_HEADERS
     Extension
     FadeEffect
     FileUtils
+    FilterUsage
     GDAL
     GeoCommon
     GeoData

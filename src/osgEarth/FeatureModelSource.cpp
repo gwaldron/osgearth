@@ -205,7 +205,7 @@ FeatureModelSourceOptions::FeatureModelSourceOptions(const ConfigOptions& option
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    conf.get( "features", _featureOptions );
+    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
 }
 
 Config
@@ -213,8 +213,7 @@ FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
     conf.merge(FeatureModelOptions::getConfig());
-
-    conf.set("features", _featureOptions);
+    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
     return conf;
 }
 
@@ -230,9 +229,9 @@ FeatureModelSource::FeatureModelSource( const FeatureModelSourceOptions& options
 void
 FeatureModelSource::setFeatureSource( FeatureSource* source )
 {
-    if ( !_features.valid() )
+    if ( !_features.getLayer())
     {
-        _features = source;
+        _features.setLayer(source);
     }
     else
     {
@@ -246,13 +245,9 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     if (readOptions)
         setReadOptions(readOptions);
 
-    if ( _options.featureOptions().isSet() )
-    {
-        _features = FeatureSource::create( _options.featureOptions().value() );
-    }
-
-    if (!_features.valid())
-        return Status::Error(Status::ServiceUnavailable, "Failed to create a feature driver");
+    Status fs = _features.open(_options.featureSource(), readOptions);
+    if (fs.isError())
+        return fs;
 
     if ( _options.styleSheet().isSet() )
     {
@@ -261,15 +256,8 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
             return s;
     }
 
-    // open the feature source if it exists:
-    _features->setReadOptions(_readOptions.get());
-
-    const Status& featuresStatus = _features->open();
-    if (featuresStatus.isError())
-        return featuresStatus;
-
     // Try to fill the DataExtent list using the FeatureProfile
-    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (featureProfile == NULL)
         return Status::Error("Failed to establish a feature profile");
 
@@ -295,9 +283,9 @@ FeatureModelSource::setReadOptions(const osgDB::Options* readOptions)
     // for texture atlas support
     _readOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
 
-    if (_features.valid())
+    if (_features.getLayer())
     {
-        _features->setReadOptions(_readOptions.get());
+        _features.getLayer()->setReadOptions(_readOptions.get());
     }
 }
 
@@ -316,7 +304,7 @@ FeatureModelSource::createNodeImplementation(const Map* map,  ProgressCallback* 
     }
 
     // make sure the feature source initialized properly:
-    if ( !_features.valid() || !_features->getFeatureProfile() )
+    if ( !_features.getLayer() || !_features.getLayer()->getFeatureProfile() )
     {
         return 0L;
     }
@@ -334,7 +322,7 @@ FeatureModelSource::createNodeImplementation(const Map* map,  ProgressCallback* 
     Session* session = new Session( 
         map, 
         _styleSheet.getLayer(),
-        _features.get(), 
+        _features.getLayer(),
         _readOptions.get() );
 
     // Name the session (for debugging purposes)

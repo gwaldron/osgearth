@@ -250,7 +250,7 @@ void saveTileSet(ThreeDTiles::Tile* tile, const std::string& filename)
     tileset->root() = tile;
     tileset->asset()->version() = "1.0";
 
-    std::ofstream fout(filename);
+    std::ofstream fout(filename.c_str());
     Util::Json::Value json = tileset->getJSON();
     Util::Json::StyledStreamWriter writer;
     writer.write(fout, json);
@@ -494,7 +494,7 @@ int build_tilesets(osg::ArgumentParser& args)
     std::string dataFiles;
     args.read("--dataFiles", dataFiles);
 
-    std::ifstream fin(dataFiles);
+    std::ifstream fin(dataFiles.c_str());
     std::string line;
     unsigned int numRead = 0;
 

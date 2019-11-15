@@ -659,6 +659,7 @@ SimpleSkyNode::makeMoon()
     texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
     texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     texture->setResizeNonPowerOfTwoHint(false);
+    texture->setUnRefImageDataAfterApply(true);
     stateSet->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 #ifdef OSG_GL3_AVAILABLE
     // Adjust for loss of GL_LUMINANCE in glTexture2D's format parameter.  OSG handles the texture's internal format,

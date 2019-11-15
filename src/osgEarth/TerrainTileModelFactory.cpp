@@ -19,7 +19,7 @@
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Map>
-#include <osgEarth/Metrics>
+#include <osgEarth/Registry>
 
 #include <osg/Texture2D>
 
@@ -37,6 +37,7 @@ _heightFieldCache( true, 128 )
 
     // Create an empty texture that we can use as a placeholder
     _emptyTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
+    _emptyTexture->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 }
 
 TerrainTileModel*
@@ -418,10 +419,12 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
         tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }
 
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
     layer->applyTextureCompressionMode(tex);
 
     ImageUtils::activateMipMaps(tex);
-
+    
     return tex;
 }
 
@@ -442,6 +445,8 @@ TerrainTileModelFactory::createCoverageTexture(osg::Image*       image,
 
     tex->setMaxAnisotropy( 1.0f );
 
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
     return tex;
 }
 
@@ -456,6 +461,7 @@ TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
     tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint( false );
     tex->setMaxAnisotropy( 1.0f );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     return tex;
 }
 
@@ -467,7 +473,6 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
         // Only compress the image if it's not already compressed.
         if (image->getPixelFormat() != GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
         {
-            METRIC_SCOPED("normalmap compression");
             // See if we have a CPU compressor generator:
             osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
             if (ip)
@@ -489,5 +494,6 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setMaxAnisotropy(1.0f);
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     return tex;
 }

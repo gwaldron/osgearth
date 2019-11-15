@@ -717,7 +717,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         osg::Texture* tex = model->elevationModel()->getTexture();
 
         // always keep the elevation image around because we use it for bounding box computation:
-        tex->setUnRefImageDataAfterApply(false);
+        //tex->setUnRefImageDataAfterApply(false);
+        //Note: this happend now in LoadTileData
 
         _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._texture = tex;
         _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
@@ -732,8 +733,12 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     if (normals.isActive() && model->normalModel().valid() && model->normalModel()->getTexture())
     {
         osg::Texture* tex = model->normalModel()->getTexture();
-        // keep the normal map around because we might update it later in "ping"
-        tex->setUnRefImageDataAfterApply(false);
+
+        if (_context->options().normalizeEdges() == true)
+        {
+            // keep the normal map around because we might update it later in "ping"
+            tex->setUnRefImageDataAfterApply(false);
+        }
 
         _renderModel._sharedSamplers[SamplerBinding::NORMAL]._texture = tex;
         _renderModel._sharedSamplers[SamplerBinding::NORMAL]._matrix.makeIdentity();

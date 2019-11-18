@@ -179,12 +179,14 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
         populate( geomHandle, output, numPoints );
         break;
 
+#ifdef GDAL_HAS_M_TYPES
     case wkbTINZ:
     case wkbTIN:
     case wkbTINM:
     case wkbTINZM:
         output = createTIN(geomHandle);
         break;
+#endif
 
     case wkbGeometryCollection:
     case wkbGeometryCollection25D:

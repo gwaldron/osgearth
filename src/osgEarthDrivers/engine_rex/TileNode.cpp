@@ -659,23 +659,6 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     pass->samplers()[SamplerBinding::COLOR]._texture = model->getTexture();
                     pass->samplers()[SamplerBinding::COLOR]._matrix = *model->getMatrix();
 
-#if 0
-                    // Handle an RTT image layer:
-                    if (model->getImageLayer() && model->getImageLayer()->useCreateTexture())
-                    {
-                        // Check the texture's userdata for a Node. If there is one there,
-                        // render it to the texture using the Tile Rasterizer service.
-                        // TODO: consider hanging on to this texture and not applying it to
-                        // the live tile until the RTT is complete. (Prevents unsightly flashing)
-                        GeoNode* rttNode = dynamic_cast<GeoNode*>(model->getTexture()->getUserData());
-
-                        if (rttNode && _context->getTileRasterizer())
-                        {
-                            _context->getTileRasterizer()->push(rttNode->_node.get(), model->getTexture(), rttNode->_extent);
-                        }
-                    }
-#endif
-
                     // check to see if this data requires an image update traversal.
                     if (_imageUpdatesActive == false)
                     {

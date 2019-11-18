@@ -2753,3 +2753,46 @@ GeoHeightField::getYInterval() const
 {
     return _extent.height() / (double)(_heightField->getNumRows()-1);
 }
+
+/***************************************************************************/
+
+#undef  LC
+#define LC "[GeoNode] "
+
+// static
+GeoNode GeoNode::INVALID;
+
+GeoNode::GeoNode() :
+    _extent( GeoExtent::INVALID ),
+    _status( Status::GeneralError )
+{
+    //nop
+}
+
+GeoNode::GeoNode(const Status& status) :
+    _extent(GeoExtent::INVALID),
+    _status(status)
+{
+    if (_status.isOK())
+        _status = Status::GeneralError;
+}
+
+GeoNode::GeoNode(osg::Node* node, const GeoExtent& extent) :
+    _node(node),
+    _extent(extent)
+{
+    if (_node.valid() && extent.isInvalid())
+    {
+        _status = Status(Status::GeneralError, "ILLEGAL: created a GeoImage with a valid image and an invalid extent");
+    }
+    else if (!_node.valid())
+    {
+        _status = Status::GeneralError;
+    }
+}
+
+bool
+GeoNode::valid() const 
+{
+    return _node.valid() && _extent.isValid();
+}

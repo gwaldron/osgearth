@@ -55,14 +55,14 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
     // assemble all the components:
     addColorLayers(model.get(), map, requirements, key, filter, progress);
 
-    //addPatchLayers(model.get(), map, key, filter, progress);
-
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
         unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
 
         addElevation( model.get(), map, key, filter, border, progress );
     }
+
+    addPatchLayers(model.get(), map, key, filter, progress);
 
     // done.
     return model.release();
@@ -178,7 +178,6 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
                                         const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
 {
-#if 0
     OE_START_TIMER(fetch_patch_layers);
 
     PatchLayerVector patchLayers;
@@ -188,7 +187,6 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
         i != patchLayers.end();
         ++i )
     {
-
         PatchLayer* layer = i->get();
 
         if (!filter.accept(layer))
@@ -199,21 +197,18 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
 
         if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->acceptKey(key))
         {
-            PatchLayer::TileData* tileData = layer->createTileData(key);
-            if (tileData)
+            GeoNode node = layer->createNode(key, progress);
+            if (node.valid())
             {
                 TerrainTilePatchLayerModel* patchModel = new TerrainTilePatchLayerModel();
                 patchModel->setPatchLayer(layer);
-                patchModel->setTileData(tileData);
-
-                model->patchLayers().push_back(patchModel);
+                patchModel->setNode(node.getNode());
             }
         }
     }
 
     if (progress)
         progress->stats()["fetch_patches_time"] += OE_STOP_TIMER(fetch_patch_layers);
-#endif
 }
 
 

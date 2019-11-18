@@ -21,6 +21,7 @@
 #define OSGEARTH_PATCH_LAYER_H 1
 
 #include <osgEarth/VisibleLayer>
+#include <osgEarth/GeoData>
 #include <osg/RenderInfo>
 #include <osg/Texture>
 
@@ -43,6 +44,10 @@ namespace osgEarth
 
     public:
         META_Layer(osgEarth, PatchLayer, Options, VisibleLayer, Patch);
+
+        //! Create a node for a given tilekey
+        //! (Not yet implemented)
+        virtual GeoNode createNode(const TileKey& key, ProgressCallback* progress =0L) final;
 
         //! API providing access to patch geometry 
         class OSGEARTH_EXPORT GeometryArrayProvider
@@ -87,7 +92,6 @@ namespace osgEarth
             virtual bool acceptKey(const TileKey& key) const { return true; }
         };
 
-
     public:
 
         /**
@@ -104,11 +108,17 @@ namespace osgEarth
 
     protected:
 
-        /** dtor */
+        // default destructor
         virtual ~PatchLayer() { }
 
-        // post-ctor initialization, chain to subclasses.
+        //! post-ctor initialization, chain to super/subclasses.
         virtual void init();
+
+        //! Optional implementation of createNode.
+        //! (Not yet implemented)
+        virtual GeoNode createNodeImplementation(const TileKey& key, ProgressCallback* progress) const {
+            return GeoNode::INVALID;
+        }
 
     private:
         osg::ref_ptr<DrawCallback> _drawCallback;

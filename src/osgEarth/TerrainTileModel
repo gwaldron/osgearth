@@ -27,6 +27,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osg/Texture>
 #include <osg/Matrix>
+#include <osg/Node>
 
 namespace osgEarth
 {
@@ -112,9 +113,14 @@ namespace osgEarth
         void setPatchLayer(PatchLayer* layer) { _layer = layer; }
         const PatchLayer* getPatchLayer() const { return _layer.get(); }
 
+        //! Node payload
+        void setNode(osg::Node* node) { _node = node; }
+        osg::ref_ptr<osg::Node> getNode() const { return _node; }
+
     protected:
         virtual ~TerrainTilePatchLayerModel() { }
         osg::ref_ptr<PatchLayer> _layer;
+        osg::ref_ptr<osg::Node> _node;
     };
     typedef std::vector< osg::ref_ptr<TerrainTilePatchLayerModel> > TerrainTilePatchLayerModelVector;
 

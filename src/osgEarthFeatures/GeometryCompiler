@@ -112,6 +112,10 @@ namespace osgEarth { namespace Features
         optional<bool>& useGPUScreenSpaceLines() { return _useGPULines; }
         const optional<bool>& useGPUScreenSpaceLines() const { return _useGPULines; }
 
+        /** Whether to use OSG tessellator (default=false) */
+        optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
+        const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
+
     public:
         Config getConfig() const;
 
@@ -135,7 +139,7 @@ namespace osgEarth { namespace Features
         optional<bool>                 _validate;
         optional<float>                _maxPolyTilingAngle;
         optional<bool>                 _useGPULines;
-
+        optional<bool>                 _useOSGTessellator;
 
         static GeometryCompilerOptions s_defaults;
 

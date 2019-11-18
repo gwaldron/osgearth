@@ -162,7 +162,7 @@ GroundCover::getOrCreateStateSet()
 
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", options().wind().get()));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 0.5f));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 1.0f)); //0.5f));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
 
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_density", options().density().get()));

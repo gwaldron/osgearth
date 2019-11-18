@@ -26,6 +26,7 @@
 #include <osgEarth/CameraUtils>
 #include <osgEarth/Shaders>
 #include <osgUtil/CullVisitor>
+#include <osgEarth/LineDrawable>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
@@ -65,6 +66,7 @@ GroundCoverLayer::Options::getConfig() const
     conf.set("mask_layer", _maskLayer);
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
+    conf.set("grass", grass());
 
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
@@ -87,6 +89,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     conf.get("mask_layer", _maskLayer);
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
+    conf.get("grass", grass());
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {
@@ -201,11 +204,16 @@ GroundCoverLayer::init()
     _renderer = new Renderer();
     setDrawCallback(_renderer.get());
 #endif
+
+    _debug = (::getenv("OSGEARTH_GROUNDCOVER_DEBUG") != NULL);
 }
 
 Status
 GroundCoverLayer::openImplementation()
 {
+    if (_renderer.valid())
+        _renderer->_settings._grass = options().grass().get();
+
     return PatchLayer::openImplementation();
 }
 
@@ -452,7 +460,10 @@ GroundCoverLayer::buildStateSets()
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader.get());
 #else
-                shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
+                if (options().grass() == true)
+                    shaders.load(vp, shaders.Grass_VS, getReadOptions());
+                else
+                    shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
 
                 osg::Shader* covTest = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
                 covTest->setName(covTest->getName() + "_VERTEX");
@@ -461,6 +472,8 @@ GroundCoverLayer::buildStateSets()
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
                 layerShader->setType(osg::Shader::VERTEX);
                 vp->setShader(layerShader.get());
+
+                //zoneStateSet->setDefine("OE_GROUNDCOVER_NUM_INSTANCES", "132");
 
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
                 zoneStateSet->setDefine("OE_GROUNDCOVER_USE_INSTANCING");
@@ -534,13 +547,46 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
         _renderer->releaseGLObjects(state);
 
     PatchLayer::releaseGLObjects(state);
-
-    // For some unknown reason, release doesn't work on the zone 
-    // texture def data (SplatTextureDef). So we have to recreate
-    // it here.
-    //const_cast<GroundCoverLayer*>(this)->buildStateSets();
 }
 
+namespace
+{
+    osg::Node* makeBBox(const osg::BoundingBox& bbox, const TileKey& key)
+    {
+        osg::Group* geode = new osg::Group();
+
+        if ( bbox.valid() )
+        {
+            static const int index[24] = {
+                0,1, 1,3, 3,2, 2,0,
+                0,4, 1,5, 2,6, 3,7,
+                4,5, 5,7, 7,6, 6,4
+            };
+
+            LineDrawable* lines = new LineDrawable(GL_LINES);            
+            for(int i=0; i<24; i+=2)
+            {
+                lines->pushVertex(bbox.corner(index[i]));
+                lines->pushVertex(bbox.corner(index[i+1]));
+            }
+            lines->setColor(osg::Vec4(1,0,0,1));
+            lines->finish();
+
+            geode->addChild(lines);
+        }
+
+        return geode;
+    }
+}
+
+osg::Node*
+GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
+{
+    osg::Node* node = NULL;
+    if (_debug)
+        node = makeBBox(dc._geom->getBoundingBox(), *dc._key);
+    return node;
+}
 
 //........................................................................
 
@@ -558,7 +604,7 @@ GroundCoverLayer::Renderer::DrawState::DrawState()
 }
 
 void
-GroundCoverLayer::Renderer::DrawState::reset()
+GroundCoverLayer::Renderer::DrawState::reset(Settings* settings)
 {
     _tilesDrawnThisFrame = 0;
     _LLAppliedValue.set(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -566,15 +612,15 @@ GroundCoverLayer::Renderer::DrawState::reset()
 
     if (!_geom.valid())
     {
-        const unsigned tileSize = 132u; // matches GS density = 3.4
+        const unsigned tileSize = 128u;
         unsigned numInstances = tileSize*tileSize;
+
+        const unsigned vertsPerInstance = 8;
+        const unsigned indiciesPerInstance = 12;
 
         _geom = new osg::Geometry();
         _geom->setDataVariance(osg::Object::STATIC);
         _geom->setUseVertexBufferObjects(true);
-
-        //osg::Vec2Array* tc = new osg::Vec2Array();
-        //_geom->setTexCoordArray(0, tc);
 
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
 
@@ -583,66 +629,45 @@ GroundCoverLayer::Renderer::DrawState::reset()
 
 #else // big giant drawelements:
 
-        static const unsigned indiciesPerInstance = 12;
-        static const unsigned totalIndicies = numInstances * indiciesPerInstance;
+        const unsigned totalIndicies = numInstances * indiciesPerInstance;
         std::vector<GLuint> indices;
         indices.reserve(totalIndicies);
 
-//        tc->reserve(totalIndicies);
-
-#if 1
         for(unsigned i=0; i<numInstances; ++i)
         {
-            unsigned offset = i * 8;
+            unsigned offset = i * vertsPerInstance;
+
             indices.push_back(0 + offset);
             indices.push_back(1 + offset);
             indices.push_back(2 + offset);
             indices.push_back(1 + offset);
             indices.push_back(2 + offset);
             indices.push_back(3 + offset);
+
             indices.push_back(4 + offset);
             indices.push_back(5 + offset);
             indices.push_back(6 + offset);
             indices.push_back(5 + offset);
             indices.push_back(6 + offset);
             indices.push_back(7 + offset);
-            //std::vector<GLuint> instanceIndicies;
-            //instanceIndicies.reserve(8);
-            //for (size_t k = 0; k < 8; ++k)
-            //    instanceIndicies.push_back(static_cast<GLuint>(0 + offset));
-            //indices.insert(indices.begin() + (i * indiciesPerInstance), instanceIndicies.begin(), instanceIndicies.end());
-        }
-#else
-        unsigned offset = 0;
-        for (unsigned i = 0; i < tileSize; i++)
-        {
-            float v = (float)i/(float)(tileSize-1);
 
-            for(unsigned j=0; j<tileSize; ++j)
+            if (false) //settings->_grass)
             {
-                float u = (float)j/(float)(tileSize-1);
-
-                indices.push_back(0 + offset);
-                indices.push_back(1 + offset);
-                indices.push_back(2 + offset);
-                indices.push_back(1 + offset);
-                indices.push_back(2 + offset);
-                indices.push_back(3 + offset);
-                indices.push_back(4 + offset);
-                indices.push_back(5 + offset);
-                indices.push_back(6 + offset);
-                indices.push_back(5 + offset);
-                indices.push_back(6 + offset);
-                indices.push_back(7 + offset);
-                offset += 8;
+                indices.push_back(8 + offset);
+                indices.push_back(9 + offset);
+                indices.push_back(10 + offset);
+                indices.push_back(9 + offset);
+                indices.push_back(10 + offset);
+                indices.push_back(11 + offset);
             }
         }
-#endif
+
         _geom->addPrimitiveSet(new osg::DrawElementsUInt(GL_TRIANGLES, totalIndicies, indices.data(), 0));
 
-        //unsigned int numverts = numInstances * 8;
-        //osg::Vec3Array* coords = new osg::Vec3Array(numverts);
-        //_geom->setVertexArray(coords);        
+        // Do we need this at all?
+        unsigned int numverts = numInstances * vertsPerInstance;
+        osg::Vec3Array* coords = new osg::Vec3Array(numverts);
+        _geom->setVertexArray(coords);
 
 #endif // USE_INSTANCING_IN_VERTEX_SHADER
 
@@ -659,7 +684,8 @@ GroundCoverLayer::Renderer::Renderer()
 
     _drawStateBuffer.resize(64u);
 
-    _density = 1.0f;
+    _settings._density = 1.0f;
+    _settings._grass = false;
 }
 
 void
@@ -667,7 +693,7 @@ GroundCoverLayer::Renderer::preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Refer
 {
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
 
-    ds.reset();
+    ds.reset(&_settings);
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
     // Need to unbind any VAO since we'll be doing straight GL calls
@@ -749,6 +775,7 @@ GroundCoverLayer::Renderer::postDraw(osg::RenderInfo& ri, osg::Referenced* data)
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
     // Need to unbind our VAO so as not to confuse OSG
     ri.getState()->unbindVertexArrayObject();
+    ri.getState()->setLastAppliedProgramObject(NULL);
 #endif
 }
 
@@ -767,3 +794,4 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
             _drawStateBuffer[i]._geom->releaseGLObjects(state);
     }
 }
+

@@ -43,6 +43,7 @@ namespace osgEarth { namespace Splat
             OE_OPTION(std::string, maskLayer);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
+            OE_OPTION(bool, grass);
             OE_OPTION_VECTOR(ZoneOptions, zones);
             virtual Config getConfig() const;
         private:
@@ -83,6 +84,9 @@ namespace osgEarth { namespace Splat
 
         //! Override layer open
         virtual Status openImplementation();
+
+        //! Get geometry for a tilekey
+        virtual osg::Node* createNodeImplementation(const DrawContext& dc);
 
     public:
 
@@ -135,12 +139,18 @@ namespace osgEarth { namespace Splat
         {
             Renderer();
 
+            struct Settings
+            {
+                float _density;
+                bool _grass;
+            };
+
             // Tracks a GL state to minimize state changes
             struct DrawState
             {
                 DrawState();
 
-                void reset();
+                void reset(Settings*);
 
                 osg::ref_ptr<osg::Geometry> _geom;
 
@@ -167,7 +177,6 @@ namespace osgEarth { namespace Splat
             osg::buffered_object<DrawState> _drawStateBuffer;
 
             // uniform IDs
-            float _density;
             unsigned _numInstancesUName;
             unsigned _LLUName, _URUName;
             unsigned _LLNormalUName, _URNormalUName;
@@ -179,9 +188,14 @@ namespace osgEarth { namespace Splat
 
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
+
+            Settings _settings;
         };
 
         osg::ref_ptr<Renderer> _renderer;
+
+        bool _debug;
+        osg::ref_ptr<osg::Drawable> _debugDrawable;
     };
 
 } } // namespace osgEarth::Splat

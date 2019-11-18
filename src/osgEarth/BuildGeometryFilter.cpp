@@ -747,15 +747,23 @@ namespace
      * Tesselates an osg::Geometry using the osgEarth tesselator.
      * If it fails, fall back to the osgUtil tesselator.
      */
-    bool tesselateGeometry(osg::Geometry* geometry)
+    bool tesselateGeometry(osg::Geometry* geometry, bool useOSGTessellator)
     {
-        osgEarth::Tessellator oeTess;
-        if ( !oeTess.tessellateGeometry(*geometry) )
-        {
+        if (useOSGTessellator) {
             osgUtil::Tessellator tess;
-            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-            tess.retessellatePolygons( *geometry );
+            tess.setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
+            tess.setWindingType(osgUtil::Tessellator::TESS_WINDING_ODD);
+            tess.retessellatePolygons(*geometry);
+        }
+        else {
+            osgEarth::Tessellator oeTess;
+            if (!oeTess.tessellateGeometry(*geometry))
+            {
+                osgUtil::Tessellator tess;
+                tess.setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
+                tess.setWindingType(osgUtil::Tessellator::TESS_WINDING_POSITIVE);
+                tess.retessellatePolygons(*geometry);
+            }
         }
 
         // Make sure all of the primitive sets are osg::DrawElementsUInt
@@ -972,7 +980,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
             if ( temp->getNumPrimitiveSets() > 0 )
             {
                 // Tesselate the polygon while the coordinates are still in the LTP
-                if (tesselateGeometry( temp.get() ))
+                if (tesselateGeometry( temp.get(), useOSGTessellator().value() ))
                 {
                     osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(temp->getVertexArray());
                     if ( verts->getNumElements() > 0 )

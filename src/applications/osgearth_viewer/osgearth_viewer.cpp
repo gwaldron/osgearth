@@ -26,7 +26,6 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
 #include <iostream>
 
 #define LC "[viewer] "
@@ -80,12 +79,10 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-        Metrics::run(viewer);
+        return viewer.run();
     }
     else
     {
         return usage(argv[0]);
     }
-
-    return 0;
 }

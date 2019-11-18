@@ -722,14 +722,6 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     ss->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), osg::StateAttribute::ON);
     ss->addUniform(new osg::Uniform("tdt_tex", 0));
 
-    //rootStateSet->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), osg::StateAttribute::ON);
-    //osgEarth::ShaderGenerator gen;
-    //osg::ref_ptr<osg::StateSet> ss = gen.run(rootStateSet);
-    //if (ss.valid())
-    //{
-    //    setStateSet(ss);
-    //}
-
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
 }
 

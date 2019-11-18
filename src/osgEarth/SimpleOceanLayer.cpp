@@ -154,6 +154,7 @@ SimpleOceanLayer::setSurfaceImage(osg::Image* image)
         tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
         tex->setWrap(tex->WRAP_S, tex->REPEAT);
         tex->setWrap(tex->WRAP_T, tex->REPEAT);
+        tex->setUnRefImageDataAfterApply(true);
 
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setTextureAttributeAndModes(_texReservation.unit(), tex, 1); // todo: reserve a slot

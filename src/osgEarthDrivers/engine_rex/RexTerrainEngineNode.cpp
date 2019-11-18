@@ -505,6 +505,7 @@ RexTerrainEngineNode::setupRenderBindings()
     OE_DEBUG << LC << "Render Bindings:\n";
     osg::StateSet* terrainSS = _terrain->getOrCreateStateSet();
     osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1, 1));
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     for (unsigned i = 0; i < _renderBindings.size(); ++i)
     {
         SamplerBinding& b = _renderBindings[i];
@@ -1048,6 +1049,7 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                     {
                         osg::StateSet* terrainSS = _terrain->getOrCreateStateSet();
                         osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+                        tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
                         terrainSS->addUniform(new osg::Uniform(newBinding.samplerName().c_str(), newBinding.unit()));
                         terrainSS->setTextureAttribute(newBinding.unit(), tex.get(), 1);
                         OE_INFO << LC << "Bound shared sampler " << newBinding.samplerName() << " to unit " << newBinding.unit() << std::endl;

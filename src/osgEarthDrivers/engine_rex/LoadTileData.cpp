@@ -91,6 +91,13 @@ LoadTileData::invoke(ProgressCallback* progress)
         _dataModel = 0L;
         setState(Request::IDLE);
     }
+
+    // In the terrain engine, we have to keep our elevation rasters in 
+    // memory since we use them to build intersection graphs.
+    if (_dataModel.valid() && _dataModel->getElevationTexture())
+    {
+        _dataModel->getElevationTexture()->setUnRefImageDataAfterApply(false);
+    }
 }
 
 

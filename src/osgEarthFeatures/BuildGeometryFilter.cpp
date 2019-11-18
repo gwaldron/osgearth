@@ -1054,8 +1054,6 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
     if ( !ring->isValid() )
         return;
 
-    ring->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
-
     osg::ref_ptr<osg::Vec3Array> allPoints = new osg::Vec3Array();
     transformAndLocalize( ring->asVector(), featureSRS, allPoints.get(), outputSRS, world2local, makeECEF );
 
@@ -1070,8 +1068,6 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             Geometry* hole = h->get();
             if ( hole->isValid() )
             {
-                hole->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CW);
-
                 osg::ref_ptr<osg::Vec3Array> holePoints = new osg::Vec3Array();
                 transformAndLocalize( hole->asVector(), featureSRS, holePoints.get(), outputSRS, world2local, makeECEF );
 

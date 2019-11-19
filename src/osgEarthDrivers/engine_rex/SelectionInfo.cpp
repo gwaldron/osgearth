@@ -78,6 +78,8 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
     double prevPos = 0.0;
 
+    OE_INFO << LC << "Terrain tile LODs:" << std::endl;
+
     for (int lod=(int)(numLods-1); lod>=0; --lod)
     {
         double span = _lods[lod]._visibilityRange - prevPos;
@@ -111,17 +113,14 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
                 {
                     _lods[lod]._minValidTY = osg::minimum(y+1, (int)(ty-1));
                     _lods[lod]._maxValidTY = (ty-1)-_lods[lod]._minValidTY;
-                    OE_DEBUG << "LOD " << lod 
-                        << " TY=" << ty
-                        << " minAR=" << minAR
-                        << " minTY=" << _lods[lod]._minValidTY
-                        << " maxTY=" << _lods[lod]._maxValidTY
-                        << " (+/-" << lat << " deg)"
-                        << std::endl;
                     break;
                 }
             }
         }
+
+        OE_INFO << LC << "  LOD " << lod 
+            << " RNG=" << _lods[lod]._visibilityRange
+            << std::endl;
     }
 }
 

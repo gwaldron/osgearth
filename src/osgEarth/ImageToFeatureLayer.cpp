@@ -38,7 +38,7 @@ namespace osgEarth {
 Config
 ImageToFeatureSource::Options::getConfig() const {
     Config conf = FeatureSource::Options::getConfig();
-    LayerClient<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
     conf.set("level", level());
     conf.set("attribute", attribute());
     return conf;
@@ -50,7 +50,7 @@ ImageToFeatureSource::Options::fromConfig(const Config& conf)
     level().init(0u);
     attribute().init("value");
 
-    LayerClient<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
     conf.get("level", level());
     conf.get("attribute", attribute());
 }
@@ -69,13 +69,13 @@ ImageToFeatureSource::init()
 void
 ImageToFeatureSource::setImageLayer(ImageLayer* layer)
 {
-    _client.setLayer(layer);
+    _imageLayer.setLayer(layer);
 }
 
 ImageLayer*
 ImageToFeatureSource::getImageLayer() const
 {
-    return _client.getLayer();
+    return _imageLayer.getLayer();
 }
 
 Status
@@ -103,23 +103,14 @@ void
 ImageToFeatureSource::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap" << std::endl;
-    _client.addedToMap(options().imageLayerName(), map);
+    _imageLayer.connect(map, options().imageLayerName());
     FeatureSource::addedToMap(map);
-
-    //if (_layer.valid() == false && options().imageLayer().isSet())
-    //{
-    //    _imageLayerListener.listen(
-    //        map,
-    //        options().imageLayer().get(),
-    //        this,
-    //        &ImageToFeatureSource::setImageLayer);
-    //}
 }
 
 void
 ImageToFeatureSource::removedFromMap(const Map* map)
 {
-    _client.removedFromMap(map);
+    _imageLayer.disconnect(map);
     FeatureSource::removedFromMap(map);
 }
 

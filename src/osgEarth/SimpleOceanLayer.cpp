@@ -171,7 +171,7 @@ SimpleOceanLayer::setSurfaceImage(osg::Image* image)
 }
 
 void
-SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
+SimpleOceanLayer::setMaskLayer(ImageLayer* maskLayer)
 {
     if (maskLayer)
     {
@@ -188,7 +188,7 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
         }
 
         // Just to support getMaskLayer
-        _maskLayer = maskLayer;
+        _maskLayer.setLayer(maskLayer);
 
         // activate the mask.
         osg::StateSet* ss = getOrCreateStateSet();
@@ -208,34 +208,24 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
     }
 }
 
-const ImageLayer*
+ImageLayer*
 SimpleOceanLayer::getMaskLayer() const
 {
-    return _maskLayer.get();
+    return _maskLayer.getLayer();
 }
 
 void
 SimpleOceanLayer::addedToMap(const Map* map)
 {    
     VisibleLayer::addedToMap(map);
-
-    if (options().maskLayer().isSet())
-    {
-        // listen for the mask layer.
-        _layerListener.listen(map, options().maskLayer().get(), this, &SimpleOceanLayer::setMaskLayer);
-    }      
+    _maskLayer.connect(map, options().maskLayer());
 }
 
 void
 SimpleOceanLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
-
-    if (options().maskLayer().isSet())
-    {
-        _layerListener.clear();
-        setMaskLayer(0L);
-    }
+    _maskLayer.disconnect(map);
 }
 
 void

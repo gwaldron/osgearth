@@ -62,8 +62,8 @@ Config
 GroundCoverLayer::Options::getConfig() const
 {
     Config conf = PatchLayer::Options::getConfig();
-    conf.set("land_cover_layer", _landCoverLayer);
-    conf.set("mask_layer", _maskLayer);
+    LayerReference<LandCoverLayer>::getConfig(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
+    LayerReference<ImageLayer>::getConfig(conf, "mask_layer", maskLayerName(), maskLayer());
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
     conf.set("grass", grass());
@@ -85,8 +85,8 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     _lod.init(13u);
     _castShadows.init(false);
 
-    conf.get("land_cover_layer", _landCoverLayer);
-    conf.get("mask_layer", _maskLayer);
+    LayerReference<LandCoverLayer>::fromConfig(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
+    LayerReference<ImageLayer>::fromConfig(conf, "mask_layer", maskLayerName(), maskLayer());
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
     conf.get("grass", grass());
@@ -220,37 +220,37 @@ GroundCoverLayer::openImplementation()
 void
 GroundCoverLayer::setLandCoverDictionary(LandCoverDictionary* layer)
 {
-    _landCoverDict = layer;
+    _landCoverDict.setLayer(layer);
     if (layer)
         buildStateSets();
 }
 
-const LandCoverDictionary*
+LandCoverDictionary*
 GroundCoverLayer::getLandCoverDictionary() const
 {
-    return _landCoverDict.get();
+    return _landCoverDict.getLayer();
 }
 
 void
 GroundCoverLayer::setLandCoverLayer(LandCoverLayer* layer)
 {
-    _landCoverLayer = layer;
+    _landCoverLayer.setLayer(layer);
     if (layer) {
         OE_INFO << LC << "Land cover layer is \"" << layer->getName() << "\"\n";
         buildStateSets();
     }
 }
 
-const LandCoverLayer*
+LandCoverLayer*
 GroundCoverLayer::getLandCoverLayer() const
 {
-    return _landCoverLayer.get();
+    return _landCoverLayer.getLayer();
 }
 
 void
 GroundCoverLayer::setMaskLayer(ImageLayer* layer)
 {
-    _maskLayer = layer;
+    _maskLayer.setLayer(layer);
     if (layer)
     {
         OE_INFO << LC << "Mask layer is \"" << layer->getName() << "\"\n";
@@ -258,10 +258,10 @@ GroundCoverLayer::setMaskLayer(ImageLayer* layer)
     }
 }
 
-const ImageLayer*
+ImageLayer*
 GroundCoverLayer::getMaskLayer() const
 {
-    return _maskLayer.get();
+    return _maskLayer.getLayer();
 }
 
 void
@@ -269,20 +269,9 @@ GroundCoverLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);
 
-    if (!_landCoverDict.valid())
-    {
-        _landCoverDictListener.listen(map, this, &GroundCoverLayer::setLandCoverDictionary);
-    }
-
-    if (!_landCoverLayer.valid() && options().landCoverLayer().isSet())
-    {
-        _landCoverListener.listen(map, options().landCoverLayer().get(), this, &GroundCoverLayer::setLandCoverLayer);
-    }
-
-    if (options().maskLayer().isSet())
-    {
-        _maskLayerListener.listen(map, options().maskLayer().get(), this, &GroundCoverLayer::setMaskLayer);
-    }
+    _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
+    _landCoverLayer.connect(map, options().landCoverLayerName());
+    _maskLayer.connect(map, options().maskLayerName());
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
     {
@@ -370,15 +359,13 @@ GroundCoverLayer::buildStateSets()
         OE_DEBUG << LC << "buildStateSets deferred.. zones not yet configured\n";
         return;
     }
-    
-    osg::ref_ptr<LandCoverDictionary> landCoverDict;
-    if (_landCoverDict.lock(landCoverDict) == false) {
+
+    if (!getLandCoverDictionary()) {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover dictionary not available\n";
         return;
     }
     
-    osg::ref_ptr<LandCoverLayer> landCoverLayer;
-    if (_landCoverLayer.lock(landCoverLayer) == false) {
+    if (!getLandCoverLayer()) {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover layer not available\n";
         return;
     }
@@ -395,10 +382,10 @@ GroundCoverLayer::buildStateSets()
     stateset->setTextureAttribute(_noiseBinding.unit(), noiseTexture.get());
     stateset->addUniform(new osg::Uniform(NOISE_SAMPLER, _noiseBinding.unit()));
 
-    if (_maskLayer.valid())
+    if (getMaskLayer())
     {
-        stateset->setDefine("OE_GROUNDCOVER_MASK_SAMPLER", _maskLayer->shareTexUniformName().get());
-        stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", _maskLayer->shareTexMatUniformName().get());
+        stateset->setDefine("OE_GROUNDCOVER_MASK_SAMPLER", getMaskLayer()->shareTexUniformName().get());
+        stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", getMaskLayer()->shareTexMatUniformName().get());
     }
 
     // disable backface culling to support shadow/depth cameras,
@@ -465,7 +452,7 @@ GroundCoverLayer::buildStateSets()
                 else
                     shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
 
-                osg::Shader* covTest = groundCover->createPredicateShader(_landCoverDict.get(), _landCoverLayer.get());
+                osg::Shader* covTest = groundCover->createPredicateShader(getLandCoverDictionary(), getLandCoverLayer());
                 covTest->setName(covTest->getName() + "_VERTEX");
                 covTest->setType(osg::Shader::VERTEX);
 

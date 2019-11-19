@@ -61,7 +61,7 @@ MGRSGraticule::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("sqid_data", sqidData() );
     conf.set("use_default_styles", useDefaultStyles() );
-    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
     return conf;
 }
 
@@ -72,7 +72,7 @@ MGRSGraticule::Options::fromConfig(const Config& conf)
     sqidData().init(URI("../data/mgrs_sqid.bin", conf.referrer()));
     conf.get("sqid_data", sqidData() );
     conf.get("use_default_styles", useDefaultStyles() );
-    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
 }
 
 //---------------------------------------------------------------------------
@@ -358,7 +358,7 @@ void
 MGRSGraticule::addedToMap(const Map* map)
 {
     VisibleLayer::addedToMap(map);
-    _styleSheet.addedToMap(options().styleSheetLayer(), map);
+    _styleSheet.connect(map, options().styleSheetLayer());
     _map = map;
     rebuild();
 }
@@ -367,7 +367,7 @@ void
 MGRSGraticule::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
-    _styleSheet.removedFromMap(map);
+    _styleSheet.disconnect(map);
     _map = 0L;
 }
 

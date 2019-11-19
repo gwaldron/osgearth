@@ -284,7 +284,7 @@ LandCoverLayer::addedToMap(const Map* map)
     // There had better be one, or we are not going to get very far!
     // This is called after createTileSource, so the TileSource should exist at this point.
     // Note. If the land cover dictionary isn't already in the Map...this will fail! (TODO)
-    // Consider a LayerListener. (TODO)
+    // Consider a LayerReference. (TODO)
     _lcDictionary = map->getLayer<LandCoverDictionary>();
     if (_lcDictionary.valid())
     {

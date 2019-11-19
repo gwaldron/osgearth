@@ -157,8 +157,8 @@ Config
 FeatureImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
-    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.set("gamma", gamma());
     return conf;
 }
@@ -167,8 +167,8 @@ void
 FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
     gamma().init(1.3);
-    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
-    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.get("gamma", gamma());
 }
 
@@ -216,15 +216,13 @@ FeatureImageLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
-    _featureSource.addedToMap(options().featureSourceLayer(), map);
-
-    _styleSheet.addedToMap(options().styleSheetLayer(), map);
-
-    _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
+    _featureSource.connect(map, options().featureSourceLayer());
+    _styleSheet.connect(map, options().styleSheetLayer());
 
     if (getFeatureSource())
     {
-        establishSession();
+        _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
+        updateSession();
     }
 }
 
@@ -232,8 +230,8 @@ void
 FeatureImageLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _featureSource.removedFromMap(map);
-    _styleSheet.removedFromMap(map);
+    _featureSource.disconnect(map);
+    _styleSheet.disconnect(map);
 }
 
 void
@@ -254,16 +252,29 @@ FeatureImageLayer::setFeatureSource(FeatureSource* fs)
             {
                 // with a new feature source, we need to re-establish
                 // the data extents and open a new session.
-                establishSession();
+                updateSession();
             }
         }
     }
 }
 
 void
-FeatureImageLayer::establishSession()
+FeatureImageLayer::setStyleSheet(StyleSheet* value)
 {
-    if (getFeatureSource())
+    if (getStyleSheet() != value)
+    {
+        _styleSheet.setLayer(value);
+        if (_session.valid())
+        {
+            _session->setStyles(getStyleSheet());
+        }
+    }
+}
+
+void
+FeatureImageLayer::updateSession()
+{
+    if (_session.valid() && getFeatureSource())
     {
         const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
 
@@ -293,11 +304,8 @@ FeatureImageLayer::establishSession()
             }
         }
 
-        if (_session.valid())
-        {
-            _session->setFeatureSource(getFeatureSource());
-            _session->setStyles(getStyleSheet());
-        }
+        _session->setFeatureSource(getFeatureSource());
+        _session->setStyles(getStyleSheet());
     }
 }
 

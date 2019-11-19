@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
 #include <osgEarth/ElevationLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/URI>
 #include <osgEarth/LandCoverLayer>
 

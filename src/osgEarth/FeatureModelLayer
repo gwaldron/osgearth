@@ -26,7 +26,7 @@
 #include <osgEarth/Session>
 #include <osgEarth/Style>
 #include <osgEarth/Layer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth {
     class Map;
@@ -121,8 +121,8 @@ namespace osgEarth
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
     private:
-        LayerClient<FeatureSource> _featureSource;
-        LayerClient<StyleSheet> _styleSheet;
+        LayerReference<FeatureSource> _featureSource;
+        LayerReference<StyleSheet> _styleSheet;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
         bool _graphDirty;

@@ -33,14 +33,14 @@ REGISTER_OSGEARTH_LAYER(feature_mask, FeatureMaskLayer);
 void
 FeatureMaskLayer::Options::fromConfig(const Config& conf)
 {
-    LayerClient<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
 }
 
 Config
 FeatureMaskLayer::Options::getConfig() const
 {
     Config conf = MaskLayer::Options::getConfig();
-    LayerClient<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
     return conf;
 }
 
@@ -49,13 +49,13 @@ FeatureMaskLayer::Options::getConfig() const
 void
 FeatureMaskLayer::setFeatureSource(FeatureSource* layer)
 {
-    _client.setLayer(layer);
+    _featureSource.setLayer(layer);
 }
 
 FeatureSource*
 FeatureMaskLayer::getFeatureSource() const
 {
-    return _client.getLayer();
+    return _featureSource.getLayer();
 }
 
 Status
@@ -65,7 +65,7 @@ FeatureMaskLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
@@ -108,8 +108,7 @@ FeatureMaskLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
     MaskLayer::addedToMap(map);
-    _client.addedToMap(options().featureSourceLayer(), map);
-
+    _featureSource.connect(map, options().featureSourceLayer());
     create();
 }
 
@@ -117,7 +116,7 @@ void
 FeatureMaskLayer::removedFromMap(const Map* map)
 {
     MaskLayer::removedFromMap(map);
-    _client.removedFromMap(map);
+    _featureSource.disconnect(map);
 }
 
 void

@@ -40,8 +40,8 @@ Config
 RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
-    LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.set("buffer_width", featureBufferWidth() );
     return conf;
 }
@@ -49,8 +49,8 @@ RoadSurfaceLayer::Options::getConfig() const
 void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
-    LayerClient<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
     conf.get("buffer_width", featureBufferWidth() );
 }
 
@@ -104,16 +104,16 @@ RoadSurfaceLayer::addedToMap(const Map* map)
     _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    _featureSource.addedToMap(options().featureSourceLayer(), map);
-    _styleSheet.addedToMap(options().styleSheetLayer(), map);
+    _featureSource.connect(map, options().featureSourceLayer());
+    _styleSheet.connect(map, options().styleSheetLayer());
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _featureSource.removedFromMap(map);
-    _styleSheet.removedFromMap(map);
+    _featureSource.disconnect(map);
+    _styleSheet.disconnect(map);
     _session = 0L;
 }
 

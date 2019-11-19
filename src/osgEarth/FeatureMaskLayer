@@ -24,7 +24,7 @@
 #include <osgEarth/FeatureSource>
 
 #include <osgEarth/MaskLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth
 {
@@ -80,7 +80,7 @@ namespace osgEarth
 
     private:
 
-        LayerClient<FeatureSource> _client;
+        LayerReference<FeatureSource> _featureSource;
 
         void create();
 

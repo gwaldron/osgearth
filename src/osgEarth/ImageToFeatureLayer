@@ -21,7 +21,7 @@
 #define OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H 1
 
 #include <osgEarth/FeatureSource>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/ImageLayer>
 
 namespace osgEarth
@@ -79,7 +79,7 @@ namespace osgEarth
 
     protected:
         
-        LayerClient<ImageLayer> _client;
+        LayerReference<ImageLayer> _imageLayer;
     };
 
     namespace Features {

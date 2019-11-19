@@ -24,7 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth { namespace Contrib
 {
@@ -49,8 +49,8 @@ namespace osgEarth { namespace Contrib
         META_Layer(osgEarth, SkyViewImageLayer, Options, ImageLayer, SkyView);
 
         //! Image layer to render in skyview mode
-        void setImageLayer(ImageLayer* layer) { _client.setLayer(layer); }
-        ImageLayer* getImageLayer() const { return _client.getLayer(); }
+        void setImageLayer(ImageLayer* layer) { _imageLayer.setLayer(layer); }
+        ImageLayer* getImageLayer() const { return _imageLayer.getLayer(); }
 
     public: // Layer
 
@@ -68,9 +68,7 @@ namespace osgEarth { namespace Contrib
         //! Destructor
         virtual ~SkyViewImageLayer() { }
 
-        //osg::ref_ptr<ImageLayer> _imageLayer;
-
-        LayerClient<ImageLayer> _client;
+        LayerReference<ImageLayer> _imageLayer;
     };
 
 } } // namespace osgEarth:Contrib

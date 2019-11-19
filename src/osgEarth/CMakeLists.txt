@@ -140,7 +140,7 @@ SET(LIB_PUBLIC_HEADERS
     LandCover
     LandCoverLayer
     Layer
-    LayerListener
+    LayerReference
     LayerShader
     Lighting
     LineDrawable

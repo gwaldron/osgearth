@@ -330,12 +330,12 @@ namespace
         return 0L;
     }
 
-    bool addLayer(const Config& conf, Map* map)
+    bool addLayer(const Config& conf, LayerVector& layers)
     {
         Layer* layer = Layer::create(conf);
         if (layer)
         {
-            map->addLayer(layer);
+            layers.push_back(layer);
         }
         return layer != 0L;
     }
@@ -537,6 +537,8 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
     // Start a batch update of the map:
     map->beginUpdate();
 
+    LayerVector layers;
+
     // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
     // TODO: revisit this since we should really be listening for elevation data changes and
     // re-clamping based on that..
@@ -547,12 +549,12 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
         {
             Config temp = *i;
             temp.key() = "elevation";
-            addLayer(temp, map.get());
+            addLayer(temp, layers);
         }
 
         else if ( i->key() == "elevation" )
         {
-            addLayer(*i, map.get());
+            addLayer(*i, layers);
         }
     }
 
@@ -582,7 +584,7 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
         else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
             // try to add as a plugin Layer first:
-            bool addedLayer = addLayer(*i, map.get()); 
+            bool addedLayer = addLayer(*i, layers); 
 
             // failing that, try to load as an extension:
             if ( !addedLayer )
@@ -593,6 +595,9 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
             }
         }
     }
+
+    // Add our layers as a batch
+    map->addLayers(layers);
 
     // Complete the batch update of the map
     map->endUpdate();

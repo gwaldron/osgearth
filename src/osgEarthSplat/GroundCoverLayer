@@ -26,7 +26,7 @@
 #include "Coverage"
 #include "Zone"
 #include <osgEarth/PatchLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
 
 namespace osgEarth { namespace Splat
@@ -39,8 +39,10 @@ namespace osgEarth { namespace Splat
         class OSGEARTHSPLAT_EXPORT Options : public PatchLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
-            OE_OPTION(std::string, landCoverLayer);
-            OE_OPTION(std::string, maskLayer);
+            OE_OPTION(LandCoverLayer::Options, landCoverLayer);
+            OE_OPTION(std::string, landCoverLayerName);
+            OE_OPTION(ImageLayer::Options, maskLayer);
+            OE_OPTION(std::string, maskLayerName);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
             OE_OPTION(bool, grass);
@@ -55,15 +57,15 @@ namespace osgEarth { namespace Splat
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);
-        const LandCoverLayer* getLandCoverLayer() const;
+        LandCoverLayer* getLandCoverLayer() const;
 
         //! Layer containing the land cover dictionary.
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
-        const LandCoverDictionary* getLandCoverDictionary() const;
+        LandCoverDictionary* getLandCoverDictionary() const;
 
         //! Masking layer (optional)
         void setMaskLayer(ImageLayer* layer);
-        const ImageLayer* getMaskLayer() const;
+        ImageLayer* getMaskLayer() const;
 
         //! LOD at which to draw ground cover
         void setLOD(const unsigned& value);
@@ -101,13 +103,9 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~GroundCoverLayer() { }
 
-        osg::observer_ptr<LandCoverDictionary> _landCoverDict;
-        osg::observer_ptr<LandCoverLayer> _landCoverLayer;
-        osg::observer_ptr<ImageLayer> _maskLayer;
-
-        LayerListener<GroundCoverLayer, LandCoverDictionary> _landCoverDictListener;
-        LayerListener<GroundCoverLayer, LandCoverLayer> _landCoverListener;
-        LayerListener<GroundCoverLayer, ImageLayer> _maskLayerListener;
+        LayerReference<LandCoverDictionary> _landCoverDict;
+        LayerReference<LandCoverLayer> _landCoverLayer;
+        LayerReference<ImageLayer> _maskLayer;
 
         TextureImageUnitReservation _groundCoverTexBinding;
         TextureImageUnitReservation _noiseBinding;

@@ -44,14 +44,14 @@ Config
 SkyViewImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerClient<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
     return conf;
 }
 
 void
 SkyViewImageLayer::Options::fromConfig(const Config& conf)
 {
-    LayerClient<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
 }
 
 //........................................................................
@@ -72,7 +72,7 @@ SkyViewImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status imageStatus = _client.open(options().imageLayer(), getReadOptions());
+    Status imageStatus = _imageLayer.open(options().imageLayer(), getReadOptions());
     if (imageStatus.isError())
         return imageStatus;
 

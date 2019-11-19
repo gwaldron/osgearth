@@ -416,8 +416,8 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     else
     {
 #if 0
-        const std::string& sampler = layer->shareTexUniformName().get();
-        const std::string& matrix  = layer->shareTexMatUniformName().get();
+        const std::string& sampler = layer->getSharedTextureUniformName());
+        const std::string& matrix  = layer->getSharedTextureMatrixUniformName());
         buf << "uniform sampler2D " << sampler << ";\n"
             << "uniform mat4 " << matrix << ";\n"
             << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"

@@ -412,8 +412,8 @@ GroundCoverLayer::buildStateSets()
 
     if (getMaskLayer())
     {
-        stateset->setDefine("OE_GROUNDCOVER_MASK_SAMPLER", getMaskLayer()->shareTexUniformName().get());
-        stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", getMaskLayer()->shareTexMatUniformName().get());
+        stateset->setDefine("OE_GROUNDCOVER_MASK_SAMPLER", getMaskLayer()->getSharedTextureUniformName());
+        stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", getMaskLayer()->getSharedTextureMatrixUniformName());
     }
 
     // disable backface culling to support shadow/depth cameras,
@@ -451,8 +451,8 @@ GroundCoverLayer::buildStateSets()
                 shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
                 // Bind the coverage sampler and its matrix:
-                zoneStateSet->setDefine("OE_LANDCOVER_TEX", getLandCoverLayer()->shareTexUniformName().get());
-                zoneStateSet->setDefine("OE_LANDCOVER_TEX_MATRIX", getLandCoverLayer()->shareTexMatUniformName().get());
+                zoneStateSet->setDefine("OE_LANDCOVER_TEX", getLandCoverLayer()->getSharedTextureUniformName());
+                zoneStateSet->setDefine("OE_LANDCOVER_TEX_MATRIX", getLandCoverLayer()->getSharedTextureMatrixUniformName());
 
                 // Generate the coverage acceptor shader
 #ifdef USE_GEOMETRY_SHADER

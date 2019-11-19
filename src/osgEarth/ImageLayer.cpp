@@ -242,6 +242,8 @@ REGISTER_OSGEARTH_LAYER(image, ImageLayer);
 
 OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Shared, shared);
 OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
+OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureUniformName, shareTexUniformName);
+OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureMatrixUniformName, shareTexMatUniformName);
 
 Status
 ImageLayer::openImplementation()
@@ -253,15 +255,11 @@ ImageLayer::openImplementation()
     if (!_emptyImage.valid())
         _emptyImage = ImageUtils::createEmptyImage();
 
-    if ( options().shareTexUniformName().isSet() )
-        _shareTexUniformName = options().shareTexUniformName().get();
-    else
-        _shareTexUniformName.init( Stringify() << "layer_" << getUID() << "_tex" );
+    if (!options().shareTexUniformName().isSet())
+        options().shareTexUniformName().init( Stringify() << "layer_" << getUID() << "_tex" );
 
-    if ( options().shareTexMatUniformName().isSet() )
-        _shareTexMatUniformName = options().shareTexMatUniformName().get();
-    else
-        _shareTexMatUniformName.init(Stringify() << _shareTexUniformName.get() << "_matrix");
+    if (!options().shareTexMatUniformName().isSet() )
+        options().shareTexMatUniformName().init(Stringify() << options().shareTexUniformName().get() << "_matrix");
 
     // If we are using createTexture to make image tiles,
     // we don't need to load a tile source plugin.

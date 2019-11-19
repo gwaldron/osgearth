@@ -54,6 +54,7 @@ ConfigOptions(co),
 _lod(14),
 _maxDistance(1000.0f),
 _density(1.0f),
+_spacing(25.0f),
 _fill(1.0f),
 _wind(0.0f),
 _brightness(1.0f),
@@ -71,6 +72,7 @@ GroundCoverOptions::getConfig() const
     conf.set("lod", _lod);
     conf.set("max_distance", _maxDistance);
     conf.set("density", _density);
+    conf.set("spacing", _spacing);
     conf.set("fill", _fill);
     conf.set("wind", _wind);
     conf.set("brightness", _brightness);
@@ -92,6 +94,7 @@ GroundCoverOptions::fromConfig(const Config& conf)
     conf.get("lod", _lod);
     conf.get("max_distance", _maxDistance);
     conf.get("density", _density);
+    conf.get("spacing", _spacing);
     conf.get("fill", _fill);
     conf.get("wind", _wind);
     conf.get("brightness", _brightness);
@@ -176,17 +179,16 @@ GroundCover::getOrCreateStateSet()
     return _stateSet.get();
 }
 
-#define SET_GET_UNIFORM(NAME, UNIFORM) \
-    void GroundCover::set##NAME (float value) { getOrCreateStateSet()->getUniform(UNIFORM)->set(value); } \
-    float GroundCover::get##NAME () const { float value = 0.0f; if (getStateSet()) getStateSet()->getUniform(UNIFORM)->get(value); return value; }
+#define SET_GET_UNIFORM(NAME, PROP, UNIFORM) \
+    void GroundCover::set##NAME (float value) { getOrCreateStateSet()->getUniform(UNIFORM)->set(value); options(). PROP () = value; } \
+    float GroundCover::get##NAME () const { return options(). PROP() .get(); }
 
-SET_GET_UNIFORM(Wind, "oe_GroundCover_windFactor")
-SET_GET_UNIFORM(Density, "oe_GroundCover_density")
-SET_GET_UNIFORM(Fill, "oe_GroundCover_fill")
-SET_GET_UNIFORM(MaxDistance, "oe_GroundCover_maxDistance")
-SET_GET_UNIFORM(Brightness, "oe_GroundCover_brightness")
-SET_GET_UNIFORM(Contrast, "oe_GroundCover_contrast")
-
+SET_GET_UNIFORM(Wind, wind, "oe_GroundCover_windFactor")
+SET_GET_UNIFORM(Density, density, "oe_GroundCover_density")
+SET_GET_UNIFORM(Fill, fill, "oe_GroundCover_fill")
+SET_GET_UNIFORM(MaxDistance, maxDistance, "oe_GroundCover_maxDistance")
+SET_GET_UNIFORM(Brightness, brightness, "oe_GroundCover_brightness")
+SET_GET_UNIFORM(Contrast, contrast, "oe_GroundCover_contrast")
 
 osg::Shader*
 GroundCover::createShader() const

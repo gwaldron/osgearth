@@ -26,7 +26,7 @@
 #include "Coverage"
 #include "Zone"
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
 
 namespace osgEarth { namespace Splat
@@ -52,9 +52,11 @@ namespace osgEarth { namespace Splat
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);
+        LandCoverLayer* getLandCoverLayer() const { return _landCoverLayer.getLayer(); }
 
         //! Layer containing the land cover dictionary.
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
+        LandCoverDictionary* getLandCoverDictionary() const { return _landCoverDict.getLayer(); }
 
         //! Splatting zones
         Zones& getZones() { return _zones; }
@@ -80,11 +82,8 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatLayer() { }
 
-        osg::observer_ptr<LandCoverDictionary> _landCoverDict;
-        osg::observer_ptr<LandCoverLayer> _landCoverLayer;
-
-        LayerListener<SplatLayer, LandCoverDictionary> _landCoverDictListener;
-        LayerListener<SplatLayer, LandCoverLayer> _landCoverListener;
+        LayerReference<LandCoverDictionary> _landCoverDict;
+        LayerReference<LandCoverLayer> _landCoverLayer;
 
         TextureImageUnitReservation _splatBinding;
         TextureImageUnitReservation _lutBinding;

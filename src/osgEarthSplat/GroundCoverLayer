@@ -26,7 +26,7 @@
 #include "Coverage"
 #include "Zone"
 #include <osgEarth/PatchLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
 
 namespace osgEarth { namespace Splat
@@ -43,10 +43,13 @@ namespace osgEarth { namespace Splat
 
     public:
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
-            OE_OPTION(std::string, landCoverLayer);
-            OE_OPTION(std::string, maskLayer);
+            OE_OPTION(LandCoverLayer::Options, landCoverLayer);
+            OE_OPTION(std::string, landCoverLayerName);
+            OE_OPTION(ImageLayer::Options, maskLayer);
+            OE_OPTION(std::string, maskLayerName);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
+            OE_OPTION(bool, grass);
             OE_OPTION_VECTOR(ZoneOptions, zones);
         virtual Config getConfig() const;
         private:
@@ -59,15 +62,15 @@ namespace osgEarth { namespace Splat
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);
-        const LandCoverLayer* getLandCoverLayer() const;
+        LandCoverLayer* getLandCoverLayer() const;
 
         //! Layer containing the land cover dictionary.
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
-        const LandCoverDictionary* getLandCoverDictionary() const;
+        LandCoverDictionary* getLandCoverDictionary() const;
 
         //! Masking layer (optional)
         void setMaskLayer(ImageLayer* layer);
-        const ImageLayer* getMaskLayer() const;
+        ImageLayer* getMaskLayer() const;
 
         //! LOD at which to draw ground cover
         void setLOD(const unsigned& value);
@@ -89,6 +92,9 @@ namespace osgEarth { namespace Splat
         //! Override layer open
         virtual Status openImplementation();
 
+        //! Get geometry for a tilekey
+        virtual osg::Node* createNodeImplementation(const DrawContext& dc);
+
     public:
 
         //! Called when this layer is added to the map
@@ -102,13 +108,9 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~GroundCoverLayer() { }
 
-        osg::observer_ptr<LandCoverDictionary> _landCoverDict;
-        osg::observer_ptr<LandCoverLayer> _landCoverLayer;
-        osg::observer_ptr<ImageLayer> _maskLayer;
-
-        LayerListener<GroundCoverLayer, LandCoverDictionary> _landCoverDictListener;
-        LayerListener<GroundCoverLayer, LandCoverLayer> _landCoverListener;
-        LayerListener<GroundCoverLayer, ImageLayer> _maskLayerListener;
+        LayerReference<LandCoverDictionary> _landCoverDict;
+        LayerReference<LandCoverLayer> _landCoverLayer;
+        LayerReference<ImageLayer> _maskLayer;
 
         TextureImageUnitReservation _groundCoverTexBinding;
         TextureImageUnitReservation _noiseBinding;
@@ -140,12 +142,18 @@ namespace osgEarth { namespace Splat
         {
             Renderer();
 
+            struct Settings
+            {
+                float _density;
+                bool _grass;
+            };
+
             // Tracks a GL state to minimize state changes
             struct DrawState
             {
                 DrawState();
 
-                void reset();
+                void reset(Settings*);
 
                 osg::ref_ptr<osg::Geometry> _geom;
 
@@ -172,7 +180,6 @@ namespace osgEarth { namespace Splat
             osg::buffered_object<DrawState> _drawStateBuffer;
 
             // uniform IDs
-            float _density;
             unsigned _numInstancesUName;
             unsigned _LLUName, _URUName;
             unsigned _LLNormalUName, _URNormalUName;
@@ -184,9 +191,14 @@ namespace osgEarth { namespace Splat
 
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
+
+            Settings _settings;
         };
 
         osg::ref_ptr<Renderer> _renderer;
+
+        bool _debug;
+        osg::ref_ptr<osg::Drawable> _debugDrawable;
     };
 
 } } // namespace osgEarth::Splat

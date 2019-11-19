@@ -58,6 +58,13 @@ namespace osgEarth
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
+        //! Scene graph containing any nodes from the composited image layers
+        virtual osg::Node* getNode() const;
+
+        //! Called when a layer is added to the map
+        virtual void addedToMap(const Map* map);
+        virtual void removedFromMap(const Map* map);
+
     protected: // Layer
 
         //! Called by constructors
@@ -72,6 +79,7 @@ namespace osgEarth
 
         ImageLayerVector _layers;
         bool _open;
+        osg::ref_ptr<osg::Group> _layerNodes;
     };
 
 
@@ -107,10 +115,17 @@ namespace osgEarth
         //! Creates a heightfield for the given tile key
         virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
 
+        //! Scene graph containing any nodes from the composited image layers
+        virtual osg::Node* getNode() const;
+
     protected: // Layer
 
         //! Called by constructors
         virtual void init();
+
+        //! Called when a layer is added to the map
+        virtual void addedToMap(const Map* map);
+        virtual void removedFromMap(const Map* map);
 
     protected:
 
@@ -121,6 +136,7 @@ namespace osgEarth
 
         ElevationLayerVector _layers;
         bool _open;
+        osg::ref_ptr<osg::Group> _layerNodes;
     };
 
 } // namespace osgEarth

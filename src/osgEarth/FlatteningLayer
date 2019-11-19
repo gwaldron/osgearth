@@ -23,7 +23,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ElevationPool>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/ScriptEngine>
 #include <osgEarth/StyleSheet>
@@ -61,7 +61,7 @@ namespace osgEarth { namespace Contrib
 
         //! Feature source layer to get features from
         void setFeatureSource(FeatureSource* layer);
-        FeatureSource* getFeatureSource() const { return _client.getLayer(); }
+        FeatureSource* getFeatureSource() const { return _featureSource.getLayer(); }
 
         //! For line features, the width around the line to flatten
         void setLineWidth(const NumericExpression& value);
@@ -105,7 +105,7 @@ namespace osgEarth { namespace Contrib
         osg::ref_ptr<ElevationPool> _pool;
         osg::ref_ptr<ScriptEngine> _scriptEngine;
         osg::observer_ptr< const Map > _map;
-        LayerClient<FeatureSource> _client;
+        LayerReference<FeatureSource> _featureSource;
     };
 
 } }

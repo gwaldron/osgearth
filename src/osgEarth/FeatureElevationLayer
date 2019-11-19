@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/ElevationLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth
 {
@@ -69,7 +69,7 @@ namespace osgEarth
 
         virtual ~FeatureElevationLayer();
 
-        LayerClient<FeatureSource> _client;
+        LayerReference<FeatureSource> _featureSource;
         GeoExtent _extent;
 
         bool intersects(const TileKey&) const;

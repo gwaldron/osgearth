@@ -20,7 +20,7 @@
 #define OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER 1
 
 #include <osgEarth/ImageLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
 
@@ -94,7 +94,7 @@ namespace osgEarth
         inline FeatureSource* getFeatureSource() const;
 
         //! Style sheet to use to render feature data
-        inline void setStyleSheet(StyleSheet* styles);
+        void setStyleSheet(StyleSheet* styles);
         inline StyleSheet* getStyleSheet() const;
 
     public: // FeatureImageRenderer
@@ -129,13 +129,13 @@ namespace osgEarth
         virtual ~FeatureImageLayer() { }
 
     private:
-        LayerClient<FeatureSource> _featureSource;
-        LayerClient<StyleSheet> _styleSheet;
+        LayerReference<FeatureSource> _featureSource;
+        LayerReference<StyleSheet> _styleSheet;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         optional<double> _gamma;
 
-        void establishSession();
+        void updateSession();
 
         bool renderFeaturesForStyle(
             Session*           session,
@@ -155,7 +155,6 @@ namespace osgEarth
     // template/inline impls .................................................
 
     FeatureSource* FeatureImageLayer::getFeatureSource() const { return _featureSource.getLayer(); }
-    void FeatureImageLayer::setStyleSheet(StyleSheet* value) { _styleSheet.setLayer(value); }
     StyleSheet* FeatureImageLayer::getStyleSheet() const { return _styleSheet.getLayer(); }
 
 

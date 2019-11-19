@@ -49,7 +49,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    LayerClient<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
 }
 
 Config
@@ -63,7 +63,7 @@ FeatureModelLayer::Options::getConfig() const
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
 
-    LayerClient<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
 
     return conf;
 }
@@ -205,23 +205,22 @@ FeatureModelLayer::addedToMap(const Map* map)
     OE_TEST << LC << "addedToMap" << std::endl;
     VisibleLayer::addedToMap(map);
 
-    _styleSheet.addedToMap(options().styleSheetLayer(), map);
+    _featureSource.connect(map, options().featureSourceLayer());
+    _styleSheet.connect(map, options().styleSheetLayer());
 
-    // Save a reference to the map since we'll need it to
-    // create a new session object later.
-    _session = new Session(
-        map,
-        getStyleSheet(),
-        0L,  // feature source - will set later
-        getReadOptions());
+    if (getFeatureSource() && getStyleSheet())
+    {
+        // Save a reference to the map since we'll need it to
+        // create a new session object later.
+        _session = new Session(
+            map,
+            getStyleSheet(),
+            getFeatureSource(),
+            getReadOptions());
 
-    // If we have a layer name but no feature source, fire up a
-    // listener so we'll be notified when the named layer is 
-    // added to the map.
-    _featureSource.addedToMap(options().featureSourceLayer(), map);
-
-    // re-create the graph if necessary.
-    create();
+        // re-create the graph if necessary.
+        create();
+    }
 }
 
 void
@@ -229,8 +228,8 @@ FeatureModelLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
 
-    _featureSource.removedFromMap(map);
-    _styleSheet.removedFromMap(map);
+    _featureSource.disconnect();
+    _styleSheet.disconnect();
     
     if (_root.valid())
     {

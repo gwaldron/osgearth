@@ -24,7 +24,7 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Query>
 #include <osgEarth/Layer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth
 {

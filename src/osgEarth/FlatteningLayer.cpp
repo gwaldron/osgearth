@@ -620,7 +620,7 @@ FlatteningLayer::Options::getConfig() const
 {
     Config conf = ElevationLayer::Options::getConfig();
 
-    LayerClient<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
 
     conf.set("line_width", _lineWidth);
     conf.set("buffer_width", _bufferWidth);
@@ -655,7 +655,7 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     bufferWidth().init(40);
     URIContext uriContext = URIContext(conf.referrer());
 
-    LayerClient<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
 
     conf.get("line_width", _lineWidth);
     conf.get("buffer_width", _bufferWidth);
@@ -716,7 +716,7 @@ FlatteningLayer::openImplementation()
         return parent;
 
     // ensure the caller named a feature source:
-    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
     
@@ -738,7 +738,7 @@ FlatteningLayer::~FlatteningLayer()
 void
 FlatteningLayer::setFeatureSource(FeatureSource* layer)
 {
-    _client.setLayer(layer);
+    _featureSource.setLayer(layer);
 }
 
 void
@@ -750,7 +750,7 @@ FlatteningLayer::addedToMap(const Map* map)
     OE_INFO << LC << "Attaching elevation pool to map\n";
     _pool->setMap( map );
 
-    _client.addedToMap(options().featureSourceLayer(), map);
+    _featureSource.connect(map, options().featureSourceLayer());
         
     // Collect all elevation layers preceding this one and use them for flattening.
     ElevationLayerVector layers;
@@ -775,7 +775,7 @@ FlatteningLayer::removedFromMap(const Map* map)
 {
     ElevationLayer::removedFromMap(map);
 
-    _client.removedFromMap(map);
+    _featureSource.disconnect(map);
 }
 
 GeoHeightField

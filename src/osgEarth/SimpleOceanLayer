@@ -21,7 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/URI>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/Color>
@@ -65,8 +65,8 @@ namespace osgEarth
         const float& getMaxAltitude() const;
 
         //! Sets a masking layer, or pass NULL to clear the masking layer
-        void setMaskLayer(const ImageLayer* layer);
-        const ImageLayer* getMaskLayer() const;
+        void setMaskLayer(ImageLayer* layer);
+        ImageLayer* getMaskLayer() const;
 
         //! Sea level (meters above the ellipsoid)
         void setSeaLevel(const float& seaLevel);
@@ -106,9 +106,7 @@ namespace osgEarth
 
     private:
 
-        LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
-
-        osg::observer_ptr<const ImageLayer> _maskLayer;
+        LayerReference<ImageLayer> _maskLayer;
 
         TextureImageUnitReservation _texReservation;
     };

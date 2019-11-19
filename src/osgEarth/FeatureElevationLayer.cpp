@@ -37,7 +37,7 @@ FeatureElevationLayer::Options::fromConfig(const Config& conf)
 
     conf.get("attr", attr());
     conf.get("offset", offset());
-    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
 }
 
 Config
@@ -46,7 +46,7 @@ FeatureElevationLayer::Options::getConfig() const
     Config conf = ElevationLayer::Options::getConfig();
     conf.set("attr", attr());
     conf.set("offset", offset());
-    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
     return conf;
 }
 
@@ -78,11 +78,11 @@ FeatureElevationLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = _client.open(options().featureSource(), getReadOptions());
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    FeatureSource* features = _client.getLayer();
+    FeatureSource* features = _featureSource.getLayer();
     if (!features)
         return Status::ServiceUnavailable;
 
@@ -121,14 +121,14 @@ void
 FeatureElevationLayer::addedToMap(const Map* map)
 {
     ElevationLayer::addedToMap(map);
-    _client.addedToMap(options().featureSourceLayer(), map);
+    _featureSource.connect(map, options().featureSourceLayer());
 }
 
 void
 FeatureElevationLayer::removedFromMap(const Map* map)
 {
     ElevationLayer::removedFromMap(map);
-    _client.removedFromMap(map);
+    _featureSource.disconnect(map);
 }
 
 GeoHeightField
@@ -137,7 +137,7 @@ FeatureElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
     if (getStatus().isError())
         return GeoHeightField(getStatus());
 
-    FeatureSource* features = _client.getLayer();
+    FeatureSource* features = _featureSource.getLayer();
     if (!features)
         return GeoHeightField(Status::ServiceUnavailable);
 

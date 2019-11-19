@@ -879,8 +879,44 @@ namespace osgEarth
 	typedef std::vector<GeoHeightField> GeoHeightFieldVector;
 
 
+    /**
+    * A georeferenced node.
+    */
+    class OSGEARTH_EXPORT GeoNode
+    {
+    public:
+        //! Construct an empty (invalid) GeoNode
+        GeoNode();
 
+        //! Construct an image with an error status
+        GeoNode(const Status&);
 
+        //! Constructs a new goereferenced node
+        GeoNode(osg::Node* node, const GeoExtent& extent);
+
+        //! Global invalid node
+        static GeoNode INVALID;
+
+    public:
+        //! True if this is a valid object
+        bool valid() const;
+
+        //! Error status if set
+        const Status& getStatus() const { return _status; }
+
+        //! The underlying OSG node
+        osg::Node* getNode() const { return _node.get(); }
+
+        //! The node's extent
+        const GeoExtent& getExtent() const { return _extent; }
+
+    private:
+        osg::ref_ptr<osg::Node> _node;
+        GeoExtent               _extent;
+        Status                  _status;
+    };
+
+    typedef std::vector<GeoNode> GeoNodeVector;
 }
 
 #endif // OSGEARTH_GEODATA_H

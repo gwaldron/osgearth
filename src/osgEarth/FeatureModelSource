@@ -40,9 +40,6 @@ namespace osgEarth
         OE_OPTION(StyleSheet::Options, styleSheet);
         OE_OPTION(std::string, styleSheetLayer);
 
-        //optional<StyleSheet::Options>& styleSheet() { return _styleSheet; }
-        //const optional<StyleSheet::Options>& styleSheet() const { return _styleSheet; }
-
         /** Maximum span of a generated edge, in degrees. For geocentric maps only */
         optional<double>& maxGranularity() { return _maxGranularity_deg; }
         const optional<double>& maxGranularity() const { return _maxGranularity_deg; }

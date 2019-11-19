@@ -62,44 +62,39 @@ GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
 
 // defaults.
 GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
-    _maxGranularity_deg    ( 10.0 ),
-    _mergeGeometry         ( true ),
-    _clustering            ( false ),
-    _instancing            ( true ),
-    _filterUsage           ( FILTER_USAGE_NORMAL ),
-    _ignoreAlt             ( false ),
-    _shaderPolicy          ( SHADERPOLICY_GENERATE ),
-    _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
-    _optimizeStateSharing  ( true ),
-    _optimize              ( false ),
-    _optimizeVertexOrdering( true ),
-    _validate              ( false ),
-    _maxPolyTilingAngle    ( 45.0f ),
-    _useGPULines           ( false )
+_maxGranularity_deg    ( 10.0 ),
+_mergeGeometry         ( true ),
+_clustering            ( false ),
+_instancing            ( true ),
+_ignoreAlt             ( false ),
+_shaderPolicy          ( SHADERPOLICY_GENERATE ),
+_geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
+_optimizeStateSharing  ( true ),
+_optimize              ( false ),
+_optimizeVertexOrdering( true ),
+_validate              ( false ),
+_maxPolyTilingAngle    ( 45.0f ),
+_useOSGTessellator     (true)
 {
-    if (::getenv("OSGEARTH_GPU_SCREEN_SPACE_LINES") != 0L)
-    {
-        _useGPULines.init(true);
-    }
+
 }
 
 //-----------------------------------------------------------------------
 
 GeometryCompilerOptions::GeometryCompilerOptions(const ConfigOptions& conf) :
-    _maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
-    _mergeGeometry         ( s_defaults.mergeGeometry().value() ),
-    _clustering            ( s_defaults.clustering().value() ),
-    _instancing            ( s_defaults.instancing().value() ),
-    _filterUsage           (s_defaults.filterUsage().value() ),
-    _ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
-    _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
-    _geoInterp             ( s_defaults.geoInterp().value() ),
-    _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
-    _optimize              ( s_defaults.optimize().value() ),
-    _optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
-    _validate              ( s_defaults.validate().value() ),
-    _maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
-    _useGPULines           ( s_defaults.useGPUScreenSpaceLines().value() )
+_maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
+_mergeGeometry         ( s_defaults.mergeGeometry().value() ),
+_clustering            ( s_defaults.clustering().value() ),
+_instancing            ( s_defaults.instancing().value() ),
+_ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
+_shaderPolicy          ( s_defaults.shaderPolicy().value() ),
+_geoInterp             ( s_defaults.geoInterp().value() ),
+_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
+_optimize              ( s_defaults.optimize().value() ),
+_optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
+_validate              ( s_defaults.validate().value() ),
+_maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
+_useOSGTessellator     (s_defaults.useOSGTessellator().value())
 {
     fromConfig(conf.getConfig());
 }
@@ -120,7 +115,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.get( "optimize_vertex_ordering", _optimizeVertexOrdering);
     conf.get( "validate", _validate );
     conf.get( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.get( "use_gpu_screen_space_lines", _useGPULines );
+    conf.get( "use_osg_tessellator", _useOSGTessellator);
 
     conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -147,7 +142,7 @@ GeometryCompilerOptions::getConfig() const
     conf.set( "optimize_vertex_ordering", _optimizeVertexOrdering);
     conf.set( "validate", _validate );
     conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.set( "use_gpu_screen_space_lines", _useGPULines );
+    conf.set( "use_osg_tessellator", _useOSGTessellator);
 
     conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -454,6 +449,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
         filter.shaderPolicy()   = *_options.shaderPolicy();
+        filter.useOSGTessellator() = *_options.useOSGTessellator();
 
         if (_options.maxPolygonTilingAngle().isSet())
             filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();

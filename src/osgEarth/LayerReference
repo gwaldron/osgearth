@@ -1,0 +1,131 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_LAYER_REFERENCE_H
+#define OSGEARTH_LAYER_REFERENCE_H 1
+
+#include <osgEarth/Map>
+
+namespace osgEarth
+{
+    /**
+     * Helper class for Layers that reference other layers.
+     */
+    template<typename T>
+    class LayerReference
+    {
+    public:
+        typedef typename T::Options TypedOptions;
+
+        void setLayer(T* layer) 
+        {
+            _layer = layer;
+        }
+
+        T* getLayer() const 
+        {
+            return _layer.get();
+        }
+
+        Status open(const optional<TypedOptions>& embeddedOptions, const osgDB::Options* readOptions)
+        {
+            if (embeddedOptions.isSet())
+            {
+                osg::ref_ptr<Layer> layer = Layer::create(embeddedOptions.get());
+                osg::ref_ptr<T> typedLayer = dynamic_cast<T*>(layer.get());
+                if (typedLayer)
+                {
+                    typedLayer->setReadOptions(readOptions);
+                    const Status& fsStatus = typedLayer->open();
+                    if (fsStatus.isError())
+                    {
+                        return fsStatus;
+                    }
+                    setLayer(typedLayer.get());
+                }
+            }
+            return Status::OK();
+        }
+
+        bool connect(const Map* map, const optional<std::string>& externalLayerName)
+        {
+            if (!getLayer())
+            {
+                T* layer = map->getLayerByName<T>(externalLayerName.get());
+                if (layer)
+                    setLayer(layer);
+            }
+            return getLayer();
+        }
+
+        void disconnect(const Map* map =NULL)
+        {
+            setLayer(NULL);
+        }
+
+        static void fromConfig(const Config& conf, const std::string& tag, optional<std::string>& layerName, optional<TypedOptions>& embeddedOptions)
+        {
+            conf.get(tag, layerName);
+
+            for (ConfigSet::const_iterator i = conf.children().begin();
+                i != conf.children().end();
+                ++i)
+            {
+                osg::ref_ptr<Layer> layer = Layer::create(*i);
+                if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                {
+                    embeddedOptions = TypedOptions(*i);
+                    break;
+                }
+            }
+        }
+
+        static void getConfig(Config& conf, const std::string& tag, const optional<std::string>& layerName, const optional<TypedOptions>& embeddedOptions)
+        {
+            conf.set(tag, layerName);
+            if (embeddedOptions.isSet())
+                conf.set(embeddedOptions->getConfig());
+        }
+
+        static void fromConfig(const Config& conf, optional<TypedOptions>& embeddedOptions)
+        {
+            for (ConfigSet::const_iterator i = conf.children().begin();
+                i != conf.children().end();
+                ++i)
+            {
+                osg::ref_ptr<Layer> layer = Layer::create(*i);
+                if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                {
+                    embeddedOptions = TypedOptions(*i);
+                    break;
+                }
+            }
+        }
+
+        static void getConfig(Config& conf, const optional<TypedOptions>& embeddedOptions)
+        {
+            if (embeddedOptions.isSet())
+                conf.set(embeddedOptions->getConfig());
+        }
+
+    private:
+        osg::ref_ptr< T > _layer;
+    };
+}
+
+#endif // OSGEARTH_LAYER_REFERENCE_H

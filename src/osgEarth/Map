@@ -79,6 +79,9 @@ namespace osgEarth
         //! Adds a Layer to the map.
         void addLayer(Layer* layer);
 
+        //! Adds a collection of layers to the map.
+        void addLayers(const LayerVector& layers);
+
         //! Inserts a Layer at a specific index in the Map.
         void insertLayer(Layer* layer, unsigned index);
 
@@ -212,7 +215,7 @@ namespace osgEarth
 
         void installLayerCallbacks(Layer*);
         void uninstallLayerCallbacks(Layer*);
-        void openLayer(Layer*);
+        void openLayer(Layer*, bool callAddedToMap);
         void closeLayer(Layer*);
 
         void init();

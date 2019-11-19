@@ -23,7 +23,7 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Feature>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osg/ClipPlane>
 
 namespace osgEarth { namespace Util
@@ -113,7 +113,7 @@ namespace osgEarth { namespace Util
 
         void loadGZDFeatures(const SpatialReference* srs, FeatureList& output) const;
 
-        LayerClient<StyleSheet> _styleSheet;
+        LayerReference<StyleSheet> _styleSheet;
 
         typedef std::map<std::string, osg::ref_ptr<osgText::Text> > TextObjects;
         TextObjects _textObjects;

@@ -61,6 +61,37 @@ OgrUtils::populate( OGRGeometryH geomHandle, Geometry* target, int numPoints )
     }
 }
 
+MultiGeometry*
+OgrUtils::createTIN(OGRGeometryH geomHandle)
+{
+    MultiGeometry *multi = new MultiGeometry;
+
+    int numParts = OGR_G_GetGeometryCount(geomHandle);
+    if (numParts > 0)
+    {
+        for (int p = 0; p < numParts; p++)
+        {
+            OGRGeometryH partRef = OGR_G_GetGeometryRef(geomHandle, p);
+
+            OGRwkbGeometryType partWkbType = OGR_G_GetGeometryType(partRef);
+
+            unsigned int numSubParts = OGR_G_GetGeometryCount(partRef);
+            OGRGeometryH subPartRef = OGR_G_GetGeometryRef(partRef, 0);
+            unsigned int numSubPoints = OGR_G_GetPointCount(subPartRef);
+            Polygon *output = new Polygon(numSubPoints);
+            populate(subPartRef, output, numSubPoints);
+            output->open();
+
+            // Rewind the triangle so it's oriented correctly
+            std::reverse(output->begin(), output->end());
+
+            multi->add(output);
+        }
+    }
+
+    return multi;
+}
+
 Polygon*
 OgrUtils::createPolygon( OGRGeometryH geomHandle )
 {
@@ -72,7 +103,10 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
         int numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Polygon( numPoints );
         populate( geomHandle, output, numPoints );
-        output->open();
+
+        //output->open();
+        //output->rewind( Symbology::Ring::ORIENTATION_CCW );
+        std::reverse(output->begin(), output->end());
     }
     else if ( numParts > 0 )
     {
@@ -85,14 +119,16 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
                 output = new Polygon( numPoints );
                 populate( partRef, output, numPoints );
                 //output->open();
-                output->rewind( Ring::ORIENTATION_CCW );
+                //output->rewind( Symbology::Ring::ORIENTATION_CCW );
+                std::reverse(output->begin(), output->end());
             }
             else
             {
                 Ring* hole = new Ring( numPoints );
                 populate( partRef, hole, numPoints );
                 //hole->open();
-                hole->rewind( Ring::ORIENTATION_CW );
+                //hole->rewind( Symbology::Ring::ORIENTATION_CW );
+                std::reverse(hole->begin(), hole->end());
                 output->getHoles().push_back( hole );
             }
         }
@@ -147,6 +183,15 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
         output = new PointSet( numPoints );
         populate( geomHandle, output, numPoints );
         break;
+
+#ifdef GDAL_HAS_M_TYPES
+    case wkbTINZ:
+    case wkbTIN:
+    case wkbTINM:
+    case wkbTINZM:
+        output = createTIN(geomHandle);
+        break;
+#endif
 
     case wkbGeometryCollection:
     case wkbGeometryCollection25D:

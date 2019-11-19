@@ -150,7 +150,7 @@ SplatLayer::init()
 void
 SplatLayer::setLandCoverDictionary(LandCoverDictionary* layer)
 {
-    _landCoverDict = layer;
+    _landCoverDict.setLayer(layer);
     if (layer)
         buildStateSets();
 }
@@ -158,7 +158,7 @@ SplatLayer::setLandCoverDictionary(LandCoverDictionary* layer)
 void
 SplatLayer::setLandCoverLayer(LandCoverLayer* layer)
 {
-    _landCoverLayer = layer;
+    _landCoverLayer.setLayer(layer);
     if (layer) {
         buildStateSets();
     }
@@ -168,16 +168,8 @@ void
 SplatLayer::addedToMap(const Map* map)
 {
     VisibleLayer::addedToMap(map);
-
-    if (!_landCoverDict.valid())
-    {
-        _landCoverDictListener.listen(map, this, &SplatLayer::setLandCoverDictionary);
-    }
-
-    if (!_landCoverLayer.valid() && options().landCoverLayer().isSet())
-    {
-        _landCoverListener.listen(map, options().landCoverLayer().get(), this, &SplatLayer::setLandCoverLayer);
-    }
+    _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
+    _landCoverLayer.connect(map, options().landCoverLayer().get());
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
     {
@@ -250,14 +242,12 @@ SplatLayer::buildStateSets()
         return;
     }
     
-    osg::ref_ptr<LandCoverDictionary> landCoverDict;
-    if (_landCoverDict.lock(landCoverDict) == false) {
+    if (!getLandCoverDictionary()) {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover dictionary not available\n";
         return;
     }
     
-    osg::ref_ptr<LandCoverLayer> landCoverLayer;
-    if (_landCoverLayer.lock(landCoverLayer) == false) {
+    if (!getLandCoverLayer()) {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover layer not available\n";
         return;
     }
@@ -272,7 +262,7 @@ SplatLayer::buildStateSets()
             OE_WARN << LC << "No surface defined for zone " << zone->getName() << std::endl;
             return;
         }
-        if (surface->loadTextures(landCoverDict.get(), getReadOptions()) == false)
+        if (surface->loadTextures(getLandCoverDictionary(), getReadOptions()) == false)
         {
             OE_WARN << LC << "Texture load failed for zone " << zone->getName() << "\n";
             return;
@@ -317,7 +307,7 @@ SplatLayer::buildStateSets()
         stateset->setDefine("OE_SPLAT_NOISE_SAMPLER", NOISE_SAMPLER);
     }
 
-    osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, landCoverLayer->shareImageUnit().get());
+    osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, getLandCoverLayer()->shareImageUnit().get());
     stateset->addUniform(lcTexUniform);
 
     stateset->addUniform(new osg::Uniform("oe_splat_scaleOffsetInt", 0));
@@ -332,7 +322,7 @@ SplatLayer::buildStateSets()
 
     stateset->setDefine("OE_USE_NORMAL_MAP");
 
-    stateset->setDefine("OE_SPLAT_COVERAGE_TEXMAT", landCoverLayer->shareTexMatUniformName().get());
+    stateset->setDefine("OE_SPLAT_COVERAGE_TEXMAT", getLandCoverLayer()->shareTexMatUniformName().get());
     
     //stateset->setAttributeAndModes(
     //    new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO),

@@ -43,7 +43,7 @@ using namespace osgEarth::Drivers;
 class JoinFeatureFilter : public FeatureFilter, public JoinFeatureFilterOptions
 {
 private:
-    LayerClient<FeatureSource> _featureSource;
+    LayerReference<FeatureSource> _featureSource;
 
 public:
     JoinFeatureFilter(const ConfigOptions& options)

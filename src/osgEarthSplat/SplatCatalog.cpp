@@ -63,16 +63,19 @@ SplatDetailData::getConfig() const
 //............................................................................
 
 SplatRangeData::SplatRangeData() :
-_textureIndex( -1 )
+_diffuseTextureIndex( -1 ),
+_materialTextureIndex( -1 )
 {
     //nop
 }
 
 SplatRangeData::SplatRangeData(const Config& conf) :
-_textureIndex( -1 )
+    _diffuseTextureIndex( -1 ),
+    _materialTextureIndex( -1 )
 {
     conf.get("max_lod",    _maxLOD);
     conf.get("image",      _imageURI);
+    conf.get("normal",     _normalURI);
     conf.get("model",      _modelURI);
     conf.get("modelCount", _modelCount);
     conf.get("modelLevel", _modelLevel);
@@ -87,6 +90,7 @@ SplatRangeData::getConfig() const
     Config conf;
     conf.set("max_lod",    _maxLOD);
     conf.set("image",      _imageURI);
+    conf.set("normal",     _normalURI);
     conf.set("model",      _modelURI);
     conf.set("modelCount", _modelCount);
     conf.set("modelLevel", _modelLevel);
@@ -258,7 +262,8 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         SplatClass& c = i->second;
         for(SplatRangeDataVector::iterator range = c._ranges.begin(); range != c._ranges.end(); ++range)
         {
-            range->_textureIndex = -1;
+            range->_diffuseTextureIndex = -1;
+            range->_materialTextureIndex = -1;
             if ( range->_detail.isSet() )
             {
                 range->_detail->_textureIndex = -1;
@@ -300,8 +305,34 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
                 {
                     texIndex = k->second;
                 }
-                range->_textureIndex = texIndex;
+                range->_diffuseTextureIndex = texIndex;
             }
+
+#if 1
+            // Load the material texture(s) and assign to an index:
+            if (range->_normalURI.isSet())
+            {
+                int texIndex = -1;
+                ImageIndexTable::iterator k = imageIndices.find(range->_normalURI.get());
+                if ( k == imageIndices.end() )
+                {
+                    osg::ref_ptr<osg::Image> image = loadImage( range->_normalURI.get(), dbOptions, firstImage );
+                    if ( image.valid() )
+                    {
+                        if ( !firstImage )
+                            firstImage = image.get();
+
+                        imageIndices[range->_normalURI.get()] = texIndex = index++;
+                        imagesInOrder.push_back( image.get() );
+                    }
+                }
+                else
+                {
+                    texIndex = k->second;
+                }
+                range->_materialTextureIndex = texIndex;
+            }
+#endif
 
             // Load the detail texture if it exists:
             if (range->_detail.isSet() &&

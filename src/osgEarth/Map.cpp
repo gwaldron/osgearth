@@ -195,7 +195,7 @@ Map::notifyOnLayerEnabledChanged(Layer* layer)
 
     if (layer->getEnabled())
     {
-        openLayer(layer);
+        openLayer(layer, true);
     }
     else
     {
@@ -393,7 +393,7 @@ Map::addLayer(Layer* layer)
         // Open the layer if it's enabled:
         if (layer->getEnabled())
         {
-            openLayer(layer);
+            openLayer(layer, true);
         }
 
         // Add the layer to our stack.
@@ -428,7 +428,7 @@ Map::insertLayer(Layer* layer, unsigned index)
         // Open the layer if it's enabled:
         if (layer->getEnabled())
         {
-            openLayer(layer);
+            openLayer(layer, true);
         }
 
         // Add the layer to our stack.
@@ -552,6 +552,80 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
 }
 
 void
+Map::addLayers(const LayerVector& layers)
+{
+    // This differs from addLayer() in a loop because it will
+    // (a) call addedToMap only after all the layers are added, and
+    // (b) invoke all the MapModelChange callbacks with the same 
+    // new revision number.
+
+    osgEarth::Registry::instance()->clearBlacklist();
+
+    for(LayerVector::const_iterator layerRef = layers.begin();
+        layerRef != layers.end();
+        ++layerRef)
+    {
+        Layer* layer = layerRef->get();
+        if ( !layer )
+            continue;
+
+        // Set up callbacks
+        installLayerCallbacks(layer);
+
+        // Open the layer if it's enabled:
+        if (layer->getEnabled())
+        {
+            // open, but don't call addedToMap(layer) yet.
+            openLayer(layer, false);
+        }
+    }
+
+    unsigned firstIndex;
+    unsigned count = 0;
+    int newRevision;
+
+    // Add the layers to the map.
+    {
+        Threading::ScopedWriteLock lock( _mapDataMutex );
+
+        firstIndex = _layers.size();
+        newRevision = ++_dataModelRevision;
+
+        for(LayerVector::const_iterator layerRef = layers.begin();
+            layerRef != layers.end();
+            ++layerRef)
+        {
+            Layer* layer = layerRef->get();
+            if ( !layer )
+                continue;
+
+            _layers.push_back( layer );
+        }
+    }
+
+    // call addedToMap on each new layer in turn:
+    unsigned index = firstIndex;
+
+    for(LayerVector::const_iterator layerRef = layers.begin();
+        layerRef != layers.end();
+        ++layerRef)
+    {
+        Layer* layer = layerRef->get();
+        if ( !layer )
+            continue;
+
+        layer->addedToMap(this);
+
+        // a separate block b/c we don't need the mutex
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapModelChanged(MapModelChange(
+                MapModelChange::ADD_LAYER, newRevision, layer, index++));
+        }
+    }
+}
+
+void
 Map::installLayerCallbacks(Layer* layer)
 {
     // If this is an elevation layer, install a callback so we know when
@@ -582,7 +656,7 @@ Map::uninstallLayerCallbacks(Layer* layer)
 }
 
 void
-Map::openLayer(Layer* layer)
+Map::openLayer(Layer* layer, bool callAddedToMap)
 {
     // Pass along the Read Options (including the cache settings, etc.) to the layer:
     layer->setReadOptions(_readOptions.get());
@@ -592,7 +666,7 @@ Map::openLayer(Layer* layer)
 
     // If it opened OK, and if the map's profile is set, 
     // tell the layer it is being added to the map.
-    if (layer->getStatus().isOK() && getProfile() != 0L)
+    if (callAddedToMap && layer->getStatus().isOK() && getProfile() != 0L)
     {
         layer->addedToMap(this);
     }

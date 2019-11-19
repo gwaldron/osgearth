@@ -22,7 +22,7 @@
 #include "Common"
 
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/ImageLayer>
 #include <osgEarthTriton/TritonCallback>
 #include <osgEarthTriton/TritonIntersections>
@@ -113,11 +113,7 @@ namespace osgEarth { namespace Triton
         osg::ref_ptr<osg::Node> _tritonNode;
         float _seaLevel;
         float _opacity;
-        LayerClient<osgEarth::ImageLayer> _mask;
-
-    //privat:
-
-    //    osgEarth::LayerListener<TritonLayer, const osgEarth::ImageLayer> _layerListener;
+        LayerReference<osgEarth::ImageLayer> _maskLayer;
     };
 
 } } // namespace osgEarth::Triton

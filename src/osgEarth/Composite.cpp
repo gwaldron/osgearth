@@ -95,6 +95,35 @@ CompositeImageLayer::init()
     ImageLayer::init();
     _open = false;
     setTileSourceExpected(false);
+    _layerNodes = new osg::Group();
+}
+
+osg::Node*
+CompositeImageLayer::getNode() const
+{
+    return _layerNodes.get();
+}
+
+void
+CompositeImageLayer::addedToMap(const Map* map)
+{
+    for(ImageLayerVector::iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        i->get()->addedToMap(map);
+    }
+}
+
+void
+CompositeImageLayer::removedFromMap(const Map* map)
+{
+    for(ImageLayerVector::iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        i->get()->removedFromMap(map);
+    }
 }
 
 Status
@@ -204,6 +233,12 @@ CompositeImageLayer::openImplementation()
                     dataExtent = DataExtent(ext, minLevel, maxLevel);                                
                     dataExtents().push_back( dataExtent );
                 }
+            }
+
+            // If the sublayer has a Node, add it to the group.
+            if (layer->getNode())
+            {
+                _layerNodes->addChild(layer->getNode());
             }
         }
 
@@ -465,6 +500,34 @@ CompositeElevationLayer::init()
     setTileSourceExpected(false);
 }
 
+osg::Node*
+CompositeElevationLayer::getNode() const
+{
+    return _layerNodes.get();
+}
+
+void
+CompositeElevationLayer::addedToMap(const Map* map)
+{
+    for(ElevationLayerVector::iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        i->get()->addedToMap(map);
+    }
+}
+
+void
+CompositeElevationLayer::removedFromMap(const Map* map)
+{
+    for(ElevationLayerVector::iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        i->get()->removedFromMap(map);
+    }
+}
+
 Status
 CompositeElevationLayer::openImplementation()
 {
@@ -571,6 +634,12 @@ CompositeElevationLayer::openImplementation()
                     dataExtent = DataExtent(ext, minLevel, maxLevel);                                
                     dataExtents().push_back( dataExtent );
                 }
+            }
+
+            // If the sublayer has a Node, add it to the group.
+            if (layer->getNode())
+            {
+                _layerNodes->addChild(layer->getNode());
             }
         }
 

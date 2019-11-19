@@ -37,7 +37,7 @@ FeatureElevationLayer::Options::fromConfig(const Config& conf)
 
     conf.get("attr", attr());
     conf.get("offset", offset());
-    LayerReference<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
 }
 
 Config
@@ -46,7 +46,7 @@ FeatureElevationLayer::Options::getConfig() const
     Config conf = ElevationLayer::Options::getConfig();
     conf.set("attr", attr());
     conf.set("offset", offset());
-    LayerReference<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
     return conf;
 }
 

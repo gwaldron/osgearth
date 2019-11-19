@@ -61,7 +61,7 @@ MGRSGraticule::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("sqid_data", sqidData() );
     conf.set("use_default_styles", useDefaultStyles() );
-    LayerReference<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
     return conf;
 }
 
@@ -72,7 +72,7 @@ MGRSGraticule::Options::fromConfig(const Config& conf)
     sqidData().init(URI("../data/mgrs_sqid.bin", conf.referrer()));
     conf.get("sqid_data", sqidData() );
     conf.get("use_default_styles", useDefaultStyles() );
-    LayerReference<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<StyleSheet>::get(conf, "styles", styleSheetLayer(), styleSheet());
 }
 
 //---------------------------------------------------------------------------

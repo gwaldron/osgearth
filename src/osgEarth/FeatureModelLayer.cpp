@@ -49,7 +49,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::get(conf, "features", _featureSourceLayer, _featureSource);
 }
 
 Config
@@ -63,7 +63,7 @@ FeatureModelLayer::Options::getConfig() const
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
 
-    LayerReference<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::set(conf, "features", _featureSourceLayer, _featureSource);
 
     return conf;
 }

@@ -78,7 +78,7 @@ namespace osgEarth
             setLayer(NULL);
         }
 
-        static void fromConfig(const Config& conf, const std::string& tag, optional<std::string>& layerName, optional<TypedOptions>& embeddedOptions)
+        static void get(const Config& conf, const std::string& tag, optional<std::string>& layerName, optional<TypedOptions>& embeddedOptions)
         {
             conf.get(tag, layerName);
 
@@ -95,14 +95,14 @@ namespace osgEarth
             }
         }
 
-        static void getConfig(Config& conf, const std::string& tag, const optional<std::string>& layerName, const optional<TypedOptions>& embeddedOptions)
+        static void set(Config& conf, const std::string& tag, const optional<std::string>& layerName, const optional<TypedOptions>& embeddedOptions)
         {
             conf.set(tag, layerName);
             if (embeddedOptions.isSet())
                 conf.set(embeddedOptions->getConfig());
         }
 
-        static void fromConfig(const Config& conf, optional<TypedOptions>& embeddedOptions)
+        static void get(const Config& conf, optional<TypedOptions>& embeddedOptions)
         {
             for (ConfigSet::const_iterator i = conf.children().begin();
                 i != conf.children().end();
@@ -117,7 +117,7 @@ namespace osgEarth
             }
         }
 
-        static void getConfig(Config& conf, const optional<TypedOptions>& embeddedOptions)
+        static void set(Config& conf, const optional<TypedOptions>& embeddedOptions)
         {
             if (embeddedOptions.isSet())
                 conf.set(embeddedOptions->getConfig());

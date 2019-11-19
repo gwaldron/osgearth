@@ -307,7 +307,7 @@ SplatLayer::buildStateSets()
         stateset->setDefine("OE_SPLAT_NOISE_SAMPLER", NOISE_SAMPLER);
     }
 
-    osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, getLandCoverLayer()->shareImageUnit().get());
+    osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, getLandCoverLayer()->sharedImageUnit().get());
     stateset->addUniform(lcTexUniform);
 
     stateset->addUniform(new osg::Uniform("oe_splat_scaleOffsetInt", 0));
@@ -322,7 +322,7 @@ SplatLayer::buildStateSets()
 
     stateset->setDefine("OE_USE_NORMAL_MAP");
 
-    stateset->setDefine("OE_SPLAT_COVERAGE_TEXMAT", getLandCoverLayer()->shareTexMatUniformName().get());
+    stateset->setDefine("OE_SPLAT_COVERAGE_TEXMAT", getLandCoverLayer()->getSharedTextureMatrixUniformName());
     
     //stateset->setAttributeAndModes(
     //    new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO),

@@ -144,7 +144,7 @@ namespace osgEarth { namespace Splat
 
             struct Settings
             {
-                float _density;
+                unsigned _vboTileSize;
                 bool _grass;
             };
 

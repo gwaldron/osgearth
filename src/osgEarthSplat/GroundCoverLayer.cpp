@@ -279,7 +279,35 @@ GroundCoverLayer::addedToMap(const Map* map)
     }
 
     _zonesConfigured = true;
-    
+
+    // calculate the instance count based on the density and LOD.
+    if (_renderer.valid() && _zones.size() > 0 && _zones[0]->getGroundCover())
+    {
+        unsigned lod = getLOD();
+        unsigned tx, ty;
+        map->getProfile()->getNumTiles(lod, tx, ty);
+        GeoExtent e = TileKey(lod, tx/2, ty/2, map->getProfile()).getExtent();
+        GeoCircle c = e.computeBoundingGeoCircle();
+        double width_m = 2.0 * c.getRadius() / 1.4142;
+
+        if (_zones[0]->getGroundCover()->options().spacing().isSet())
+        {
+            float spacing_m = _zones[0]->getGroundCover()->options().spacing().get();
+            _renderer->_settings._vboTileSize = width_m / spacing_m;
+        }
+        else if (_zones[0]->getGroundCover()->options().density().isSet())
+        {
+            float density_sqkm = _zones[0]->getGroundCover()->options().density().get();
+            _renderer->_settings._vboTileSize = 0.001 * width_m * sqrt(density_sqkm);
+        }
+        else
+        {
+            _renderer->_settings._vboTileSize = 128;
+        }
+
+        OE_INFO << LC << "Instances across = " << _renderer->_settings._vboTileSize << std::endl;
+    }
+
     buildStateSets();
 }
 
@@ -384,8 +412,8 @@ GroundCoverLayer::buildStateSets()
 
     if (getMaskLayer())
     {
-        stateset->setDefine("OE_GROUNDCOVER_MASK_SAMPLER", getMaskLayer()->shareTexUniformName().get());
-        stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", getMaskLayer()->shareTexMatUniformName().get());
+        stateset->setDefine("OE_GROUNDCOVER_MASK_SAMPLER", getMaskLayer()->getSharedTextureUniformName());
+        stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", getMaskLayer()->getSharedTextureMatrixUniformName());
     }
 
     // disable backface culling to support shadow/depth cameras,
@@ -423,8 +451,8 @@ GroundCoverLayer::buildStateSets()
                 shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
                 // Bind the coverage sampler and its matrix:
-                zoneStateSet->setDefine("OE_LANDCOVER_TEX", getLandCoverLayer()->shareTexUniformName().get());
-                zoneStateSet->setDefine("OE_LANDCOVER_TEX_MATRIX", getLandCoverLayer()->shareTexMatUniformName().get());
+                zoneStateSet->setDefine("OE_LANDCOVER_TEX", getLandCoverLayer()->getSharedTextureUniformName());
+                zoneStateSet->setDefine("OE_LANDCOVER_TEX_MATRIX", getLandCoverLayer()->getSharedTextureMatrixUniformName());
 
                 // Generate the coverage acceptor shader
 #ifdef USE_GEOMETRY_SHADER
@@ -599,9 +627,7 @@ GroundCoverLayer::Renderer::DrawState::reset(Settings* settings)
 
     if (!_geom.valid())
     {
-        const unsigned tileSize = 128u;
-        unsigned numInstances = tileSize*tileSize;
-
+        const unsigned numInstances = settings->_vboTileSize * settings->_vboTileSize;
         const unsigned vertsPerInstance = 8;
         const unsigned indiciesPerInstance = 12;
 
@@ -658,7 +684,7 @@ GroundCoverLayer::Renderer::DrawState::reset(Settings* settings)
 
 #endif // USE_INSTANCING_IN_VERTEX_SHADER
 
-        _numInstances1D = tileSize;
+        _numInstances1D = settings->_vboTileSize;
     }
 }
 
@@ -671,7 +697,7 @@ GroundCoverLayer::Renderer::Renderer()
 
     _drawStateBuffer.resize(64u);
 
-    _settings._density = 1.0f;
+    _settings._vboTileSize = 128;
     _settings._grass = false;
 }
 

@@ -56,9 +56,9 @@ TerrainLayer::Options::fromConfig(const Config& conf)
     _maxLevel.init( 23 );
     _maxDataLevel.init( 99 );
     _tileSize.init( 256 );
-    _noDataValue.init( -32768.0f );
-    _minValidValue.init(-32767.0f );
-    _maxValidValue.init( 32768.0f );
+    _noDataValue.init( -32767.0f ); // SHRT_MIN
+    _minValidValue.init( -32766.0f ); // -(2^15 - 2)
+    _maxValidValue.init( 32767.0f );
 
     conf.get( "min_level", _minLevel );
     conf.get( "max_level", _maxLevel );

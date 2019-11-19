@@ -67,7 +67,7 @@ public:
 public:
     mutable TextureCache* _texCache;
 
-    GLTFReader::GLTFReader() : _texCache(NULL)
+    GLTFReader() : _texCache(NULL)
     {
         //NOP
     }

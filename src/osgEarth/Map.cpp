@@ -614,7 +614,10 @@ Map::addLayers(const LayerVector& layers)
         if ( !layer )
             continue;
 
-        layer->addedToMap(this);
+        if (layer->getEnabled() && layer->getStatus().isOK())
+        {
+            layer->addedToMap(this);
+        }
 
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )

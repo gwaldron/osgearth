@@ -205,7 +205,7 @@ FeatureModelSourceOptions::FeatureModelSourceOptions(const ConfigOptions& option
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
 }
 
 Config
@@ -213,7 +213,7 @@ FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
     conf.merge(FeatureModelOptions::getConfig());
-    LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
     return conf;
 }
 

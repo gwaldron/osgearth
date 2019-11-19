@@ -106,8 +106,8 @@ BuildingLayer::addedToMap(const Map* map)
     // Hang on to the Map reference
     _map = map;
 
-    _featureSource.addedToMap(options().featureSourceLayer(), map);
-    _styleSheet.addedToMap(options().styleSheetLayer(), map);
+    _featureSource.connect(map, options().featureSourceLayer());
+    _styleSheet.connect(map, options().styleSheetLayer());
 
     // Set up a feature session with a cache:
     _session = new Session(
@@ -218,8 +218,8 @@ BuildingPager* BuildingLayer::pager()
 void
 BuildingLayer::removedFromMap(const Map* map)
 {
-    _featureSource.removedFromMap(map);
-    _styleSheet.removedFromMap(map);
+    _featureSource.disconnect(map);
+    _styleSheet.disconnect(map);
 }
 
 const GeoExtent&

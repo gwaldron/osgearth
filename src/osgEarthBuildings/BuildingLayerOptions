@@ -95,8 +95,8 @@ namespace osgEarth { namespace Buildings
             conf.set("priority_offset",  _priorityOffset);
             conf.set("priority_scale",   _priorityScale);
             conf.set("enable_cancelation", _enableCancelation);
-            LayerClient<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
-            LayerClient<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
+            LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
+            LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
             return conf;
         }
 
@@ -117,8 +117,8 @@ namespace osgEarth { namespace Buildings
             conf.get("priority_offset",  _priorityOffset);
             conf.get("priority_scale",   _priorityScale);
             conf.get("enable_cancelation", _enableCancelation);
-            LayerClient<StyleSheet>::fromConfig(conf, "styles", _styleSheetLayer, _styleSheet);
-            LayerClient<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
+            LayerReference<StyleSheet>::get(conf, "styles", _styleSheetLayer, _styleSheet);
+            LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
         }
 
         optional<URI> _buildingCatalogURI;

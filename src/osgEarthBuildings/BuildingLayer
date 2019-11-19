@@ -72,8 +72,8 @@ namespace osgEarth { namespace Buildings
         osg::ref_ptr<BuildingCatalog> _catalog;
         osg::ref_ptr<Session> _session;
         osg::observer_ptr<const Map> _map;
-        LayerClient<StyleSheet> _styleSheet;
-        LayerClient<FeatureSource> _featureSource;
+        LayerReference<StyleSheet> _styleSheet;
+        LayerReference<FeatureSource> _featureSource;
 
         void createSceneGraph();
         

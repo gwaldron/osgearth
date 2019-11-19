@@ -245,8 +245,8 @@ namespace osgEarth
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-        LayerClient<FeatureSource>         _features;
-        LayerClient<StyleSheet>            _styleSheet;
+        LayerReference<FeatureSource>         _features;
+        LayerReference<StyleSheet>            _styleSheet;
         osg::observer_ptr<const Map>       _map;
         const FeatureModelSourceOptions    _options;
         osg::ref_ptr<FeatureNodeFactory>   _factory;

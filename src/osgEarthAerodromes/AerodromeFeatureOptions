@@ -219,7 +219,7 @@ namespace osgEarth { namespace Aerodrome
             for(ModelOptionsSet::const_iterator i = _modelOptions.begin(); i != _modelOptions.end(); ++i)
                 conf.add("model", i->getConfig());
 
-            LayerClient<FeatureSource>::getConfig(conf, _featureSource);
+            LayerReference<FeatureSource>::set(conf, _featureSource);
 
             return conf;
         }
@@ -238,7 +238,7 @@ namespace osgEarth { namespace Aerodrome
             for (ConfigSet::const_iterator i = models.begin(); i != models.end(); i++)
                 _modelOptions.push_back(ModelOptions(*i));
 
-            LayerClient<FeatureSource>::fromConfig(conf, _featureSource);
+            LayerReference<FeatureSource>::get(conf, _featureSource);
         }
 
     private:

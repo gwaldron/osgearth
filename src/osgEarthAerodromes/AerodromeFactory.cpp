@@ -239,7 +239,7 @@ AerodromeFactory::~AerodromeFactory()
 template <typename T, typename Y, typename P>
 void AerodromeFactory::createFeatureNodes(P featureOpts, AerodromeNode* aerodrome, const osgDB::Options* options, void (*processor)(T* node, AerodromeNode* aerodrome))
 {
-    LayerClient<FeatureSource> client;
+    LayerReference<FeatureSource> client;
     Status s = client.open(featureOpts.featureSource(), options);
     if (s.isError() || !client.getLayer())
     {
@@ -291,7 +291,7 @@ void AerodromeFactory::createFeatureNodes(P featureOpts, AerodromeNode* aerodrom
 template <typename T, typename Y, typename P>
 void AerodromeFactory::createMergedFeatureNodes(P featureOpts, AerodromeNode* aerodrome, const osgDB::Options* options, void (*processor)(T* node, AerodromeNode* aerodrome))
 {
-    LayerClient<FeatureSource> client;
+    LayerReference<FeatureSource> client;
     Status s = client.open(featureOpts.featureSource(), options);
     if (s.isError() || client.getLayer() == 0L)
     {
@@ -372,7 +372,7 @@ void AerodromeFactory::createBoundaryNodes(BoundaryFeatureOptions boundaryOpts, 
         return;
     }
 
-    LayerClient<FeatureSource> boundaries;
+    LayerReference<FeatureSource> boundaries;
     Status status = boundaries.open(boundaryOpts.featureSource(), options);
     if (status.isError() || boundaries.getLayer() == 0L)
     {
@@ -542,7 +542,7 @@ AerodromeFactory::seedAerodromes(AerodromeCatalog* catalog, const osgDB::Options
 
     for(BoundaryOptionsSet::const_iterator i = catalog->boundaryOptions().begin(); i != catalog->boundaryOptions().end(); ++i)
     {
-        LayerClient<FeatureSource> boundary;
+        LayerReference<FeatureSource> boundary;
         Status s = boundary.open(i->featureSource(), options);
         if (s.isError() || !boundary.getLayer())
         {

@@ -131,6 +131,8 @@ osg::Vec3d getVec3d(double* val)
 
 void calculateGeometryHeading(Feature* input, FilterContext& context)
 {
+    if (input->hasAttr("node-headings"))
+        return;
     std::vector<double> headings;
     const SpatialReference* targetSRS = nullptr;
     if (context.getSession()->isMapGeocentric())
@@ -207,7 +209,10 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
             headings.push_back(osg::RadiansToDegrees(heading));
         }
     }
-    input->setSwap("heading", headings);
+    if (!headings.empty())
+    {
+        input->setSwap("node-headings", headings);
+    }
 }
 }
 
@@ -266,10 +271,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 		// geometry, if needed.
         if ( modelSymbol && modelSymbol->orientationFromFeature().get() )
         {
-            if ( !input->hasAttr("heading") )
-            {
-                calculateGeometryHeading(input, context);
-            }
+            calculateGeometryHeading(input, context);
         }
 		// evaluate the instance URI expression:
 		const std::string& st = input->eval(uriEx, &context);
@@ -321,17 +323,25 @@ SubstituteModelFilter::process(const FeatureList&           features,
         {
             if ( modelSymbol->orientationFromFeature().get() )
             {
-                headingArray = input->getDoubleArray("heading");
+                if (input->hasAttr("node-headings"))
+                {
+                    headingArray = input->getDoubleArray("node-headings");
+                }
+                else if (input->hasAttr("heading"))
+                {
+                    float heading = input->getDouble("heading");
+                    headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+                }
             }
             else if ( modelSymbol->heading().isSet() )
             {
                 float heading = input->eval(headingEx, &context);
-                headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );                
+                headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
             }
         }
 
-		// how that we have a marker source, create a node for it
-		std::pair<URI,float> key( instanceURI, iconSymbol? scale : 1.0f ); //use 1.0 for models, since we don't want unique models based on scaling
+        // now that we have a marker source, create a node for it
+        std::pair<URI,float> key( instanceURI, iconSymbol? scale : 1.0f ); //use 1.0 for models, since we don't want unique models based on scaling
 
         // cache nodes per instance.
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];

@@ -1,0 +1,89 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_JOIN_POINTSLINES_FEATUREFILTER_OPTIONS
+#define OSGEARTH_JOIN_POINTSLINES_FEATUREFILTER_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/FeatureSource>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    class JoinPointsLinesFilterOptions : public ConfigOptions // NO EXPORT; header only
+    {
+    public:
+        JoinPointsLinesFilterOptions( const ConfigOptions& opt = ConfigOptions() ) : ConfigOptions( opt )
+        {
+            _conf.set("driver", "joinpointslines");            
+            fromConfig( _conf );
+        }
+
+        /** Features to load and use as boundary geometries */
+        optional<std::string>& lineSourceLayer() { return _lineLayerName; }
+        const optional<std::string>& lineSourceLayer() const { return _lineLayerName; }
+
+        optional<FeatureSource::Options>& lineSource() { return _lineFeatures; }
+        const optional<FeatureSource::Options>& lineSource() const { return _lineFeatures; }
+
+    public:
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.key() = "join_points_lines";
+            LayerReference<FeatureSource>::set(conf, "line_features", lineSourceLayer(), lineSource());
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            LayerReference<FeatureSource>::get(conf, "line_features", lineSourceLayer(), lineSource());
+        }
+
+        optional<std::string>            _lineLayerName;
+        optional<FeatureSource::Options> _lineFeatures;
+    };
+
+    class JoinPointsLinesFilter : public FeatureFilter, public JoinPointsLinesFilterOptions
+    {
+    private:
+        LayerReference<FeatureSource> _lineSource;
+    public:
+        JoinPointsLinesFilter(const ConfigOptions& options = ConfigOptions())
+            : FeatureFilter(), JoinPointsLinesFilterOptions(options)
+            {
+            }
+
+    public:
+        Status initialize(const osgDB::Options* readOptions);
+
+        void getLineFeatures(const GeoExtent& extent, FeatureList& features);
+
+        FilterContext push(FeatureList& input, FilterContext& context);
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_JOIN_POINTSLINES_FEATUREFILTER_OPTIONS
+

@@ -1,0 +1,61 @@
+<map name="power tower test">
+  <PowerlineModel name="towers">
+    <layout crop_features="true"></layout>
+    <features>power-towers</features>
+    <line_features>power-lines</line_features>
+    <styles>
+      <style type="text/css">
+        default {
+        model:             "../data/Transmission_Tower.osgb";
+        altitude-clamping: terrain;
+        model-heading: from_feature;
+        }
+      </style>
+    </styles>
+  </PowerlineModel>
+
+
+  <TFSFeatures name="power-towers">
+    <url>http://readymap.org/osm/</url>
+    <min_level>14</min_level>
+    <max_level>14</max_level>
+    <profile>spherical-mercator</profile>
+    <format>pbf</format>
+    <filters>
+      <script language="javascript">
+        <![CDATA[ (feature.properties.power === "tower" || feature.properties.power === "line"); ]]>
+      </script>
+      
+    </filters>
+  </TFSFeatures>
+    <TFSFeatures name="power-lines">
+      <url>http://readymap.org/osm/</url>
+      <min_level>14</min_level>
+      <max_level>14</max_level>
+      <profile>spherical-mercator</profile>
+      <format>pbf</format>
+      <filters>
+        <script language="javascript">
+          <![CDATA[ (feature.properties.power === "line"); ]]>
+        </script>
+      </filters>
+    </TFSFeatures>
+    <viewpoints>
+      <viewpoint name="Le Haillan">
+        <heading>0</heading>
+        <pitch>-89.0007</pitch>
+        <range>3664.39m</range>
+        <long>-0.6506</long>
+        <lat>44.8695</lat>
+      </viewpoint>
+    </viewpoints>
+<!--    
+    <xi:include href="readymap_imagery.xml"/>
+    -->
+    <ArcGISServerImage name="World Imagery">
+        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
+		<nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </ArcGISServerImage>
+
+    <xi:include href="readymap_elevation.xml"/>
+</map>

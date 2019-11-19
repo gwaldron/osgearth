@@ -33,14 +33,14 @@ REGISTER_OSGEARTH_LAYER(feature_mask, FeatureMaskLayer);
 void
 FeatureMaskLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::fromConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::get(conf, "features", _featureSourceLayer, _featureSource);
 }
 
 Config
 FeatureMaskLayer::Options::getConfig() const
 {
     Config conf = MaskLayer::Options::getConfig();
-    LayerReference<FeatureSource>::getConfig(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::set(conf, "features", _featureSourceLayer, _featureSource);
     return conf;
 }
 

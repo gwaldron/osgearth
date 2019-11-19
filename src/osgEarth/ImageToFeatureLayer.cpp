@@ -38,7 +38,7 @@ namespace osgEarth {
 Config
 ImageToFeatureSource::Options::getConfig() const {
     Config conf = FeatureSource::Options::getConfig();
-    LayerReference<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::set(conf, "image", imageLayerName(), imageLayer());
     conf.set("level", level());
     conf.set("attribute", attribute());
     return conf;
@@ -50,7 +50,7 @@ ImageToFeatureSource::Options::fromConfig(const Config& conf)
     level().init(0u);
     attribute().init("value");
 
-    LayerReference<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::get(conf, "image", imageLayerName(), imageLayer());
     conf.get("level", level());
     conf.get("attribute", attribute());
 }

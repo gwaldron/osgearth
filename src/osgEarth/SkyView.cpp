@@ -44,14 +44,14 @@ Config
 SkyViewImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerReference<ImageLayer>::getConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::set(conf, "image", imageLayerName(), imageLayer());
     return conf;
 }
 
 void
 SkyViewImageLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<ImageLayer>::fromConfig(conf, "image", imageLayerName(), imageLayer());
+    LayerReference<ImageLayer>::get(conf, "image", imageLayerName(), imageLayer());
 }
 
 //........................................................................

@@ -269,7 +269,7 @@ TritonLayer::Options::fromConfig(const osgEarth::Config& conf)
     conf.get("mask_layer", _maskLayerName);
     conf.get("max_altitude", _maxAltitude);
 
-    LayerReference<osgEarth::ImageLayer>::fromConfig(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<osgEarth::ImageLayer>::get(conf, "mask_layer", maskLayerName(), maskLayer());
 }
 
 osgEarth::Config
@@ -283,7 +283,7 @@ TritonLayer::Options::getConfig() const
     conf.set("render_bin_number", _renderBinNumber);
     conf.set("mask_layer", _maskLayerName);
     conf.set("max_altitude", _maxAltitude);
-    LayerReference<osgEarth::ImageLayer>::getConfig(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<osgEarth::ImageLayer>::set(conf, "mask_layer", maskLayerName(), maskLayer());
 
     return conf;
 }

@@ -62,8 +62,8 @@ Config
 GroundCoverLayer::Options::getConfig() const
 {
     Config conf = PatchLayer::Options::getConfig();
-    LayerReference<LandCoverLayer>::getConfig(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
-    LayerReference<ImageLayer>::getConfig(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<LandCoverLayer>::set(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
+    LayerReference<ImageLayer>::set(conf, "mask_layer", maskLayerName(), maskLayer());
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
     conf.set("grass", grass());
@@ -85,8 +85,8 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     _lod.init(13u);
     _castShadows.init(false);
 
-    LayerReference<LandCoverLayer>::fromConfig(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
-    LayerReference<ImageLayer>::fromConfig(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<LandCoverLayer>::get(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
+    LayerReference<ImageLayer>::get(conf, "mask_layer", maskLayerName(), maskLayer());
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
     conf.get("grass", grass());

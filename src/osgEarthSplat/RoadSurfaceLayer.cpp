@@ -40,8 +40,8 @@ Config
 RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerReference<FeatureSource>::getConfig(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::getConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
     conf.set("buffer_width", featureBufferWidth() );
     return conf;
 }
@@ -49,8 +49,8 @@ RoadSurfaceLayer::Options::getConfig() const
 void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::fromConfig(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::fromConfig(conf, "styles", styleSheetLayer(), styleSheet());
+    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
+    LayerReference<StyleSheet>::get(conf, "styles", styleSheetLayer(), styleSheet());
     conf.get("buffer_width", featureBufferWidth() );
 }
 

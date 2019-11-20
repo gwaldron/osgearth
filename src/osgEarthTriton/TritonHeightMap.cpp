@@ -335,9 +335,9 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     osg::ref_ptr<const osgEarth::ImageLayer> maskLayer;
     if (_maskLayer.lock(maskLayer))
     {
-        rttSS->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->shareTexUniformName().get());
-        rttSS->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->shareTexMatUniformName().get());
-        OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->shareTexUniformName().get() << ", matrix=" << maskLayer->shareTexMatUniformName().get() << std::endl;
+        rttSS->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->getSharedTextureUniformName());
+        rttSS->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->getSharedTextureMatrixUniformName());
+        OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->getSharedTextureUniformName() << ", matrix=" << maskLayer->getSharedTextureMatrixUniformName() << std::endl;
     }
 
     if (_terrain.valid())

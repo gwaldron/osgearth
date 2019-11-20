@@ -21,6 +21,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Random>
 #include <osgEarth/SimplexNoise>
+#include <osgEarth/Registry>
 #include <osg/Texture2D>
 
 using namespace osgEarth;
@@ -118,7 +119,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setMaxAnisotropy( 4.0f );
-    tex->setUnRefImageDataAfterApply( true );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     ImageUtils::activateMipMaps(tex);
 
     return tex;

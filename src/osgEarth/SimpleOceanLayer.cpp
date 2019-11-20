@@ -192,8 +192,8 @@ SimpleOceanLayer::setMaskLayer(ImageLayer* maskLayer)
 
         // activate the mask.
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_OCEAN_MASK", maskLayer->shareTexUniformName().get());
-        ss->setDefine("OE_OCEAN_MASK_MATRIX", maskLayer->shareTexMatUniformName().get());
+        ss->setDefine("OE_OCEAN_MASK", maskLayer->getSharedTextureUniformName());
+        ss->setDefine("OE_OCEAN_MASK_MATRIX", maskLayer->getSharedTextureMatrixUniformName());
 
         OE_INFO << LC << "Installed \"" << maskLayer->getName() << "\" as mask layer\n";
     }

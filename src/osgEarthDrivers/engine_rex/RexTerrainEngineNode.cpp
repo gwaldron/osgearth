@@ -1008,12 +1008,12 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             // for a shared layer, allocate a shared image unit if necessary.
             if ( imageLayer->isShared() )
             {
-                if (!imageLayer->shareImageUnit().isSet())
+                if (!imageLayer->sharedImageUnit().isSet())
                 {
                     int temp;
                     if ( getResources()->reserveTextureImageUnit(temp, imageLayer->getName().c_str()) )
                     {
-                        imageLayer->shareImageUnit() = temp;
+                        imageLayer->sharedImageUnit() = temp;
                         //OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << imageLayer->getName() << std::endl;
                     }
                     else
@@ -1023,7 +1023,7 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                 }
 
                 // Build a sampler binding for the shared layer.
-                if ( imageLayer->shareImageUnit().isSet() )
+                if ( imageLayer->sharedImageUnit().isSet() )
                 {
                     // Find the next empty SHARED slot:
                     unsigned newIndex = SamplerBinding::SHARED;
@@ -1034,9 +1034,9 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                     SamplerBinding& newBinding = _renderBindings[newIndex];
                     newBinding.usage()       = SamplerBinding::SHARED;
                     newBinding.sourceUID()   = imageLayer->getUID();
-                    newBinding.unit()        = imageLayer->shareImageUnit().get();
-                    newBinding.samplerName() = imageLayer->shareTexUniformName().get();
-                    newBinding.matrixName()  = imageLayer->shareTexMatUniformName().get();
+                    newBinding.unit()        = imageLayer->sharedImageUnit().get();
+                    newBinding.samplerName() = imageLayer->getSharedTextureUniformName();
+                    newBinding.matrixName()  = imageLayer->getSharedTextureMatrixUniformName();
 
                     OE_INFO << LC
                         << "Shared Layer \"" << imageLayer->getName() << "\" : sampler=\"" << newBinding.samplerName() << "\", "
@@ -1085,10 +1085,10 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         // for a shared layer, release the shared image unit.
         if ( layerRemoved->getEnabled() && layerRemoved->isShared() )
         {
-            if ( layerRemoved->shareImageUnit().isSet() )
+            if ( layerRemoved->sharedImageUnit().isSet() )
             {
-                getResources()->releaseTextureImageUnit( *layerRemoved->shareImageUnit() );
-                layerRemoved->shareImageUnit().unset();
+                getResources()->releaseTextureImageUnit( *layerRemoved->sharedImageUnit() );
+                layerRemoved->sharedImageUnit().unset();
             }
 
             // Remove from RenderBindings (mark as unused)

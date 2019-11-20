@@ -630,37 +630,6 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
         return GeoHeightField::INVALID;
     }
 
-    // Process invalid height values based on the no-data policy.
-    // This is happening *after* the disk cache, but *before* the memory cache.
-    // TODO: evaluate whether this makes sense. I don't like that we are altering
-    // a const heightfield returned from createHeightFieldImplementation;
-    // the method is const, but still..
-    if ( result.valid() )
-    {
-        if ( options().noDataPolicy() == NODATA_MSL )
-        {
-            // requested VDatum:
-            const VerticalDatum* outputVDatum = key.getExtent().getSRS()->getVerticalDatum();
-            const Geoid* geoid = 0L;
-
-            // if there's an output vdatum, just set all invalid's to zero MSL.
-            if ( outputVDatum == 0L )
-            {
-                // if the output is geodetic (HAE), but the input has a geoid, 
-                // use that geoid to populate the invalid data at sea level.
-                const VerticalDatum* profileDatum  = getProfile()->getSRS()->getVerticalDatum();
-                if ( profileDatum )
-                    geoid = profileDatum->getGeoid();
-            }
-
-            HeightFieldUtils::resolveInvalidHeights(
-                hf.get(),
-                result.getExtent(),
-                NO_DATA_VALUE,
-                geoid );
-        }
-    }
-
     // write to mem cache if needed:
     if ( result.valid() && !fromMemCache && _memCache.valid() )
     {
@@ -858,7 +827,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     {
         keyToUse = TileKey(key.getLOD(), key.getTileX(), key.getTileY(), haeProfile );
     }
-    
+
     // Collect the valid layers for this tile.
     LayerDataVector contenders;
     LayerDataVector offsets;

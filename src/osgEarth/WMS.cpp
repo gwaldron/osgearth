@@ -357,7 +357,7 @@ WMS::WMSImageLayerOptions::getMetadata()
             { "name": "wms_format", "description", "Image format to request", "type": "string", "default": "image/png" },
             { "name": "wms_version", "description", "WMS service version", "type": "string", "default": "1.1.1" },
             { "name": "srs", "description", "SRS name to request", "type": "string", "default": "" },
-            { "name": "crs", "description", "CRS name to request", "type": "striung", "default": "" },
+            { "name": "crs", "description", "CRS name to request", "type": "string", "default": "" },
             { "name": "transparent", "description", "Whether to set the transparent flag in WMS requests", "type": "boolean", "default": "false" },
             { "name": "times", "description", "List of timestamps for WMS-T", "type": "string", "default": "" },
           ]

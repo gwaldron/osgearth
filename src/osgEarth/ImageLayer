@@ -130,20 +130,20 @@ namespace osgEarth
         const bool& getCoverage() const;
         bool isCoverage() const { return getCoverage(); }
 
-        //! When isShared() == true, the engine will call this function to bind the
-        //! shared layer to a texture image unit.
-        optional<int>& shareImageUnit() { return _shareImageUnit; }
-        const optional<int>& shareImageUnit() const { return _shareImageUnit; }
-
         //! When isShared() == true, this will return the name of the uniform holding the
-        //! image's texture. 
-        optional<std::string>& shareTexUniformName() { return _shareTexUniformName; }
-        const optional<std::string>& shareTexUniformName() const { return _shareTexUniformName; }
+        //! image's texture.
+        void setSharedTextureUniformName(const std::string& value);
+        const std::string& getSharedTextureUniformName() const;
 
         //! When isShared() == true, this will return the name of the uniform holding the
         //! image's texture matrix.
-        optional<std::string>& shareTexMatUniformName() { return _shareTexMatUniformName; }
-        const optional<std::string>& shareTexMatUniformName() const { return _shareTexMatUniformName; }
+        void setSharedTextureMatrixUniformName(const std::string& value);
+        const std::string& getSharedTextureMatrixUniformName() const;
+
+        //! When isShared() == true, the engine will call this function to bind the
+        //! shared layer to a texture image unit.
+        optional<int>& sharedImageUnit() { return _shareImageUnit; }
+        const optional<int>& sharedImageUnit() const { return _shareImageUnit; }
         
 
     public: // methods
@@ -226,8 +226,6 @@ namespace osgEarth
 
         osg::ref_ptr<osg::Image>                 _emptyImage;
         optional<int>                            _shareImageUnit;
-        optional<std::string>                    _shareTexUniformName;
-        optional<std::string>                    _shareTexMatUniformName;
         bool                                     _useCreateTexture;
 
         virtual void fireCallback(ImageLayerCallback::MethodPtr method);

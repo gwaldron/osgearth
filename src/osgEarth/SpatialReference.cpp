@@ -185,9 +185,16 @@ SpatialReference::create(const Key& key)
         key.horizLower == "epsg:102113")
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
-        srs = createFromPROJ4(
-            "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs",
+	// note, after Proj 5.1 webmerc alias was added and GDAL 3.X requires Proj 6
+#if (GDAL_VERSION_MAJOR >= 3)
+		srs = createFromPROJ4(
+            "+proj=webmerc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs",
             "Spherical Mercator" );
+#else
+		srs = createFromPROJ4(
+			"+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs",
+			"Spherical Mercator");
+#endif
     }
 
     // ellipsoidal ("world") mercator:

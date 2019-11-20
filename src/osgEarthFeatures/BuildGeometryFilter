@@ -97,6 +97,13 @@ namespace osgEarth { namespace Features
         const optional<Angle>& maxCreaseAngle() const { return _maximumCreaseAngle; }
 
         /**
+         * Use OSG geometry tessellator.
+         * tessellate optimized for 3D geometry. Default is false.
+         */
+        optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
+        const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
+
+        /**
          * Shader policy to use when appropriate
          */
         optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
@@ -111,6 +118,7 @@ namespace osgEarth { namespace Features
         optional<float>            _maxPolyTilingAngle_deg;
         optional<bool>             _optimizeVertexOrdering;
         optional<Angle>            _maximumCreaseAngle;
+        optional<bool>             _useOSGTessellator;
         optional<ShaderPolicy>     _shaderPolicy;
         
         void tileAndBuildPolygon(

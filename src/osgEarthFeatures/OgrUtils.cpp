@@ -113,16 +113,12 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
             {
                 output = new Symbology::Polygon( numPoints );
                 populate( partRef, output, numPoints );
-                //output->open();
-                //output->rewind( Symbology::Ring::ORIENTATION_CCW );
                 std::reverse(output->begin(), output->end());
             }
             else
             {
                 Symbology::Ring* hole = new Symbology::Ring( numPoints );
                 populate( partRef, hole, numPoints );
-                //hole->open();
-                //hole->rewind( Symbology::Ring::ORIENTATION_CW );
                 std::reverse(hole->begin(), hole->end());
                 output->getHoles().push_back( hole );
             }

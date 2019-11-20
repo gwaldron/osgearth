@@ -29,6 +29,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/DecalLayer>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <iostream>
 
 #define LC "[decal] "
@@ -50,12 +51,11 @@ usage(const char* name)
 struct App
 {
     osg::ref_ptr<MapNode> _mapNode;
-    osg::ref_ptr<DecalLayer> _layer;
+    osg::ref_ptr<DecalImageLayer> _layer;
     osg::ref_ptr<osg::Image> _image;
 
     App()
     {
-        //_image = osgDB::readRefImageFile("../data/circle_gradient_2.png");
         _image = osgDB::readRefImageFile("../data/burn.png");
         if ( !_image.valid())
         {
@@ -66,10 +66,10 @@ struct App
     void init(MapNode* mapNode)
     {        
         _mapNode = mapNode;
-        _layer = mapNode->getMap()->getLayer<DecalLayer>();
+        _layer = mapNode->getMap()->getLayer<DecalImageLayer>();
         if (!_layer.valid())
         {
-            _layer = new DecalLayer();
+            _layer = new DecalImageLayer();
             _layer->setMinLevel(11u);
             mapNode->getMap()->addLayer(_layer.get());
         }
@@ -80,6 +80,7 @@ struct App
         if (_layer.valid() && _image.valid())
         {
             _layer->addDecal(extent, _image.get());
+            _mapNode->getTerrainEngine()->invalidateLayerRegion(_layer.get(), extent);
         }
     }
 };

@@ -23,13 +23,14 @@
 #include <osg/MatrixTransform>
 #include <osg/BlendFunc>
 #include <osg/BlendEquation>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
 
-#define LC "[DecalLayer] "
+#define LC "[DecalImageLayer] "
 
-REGISTER_OSGEARTH_LAYER(decal, DecalLayer);
+REGISTER_OSGEARTH_LAYER(decal, DecalImageLayer);
 
 namespace
 {
@@ -60,36 +61,39 @@ namespace
 //........................................................................
 
 Config
-DecalLayer::Options::getConfig() const
+DecalImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     return conf;
 }
 
 void
-DecalLayer::Options::fromConfig(const Config& conf)
+DecalImageLayer::Options::fromConfig(const Config& conf)
 {
     //nop
 }
 
 //........................................................................
 
+//#define USE_TEXTURES
+
 void
-DecalLayer::init()
+DecalImageLayer::init()
 {
     ImageLayer::init();
 
     // This layer does not use a TileSource.
     setTileSourceExpected(false);
 
-    // This layer implements the createTexture() function.
-    setUseCreateTexture();
-
     // Set the layer profile.
     setProfile(Profile::create("global-geodetic"));
 
     if (getName().empty())
         setName("Decal");
+
+#ifdef USE_TEXTURES
+    // This layer implements the createTexture() function.
+    setUseCreateTexture();
 
     // Create a rasterizer for rendering nodes to images.
     _rasterizer = new TileRasterizer();
@@ -103,9 +107,6 @@ DecalLayer::init()
     program->addShader(new osg::Shader(osg::Shader::FRAGMENT, fs));
     rasterizerSS->setAttribute(program);
 
-    // Texture binding
-    //rasterizerSS->addUniform(new osg::Uniform("tex", 0));
-
 #if 1 // blending is great for textures, bad for elevation deltas!!
     // Use normal RGB blending:
     osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -118,35 +119,36 @@ DecalLayer::init()
 
     // Create a placeholder image to display before rasterization is complete
     _placeholder = ImageUtils::createEmptyImage();
+#endif
 }
 
 Status
-DecalLayer::openImplementation()
+DecalImageLayer::openImplementation()
 {
     return ImageLayer::openImplementation();
 }
 
 void
-DecalLayer::addedToMap(const Map* map)
+DecalImageLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 }
 
 void
-DecalLayer::removedFromMap(const Map* map)
+DecalImageLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
 }
 
 osg::Node*
-DecalLayer::getNode() const
+DecalImageLayer::getNode() const
 {
     // adds the Rasterizer to the scene graph so we can rasterize tiles
     return _rasterizer.get();
 }
 
 void
-DecalLayer::releaseGLObjects(osg::State* state) const
+DecalImageLayer::releaseGLObjects(osg::State* state) const
 {
     for(TileTable::const_iterator tile = _tiles.begin();
         tile != _tiles.end();
@@ -159,7 +161,7 @@ DecalLayer::releaseGLObjects(osg::State* state) const
 }
 
 void
-DecalLayer::resizeGLObjectBuffers(unsigned maxSize)
+DecalImageLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
     for(TileTable::const_iterator tile = _tiles.begin();
         tile != _tiles.end();
@@ -172,7 +174,7 @@ DecalLayer::resizeGLObjectBuffers(unsigned maxSize)
 }
 
 void
-DecalLayer::updateTexture(const TileKey& key, osg::Texture2D* texture) const
+DecalImageLayer::updateTexture(const TileKey& key, osg::Texture2D* texture) const
 {
     // INTERNAL function -- assumes mutex is locked.
 
@@ -227,7 +229,7 @@ DecalLayer::updateTexture(const TileKey& key, osg::Texture2D* texture) const
 }
 
 TextureWindow
-DecalLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
+DecalImageLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())
     {
@@ -287,8 +289,117 @@ DecalLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
     return TextureWindow(texture.get(), osg::Matrix::identity());
 }
 
+GeoImage
+DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    std::vector<Decal> decals;
+    std::vector<GeoExtent> outputExtentsInDecalSRS;
+    std::vector<GeoExtent> intersections;
+
+    const GeoExtent& outputExtent = key.getExtent();
+    Threading::ScopedMutexLock lock(_mutex);
+
+    // thread-safe collection of intersecting decals
+    {
+        for(std::vector<Decal>::const_iterator i = _decals.begin();
+            i != _decals.end();
+            ++i)
+        {
+            const Decal& decal = *i;
+            GeoExtent outputExtentInDecalSRS = outputExtent.transform(decal._extent.getSRS());
+            GeoExtent intersectionExtent = decal._extent.intersectionSameSRS(outputExtentInDecalSRS);
+            if (intersectionExtent.isValid())
+            {
+                decals.push_back(decal);
+                outputExtentsInDecalSRS.push_back(outputExtentInDecalSRS);
+                intersections.push_back(intersectionExtent);
+            }
+        }
+    }
+
+    if (decals.empty())
+        return GeoImage::INVALID;
+
+    osg::ref_ptr<osg::Image> output = new osg::Image();
+    output->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    output->setInternalTextureFormat(GL_RGBA8);
+    ::memset(output->data(), 0, output->getTotalSizeInBytes());
+    ImageUtils::PixelWriter write(output.get());
+    ImageUtils::PixelReader readExisting(output.get());
+
+    osg::Vec4 existingValue;
+    osg::Vec4 value;
+
+    for(unsigned i=0; i<decals.size(); ++i)
+    {
+        const Decal& decal = decals[i];
+
+        const GeoExtent& outputExtentInDecalSRS = outputExtentsInDecalSRS[i];
+        const GeoExtent& intersection = intersections[i];
+
+        double writeU0 = ((intersection.xMin()-outputExtentInDecalSRS.xMin())/outputExtentInDecalSRS.width());
+        double writeU1 = ((intersection.xMax()-outputExtentInDecalSRS.xMin())/outputExtentInDecalSRS.width());
+
+        double writeV0 = ((intersection.yMin()-outputExtentInDecalSRS.yMin())/outputExtentInDecalSRS.height());
+        double writeV1 = ((intersection.yMax()-outputExtentInDecalSRS.yMin())/outputExtentInDecalSRS.height());
+
+        double readU0 = ((intersection.xMin()-decal._extent.xMin())/decal._extent.width());
+        double readU1 = ((intersection.xMax()-decal._extent.xMin())/decal._extent.width());
+
+        double readV0 = ((intersection.yMin()-decal._extent.yMin())/decal._extent.height());
+        double readV1 = ((intersection.yMax()-decal._extent.yMin())/decal._extent.height());
+
+        ImageUtils::PixelReader read(decal._image.get());
+
+        double w = (writeU1-writeU0) * (double)output->s();
+        double h = (writeV1-writeV0) * (double)output->t();
+
+        double ustep = 1.0/w;
+        double vstep = 1.0/h;
+
+        if (writeU0 > writeU1 || writeV0 > writeV1 || readU0 > readU1 || readV0 > readV1)
+        {
+            OE_INFO << std::endl
+                <<"writeU0="<<writeU0<<", writeU1="<<writeU1
+                <<", writeV0="<<writeV0<<", writeV1="<<writeV1
+                <<", readU0="<<readU0<<", readU1="<<readU1
+                <<", readV0="<<readV0<<", readV1="<<readV1
+                <<", w="<<w<<", h="<<h
+                <<std::endl;
+        }
+
+        for(double v=0.0; v<=1.0; v+=vstep)
+        {
+            double readv = readV0+v*(readV1-readV0);
+            double writev = writeV0+v*(writeV1-writeV0);
+
+            for(double u=0.0; u<=1.0; u+=ustep)
+            {
+                double readu = readU0+u*(readU1-readU0);
+                double writeu = writeU0+u*(writeU1-writeU0);
+
+                readExisting(existingValue, writeu, writev);
+                read(value, readu, readv);
+
+                value.r() = value.r()*value.a() + (existingValue.r()*(1.0-value.a()));
+                value.g() = value.g()*value.a() + (existingValue.g()*(1.0-value.a()));
+                value.b() = value.b()*value.a() + (existingValue.b()*(1.0-value.a()));
+                value.a() = osg::maximum(value.a(), existingValue.a());
+
+                write.f(value, writeu, writev);
+            }
+        }
+    }
+
+    std::string k = key.str();
+    osgEarth::replaceIn(k,"/","_");
+    osgDB::writeImageFile(*output.get(),"images/"+k+".png");
+
+    return GeoImage(output.get(), outputExtent);
+}
+
 void
-DecalLayer::addDecal(const GeoExtent& extent, const osg::Image* image)
+DecalImageLayer::addDecal(const GeoExtent& extent, const osg::Image* image)
 {
     Threading::ScopedMutexLock lock(_mutex);
 
@@ -297,6 +408,7 @@ DecalLayer::addDecal(const GeoExtent& extent, const osg::Image* image)
     decal._extent = extent;
     decal._image = image;
 
+#if USE_TEXTURES
     // update any existing tiles that intersect the new decal.
     for(TileTable::const_iterator tile = _tiles.begin();
         tile != _tiles.end();
@@ -307,11 +419,12 @@ DecalLayer::addDecal(const GeoExtent& extent, const osg::Image* image)
             updateTexture(tile->first, tile->second.get());
         }
     }
+#endif
 }
 
 // Builds the mesh that the rasterizer will render to the tile texture
 osg::Node*
-DecalLayer::buildMesh(const GeoExtent& extent, const osg::Image* image) const
+DecalImageLayer::buildMesh(const GeoExtent& extent, const osg::Image* image) const
 {
     double w = extent.width(), h = extent.height();
 

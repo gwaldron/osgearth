@@ -29,7 +29,7 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Contrib
 {
-    class OSGEARTH_EXPORT DecalLayer : public osgEarth::ImageLayer
+    class OSGEARTH_EXPORT DecalImageLayer : public osgEarth::ImageLayer
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
@@ -41,7 +41,7 @@ namespace osgEarth { namespace Contrib
         };
 
     public:
-        META_Layer(osgEarth, DecalLayer, Options, osgEarth::ImageLayer, Decal);
+        META_Layer(osgEarth, DecalImageLayer, Options, osgEarth::ImageLayer, Decal);
 
         //! Adds a decal to the layer.
         void addDecal(const GeoExtent& extent, const osg::Image* image);
@@ -53,6 +53,9 @@ namespace osgEarth { namespace Contrib
 
         //! Creates a texture for a tile key
         virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const;
+
+        //! Creates an image for a tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
         //! Called by Map when it adds this layer
         virtual void addedToMap(const class Map*);
@@ -76,7 +79,7 @@ namespace osgEarth { namespace Contrib
 
     protected:
 
-        virtual ~DecalLayer() { }
+        virtual ~DecalImageLayer() { }
 
     private:
         // rasterizes geometry into a texture
@@ -106,6 +109,6 @@ namespace osgEarth { namespace Contrib
 
 } } // namespace osgEarth
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalImageLayer::Options);
 
 #endif // OSGEARTH_DECAL_LAYER

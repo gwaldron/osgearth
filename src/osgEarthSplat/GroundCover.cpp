@@ -10,6 +10,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/BillboardSymbol>
+#include <osgEarth/Registry>
 
 #include <osg/Texture2DArray>
 
@@ -548,7 +549,7 @@ GroundCover::createTexture() const
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
     tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
-    tex->setUnRefImageDataAfterApply( true );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     tex->setMaxAnisotropy( 4.0 );
 
     return tex;

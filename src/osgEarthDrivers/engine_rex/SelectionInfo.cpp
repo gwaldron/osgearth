@@ -61,6 +61,9 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
     _lods.resize(numLods);
 
+    std::vector<float> sizes;
+    sizes.resize(numLods);
+
     for (unsigned lod = 0; lod <= maxLod; ++lod)
     {
         unsigned tx, ty;
@@ -72,6 +75,8 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
         _lods[lod]._maxValidTY = 0xFFFFFFFF;
+
+        sizes[lod] = 2.0*c.getRadius()/1.4142;
     }
     
     double metersPerEquatorialDegree = (profile->getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
@@ -120,6 +125,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
         OE_INFO << LC << "  LOD " << lod 
             << " RNG=" << _lods[lod]._visibilityRange
+            << " SZ=" << sizes[lod]
             << std::endl;
     }
 }

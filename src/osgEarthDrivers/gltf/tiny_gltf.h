@@ -959,6 +959,8 @@ namespace tinygltf {
             bool embedBuffers,
             bool prettyPrint,
             bool writeBinary);
+
+        // JB:   This is a custom function we added to tinygltf
         ///
         /// Write glTF to binary stream.
         ///
@@ -1501,6 +1503,7 @@ namespace tinygltf {
         return ret;
     }
 
+#if 0
     std::string base64_decode(std::string const &encoded_string) {
         int in_len = static_cast<int>(encoded_string.size());
         int i = 0;
@@ -1508,6 +1511,11 @@ namespace tinygltf {
         int in_ = 0;
         unsigned char char_array_4[4], char_array_3[3];
         std::string ret;
+
+        const std::string base64_chars =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz"
+            "0123456789+/";
 
         while (in_len-- && (encoded_string[in_] != '=') &&
             is_base64(encoded_string[in_])) {
@@ -1546,6 +1554,30 @@ namespace tinygltf {
 
         return ret;
     }
+#else
+    // JB:  Added this to speed up base64 decoding
+    // https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+    std::string base64_decode(const std::string &in) {
+
+        std::string out;
+
+        std::vector<int> T(256, -1);
+        for (int i = 0; i < 64; i++) T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
+
+        int val = 0, valb = -8;
+        for (unsigned char c : in) {
+            if (T[c] == -1) break;
+            val = (val << 6) + T[c];
+            valb += 6;
+            if (valb >= 0) {
+                out.push_back(char((val >> valb) & 0xFF));
+                valb -= 8;
+            }
+        }
+        return out;
+    }
+#endif
+
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
@@ -5209,6 +5241,7 @@ namespace tinygltf {
     }
 
 
+    // JB:   This is a custom function we added to tinygltf
     bool TinyGLTF::WriteGltfSceneToBinaryStream(Model *model,
         const std::string& filename,
         std::ostream& stream,

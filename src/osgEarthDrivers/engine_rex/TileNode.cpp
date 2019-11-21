@@ -289,7 +289,9 @@ TileNode::setDirty(bool value)
 void
 TileNode::refreshLayers(const std::set<UID>& layers)
 {
-    _loadRequest->setLayerFilter(layers);
+    for(std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        _loadRequest->addLayerToFilter(*i);
+
     _dirty = true;
 }
 
@@ -699,10 +701,6 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     {
         osg::Texture* tex = model->elevationModel()->getTexture();
 
-        // always keep the elevation image around because we use it for bounding box computation:
-        //tex->setUnRefImageDataAfterApply(false);
-        //Note: this happend now in LoadTileData
-
         _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._texture = tex;
         _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
 
@@ -779,7 +777,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         }
     }
 
-    if (newElevationData)
+    if (newElevationData && _context->options().normalizeEdges() == true)
     {
         _context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
     }

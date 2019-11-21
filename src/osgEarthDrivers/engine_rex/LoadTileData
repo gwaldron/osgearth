@@ -40,6 +40,9 @@ namespace osgEarth { namespace REX
         //! Sets the set of layers to load. Empty set = all layers
         void setLayerFilter(const std::set<UID>& layers);
 
+        //! Add layer to filter
+        void addLayerToFilter(const UID& uid);
+
         //! Clears the set of layers to load. Empty set = all layers
         void clearLayerFilter();
 

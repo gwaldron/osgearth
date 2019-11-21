@@ -727,7 +727,7 @@ LandCoverLayerVector::populateLandCoverImage(
         {
             for(unsigned s=0; s<comp.getImage()->s(); ++s)
             {
-                read(s, t);
+                read(value, s, t);
                 if (value.r() != NO_DATA_VALUE)
                 {
                     write(value, s, t);

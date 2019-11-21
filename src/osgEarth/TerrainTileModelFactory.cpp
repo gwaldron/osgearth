@@ -226,7 +226,23 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
 
-    if (!filter.empty() && !filter.elevation().isSetTo(true))
+    bool accepted = true;
+    ElevationLayerVector layers;
+    map->getLayers(layers);
+
+    if (!filter.empty())
+    {
+        accepted = false;
+        for(ElevationLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (filter.accept(i->get()))
+            {
+                accepted = true;
+                break;
+            }
+        }
+    }
+    if (!accepted)
         return;
 
     const osgEarth::RasterInterpolation& interp = map->getElevationInterpolation();
@@ -235,7 +251,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     osg::ref_ptr<osg::HeightField> mainHF;
     osg::ref_ptr<NormalMap> normalMap;
 
-    bool hfOK = getOrCreateHeightField(map, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
+    bool hfOK = getOrCreateHeightField(map, layers, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
 
     if (hfOK == false && key.getLOD() == _options.firstLOD().get())
     {
@@ -297,18 +313,29 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
 bool
 TerrainTileModelFactory::getOrCreateHeightField(const Map*                      map,
+                                                const ElevationLayerVector&     layers,
                                                 const TileKey&                  key,
                                                 ElevationSamplePolicy           samplePolicy,
-                                                RasterInterpolation          interpolation,
+                                                RasterInterpolation             interpolation,
                                                 unsigned                        border,
                                                 osg::ref_ptr<osg::HeightField>& out_hf,
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
+    // gather the combined revision (additive is fine)
+    int combinedLayerRevision = 0;
+    for(ElevationLayerVector::const_iterator i = layers.begin();
+        i != layers.end();
+        ++i)
+    {
+        // need layer UID too? gw
+        combinedLayerRevision += i->get()->getRevision();
+    }
+    
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
-    cachekey._revision     = map->getDataModelRevision();
+    cachekey._revision     = (int)map->getDataModelRevision() + combinedLayerRevision;
     cachekey._samplePolicy = samplePolicy;
 
     if (progress)
@@ -344,9 +371,6 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         //OE_INFO << "TODO: check terrain reqs\n";
         out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);
     }
-
-    ElevationLayerVector layers;
-    map->getLayers(layers);
 
     bool populated = layers.populateHeightFieldAndNormalMap(
         out_hf.get(),

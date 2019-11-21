@@ -97,7 +97,8 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 //.................................................................
 
 Layer::Layer() :
-_options(&_optionsConcrete)
+_options(&_optionsConcrete),
+_revision(0u)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -107,7 +108,8 @@ _options(&_optionsConcrete)
 }
 
 Layer::Layer(Layer::Options* optionsPtr) :
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
+_options(optionsPtr? optionsPtr : &_optionsConcrete),
+_revision(0u)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -118,6 +120,12 @@ _options(optionsPtr? optionsPtr : &_optionsConcrete)
 Layer::~Layer()
 {
     OE_DEBUG << LC << "~Layer\n";
+}
+
+void
+Layer::bumpRevision()
+{
+    ++_revision;
 }
 
 void

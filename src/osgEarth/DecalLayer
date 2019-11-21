@@ -20,6 +20,8 @@
 #define OSGEARTH_DECAL_LAYER 1
 
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/LandCoverLayer>
 #include <osgEarth/TileRasterizer>
 #include <osg/Image>
 
@@ -29,6 +31,9 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Contrib
 {
+    /**
+     * Image layer to applies georeferenced "decals" on the terrain.
+     */
     class OSGEARTH_EXPORT DecalImageLayer : public osgEarth::ImageLayer
     {
     public: // serialization
@@ -41,36 +46,60 @@ namespace osgEarth { namespace Contrib
         };
 
     public:
-        META_Layer(osgEarth, DecalImageLayer, Options, osgEarth::ImageLayer, Decal);
+        META_Layer(osgEarth, DecalImageLayer, Options, osgEarth::ImageLayer, DecalImage);
 
         //! Adds a decal to the layer.
         void addDecal(const GeoExtent& extent, const osg::Image* image);
 
     public: // ImageLayer
 
-        //! Opens the layer and returns a status
-        virtual Status openImplementation();
-
-        //! Creates a texture for a tile key
-        virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const;
-
         //! Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
-        //! Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*);
+    protected: // Layer
 
-        //! Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*);
+        // post-ctor initialization
+        virtual void init();
 
-        //! A node to add to the scene graph for this layer.
-        virtual osg::Node* getNode() const;
+        virtual ~DecalImageLayer() { }
 
-        //! Release GL resources
-        virtual void releaseGLObjects(osg::State* state) const;
+    private:
+        struct Decal {
+            GeoExtent _extent;
+            osg::ref_ptr<const osg::Image> _image;
+        };
+        std::vector<Decal> _decals;
 
-        //! Resize GL resources
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        // controls access to data
+        mutable Threading::Mutex _mutex;
+    };
+
+    /**
+    * Layer for making local modifications to elevation data.
+    */
+    class OSGEARTH_EXPORT DecalElevationLayer : public osgEarth::ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, DecalElevationLayer, Options, osgEarth::ElevationLayer, DecalElevation);
+
+        //! Adds a heightfield "decal" to the terrain. Each pixel in image contains a height value
+        //! that is multiplied by "scale" before being applied to the terrain.
+        //! Overlapping decals will result in the sum of overlapping height values.
+        void addDecal(const GeoExtent& extent, const osg::Image* image, float scale);
+
+    public: // ElevationLayer
+
+        //! Creates an image for a tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
 
     protected: // Layer
 
@@ -79,36 +108,65 @@ namespace osgEarth { namespace Contrib
 
     protected:
 
-        virtual ~DecalImageLayer() { }
+        virtual ~DecalElevationLayer() { }
 
     private:
-        // rasterizes geometry into a texture
-        osg::ref_ptr<TileRasterizer> _rasterizer;
 
         struct Decal {
-            GeoExtent _extent;
-            osg::ref_ptr<const osg::Image> _image;
+            GeoHeightField _heightfield;
         };
         std::vector<Decal> _decals;
-        
-        // lookup table of existing tile textures
-        typedef std::map<TileKey, osg::ref_ptr<osg::Texture2D> > TileTable;
-        mutable TileTable _tiles;
 
-        osg::ref_ptr<osg::Image> _placeholder;
-
-        // controls access to both _decals and _textures
         mutable Threading::Mutex _mutex;
+    };
 
-        // builds a simple quad mesh for rasterizing a decal
-        osg::Node* buildMesh(const GeoExtent&, const osg::Image*) const;
 
-        // queues (or re-queues) a tile for rasterization
-        void updateTexture(const TileKey& key, osg::Texture2D* tex) const;
+    class OSGEARTH_EXPORT DecalLandCoverLayer : public osgEarth::LandCoverLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public LandCoverLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, LandCoverLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, DecalLandCoverLayer, Options, osgEarth::LandCoverLayer, DecalLandCover);
+
+        //! Adds a decal to the layer.
+        void addDecal(const GeoExtent& extent, const osg::Image* image);
+
+    public: // ImageLayer
+
+        //! Creates an image for a tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        virtual ~DecalLandCoverLayer() { }
+
+    private:
+        struct Decal {
+            osg::ref_ptr<const osg::Image> _image;
+            GeoExtent _extent;
+        };
+        std::vector<Decal> _decals;
+
+        // controls access to_decals
+        mutable Threading::Mutex _mutex;
     };
 
 } } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalElevationLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalLandCoverLayer::Options);
 
 #endif // OSGEARTH_DECAL_LAYER

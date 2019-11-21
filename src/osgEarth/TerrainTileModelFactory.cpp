@@ -20,6 +20,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
+#include <osgEarth/LandCoverLayer>
 
 #include <osg/Texture2D>
 
@@ -62,7 +63,9 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
         addElevation( model.get(), map, key, filter, border, progress );
     }
 
-    addPatchLayers(model.get(), map, key, filter, progress);
+    addLandCover(model.get(), map, key, filter, progress);
+
+    //addPatchLayers(model.get(), map, key, filter, progress);
 
     // done.
     return model.release();
@@ -117,7 +120,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                     if ( geoImage.valid() )
                     {
                         if ( imageLayer->isCoverage() )
-                            tex = createCoverageTexture(geoImage.getImage(), imageLayer);
+                            tex = createCoverageTexture(geoImage.getImage());
                         else
                             tex = createImageTexture(geoImage.getImage(), imageLayer);
                     }
@@ -389,6 +392,37 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
     return populated;
 }
 
+void
+TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
+                                      const Map*                   map,
+                                      const TileKey&               key,
+                                      const CreateTileModelFilter& filter,
+                                      ProgressCallback*            progress)
+{
+    LandCoverLayerVector layers;
+    map->getLayers(layers);
+
+    osg::ref_ptr<osg::Image> coverageImage;
+
+    osg::ref_ptr<osg::Texture> tex;
+
+    if (layers.populateLandCoverImage(coverageImage, key, progress))
+    {
+        tex = createCoverageTexture(coverageImage.get());
+    }
+
+    if (tex)
+    {
+        tex->setName(model->getKey().str());
+
+        TerrainTileLandCoverModel* landCoverModel = new TerrainTileLandCoverModel();
+
+        landCoverModel->setTexture(tex.get());
+
+        model->landCoverModel() = landCoverModel;
+    }
+}
+
 osg::Texture*
 TerrainTileModelFactory::createImageTexture(osg::Image*       image,
                                             const ImageLayer* layer) const
@@ -424,8 +458,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 }
 
 osg::Texture*
-TerrainTileModelFactory::createCoverageTexture(osg::Image*       image,
-                                               const ImageLayer* layer) const
+TerrainTileModelFactory::createCoverageTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
 

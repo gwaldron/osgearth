@@ -60,7 +60,6 @@ namespace osgEarth { namespace REX
         osg::observer_ptr<TerrainEngineNode> _engine;
         osg::observer_ptr<EngineContext> _context;
         osg::ref_ptr<TerrainTileModel> _dataModel;
-        TileRenderModel _renderModel;
         CreateTileModelFilter _filter;
         osg::observer_ptr< const Map > _map;
         bool _enableCancel;

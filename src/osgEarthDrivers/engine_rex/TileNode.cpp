@@ -729,6 +729,16 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         updateNormalMap();
     }
 
+    // Land Cover:
+    const SamplerBinding& landCover = bindings[SamplerBinding::LANDCOVER];
+    if (landCover.isActive() && model->landCoverModel().valid() && model->landCoverModel()->getTexture())
+    {
+        osg::Texture* tex = model->landCoverModel()->getTexture();
+
+        _renderModel._sharedSamplers[SamplerBinding::LANDCOVER]._texture = tex;
+        _renderModel._sharedSamplers[SamplerBinding::LANDCOVER]._matrix.makeIdentity();
+    }
+
     // Other Shared Layers:
     for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
     {

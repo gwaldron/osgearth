@@ -45,9 +45,6 @@
         </coverages>
         
         <noise_lod>12</noise_lod>
-
-        <shared_sampler>CLASSMAP</shared_sampler>
-        <shared_matrix>CLASSMAP_matrix</shared_matrix>
     </LandCover>
 
     <terrainshader>
@@ -56,11 +53,13 @@
             #version 330
             #pragma vp_entryPoint colorize
             #pragma vp_location fragment_coloring
-            uniform sampler2D CLASSMAP;
-            uniform mat4 CLASSMAP_matrix;
+            #pragma import_defines(OE_LANDCOVER_TEX, OE_LANDCOVER_TEX_MATRIX)
+            
+            uniform sampler2D OE_LANDCOVER_TEX;
+            uniform mat4 OE_LANDCOVER_TEX_MATRIX;
             vec4 oe_layer_tilec;
             void colorize(inout vec4 color) {
-                int c = int(texture(CLASSMAP, (CLASSMAP_matrix*oe_layer_tilec).st).r);
+                int c = int(texture(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*oe_layer_tilec).st).r);
                 ivec3 v;
                 if      (c == 1)  v.rgb = ivec3(0, 64, 0);      // forest
                 else if (c == 2)  v.rgb = ivec3(0, 127, 0);     // cropland

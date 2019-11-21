@@ -9,7 +9,11 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.2
 
-uniform sampler2D oe_splat_coverageTex;
+#pragma import_defines(OE_LANDCOVER_TEX);
+
+uniform sampler2D OE_LANDCOVER_TEX;
+
+//uniform sampler2D oe_splat_coverageTex;
 in vec2 oe_splat_covtc;
 flat in float oe_splat_coverageTexSize;
 
@@ -23,7 +27,7 @@ void oe_splat_sampleCoverage(inout vec4 unused)
 {
 #ifdef USE_TEXTURE_GATHER
     // A wee bit faster, but causes a rendering anomaly
-    oe_splat_coverage = textureGather(oe_splat_coverageTex, oe_splat_covtc, 0).wzxy;
+    oe_splat_coverage = textureGather(oe_tile_landCoverTex, oe_splat_covtc, 0).wzxy;
 #else
 
     float pixelWidth = 1.0/oe_splat_coverageTexSize;
@@ -40,10 +44,10 @@ void oe_splat_sampleCoverage(inout vec4 unused)
     vec2 se = vec2(ne.x, sw.y);
 
     oe_LandCover_coverage = vec4(
-        texture(oe_splat_coverageTex, sw).r,
-        texture(oe_splat_coverageTex, se).r,
-        texture(oe_splat_coverageTex, nw).r,
-        texture(oe_splat_coverageTex, ne).r );
+        texture(OE_LANDCOVER_TEX, sw).r,
+        texture(OE_LANDCOVER_TEX, se).r,
+        texture(OE_LANDCOVER_TEX, nw).r,
+        texture(OE_LANDCOVER_TEX, ne).r );
 
     //return vec4(
     //    texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r,

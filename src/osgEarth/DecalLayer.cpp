@@ -391,9 +391,9 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         }
     }
 
-    std::string k = key.str();
-    osgEarth::replaceIn(k,"/","_");
-    osgDB::writeImageFile(*output.get(),"images/"+k+".png");
+    //std::string k = key.str();
+    //osgEarth::replaceIn(k,"/","_");
+    //osgDB::writeImageFile(*output.get(),"images/"+k+".png");
 
     return GeoImage(output.get(), outputExtent);
 }

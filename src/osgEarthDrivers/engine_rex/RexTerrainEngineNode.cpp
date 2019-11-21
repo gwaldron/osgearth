@@ -282,6 +282,9 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         this->_requireNormalTextures = true;
     }
 
+    // don't know how to set this up so just do it
+    this->_requireLandCoverTextures = true;
+
     // ensure we get full coverage at the first LOD.
     this->_requireFullDataAtFirstLOD = true;
 
@@ -500,6 +503,15 @@ RexTerrainEngineNode::setupRenderBindings()
     colorParent.matrixName()  = "oe_layer_texParentMatrix";
     if (this->parentTexturesRequired())
         getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
+
+    SamplerBinding& landCover = _renderBindings[SamplerBinding::LANDCOVER];
+    landCover.usage()       = SamplerBinding::LANDCOVER;
+    landCover.samplerName() = "oe_tile_landCoverTex";
+    landCover.matrixName()  = "oe_tile_landCoverTexMatrix";
+    if (this->landCoverTexturesRequired())
+        getResources()->reserveTextureImageUnit(landCover.unit(), "Terrain Land Cover");
+    getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX", landCover.samplerName());
+    getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX_MATRIX", landCover.matrixName());
 
     // Apply a default, empty texture to each render binding.
     OE_DEBUG << LC << "Render Bindings:\n";

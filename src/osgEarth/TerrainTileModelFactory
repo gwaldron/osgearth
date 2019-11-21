@@ -110,6 +110,13 @@ namespace osgEarth
             unsigned                     border,
             ProgressCallback*            progress);
 
+        virtual void addLandCover(
+            TerrainTileModel*            model,
+            const Map*                   map,
+            const TileKey&               key,
+            const CreateTileModelFilter& filter,
+            ProgressCallback*            progress);
+
         virtual void addPatchLayers(
             TerrainTileModel*            model,
             const Map*                   map,
@@ -135,16 +142,14 @@ namespace osgEarth
             const ImageLayer* layer) const;
 
         osg::Texture* createCoverageTexture(
-            osg::Image*       image,
-            const ImageLayer* layer) const;
+            osg::Image* image) const;
 
         osg::Texture* createElevationTexture(
             osg::Image* image) const;
 
         osg::Texture* createNormalTexture(
             osg::Image* image,
-            bool compress
-            ) const;
+            bool compress ) const;
 
         const TerrainOptions& _options;
         

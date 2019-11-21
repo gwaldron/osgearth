@@ -307,9 +307,6 @@ SplatLayer::buildStateSets()
         stateset->setDefine("OE_SPLAT_NOISE_SAMPLER", NOISE_SAMPLER);
     }
 
-    osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, getLandCoverLayer()->sharedImageUnit().get());
-    stateset->addUniform(lcTexUniform);
-
     stateset->addUniform(new osg::Uniform("oe_splat_scaleOffsetInt", 0));
     stateset->addUniform(new osg::Uniform("oe_splat_noiseScale", 12.0f));
     stateset->addUniform(new osg::Uniform("oe_splat_detailRange", 100000.0f));
@@ -321,12 +318,6 @@ SplatLayer::buildStateSets()
         stateset->setDefine("OE_SPLAT_GPU_NOISE");
 
     stateset->setDefine("OE_USE_NORMAL_MAP");
-
-    stateset->setDefine("OE_SPLAT_COVERAGE_TEXMAT", getLandCoverLayer()->getSharedTextureMatrixUniformName());
-    
-    //stateset->setAttributeAndModes(
-    //    new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO),
-    //    osg::StateAttribute::OVERRIDE);
 
     SplattingShaders splatting;
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);

@@ -86,6 +86,7 @@ TerrainEngineNode::TerrainEngineNode() :
 _dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
+_requireLandCoverTextures( false ),
 _requireParentTextures   ( false ),
 _requireElevationBorder  ( false ),
 _requireFullDataAtFirstLOD( false ),

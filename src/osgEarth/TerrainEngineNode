@@ -205,6 +205,7 @@ namespace osgEarth
 
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
+        bool landCoverTexturesRequired() const { return _requireLandCoverTextures; }
         bool parentTexturesRequired() const { return _requireParentTextures; }
         bool elevationBorderRequired() const { return _requireElevationBorder; }
         bool fullDataAtFirstLodRequired() const { return _requireFullDataAtFirstLOD; }
@@ -235,6 +236,7 @@ namespace osgEarth
 
         bool _requireElevationTextures;
         bool _requireNormalTextures;
+        bool _requireLandCoverTextures;
         bool _requireParentTextures;
         bool _requireElevationBorder;
         bool _requireFullDataAtFirstLOD;

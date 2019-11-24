@@ -23,6 +23,8 @@ using namespace osgEarth::Util;
 
 #define LC "[MemCacheBin] "
 
+#define CLONE_DATA
+
 //------------------------------------------------------------------------
 
 namespace
@@ -48,9 +50,13 @@ namespace
 
             if ( rec.valid() )
             {
+#ifdef CLONE_DATA
                 return ReadResult( 
                    osg::clone(rec.value().first.get(), osg::CopyOp::DEEP_COPY_ALL),
                    rec.value().second );
+#else
+                return ReadResult(const_cast<osg::Object*>(rec.value().first.get()), rec.value().second);
+#endif
             }
             else
             {
@@ -72,8 +78,12 @@ namespace
         {
             if ( object ) 
             {
+#ifdef CLONE_DATA
                 osg::ref_ptr<const osg::Object> cloned = osg::clone(object, osg::CopyOp::DEEP_COPY_ALL);
                 _lru.insert( key, std::make_pair(cloned.get(), meta) );
+#else
+                _lru.insert( key, std::make_pair(object, meta) );
+#endif
                 return true;
             }
             else

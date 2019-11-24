@@ -21,6 +21,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/SimplexNoise>
 #include <osgEarth/Progress>
+#include <osgEarth/Random>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -31,6 +32,13 @@ REGISTER_OSGEARTH_LAYER(landcover, LandCoverLayer);
 
 namespace
 {
+    void check(int s, int t, int supper, int tupper) {
+        if (s<0 || s>supper-1 || t<0 ||t>tupper-1)
+        {
+            OE_WARN << "BREAK! OUT OF BOUNDS!" << std::endl;
+        }
+    }
+
     osg::Vec2 getSplatCoords(const TileKey& key, float baseLOD, const osg::Vec2& covUV)
     {
         osg::Vec2 out;
@@ -111,7 +119,7 @@ namespace
                     // check for cancelation:
                     if (progress && progress->isCanceled())
                     {
-                        break;
+                        break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
                     }
                 } 
             }
@@ -132,6 +140,11 @@ namespace
                 warp = sourceLayer->getWarp();
             }
         }
+    };
+
+    struct RefinementCache : public osg::Referenced
+    {
+        std::map<TileKey,GeoImage> lut;
     };
 }
 
@@ -191,14 +204,14 @@ void
 LandCoverLayer::init()
 {
     options().coverage() = true;
-    //options().visible() = false;
-    //options().shared() = true;
 
     ImageLayer::init();
 
     setRenderType(RENDERTYPE_NONE);
 
     setTileSourceExpected(false);
+
+    layerHints().L2CacheSize() = 64;
 }
 
 void
@@ -337,30 +350,19 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u
         }
         else
         {
-            // compute the closest ancestor key with actual data for the neighbor key:
-            TileKey bestkey = getBestAvailableTileKey(actualKey);
+            // Always use the immediate parent for fractal refinement.
+            TileKey bestkey = actualKey.createParentKey();
 
             // should not need this fallback loop but let's do it anyway
-            GeoImage tile;
-            while (bestkey.valid() && !tile.valid())
-            {
-                // load the image and store it to the metaimage.
-                tile = createMetaImageComponent(bestkey, progress);
-                if (tile.valid())
-                {
-                    comp = &metaImage[actualKey];
-                    comp->image = tile.getImage();
-                    actualKey.getExtent().createScaleBias(bestkey.getExtent(), comp->scaleBias);
-                    comp->pixel.setImage(comp->image.get());
-                    comp->pixel.setBilinear(false);
-                }
-                else
-                {
-                    bestkey = bestkey.createParentKey();
-                }
+            GeoImage tile = const_cast<LandCoverLayer*>(this)->createImage(bestkey, progress);
 
-                if (progress && progress->isCanceled())
-                    return false;
+            if (tile.valid())
+            {
+                comp = &metaImage[actualKey];
+                comp->image = tile.getImage();
+                actualKey.getExtent().createScaleBias(bestkey.getExtent(), comp->scaleBias);
+                comp->pixel.setImage(comp->image.get());
+                comp->pixel.setBilinear(false);
             }
         }
 
@@ -379,118 +381,265 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u
 GeoImage
 LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    MetaImage metaImage;
-        
-    // Allocate the output image:
-    osg::ref_ptr<osg::Image> output = new osg::Image();
-    output->allocateImage(
-        getTileSize(),
-        getTileSize(),
-        1,
-        GL_RED,
-        GL_FLOAT);
-    output->setInternalTextureFormat(GL_R16F);
+    LandCoverCoverageLayer* coverage = _coverageLayers[0].get();
+    ImageLayer* imageLayer = coverage->getImageLayer();
 
-    ImageUtils::PixelWriter write(output.get());
-    write.setNormalize(false);
+    TileKey parentKey = key.createParentKey();
 
-    // Configure the noise function:
-    SimplexNoise noiseGen;
-    noiseGen.setNormalize(true);
-    noiseGen.setRange(0.0, 1.0);
-    noiseGen.setFrequency(4.0);
-    noiseGen.setPersistence(0.8);
-    noiseGen.setLacunarity(2.2);
-    noiseGen.setOctaves(8);
+    TileKey bestKey = imageLayer->getBestAvailableTileKey(key);
+    if (bestKey.valid() == false)
+        return GeoImage::INVALID;
 
-    osg::Vec2d cov;
-    osg::Vec2 noiseCoords;
-    osg::Vec4 pixel;
-    osg::Vec4 warpedPixel;
-    osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
-        
-    // scales the key's LOD to the noise function's LOD:
-    float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
-
-    // loop over the pixels and write each one.
-    for (int t = 0; t < output->t(); ++t)
+    if (bestKey == key || !parentKey.valid())
     {
-        double v = (double)t / (double)(output->t() - 1);
-        for (int s = 0; s < output->s(); ++s)
+        GeoImage img = imageLayer->createImage(key, progress);
+        if (!img.valid())
+            return img;
+
+        osg::ref_ptr<osg::Image> output = new osg::Image();
+        output->allocateImage(
+            getTileSize(),
+            getTileSize(),
+            1,
+            GL_RED,
+            GL_FLOAT);
+        output->setInternalTextureFormat(GL_R16F);
+
+        ImageUtils::PixelReader read(img.getImage());
+        ImageUtils::PixelWriter write(output.get());
+
+        osg::Vec4 pixel;
+        bool wrotePixel;
+        unsigned pixelsWritten = 0u;
+
+        for (int t = 0; t < output->t(); ++t)
         {
-            double u = (double)s / (double)(output->s() - 1);
-
-            // coverage sampling coordinates:
-            cov.set(u, v);
-
-            // first read the unwarped pixel to get the warping value.
-            // (warp is stored in pixel.g)
-            bool wrotePixel = false;
-            if (readMetaImage(metaImage, key, u, v, pixel, progress) &&
-                pixel.g() != NO_DATA_VALUE)
+            for (int s = 0; s < output->s(); ++s)
             {
-                float warp = pixel.g() * pdL;
-                if (warp != 0.0)
+                read(pixel, s, t);
+
+                wrotePixel = false;
+
+                if (pixel.r() < 1.0f)
                 {
-                    // use the noise function to warp the uv coordinates:
-                    noiseCoords = getSplatCoords(key, getNoiseLOD(), cov);
-                    double noise = getNoise(noiseGen, noiseCoords);
-                    cov = warpCoverageCoords(cov, noise, warp);
-
-                    // now read the pixel at the warped location:
-                    if (readMetaImage(metaImage, key, cov.x(), cov.y(), warpedPixel, progress) &&
-                        warpedPixel.b() != NO_DATA_VALUE)
+                    // normalized code; convert
+                    int code = (int)(pixel.r()*255.0f);
+                    if (code < _codemaps[0].size())
                     {
-                        // only apply the warping if the location of the warped pixel
-                        // came from the same source layer. Otherwise you will get some
-                        // unsavory speckling. (Layer index is stored in pixel.b)
-                        if (pixel.b() == warpedPixel.b())
-                            write(warpedPixel, s, t);
-                        else
-                            write(pixel, s, t);
+                        int value = _codemaps[0][code];
+                        if (value >= 0)
+                        {
+                            pixel.r() = (float)value;
 
-                        wrotePixel = true;
+                            write(pixel, s, t);
+                            wrotePixel = true;
+                            pixelsWritten++;
+                        }
                     }
                 }
                 else
                 {
+                    // unnormalized
+                    int code = (int)pixel.r();
+                    if (code < _codemaps[0].size() && _codemaps[0][code] >= 0)
+                    {
+                        pixel.r() = (float)_codemaps[0][code];
+                        write(pixel, s, t);
+                        wrotePixel = true;
+                        pixelsWritten++;
+                    }
+                }
+
+                if (!wrotePixel)
+                {
+                    pixel.r() = NO_DATA_VALUE;
                     write(pixel, s, t);
-                    wrotePixel = true;
+                }
+            }
+        }
+
+        if (pixelsWritten > 0)
+            return GeoImage(output.get(), key.getExtent());
+        else
+            return GeoImage::INVALID;
+    }
+
+    // No data, but want more levels? Fractal refinement starts here.
+    if (getMaxDataLevel() > key.getLOD())
+    {
+        MetaImage metaImage;
+
+        // Allocate the working image:
+        osg::ref_ptr<osg::Image> workspace = new osg::Image();
+        workspace->allocateImage(
+            getTileSize() + 3,
+            getTileSize() + 3,
+            1,
+            GL_RED,
+            GL_FLOAT);
+        ImageUtils::PixelWriter writeToWorkspace(workspace.get());
+        ImageUtils::PixelReader readFromWorkspace(workspace.get());
+
+        // Allocate the output image:
+        osg::ref_ptr<osg::Image> output = new osg::Image();
+        output->allocateImage(
+            getTileSize(),
+            getTileSize(),
+            1,
+            GL_RED,
+            GL_FLOAT);
+        output->setInternalTextureFormat(GL_R16F);
+
+#if 0
+        // Configure the noise function:
+        SimplexNoise noiseGen;
+        noiseGen.setNormalize(true);
+        noiseGen.setRange(0.0, 1.0);
+        noiseGen.setFrequency(4.0);
+        noiseGen.setPersistence(0.8);
+        noiseGen.setLacunarity(2.2);
+        noiseGen.setOctaves(8);
+#endif
+
+        osg::Vec2d cov;
+        osg::Vec4 pixel;
+        osg::Vec4 p0, p1, p2, p3;
+
+        // scales the key's LOD to the noise function's LOD:
+        float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
+
+        Random prng(key.getTileX()*key.getTileY()*key.getLOD());
+
+        unsigned r;
+        int s, t;
+        osg::Vec2d noiseCoords;
+
+        // First pass: loop over the grid and populate even pixels with
+        // values from the ancestors.
+        for (t = 0; t < workspace->t(); ++t)
+        {
+            double v = (double)(t - 2) / (double)(output->t() - 1);
+
+            for (s = 0; s < workspace->s(); ++s)
+            {
+                double u = (double)(s - 2) / (double)(output->s() - 1);
+
+                if ((s & 1) == 0 && (t & 1) == 0)
+                {
+                    if (readMetaImage(metaImage, key, u, v, pixel, progress))
+                        writeToWorkspace(pixel, s, t);
+                    else if (progress && progress->isCanceled())
+                        return GeoImage::INVALID;
                 }
             }
 
-            // if we didn't get a coverage value, just write NODATA
-            if (!wrotePixel)
-            {
-                write(nodata, s, t);
-            }            
-                
             if (progress && progress->isCanceled())
             {
                 OE_DEBUG << LC << key.str() << " canceled" << std::endl;
                 return GeoImage::INVALID;
             }
         }
+
+        // Second pass: diamond
+        for (t = 1; t < workspace->t()-1; ++t)
+        {
+            //        double v = (double)(t) / (double)(output->t() - 1);
+            for (s = 1; s < workspace->s()-1; ++s)
+            {
+                //            double u = (double)(s) / (double)(output->s() - 1);
+                if ((s & 1) == 1 && (t & 1) == 1)
+                {
+                    //cov.set(u, v);
+                    //noiseCoords = getSplatCoords(key, getNoiseLOD(), cov);
+                    //double noise = getNoise(noiseGen, noiseCoords);
+                    //r = (unsigned)(noise*3.9999999);
+                    r = prng.next(4u);
+
+                    // Diamond: pick one of the four diagonals to copy into the
+                    // center pixel, attempting to preserve curves. When there is
+                    // no clear choice, go random.
+                    check(s-1,t-1,workspace->s(),workspace->t());
+                    check(s+1,t-1,workspace->s(),workspace->t());
+                    check(s-1,t+1,workspace->s(),workspace->t());
+                    check(s+1,t+1,workspace->s(),workspace->t());
+                    readFromWorkspace(p0, s - 1, t - 1);
+                    readFromWorkspace(p1, s + 1, t - 1);
+                    readFromWorkspace(p2, s - 1, t + 1);
+                    readFromWorkspace(p3, s + 1, t + 1);
+                    if (p0.r() == p1.r() && p1.r() == p2.r()) pixel = p0;
+                    else if (p1.r() == p2.r() && p2.r() == p3.r()) pixel = p1;
+                    else if (p2.r() == p3.r() && p3.r() == p0.r()) pixel = p2;
+                    else if (p3.r() == p0.r() && p0.r() == p1.r()) pixel = p3;
+                    else if (p0.r() == p1.r() && p2.r() == p3.r()) pixel = (r <= 1) ? p0 : p2;
+                    else if (p1.r() == p2.r() && p3.r() == p0.r()) pixel = (r <= 1) ? p1 : p3;
+                    else pixel = r == 0 ? p0 : r == 1 ? p1 : r == 2 ? p2 : p3;
+                    check(s,t,workspace->s(),workspace->t());
+                    writeToWorkspace(pixel, s, t);
+                }
+            }
+        }
+
+        // Third pass: square
+        for (t = 2; t < workspace->t() - 1; ++t)
+        {
+            //        double v = (double)(t) / (double)(output->t() - 1);
+            for (s = 2; s < workspace->s() - 1; ++s)
+            {
+                //            double u = (double)(s) / (double)(output->s() - 1);
+                if (((s & 1) == 1 && (t & 1) == 0) || ((s & 1) == 0 && (t & 1) == 1))
+                {
+                    //cov.set(u, v);
+                    //noiseCoords = getSplatCoords(key, getNoiseLOD(), cov);
+                    //double noise = getNoise(noiseGen, noiseCoords);
+                    //r = (unsigned)(noise*3.9999999);
+                    r = prng.next(4u);
+
+                    // Square: pick one of the four adjacents to copy into the
+                    // center pixel, attempting to preserve curves. When there is
+                    // no clear choice, go random.
+                    check(s-1,t,workspace->s(),workspace->t());
+                    check(s,t-1,workspace->s(),workspace->t());
+                    check(s+1,t,workspace->s(),workspace->t());
+                    check(s,t+1,workspace->s(),workspace->t());
+                    readFromWorkspace(p0, s - 1, t);
+                    readFromWorkspace(p1, s, t - 1);
+                    readFromWorkspace(p2, s + 1, t);
+                    readFromWorkspace(p3, s, t + 1);
+                    if (p0.r() == p1.r() && p1.r() == p2.r()) pixel = p0;
+                    else if (p1.r() == p2.r() && p2.r() == p3.r()) pixel = p1;
+                    else if (p2.r() == p3.r() && p3.r() == p0.r()) pixel = p2;
+                    else if (p3.r() == p0.r() && p0.r() == p1.r()) pixel = p3;
+                    else if (p0.r() == p1.r() && p2.r() == p3.r()) pixel = (r <= 1) ? p0 : p2;
+                    else if (p1.r() == p2.r() && p3.r() == p0.r()) pixel = (r <= 1) ? p1 : p3;
+                    else pixel = r == 0 ? p0 : r == 1 ? p1 : r == 2 ? p2 : p3;
+                    check(s,t,workspace->s(),workspace->t());
+                    writeToWorkspace(pixel, s, t);
+                }
+            }
+        }
+
+        ImageUtils::PixelWriter writeToOutput(output.get());
+
+        for (t = 0; t < output->t(); ++t)
+        {
+            for (s = 0; s < output->s(); ++s)
+            {
+                readFromWorkspace(pixel, s + 2, t + 2);
+                writeToOutput(pixel, s, t);
+            }
+        }
+
+        if (progress && progress->isCanceled())
+        {
+            return GeoImage::INVALID;
+        }
+
+        return GeoImage(output.get(), key.getExtent());
     }
-
-    return GeoImage(output.get(), key.getExtent());
-}
-
-const LandCoverClass*
-LandCoverLayer::getClassByUV(const GeoImage& tile, double u, double v) const
-{
-    if (!tile.valid())
-        return 0L;
-
-    if (!_lcDictionary.valid())
-        return 0L;
-
-    ImageUtils::PixelReader read(tile.getImage());
-    read.setBilinear(false); // nearest neighbor only!
-    read.setDenormalize(false);
-    float value = read(u, v).r();
-
-    return _lcDictionary->getClassByValue((int)value);
+    else
+    {
+        return GeoImage::INVALID;
+    }
 }
 
 GeoImage
@@ -668,6 +817,7 @@ LandCoverLayerVector::LandCoverLayerVector(const LandCoverLayerVector& rhs) :
     //nop
 }
 
+// Composites a vector of land cover images into a single image.
 bool
 LandCoverLayerVector::populateLandCoverImage(
     osg::ref_ptr<osg::Image>& output,
@@ -677,6 +827,7 @@ LandCoverLayerVector::populateLandCoverImage(
     if (empty())
         return false;
 
+    // Special case of one image - no compositing necessary.
     if (size() == 1)
     {
         if (begin()->get()->getEnabled())
@@ -687,54 +838,123 @@ LandCoverLayerVector::populateLandCoverImage(
         return output.valid();
     }
 
-    bool needsClone = false;
-    osg::Vec4 value;
+    bool fallback = false;          // whether to fall back on parent tiles for a component
+    bool needsClone = false;        // whether to clone the output image
 
-    for(const_iterator i = begin(); i != end(); ++i)
+    osg::Vec4 value;
+    unsigned numValues = 0u;
+    unsigned numNoDataValues = 1u;
+
+    // Iterate backwards since the last image has the highest priority.
+    // If we get an image with all valid values (no NO_DATA), we are finished
+    for(const_reverse_iterator i = rbegin(); i != rend() && numNoDataValues > 0u; ++i)
     {
         LandCoverLayer* layer = i->get();
 
         if (!layer->getEnabled())
             continue;
 
-        GeoImage comp = layer->createImage(key, progress);
-        if (!comp.valid())
-            continue;
+        GeoImage comp;
 
-        // first valid image to arrive? Set it on the output.
+        osg::Matrixd compScaleBias;
+        
+        // Fetch the image for the current component. If necessary, fall back on
+        // ancestor tilekeys until we get a result. This is necessary if we 
+        // already have some data but there are NO DATA values that need filling.
+        if (fallback)
+        {
+            TileKey compKey = key;
+            while(comp.valid() == false && compKey.valid())
+            {
+                comp = layer->createImage(compKey, progress);
+                if (!comp.valid())
+                    compKey = compKey.createParentKey();
+                else
+                    key.getExtent().createScaleBias(compKey.getExtent(), compScaleBias);
+            }
+        }
+        else
+        {
+            comp = layer->createImage(key, progress);
+        }
+
+        if (!comp.valid())
+            continue;  
+        
+        ImageUtils::PixelReader readInput(comp.getImage());
+
+        // scale and bias to read an ancestor (fallback) tile if necessary.
+        double 
+            scale = compScaleBias(0,0), 
+            sbias = compScaleBias(3,0)*readInput.s(),
+            tbias = compScaleBias(3,1)*readInput.t();
+
+        // If this is the first image, scan the image for NO_DATA values.
         if (!output.valid())
         {
+            numNoDataValues = 0u;
+
+            for(int t=0; t<readInput.t() && numNoDataValues == 0u; ++t)
+            {
+                for(int s=0; s<readInput.s() && numNoDataValues == 0u; ++s)
+                {
+                    readInput(value, (int)(s*scale+sbias), (int)(t*scale+tbias));
+                    if (value.r() == NO_DATA_VALUE)
+                    {
+                        numNoDataValues++;
+                    }
+                }
+            }
+
             output = comp.getImage();
+            numValues = output->s() * output->t();
+            needsClone = true;
+            fallback = true;
             continue;
         }
 
-        // not the first image to arrive? if it's the second, clone it
-        // so we can alter the composite.
+        // The second image to arrive requires that we clone the data
+        // since we are going to modify it.
         if (needsClone)
         {
             output = osg::clone(output.get(), osg::CopyOp::DEEP_COPY_ALL);
             needsClone = false;
         }
 
-        ImageUtils::PixelReader read(comp.getImage());
-        read.setDenormalize(false);
-        read.setBilinear(false);
+        // now composite this image under the previous one, 
+        // accumulating a count of NO_DATA values along the way.
+        ImageUtils::PixelReader readOutput(output.get());
+        ImageUtils::PixelWriter writeOutput(output.get());
 
-        ImageUtils::PixelWriter write(output.get());
-        write.setNormalize(false);
+        numNoDataValues = 0u;
 
-        for(unsigned t=0; t<comp.getImage()->t(); ++t)
+        for(unsigned t=0; t<readOutput.t(); ++t)
         {
-            for(unsigned s=0; s<comp.getImage()->s(); ++s)
+            for(unsigned s=0; s<readOutput.s(); ++s)
             {
-                read(value, s, t);
-                if (value.r() != NO_DATA_VALUE)
+                readOutput(value, s, t);
+
+                if (value.r() == NO_DATA_VALUE)
                 {
-                    write(value, s, t);
+                    readInput(value, (int)(s*scale+sbias), (int)(t*scale+tbias));
+
+                    if (value.r() == NO_DATA_VALUE)
+                        numNoDataValues++;
+                    else
+                        writeOutput(value, s, t);
                 }
             }
         }
     }
 
-    return output.valid();
+    // If the image is ALL nodata ... return NULL.
+    if (numNoDataValues == numValues)
+    {
+        output = NULL;
+        return false;
+    }
+    else
+    {
+        return output.valid();
+    }
 }

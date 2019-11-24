@@ -391,7 +391,17 @@ ImageLayer::createImage(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
-    return createImageInKeyProfile( key, progress );
+    // prevents 2 threads from creating the same object at the same time
+    _gateMutex.lock();
+    Gate& gate = _keyGates[key];
+    _gateMutex.unlock();
+    gate.e.waitAndReset();
+
+    GeoImage result = createImageInKeyProfile( key, progress );
+
+    gate.e.set();
+
+    return result;
 }
 
 GeoImage

@@ -24,6 +24,7 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/URI>
+#include <osgEarth/LandCover>
 #include <osgEarth/LandCoverLayer>
 
 namespace osgEarth { namespace Contrib
@@ -110,8 +111,9 @@ namespace osgEarth { namespace Contrib
 
         virtual ~FractalElevationLayer();
 
-        osg::observer_ptr<LandCoverLayer> _landCover;
-        osg::observer_ptr<LandCoverDictionary> _landCoverDict;
+        LayerReference<LandCoverDictionary> _dictionary;
+
+        LandCoverLayerVector _landCoverLayers;
 
         bool _debug;
         osg::ref_ptr<osg::Image> _noiseImage1;

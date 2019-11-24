@@ -23,6 +23,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Progress>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -1052,6 +1053,11 @@ GDAL::Driver::createImage(const TileKey& key,
     }
 
     GDAL_SCOPED_LOCK;
+
+    if (progress && progress->isCanceled())
+    {
+        return NULL;
+    }
 
     osg::ref_ptr<osg::Image> image;
 

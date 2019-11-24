@@ -57,11 +57,6 @@ namespace osgEarth
         //! Adds a coverage layer definition (TODO: add actual layer, not options)
         void addCoverage(LandCoverCoverageLayer* layer);
 
-        //! Given a land cover tile, which you can generate by calling
-        //! createImage, get the land cover class at the given parametric
-        //! coordinates [0..1].
-        const LandCoverClass* getClassByUV(const GeoImage& tile, double u, double v) const;
-
     public: // Layer
 
         virtual Status openImplementation();

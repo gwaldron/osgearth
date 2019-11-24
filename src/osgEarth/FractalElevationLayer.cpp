@@ -210,13 +210,17 @@ FractalElevationLayer::addedToMap(const Map* map)
 
     if (map)
     {
-        _landCover = map->getLayer<LandCoverLayer>();
-        if (_landCover.valid())
-            OE_INFO << LC << "Found land cover layer.\n";
+        map->getLayers(_landCoverLayers);
+        if (_landCoverLayers.empty())
+        {
+            //setStatus(Status::ResourceUnavailable, "No land cover layers found");
+        }
 
-        _landCoverDict = map->getLayer<LandCoverDictionary>();
-        if (_landCoverDict.valid())
-            OE_INFO << LC << "Found land cover dictionary.\n";
+        _dictionary.setLayer(map->getLayer<LandCoverDictionary>());
+        if (_dictionary.getLayer() == NULL)
+        {
+            //setStatus(Status::ResourceUnavailable, "No land cover dictionary found");
+        }
     }
 }
 
@@ -225,13 +229,16 @@ FractalElevationLayer::removedFromMap(const Map* map)
 {
     ElevationLayer::removedFromMap(map);
 
-    _landCover = 0L;
-    _landCoverDict = 0L;
+    _landCoverLayers.clear();
+    _dictionary.disconnect(map);
 }
 
 GeoHeightField
 FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
+    if (!getStatus().isOK())
+        GeoHeightField::INVALID;
+
     double min_n = FLT_MAX, max_n = -FLT_MAX;
     double min_h = FLT_MAX, max_h = -FLT_MAX;
     double h_mean = 0.0;
@@ -245,16 +252,10 @@ FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
     osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
         key.getExtent(), getTileSize(), getTileSize(), 0u);
 
-    // land cover tile
-    GeoImage lcTile;
-
-    osg::ref_ptr<LandCoverLayer> lcLayer;
-    _landCover.lock(lcLayer);
-
-    if (lcLayer.valid())
-    {
-        lcTile = lcLayer->createImage(key, progress);
-    }
+    // create a land cover tile
+    osg::ref_ptr<osg::Image> lcimage;
+    _landCoverLayers.populateLandCoverImage(lcimage, key, progress);
+    GeoImage lcTile(lcimage.get(), key.getExtent());
 
     osg::Vec4f sample;
 
@@ -302,9 +303,9 @@ FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
             float amp = options().amplitude().get();
 
             // if we have land cover mappings, use them:
-            if (lcTile.valid())
+            if (lcTile.valid() && _dictionary.getLayer())
             {
-                const LandCoverClass* lcClass = lcLayer->getClassByUV(lcTile, u, v);
+                const LandCoverClass* lcClass = _dictionary.getLayer()->getClassByUV(lcTile, u, v);
                 if (lcClass)
                 {
                     const LandCoverMapping* mapping = getMapping(lcClass);

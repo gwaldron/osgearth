@@ -393,10 +393,10 @@ GroundCoverLayer::buildStateSets()
         return;
     }
     
-    if (!getLandCoverLayer()) {
-        OE_DEBUG << LC << "buildStateSets deferred.. land cover layer not available\n";
-        return;
-    }
+    //if (!getLandCoverLayer()) {
+    //    OE_DEBUG << LC << "buildStateSets deferred.. land cover layer not available\n";
+    //    return;
+    //}
 
     NoiseTextureFactory noise;
     osg::ref_ptr<osg::Texture> noiseTexture = noise.create(256u, 4u);

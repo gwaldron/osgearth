@@ -81,6 +81,7 @@ namespace osgEarth
             const LandCoverClassVector& classes() const { return _landCoverClasses; }
             bool loadFromXML(const URI& uri);        
             virtual Config getConfig() const;
+
         private:
             void fromConfig(const Config& conf);
             LandCoverClassVector _landCoverClasses;
@@ -104,6 +105,10 @@ namespace osgEarth
 
         //! Gets the land cover class corresponding to the integer value.
         const LandCoverClass* getClassByValue(int value) const;
+
+        //! Given a land cover tile, get the land cover class at the given unit
+        //! coordinates [0..1].
+        const LandCoverClass* getClassByUV(const GeoImage& tile, double u, double v) const;
     };
 
 

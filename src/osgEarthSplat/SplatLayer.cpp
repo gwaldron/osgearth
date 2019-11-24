@@ -30,7 +30,6 @@
 
 #define LC "[SplatLayer] " << getName() << ": "
 
-#define COVERAGE_SAMPLER "oe_splat_coverageTex"
 #define SPLAT_SAMPLER    "oe_splatTex"
 #define NOISE_SAMPLER    "oe_splat_noiseTex"
 #define LUT_SAMPLER      "oe_splat_coverageLUT"
@@ -247,10 +246,10 @@ SplatLayer::buildStateSets()
         return;
     }
     
-    if (!getLandCoverLayer()) {
-        OE_DEBUG << LC << "buildStateSets deferred.. land cover layer not available\n";
-        return;
-    }
+    //if (!getLandCoverLayer()) {
+    //    OE_DEBUG << LC << "buildStateSets deferred.. land cover layer not available\n";
+    //    return;
+    //}
 
     // Load all the splatting textures
     for (Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)

@@ -94,6 +94,9 @@ LandCoverLayer::init()
     setTileSourceExpected(false);
 
     layerHints().L2CacheSize() = 64;
+
+    _waterCode = -1;
+    _beachCode = -1;
 }
 
 void
@@ -190,6 +193,11 @@ LandCoverLayer::addedToMap(const Map* map)
             _coverageLayers[i]->addedToMap(map);
             buildCodeMap(_coverageLayers[i].get(), _codemaps[i]);
         }
+
+        const LandCoverClass* water = _lcDictionary->getClassByName("water");
+        if (water) _waterCode = water->getValue();
+        const LandCoverClass* beach = _lcDictionary->getClassByName("desert");
+        if (beach) _beachCode = beach->getValue();
     }
     else
     {
@@ -388,9 +396,10 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
     int s, t;
 
     // temporarily hard-coded sand and water values for beach generation
-    const float S=6;
+    bool generateBeach = _beachCode>=0 && _waterCode>=0;
+    const float S=_beachCode;
     const osg::Vec4 sand(S,S,S,1);
-    const float W=8;
+    const float W=_waterCode;
     const osg::Vec4 water(W,W,W,1);
     float k0,k1,k2,k3;
     unsigned beachLOD = 13;
@@ -428,7 +437,7 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
                 readFromWorkspace(p2, s + 1, t + 1); k2=p2.r();
                 readFromWorkspace(p3, s - 1, t + 1); k3=p3.r();   
 
-                if (key.getLOD()==beachLOD)
+                if (generateBeach && key.getLOD()==beachLOD)
                 {
                     // all the same, copy
                     if (k0==k1 && k1==k2 && k2==k3) pixel = p0;
@@ -489,7 +498,7 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
                 readFromWorkspace(p2, s + 1, t); k2=p2.r();
                 readFromWorkspace(p3, s, t + 1); k3=p3.r();
 
-                if (key.getLOD()==beachLOD)
+                if (generateBeach && key.getLOD()==beachLOD)
                 {
                     // all the same, copy
                     if (k0==k1 && k1==k2 && k2==k3) pixel = p0;

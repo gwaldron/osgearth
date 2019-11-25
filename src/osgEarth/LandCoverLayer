@@ -94,6 +94,8 @@ namespace osgEarth
         typedef MetaImageComponent MetaImage[3][3];
 
         bool readMetaImage(MetaImage&, const TileKey&, int s, int t, osg::Vec4f& output, ProgressCallback*) const;
+
+        int _waterCode, _beachCode;
     };
 
 

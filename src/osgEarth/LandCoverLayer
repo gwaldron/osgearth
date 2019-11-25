@@ -80,18 +80,20 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<LandCoverCoverageLayer> > CoverageLayerVector;
         CoverageLayerVector _coverageLayers;
 
-        GeoImage createMetaImageComponent(const TileKey& key, ProgressCallback* progress) const;
+        GeoImage createFractalEnhancedImage(const TileKey& key, ProgressCallback* progress) const;
 
         void buildCodeMap(const LandCoverCoverageLayer*, CodeMap&);
 
         struct MetaImageComponent {
-            MetaImageComponent() : pixel(0L) { }
+            MetaImageComponent() : pixel(0L), failed(false) { }
+            bool failed;
             osg::ref_ptr<osg::Image> image;
             osg::Matrix scaleBias;
             ImageUtils::PixelReader pixel;
         };
-        typedef std::map<TileKey, MetaImageComponent> MetaImage;
-        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*) const;
+        typedef MetaImageComponent MetaImage[3][3];
+
+        bool readMetaImage(MetaImage&, const TileKey&, int s, int t, osg::Vec4f& output, ProgressCallback*) const;
     };
 
 

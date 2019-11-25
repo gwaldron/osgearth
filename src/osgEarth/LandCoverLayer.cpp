@@ -30,124 +30,6 @@ using namespace osgEarth::Util;
 
 REGISTER_OSGEARTH_LAYER(landcover, LandCoverLayer);
 
-namespace
-{
-    void check(int s, int t, int supper, int tupper) {
-        if (s<0 || s>supper-1 || t<0 ||t>tupper-1)
-        {
-            OE_WARN << "BREAK! OUT OF BOUNDS!" << std::endl;
-        }
-    }
-
-    osg::Vec2 getSplatCoords(const TileKey& key, float baseLOD, const osg::Vec2& covUV)
-    {
-        osg::Vec2 out;
-
-        float dL = (float)key.getLOD() - baseLOD;
-        float factor = pow(2.0f, dL);
-        float invFactor = 1.0/factor;
-        out.set( covUV.x()*invFactor, covUV.y()*invFactor ); 
-
-        // For upsampling we need to calculate an offset as well
-        if ( factor >= 1.0 )
-        {
-            unsigned wide, high;
-            key.getProfile()->getNumTiles(key.getLOD(), wide, high);
-
-            float tileX = (float)key.getTileX();
-            float tileY = (float)(wide-1-key.getTileY()); // swap Y. (not done in the shader version.)
-
-            osg::Vec2 a( floor(tileX*invFactor), floor(tileY*invFactor) );
-            osg::Vec2 b( a.x()*factor, a.y()*factor );
-            osg::Vec2 c( (a.x()+1.0f)*factor, (a.y()+1.0f)*factor );
-            osg::Vec2 offset( (tileX-b.x())/(c.x()-b.x()), (tileY-b.y())/(c.y()-b.y()) );
-
-            out += offset;
-        }
-
-        return out;
-    }
-
-    osg::Vec2 warpCoverageCoords(const osg::Vec2& covIn, float noise, float warp)
-    {
-        float n1 = 2.0 * noise - 1.0;
-        return osg::Vec2(
-            covIn.x() + sin(n1*osg::PI*2.0) * warp,
-            covIn.y() + sin(n1*osg::PI*2.0) * warp);
-    }
-
-    float getNoise(SimplexNoise& noiseGen, const osg::Vec2& uv)
-    {
-        // TODO: check that u and v are 0..s and not 0..s-1
-        double n = noiseGen.getTiledValue(uv.x(), uv.y());
-        n = osg::clampBetween(n, 0.0, 1.0);
-        return n;
-    }
-
-    struct ILayer 
-    {
-        GeoImage  image;
-        float     scale;
-        osg::Vec2 bias;
-        bool      valid;
-        float     warp;
-        ImageUtils::PixelReader* read;
-        unsigned* codeTable;
-        unsigned loads;
-
-        ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f), loads(0) { }
-
-        ~ILayer() { if (read) delete read; }
-
-        void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
-        {
-            if (sourceLayer->getEnabled())
-            {
-                ImageLayer* imageLayer = sourceLayer->getImageLayer();
-
-                for(TileKey k = key; k.valid() && !image.valid() && imageLayer->isKeyInLegalRange(k); k = k.createParentKey())
-                {
-                    // Check is there is the possibility of data for this key
-                    // If not, proceed to the parent (since we are potentially mosaicing)
-                    // We may want to check isKeyInLegalRange here as well, since putting it
-                    // in the for loop will only work for min_level (but that is probably OK)
-                    if (imageLayer->mayHaveData(key))
-                    {
-                        image = imageLayer->createImage(k, progress);
-                    }
-
-                    // check for cancelation:
-                    if (progress && progress->isCanceled())
-                    {
-                        break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
-                    }
-                } 
-            }
-
-            valid = image.valid();
-
-            if ( valid )
-            {
-                scale = key.getExtent().width() / image.getExtent().width();
-                bias.x() = (key.getExtent().xMin() - image.getExtent().xMin()) / image.getExtent().width();
-                bias.y() = (key.getExtent().yMin() - image.getExtent().yMin()) / image.getExtent().height();
-
-                read = new ImageUtils::PixelReader(image.getImage());
-
-                // cannot interpolate coverage data:
-                read->setBilinear( false );
-
-                warp = sourceLayer->getWarp();
-            }
-        }
-    };
-
-    struct RefinementCache : public osg::Referenced
-    {
-        std::map<TileKey,GeoImage> lut;
-    };
-}
-
 //........................................................................
 
 #undef  LC
@@ -327,54 +209,49 @@ LandCoverLayer::removedFromMap(const Map* map)
 }
 
 bool
-LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u, double v, osg::Vec4f& output, ProgressCallback* progress) const
+LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, int s, int t, osg::Vec4& output, ProgressCallback* progress) const
 {
-    // Find the key containing the uv coordinates.
-    int x = int(floor(u));
-    int y = int(floor(v));
-    TileKey actualKey = (x != 0 || y != 0)? key.createNeighborKey(x, -y) : key;
+    int tilesize = (int)getTileSize();
+
+    int dx = s<0 ? -1 : s>tilesize-1 ? +1 : 0;
+    int dy = t<0 ? -1 : t>tilesize-1 ? +1 : 0;
+
+    TileKey actualKey = (dx==0 && dy==0)? key : key.createNeighborKey(dx, -dy);
 
     if (actualKey.valid())
     {
-        // Transform the uv to be relative to the tile it's actually in.
-        // Don't forget: stupid computer requires us to handle negatives by hand.
-        u = u >= 0.0 ? fmod(u, 1.0) : 1.0+fmod(u, 1.0);
-        v = v >= 0.0 ? fmod(v, 1.0) : 1.0+fmod(v, 1.0);
-
-        MetaImageComponent* comp = 0L;
-
-        MetaImage::iterator i = metaImage.find(actualKey);
-        if (i != metaImage.end())
-        {
-            comp = &i->second;
-        }
-        else
+        MetaImageComponent& comp = metaImage[dx+1][dy+1];
+        if (!comp.failed && !comp.image.valid())
         {
             // Always use the immediate parent for fractal refinement.
-            TileKey bestkey = actualKey.createParentKey();
+            TileKey parentKey = actualKey.createParentKey();
 
-            // should not need this fallback loop but let's do it anyway
-            GeoImage tile = const_cast<LandCoverLayer*>(this)->createImage(bestkey, progress);
-
+            GeoImage tile = const_cast<LandCoverLayer*>(this)->createImage(parentKey, progress);
             if (tile.valid())
             {
-                comp = &metaImage[actualKey];
-                comp->image = tile.getImage();
-                actualKey.getExtent().createScaleBias(bestkey.getExtent(), comp->scaleBias);
-                comp->pixel.setImage(comp->image.get());
-                comp->pixel.setBilinear(false);
+                comp.image = tile.getImage();
+                actualKey.getExtent().createScaleBias(parentKey.getExtent(), comp.scaleBias);
+                comp.pixel.setImage(comp.image.get());
+            }
+            else
+            {
+                comp.failed = true;
             }
         }
 
-        if (comp)
+        if (comp.image.valid())
         {
-            // scale/bias to this tile's extent and sample the image.
-            u = u * comp->scaleBias(0, 0) + comp->scaleBias(3, 0);
-            v = v * comp->scaleBias(1, 1) + comp->scaleBias(3, 1);
-            comp->pixel(output, u, v);
+            s = s<0? tilesize+s : s>tilesize-1 ? s-tilesize : s;
+            t = t<0? tilesize+t : t>tilesize-1 ? t-tilesize : t;
+            s = (int)((double)s*comp.scaleBias(0,0)) + (int)(comp.scaleBias(3,0)*(double)tilesize);
+            t = (int)((double)t*comp.scaleBias(1,1)) + (int)(comp.scaleBias(3,1)*(double)tilesize);
+
+            comp.pixel(output, s, t);
+
             return true;
         }
     }
+
     return false;
 }
 
@@ -412,6 +289,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         bool wrotePixel;
         unsigned pixelsWritten = 0u;
 
+        // Transcode the layer-specific codes into the dictionary codes:
         for (int t = 0; t < output->t(); ++t)
         {
             for (int s = 0; s < output->s(); ++s)
@@ -420,7 +298,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 
                 wrotePixel = false;
 
-                if (pixel.r() < 1.0f)
+                if (pixel.r() < 1.0f) // probably unnecessary - review
                 {
                     // normalized code; convert
                     int code = (int)(pixel.r()*255.0f);
@@ -467,174 +345,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     // No data, but want more levels? Fractal refinement starts here.
     if (getMaxDataLevel() > key.getLOD())
     {
-        MetaImage metaImage;
-
-        // Allocate the working image:
-        osg::ref_ptr<osg::Image> workspace = new osg::Image();
-        workspace->allocateImage(
-            getTileSize() + 3,
-            getTileSize() + 3,
-            1,
-            GL_RED,
-            GL_FLOAT);
-        ImageUtils::PixelWriter writeToWorkspace(workspace.get());
-        ImageUtils::PixelReader readFromWorkspace(workspace.get());
-
-        // Allocate the output image:
-        osg::ref_ptr<osg::Image> output = new osg::Image();
-        output->allocateImage(
-            getTileSize(),
-            getTileSize(),
-            1,
-            GL_RED,
-            GL_FLOAT);
-        output->setInternalTextureFormat(GL_R16F);
-
-#if 0
-        // Configure the noise function:
-        SimplexNoise noiseGen;
-        noiseGen.setNormalize(true);
-        noiseGen.setRange(0.0, 1.0);
-        noiseGen.setFrequency(4.0);
-        noiseGen.setPersistence(0.8);
-        noiseGen.setLacunarity(2.2);
-        noiseGen.setOctaves(8);
-#endif
-
-        osg::Vec2d cov;
-        osg::Vec4 pixel;
-        osg::Vec4 p0, p1, p2, p3;
-
-        // scales the key's LOD to the noise function's LOD:
-        float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
-
-        Random prng(key.getTileX()*key.getTileY()*key.getLOD());
-
-        unsigned r;
-        int s, t;
-        osg::Vec2d noiseCoords;
-
-        // First pass: loop over the grid and populate even pixels with
-        // values from the ancestors.
-        for (t = 0; t < workspace->t(); ++t)
-        {
-            double v = (double)(t - 2) / (double)(output->t() - 1);
-
-            for (s = 0; s < workspace->s(); ++s)
-            {
-                double u = (double)(s - 2) / (double)(output->s() - 1);
-
-                if ((s & 1) == 0 && (t & 1) == 0)
-                {
-                    if (readMetaImage(metaImage, key, u, v, pixel, progress))
-                        writeToWorkspace(pixel, s, t);
-                    else if (progress && progress->isCanceled())
-                        return GeoImage::INVALID;
-                }
-            }
-
-            if (progress && progress->isCanceled())
-            {
-                OE_DEBUG << LC << key.str() << " canceled" << std::endl;
-                return GeoImage::INVALID;
-            }
-        }
-
-        // Second pass: diamond
-        for (t = 1; t < workspace->t()-1; ++t)
-        {
-            //        double v = (double)(t) / (double)(output->t() - 1);
-            for (s = 1; s < workspace->s()-1; ++s)
-            {
-                //            double u = (double)(s) / (double)(output->s() - 1);
-                if ((s & 1) == 1 && (t & 1) == 1)
-                {
-                    //cov.set(u, v);
-                    //noiseCoords = getSplatCoords(key, getNoiseLOD(), cov);
-                    //double noise = getNoise(noiseGen, noiseCoords);
-                    //r = (unsigned)(noise*3.9999999);
-                    r = prng.next(4u);
-
-                    // Diamond: pick one of the four diagonals to copy into the
-                    // center pixel, attempting to preserve curves. When there is
-                    // no clear choice, go random.
-                    check(s-1,t-1,workspace->s(),workspace->t());
-                    check(s+1,t-1,workspace->s(),workspace->t());
-                    check(s-1,t+1,workspace->s(),workspace->t());
-                    check(s+1,t+1,workspace->s(),workspace->t());
-                    readFromWorkspace(p0, s - 1, t - 1);
-                    readFromWorkspace(p1, s + 1, t - 1);
-                    readFromWorkspace(p2, s - 1, t + 1);
-                    readFromWorkspace(p3, s + 1, t + 1);
-                    if (p0.r() == p1.r() && p1.r() == p2.r()) pixel = p0;
-                    else if (p1.r() == p2.r() && p2.r() == p3.r()) pixel = p1;
-                    else if (p2.r() == p3.r() && p3.r() == p0.r()) pixel = p2;
-                    else if (p3.r() == p0.r() && p0.r() == p1.r()) pixel = p3;
-                    else if (p0.r() == p1.r() && p2.r() == p3.r()) pixel = (r <= 1) ? p0 : p2;
-                    else if (p1.r() == p2.r() && p3.r() == p0.r()) pixel = (r <= 1) ? p1 : p3;
-                    else pixel = r == 0 ? p0 : r == 1 ? p1 : r == 2 ? p2 : p3;
-                    check(s,t,workspace->s(),workspace->t());
-                    writeToWorkspace(pixel, s, t);
-                }
-            }
-        }
-
-        // Third pass: square
-        for (t = 2; t < workspace->t() - 1; ++t)
-        {
-            //        double v = (double)(t) / (double)(output->t() - 1);
-            for (s = 2; s < workspace->s() - 1; ++s)
-            {
-                //            double u = (double)(s) / (double)(output->s() - 1);
-                if (((s & 1) == 1 && (t & 1) == 0) || ((s & 1) == 0 && (t & 1) == 1))
-                {
-                    //cov.set(u, v);
-                    //noiseCoords = getSplatCoords(key, getNoiseLOD(), cov);
-                    //double noise = getNoise(noiseGen, noiseCoords);
-                    //r = (unsigned)(noise*3.9999999);
-                    r = prng.next(4u);
-
-                    // Square: pick one of the four adjacents to copy into the
-                    // center pixel, attempting to preserve curves. When there is
-                    // no clear choice, go random.
-                    check(s-1,t,workspace->s(),workspace->t());
-                    check(s,t-1,workspace->s(),workspace->t());
-                    check(s+1,t,workspace->s(),workspace->t());
-                    check(s,t+1,workspace->s(),workspace->t());
-                    readFromWorkspace(p0, s - 1, t);
-                    readFromWorkspace(p1, s, t - 1);
-                    readFromWorkspace(p2, s + 1, t);
-                    readFromWorkspace(p3, s, t + 1);
-                    if (p0.r() == p1.r() && p1.r() == p2.r()) pixel = p0;
-                    else if (p1.r() == p2.r() && p2.r() == p3.r()) pixel = p1;
-                    else if (p2.r() == p3.r() && p3.r() == p0.r()) pixel = p2;
-                    else if (p3.r() == p0.r() && p0.r() == p1.r()) pixel = p3;
-                    else if (p0.r() == p1.r() && p2.r() == p3.r()) pixel = (r <= 1) ? p0 : p2;
-                    else if (p1.r() == p2.r() && p3.r() == p0.r()) pixel = (r <= 1) ? p1 : p3;
-                    else pixel = r == 0 ? p0 : r == 1 ? p1 : r == 2 ? p2 : p3;
-                    check(s,t,workspace->s(),workspace->t());
-                    writeToWorkspace(pixel, s, t);
-                }
-            }
-        }
-
-        ImageUtils::PixelWriter writeToOutput(output.get());
-
-        for (t = 0; t < output->t(); ++t)
-        {
-            for (s = 0; s < output->s(); ++s)
-            {
-                readFromWorkspace(pixel, s + 2, t + 2);
-                writeToOutput(pixel, s, t);
-            }
-        }
-
-        if (progress && progress->isCanceled())
-        {
-            return GeoImage::INVALID;
-        }
-
-        return GeoImage(output.get(), key.getExtent());
+        return createFractalEnhancedImage(key, progress);
     }
     else
     {
@@ -643,116 +354,202 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 }
 
 GeoImage
-LandCoverLayer::createMetaImageComponent(const TileKey& key, ProgressCallback* progress) const
+LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback* progress) const
 {
-    if (_coverageLayers.empty())
-        return GeoImage::INVALID;
+    MetaImage metaImage;
 
-    std::vector<ILayer> layers(_coverageLayers.size());
+    // Allocate the working image:
+    osg::ref_ptr<osg::Image> workspace = new osg::Image();
+    workspace->allocateImage(
+        getTileSize() + 3,
+        getTileSize() + 3,
+        1,
+        GL_RED,
+        GL_FLOAT);
+    ImageUtils::PixelWriter writeToWorkspace(workspace.get());
+    ImageUtils::PixelReader readFromWorkspace(workspace.get());
 
-    // Allocate the new coverage image; it will contain unnormalized values.
-    osg::ref_ptr<osg::Image> out = new osg::Image();
+    // Allocate the output image:
+    osg::ref_ptr<osg::Image> output = new osg::Image();
+    output->allocateImage(
+        getTileSize(),
+        getTileSize(),
+        1,
+        GL_RED,
+        GL_FLOAT);
+    output->setInternalTextureFormat(GL_R16F);
 
-    // Allocate a suitable format:
-    GLint internalFormat = GL_R16F;
+    Random prng(key.getTileX()*key.getTileY()*key.getLOD());
 
-    int tilesize = getTileSize();
+    // working variables
+    osg::Vec4 pixel;
+    osg::Vec4 p0, p1, p2, p3;
+    unsigned r;
+    int s, t;
 
-    out->allocateImage(tilesize, tilesize, 1, GL_RGB, GL_FLOAT);
-    out->setInternalTextureFormat(internalFormat);
+    // temporarily hard-coded sand and water values for beach generation
+    const float S=6;
+    const osg::Vec4 sand(S,S,S,1);
+    const float W=8;
+    const osg::Vec4 water(W,W,W,1);
+    float k0,k1,k2,k3;
+    unsigned beachLOD = 13;
 
-    osg::Vec2 cov;    // coverage coordinates
-
-    ImageUtils::PixelWriter write(out.get());
-    write.setNormalize(false);
-
-    float du = 1.0f / (float)(out->s() - 1);
-    float dv = 1.0f / (float)(out->t() - 1);
-
-    osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
-
-    unsigned pixelsWritten = 0u;
-
-    for (float u = 0.0f; u <= 1.0f; u += du)
+    // First pass: loop over the grid and populate even pixels with
+    // values from the ancestors.
+    for (t = 0; t < workspace->t(); t += 2)
     {
-        for (float v = 0.0f; v <= 1.0f; v += dv)
+        for (s = 0; s < workspace->s(); s += 2)
         {
-            bool wrotePixel = false;
-            for (int L = layers.size() - 1; L >= 0 && !wrotePixel; --L)
+            if (readMetaImage(metaImage, key, s-2, t-2, pixel, progress))
+                writeToWorkspace(pixel, s, t);
+            else if (progress && progress->isCanceled())
+                return GeoImage::INVALID;
+        }
+
+        if (progress && progress->isCanceled())
+            return GeoImage::INVALID;
+    }
+
+    // Second pass: diamond
+    for (t = 1; t < workspace->t()-1; t+=2) //++t)
+    {
+        for (s = 1; s < workspace->s()-1; s+=2) //++s)
+        {
+            //if ((s & 1) == 1 && (t & 1) == 1)
             {
-                if (progress && progress->isCanceled())
+                r = prng.next(4u);
+
+                // Diamond: pick one of the four diagonals to copy into the
+                // center pixel, attempting to preserve curves. When there is
+                // no clear choice, go random.
+                readFromWorkspace(p0, s - 1, t - 1); k0=p0.r();
+                readFromWorkspace(p1, s + 1, t - 1); k1=p1.r();
+                readFromWorkspace(p2, s + 1, t + 1); k2=p2.r();
+                readFromWorkspace(p3, s - 1, t + 1); k3=p3.r();   
+
+                if (key.getLOD()==beachLOD)
                 {
-                    OE_DEBUG << LC << key.str() << " canceled" << std::endl;
-                    return GeoImage::INVALID;
+                    // all the same, copy
+                    if (k0==k1 && k1==k2 && k2==k3) pixel = p0;
+
+                    // if water is across from non-water and non-sand, make it sand.
+                    else if (k0==W && k2!=W && k2!=S) pixel=sand;
+                    else if (k1==W && k3!=W && k3!=S) pixel=sand;
+                    else if (k2==W && k0!=W && k0!=S) pixel=sand;
+                    else if (k3==W && k1!=W && k1!=S) pixel=sand;
+
+                    // three the same
+                    else if (k0==k1 && k1==k2 && k2 != k3) pixel = p0;
+                    else if (k1==k2 && k2==k3 && k3 != k0) pixel = p1;
+                    else if (k2==k3 && k3==k0 && k0 != k1) pixel = p2;
+                    else if (k3==k0 && k0==k1 && k1 != k2) pixel = p3;
+
+                    // continuations - don't break up a run
+                    else if (k0==k2 && k0!=k1 && k0!=k3) pixel=p0;
+                    else if (k1==k3 && k1!=k2 && k1!=k0) pixel=p1;
+                    
+                    // all else, rando.
+                    else pixel = (r==0)? p0 : (r==1)? p1 : (r==2)? p2 : p3;
                 }
-
-                ILayer& layer = layers[L];
-                if (!layer.valid)
-                    continue;
-
-                if (!layer.image.valid())
-                    layer.load(key, _coverageLayers[L].get(), progress);
-
-                if (!layer.valid)
-                    continue;
-
-                osg::Vec2 cov(layer.scale*u + layer.bias.x(), layer.scale*v + layer.bias.y());
-
-                if (cov.x() >= 0.0f && cov.x() <= 1.0f && cov.y() >= 0.0f && cov.y() <= 1.0f)
+                else
                 {
-                    osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
+                    // three the same
+                    if (k0==k1 && k1==k2 && k2 != k3) pixel = p0;
+                    else if (k1==k2 && k2==k3 && k3 != k0) pixel = p1;
+                    else if (k2==k3 && k3==k0 && k0 != k1) pixel = p2;
+                    else if (k3==k0 && k0==k1 && k1 != k2) pixel = p3;
 
-                    if (texel.r() != NO_DATA_VALUE)
-                    {
-                        // store the warp factor in the green channel
-                        texel.g() = layer.warp;
+                    // continuations
+                    else if (k0==k2 && k0!=k1 && k0!=k3) pixel=p0;
+                    else if (k1==k3 && k1!=k2 && k1!=k0) pixel=p1;
 
-                        // store the layer index in the blue channel
-                        texel.b() = (float)L;
-
-                        if (texel.r() < 1.0f)
-                        {
-                            // normalized code; convert
-                            int code = (int)(texel.r()*255.0f);
-                            if (code < _codemaps[L].size())
-                            {
-                                int value = _codemaps[L][code];
-                                if (value >= 0)
-                                {
-                                    texel.r() = (float)value;
-                                    write.f(texel, u, v);
-                                    wrotePixel = true;
-                                    pixelsWritten++;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // unnormalized
-                            int code = (int)texel.r();
-                            if (code < _codemaps[L].size() && _codemaps[L][code] >= 0)
-                            {
-                                texel.r() = (float)_codemaps[L][code];
-                                write.f(texel, u, v);
-                                wrotePixel = true;
-                                pixelsWritten++;
-                            }
-                        }
-                    }
+                    // all else, rando.
+                    else pixel = (r==0)? p0 : (r==1)? p1 : (r==2)? p2 : p3;
                 }
-            }
-
-            if (!wrotePixel)
-            {
-                write.f(nodata, u, v);
+                writeToWorkspace(pixel, s, t);
             }
         }
     }
 
-    if (pixelsWritten > 0u)
-        return GeoImage(out.release(), key.getExtent());
-    else
+    // Third pass: square
+    for (t = 2; t < workspace->t()-1; ++t)
+    {
+        for (s = 2; s < workspace->s()-1; ++s)
+        {
+            if (((s & 1) == 1 && (t & 1) == 0) || ((s & 1) == 0 && (t & 1) == 1))
+            {
+                r = prng.next(4u);
+
+                // Square: pick one of the four adjacents to copy into the
+                // center pixel, attempting to preserve curves. When there is
+                // no clear choice, go random.
+                readFromWorkspace(p0, s - 1, t); k0=p0.r();
+                readFromWorkspace(p1, s, t - 1); k1=p1.r();
+                readFromWorkspace(p2, s + 1, t); k2=p2.r();
+                readFromWorkspace(p3, s, t + 1); k3=p3.r();
+
+                if (key.getLOD()==beachLOD)
+                {
+                    // all the same, copy
+                    if (k0==k1 && k1==k2 && k2==k3) pixel = p0;
+
+                    // if water is across from non-water and non-sand, make it sand.
+                    else if (k0==W && k2!=W && k2!=S) pixel=sand;
+                    else if (k1==W && k3!=W && k3!=S) pixel=sand;
+                    else if (k2==W && k0!=W && k0!=S) pixel=sand;
+                    else if (k3==W && k1!=W && k1!=S) pixel=sand;
+
+                    // three the same
+                    else if (k0==k1 && k1==k2 && k2 != k3) pixel = p0;
+                    else if (k1==k2 && k2==k3 && k3 != k0) pixel = p1;
+                    else if (k2==k3 && k3==k0 && k0 != k1) pixel = p2;
+                    else if (k3==k0 && k0==k1 && k1 != k2) pixel = p3;
+
+                    // continuations
+                    else if (k0==k2 && k0!=k1 && k0!=k3) pixel=p0;
+                    else if (k1==k3 && k1!=k2 && k1!=k0) pixel=p1;
+
+                    // all else, rando.
+                    else pixel = (r==0)? p0 : (r==1)? p1 : (r==2)? p2 : p3;
+                }
+                else
+                {
+                    // three the same
+                    if (k0==k1 && k1==k2 && k2 != k3) pixel = p0;
+                    else if (k1==k2 && k2==k3 && k3 != k0) pixel = p1;
+                    else if (k2==k3 && k3==k0 && k0 != k1) pixel = p2;
+                    else if (k3==k0 && k0==k1 && k1 != k2) pixel = p3;
+
+                    // continuations
+                    else if (k0==k2 && k0!=k1 && k0!=k3) pixel=p0;
+                    else if (k1==k3 && k1!=k2 && k1!=k0) pixel=p1;
+
+                    // all else, rando.
+                    else pixel = (r==0)? p0 : (r==1)? p1 : (r==2)? p2 : p3;
+                }
+                writeToWorkspace(pixel, s, t);
+            }
+        }
+    }
+
+    ImageUtils::PixelWriter writeToOutput(output.get());
+
+    for (t = 0; t < output->t(); ++t)
+    {
+        for (s = 0; s < output->s(); ++s)
+        {
+            readFromWorkspace(pixel, s + 2, t + 2);
+            writeToOutput(pixel, s, t);
+        }
+    }
+
+    if (progress && progress->isCanceled())
+    {
         return GeoImage::INVALID;
+    }
+
+    return GeoImage(output.get(), key.getExtent());
 }
 
 // Constructs a code map (int to int) for a coverage layer. We will use this
@@ -795,7 +592,6 @@ LandCoverLayer::buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& co
         if (lcClass)
         {
             codemap[value] = lcClass->getValue();
-            //OE_INFO << LC << "   mapped " << value << " to " << lcClass->getName() << std::endl;
         }
     }
 }
@@ -928,9 +724,9 @@ LandCoverLayerVector::populateLandCoverImage(
 
         numNoDataValues = 0u;
 
-        for(unsigned t=0; t<readOutput.t(); ++t)
+        for(int t=0; t<readOutput.t(); ++t)
         {
-            for(unsigned s=0; s<readOutput.s(); ++s)
+            for(int s=0; s<readOutput.s(); ++s)
             {
                 readOutput(value, s, t);
 

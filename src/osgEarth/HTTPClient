@@ -172,7 +172,8 @@ namespace osgEarth { namespace Util
         bool isOK() const;
 
         /** True if the request associated with this response was cancelled before it completed */
-        bool isCancelled() const;
+        void setCanceled(bool value) { _canceled = value; }
+        bool isCanceled() const { return _canceled; }
 
         /** Gets the number of parts in a (possibly multipart mime) response */
         unsigned int getNumParts() const;
@@ -190,14 +191,19 @@ namespace osgEarth { namespace Util
         const std::string& getPartHeader( unsigned int n, const std::string& name ) const;
 
         /** Gets the master mime-type returned by the request */
+        void setMimeType(const std::string& value) { _mimeType = value; }
         const std::string& getMimeType() const;
 
         /** How long did it take to fetch this response (in seconds) */
+        void setDuration(double value) { _duration_s = value; }
         double getDuration() const { return _duration_s; }
 
+        void setMessage(const std::string& value) { _message = value; }
         const std::string& getMessage() const { return _message; }
 
-    private:
+        void setLastModified(TimeStamp value) { _lastModified = value; }
+        TimeStamp getLastModified() const { return _lastModified; }
+
         struct Part : public osg::Referenced
         {
             Part() : _size(0) { }
@@ -206,10 +212,14 @@ namespace osgEarth { namespace Util
             std::stringstream _stream;
         };
         typedef std::vector< osg::ref_ptr<Part> > Parts;
+
+        Parts& getParts() { return _parts; }
+
+    private:
         Parts       _parts;
         long        _response_code;
         std::string _mimeType;
-        bool        _cancelled;
+        bool        _canceled;
         double      _duration_s;
         TimeStamp   _lastModified;
         std::string _message;
@@ -228,13 +238,12 @@ namespace osgEarth { namespace Util
     };
 
 	/**
-	 *
-	 * A CURL configuration handler to apply CURL settings. It can be used for setting client certificates
+	 * A configuration handler to apply settings. It can be used for setting client certificates
 	 */
-	struct OSGEARTH_EXPORT CurlConfigHandler : public osg::Referenced
+	struct OSGEARTH_EXPORT ConfigHandler : public osg::Referenced
 	{
-		virtual void onInitialize(void* curl_handle) = 0;
-		virtual void onGet(void* curl_handle) = 0;
+		virtual void onInitialize(void* handle) = 0;
+		virtual void onGet(void* handle) = 0;
 	};
 	
 	/**
@@ -247,6 +256,37 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT HTTPClient
     {
     public:
+        //! Interface for pluggable HTTP implementations
+        class Implementation
+        {
+        public:
+            virtual void initialize() = 0;
+
+            virtual HTTPResponse doGet(
+                const HTTPRequest&    request,
+                const osgDB::Options* options,
+                ProgressCallback*     progress ) const = 0;
+
+            virtual void setUserAgent(const std::string&) { }
+
+            virtual void setTimeout(long) { }
+
+            virtual void setConnectTimeout(long) { }
+
+            //! Implementation-specific handle if applicable
+            virtual void* getHandle() const { return NULL; }
+        };
+
+        //! Factory object to create implementation instances.
+        class ImplementationFactory
+        {
+        public:
+            virtual Implementation* create() const = 0;
+        };
+
+        //! Install an implementation factory. Do this before anything else
+        static void setImplementationFactory(ImplementationFactory* factory);
+
         /**
          * Returns true is the result code represents a recoverable situation,
          * i.e. one in which retrying might work.
@@ -305,12 +345,12 @@ namespace osgEarth { namespace Util
          */
         static void setURLRewriter( URLRewriter* rewriter );
 
-		static CurlConfigHandler* getCurlConfigHandler();
+		static ConfigHandler* getConfigHandler();
 
 		/**
 		* Sets the CurlConfigHandler to configurate the CURL library. It can be used for apply client certificates
 		*/
-		static void setCurlConfighandler(CurlConfigHandler* handler);
+		static void setConfigHandler(ConfigHandler* handler);
 		
 		/**
          * One time thread safe initialization. In osgEarth, you don't need
@@ -417,17 +457,27 @@ namespace osgEarth { namespace Util
         bool        _initialized;
         long        _simResponseCode;
 
+        Implementation* _impl;
+
         void initialize() const;
         void initializeImpl();
-
+        
+        static ImplementationFactory* _implFactory;
 
         static HTTPClient& getClient();
+    };
 
-    private:
-        bool decodeMultipartStream(
-            const std::string&   boundary,
-            HTTPResponse::Part*  input,
-            HTTPResponse::Parts& output) const;
+
+    class CURLHTTPImplementationFactory : public HTTPClient::ImplementationFactory
+    {
+    public:
+        HTTPClient::Implementation* create() const;
+    };
+
+    class WinInetHTTPImplementationFactory : public HTTPClient::ImplementationFactory
+    {
+    public:
+        HTTPClient::Implementation* create() const;
     };
 } }
 

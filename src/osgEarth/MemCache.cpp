@@ -23,7 +23,7 @@ using namespace osgEarth::Util;
 
 #define LC "[MemCacheBin] "
 
-#define CLONE_DATA
+//#define CLONE_DATA
 
 //------------------------------------------------------------------------
 

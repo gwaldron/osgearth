@@ -38,16 +38,13 @@ REGISTER_OSGEARTH_LAYER(landcover, LandCoverLayer);
 void
 LandCoverLayer::Options::fromConfig(const Config& conf)
 {
-    noiseLOD().init(12u);
-    warpFactor().init(0.0f);
+    LayerReference<ImageLayer>::get(conf, source());
 
-    conf.get("warp", warpFactor());
-    conf.get("noise_lod", noiseLOD());
-
-    ConfigSet layerConfs = conf.child("coverages").children("coverage");
-    for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
+    ConfigSet mappingsConf = conf.child("land_cover_mappings").children("mapping");
+    for (ConfigSet::const_iterator i = mappingsConf.begin(); i != mappingsConf.end(); ++i)
     {
-        _coverages.push_back(*i);
+        osg::ref_ptr<LandCoverValueMapping> mapping = new LandCoverValueMapping(*i);
+        mappings().push_back(mapping.get());
     }
 }
 
@@ -56,21 +53,21 @@ LandCoverLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
 
-    conf.set("warp", warpFactor() );
-    conf.set("noise_lod", noiseLOD() );
+    LayerReference<ImageLayer>::set(conf, source());
 
-    if (_coverages.size() > 0)
-    {
-        Config images("coverages");
-        for (std::vector<ConfigOptions>::const_iterator i = _coverages.begin();
-            i != _coverages.end();
+    if (conf.hasChild("land_cover_mappings") == false)
+    {   
+        Config mappingConf("land_cover_mappings");
+        conf.add(mappingConf);
+        for(LandCoverValueMappingVector::const_iterator i = _mappings.begin();
+            i != mappings().end();
             ++i)
         {
-            images.add("coverage", i->getConfig());
+            LandCoverValueMapping* mapping = i->get();
+            if (mapping)
+                mappingConf.add(mapping->getConfig());
         }
-        conf.set(images);
     }
-
     return conf;
 }
 
@@ -78,9 +75,6 @@ LandCoverLayer::Options::getConfig() const
 
 #undef  LC
 #define LC "[LandCoverLayer] "
-
-OE_LAYER_PROPERTY_IMPL(LandCoverLayer, float, WarpFactor, warpFactor);
-OE_LAYER_PROPERTY_IMPL(LandCoverLayer, unsigned, NoiseLOD, noiseLOD);
 
 void
 LandCoverLayer::init()
@@ -100,9 +94,33 @@ LandCoverLayer::init()
 }
 
 void
-LandCoverLayer::addCoverage(LandCoverCoverageLayer* value)
+LandCoverLayer::setSource(ImageLayer* value)
 {
-    _coverageLayers.push_back(value);
+    _source.setLayer(value);
+}
+
+ImageLayer*
+LandCoverLayer::getSource() const
+{
+    return _source.getLayer();
+}
+
+LandCoverValueMappingVector&
+LandCoverLayer::getLandCoverValueMappings()
+{
+    return options().mappings();
+}
+
+const LandCoverValueMappingVector&
+LandCoverLayer::getLandCoverValueMappings() const
+{
+    return options().mappings();
+}
+
+void
+LandCoverLayer::map(int value, const std::string& classname)
+{
+    options().mappings().push_back(new LandCoverValueMapping(value, classname));
 }
 
 Status
@@ -119,58 +137,33 @@ LandCoverLayer::openImplementation()
         setProfile(profile);
     }
 
-    // If there are no coverage layers already set by the user,
-    // attempt to instaniate them from the serialized options (i.e. earth file).
-    if (_coverageLayers.empty())
-    {
-        for (unsigned i = 0; i < options().coverages().size(); ++i)
-        {
-            LandCoverCoverageLayer::Options coverageOptions = options().coverages()[i];
-            if (coverageOptions.enabled() == false)
-                continue;
+    // We never want to cache data from a coverage, because the "parent" layer
+    // will be caching the entire result of a multi-coverage composite.
+    options().source()->cachePolicy() = CachePolicy::NO_CACHE;
 
-            // We never want to cache data from a coverage, because the "parent" layer
-            // will be caching the entire result of a multi-coverage composite.
-            coverageOptions.cachePolicy() = CachePolicy::NO_CACHE;
+    // Try to open it.
+    Status cs =_source.open(options().source(), getReadOptions());
+    if (cs.isError())
+        return cs;
 
-            // Create the coverage layer:
-            LandCoverCoverageLayer* coverage = new LandCoverCoverageLayer(coverageOptions);
-            coverage->setCachePolicy(CachePolicy::NO_CACHE);
-            coverage->setReadOptions(getReadOptions());
-            addCoverage(coverage);
-        }
-    }
-
-    DataExtentList combinedExtents;
-
-    // next attempt to open and incorporate the coverage layers:
-    for(unsigned i=0; i<_coverageLayers.size(); ++i)
-    {
-        LandCoverCoverageLayer* coverage = _coverageLayers[i].get();
-        if (coverage->getEnabled())
-        {
-            OE_INFO << LC << "Opening coverage layer \"" << coverage->getName() << std::endl;
-
-            // Open the coverage layer and bail if it fails.
-            const Status& coverageStatus = coverage->open();
-            if (coverageStatus.isError())
-            {
-                OE_WARN << LC << "Coverage layer failed to open; aborting" << std::endl;
-                return coverageStatus;
-            }
-
-            if (coverage->getImageLayer())
-            {
-                coverage->getImageLayer()->setUpL2Cache(9u);
-            }
-
-            _codemaps.resize(_codemaps.size()+1);
-        }
-    }
+    // Pull this layer's extents from the coverage layer.
+    // TODO: imageLayer can probably not to NULL here
+    ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(_source.getLayer());
+    if (!imageLayer)
+        return Status(Status::ResourceUnavailable, "Cannot access source image layer");
 
     // Normally we would collect and store the layer's DataExtents here.
     // Since this is possibly a composited layer with warping, we just
     // let it default so we can oversample the data with warping.
+    // TODO: review this statement
+    //dataExtents() = getSource()->getDataExtents();
+
+    // TODO: review this since we are setting a cache on this layer itself
+    // via the layerHints()
+    getSource()->setUpL2Cache(9u);
+
+    // Force the image source into coverage mode.
+    getSource()->setCoverage(true);
 
     return Status::NoError;
 }
@@ -186,12 +179,13 @@ LandCoverLayer::addedToMap(const Map* map)
     // Note. If the land cover dictionary isn't already in the Map...this will fail! (TODO)
     // Consider a LayerReference. (TODO)
     _lcDictionary = map->getLayer<LandCoverDictionary>();
+
     if (_lcDictionary.valid())
     {
-        for(unsigned i=0; i<_coverageLayers.size(); ++i)
+        if (getSource())
         {
-            _coverageLayers[i]->addedToMap(map);
-            buildCodeMap(_coverageLayers[i].get(), _codemaps[i]);
+            getSource()->addedToMap(map);
+            buildCodeMap(_codemap);
         }
 
         const LandCoverClass* water = _lcDictionary->getClassByName("water");
@@ -201,7 +195,7 @@ LandCoverLayer::addedToMap(const Map* map)
     }
     else
     {
-        OE_WARN << LC << "Did not find a LandCoverDictionary in the Map!\n";
+        OE_WARN << LC << "Did not find a LandCoverDictionary and/or Coverage in the Map!\n";
     }
 }
 
@@ -209,11 +203,7 @@ void
 LandCoverLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-
-    for (unsigned i = 0; i < _coverageLayers.size(); ++i)
-    {
-        _coverageLayers[i]->removedFromMap(map);
-    }
+    _source.disconnect(map);
 }
 
 bool
@@ -266,8 +256,10 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, int s, i
 GeoImage
 LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    LandCoverCoverageLayer* coverage = _coverageLayers[0].get();
-    ImageLayer* imageLayer = coverage->getImageLayer();
+    if (getStatus().isError())
+        return GeoImage::INVALID;
+
+    ImageLayer* imageLayer = getSource();
 
     TileKey parentKey = key.createParentKey();
 
@@ -306,34 +298,14 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 
                 wrotePixel = false;
 
-                if (pixel.r() < 1.0f) // probably unnecessary - review
+                // unnormalized
+                int code = (int)pixel.r();
+                if (code < _codemap.size() && _codemap[code] >= 0)
                 {
-                    // normalized code; convert
-                    int code = (int)(pixel.r()*255.0f);
-                    if (code < _codemaps[0].size())
-                    {
-                        int value = _codemaps[0][code];
-                        if (value >= 0)
-                        {
-                            pixel.r() = (float)value;
-
-                            write(pixel, s, t);
-                            wrotePixel = true;
-                            pixelsWritten++;
-                        }
-                    }
-                }
-                else
-                {
-                    // unnormalized
-                    int code = (int)pixel.r();
-                    if (code < _codemaps[0].size() && _codemaps[0][code] >= 0)
-                    {
-                        pixel.r() = (float)_codemaps[0][code];
-                        write(pixel, s, t);
-                        wrotePixel = true;
-                        pixelsWritten++;
-                    }
+                    pixel.r() = (float)_codemap[code];
+                    write(pixel, s, t);
+                    wrotePixel = true;
+                    pixelsWritten++;
                 }
 
                 if (!wrotePixel)
@@ -402,7 +374,7 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
     const float W=_waterCode;
     const osg::Vec4 water(W,W,W,1);
     float k0,k1,k2,k3;
-    unsigned beachLOD = 13;
+    unsigned beachLOD = 14; //13;
 
     // First pass: loop over the grid and populate even pixels with
     // values from the ancestors.
@@ -564,10 +536,10 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
 // Constructs a code map (int to int) for a coverage layer. We will use this
 // code map to map coverage layer codes to dictionary codes.
 void
-LandCoverLayer::buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& codemap)
+LandCoverLayer::buildCodeMap(CodeMap& codemap)
 {
-    if (!coverage) {
-        OE_WARN << LC << "ILLEGAL: coverage not passed to buildCodeMap\n";
+    if (options().mappings().empty()) {
+        OE_WARN << LC << "ILLEGAL: no coverage mappings\n";
         return;
     }
     if (!_lcDictionary.valid()) {
@@ -579,8 +551,8 @@ LandCoverLayer::buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& co
 
     int highestValue = 0;
 
-    for (LandCoverValueMappingVector::const_iterator k = coverage->getMappings().begin();
-        k != coverage->getMappings().end();
+    for (LandCoverValueMappingVector::const_iterator k = options().mappings().begin();
+        k != options().mappings().end();
         ++k)
     {
         const LandCoverValueMapping* mapping = k->get();
@@ -591,8 +563,8 @@ LandCoverLayer::buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& co
 
     codemap.assign(highestValue + 1, -1);
 
-    for (LandCoverValueMappingVector::const_iterator k = coverage->getMappings().begin();
-        k != coverage->getMappings().end();
+    for (LandCoverValueMappingVector::const_iterator k = options().mappings().begin();
+        k != options().mappings().end();
         ++k)
     {
         const LandCoverValueMapping* mapping = k->get();

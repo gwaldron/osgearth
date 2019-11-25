@@ -10,39 +10,26 @@
     <CompositeLandCover>
         <layers>
             <LandCover name="ESA Land Cover" max_data_level="17">
-                <coverages>
-                    <coverage name="ESA GLOBCOVER">
-                        <xi:include href="H:/data/esa/land_cover_ESA_GLOBCOVER.xml"/>
-                        <GDALImage>
-                            <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                            <profile>global-geodetic</profile>
-                        </GDALImage>
-                    </coverage>
-                </coverages>
+                <xi:include href="H:/data/esa/land_cover_ESA_GLOBCOVER.xml"/>
+                <GDALImage>
+                    <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                    <profile>global-geodetic</profile>
+                </GDALImage>
             </LandCover>
 
             <LandCover name="NLCD Land Cover" max_data_level="17">
-                <coverages>
-                    <coverage name="NCLD">
-                        <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
-                        <GDALImage>
-                            <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
-                        </GDALImage>
-                    </coverage>
-                </coverages>
+                <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
+                <GDALImage>
+                    <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+                </GDALImage>
             </LandCover>
 
             <LandCover name="VRICON Ft Hood Land Cover" max_data_level="18">
-                <coverages>
-                    <coverage name="VRICON">
-                        <xi:include href="H:/data/vricon/land_cover_vricon.xml"/>
-                        <GDALImage>
-                            <url>H:/data/vricon/classification_wgs84.tif</url>
-                        </GDALImage>
-                    </coverage>
-                </coverages>
+                <xi:include href="H:/data/vricon/land_cover_vricon.xml"/>
+                <GDALImage>
+                    <url>H:/data/vricon/classification_wgs84.tif</url>
+                </GDALImage>
             </LandCover>
-
         </layers>
     </CompositeLandCover>
 

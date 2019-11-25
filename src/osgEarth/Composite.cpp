@@ -759,7 +759,7 @@ CompositeLandCoverLayer::removedFromMap(const Map* map)
 Status
 CompositeLandCoverLayer::openImplementation()
 {
-    Status parent = LandCoverLayer::openImplementation();
+    Status parent = ImageLayer::openImplementation(); // skipping LandCoverLayer::open...
     if (parent.isError())
         return parent;
 

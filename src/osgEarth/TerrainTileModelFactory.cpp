@@ -330,16 +330,12 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
                                                 const ElevationLayerVector&     layers,
                                                 const TileKey&                  key,
                                                 ElevationSamplePolicy           samplePolicy,
-                                                RasterInterpolation          interpolation,
+                                                RasterInterpolation             interpolation,
                                                 unsigned                        border,
                                                 osg::ref_ptr<osg::HeightField>& out_hf,
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
-   // Get layers earlier for VRV_PATCH
-   ElevationLayerVector layers;
-   map->getLayers(layers);
-
    // gather the combined revision (additive is fine)
     int combinedLayerRevision = 0;
     for(ElevationLayerVector::const_iterator i = layers.begin();

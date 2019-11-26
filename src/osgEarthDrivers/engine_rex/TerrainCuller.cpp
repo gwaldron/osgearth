@@ -21,6 +21,7 @@
 #include "SurfaceNode"
 #include "SelectionInfo"
 #include <osgEarth/TraversalData>
+#include <osgEarth/VisibleLayer>
 
 #define LC "[TerrainCuller] "
 
@@ -265,6 +266,8 @@ TerrainCuller::apply(SurfaceNode& node)
 {
     TileRenderModel& renderModel = _currentTileNode->renderModel();
 
+    float range = _cv->getDistanceToViewPoint(node.getBound().center(), true) - node.getBound().radius();
+
     // push the surface matrix:
     osg::RefMatrix* matrix = createOrReuseMatrix(*getModelViewMatrix());
     node.computeLocalToWorldMatrix(*matrix,this);
@@ -286,6 +289,10 @@ TerrainCuller::apply(SurfaceNode& node)
         for (unsigned p = 0; p < renderModel._passes.size(); ++p)
         {
             const RenderingPass& pass = renderModel._passes[p];
+
+            // is the tile in visible range?
+            if (pass.visibleLayer() && pass.visibleLayer()->getMaxVisibleRange() < range)
+                continue;
 
             //TODO: see if we can skip adding a draw command for 1-pixel images
             // or other "placeholder" textures

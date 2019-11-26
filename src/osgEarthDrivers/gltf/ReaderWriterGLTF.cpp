@@ -26,6 +26,10 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_NO_EXTERNAL_IMAGE
 #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
+
+#ifdef OSGEARTH_HAVE_DRACO
+#define TINYGLTF_ENABLE_DRACO
+#endif
 //#define TINYGLTF_USE_RAPIDJSON
 
 #include "tiny_gltf.h"

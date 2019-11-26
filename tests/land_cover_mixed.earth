@@ -3,7 +3,7 @@
     <xi:include href="readymap_elevation.xml"/>    
     <xi:include href="viewpoints.xml"/>
 
-    <LandCover name="Land Cover Raster" max_data_level="15">
+    <LandCover name="Land Cover Raster" max_data_level="15" cacheid="land_cover_mixed">
 
         <coverages>
             <coverage name="ESA GLOBCOVER">
@@ -22,9 +22,9 @@
                 </GDALImage>
             </coverage>
             
-            <coverage name="US Highways" min_level="10" max_data_level="15">
+            <coverage name="US Highways">
                 <cache_policy usage="no_cache"/>
-                <FeatureImage coverage="true">
+                <FeatureImage coverage="true" min_level="11" max_data_level="15">
                     <OGRFeatures name="roads-data">
                         <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
                         <build_spatial_index>true</build_spatial_index>

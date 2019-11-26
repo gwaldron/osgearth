@@ -71,6 +71,17 @@ namespace
 
         bool useFileCache() const { return false; }
     };
+
+    struct MyProgressCallback : public ProgressCallback
+    {
+        osg::ref_ptr<const Session> _session;
+        MyProgressCallback(const Session* session) : _session(session) { }
+        virtual bool isCanceled() {
+            if (!_canceled && (!_session.valid() || !_session->hasMap()))
+                _canceled = true;
+            return _canceled;
+        }
+    };
 }
 
 //---------------------------------------------------------------------------
@@ -1047,7 +1058,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     // Not there? Build it
     if (!group.valid())
     {
-        osg::ref_ptr<ProgressCallback> progress = new ProgressCallback();
+        osg::ref_ptr<ProgressCallback> progress = new MyProgressCallback(_session.get());
 
         // set up for feature indexing if appropriate:
         FeatureSourceIndexNode* index = 0L;
@@ -1157,11 +1168,15 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
                     ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
 
                     osg::Vec3d centerECEF;
-                    ccExtent.getSRS()->transform( tileCenter, _session->getMapSRS()->getGeocentricSRS(), centerECEF );
+                    const SpatialReference* mapSRS = _session->getMapSRS();
+                    if (mapSRS)
+                    {
+                        ccExtent.getSRS()->transform( tileCenter, mapSRS->getGeocentricSRS(), centerECEF );
 
-                    osg::NodeCallback* ccc = ClusterCullingFactory::create2( group.get(), centerECEF );
-                    if ( ccc )
-                        group->addCullCallback( ccc );
+                        osg::NodeCallback* ccc = ClusterCullingFactory::create2( group.get(), centerECEF );
+                        if ( ccc )
+                            group->addCullCallback( ccc );
+                    }
                 }
             }
         }
@@ -1234,6 +1249,9 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                     }
                 }
             }
+
+            if ( progress && progress->isCanceled())
+                return NULL;
         }
     }
 
@@ -1413,6 +1431,9 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
                 styleBins[styleString].push_back( feature.get() );
             }
         }
+
+        if ( progress && progress->isCanceled())
+            return;
     }
 
     // next create a style group per bin.
@@ -1547,6 +1568,9 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         // the cell boundaries.
         FeatureList workingSet;
         cursor->fill( workingSet );
+
+        if ( progress && progress->isCanceled())
+            return NULL;
 
         styleGroup = createStyleGroup(style, workingSet, context, readOptions);
     }

@@ -450,10 +450,6 @@ GroundCoverLayer::buildStateSets()
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
                 shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
-                // Bind the coverage sampler and its matrix:
-                zoneStateSet->setDefine("OE_LANDCOVER_TEX", getLandCoverLayer()->getSharedTextureUniformName());
-                zoneStateSet->setDefine("OE_LANDCOVER_TEX_MATRIX", getLandCoverLayer()->getSharedTextureMatrixUniformName());
-
                 // Generate the coverage acceptor shader
 #ifdef USE_GEOMETRY_SHADER
                 shaders.load(vp, shaders.GroundCover_TCS, getReadOptions());

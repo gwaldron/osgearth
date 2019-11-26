@@ -73,6 +73,18 @@ TerrainTileModel::getElevationTextureMatrix() const
     return _elevationLayer.valid() ? _elevationLayer->getMatrix() : 0L;
 }
 
+osg::Texture* 
+TerrainTileModel::getLandCoverTexture() const
+{
+    return _landCoverLayer.valid() ? _landCoverLayer->getTexture() : 0L;
+}
+
+osg::RefMatrixf* 
+TerrainTileModel::getLandCoverTextureMatrix() const
+{
+    return _landCoverLayer.valid() ? _landCoverLayer->getMatrix() : 0L;
+}
+
 void
 TerrainTileModel::compileGLObjects(osg::State& state) const
 {
@@ -92,4 +104,7 @@ TerrainTileModel::compileGLObjects(osg::State& state) const
 
     if (getElevationTexture())
         getElevationTexture()->compileGLObjects(state);
+
+    if (getLandCoverTexture())
+        getLandCoverTexture()->compileGLObjects(state);
 }

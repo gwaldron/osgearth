@@ -26,6 +26,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/LayerShader>
+#include <osgEarth/Revisioning>
 #include <osg/BoundingBox>
 #include <osg/Callback>
 #include <vector>
@@ -334,6 +335,9 @@ namespace osgEarth
         //! MapNode will call this function when terrain resources are available.
         virtual void setTerrainResources(TerrainResources*);
 
+        //! Revision number of this layer
+        unsigned getRevision() const { return (unsigned)_revision; }
+
     protected:
 
         //! Constructs a map layer by deserializing options.
@@ -374,10 +378,12 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
         mutable Status _status;
+        mutable Threading::Mutex _mutex;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
         Hints _hints;
         bool _isOpen;
+        OpenThreads::Atomic _revision;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
@@ -385,6 +391,8 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
         std::vector<osg::ref_ptr<LayerShader> > _shaders;
+
+        void bumpRevision();
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map; 

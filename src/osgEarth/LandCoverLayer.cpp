@@ -191,10 +191,12 @@ void
 LandCoverLayer::init()
 {
     options().coverage() = true;
-    options().visible() = false;
-    options().shared() = true;
+    //options().visible() = false;
+    //options().shared() = true;
 
     ImageLayer::init();
+
+    setRenderType(RENDERTYPE_NONE);
 
     setTileSourceExpected(false);
 }
@@ -378,26 +380,17 @@ GeoImage
 LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     MetaImage metaImage;
-
-    // Grab a test sample to see what the output parameters should be:
-    //osg::Vec4f dummy;
-    //if (!readMetaImage(metaImage, getBestAvailableTileKey(key), 0.5, 0.5, dummy, progress))
-    //    return GeoImage::INVALID;
-    //osg::Image* mainImage = metaImage.begin()->second.image.get();
         
     // Allocate the output image:
     osg::ref_ptr<osg::Image> output = new osg::Image();
     output->allocateImage(
-        getTileSize(), //mainImage->s(),
-        getTileSize(), //mainImage->t(),
-        1, //mainImage->r(),
+        getTileSize(),
+        getTileSize(),
+        1,
         GL_RED,
         GL_FLOAT);
-        //mainImage->getPixelFormat(),
-        //mainImage->getDataType(),
-        //mainImage->getPacking());
     output->setInternalTextureFormat(GL_R16F);
-    //output->setInternalTextureFormat(mainImage->getInternalTextureFormat());
+
     ImageUtils::PixelWriter write(output.get());
     write.setNormalize(false);
 
@@ -656,4 +649,92 @@ LandCoverLayer::buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& co
             //OE_INFO << LC << "   mapped " << value << " to " << lcClass->getName() << std::endl;
         }
     }
+}
+
+//........................................................................
+
+#undef  LC
+#define LC "[LandCoverLayerVector] "
+
+LandCoverLayerVector::LandCoverLayerVector()
+{
+    //nop
+}
+
+
+LandCoverLayerVector::LandCoverLayerVector(const LandCoverLayerVector& rhs) :
+    osg::MixinVector< osg::ref_ptr<LandCoverLayer> >( rhs )
+{
+    //nop
+}
+
+bool
+LandCoverLayerVector::populateLandCoverImage(
+    osg::ref_ptr<osg::Image>& output,
+    const TileKey&            key,
+    ProgressCallback*         progress ) const
+{
+    if (empty())
+        return false;
+
+    if (size() == 1)
+    {
+        if (begin()->get()->getEnabled())
+        {
+            GeoImage r = begin()->get()->createImage(key, progress);
+            output = r.getImage();
+        }
+        return output.valid();
+    }
+
+    bool needsClone = false;
+    osg::Vec4 value;
+
+    for(const_iterator i = begin(); i != end(); ++i)
+    {
+        LandCoverLayer* layer = i->get();
+
+        if (!layer->getEnabled())
+            continue;
+
+        GeoImage comp = layer->createImage(key, progress);
+        if (!comp.valid())
+            continue;
+
+        // first valid image to arrive? Set it on the output.
+        if (!output.valid())
+        {
+            output = comp.getImage();
+            continue;
+        }
+
+        // not the first image to arrive? if it's the second, clone it
+        // so we can alter the composite.
+        if (needsClone)
+        {
+            output = osg::clone(output.get(), osg::CopyOp::DEEP_COPY_ALL);
+            needsClone = false;
+        }
+
+        ImageUtils::PixelReader read(comp.getImage());
+        read.setDenormalize(false);
+        read.setBilinear(false);
+
+        ImageUtils::PixelWriter write(output.get());
+        write.setNormalize(false);
+
+        for(unsigned t=0; t<comp.getImage()->t(); ++t)
+        {
+            for(unsigned s=0; s<comp.getImage()->s(); ++s)
+            {
+                read(value, s, t);
+                if (value.r() != NO_DATA_VALUE)
+                {
+                    write(value, s, t);
+                }
+            }
+        }
+    }
+
+    return output.valid();
 }

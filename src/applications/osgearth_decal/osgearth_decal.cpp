@@ -29,6 +29,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/DecalLayer>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <iostream>
 
 #define LC "[decal] "
@@ -49,38 +50,78 @@ usage(const char* name)
 
 struct App
 {
+    unsigned _minLevel;
+    unsigned _maxDataLevel;
+
     osg::ref_ptr<MapNode> _mapNode;
-    osg::ref_ptr<DecalLayer> _layer;
+    osg::ref_ptr<DecalImageLayer> _imageLayer;
+    osg::ref_ptr<DecalElevationLayer> _elevLayer;
+    osg::ref_ptr<DecalLandCoverLayer> _landCoverLayer;
     osg::ref_ptr<osg::Image> _image;
+    osg::ref_ptr<osg::Image> _landCover;
 
     App()
     {
-        //_image = osgDB::readRefImageFile("../data/circle_gradient_2.png");
         _image = osgDB::readRefImageFile("../data/burn.png");
         if ( !_image.valid())
         {
             OE_WARN << "Failed to load decal image!" << std::endl;
+            return;
         }
+
+        _minLevel = 11u;
+        _maxDataLevel = 15u; // must be the same as other land cover layers!
+
+        _landCover = new osg::Image();
+        _landCover->allocateImage(_image->s(), _image->t(), 1, GL_RED, GL_FLOAT);
+        _landCover->setInternalTextureFormat(GL_R16F);
+
+        ImageUtils::PixelReader read(_image.get());
+
+        ImageUtils::PixelWriter write(_landCover.get());
+        write.setNormalize(false);
+
+        osg::Vec4 value;
+
+        for(unsigned t=0; t<_image->t(); ++t)
+        {
+            for(unsigned s=0; s<_image->s(); ++s)
+            {
+                read(value, s, t);
+                float code = value.a() > 0.2? 7.0 : NO_DATA_VALUE;
+                value.set(code,code,code,code);
+                write(value, s, t);
+            }
+        }
+        
     }
 
     void init(MapNode* mapNode)
     {        
         _mapNode = mapNode;
-        _layer = mapNode->getMap()->getLayer<DecalLayer>();
-        if (!_layer.valid())
-        {
-            _layer = new DecalLayer();
-            _layer->setMinLevel(11u);
-            mapNode->getMap()->addLayer(_layer.get());
-        }
+        
+        _imageLayer = new DecalImageLayer();
+        _imageLayer->setMinLevel(_minLevel);
+        _imageLayer->setMaxDataLevel(_maxDataLevel);
+        mapNode->getMap()->addLayer(_imageLayer.get());
+
+        _elevLayer = new DecalElevationLayer();
+        _elevLayer->setMinLevel(_minLevel);
+        _elevLayer->setMaxDataLevel(_maxDataLevel);
+        mapNode->getMap()->addLayer(_elevLayer.get());
+
+        _landCoverLayer = new DecalLandCoverLayer();
+        _landCoverLayer->setMinLevel(_minLevel);
+        _landCoverLayer->setMaxDataLevel(_maxDataLevel); // must not exceed any other land cover layer!
+        mapNode->getMap()->addLayer(_landCoverLayer.get());
     }
 
     void addDecal(const GeoExtent& extent)
     {
-        if (_layer.valid() && _image.valid())
-        {
-            _layer->addDecal(extent, _image.get());
-        }
+        _imageLayer->addDecal(extent, _image.get());
+        _elevLayer->addDecal(extent, _image.get(), -35.0f);
+        _landCoverLayer->addDecal(extent, _landCover.get());
+        _mapNode->getTerrainEngine()->invalidateRegion(extent, _minLevel, _maxDataLevel);
     }
 };
 
@@ -101,7 +142,7 @@ struct ClickToDecal : public osgGA::GUIEventHandler
             mapPoint.fromWorld(_app._mapNode->getMapSRS(), world);
 
             double t = aa.asView()->getFrameStamp()->getReferenceTime();
-            t = 200.0 + 100.0 * (t - (long)t);
+            t = 500.0 + 250.0 * (t - (long)t);
             
             mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
 

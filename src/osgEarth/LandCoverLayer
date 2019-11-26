@@ -99,6 +99,27 @@ namespace osgEarth
         bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*) const;
     };
 
+
+    /**
+    * Vector of landcover layers, with added methods.
+    */
+    class OSGEARTH_EXPORT LandCoverLayerVector : public osg::MixinVector< osg::ref_ptr<LandCoverLayer> >
+    {
+    public:
+        /**
+        * Populates an existing height field (hf must already exist) with height
+        * values from the elevation layers.
+        */
+        bool populateLandCoverImage(
+            osg::ref_ptr<osg::Image>& image,
+            const TileKey& key,
+            ProgressCallback* progress ) const;
+
+    public:
+        LandCoverLayerVector();
+        LandCoverLayerVector(const LandCoverLayerVector& rhs);
+    };
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::LandCoverLayer::Options);

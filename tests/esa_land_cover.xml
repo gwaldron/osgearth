@@ -9,6 +9,4 @@
             </GDALImage>
         </coverage>
     </coverages>
-    <shared_sampler>oe_LandCover_tex</shared_sampler>
-    <shared_matrix>oe_LandCover_matrix</shared_matrix>
 </LandCover>

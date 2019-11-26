@@ -50,6 +50,13 @@ LoadTileData::setLayerFilter(const std::set<UID>& layers)
 }
 
 void
+LoadTileData::addLayerToFilter(const UID& layer)
+{
+    ScopedMutexLock lock(_mutex);
+    _filter.layers().insert(layer);
+}
+
+void
 LoadTileData::clearLayerFilter()
 {
     ScopedMutexLock lock(_mutex);
@@ -98,6 +105,8 @@ LoadTileData::invoke(ProgressCallback* progress)
     {
         _dataModel->getElevationTexture()->setUnRefImageDataAfterApply(false);
     }
+
+    clearLayerFilter();
 }
 
 

@@ -86,6 +86,7 @@ TerrainEngineNode::TerrainEngineNode() :
 _dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
+_requireLandCoverTextures( false ),
 _requireParentTextures   ( false ),
 _requireElevationBorder  ( false ),
 _requireFullDataAtFirstLOD( false ),
@@ -255,6 +256,41 @@ TerrainEngineNode::removeCreateTileModelCallback(CreateTileModelCallback* callba
             _createTileModelCallbacks.erase( i );
             break;
         }
+    }
+}
+
+void
+TerrainEngineNode::addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback)
+{
+    Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
+    _modifyTileBoundingBoxCallbacks.push_back(callback);
+}
+
+void
+TerrainEngineNode::removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback)
+{
+    Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
+    for (ModifyTileBoundingBoxCallbacks::iterator i = _modifyTileBoundingBoxCallbacks.begin();
+        i != _modifyTileBoundingBoxCallbacks.end();
+        ++i)
+    {
+        if (i->get() == callback)
+        {
+            _modifyTileBoundingBoxCallbacks.erase(i);
+            break;
+        }
+    }
+}
+
+void
+TerrainEngineNode::fireModifyTileBoundingBoxCallbacks(const TileKey& key, osg::BoundingBox& box)
+{
+    Threading::ScopedReadLock sharedLock(_createTileModelCallbacksMutex);
+    for (ModifyTileBoundingBoxCallbacks::iterator i = _modifyTileBoundingBoxCallbacks.begin();
+        i != _modifyTileBoundingBoxCallbacks.end();
+        ++i)
+    {
+        i->get()->modifyBoundingBox(key, box);
     }
 }
 

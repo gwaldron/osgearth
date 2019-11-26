@@ -21,6 +21,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Random>
 #include <osgEarth/SimplexNoise>
+#include <osgEarth/Registry>
 #include <osg/Texture2D>
 #include <osg/ConcurrencyViewerMacros>
 
@@ -122,7 +123,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setMaxAnisotropy( 4.0f );
-    tex->setUnRefImageDataAfterApply( true );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     
     //VRV Patch
     // removed this call since the nvtt mipmapper does not handle GL_LUMINANCE 

@@ -42,6 +42,8 @@ _engine(engine)
 void
 ModifyBoundingBoxCallback::operator()(const TileKey& key, osg::BoundingBox& bbox)
 {
+    _engine->getEngine()->fireModifyTileBoundingBoxCallbacks(key, bbox);
+
     osg::ref_ptr<const Map> map = _engine->getMap();
     if (map.valid())
     {

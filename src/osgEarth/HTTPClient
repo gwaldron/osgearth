@@ -257,7 +257,7 @@ namespace osgEarth { namespace Util
     {
     public:
         //! Interface for pluggable HTTP implementations
-        class Implementation
+        class Implementation : public osg::Referenced
         {
         public:
             virtual void initialize() = 0;
@@ -275,6 +275,9 @@ namespace osgEarth { namespace Util
 
             //! Implementation-specific handle if applicable
             virtual void* getHandle() const { return NULL; }
+
+        protected:
+            virtual ~Implementation() {}
         };
 
         //! Factory object to create implementation instances.
@@ -457,7 +460,7 @@ namespace osgEarth { namespace Util
         bool        _initialized;
         long        _simResponseCode;
 
-        Implementation* _impl;
+        osg::ref_ptr<Implementation> _impl;
 
         void initialize() const;
         void initializeImpl();

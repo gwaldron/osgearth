@@ -170,7 +170,7 @@ AreaPlane polygonPlane(osg::Vec3Array& verts)
         j = i;  
     }
 
-    double absArea[] = { abs(area[AREA_PLANE_XY] / 2.0), abs(area[AREA_PLANE_XZ] / 2.0), abs(area[AREA_PLANE_YZ] / 2.0) };
+    double absArea[] = { fabs(area[AREA_PLANE_XY] / 2.0), fabs(area[AREA_PLANE_XZ] / 2.0), fabs(area[AREA_PLANE_YZ] / 2.0) };
     if (absArea[0] > absArea[1] && absArea[0] > absArea[2]) {
         return AREA_PLANE_XY;
     }

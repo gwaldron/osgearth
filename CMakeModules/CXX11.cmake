@@ -32,9 +32,8 @@
 
 macro(check_for_cxx11_compiler _VAR)
     set(${_VAR})
-    if((MSVC AND NOT ${MSVC_VERSION} VERSION_LESS 1900) OR
-       (CMAKE_COMPILER_IS_GNUCXX AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.9.0) OR
-       (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4))
+    list(FIND CMAKE_CXX_KNOWN_FEATURES "cxx_std_11" _feature_found)
+    if(${_feature_found})
         set(${_VAR} 1)
 
         message(STATUS "Checking for C++11 compiler - available")

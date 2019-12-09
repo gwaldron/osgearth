@@ -28,6 +28,7 @@
 #include <osg/Group>
 #include <osg/MatrixTransform>
 #include <osgDB/Options>
+#include <osgUtil/CullVisitor>
 
 /**
  * 3D Tiles

@@ -31,7 +31,6 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 #include <osg/CoordinateSystemNode>
-#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

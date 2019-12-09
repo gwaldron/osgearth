@@ -615,7 +615,8 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
     }
     else if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = nv.asCullVisitor();
+        //osgUtil::CullVisitor* cv = nv.asCullVisitor();
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
 
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;

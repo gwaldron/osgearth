@@ -140,6 +140,9 @@ namespace osgEarth { namespace Contrib
 
     public: // ImageLayer
 
+        //! Open this layer
+        Status openImplementation();
+
         //! Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 

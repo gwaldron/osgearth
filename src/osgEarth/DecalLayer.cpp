@@ -359,6 +359,24 @@ DecalLandCoverLayer::init()
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
+Status
+DecalLandCoverLayer::openImplementation()
+{
+    // skip LandCoverLayer::openImplementation because we're replacing it
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
+    const Profile* profile = getProfile();
+    if (!profile)
+    {
+        profile = Profile::create("global-geodetic");
+        setProfile(profile);
+    }
+
+    return Status::NoError;
+}
+
 GeoImage
 DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {

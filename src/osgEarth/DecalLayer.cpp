@@ -25,7 +25,6 @@
 #include <osg/MatrixTransform>
 #include <osg/BlendFunc>
 #include <osg/BlendEquation>
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;

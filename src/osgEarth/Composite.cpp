@@ -89,6 +89,12 @@ CompositeImageLayer::addLayer(ImageLayer* layer)
     }
 }
 
+const ImageLayerVector&
+CompositeImageLayer::getLayers() const
+{
+    return _layers;
+}
+
 void
 CompositeImageLayer::init()
 {
@@ -468,6 +474,12 @@ CompositeElevationLayer::addLayer(ElevationLayer* layer)
     }
 }
 
+const ElevationLayerVector&
+CompositeElevationLayer::getLayers() const
+{
+    return _layers;
+}
+
 void
 CompositeElevationLayer::init()
 {
@@ -718,6 +730,12 @@ CompositeLandCoverLayer::addLayer(LandCoverLayer* layer)
     {
         _layers.push_back(layer);
     }
+}
+
+const LandCoverLayerVector&
+CompositeLandCoverLayer::getLayers() const
+{
+    return _layers;
 }
 
 void

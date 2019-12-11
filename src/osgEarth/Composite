@@ -50,6 +50,9 @@ namespace osgEarth
         //! Adds a layer to the composite.
         void addLayer(ImageLayer* layer);
 
+        //! Layers in the composite
+        const ImageLayerVector& getLayers() const;
+
     public: // Layer
         
         //! Opens all composited layers and only returns OK if all layers
@@ -106,6 +109,9 @@ namespace osgEarth
 
         //! Adds a layer to the composite.
         void addLayer(ElevationLayer* layer);
+
+        //! Layers in the composite
+        const ElevationLayerVector& getLayers() const;
 
     public: // Layer
         
@@ -164,6 +170,9 @@ namespace osgEarth
 
         //! Adds a layer to the composite.
         void addLayer(LandCoverLayer* layer);
+
+        //! Layers in the composite
+        const LandCoverLayerVector& getLayers() const;
 
     public: // Layer
 

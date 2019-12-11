@@ -1,0 +1,27 @@
+name: C/C++ CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install depds
+      run: |
+        echo "deb http://dl.bintray.com/jasonbeverage/pelicanmapping trusty main" | tee -a /etc/apt/sources.list
+        apt-get install -y cmake
+        apt-get install -y --force-yes openscenegraph=3.4.1
+        apt-get install -y libgdal-dev
+        apt-get install -y libgeos-dev
+        apt-get install -y libsqlite3-dev
+        apt-get install -y protobuf-compiler libprotobuf-dev
+        apt-get install -y libpoco-dev
+    - name: Generate project files
+      run: cmake -DCMAKE_BUILD_TYPE=Release .
+    - name: build and install
+      run: make -j3 && make install && ldconfig
+    - name: test
+      run: cd tests && osgEarth_tests

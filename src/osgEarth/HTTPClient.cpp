@@ -753,7 +753,7 @@ namespace
             }
 
             // read the file time:
-            response.setLastModified(getCurlFileTime( _curl_handle ));
+     response.setLastModified(getCurlFileTime( _curl_handle ));
 
             if (res == CURLE_OK)
             {
@@ -1358,8 +1358,6 @@ HTTPClient::initializeImpl()
 
 HTTPClient::~HTTPClient()
 {
-    if (_impl)
-        delete _impl;
 }
 
 void

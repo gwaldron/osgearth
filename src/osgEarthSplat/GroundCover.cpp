@@ -408,11 +408,11 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
         buf << defaultCode;
         OE_WARN << LC << "No land cover dictionary; generating default coverage predicate\n";
     }
-    else if ( !layer )
-    {
-        buf << defaultCode;
-        OE_WARN << LC << "No classification layer; generating default coverage predicate\n";
-    }
+    //else if ( !layer )
+    //{
+    //    buf << defaultCode;
+    //    OE_WARN << LC << "No classification layer; generating default coverage predicate\n";
+    //}
     else
     {
 #if 0

@@ -1,0 +1,22 @@
+<GroundCover name="Trees">
+    <lod>13</lod>
+    <cast_shadows>true</cast_shadows>
+    <zones>
+        <zone name="default">
+            <groundcover>
+                <max_distance>7300</max_distance>
+                <spacing>12</spacing>
+                <fill>0.60</fill>
+                <brightness>2.0</brightness>
+                <contrast>0.5</contrast>
+                <biomes>
+                    <biome classes="forest">
+                        <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
+                        <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
+                        <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                    </biome>
+                </biomes>
+            </groundcover>
+        </zone>
+    </zones>
+</GroundCover>

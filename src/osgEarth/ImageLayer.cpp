@@ -391,7 +391,17 @@ ImageLayer::createImage(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
-    return createImageInKeyProfile( key, progress );
+    // prevents 2 threads from creating the same object at the same time
+    _gateMutex.lock();
+    Gate& gate = _keyGates[key];
+    _gateMutex.unlock();
+    gate.e.waitAndReset();
+
+    GeoImage result = createImageInKeyProfile( key, progress );
+
+    gate.e.set();
+
+    return result;
 }
 
 GeoImage
@@ -492,13 +502,18 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         Stringify() << key.str() << "-" << key.getProfile()->getHorizSignature(),
         "image");
 
+    // The L2 cache key includes the layer revision of course!
+    char memCacheKey[64];
+
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
     
     // Check the layer L2 cache first
     if ( _memCache.valid() )
     {
+        sprintf(memCacheKey, "%d/%s/%s", getRevision(), key.str().c_str(), key.getProfile()->getHorizSignature().c_str());
+
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
-        ReadResult result = bin->readObject(cacheKey, 0L);
+        ReadResult result = bin->readObject(memCacheKey, 0L);
         if ( result.succeeded() )
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
     }
@@ -597,7 +612,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     if ( result.valid() && _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
-        bin->write(cacheKey, result.getImage(), 0L);
+        bin->write(memCacheKey, result.getImage(), 0L);
     }
 
     // If we got a result, the cache is valid and we are caching in the map profile,

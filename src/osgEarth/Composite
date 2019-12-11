@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/LandCoverLayer>
 
 namespace osgEarth
 {
@@ -139,10 +140,70 @@ namespace osgEarth
         osg::ref_ptr<osg::Group> _layerNodes;
     };
 
+
+
+    /**
+    * Composite Layer combines multiple land cover layers into one.
+    */
+    class OSGEARTH_EXPORT CompositeLandCoverLayer : public LandCoverLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public LandCoverLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, LandCoverLayer::Options);
+            OE_OPTION_VECTOR(ConfigOptions, layers);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, CompositeLandCoverLayer, Options, LandCoverLayer, CompositeLandCover);
+
+    public:
+
+        //! Adds a layer to the composite.
+        void addLayer(LandCoverLayer* layer);
+
+    public: // Layer
+
+        //! Opens all composited layers and only returns OK if all layers
+        //! open succesfully
+        virtual Status openImplementation();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+        //! Scene graph containing any nodes from the composited image layers
+        virtual osg::Node* getNode() const;
+
+        //! Called when a layer is added to the map
+        virtual void addedToMap(const Map* map);
+        virtual void removedFromMap(const Map* map);
+
+    protected: // Layer
+
+               //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~CompositeLandCoverLayer() { }
+
+    private:
+
+        LandCoverLayerVector _layers;
+        osg::ref_ptr<osg::Group> _layerNodes;
+    };
+
+
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeElevationLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CompositeLandCoverLayer::Options);
 
 
 #endif // OSGEARTH_COMPOSITE_H

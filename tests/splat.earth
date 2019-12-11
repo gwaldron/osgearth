@@ -16,7 +16,7 @@
     <xi:include href="esa_land_cover.xml"/>
         
     <!-- Procedural terrain imagery from land cover data -->
-    <SplatImage name="Splat Imagery" land_cover_layer="LandCover">
+    <SplatImage name="Splat Imagery">
         <zones>
             <zone name="default">
                 <surface>
@@ -27,7 +27,7 @@
     </SplatImage>
     
     <!-- GPU trees from land cover data -->
-    <GroundCover name="Trees" land_cover_layer="LandCover">
+    <GroundCover name="Trees">
         <lod>13</lod>
         <cast_shadows>true</cast_shadows>
         <zones>
@@ -51,7 +51,7 @@
     </GroundCover>
 
     <!-- GPU grass from land cover data -->
-    <GroundCover name="Grass" land_cover_layer="LandCover">    
+    <GroundCover name="Grass">    
         <lod>19</lod>
         <grass>true</grass>
         <cast_shadows>false</cast_shadows>

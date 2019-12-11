@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/TileKey>
+#include <stdio.h>
 
 using namespace osgEarth;
 
@@ -46,7 +47,9 @@ TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, con
 
         _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
 
-        _key = Stringify() << _lod << "/" << _x << "/" << _y;
+        char buf[255];
+        sprintf(buf, "%u/%u/%u", _lod, _x, _y);
+        _key = buf;
     }
     else
     {

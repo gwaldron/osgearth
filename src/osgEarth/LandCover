@@ -81,6 +81,7 @@ namespace osgEarth
             const LandCoverClassVector& classes() const { return _landCoverClasses; }
             bool loadFromXML(const URI& uri);        
             virtual Config getConfig() const;
+
         private:
             void fromConfig(const Config& conf);
             LandCoverClassVector _landCoverClasses;
@@ -104,6 +105,10 @@ namespace osgEarth
 
         //! Gets the land cover class corresponding to the integer value.
         const LandCoverClass* getClassByValue(int value) const;
+
+        //! Given a land cover tile, get the land cover class at the given unit
+        //! coordinates [0..1].
+        const LandCoverClass* getClassByUV(const GeoImage& tile, double u, double v) const;
     };
 
 
@@ -147,48 +152,6 @@ namespace osgEarth
         optional<std::string> _lcClassName;
     };
     typedef std::vector< osg::ref_ptr<LandCoverValueMapping> > LandCoverValueMappingVector;
-    
-
-#if 0
-    /**
-     * Serializable configuration for a LandCoverCoverageLayer.
-     */
-    class OSGEARTH_EXPORT LandCoverCoverageLayerOptions : public ImageLayer::Options
-    {
-    public:
-        //! Construct the options.
-        LandCoverCoverageLayerOptions(const ConfigOptions& co = ConfigOptions());
-
-        //! Collection of value mappings for the coverage layer.
-        LandCoverValueMappingVector& mappings() { return _valueMappings; }
-        const LandCoverValueMappingVector& mappings() const { return _valueMappings; }
-
-        //! Warping factor for this layer (default is 0.0)
-        optional<float>& warp() { return _warp; }
-        const optional<float>& warp() const { return _warp; }
-
-        //! Load the data from an XML file
-        bool loadMappingsFromXML(const URI& uri);
-
-        //! Add a mapping from a value to a class (convenience)
-        void map(int value, const std::string& className);
-
-    public:
-        virtual Config getConfig() const;
-
-    protected:
-        void fromConfig(const Config& conf);
-
-        virtual void mergeConfig(const Config& conf) {
-            ImageLayer::Options::mergeConfig(conf);
-            fromConfig(conf);
-        }
-
-    private:
-        LandCoverValueMappingVector _valueMappings;
-        optional<float> _warp;
-    };
-#endif
 
     /**
      * Component coverage layer of a LandCoverLayer.

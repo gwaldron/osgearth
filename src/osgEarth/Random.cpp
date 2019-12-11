@@ -34,7 +34,8 @@ namespace
     {
         // note: this is not a "good" PRNG, but it is good enough for some applications
         // and it is wicked fast.
-        next = next * 1103515245 + 12345;
+        //next = next * 1103515245 + 1234;
+        next = ((214013*next+2531011));
     }
 }
 

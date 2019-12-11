@@ -24,6 +24,7 @@ OPTION(OSGEARTH_BUILD_LEGACY_MP_TERRAIN_ENGINE "Build the legacy MP terrain engi
 # Folder name for plugins
 SET(OSGEARTH_PLUGINS_FOLDER Plugins)
 
+add_subdirectory(basis)
 add_subdirectory(bumpmap)
 add_subdirectory(cache_filesystem)
 add_subdirectory(cache_leveldb)

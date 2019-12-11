@@ -180,6 +180,23 @@ LandCoverDictionary::getClassByValue(int value) const
     return 0L;
 }
 
+const LandCoverClass*
+LandCoverDictionary::getClassByUV(const GeoImage& tile, double u, double v) const
+{
+    if (getStatus().isError())
+        return 0L;
+
+    if (!tile.valid())
+        return 0L;
+
+    ImageUtils::PixelReader read(tile.getImage());
+    read.setBilinear(false); // nearest neighbor only!
+    read.setDenormalize(false);
+    float value = read(u, v).r();
+
+    return getClassByValue((int)value);
+}
+
 //...........................................................................
 
 #undef  LC

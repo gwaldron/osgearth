@@ -338,11 +338,11 @@ TerrainLayer::openImplementation()
         // Store for further propagation!
         _cacheSettings->store(_readOptions.get());
 
+        // If the layer hints are set, integrate that cache policy next.
+        _cacheSettings->integrateCachePolicy(layerHints().cachePolicy());
+
         // Integrate a cache policy from this Layer's options:
         _cacheSettings->integrateCachePolicy(options().cachePolicy());
-
-        // If the layer hints are set, integrate that cache policy last.
-        _cacheSettings->integrateCachePolicy(layerHints().cachePolicy());
 
         // If you created the layer with a pre-created tile source, it will already by set.
         if (!_tileSource.valid())

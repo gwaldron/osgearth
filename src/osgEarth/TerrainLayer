@@ -362,6 +362,12 @@ namespace osgEarth
         /** Closes the layer, deleting its tile source and any other resources. */
         virtual Status closeImplementation();
 
+        struct Gate {
+            Threading::Event e;
+            Gate() { e.set(); }
+        };
+        mutable Threading::Mutex _gateMutex;
+        std::map<TileKey, Gate> _keyGates;
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

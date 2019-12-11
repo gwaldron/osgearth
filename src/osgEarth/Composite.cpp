@@ -453,30 +453,6 @@ CompositeElevationLayer::Options::fromConfig(const Config& conf)
 }
 
 
-
-namespace osgEarth { namespace Composite
-{
-    struct HeightFieldInfo
-    {
-        HeightFieldInfo()
-        {
-            dataInExtents = false;
-        }
-
-        HeightFieldInfo(osg::HeightField* hf, bool dataInExtents)
-        {
-            this->hf = hf;
-            this->dataInExtents = dataInExtents;
-        }
-
-        bool dataInExtents;
-        osg::ref_ptr< osg::HeightField> hf;
-    };
-
-    // some helper types.    
-    typedef std::vector<HeightFieldInfo> HeightFieldMixVector;   
-} }
-
 REGISTER_OSGEARTH_LAYER(compositeelevation, CompositeElevationLayer);
 
 void
@@ -692,5 +668,253 @@ CompositeElevationLayer::createHeightFieldImplementation(const TileKey& key, Pro
     else
     {        
         return GeoHeightField::INVALID;
+    }
+}
+
+
+#undef  LC
+#define LC "[CompositeLandCoverLayer] "
+
+//........................................................................
+
+Config
+CompositeLandCoverLayer::Options::getConfig() const
+{
+    Config conf = LandCoverLayer::Options::getConfig();
+    if (_layers.empty() == false)
+    {
+        Config layersConf("layers");
+        for( std::vector<ConfigOptions>::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
+        {
+            layersConf.add(i->getConfig());
+        }
+        conf.set(layersConf);
+    }
+    return conf;
+}
+
+void
+CompositeLandCoverLayer::Options::fromConfig(const Config& conf)
+{
+    const ConfigSet& layers = conf.child("layers").children();
+    for( ConfigSet::const_iterator i = layers.begin(); i != layers.end(); ++i )
+    {
+        _layers.push_back(ConfigOptions(*i));
+    }
+}
+
+//........................................................................
+
+REGISTER_OSGEARTH_LAYER(compositelandcover, CompositeLandCoverLayer);
+
+void
+CompositeLandCoverLayer::addLayer(LandCoverLayer* layer)
+{
+    if (isOpen())
+    {
+        OE_WARN << LC << "Illegal call to addLayer when layer is already open" << std::endl;
+    }
+    else if (layer)
+    {
+        _layers.push_back(layer);
+    }
+}
+
+void
+CompositeLandCoverLayer::init()
+{
+    LandCoverLayer::init();
+    setTileSourceExpected(false);
+    _layerNodes = new osg::Group();
+}
+
+osg::Node*
+CompositeLandCoverLayer::getNode() const
+{
+    return _layerNodes.get();
+}
+
+void
+CompositeLandCoverLayer::addedToMap(const Map* map)
+{
+    for(LandCoverLayerVector::iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        i->get()->addedToMap(map);
+    }
+}
+
+void
+CompositeLandCoverLayer::removedFromMap(const Map* map)
+{
+    for(LandCoverLayerVector::iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        i->get()->removedFromMap(map);
+    }
+}
+
+Status
+CompositeLandCoverLayer::openImplementation()
+{
+    Status parent = ImageLayer::openImplementation(); // skipping LandCoverLayer::open...
+    if (parent.isError())
+        return parent;
+
+    // If we're in cache-only mode, do not attempt to open the component layers!
+    if (getCacheSettings()->cachePolicy()->isCacheOnly())
+        return Status::NoError;
+
+    osg::ref_ptr<const Profile> profile;
+
+    bool dataExtentsValid = true;
+
+    // You may not call addLayers() and also put layers in the options.
+    if (_layers.empty() == false && options().layers().empty() == false)
+    {
+        return Status(Status::ConfigurationError, 
+            "Illegal to add layers both by options and by API");
+    }
+
+    // If the user didn't call addLayer(), try to read them from the options.
+    if (_layers.empty())
+    {
+        for(std::vector<ConfigOptions>::const_iterator i = options().layers().begin();
+            i != options().layers().end();
+            ++i)
+        {
+            osg::ref_ptr<Layer> newLayer = Layer::create(*i);
+            LandCoverLayer* layer = dynamic_cast<LandCoverLayer*>(newLayer.get());
+            if (layer)
+            {
+                // Add to the list
+                _layers.push_back(layer);
+            }
+            else
+            {
+                OE_WARN << LC << "This composite can only contains LandCoverLayers; discarding a layer" << std::endl;
+            }
+        }
+    }
+
+    else
+    {
+        // the user added layers through the API, so store each layer's options
+        // for serialization
+        for(LandCoverLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        {
+            LandCoverLayer* layer = i->get();
+            options().layers().push_back(layer->getConfig());
+        }
+    }
+
+    for(LandCoverLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    {
+        LandCoverLayer* layer = i->get();
+
+        // Must disable cacheing for the component layers; otherwise they
+        // will inherit the same cache bin as the parent and that's bad.
+        layer->setCachePolicy(CachePolicy::NO_CACHE);
+
+        layer->setReadOptions(getReadOptions());
+
+        Status status = layer->open();
+
+        if (status.isOK())
+        {
+            OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
+
+            // If no profile is specified assume they want to use the profile of the first layer in the list.
+            if (!profile.valid())
+            {
+                profile = layer->getProfile();
+                if (!profile.valid())
+                {
+                    return Status(
+                        Status::ResourceUnavailable, 
+                        Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                }
+            }
+
+            // gather extents                        
+            const DataExtentList& extents = layer->getDataExtents();  
+
+            // If even one of the layers' data extents is unknown, the entire composite
+            // must have unknown data extents:
+            if (extents.empty())
+            {
+                dataExtentsValid = false;
+                dataExtents().clear();
+            }
+
+            if (dataExtentsValid)
+            {
+                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                {                
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;                
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
+                    dataExtents().push_back( dataExtent );
+                }
+            }
+
+            // If the sublayer has a Node, add it to the group.
+            if (layer->getNode())
+            {
+                _layerNodes->addChild(layer->getNode());
+            }
+        }
+
+        else
+        {
+            OE_WARN << LC << "...failed to open " << layer->getName() << ": " << status.message() << std::endl;
+            if (getCacheSettings()->isCacheEnabled())
+            {
+                OE_WARN << LC << "...cache writes will be DISABLED for this layer" << std::endl;
+                getCacheSettings()->integrateCachePolicy(CachePolicy(CachePolicy::USAGE_READ_ONLY));
+            }
+        }
+    }
+
+    // If there is no profile set by the user or by a component, fall back
+    // on a default profile. This will allow the Layer to continue to operate
+    // off the cache even if all components fail to initialize for some reason.
+    if (profile.valid() == false)
+    {
+        if (getCacheSettings()->isCacheEnabled())
+        {
+            profile = Profile::create("global-geodetic");
+        }
+        else
+        {
+            return Status(Status::ResourceUnavailable, "Unable to open any component layers");
+        }
+    }
+
+    setProfile( profile.get() );
+
+    return Status::NoError;
+}
+
+GeoImage
+CompositeLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    unsigned size = getTileSize();
+
+    osg::ref_ptr<osg::Image> image;
+
+    // Populate the heightfield and return it if it's valid
+    if (_layers.populateLandCoverImage(image, key, progress))
+    {                
+        return GeoImage(image.get(), key.getExtent());
+    }
+    else
+    {        
+        return GeoImage::INVALID;
     }
 }

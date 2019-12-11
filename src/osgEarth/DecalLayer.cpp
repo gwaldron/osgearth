@@ -25,7 +25,6 @@
 #include <osg/MatrixTransform>
 #include <osg/BlendFunc>
 #include <osg/BlendEquation>
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
@@ -357,6 +356,24 @@ DecalLandCoverLayer::init()
 
     // Never cache decals
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
+}
+
+Status
+DecalLandCoverLayer::openImplementation()
+{
+    // skip LandCoverLayer::openImplementation because we're replacing it
+    Status parent = ImageLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
+    const Profile* profile = getProfile();
+    if (!profile)
+    {
+        profile = Profile::create("global-geodetic");
+        setProfile(profile);
+    }
+
+    return Status::NoError;
 }
 
 GeoImage

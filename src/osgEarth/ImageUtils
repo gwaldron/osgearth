@@ -358,6 +358,9 @@ namespace osgEarth { namespace Util
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
 
+            inline int s() const { return _image->s(); }
+            inline int t() const { return _image->t(); }
+
             //! Returns a color from an image at pixel (s,t,r,m)
             osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
                 osg::Vec4f temp;

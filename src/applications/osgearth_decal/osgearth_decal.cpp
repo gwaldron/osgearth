@@ -52,6 +52,7 @@ struct App
 {
     unsigned _minLevel;
     unsigned _maxDataLevel;
+    float _size;
 
     osg::ref_ptr<MapNode> _mapNode;
     osg::ref_ptr<DecalImageLayer> _imageLayer;
@@ -70,7 +71,7 @@ struct App
         }
 
         _minLevel = 11u;
-        _maxDataLevel = 15u; // must be the same as other land cover layers!
+        _maxDataLevel = 18u; // must be >= other land cover layers!
 
         _landCover = new osg::Image();
         _landCover->allocateImage(_image->s(), _image->t(), 1, GL_RED, GL_FLOAT);
@@ -99,27 +100,36 @@ struct App
     void init(MapNode* mapNode)
     {        
         _mapNode = mapNode;
+
+        // By default, decal layers will NOT cache. Here we are setting up a policy
+        // to cache them with a 10-minute expiration.
+        CachePolicy policy;
+        //policy.usage() = CachePolicy::USAGE_READ_WRITE;
+        //policy.maxAge() = 10.0;
         
         _imageLayer = new DecalImageLayer();
         _imageLayer->setMinLevel(_minLevel);
         _imageLayer->setMaxDataLevel(_maxDataLevel);
+        _imageLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_imageLayer.get());
 
         _elevLayer = new DecalElevationLayer();
         _elevLayer->setMinLevel(_minLevel);
         _elevLayer->setMaxDataLevel(_maxDataLevel);
+        _elevLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_elevLayer.get());
 
         _landCoverLayer = new DecalLandCoverLayer();
         _landCoverLayer->setMinLevel(_minLevel);
-        _landCoverLayer->setMaxDataLevel(_maxDataLevel); // must not exceed any other land cover layer!
+        _landCoverLayer->setMaxDataLevel(_maxDataLevel); // must be the same as other land cover layer(s)!
+        _landCoverLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_landCoverLayer.get());
     }
 
     void addDecal(const GeoExtent& extent)
     {
         _imageLayer->addDecal(extent, _image.get());
-        _elevLayer->addDecal(extent, _image.get(), -35.0f);
+        _elevLayer->addDecal(extent, _image.get(), -_size/20.0f); //-35.0f);
         _landCoverLayer->addDecal(extent, _landCover.get());
         _mapNode->getTerrainEngine()->invalidateRegion(extent, _minLevel, _maxDataLevel);
     }
@@ -146,12 +156,14 @@ struct ClickToDecal : public osgGA::GUIEventHandler
             
             mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
 
+            float d = _app._size * 0.5;
+
             GeoExtent extent(
                 mapPoint.getSRS(),
-                mapPoint.x()-t,
-                mapPoint.y()-t,
-                mapPoint.x()+t,
-                mapPoint.y()+t);
+                mapPoint.x()-d,
+                mapPoint.y()-d,
+                mapPoint.x()+d,
+                mapPoint.y()+d);
 
             _app.addDecal(extent);
 
@@ -176,6 +188,9 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
 
     App app;
+
+    app._size = 250.0f;
+    arguments.read("--size", app._size);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    

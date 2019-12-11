@@ -456,11 +456,15 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
         "elevation");
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
 
+    char memCacheKey[64];
+
     // Try the L2 memory cache first:
     if ( _memCache.valid() )
     {
+        sprintf(memCacheKey, "%d/%s/%s", getRevision(), key.str().c_str(), key.getProfile()->getHorizSignature().c_str());
+
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
-        ReadResult cacheResult = bin->readObject(cacheKey, 0L);
+        ReadResult cacheResult = bin->readObject(memCacheKey, 0L);
         if ( cacheResult.succeeded() )
         {
             result = GeoHeightField(
@@ -634,7 +638,7 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     if ( result.valid() && !fromMemCache && _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
-        bin->write(cacheKey, result.getHeightField(), 0L);
+        bin->write(memCacheKey, result.getHeightField(), 0L);
     }
 
     return result;

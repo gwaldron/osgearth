@@ -87,49 +87,35 @@ main(int argc, char** argv)
     source->setProfile(Profile::create("global-geodetic"));
     source->setCoverage(true);
 
-    osg::ref_ptr<LandCoverCoverageLayer> coverage = new LandCoverCoverageLayer();
-    coverage->setWarp(0.035);
-    coverage->setImageLayer(source.get());
-
-    if (fromXML)
-    {
-        if (coverage->loadMappingsFromXML("../data/land_cover_ESA_GLOBCOVER.xml") == false)
-            return failed("Cannot find coverage mappings XML\n");
-    }
-    else
-    {
-        coverage->map(11, "cropland");
-        coverage->map(14, "cropland");
-        coverage->map(20, "cropland");
-        coverage->map(30, "cropland");
-        coverage->map(40, "forest");
-        coverage->map(50, "forest");
-        coverage->map(60, "forest");
-        coverage->map(70, "forest");
-        coverage->map(80, "forest");
-        coverage->map(90, "forest");
-        coverage->map(100, "forest");
-        coverage->map(110, "grassland");
-        coverage->map(120, "grassland");
-        coverage->map(130, "savanna");
-        coverage->map(140, "savanna");
-        coverage->map(150, "savanna");
-        coverage->map(160, "swamp");
-        coverage->map(170, "swamp");
-        coverage->map(180, "swamp");
-        coverage->map(190, "urban");
-        coverage->map(200, "desert");
-        coverage->map(210, "water");
-        coverage->map(220, "tundra");
-        coverage->map(230, "water");
-    }
-
     // Create the land cover layer for the map:
     LandCoverLayer* landCover = new LandCoverLayer();
     landCover->setName("LandCover");
     landCover->setCachePolicy(CachePolicy::NO_CACHE);
-    //landCover->options().maxDataLevel() = 15u;
-    landCover->addCoverage(coverage.get());
+    landCover->setSource(source.get());
+    landCover->map(11, "cropland");
+    landCover->map(14, "cropland");
+    landCover->map(20, "cropland");
+    landCover->map(30, "cropland");
+    landCover->map(40, "forest");
+    landCover->map(50, "forest");
+    landCover->map(60, "forest");
+    landCover->map(70, "forest");
+    landCover->map(80, "forest");
+    landCover->map(90, "forest");
+    landCover->map(100, "forest");
+    landCover->map(110, "grassland");
+    landCover->map(120, "grassland");
+    landCover->map(130, "savanna");
+    landCover->map(140, "savanna");
+    landCover->map(150, "savanna");
+    landCover->map(160, "swamp");
+    landCover->map(170, "swamp");
+    landCover->map(180, "swamp");
+    landCover->map(190, "urban");
+    landCover->map(200, "desert");
+    landCover->map(210, "water");
+    landCover->map(220, "tundra");
+    landCover->map(230, "water");
 
     // Next, load the definitions that map land cover classes to actual textures.
     Surface* surface = new Surface();

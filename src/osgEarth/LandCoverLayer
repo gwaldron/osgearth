@@ -21,6 +21,7 @@
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LandCover>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth
 {    
@@ -35,32 +36,28 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION_VECTOR(ConfigOptions, coverages);
-            OE_OPTION(float, warpFactor);
-            OE_OPTION(unsigned, noiseLOD);
+            OE_OPTION(ImageLayer::Options, source);
+            LandCoverValueMappingVector& mappings() { return _mappings; }
+            const LandCoverValueMappingVector& mappings() const { return _mappings; }
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
+            LandCoverValueMappingVector _mappings;
         };
 
     public:
         META_Layer(osgEarth, LandCoverLayer, Options, ImageLayer, LandCover);
 
-        //! Sets the coverage warping factor
-        void setWarpFactor(const float& value);
-        const float& getWarpFactor() const;
+        //! Sets the image layer from which to read coverage data
+        void setSource(ImageLayer* layer);
+        ImageLayer* getSource() const;
 
-        //! Sets the LOD of the noise texture
-        void setNoiseLOD(const unsigned& value);
-        const unsigned& getNoiseLOD() const;
+        //! Access to the land cover mappings
+        LandCoverValueMappingVector& getLandCoverValueMappings();
+        const LandCoverValueMappingVector& getLandCoverValueMappings() const;
 
-        //! Adds a coverage layer definition (TODO: add actual layer, not options)
-        void addCoverage(LandCoverCoverageLayer* layer);
-
-        //! Given a land cover tile, which you can generate by calling
-        //! createImage, get the land cover class at the given parametric
-        //! coordinates [0..1].
-        const LandCoverClass* getClassByUV(const GeoImage& tile, double u, double v) const;
+        //! Convenience function to add a mapping
+        void map(int value, const std::string& classname);
 
     public: // Layer
 
@@ -79,24 +76,27 @@ namespace osgEarth
     protected: // TerrainLayer
 
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
-        std::vector<float> _warps;
         typedef std::vector<int> CodeMap;
-        std::vector<CodeMap> _codemaps;
-        typedef std::vector<osg::ref_ptr<LandCoverCoverageLayer> > CoverageLayerVector;
-        CoverageLayerVector _coverageLayers;
+        CodeMap _codemap;
+        LayerReference<ImageLayer> _source;
+        LandCoverValueMappingVector _mappings;
 
-        GeoImage createMetaImageComponent(const TileKey& key, ProgressCallback* progress) const;
+        GeoImage createFractalEnhancedImage(const TileKey& key, ProgressCallback* progress) const;
 
-        void buildCodeMap(const LandCoverCoverageLayer*, CodeMap&);
+        void buildCodeMap(CodeMap&);
 
         struct MetaImageComponent {
-            MetaImageComponent() : pixel(0L) { }
+            MetaImageComponent() : pixel(0L), failed(false) { }
+            bool failed;
             osg::ref_ptr<osg::Image> image;
             osg::Matrix scaleBias;
             ImageUtils::PixelReader pixel;
         };
-        typedef std::map<TileKey, MetaImageComponent> MetaImage;
-        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*) const;
+        typedef MetaImageComponent MetaImage[3][3];
+
+        bool readMetaImage(MetaImage&, const TileKey&, int s, int t, osg::Vec4f& output, ProgressCallback*) const;
+
+        int _waterCode, _beachCode;
     };
 
 

@@ -59,6 +59,8 @@ namespace osgEarth { namespace Threading
      * Typical usage: Thread A creates Thread B to run asynchronous code. Thread A
      * then calls wait(), which blocks Thread A. When Thread B is finished, it calls
      * set(). Thread A then wakes up and continues execution.
+     *
+     * NOTE: ALL waiting threads will wake up when the Event is cleared.
      */
     class OSGEARTH_EXPORT Event 
     {
@@ -128,6 +130,51 @@ namespace osgEarth { namespace Threading
         OpenThreads::Mutex _m;
         OpenThreads::Condition _cond;
         int _set, _num;
+    };
+
+    /**
+     * KeyedMutex is a per-value mutex; really just a map of key/mutex pairs.
+     */
+    template<typename T>
+    class OSGEARTH_EXPORT KeyedMutex
+    {
+    protected:
+        mutable OpenThreads::Mutex _m;
+        typedef std::pair<Mutex*, int> Entry;
+        typedef std::map<T, Entry> Table;
+        Table _t;
+
+    public:
+        int lock(const T& key) {
+            _m.lock();
+            bool exists = _t.find(key) != _t.end();
+            Entry& e = _t[key];
+            if (!exists) {
+                e.first = new Mutex();
+                e.second = 1;
+            }
+            else {
+                e.second++;
+            }
+            _m.unlock();
+            return e.first->lock();
+        }
+
+        int unlock(const T& key) {
+            _m.lock();
+            Table::iterator i = _t.find(key);
+            if (i != _t.end()) {
+                Entry& e = i->second;
+                e.first->unlock();
+                e.second--;
+                if (e.second == 0) {
+                    delete e.first;
+                    _t.erase(i);
+                }
+            }
+            _m.unlock();
+            return 0;
+        }
     };
 
     /**

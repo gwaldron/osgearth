@@ -188,10 +188,12 @@ LandCoverLayer::addedToMap(const Map* map)
             buildCodeMap(_codemap);
         }
 
+#if 0
         const LandCoverClass* water = _lcDictionary->getClassByName("water");
         if (water) _waterCode = water->getValue();
         const LandCoverClass* beach = _lcDictionary->getClassByName("desert");
         if (beach) _beachCode = beach->getValue();
+#endif
     }
     else
     {

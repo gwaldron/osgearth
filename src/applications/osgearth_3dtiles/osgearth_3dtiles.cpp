@@ -295,7 +295,8 @@ struct MVTContext
 {
     MVTContext() :
         numComplete(0),
-        format("b3dm")
+        format("b3dm"),
+        style(0)
     {
         queue = new osg::OperationQueue;
     }
@@ -336,8 +337,62 @@ public:
         FilterContext fc(session, new FeatureProfile(dataExtent), dataExtent);
         GeometryCompiler gc;
 
-        const Style* style = _context.style;
-        osg::ref_ptr<osg::Node> node = gc.compile(_features, *style, fc);
+        const StyleSheet* styles = _context.styleSheet;
+
+        osg::ref_ptr<osg::Node> node;
+        if (styles->getSelectors().size() > 0)
+        {
+            osg::Group* group = new osg::Group;
+
+            typedef std::map< std::string, FeatureList > StyleToFeaturesMap;
+            StyleToFeaturesMap styleToFeatures;
+
+            for (StyleSelectors::const_iterator i = styles->getSelectors().begin();
+                i != styles->getSelectors().end();
+                ++i)
+            {
+                // pull the selected style...
+                const StyleSelector& sel = i->second;
+
+                // if the selector uses an expression to select the style name, then we must perform the
+                // query and then SORT the features into style groups.
+                if (sel.styleExpression().isSet())
+                {
+                    // establish the working bounds and a context:
+                    StringExpression styleExprCopy(sel.styleExpression().get());
+                    for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+                    {
+                        Feature* feature = itr->get();
+
+                        const std::string& styleString = feature->eval(styleExprCopy, &fc);
+                        if (!styleString.empty() && styleString != "null")
+                        {
+                            styleToFeatures[styleString].push_back(feature);                                
+                        }
+                    }                    
+                }
+            }   
+
+            for (StyleToFeaturesMap::iterator itr = styleToFeatures.begin(); itr != styleToFeatures.end(); ++itr)
+            {
+                const Style* style = styles->getStyle(itr->first);
+                if (style)
+                {
+                    osg::ref_ptr< osg::Node>  styleNode = gc.compile(itr->second, *style, fc);
+                    if (styleNode.valid())
+                    {
+                        group->addChild(styleNode.get());
+                    }
+                }
+            }
+            node = group;
+        }
+        else if (_context.style)
+        {
+            node = gc.compile(_features, *_context.style, fc);
+        }        
+
+        
 
         if (node.valid())
         {

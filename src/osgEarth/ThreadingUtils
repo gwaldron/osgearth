@@ -162,7 +162,7 @@ namespace osgEarth { namespace Threading
 
         int unlock(const T& key) {
             _m.lock();
-            Table::iterator i = _t.find(key);
+            typename Table::iterator i = _t.find(key);
             if (i != _t.end()) {
                 Entry& e = i->second;
                 e.first->unlock();

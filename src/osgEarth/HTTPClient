@@ -471,13 +471,13 @@ namespace osgEarth { namespace Util
     };
 
 
-    class CURLHTTPImplementationFactory : public HTTPClient::ImplementationFactory
+    class OSGEARTH_EXPORT CURLHTTPImplementationFactory : public HTTPClient::ImplementationFactory
     {
     public:
         HTTPClient::Implementation* create() const;
     };
 
-    class WinInetHTTPImplementationFactory : public HTTPClient::ImplementationFactory
+    class OSGEARTH_EXPORT WinInetHTTPImplementationFactory : public HTTPClient::ImplementationFactory
     {
     public:
         HTTPClient::Implementation* create() const;

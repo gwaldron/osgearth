@@ -535,12 +535,17 @@ FeatureModelGraph::setSceneGraphCallbacks(SceneGraphCallbacks* host)
 //std::ostream& operator << (std::ostream& in, const osg::Vec3d& v) { in << v.x() << ", " << v.y() << ", " << v.z(); return in; }
 
 osg::BoundingSphered
-FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
+FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile* tilingProfile) const
 {
-    osg::Vec3d center, corner;
     GeoExtent workingExtent;
 
     if ( !extent.isValid() )
+    {
+        return osg::BoundingSphered();
+    }
+
+    osg::ref_ptr<const Map> map = _session->getMap();
+    if (!map.valid())
     {
         return osg::BoundingSphered();
     }
@@ -551,16 +556,20 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
     }
     else
     {
-        workingExtent = extent.transform( _usableMapExtent.getSRS() ); // safe.
+        if (tilingProfile)
+            workingExtent = map->getProfile()->clampAndTransformExtent(extent);
+        else
+            workingExtent = extent.transform(map->getSRS()); // _usableMapExtent.getSRS() );
     }
-    
-#if 1
-    return workingExtent.createWorldBoundingSphere(-11000, 9000); // lowest and highest points on earth
 
-#else
-    workingExtent.getCentroid( center.x(), center.y() );
-    
-    if ( mapf )
+#if 0
+    return workingExtent.createWorldBoundingSphere(-11000, 9000); // lowest and highest points on earth
+#endif
+
+    GeoPoint center;
+    workingExtent.getCentroid(center);
+
+    if (_session.valid())
     {
         // TODO: Use an appropriate resolution for this extents width
         unsigned lod = 23u;
@@ -572,48 +581,38 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
         }
 
         // Check for NO_DATA_VALUE and use zero instead.
-        if (elevation == NO_DATA_VALUE)
+        if (elevation != NO_DATA_VALUE)
         {
-            elevation = 0.0f;
+            center.z() = elevation;
         }
-        center.z() = elevation;
-    }    
 
-    corner.x() = workingExtent.xMin();
-    corner.y() = workingExtent.yMin();
-    corner.z() = 0;
+        // expand the bounds a little bit vertically to account for feature data
+        osg::BoundingSphered bs = workingExtent.createWorldBoundingSphere(center.z()-100.0, center.z()+100.0);
 
-    if (_session->isMapGeocentric())
-    {
-        // Compute the bounding sphere by sampling points along the extent.
-        int samples = 6;
+        // account for a worldwide bound:
+        double minRadius = osg::minimum(
+            map->getSRS()->getEllipsoid()->getRadiusPolar(),
+            map->getSRS()->getEllipsoid()->getRadiusEquator());
 
-        double xSample = workingExtent.width() / (double)samples;
-        double ySample = workingExtent.height() / (double)samples;
+        double maxRadius = osg::maximum(
+            map->getSRS()->getEllipsoid()->getRadiusPolar(),
+            map->getSRS()->getEllipsoid()->getRadiusEquator());
 
-        osg::BoundingSphered bs;
-        for (int c = 0; c < samples+1; c++)
-        {
-            double x = workingExtent.xMin() + (double)c * xSample;
-            for (int r = 0; r < samples+1; r++)
-            {
-                double y = workingExtent.yMin() + (double)r * ySample;
-                osg::Vec3d world;
-                GeoPoint(workingExtent.getSRS(), x, y, center.z(), ALTMODE_ABSOLUTE).toWorld(world);
-                bs.expandBy(world);
-            }
-        }
+        if (bs.radius() > minRadius/2.0)
+            return osg::BoundingSphered(osg::Vec3d(0,0,0), maxRadius);
+
         return bs;
     }
 
-    if (workingExtent.getSRS()->isGeographic() &&
-        ( workingExtent.width() >= 90 || workingExtent.height() >= 90 ) )
-    {
-        return osg::BoundingSphered( osg::Vec3d(0,0,0), 2*center.length() );
-    }
+    // fallback OR projected map approach
+    GeoPoint corner(workingExtent.getSRS(), workingExtent.xMin(), workingExtent.yMin(), center.z());
+    osg::Vec3d cornerWorld;
+    corner.toWorld(cornerWorld);
 
-    return osg::BoundingSphered( center, (center-corner).length() );
-#endif
+    osg::Vec3d centerWorld;
+    center.toWorld(centerWorld);
+
+    return osg::BoundingSphered( centerWorld, (centerWorld-cornerWorld).length() );
 }
 
 osg::Node*

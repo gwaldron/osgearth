@@ -157,7 +157,8 @@ namespace osgEarth { namespace Util
             const Style& style);
        
         osg::BoundingSphered getBoundInWorldCoords( 
-            const GeoExtent& extent ) const;
+            const GeoExtent& extent,
+            const Profile* tilingProfile =0L) const;
 
         void buildSubTilePagedLODs(
             unsigned lod, unsigned tileX, unsigned tileY,

@@ -405,9 +405,10 @@ public:
             apply(static_cast<osg::Node&>(drawable));
 
             osg::ref_ptr< osg::StateSet > ss = drawable.getStateSet();
+            bool pushedStateSet = false;
             if (ss.valid())
             {
-                pushStateSet(ss.get());
+                pushedStateSet = pushStateSet(ss.get());
             }
 
             osg::Geometry* geom = drawable.asGeometry();
@@ -499,7 +500,7 @@ public:
                 getOrCreateAccessor(texCoords, pset, primitive, "TEXCOORD_0");
             }
 
-            if (ss.valid())
+            if (pushedStateSet)
             {
                 popStateSet();
             }

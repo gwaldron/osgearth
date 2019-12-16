@@ -333,6 +333,8 @@ FeatureModelSource::createNodeImplementation(const Map* map,  ProgressCallback* 
     graph->setSession(session);
     graph->setNodeFactory(factory);
     graph->setSceneGraphCallbacks(getSceneGraphCallbacks());
+    graph->setStyleSheet(_styleSheet.getLayer());
+    graph->open();
 
     return graph;
 }

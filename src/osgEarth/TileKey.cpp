@@ -50,6 +50,9 @@ TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, con
         char buf[255];
         sprintf(buf, "%u/%u/%u", _lod, _x, _y);
         _key = buf;
+#ifdef OSGEARTH_CXX11
+        _hash = std::hash<std::string>()(_key);
+#endif
     }
     else
     {
@@ -64,7 +67,8 @@ _lod(rhs._lod),
 _x(rhs._x),
 _y(rhs._y),
 _profile( rhs._profile.get() ),
-_extent( rhs._extent )
+_extent( rhs._extent ),
+_hash(rhs._hash)
 {
     //NOP
 }

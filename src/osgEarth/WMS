@@ -324,7 +324,6 @@ namespace osgEarth { namespace WMS
         osg::ref_ptr<const osgDB::Options> _readOptions;
         bool                               _isPlaying;
         std::vector<SequenceFrameInfo>     _seqFrameInfoVec;
-        mutable ThreadSafeObserverSet<osg::ImageSequence> _sequenceCache;
     };
 
     /**

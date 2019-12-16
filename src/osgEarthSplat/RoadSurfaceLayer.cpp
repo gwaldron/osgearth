@@ -23,6 +23,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/FilterContext>
 #include <osgEarth/GeometryCompiler>
+#include <osgEarth/Containers>
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
@@ -311,7 +312,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         std::vector<TileKey> intersectingKeys;
         featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
 
-        std::set<TileKey> featureKeys;
+        UnorderedSet<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
         {        
             if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
@@ -321,7 +322,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         }
 
         // Query and collect all the features we need for this tile.
-        for (std::set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+        for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
         {
             Query query;        
             query.tileKey() = *i;

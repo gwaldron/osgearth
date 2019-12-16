@@ -23,7 +23,7 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 bool
-TransientUserDataStore::isObserverInvalid(const Table::entry_t& p)
+TransientUserDataStore::isObserverInvalid(const Table::value_type& p)
 {
     return p.second._owner.valid() == false;
 }
@@ -42,7 +42,7 @@ TransientUserDataStore::store(osg::Referenced* owner, const std::string& key, os
     _mutex.lock();
 
     // clear out orphaned data:
-    _table.erase( std::remove_if(_table.begin(), _table.end(), isObserverInvalid), _table.end() );
+    //_table.erase( std::remove_if(_table.begin(), _table.end(), isObserverInvalid), _table.end() );
 
     // insert new data:
     DataPair& p = _table[owner];

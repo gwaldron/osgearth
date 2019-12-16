@@ -20,6 +20,8 @@
 #include <osgEarth/Config>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Containers>
+#include <osgEarth/URI>
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
@@ -267,7 +269,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         }
     }
 
-    typedef osgEarth::fast_map<URI, int> ImageIndexTable; // track images to prevent dupes
+    typedef UnorderedMap<URI, int> ImageIndexTable; // track images to prevent dupes
     ImageIndexTable imageIndices;
     std::vector< osg::ref_ptr<osg::Image> > imagesInOrder;
     int index = 0;

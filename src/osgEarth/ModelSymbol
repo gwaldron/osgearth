@@ -126,11 +126,6 @@ namespace osgEarth
         optional<NumericExpression>  _scaleY;
         optional<NumericExpression>  _scaleZ;
     };
-
-    namespace Symbology {
-        typedef osgEarth::ModelSymbol ModelSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif

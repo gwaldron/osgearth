@@ -81,11 +81,6 @@ namespace osgEarth
         
         LayerReference<ImageLayer> _imageLayer;
     };
-
-    namespace Features {
-        typedef osgEarth::ImageToFeatureSource ImageToFeatureSource;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ImageToFeatureSource::Options);

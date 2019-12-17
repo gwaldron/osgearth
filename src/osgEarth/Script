@@ -126,13 +126,6 @@ namespace osgEarth
     bool        _success;
     std::string _msg;
   };
-
-
-  namespace Features {
-      typedef osgEarth::Script Script;
-      typedef osgEarth::ScriptResult ScriptResult;
-  }
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_FEATURES_SCRIPT_H

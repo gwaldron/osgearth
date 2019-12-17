@@ -63,12 +63,6 @@ namespace osgEarth
         
         bool push( Feature* feature, FilterContext& context );
     };
-
-
-    namespace Features {
-        typedef osgEarth::TransformFilter TransformFilter;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_TRANSFORM_FILTER_H

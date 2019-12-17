@@ -190,11 +190,6 @@ namespace osgEarth
         void fromConfig( const Config& conf );
     };
 
-    namespace Features {
-        typedef osgEarth::FeatureLevel FeatureLevel;
-        typedef osgEarth::FeatureDisplayLayout FeatureDisplayLayout;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureLevel);

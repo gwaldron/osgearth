@@ -97,11 +97,6 @@ namespace osgEarth
         bool isJSON( const std::string& mime ) const;
         URI createURL(const Query& query);
     };
-
-    namespace Features {
-        typedef osgEarth::XYZFeatureSource XYZFeatureSource;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZFeatureSource::Options);

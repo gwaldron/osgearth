@@ -158,11 +158,6 @@ namespace osgEarth
         bool isJSON(const std::string& mime) const;
         std::string createURL(const Query& query);
     };
-
-    namespace Features {
-        typedef osgEarth::TFSFeatureSource TFSFeatureSource;
-    }
-
 } // namespace osgEarth
 
 

@@ -201,12 +201,6 @@ namespace osgEarth
     protected:
         GeometryCompilerOptions _options;
     };
-
-    namespace Features {
-        typedef osgEarth::GeometryCompilerOptions GeometryCompilerOptions;
-        typedef osgEarth::GeometryCompiler GeometryCompiler;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_FEATURES_GEOMETRY_COMPILER_H

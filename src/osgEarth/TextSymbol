@@ -182,11 +182,6 @@ namespace osgEarth
         optional<bool>              _occlusionCull;
         optional<double>            _occlusionCullAltitude;
     };
-
-    namespace Symbology {
-        typedef osgEarth::TextSymbol TextSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H

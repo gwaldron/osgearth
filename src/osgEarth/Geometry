@@ -495,23 +495,6 @@ namespace osgEarth
         bool _done;
         bool _closeLoop;
     };
-
-    namespace Symbology {
-        typedef osgEarth::PointSet PointSet;
-        typedef osgEarth::BufferParameters BufferParameters;
-        typedef osgEarth::Vec3dVector Vec3dVector;
-        typedef osgEarth::Geometry Geometry;
-        typedef osgEarth::GeometryCollection GeometryCollection;
-        typedef osgEarth::LineString LineString;
-        typedef osgEarth::Ring Ring;
-        typedef osgEarth::RingCollection RingCollection;
-        typedef osgEarth::Polygon Polygon;
-        typedef osgEarth::MultiGeometry MultiGeometry;
-        typedef osgEarth::GeometryIterator GeometryIterator;
-        typedef osgEarth::ConstGeometryIterator ConstGeometryIterator;
-        typedef osgEarth::ConstSegmentIterator ConstSegmentIterator;
-    }
-
 } // namespace osgEarth
 
 

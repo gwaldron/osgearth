@@ -77,12 +77,6 @@ namespace osgEarth
         optional<TileKey> _tileKey;
         optional<int> _limit;
     };
-
-
-    namespace Symbology {
-        typedef osgEarth::Query Query;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Query);

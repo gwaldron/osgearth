@@ -765,7 +765,7 @@ build_leaves(osg::ArgumentParser& args)
 
     Map* map = mapnode->getMap();
 
-    osgEarth::Features::MVTFeatureSource* fs = map->getLayer<MVTFeatureSource>();
+    osgEarth::MVTFeatureSource* fs = map->getLayer<MVTFeatureSource>();
     if (!fs)
         return usage("No feature source layer found in the map");
 

@@ -156,13 +156,6 @@ namespace osgEarth
 
     FeatureSource* FeatureImageLayer::getFeatureSource() const { return _featureSource.getLayer(); }
     StyleSheet* FeatureImageLayer::getStyleSheet() const { return _styleSheet.getLayer(); }
-
-
-    namespace Features {
-        typedef osgEarth::FeatureImageRenderer FeatureImageRenderer;
-        typedef osgEarth::FeatureImageLayer FeatureImageLayer;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureImageLayer::Options);

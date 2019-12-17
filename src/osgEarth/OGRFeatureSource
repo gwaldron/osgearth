@@ -149,11 +149,6 @@ namespace osgEarth
 
         void ctor();
     };
-
-    namespace Features {
-        typedef osgEarth::OGRFeatureSource OGRFeatureSource;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::OGRFeatureSource::Options);

@@ -157,7 +157,6 @@ void
 CesiumIonImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status

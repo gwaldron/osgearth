@@ -40,6 +40,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/EventVisitor>
+#include <osgDB/ReadFile>
 
 
 using namespace osgEarth;

@@ -27,10 +27,11 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
-#include <iostream>
 #include <osgEarth/HTM>
 #include <osgEarth/PlaceNode>
 #include <osgEarth/Random>
+#include <osgDB/ReadFile>
+#include <iostream>
 
 #define LC "[viewer] "
 

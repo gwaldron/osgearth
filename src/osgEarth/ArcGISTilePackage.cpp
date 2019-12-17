@@ -186,7 +186,6 @@ void
 ArcGISTilePackageImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
     _bundleSize = 128u;
     _extension = "png";
 }

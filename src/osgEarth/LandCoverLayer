@@ -73,7 +73,7 @@ namespace osgEarth
 
         virtual void init();
 
-    protected: // TerrainLayer
+    protected: // TileLayer
 
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
         typedef std::vector<int> CodeMap;

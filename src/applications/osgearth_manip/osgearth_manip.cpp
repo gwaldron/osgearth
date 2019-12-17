@@ -27,6 +27,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/Depth>
 #include <osg/PositionAttitudeTransform>
+#include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>

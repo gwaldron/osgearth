@@ -38,9 +38,9 @@ namespace osgEarth { namespace Contrib
     class OSGEARTH_EXPORT WriteTMSTileHandler : public TileHandler
     {
     public:
-        WriteTMSTileHandler(TerrainLayer* layer, Map* map, TMSPackager* packager);
+        WriteTMSTileHandler(TileLayer* layer, Map* map, TMSPackager* packager);
 
-        TerrainLayer* getLayer();
+        TileLayer* getLayer();
 
         virtual bool handleTile( const TileKey& key, const TileVisitor& tv );
         virtual bool hasData( const TileKey& key ) const;
@@ -51,7 +51,7 @@ namespace osgEarth { namespace Contrib
         std::string getPathForTile( const TileKey &key );
 
     protected:
-        osg::ref_ptr< TerrainLayer > _layer;
+        osg::ref_ptr< TileLayer > _layer;
         osg::ref_ptr< Map > _map;
         TMSPackager* _packager;
     };
@@ -139,16 +139,6 @@ namespace osgEarth { namespace Contrib
         void setWriteOptions( osgDB::Options* options );        
 
         /**
-         * Sets the TileSource for output. Overrides default TMS writer.
-         */
-        void setTileSource( osgEarth::TileSource* source );
-
-        /**
-         * Gets the TileSource used for output.
-         */
-        osgEarth::TileSource* getTileSource() const;
-
-        /**
          * Gets the layer name to use in the TMS XML.
          */
         const std::string& getLayerName() const;
@@ -171,12 +161,12 @@ namespace osgEarth { namespace Contrib
         /**
          * Build the tiles for the given layer and map.
          */
-        void run( TerrainLayer* layer, Map* map );
+        void run( TileLayer* layer, Map* map );
 
         /**
          * Write out the TMS XML for the given layer and map.
          */
-        void writeXML( TerrainLayer* layer, Map* map);
+        void writeXML( TileLayer* layer, Map* map);
 
     protected:
 
@@ -185,8 +175,7 @@ namespace osgEarth { namespace Contrib
         unsigned int _elevationPixelDepth;
         std::string _layerName;
         bool _overwrite;
-        osg::ref_ptr<osgDB::Options>    _writeOptions;
-        osg::ref_ptr<osgEarth::TileSource> _tileSource;
+        osg::ref_ptr<osgDB::Options> _writeOptions;
 
         unsigned int _width;
         unsigned int _height;

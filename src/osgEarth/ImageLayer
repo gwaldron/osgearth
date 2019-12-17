@@ -24,7 +24,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/ColorFilter>
 #include <osgEarth/TileSource>
-#include <osgEarth/TerrainLayer>
+#include <osgEarth/TileLayer>
 #include <osgEarth/URI>
 
 namespace osgEarth
@@ -57,7 +57,7 @@ namespace osgEarth
     };
 
 
-    struct ImageLayerCallback : public TerrainLayerCallback
+    struct ImageLayerCallback : public TileLayerCallback
     {
         //virtual void onOpacityChanged(class ImageLayer* layer) { }
         virtual void onVisibleRangeChanged(class ImageLayer* layer) { }
@@ -71,12 +71,12 @@ namespace osgEarth
     /**
      * A map terrain layer containing bitmap image data.
      */
-    class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
+    class OSGEARTH_EXPORT ImageLayer : public TileLayer
     {
     public: // Serialization
-        class OSGEARTH_EXPORT Options : public TerrainLayer::Options {
+        class OSGEARTH_EXPORT Options : public TileLayer::Options {
         public:
-            META_LayerOptions(osgEarth, Options, TerrainLayer::Options);
+            META_LayerOptions(osgEarth, Options, TileLayer::Options);
             OE_OPTION(URI, noDataImageFilename);
             OE_OPTION(osg::Vec4ub, transparentColor);
             OE_OPTION(ColorFilterChain, colorFilters);
@@ -97,7 +97,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, ImageLayer, Options, TerrainLayer, image);
+        META_Layer_Abstract(osgEarth, ImageLayer, Options, TileLayer);
 
     public:
 
@@ -184,9 +184,10 @@ namespace osgEarth
         //! Open the layer for reading.
         virtual Status openImplementation();
 
-        //! Subclass can override this when not using a TileSource
-        //! by calling setTileSourceExpected(false).
-        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress) const;
+        //! Subclass overrides this to generate image data for the key.
+        //! The key will always be in the same profile as the layer.
+        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress) const
+            { return GeoImage::INVALID; }
 
         //! Subclass can override this to write data for a tile key.
         virtual Status writeImageImplementation(const TileKey&, const osg::Image*, ProgressCallback*) const;
@@ -221,16 +222,13 @@ namespace osgEarth
         // doesn't match the layer profile.
         GeoImage assembleImage(const TileKey& key, ProgressCallback* progress);
 
-        mutable osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
-        mutable Threading::Mutex                         _mutex;
+        mutable Threading::Mutex _mutex;
 
-        osg::ref_ptr<osg::Image>                 _emptyImage;
-        optional<int>                            _shareImageUnit;
-        bool                                     _useCreateTexture;
+        osg::ref_ptr<osg::Image> _emptyImage;
+        optional<int> _shareImageUnit;
+        bool _useCreateTexture;
 
         virtual void fireCallback(ImageLayerCallback::MethodPtr method);
-
-        TileSource::ImageOperation* getOrCreatePreCacheOp() const;
 
     public:
         // Internal utility class for post-processing image tiles that come from a TileSource

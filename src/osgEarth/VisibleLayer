@@ -109,6 +109,6 @@ namespace osgEarth
 
     typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;
 
-} // namespace TerrainLayer
+} // namespace TileLayer
 
 #endif // OSGEARTH_RENDER_LAYER_H

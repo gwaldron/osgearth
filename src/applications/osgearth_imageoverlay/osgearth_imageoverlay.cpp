@@ -21,6 +21,7 @@
 */
 
 #include <osg/Notify>
+#include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>

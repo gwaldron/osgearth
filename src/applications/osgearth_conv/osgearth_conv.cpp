@@ -237,7 +237,7 @@ main(int argc, char** argv)
         dbo->setOptionString( str );
     }
 
-    osg::ref_ptr<TerrainLayer> input = dynamic_cast<TerrainLayer*>(Layer::create(ConfigOptions(inConf)));
+    osg::ref_ptr<TileLayer> input = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(inConf)));
     if ( !input.valid() )
     {
         OE_WARN << LC << "Failed to open input" << std::endl;
@@ -286,7 +286,7 @@ main(int argc, char** argv)
     outConf.add("profile", profileOptions.getConfig());
 
     // open the output tile source:
-    osg::ref_ptr<TerrainLayer> output = dynamic_cast<TerrainLayer*>(Layer::create(ConfigOptions(outConf)));
+    osg::ref_ptr<TileLayer> output = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(outConf)));
     if ( !output.valid() )
     {
         OE_WARN << LC << "Failed to create output layer" << std::endl;

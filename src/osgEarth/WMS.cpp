@@ -761,7 +761,6 @@ void
 WMSImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
     _isPlaying = false;
 }
 

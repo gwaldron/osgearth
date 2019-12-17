@@ -30,7 +30,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
 
-WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, TMSPackager* packager):
+WriteTMSTileHandler::WriteTMSTileHandler(TileLayer* layer,  Map* map, TMSPackager* packager):
     _layer( layer ),
     _map(map),
     _packager(packager)
@@ -61,11 +61,8 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
     // Get the path to write to
     std::string path = getPathForTile( key );
 
-    // Get the user set TileSource for output if it is set
-    osgEarth::TileSource* tileSource = _packager->getTileSource();
-
     // Don't write out a new file if we're not overwriting
-    if (!tileSource && osgDB::fileExists(path) && !_packager->getOverwrite())
+    if (osgDB::fileExists(path) && !_packager->getOverwrite())
     {
         return true;
     }
@@ -109,18 +106,9 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
                 finalImage = ImageUtils::convertToRGB8( finalImage.get() );
             }
 
-            // use the TileSource provided if set, else use writeImageFile
-            if (tileSource)
-            {
-                tileSource->storeImage(key, finalImage.get(), 0L);
-                return true;
-            }
-            else
-            {
-                // attempt to create the output folder:
-                osgEarth::makeDirectoryForFile( path );
-                return osgDB::writeImageFile(*finalImage.get(), path, _packager->getOptions());
-            }
+            // attempt to create the output folder:
+            osgEarth::makeDirectoryForFile( path );
+            return osgDB::writeImageFile(*finalImage.get(), path, _packager->getOptions());
         }
     }
     else if (elevationLayer )
@@ -132,18 +120,9 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             ImageToHeightFieldConverter conv;
             osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );
 
-            // use the TileSource provided if set, else use writeImageFile
-            if (tileSource)
-            {
-                tileSource->storeImage(key, image.get(), 0L);
-                return true;
-            }
-            else
-            {
-                // attempt to create the output folder:
-                osgEarth::makeDirectoryForFile( path );
-                return osgDB::writeImageFile(*image.get(), path, _packager->getOptions());
-            }
+            // attempt to create the output folder:
+            osgEarth::makeDirectoryForFile( path );
+            return osgDB::writeImageFile(*image.get(), path, _packager->getOptions());
         }
     }
 
@@ -339,7 +318,7 @@ void TMSPackager::setVisitor(TileVisitor* visitor)
     _visitor = visitor;
 }
 
-void TMSPackager::run( TerrainLayer* layer,  Map* map  )
+void TMSPackager::run( TileLayer* layer,  Map* map  )
 {
     // fetch one tile to see what the image size should be
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
@@ -416,7 +395,7 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
     _visitor->run( map->getProfile() );
 }
 
-void TMSPackager::writeXML(TerrainLayer* layer, Map* map)
+void TMSPackager::writeXML(TileLayer* layer, Map* map)
 {
     const DataExtentList& dataExtents = layer->getDataExtents();
 

@@ -62,7 +62,6 @@ void
 SkyViewImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status

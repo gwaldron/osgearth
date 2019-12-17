@@ -702,8 +702,6 @@ FlatteningLayer::init()
 {
     ElevationLayer::init();
 
-    setTileSourceExpected(false);
-
     // Experiment with this and see what will work.
     _pool = new ElevationPool();
     _pool->setTileSize(257u);

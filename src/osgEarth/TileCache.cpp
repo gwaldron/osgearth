@@ -140,7 +140,6 @@ void
 TileCacheImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status
@@ -209,7 +208,6 @@ void
 TileCacheElevationLayer::init()
 {
     ElevationLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status

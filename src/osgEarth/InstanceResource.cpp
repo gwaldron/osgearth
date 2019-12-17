@@ -17,14 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/InstanceResource>
-#include <osgEarth/StringUtils>
-#include <osgEarth/ImageUtils>
-
-#include <osg/AutoTransform>
-#include <osg/Depth>
-#include <osg/Geometry>
-#include <osg/TextureRectangle>
-#include <osg/Program>
 
 #define LC "[InstanceResource] "
 

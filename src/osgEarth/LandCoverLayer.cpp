@@ -85,8 +85,6 @@ LandCoverLayer::init()
 
     setRenderType(RENDERTYPE_NONE);
 
-    setTileSourceExpected(false);
-
     layerHints().L2CacheSize() = 64;
 
     _waterCode = -1;

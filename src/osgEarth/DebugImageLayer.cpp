@@ -110,7 +110,6 @@ void
 DebugImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 
     _geom = new Ring();
     _geom->push_back(osg::Vec3(5, 5, 0));

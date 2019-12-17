@@ -25,6 +25,7 @@
 #define OSGEARTH_HAVE_SQLITE3 1
 
 #include <osgViewer/Viewer>
+#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>

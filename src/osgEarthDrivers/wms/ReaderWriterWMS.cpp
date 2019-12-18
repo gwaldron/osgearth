@@ -430,9 +430,16 @@ public:
     {
         double minx, miny, maxx, maxy;
         key.getExtent().getBounds( minx, miny, maxx, maxy);
+	
+	// Convert numbers only in "C" locale (decimal point is dot)
+        // Store current numeric locale
+        char *cur_lc_numeric = setlocale(LC_NUMERIC, "C");
         
         char buf[2048];
         sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);
+	
+        // Restore current numeric locale
+        setlocale(LC_NUMERIC, cur_lc_numeric);
         
         std::string uri(buf);
 

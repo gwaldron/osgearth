@@ -38,7 +38,6 @@ set(TARGET_SRC
     Coverage.cpp
     GroundCover.cpp
     GroundCoverLayer.cpp
-    LandUseTileSource.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
 	SplatCatalog.cpp
@@ -53,7 +52,6 @@ set(LIB_PUBLIC_HEADERS
 	Export
     GroundCover
     GroundCoverLayer
-    LandUseTileSource
     NoiseTextureFactory
     RoadSurfaceLayer
 	SplatCoverageLegend

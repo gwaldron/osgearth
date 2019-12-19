@@ -58,12 +58,6 @@ namespace osgEarth
         optional<Fill> _fill;
         optional<bool> _outline;
     };
-
-
-    namespace Symbology {
-        typedef osgEarth::PolygonSymbol PolygonSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

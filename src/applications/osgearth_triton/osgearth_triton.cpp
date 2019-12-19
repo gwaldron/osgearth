@@ -18,6 +18,7 @@
 */
 #include <osgViewer/Viewer>
 #include <osgDB/FileNameUtils>
+#include <osgDB/ReadFile>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/Registry>

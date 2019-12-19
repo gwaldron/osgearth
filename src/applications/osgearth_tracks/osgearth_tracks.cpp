@@ -37,6 +37,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

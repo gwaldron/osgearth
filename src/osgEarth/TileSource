@@ -41,15 +41,16 @@
 #include <osg/Image>
 #include <osg/Shape>
 #include <osgDB/Options>
-#include <osgDB/ReadFile>
 #include <string>
-
 
 namespace osgEarth
 {
     class ProgressCallback;
     class Map;
+}
 
+namespace osgEarth { namespace Contrib
+{
     /**
      * Configuration options for a tile source driver.
      */
@@ -104,10 +105,11 @@ namespace osgEarth
         optional<bool>           _coverage;
         optional<std::string>    _osgOptionString;
     };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileSourceOptions);
+} }
 
-namespace osgEarth
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::TileSourceOptions);
+
+namespace osgEarth { namespace Contrib
 {
     /**
      * A collection of tiles that should be considered blacklisted
@@ -417,9 +419,6 @@ namespace osgEarth
         mutable Threading::Mutex _mutex;
     };
 
-
-    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
-
     //--------------------------------------------------------------------
 
     class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
@@ -446,6 +445,6 @@ namespace osgEarth
          */
         static TileSource* create(const TileSourceOptions& options);
     };
-}
+} }
 
 #endif // OSGEARTH_TILE_SOURCE_H

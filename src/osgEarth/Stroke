@@ -126,12 +126,6 @@ namespace osgEarth
 
         void init();
     };
-
-
-    namespace Symbology {
-        typedef osgEarth::Stroke Stroke;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Stroke);

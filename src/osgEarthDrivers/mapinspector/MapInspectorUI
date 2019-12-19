@@ -21,7 +21,7 @@
 
 #include <osgEarth/MapCallback>
 #include <osgEarth/MapNode>
-#include <osgEarth/TerrainLayer>
+#include <osgEarth/TileLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Controls>
 #include <osg/View>
@@ -42,7 +42,7 @@ namespace osgEarth { namespace MapInspector
     private:
         osg::ref_ptr<osg::Group>    _annos;
 
-        void addTerrainLayer(class TerrainLayer* layer, MapNode* mapNode);
+        void addTileLayer(class TileLayer* layer, MapNode* mapNode);
         void addModelLayer  (class ModelLayer*   layer, MapNode* mapNode);
     };
 

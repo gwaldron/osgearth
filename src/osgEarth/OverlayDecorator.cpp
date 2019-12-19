@@ -24,7 +24,7 @@
 
 #include <osg/AutoTransform>
 #include <osg/ShapeDrawable>
-
+#include <osgDB/ReadFile>
 
 #define LC "[OverlayDecorator] "
 

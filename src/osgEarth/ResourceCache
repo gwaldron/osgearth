@@ -97,11 +97,6 @@ namespace osgEarth { namespace Util
         ResourceLibraryCache  _resourceLibraryCache;
         Threading::Mutex      _resourceLibraryMutex;
     };
-
-    namespace Symbology {
-        typedef osgEarth::ResourceCache ResourceCache;
-    }
-
 } } 
 
 #endif // OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H

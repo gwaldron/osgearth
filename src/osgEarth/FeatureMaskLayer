@@ -87,11 +87,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         OpenThreads::Mutex _boundaryMutex;
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureMaskLayer FeatureMaskLayer;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureMaskLayer::Options);

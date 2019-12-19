@@ -97,12 +97,6 @@ namespace osgEarth
         void ctor();
         osg::ref_ptr<ScriptEngine> _engine;
     };
-
-    namespace Features {
-        typedef osgEarth::ScriptFilterOptions ScriptFilterOptions;
-        typedef osgEarth::ScriptFilter ScriptFilter;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_SCRIPT_FILTER_H

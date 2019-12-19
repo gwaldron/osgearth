@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/FeatureCursor>
+#include <osgEarth/Containers>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
@@ -701,8 +702,6 @@ FlatteningLayer::init()
 {
     ElevationLayer::init();
 
-    setTileSourceExpected(false);
-
     // Experiment with this and see what will work.
     _pool = new ElevationPool();
     _pool->setTileSize(257u);
@@ -889,7 +888,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         std::vector<TileKey> intersectingKeys;
         featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
 
-        std::set<TileKey> featureKeys;
+        UnorderedSet<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
         {        
             if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
@@ -899,7 +898,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         }
 
         // Query and collect all the features we need for this tile.
-        for (std::set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+        for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
         {
             Query query;        
             query.tileKey() = *i;

@@ -64,7 +64,6 @@ void
 FeatureElevationLayer::init()
 {
     ElevationLayer::init();
-    setTileSourceExpected(false);
     setTileSize(257u);
 
     // Global WGS84 profile

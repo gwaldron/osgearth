@@ -106,7 +106,6 @@ void
 MBTilesImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 
     // by default don't cache from local files
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
@@ -211,7 +210,6 @@ void
 MBTilesElevationLayer::init()
 {
     ElevationLayer::init();
-    setTileSourceExpected(false);
 
     // by default don't cache from local files
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;

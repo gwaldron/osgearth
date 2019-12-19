@@ -22,12 +22,14 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
+#include <osgDB/ReadFile>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 
 #define LC "[TileSource] "
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 //#undef OE_DEBUG
 //#define OE_DEBUG OE_INFO

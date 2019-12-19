@@ -161,7 +161,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
     }
 
     // URI cache speeds up URI creation since it can be slow.
-    osgEarth::fast_map<std::string, URI> uriCache;
+    osgEarth::UnorderedMap<std::string, URI> uriCache;
 
     // keep track of failed URIs so we don't waste time or warning messages on them
     std::set< URI > missing;

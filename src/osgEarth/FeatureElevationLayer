@@ -74,11 +74,6 @@ namespace osgEarth
 
         bool intersects(const TileKey&) const;
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureElevationLayer FeatureElevationLayer;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_FEATURE_ELEVATION_LAYER

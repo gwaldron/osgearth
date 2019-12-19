@@ -692,7 +692,6 @@ WMS::Driver::createImageSequence(const TileKey& key, ProgressCallback* progress)
         return ImageUtils::createEmptyImage();
     }
 
-    _sequenceCache.insert(seq.get());
     return seq.release();
 }
 
@@ -762,7 +761,6 @@ void
 WMSImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
     _isPlaying = false;
 }
 

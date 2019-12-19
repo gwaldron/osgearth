@@ -55,11 +55,6 @@ namespace osgEarth
         /** dtor */
         virtual ~CoverageSymbol() { }
     };
-
-    namespace Symbology {
-        typedef osgEarth::CoverageSymbol CoverageSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H

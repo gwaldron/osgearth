@@ -132,11 +132,6 @@ namespace osgEarth
 
         osg::ref_ptr<const SpatialReference> _srs;
     };
-
-    namespace Symbology {
-        typedef osgEarth::GeometryFactory GeometryFactory;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_GEOMETRY_FACTORY

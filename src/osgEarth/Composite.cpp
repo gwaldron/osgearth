@@ -100,7 +100,6 @@ CompositeImageLayer::init()
 {
     ImageLayer::init();
     _open = false;
-    setTileSourceExpected(false);
     _layerNodes = new osg::Group();
 }
 
@@ -485,7 +484,6 @@ CompositeElevationLayer::init()
 {
     ElevationLayer::init();
     _open = false;
-    setTileSourceExpected(false);
 }
 
 osg::Node*
@@ -742,7 +740,6 @@ void
 CompositeLandCoverLayer::init()
 {
     LandCoverLayer::init();
-    setTileSourceExpected(false);
     _layerNodes = new osg::Group();
 }
 

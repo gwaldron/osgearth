@@ -23,6 +23,7 @@
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
+#include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>

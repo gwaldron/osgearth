@@ -129,12 +129,6 @@ namespace osgEarth
         optional<URIAliasMap>        _uriAliasMap;
         optional<StringExpression>   _script;
     };
-
-
-    namespace Symbology {
-        typedef osgEarth::InstanceSymbol InstanceSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H

@@ -40,6 +40,7 @@
 #include <osgEarth/GeometryFactory>
 
 #include <osgViewer/Viewer>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

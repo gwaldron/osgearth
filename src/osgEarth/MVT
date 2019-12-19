@@ -100,10 +100,6 @@ namespace osgEarth
         void computeLevels();
         bool getMetaData(const std::string& key, std::string& value);
     };
-
-    namespace Features {
-        typedef osgEarth::MVTFeatureSource MVTFeatureSource;
-    }
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MVTFeatureSource::Options);

@@ -171,7 +171,6 @@ namespace osgEarth
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<NormalMap> _normalMap;
         };
-        //typedef osg::ref_ptr<osg::HeightField> HFCacheValue;
         typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
         HFCache _heightFieldCache;
         bool    _heightFieldCacheEnabled;

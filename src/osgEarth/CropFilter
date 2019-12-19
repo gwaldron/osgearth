@@ -54,11 +54,6 @@ namespace osgEarth
     protected:
         optional<Method> _method;
     };
-
-    namespace Features {
-        typedef osgEarth::CropFilter CropFilter;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_BUFFER_FILTER_H

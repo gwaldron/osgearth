@@ -436,7 +436,6 @@ void
 ArcGISServerImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 }
 
 ArcGISServerImageLayer::~ArcGISServerImageLayer()

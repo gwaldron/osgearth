@@ -168,12 +168,6 @@ namespace osgEarth
 
         void init();
     };
-
-    namespace Symbology {
-        typedef osgEarth::NumericExpression NumericExpression;
-        typedef osgEarth::StringExpression StringExpression;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::NumericExpression);

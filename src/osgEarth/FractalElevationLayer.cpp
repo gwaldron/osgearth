@@ -139,9 +139,6 @@ FractalElevationLayer::init()
 
     _debug = false;
 
-    // No tile source; we will override createImplementation
-    setTileSourceExpected(false);
-
     // Global WGS84 profile
     setProfile(Profile::create("global-geodetic"));
     

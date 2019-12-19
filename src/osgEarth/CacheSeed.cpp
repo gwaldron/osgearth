@@ -30,7 +30,7 @@ using namespace osgEarth::Contrib;
 using namespace osgEarth::Util;
 using namespace OpenThreads;
 
-CacheTileHandler::CacheTileHandler( TerrainLayer* layer, const Map* map ):
+CacheTileHandler::CacheTileHandler( TileLayer* layer, const Map* map ):
 _layer( layer ),
 _map( map )
 {
@@ -115,7 +115,7 @@ void CacheSeed::setVisitor(TileVisitor* visitor)
     _visitor = visitor;
 }
 
-void CacheSeed::run( TerrainLayer* layer, const Map* map )
+void CacheSeed::run( TileLayer* layer, const Map* map )
 {
     _visitor->setTileHandler( new CacheTileHandler( layer, map ) );
     _visitor->run( map->getProfile() );

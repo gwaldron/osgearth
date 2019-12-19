@@ -51,11 +51,6 @@ namespace osgEarth
         Style                         _style;
         osg::ref_ptr<osg::Referenced> _state;
     };
-
-    namespace Symbology {
-        typedef osgEarth::GeometryRasterizer GeometryRasterizer;
-    }
-
-} // namespace osgEarth::Symbology
+} // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_GEOMETRY_RASTERIZER_H

@@ -69,11 +69,6 @@ namespace osgEarth
         osg::Matrixd _local2world, _world2local;
         unsigned int _maxElementsPerEBO;
     };
-
-    namespace Symbology {
-        typedef osgEarth::MeshSubdivider MeshSubdivider;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_MESH_SUBDIVIDER

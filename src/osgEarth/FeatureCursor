@@ -92,13 +92,6 @@ namespace osgEarth
         osg::ref_ptr<const FeatureFilterChain> _filterChain;
         osg::ref_ptr<Feature> _lastFeature;
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureCursor FeatureCursor;
-        typedef osgEarth::FeatureListCursor FeatureListCursor;
-        typedef osgEarth::GeometryFeatureCursor GeometryFeatureCursor;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_CURSOR_H

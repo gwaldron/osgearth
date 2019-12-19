@@ -207,7 +207,6 @@ namespace osgEarth
     protected:
         GeometryCompilerOptions _options;
     };
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_FEATURES_GEOMETRY_COMPILER_H

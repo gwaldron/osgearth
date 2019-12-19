@@ -210,11 +210,6 @@ namespace osgEarth
         bool isJSON( const std::string& mime ) const;
         std::string createURL(const Query& query) const;
     };
-
-    namespace Features {
-        typedef osgEarth::WFSFeatureSource WFSFeatureSource;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::WFSFeatureSource::Options);

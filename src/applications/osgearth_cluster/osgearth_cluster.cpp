@@ -28,6 +28,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
 #include <osgEarth/Registry>
+#include <osgDB/ReadFile>
 #include <iostream>
 
 #include <osgEarth/PlaceNode>

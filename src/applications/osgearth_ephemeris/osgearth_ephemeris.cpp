@@ -30,6 +30,7 @@
 #include <osgEarth/LatLongFormatter>
 #include <osgEarth/Controls>
 #include <osgEarth/PlaceNode>
+#include <osgDB/ReadFile>
 
 #define LC "[osgearth_ephemeris] "
 

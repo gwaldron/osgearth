@@ -1662,7 +1662,6 @@ GDALImageLayer::init()
 {
     // Initialize the image layer (always first)
     ImageLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status
@@ -1764,7 +1763,6 @@ void
 GDALElevationLayer::init()
 {
     ElevationLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status

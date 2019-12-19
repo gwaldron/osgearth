@@ -62,10 +62,10 @@ MapInspectorUI::reinit(MapNode* mapNode)
 
         for (unsigned i = 0; i < map->getNumLayers(); ++i)
         {
-            TerrainLayer* terrainLayer = map->getLayerAt<TerrainLayer>(i);
+            TileLayer* terrainLayer = map->getLayerAt<TileLayer>(i);
             if (terrainLayer)
             {
-                addTerrainLayer(terrainLayer, mapNode);
+                addTileLayer(terrainLayer, mapNode);
             }
 
             ModelLayer* modelLayer = map->getLayerAt<ModelLayer>(i);
@@ -82,7 +82,7 @@ MapInspectorUI::reinit(MapNode* mapNode)
 }
 
 void
-MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
+MapInspectorUI::addTileLayer(TileLayer* layer,
                                 MapNode*      mapNode)
 {
     const Color colors[6] = {

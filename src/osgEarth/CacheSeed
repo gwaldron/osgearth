@@ -41,14 +41,14 @@ namespace osgEarth { namespace Contrib
     class OSGEARTH_EXPORT CacheTileHandler : public TileHandler
     {
     public:
-        CacheTileHandler( TerrainLayer* layer, const Map* map );
+        CacheTileHandler( TileLayer* layer, const Map* map );
         virtual bool handleTile( const TileKey& key, const TileVisitor& tv );
         virtual bool hasData( const TileKey& key ) const;
 
         virtual std::string getProcessString() const;
 
     protected:
-        osg::ref_ptr< TerrainLayer > _layer;
+        osg::ref_ptr< TileLayer > _layer;
         osg::ref_ptr< const Map > _map;
     };    
 
@@ -71,9 +71,9 @@ namespace osgEarth { namespace Contrib
         void setVisitor(TileVisitor* visitor);
 
         /**
-        * Seeds a TerrainLayer
+        * Seeds a TileLayer
         */
-        void run(TerrainLayer* layer, const Map* map );
+        void run(TileLayer* layer, const Map* map );
 
 
     protected:

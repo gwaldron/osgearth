@@ -807,26 +807,17 @@ Map::isFast(const TileKey& key, const LayerVector& layers) const
         if (!layer->getEnabled())
             continue;
 
-        TerrainLayer* terrainlayer = dynamic_cast<TerrainLayer*>(layer);
-        if (terrainlayer)
+        TileLayer* tilelayer = dynamic_cast<TileLayer*>(layer);
+        if (tilelayer)
         {
-            if (terrainlayer->getCacheSettings()->cachePolicy()->isCacheDisabled())
+            if (tilelayer->getCacheSettings()->cachePolicy()->isCacheDisabled())
               return false;
 
             //If no data is available on this tile, we'll be fast
-            if (!terrainlayer->mayHaveData(key))
+            if (!tilelayer->mayHaveData(key))
                 continue;
 
-            // No tile source? skip it
-            osg::ref_ptr< TileSource > source = terrainlayer->getTileSource();
-            if (!source.valid())
-                continue;
-
-            //If the tile is blacklisted, it should also be fast.
-            if (source->getBlacklist()->contains(key))
-                continue;
-
-            if (!terrainlayer->isCached(key))
+            if (!tilelayer->isCached(key))
                 return false;
         }
     }

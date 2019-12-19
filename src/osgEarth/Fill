@@ -52,11 +52,6 @@ namespace osgEarth
         Color _color;
         void init();
     };
-
-    namespace Symbology {
-        typedef osgEarth::Fill Fill;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Fill);

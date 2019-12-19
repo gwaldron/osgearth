@@ -49,7 +49,7 @@ namespace
 
 
 FeatureSourceIndexOptions::FeatureSourceIndexOptions(const Config& conf) :
-_enabled      ( true ),
+_enabled      ( false ),
 _embedFeatures( false )
 {
     conf.get( "enabled",        _enabled );

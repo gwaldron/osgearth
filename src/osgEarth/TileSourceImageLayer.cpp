@@ -59,13 +59,13 @@ TileSourceImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    if (!options().driver().isSet())
-    {
-        return Status(Status::ConfigurationError, "Missing required tilesource driver");
-    }
-
     if (!_tileSource.valid())
     {
+        if (!options().driver().isSet())
+        {
+            return Status(Status::ConfigurationError, "Missing required tilesource driver");
+        }
+
         _tileSource = TileSourceFactory::create(options().driver().get());
     }
 

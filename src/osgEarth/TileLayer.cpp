@@ -206,9 +206,6 @@ TileLayer::init()
     _writingRequested = false;
     _profileMatchesMapProfile = true;
 
-    // intiailize our read-options, which store caching and IO information.
-    setReadOptions(0L);
-
     // Custom tile size?
     if (options().tileSize().isSet())
         _tileSize = options().tileSize().get();
@@ -368,7 +365,6 @@ TileLayer::closeImplementation()
     setProfile(0L);
     _openCalled = false;
     setStatus(Status());
-    _readOptions = 0L;
     _cacheSettings = new CacheSettings();
     return Layer::closeImplementation();
 }
@@ -698,8 +694,8 @@ void
 TileLayer::setReadOptions(const osgDB::Options* readOptions)
 {
     // clone the options, or create it not set
-    //_readOptions = Registry::cloneOrCreateOptions(readOptions);
-    Layer::setReadOptions(readOptions);
+    _readOptions = Registry::cloneOrCreateOptions(readOptions);
+    //VisibleLayer::setReadOptions(readOptions);
 
     // store the referrer for relative-path resolution
     URIContext( options().referrer() ).store( _readOptions.get() );

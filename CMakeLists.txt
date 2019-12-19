@@ -113,7 +113,7 @@ ENDIF(draco_FOUND)
 FIND_PACKAGE(Triton QUIET)
 FIND_PACKAGE(SilverLining QUIET)
 
-FIND_PACKAGE(Protobuf QUIET)
+FIND_PACKAGE(protobuf QUIET)
 SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")

@@ -83,6 +83,27 @@ namespace osgEarth { namespace Util
         FilterContext push(FeatureList& input, FilterContext& context);
     };
 
+    struct PointEntry
+    {
+        PointEntry(Feature* feature)
+            : pointFeature(feature), previous(DBL_MAX, DBL_MAX, DBL_MAX), next(DBL_MAX, DBL_MAX, DBL_MAX)
+            {}
+        PointEntry() : PointEntry(nullptr) {}
+        osg::ref_ptr<Feature> pointFeature;
+        FeatureList lineFeatures;
+        osg::Vec3d previous;
+        osg::Vec3d next;
+    };
+
+    typedef std::map<osg::Vec2d, PointEntry> PointMap;
+    inline PointEntry& getPoint(PointMap& map, const osg::Vec3d& coord)
+    {
+        return map[osg::Vec2d(coord.x(), coord.y())];
+    }
+    inline PointMap::iterator findPoint(PointMap& map, const osg::Vec3d& coord)
+    {
+        return map.find(osg::Vec2d(coord.x(), coord.y()));
+    }
 } } // namespace osgEarth::Util
 
 #endif // OSGEARTH_JOIN_POINTSLINES_FEATUREFILTER_OPTIONS

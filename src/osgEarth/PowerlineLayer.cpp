@@ -20,6 +20,9 @@
 #include <osgEarth/PowerlineLayer>
 #include <osgEarth/AltitudeFilter>
 #include <osgEarth/JoinPointsLinesFilter>
+#include <osgEarth/ElevationQuery>
+#include <osgEarth/PolygonizeLines>
+#include <osgEarth/ECEF>
 
 using namespace osgEarth;
 
@@ -85,6 +88,108 @@ PowerlineLayer::createFeatureNodeFactoryImplementation() const
     return new PowerlineFeatureNodeFactory(options());
 }
 
+namespace
+{
+    Feature* getPointFeature(PointMap& pointMap, const osg::Vec3d& key)
+    {
+        auto itr = findPoint(pointMap, key);
+        if (itr == pointMap.end())
+        {
+            return nullptr;
+        }
+        else
+        {
+            return itr->second.pointFeature.get();
+        }
+    }
+    
+    FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures, const FilterContext& cx)
+
+    {
+        FeatureList result;
+        const Session* session = cx.getSession();
+
+        // the map against which we'll be doing elevation clamping
+        osg::ref_ptr<const Map> map = session->getMap();
+        if (!map.valid())
+            return result;
+
+        const SpatialReference* mapSRS = map->getSRS();
+        osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
+
+        // establish an elevation query interface based on the features' SRS.
+        ElevationQuery eq(map.get());
+
+        PointMap pointMap;
+        for (auto& feature : towerFeatures)
+        {
+            Geometry* geom = feature->getGeometry();
+            for (osg::Vec3d& pt : *geom)
+            {
+                getPoint(pointMap, pt) = PointEntry(feature);
+            }
+        }
+
+        const SpatialReference* targetSRS = nullptr;
+        if (cx.getSession()->isMapGeocentric())
+        {
+            targetSRS = cx.getSession()->getMapSRS();
+        }
+        else
+        {
+            targetSRS = featureSRS->getGeocentricSRS();
+        }
+        
+        for (auto& feature : powerFeatures)
+        {
+            Geometry* geom = feature->getGeometry();
+            if (geom->getType() == Geometry::TYPE_LINESTRING)
+            {
+                std::vector<float> elevations;
+                eq.getElevations(geom->asVector(), feature->getSRS(), elevations);
+                std::vector<osg::Vec3d> worldPts(geom->size());
+                std::vector<osg::Matrixd> orientations(geom->size());
+                for (int i = 0; i < geom->size(); ++i)
+                {
+                    osg::Vec3d geodeticPt((*geom)[i].x(), (*geom)[i].y(), elevations[i]);
+                    ECEF::transformAndGetRotationMatrix(geodeticPt, featureSRS, worldPts[i],
+                                                        targetSRS, orientations[i]);
+                }
+                // New feature for the cable
+                const int size = geom->size();
+                const osg::Vec3d attach[] = {{5.876, 0.0, 14.162}, {-5.876, 0.0, 14.162}};
+                for (int cable = 0; cable < 2; ++cable)
+                {
+                    Feature* newFeature = new Feature(*feature);
+                    LineString* newGeom = new LineString(size);
+
+                    for (int i = 0; i < size; ++i)
+                    {
+                        double heading = 0.0;
+                        auto itr = findPoint(pointMap, (*geom)[i]);
+                        if (itr != pointMap.end())
+                        {
+                            heading = itr->second.pointFeature->getDouble("heading", 0.0);
+                        }
+                        osg::Matrixd headingMat;
+                        headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
+                        osg::Vec3d worldAttach = attach[cable] * headingMat * orientations[i] + worldPts[i];
+                        osg::Vec3d wgs84; // intermediate point
+                        osg::Vec3d mapAttach;
+                        featureSRS->getGeographicSRS()->transformFromWorld(worldAttach, wgs84);
+                        featureSRS->getGeographicSRS()->transform(wgs84, featureSRS, mapAttach);
+                        newGeom->push_back(mapAttach);
+                    }
+                    newFeature->setGeometry(newGeom);
+                    result.push_back(newFeature);
+                }
+
+            }
+        }
+        return result;
+    }
+}
+
 bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, const Style& style,
                                                      const FilterContext& context,
                                                      osg::ref_ptr<osg::Node>& node)
@@ -108,5 +213,18 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         }
     }
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
-    return GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), style, localCX, node);
+    osg::ref_ptr<osg::Node> pointsNode;
+    GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), style, localCX, pointsNode);
+    osg::ref_ptr<osg::Group> results(new osg::Group);
+    results->addChild(pointsNode.get());
+    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX);
+
+    Style lineStyle;
+    osg::ref_ptr<LineSymbol> lineSymbol = lineStyle.getOrCreateSymbol<LineSymbol>();
+
+    PolygonizeLinesFilter polyLineFilter(lineStyle);
+    osg::Node* cables = polyLineFilter.push(cableFeatures, localCX);
+    results->addChild(cables);
+    node = results;
+    return true;
 }

@@ -46,21 +46,6 @@ using namespace osgEarth;
    linestring at the point.
  */
 
-struct PointEntry
-{
-    PointEntry(Feature* feature)
-        : pointFeature(feature), previous(DBL_MAX, DBL_MAX, DBL_MAX), next(DBL_MAX, DBL_MAX, DBL_MAX)
-        {}
-    PointEntry() : PointEntry(nullptr) {}
-    osg::ref_ptr<Feature> pointFeature;
-    FeatureList lineFeatures;
-    std::vector<osg::Vec2d> neighbors;
-    osg::Vec3d previous;
-    osg::Vec3d next;
-};
-
-typedef std::map<osg::Vec2d, PointEntry> PointMap;
-
 double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
                                 FilterContext& context)
 {
@@ -164,10 +149,6 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
             }
         }
     }
-#if 0
-    FeatureList lines;
-    getLineFeatures(context.extent().get(), lines);
-#endif
     for (auto& feature : input)
     {
         Geometry* geom = feature->getGeometry();

@@ -419,6 +419,8 @@ MapNode::open()
     defaultMaterial->setDiffuse(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     defaultMaterial->setAmbient(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     stateset->setAttributeAndModes(defaultMaterial, 1);
+
+    // Note: without this, osgEarth's Sky won't work -gw
     //MaterialCallback().operator()(defaultMaterial, 0L);
 
     dirtyBound();

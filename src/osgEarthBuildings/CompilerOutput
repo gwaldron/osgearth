@@ -157,7 +157,7 @@ namespace osgEarth { namespace Buildings
         osg::Matrix _local2world, _world2local;
 
         osg::ref_ptr<osg::Geode> _defaultGeode;
-        typedef fast_map<std::string, osg::ref_ptr<osg::Geode> > TaggedGeodes;
+        typedef UnorderedMap<std::string, osg::ref_ptr<osg::Geode> > TaggedGeodes;
         TaggedGeodes _geodes;
         
         typedef std::vector<osg::Matrix> MatrixVector;
@@ -184,7 +184,7 @@ namespace osgEarth { namespace Buildings
         
         mutable Threading::Mutex _cacheAccessMutex;
 
-        typedef std::map<std::string, osg::ref_ptr<osg::StateSet> > SkinStateSetCache;
+        typedef UnorderedMap<std::string, osg::ref_ptr<osg::StateSet> > SkinStateSetCache;
         SkinStateSetCache _skinStateSetCache;
 
         osg::ref_ptr<TextureCache> _texCache;

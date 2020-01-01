@@ -291,6 +291,9 @@ FeatureModelGraph::setOwnerName(const std::string& value)
     _ownerName = value;
 }
 
+#define USE_NEW_SETUP
+#ifdef USE_NEW_SETUP
+
 Status
 FeatureModelGraph::open()
 {
@@ -520,6 +523,275 @@ FeatureModelGraph::open()
 
     return Status::OK();
 }
+#else
+
+Status
+FeatureModelGraph::open()
+{
+    // So we can pass it to the pseudoloader
+    setName(USER_OBJECT_NAME);
+
+    OE_TEST << LC << "ctor" << std::endl;
+
+    _nodeCachingImageCache = new osgDB::ObjectCache();
+
+    // an FLC that queues feature data on the high-latency thread.
+    _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
+
+    // install the stylesheet in the session if it doesn't already have one.
+    if ( !_session->styles() )
+    {
+        _session->setStyles(_styleSheet.get());
+    }     
+
+    if ( !_session->getFeatureSource() )
+    {
+        return Status(Status::ConfigurationError, "ILLEGAL: Session must have a feature source");
+    }
+
+    // Set up a shared resource cache for the session. A session-wide cache means
+    // that all the paging threads that load data from this FMG will load resources
+    // from a single cache; e.g., once a texture is loaded in one thread, the same
+    // StateSet will be used across the entire Session. That also means that StateSets
+    // in the ResourceCache can potentially also be in the live graph; so you should
+    // take care in dealing with them in a multi-threaded environment.
+    if ( !_session->getResourceCache() && _options.sessionWideResourceCache() == true )
+    {
+        //_session->setResourceCache( new ResourceCache(_session->getDBOptions()) );
+        _session->setResourceCache(new ResourceCache());
+    }
+
+    // Calculate the usable extent (in both feature and map coordinates) and bounds.
+    osg::ref_ptr<const Map> map = _session->getMap();
+    if (!map.valid())
+    {
+        return Status(Status::ConfigurationError, "Session does not have a Map set");
+    }
+
+    const Profile* mapProfile = map->getProfile();
+    const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
+
+    // Bail out if the feature profile is bad
+    if ( !featureProfile || !featureProfile->getExtent().isValid() )
+    {
+        Status(Status::ConfigurationError, "Feature profile invalid or missing");
+    }
+
+    // the part of the feature extent that will fit on the map (in map coords):
+    _usableMapExtent = mapProfile->clampAndTransformExtent( 
+        featureProfile->getExtent(), 
+        &_featureExtentClamped );
+
+    // same, back into feature coords:
+    // SHOULD use profile->clampAndTransform but it's superfluous here I think
+    _usableFeatureExtent = _usableMapExtent.transform( featureProfile->getSRS() );
+
+    // for projected data, contract the extent slightly to prevent precision errors
+    // when sampling edge vertices after cropping
+    if (_usableFeatureExtent.isValid() && _usableFeatureExtent.getSRS()->isProjected())
+    {
+        _usableFeatureExtent.expand(-0.001, -0.001);
+    }
+
+    // world-space bounds of the feature layer
+    _fullWorldBound = getBoundInWorldCoords( _usableMapExtent );
+
+    // A data source is either Tiled or Not Tiled. Set things up differently depending.
+    _useTiledSource = featureProfile->isTiled();
+
+    if (featureProfile->isTiled())
+    {
+        float maxRange = FLT_MAX;
+
+        if (_options.layout().isSet())
+        {
+            if (_options.layout()->getNumLevels() > 0)
+            {
+                OE_WARN << LC << "Levels are not allowed on a tiled data source - ignoring" << std::endl;
+            }
+        }
+
+        if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
+        {
+            maxRange = _options.layout()->maxRange().get();
+        }
+
+        // Max range is unspecified, so compute one
+        if (maxRange == FLT_MAX)
+        {
+            // Calculate the bounds of the center-most tile in the tiling profile,
+            // as this will always be the largest:
+            const Profile* tilingProfile = featureProfile->getTilingProfile();
+            unsigned tw, th;
+            tilingProfile->getNumTiles(featureProfile->getFirstLevel(), tw, th);
+            TileKey temp(featureProfile->getFirstLevel(), tw/2, th/2, tilingProfile);
+            osg::BoundingSphered bounds = getBoundInWorldCoords(temp.getExtent());
+            float factor = _options.layout()->tileSizeFactor().get();
+            maxRange = bounds.radius() * factor;
+
+            // Officially set the size factor if it's not already set
+            // so we don't try to compute it again later.
+            if (_options.layout()->tileSizeFactor().isSet() == false)
+                _options.layout()->tileSizeFactor() = factor;
+        }
+
+        // Aautomatically compute the tileSizeFactor based on the max range if necessary
+        // GW: Need this?
+        if ( !_options.layout()->tileSizeFactor().isSet() )
+        {
+            double width, height;
+            featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+
+            GeoExtent ext(featureProfile->getSRS(),
+                featureProfile->getExtent().west(),
+                featureProfile->getExtent().south(),
+                featureProfile->getExtent().west() + width,
+                featureProfile->getExtent().south() + height);
+
+            osg::BoundingSphered bounds = getBoundInWorldCoords( ext );
+
+            float tileSizeFactor = maxRange / bounds.radius();
+
+            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+            tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
+            OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRange << std::endl;
+            _options.layout()->tileSizeFactor() = tileSizeFactor;
+        }
+
+        // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
+        _lodmap.resize(featureProfile->getMaxLevel() + 1);
+        float levelMaxRange = maxRange;
+        for (int i = 0; i < featureProfile->getMaxLevel()+1; i++)
+        {            
+            OE_INFO << LC << "Max range " << maxRange << " for lod " << i << std::endl;
+            FeatureLevel* level = new FeatureLevel(0.0, maxRange);
+            _lodmap[i] = level;
+
+            // Start halving the max range once we get to the first level of data.
+            if (i >= featureProfile->getFirstLevel())
+            {
+                maxRange /= 2.0;
+            }
+        }
+    }
+
+    else // not tiled
+    {
+        float maxRange = FLT_MAX;
+
+        // if there's a layout max_range, use that:
+        if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
+        {
+            maxRange = _options.layout()->maxRange().get();
+        }
+
+        // if the level-zero's max range is even less, use THAT:
+        if (_options.layout().isSet() && 
+            _options.layout()->getNumLevels() > 0 &&
+            _options.layout()->getLevel(0)->maxRange().isSet())
+        {
+            maxRange = osg::minimum(maxRange, _options.layout()->getLevel(0)->maxRange().get());
+        }   
+
+        // Figure out the tile size:
+        float tileSize;
+        if (_options.layout()->tileSize().isSet() &&
+            _options.layout()->tileSize() > 0.0 )
+        {
+            tileSize = _options.layout()->tileSize().get();
+        }
+        else
+        {
+            tileSize = _fullWorldBound.radius() / 1.4142;
+        }
+
+        // If we still have no maxRange, calculate one now
+        if (maxRange == FLT_MAX &&
+            _options.layout().isSet() &&
+            _options.layout()->tileSizeFactor().isSet())
+        {
+            maxRange = _options.layout()->tileSizeFactor().get() * tileSize;
+        }
+
+        // Finally lock in the size factor.
+        if (!_options.layout()->tileSizeFactor().isSet())
+        {
+            _options.layout()->tileSizeFactor() = maxRange / tileSize;
+        }
+
+        OE_INFO << LC << "tileSize = " << tileSize << "; maxRange = " << maxRange << "; tsf=" << _options.layout()->tileSizeFactor().get()
+            << std::endl;
+
+        if (_options.layout()->getNumLevels() > 0)
+        {
+            // for each custom level, calculate the best LOD match and store it in the level
+            // layout data. We will use this information later when constructing the SG in
+            // the pager.
+            for( unsigned i = 0; i < _options.layout()->getNumLevels(); ++i )
+            {
+                const FeatureLevel* level = _options.layout()->getLevel( i );
+                unsigned lod = _options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
+                _lodmap.resize( lod+1, 0L );
+                _lodmap[lod] = level;
+
+                OE_INFO << LC << _session->getFeatureSource()->getName() 
+                    << ": F.Level max=" << level->maxRange().get() << ", min=" << level->minRange().get()
+                    << ", LOD=" << lod
+                    << std::endl;
+            }
+        }
+        else
+        {
+            FeatureLevel* level = new FeatureLevel(0.0f, FLT_MAX);
+            unsigned lod = _options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
+            _lodmap.resize(lod+1, 0L);
+            _lodmap[lod] = level;
+
+            OE_INFO << LC << _session->getFeatureSource()->getName() 
+                << ": No levels specified, so adding one for LOD=" << lod
+                << std::endl;
+        }
+    }
+
+
+    // Apply some default state. The options properties let you override the
+    // defaults, but we'll set some reasonable state if they are not set.
+    osg::StateSet* stateSet = getOrCreateStateSet();
+
+    // Set up backface culling. If the option is unset, enable it by default
+    // since shadowing requires it and it's a decent general-purpose setting
+    if ( _options.backfaceCulling().isSet() )
+        stateSet->setMode( GL_CULL_FACE, *_options.backfaceCulling() ? 1 : 0 );
+    else
+        stateSet->setMode( GL_CULL_FACE, 1 );
+
+    // Set up alpha blending. Enable it by default if not specified.
+    if ( _options.alphaBlending().isSet() )
+        stateSet->setMode( GL_BLEND, *_options.alphaBlending() ? 1 : 0 );
+    else
+        stateSet->setMode( GL_BLEND, 1 );
+
+    // Set up lighting, only if the option is set
+    if ( _options.enableLighting().isSet() )
+        GLUtils::setLighting(stateSet, *_options.enableLighting() ? 1 : 0 );
+
+    // If the user requests fade-in, install a post-merge operation that will set the 
+    // proper fade time for paged nodes.
+    if ( _options.fading().isSet() && _sgCallbacks.valid())
+    {
+        _sgCallbacks->add(new SetupFading());
+        OE_INFO << LC << "Added fading post-merge operation" << std::endl;
+    }
+
+    ADJUST_EVENT_TRAV_COUNT( this, 1 );
+
+    redraw();
+
+    return Status::OK();
+}
+
+#endif
+
 
 FeatureModelGraph::~FeatureModelGraph()
 {

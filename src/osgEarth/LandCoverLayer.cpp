@@ -298,15 +298,55 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 
                 wrotePixel = false;
 
-                // unnormalized
-                int code = (int)pixel.r();
-                if (code < _codemap.size() && _codemap[code] >= 0)
+                if (pixel.r() != NO_DATA_VALUE)
                 {
-                    pixel.r() = (float)_codemap[code];
-                    write(pixel, s, t);
-                    wrotePixel = true;
-                    pixelsWritten++;
+                    if (pixel.r() < 1.0f)
+                    {
+                        // normalized code; convert
+                        int code = (int)(pixel.r()*255.0f);
+                        if (code < _codemap.size())
+                        {
+                            int value = _codemap[code];
+                            if (value >= 0)
+                            {
+                                pixel.r() = (float)value;
+                                write(pixel, s, t);
+                                wrotePixel = true;
+                                pixelsWritten++;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // unnormalized
+                        int code = (int)pixel.r();
+                        if (code < _codemap.size() && _codemap[code] >= 0)
+                        {
+                            pixel.r() = (float)_codemap[code];
+                            write(pixel, s, t);
+                            wrotePixel = true;
+                            pixelsWritten++;
+                        }
+                    }
                 }
+
+                //float code = pixel.r();
+                //int icode = (int)code;
+
+                //// normalized:
+                //if (code < 1.0f)
+                //{
+                //    icode = (int)(code*255.0f);
+                //}
+
+                //// unnormalized
+                //else if (icode < _codemap.size() && _codemap[icode] >= 0)
+                //{
+                //    pixel.r() = (float)_codemap[icode];
+                //    write(pixel, s, t);
+                //    wrotePixel = true;
+                //    pixelsWritten++;
+                //}
 
                 if (!wrotePixel)
                 {

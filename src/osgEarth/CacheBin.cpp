@@ -143,11 +143,15 @@ namespace
 
         void applyUserData(osg::Object& object)
         {
+            // VRV PATCH
+            // Don't do this -- it will disable indirect processing in VRV.
+#if 0
             if (object.getUserData())
             {
                 _userDataClears++;
             }
             object.setUserDataContainer(0L);
+#endif
         }
     };
 

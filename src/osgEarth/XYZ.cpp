@@ -196,7 +196,6 @@ void
 XYZImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status
@@ -255,7 +254,6 @@ void
 XYZElevationLayer::init()
 {
     ElevationLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status

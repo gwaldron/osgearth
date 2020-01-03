@@ -22,6 +22,7 @@
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
 
 #include <osg/io_utils>
 
@@ -353,13 +354,13 @@ int seed( osg::ArgumentParser& args )
     // They want to seed the entire map
     else
     {
-        TerrainLayerVector terrainLayers;
+        TileLayerVector terrainLayers;
         map->getLayers(terrainLayers);
 
         // Seed all the map layers
         for (unsigned int i = 0; i < terrainLayers.size(); ++i)
         {            
-            osg::ref_ptr< TerrainLayer > layer = terrainLayers[i].get();
+            osg::ref_ptr< TileLayer > layer = terrainLayers[i].get();
             OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;            
             osg::Timer_t start = osg::Timer::instance()->tick();
             seeder.run(layer.get(), map);            
@@ -408,16 +409,16 @@ int list( osg::ArgumentParser& args )
         << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
 
-    TerrainLayerVector layers;
+    TileLayerVector layers;
     map->getLayers(layers);
 
-    for( TerrainLayerVector::iterator i =layers.begin(); i != layers.end(); ++i )
+    for( TileLayerVector::iterator i =layers.begin(); i != layers.end(); ++i )
     {
-        TerrainLayer* layer = i->get();
+        TileLayer* layer = i->get();
 
         const Profile* cacheProfile = map->getProfile();
 
-        TerrainLayer::CacheBinMetadata* meta = layer->getCacheBinMetadata(cacheProfile);
+        TileLayer::CacheBinMetadata* meta = layer->getCacheBinMetadata(cacheProfile);
         if (meta)
         {
             Config conf = meta->getConfig();

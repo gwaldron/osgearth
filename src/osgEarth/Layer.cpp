@@ -43,6 +43,7 @@ Layer::Options::getConfig() const
     conf.set("shader_define", shaderDefine());
     conf.set("attribution", attribution());
     conf.set("terrain", terrainPatch());
+    conf.set("proxy", _proxySettings );
 
     for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
         i != shaders().end();
@@ -84,6 +85,7 @@ Layer::Options::fromConfig(const Config& conf)
 
     conf.get("terrain", terrainPatch());
     conf.get("patch", terrainPatch());
+    conf.get("proxy", _proxySettings );
 }
 
 //.................................................................
@@ -167,6 +169,12 @@ Layer::setReadOptions(const osgDB::Options* readOptions)
 
     // Store it for further propagation!
     _cacheSettings->store(_readOptions.get());
+
+    //Store the proxy settings in the options structure.
+    if (options().proxySettings().isSet())
+    {
+        options().proxySettings()->apply(_readOptions.get());
+    }
 }
 
 const osgDB::Options*

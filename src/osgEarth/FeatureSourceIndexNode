@@ -205,13 +205,6 @@ namespace osgEarth
     private: // transient
         osg::ref_ptr<FeatureSourceIndex> _index;
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureSourceIndexOptions FeatureSourceIndexOptions;
-        typedef osgEarth::FeatureSourceIndex FeatureSourceIndex;
-        typedef osgEarth::FeatureSourceIndexNode FeatureSourceIndexNode;
-    }
-
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSourceIndexOptions);

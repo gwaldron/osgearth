@@ -64,7 +64,7 @@ namespace osgEarth { namespace REX
         const Samplers& samplers() const  { return _samplers; }
         const Layer* layer() const { return _layer.get(); }
         const VisibleLayer* visibleLayer() const { return _visibleLayer; }
-        const TerrainLayer* terrainLayer() const { return _terrainLayer; }
+        const TileLayer* terrainLayer() const { return _terrainLayer; }
 
         void releaseGLObjects(osg::State* state) const
         {
@@ -84,7 +84,7 @@ namespace osgEarth { namespace REX
             _layer = layer;
             if (layer) {
                 _visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
-                _terrainLayer = dynamic_cast<const TerrainLayer*>(layer);
+                _terrainLayer = dynamic_cast<const TileLayer*>(layer);
                 _sourceUID = layer->getUID();
             }
         }
@@ -102,8 +102,8 @@ namespace osgEarth { namespace REX
         /** VisibleLayer responsible for this rendering pass (is _layer is a VisibleLayer) */
         const VisibleLayer* _visibleLayer;
         
-        /** VisibleLayer responsible for this rendering pass (is _layer is a TerrainLayer) */
-        const TerrainLayer* _terrainLayer;
+        /** VisibleLayer responsible for this rendering pass (is _layer is a TileLayer) */
+        const TileLayer* _terrainLayer;
 
 
     };

@@ -96,11 +96,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Image> _sideImage;
         osg::ref_ptr<osg::Image> _topImage;
     };
-
-    namespace Symbology {
-        typedef osgEarth::BillboardSymbol BillboardSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif

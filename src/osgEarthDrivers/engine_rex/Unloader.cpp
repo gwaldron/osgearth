@@ -95,7 +95,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             unsigned unloaded=0, notFound=0, notDormant=0;
             Threading::ScopedMutexLock lock( _mutex );
-            for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
+            for(UnorderedSet<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
             {
                 osg::ref_ptr<TileNode> parentNode;
                 if ( _tiles->get(*parentKey, parentNode) )

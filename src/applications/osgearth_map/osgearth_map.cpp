@@ -41,6 +41,7 @@
 #include <osgEarth/OGRFeatureSource>
 
 #include <osg/PositionAttitudeTransform>
+#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;

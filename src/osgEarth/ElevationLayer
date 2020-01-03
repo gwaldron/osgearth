@@ -20,12 +20,12 @@
 #ifndef OSGEARTH_ELEVATION_TERRAIN_LAYER_H
 #define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
 
-#include <osgEarth/TerrainLayer>
+#include <osgEarth/TileLayer>
 #include <osg/MixinVector>
 
 namespace osgEarth
 {
-    struct ElevationLayerCallback : public TerrainLayerCallback
+    struct ElevationLayerCallback : public TileLayerCallback
     {
         //EMPTY
         typedef void (ElevationLayerCallback::*MethodPtr)(class ElevationLayer*);
@@ -34,12 +34,12 @@ namespace osgEarth
     /**
      * A map terrain layer containing elevation grid heightfields.
      */
-    class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
+    class OSGEARTH_EXPORT ElevationLayer : public TileLayer
     {
     public:
-        class OSGEARTH_EXPORT Options : public TerrainLayer::Options {
+        class OSGEARTH_EXPORT Options : public TileLayer::Options {
         public:
-            META_LayerOptions(osgEarth, Options, TerrainLayer::Options);
+            META_LayerOptions(osgEarth, Options, TileLayer::Options);
             OE_OPTION(std::string, verticalDatum);
             OE_OPTION(bool, offset);
             OE_OPTION(ElevationNoDataPolicy, noDataPolicy);
@@ -49,7 +49,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, ElevationLayer, Options, TerrainLayer, elevation);
+        META_Layer_Abstract(osgEarth, ElevationLayer, Options, TileLayer);
         
         //! Vertical data identifier (options)
         void setVerticalDatum(const std::string& value);
@@ -108,12 +108,10 @@ namespace osgEarth
         //! Override aspects of the layer Profile as needed
         virtual void applyProfileOverrides();
 
-        //! Subclass can override this by calling setTileSourceExpected(false).
-        //! @param[in ] key TileKey for which to create heightfield
-        //! @param[in ] progress Progress reporting callack
-        virtual GeoHeightField createHeightFieldImplementation(
-            const TileKey& key, 
-            ProgressCallback* progress) const;
+        //! Subclass overrides this to generate image data for the key.
+        //! The key will always be in the same profile as the layer.
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey&, ProgressCallback* progress) const
+            { return GeoHeightField::INVALID; }
 
         //! Subalss can override this to enable writing heightfields.
         virtual Status writeHeightFieldImplementation(
@@ -124,21 +122,15 @@ namespace osgEarth
         virtual ~ElevationLayer() { }
         
     private:
-
-        TileSource::HeightFieldOperation* getOrCreatePreCacheOp() const;
         mutable Threading::Mutex _mutex;
-        mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
         
-        // creates a geoHF directly from the tile source
-        osg::HeightField* createHeightFieldFromTileSource( 
-            const TileKey& key, 
-            ProgressCallback* progress) const;
-
         void assembleHeightField(
             const TileKey& key,
             osg::ref_ptr<osg::HeightField>& out_hf,
             osg::ref_ptr<NormalMap>& out_normalMap,
             ProgressCallback* progress) const;
+
+        void normalizeNoDataValues(osg::HeightField* hf) const;
     };
 
 

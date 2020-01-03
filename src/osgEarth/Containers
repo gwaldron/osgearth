@@ -32,59 +32,20 @@
 #include <set>
 #include <map>
 
+#ifdef OSGEARTH_CXX11
+#include <unordered_set>
+#include <unordered_map>
+#endif
+
 namespace osgEarth { namespace Util
 {
-    template<typename DATA>
-    struct fast_set
-    {
-        typedef DATA                 entry_t;
-        typedef std::vector<entry_t> container_t;
-
-        container_t _data;
-
-        typedef typename container_t::iterator       iterator;
-        typedef typename container_t::const_iterator const_iterator;
-
-        iterator find(const DATA& value) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( (*i) == value ) {
-                    return i;
-                }
-            }
-            return _data.end();
-        }
-
-        const_iterator find(const DATA& value) const {
-            for( const_iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( (*i) == value ) {
-                    return i;
-                }
-            }
-            return _data.end();
-        }
-
-        std::pair<iterator,bool> insert(const DATA& value) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( (*i) == value ) {
-                    *i = value;
-                    return std::make_pair(i, false);
-                }
-            }
-            _data.push_back(value);
-            iterator n = _data.end(); --n;
-            return std::make_pair(n, true);
-        }
-
-        const_iterator begin() const { return _data.begin(); }
-        const_iterator end() const { return _data.end(); }
-        iterator begin() { return _data.begin(); }
-        iterator end() { return _data.end(); }
-        bool empty() const { return _data.empty(); }
-        void clear() { _data.clear(); }
-        void erase(iterator i) { _data.erase(i); }
-        void erase(const DATA& data) { iterator i = find(data); if (i != _data.end()) _data.erase(i); }
-        int size() const { return _data.size(); }
-    };
+#ifdef OSGEARTH_CXX11
+    template<typename K> class UnorderedSet : public std::unordered_set<K> { };
+    template<typename K, typename T> class UnorderedMap : public std::unordered_map<K,T> { };
+#else
+    template<typename K> class UnorderedSet : public std::set<K> { };
+    template<typename K, typename T> class UnorderedMap : public std::map<K,T> { };
+#endif
 
     /**
      * A std::map-like map that uses a vector and a getUID method for keying.
@@ -101,9 +62,6 @@ namespace osgEarth { namespace Util
             DATA _data;
         };
         typedef std::vector<ENTRY> container_t;
-
-        //typedef std::vector<KEY>  keys_t;
-        //typedef std::vector<DATA> container_t;
 
         typedef typename container_t::iterator       iterator;
         typedef typename container_t::const_iterator const_iterator;
@@ -161,85 +119,6 @@ namespace osgEarth { namespace Util
         }
 
         inline int size() const { return _container.size(); }
-
-        template<typename InputIterator>
-        void insert(InputIterator a, InputIterator b) {
-            for(InputIterator i = a; i != b; ++i) (*this)[i->first] = i->second;
-        }
-    };
-
-    /**
-     * A std::map-like container that is faster than std::map for small amounts
-     * of data accessed by a single user
-     */
-    template<typename KEY, typename DATA>
-    struct fast_map
-    {
-        typedef std::pair<KEY,DATA>  entry_t;
-        typedef std::list<entry_t> container_t;
-
-        typedef typename container_t::iterator       iterator;
-        typedef typename container_t::const_iterator const_iterator;
-
-        container_t _data;
-        KEY         _lastKey;
-
-        DATA& operator[] (const KEY& key) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( i->first == key ) {
-                    return i->second;
-                }
-            }
-            _data.push_back(entry_t(key,DATA()));
-            return _data.back().second;
-        }
-
-        iterator find( const KEY& key ) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( i->first == key ) {
-                    return i;
-                }
-            }
-            return end();
-        }
-
-        const_iterator find( const KEY& key ) const {
-            for( const_iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( i->first == key ) {
-                    return i;
-                }
-            }
-            return end();
-        }
-
-        const_iterator begin() const { return _data.begin(); }
-        const_iterator end() const { return _data.end(); }
-        iterator begin() { return _data.begin(); }
-        iterator end() { return _data.end(); }
-
-        bool empty() const { return _data.empty(); }
-
-        void clear() {
-            _data.clear();
-        }
-
-        iterator erase(iterator i) {
-            return _data.erase( i );
-        }
-
-        iterator erase(iterator i0, iterator i1) {
-            return _data.erase(i0, i1);
-        }
-
-        void erase(const KEY& key) {
-            iterator i = find(key);
-            if ( i != end() ) {
-                erase( i );
-            }
-        }
-
-        // Note: std::list::size() can be O(n)
-        int size() const { return _data.size(); }
 
         template<typename InputIterator>
         void insert(InputIterator a, InputIterator b) {
@@ -644,7 +523,7 @@ namespace osgEarth { namespace Util
             return _data[Threading::getCurrentThreadId()];
         }
     private:
-        std::map<unsigned,T> _data;
+        UnorderedMap<unsigned,T> _data;
         Threading::Mutex     _mutex;
     };
 
@@ -657,13 +536,13 @@ namespace osgEarth { namespace Util
         {
             {
                 osgEarth::Threading::ScopedReadLock readLock(_mutex);
-                typename std::map<KEY,DATA>::iterator i = _data.find(k);
+                typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
             }
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename std::map<KEY,DATA>::iterator i = _data.find(k);
+                typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
                 else
@@ -678,7 +557,7 @@ namespace osgEarth { namespace Util
         }
 
     private:
-        std::map<KEY,DATA>                  _data;
+        UnorderedMap<KEY,DATA>              _data;
         osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
@@ -697,7 +576,7 @@ namespace osgEarth { namespace Util
         DATA& get(KEY k)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            typename fast_map<KEY,DATA>::iterator i = _data.find(k);
+            typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second;
             else
@@ -713,14 +592,14 @@ namespace osgEarth { namespace Util
         void forEach(Functor& functor)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            for (typename fast_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
+            for (typename UnorderedMap<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
         void forEach(ConstFunctor& functor) const
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            for (typename fast_map<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
+            for (typename UnorderedMap<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
@@ -737,7 +616,7 @@ namespace osgEarth { namespace Util
         }
 
     private:
-        osgEarth::Util::fast_map<KEY,DATA> _data;
+        UnorderedMap<KEY,DATA> _data;
         mutable osgEarth::Threading::Mutex _mutex;
     };
 
@@ -748,7 +627,7 @@ namespace osgEarth { namespace Util
         DATA* get(KEY k)
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            typename std::map<KEY,osg::ref_ptr<DATA > >::const_iterator i = _data.find(k);
+            typename UnorderedMap<KEY,osg::ref_ptr<DATA > >::const_iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second.get();
 
@@ -760,14 +639,14 @@ namespace osgEarth { namespace Util
             osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
             {
                 osgEarth::Threading::ScopedReadLock lock(_mutex);
-                typename std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+                typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
             }
 
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
+                typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
 
@@ -785,7 +664,7 @@ namespace osgEarth { namespace Util
         void remove(DATA* data)
         {
             osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for( typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            for( typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
             {
                 if ( i->second.get() == data )
                 {
@@ -796,128 +675,9 @@ namespace osgEarth { namespace Util
         }
 
     private:
-        std::map<KEY,osg::ref_ptr<DATA> >    _data;
+        UnorderedMap<KEY,osg::ref_ptr<DATA> >    _data;
         osgEarth::Threading::ReadWriteMutex  _mutex;
     };
-
-    /** Template for thread safe per-object data storage */
-    template<typename KEY, typename DATA>
-    struct PerObjectObsMap
-    {
-        DATA* get(KEY k)
-        {
-            osgEarth::Threading::ScopedReadLock lock(_mutex);
-            typename std::map<KEY, osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
-            if ( i != _data.end() )
-                return i->second.get();
-
-            return 0L;
-        }
-
-        DATA* getOrCreate(KEY k, DATA* newDataIfNeeded)
-        {
-            osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
-            {
-                osgEarth::Threading::ScopedReadLock lock(_mutex);
-                typename std::map<KEY,osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
-                if ( i != _data.end() )
-                    return i->second.get();
-            }
-
-            {
-                osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.find(k);
-                if ( i != _data.end() )
-                    return i->second.get();
-
-                _data[k] = newDataIfNeeded;
-                return newDataIfNeeded;
-            }
-        }
-
-        void remove(KEY k)
-        {
-            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            _data.erase( k );
-        }
-
-        void remove(DATA* data)
-        {
-            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for( typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
-            {
-                if ( i->second.get() == data )
-                {
-                    _data.erase( i );
-                    break;
-                }
-            }
-        }
-
-    private:
-        std::map<KEY,osg::observer_ptr<DATA> >    _data;
-        osgEarth::Threading::ReadWriteMutex       _mutex;
-    };
-
-
-    /** Template for thread safe observer set */
-    template<typename T>
-    struct ThreadSafeObserverSet
-    {
-        typedef void (*Functor)(T*);
-        typedef void (*ConstFunctor)(const T*);
-
-        void iterate( const Functor& f )
-        {
-            osgEarth::Threading::ScopedWriteLock lock(_mutex);
-            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
-            {
-                if ( i->valid() )
-                {
-                    f( i->get() );
-                    ++i;
-                }
-                else
-                {
-                    i = _data.erase( i );
-                }
-            }
-        }
-
-        void iterate( const ConstFunctor& f )
-        {
-            osgEarth::Threading::ScopedReadLock lock(_mutex);
-            for( typename std::set<osg::observer_ptr<T> >::iterator i = _data.begin(); i != _data.end(); )
-            {
-                if ( i->valid() )
-                {
-                    f( i->get() );
-                    ++i;
-                }
-                else
-                {
-                    i = _data.erase( i );
-                }
-            }
-        }
-
-        void insert(T* obj)
-        {
-            osgEarth::Threading::ScopedWriteLock lock(_mutex);
-            _data.insert( obj );
-        }
-
-        void remove(T* obj)
-        {
-            osgEarth::Threading::ScopedWriteLock lock(_mutex);
-            _data.erase( obj );
-        }
-
-    private:
-        std::set<osg::observer_ptr<T> >      _data;
-        osgEarth::Threading::ReadWriteMutex  _mutex;
-    };
-
 
     // borrowed from osg::buffered_object. Auto-resizing array.
     template<class T>

@@ -23,8 +23,9 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
-#include <osg/MatrixTransform>
 #include <osgEarth/VirtualProgram>
+#include <osg/MatrixTransform>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -296,11 +296,25 @@ namespace osgEarth
 
         void ctorCacheKey();
     };
-    
+}
 
 //------------------------------------------------------------------------
 
+#ifdef OSGEARTH_CXX11
+namespace std {
+    // std::hash specialization for URI
+    template<> struct hash<osgEarth::URI> {
+        inline size_t operator()(const osgEarth::URI& value) const {
+            return hash<string>()(value.full());
+        }
+    };
+}
+#endif
 
+//------------------------------------------------------------------------
+
+namespace osgEarth
+{
     /**
      * A lookup table that maps URI references to other URI references. This
      * is used as an optional resource mapping table. (See KML's ResourceMap
@@ -513,7 +527,6 @@ namespace osgEarth
 
         return escaped.str();
     }
-
 }
 
 #endif // OSGEARTH_URI

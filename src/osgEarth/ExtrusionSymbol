@@ -81,11 +81,6 @@ namespace osgEarth
         optional<std::string>       _roofStyleName;
         optional<float>             _wallGradientPercentage;
     };
-
-    namespace Symbology {
-        typedef osgEarth::ExtrusionSymbol ExtrusionSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H

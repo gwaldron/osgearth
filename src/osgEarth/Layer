@@ -27,6 +27,7 @@
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/LayerShader>
 #include <osgEarth/Revisioning>
+#include <osgEarth/IOTypes>
 #include <osg/BoundingBox>
 #include <osg/Callback>
 #include <vector>
@@ -152,6 +153,7 @@ namespace osgEarth
             OE_OPTION(std::string, attribution);
             OE_OPTION(ShaderOptions, shader);
             OE_OPTION_VECTOR(ShaderOptions, shaders);
+            OE_OPTION(ProxySettings, proxySettings);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

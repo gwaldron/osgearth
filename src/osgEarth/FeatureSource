@@ -218,10 +218,6 @@ namespace osgEarth
 
         virtual ~FeatureSource() { }
     };
-
-    namespace Features { 
-        typedef osgEarth::FeatureSource FeatureSource;
-    }
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSource::Options);

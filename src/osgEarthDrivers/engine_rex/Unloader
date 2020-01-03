@@ -24,6 +24,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/Containers>
 
 #include <osg/Group>
 
@@ -69,7 +70,7 @@ namespace osgEarth { namespace REX
 
     protected:
         unsigned                       _threshold;
-        std::set<TileKey>              _parentKeys;
+        UnorderedSet<TileKey>          _parentKeys;
         TileNodeRegistry*              _tiles;
         osg::ref_ptr<ResourceReleaser> _releaser;
         mutable Threading::Mutex       _mutex;

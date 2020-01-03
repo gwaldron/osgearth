@@ -128,11 +128,6 @@ namespace osgEarth
         optional<NumericExpression>  _verticalOffset;
         optional<NumericExpression>  _verticalScale;
     };
-
-    namespace Symbology {
-        typedef osgEarth::AltitudeSymbol AltitudeSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

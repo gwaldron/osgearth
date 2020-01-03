@@ -58,20 +58,20 @@ namespace osgEarth { namespace Util
         void remove(osg::Referenced* owner, const std::string& key);
         
     protected:
-        typedef fast_map<std::string, osg::ref_ptr<osg::Referenced> > StringTable;
+        typedef UnorderedMap<std::string, osg::ref_ptr<osg::Referenced> > StringTable;
 
         struct DataPair {
             osg::observer_ptr<osg::Referenced> _owner;
             StringTable                    _data;
         };
 
-        typedef fast_map<void*, DataPair> Table;
+        typedef UnorderedMap<void*, DataPair> Table;
 
         Table _table;
 
         mutable Threading::Mutex _mutex;
 
-        static bool isObserverInvalid(const Table::entry_t&);
+        static bool isObserverInvalid(const Table::value_type&);
 
     public:
         static bool unitTest();

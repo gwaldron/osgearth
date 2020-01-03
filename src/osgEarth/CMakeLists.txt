@@ -201,7 +201,6 @@ SET(LIB_PUBLIC_HEADERS
     TaskService
     Terrain
     TerrainEffect
-    TerrainLayer
     TerrainOptions
     TerrainEngineNode
     TerrainEngineRequirements
@@ -213,9 +212,12 @@ SET(LIB_PUBLIC_HEADERS
     Text
     ThreeDTilesLayer
     TileKey
+    TileLayer
     TileHandler
     TileRasterizer
     TileSource
+    TileSourceElevationLayer
+    TileSourceImageLayer
     TileVisitor
     TileCache
     TimeControl
@@ -280,7 +282,6 @@ SET(LIB_PUBLIC_HEADERS
     TileIndexBuilder
     TFSPackager
     TMSBackFiller
-    TMSPackager
     TopologyGraph
     UTMGraticule
     UTMLabelingEngine
@@ -549,7 +550,6 @@ set(TARGET_SRC
     TaskService.cpp
     TDTiles.cpp
     Terrain.cpp
-    TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
     TerrainResources.cpp
@@ -560,10 +560,13 @@ set(TARGET_SRC
     ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp
     TileKey.cpp
+    TileLayer.cpp
     TileHandler.cpp
     TileRasterizer.cpp
     TileVisitor.cpp
     TileSource.cpp
+    TileSourceElevationLayer.cpp
+    TileSourceImageLayer.cpp
     TileCache.cpp
     TimeControl.cpp
     TraversalData.cpp
@@ -620,7 +623,6 @@ set(TARGET_SRC
     TileIndexBuilder.cpp
     TFSPackager.cpp
     TMSBackFiller.cpp
-    TMSPackager.cpp
     TopologyGraph.cpp
     UTMGraticule.cpp
     UTMLabelingEngine.cpp

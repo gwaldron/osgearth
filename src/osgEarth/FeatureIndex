@@ -49,12 +49,6 @@ namespace osgEarth
     {
         //empty
     };
-
-    namespace Features {
-        typedef osgEarth::FeatureIndex FeatureIndex;
-        typedef osgEarth::FeatureIndexBuilder FeatureIndexBuilder;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_INDEX

@@ -38,7 +38,7 @@ namespace osgEarth
         /**
          * Constructs an invalid TileKey.
          */
-        TileKey() : _lod(0), _x(0), _y(0) { }
+        TileKey() : _lod(0), _x(0), _y(0), _hash(0) { }
 
         /**
          * Creates a new TileKey with the given tile xy at the specified level of detail
@@ -196,7 +196,22 @@ namespace osgEarth
         unsigned int _y;
         osg::ref_ptr<const Profile> _profile;
         GeoExtent _extent;
+        size_t _hash;
+
+    public:
+        size_t hash() const { return _hash; }
     };
 }
+
+#ifdef OSGEARTH_CXX11
+namespace std {
+    // std::hash specialization for TileKey
+    template<> struct hash<osgEarth::TileKey> {
+        inline size_t operator()(const osgEarth::TileKey& value) const {
+            return value.hash();
+        }
+    };
+}
+#endif
 
 #endif // OSGEARTH_TILE_KEY_H

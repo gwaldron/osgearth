@@ -1102,7 +1102,6 @@ void
 TMSImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status
@@ -1206,7 +1205,6 @@ void
 TMSElevationLayer::init()
 {
     ElevationLayer::init();
-    setTileSourceExpected(false);
 }
 
 Status

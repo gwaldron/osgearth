@@ -24,42 +24,35 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/TileSource>
 #include <osgEarth/Profile>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/Status>
+#include <osgEarth/MemCache>
 
 namespace osgEarth
 {
     class Cache;
     class CacheBin;
 
-    namespace Util {
-        class MemCache;
-    }
-
-    struct TerrainLayerCallback : public VisibleLayerCallback
+    struct TileLayerCallback : public VisibleLayerCallback
     {
-        typedef void(TerrainLayerCallback::*MethodPtr)(class TerrainLayer*);
+        typedef void(TileLayerCallback::*MethodPtr)(class TileLayer*);
     };
 
     /**
      * A layer that comprises the terrain skin (image or elevation layer)
      */
-    class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
+    class OSGEARTH_EXPORT TileLayer : public VisibleLayer
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            OE_OPTION(TileSourceOptions, driver);
             OE_OPTION(unsigned, minLevel);
             OE_OPTION(double, minResolution);
             OE_OPTION(unsigned, maxLevel);
             OE_OPTION(double, maxResolution);
             OE_OPTION(unsigned, maxDataLevel);
-            OE_OPTION(ProxySettings, proxySettings);
             OE_OPTION(unsigned, tileSize);
             OE_OPTION(float, noDataValue);
             OE_OPTION(float, minValidValue);
@@ -71,7 +64,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer_Abstract(osgEarth, TerrainLayer, Options, VisibleLayer);
+        META_Layer_Abstract(osgEarth, TileLayer, Options, VisibleLayer);
 
         //! Minimum of detail for which this layer should generate data.
         void setMinLevel(const unsigned& value);
@@ -114,7 +107,7 @@ namespace osgEarth
 
     protected:
         //! DTOR
-        virtual ~TerrainLayer();
+        virtual ~TileLayer();
 
         //! Opens the layer and initializes the data source.
         virtual Status openImplementation();
@@ -140,14 +133,6 @@ namespace osgEarth
         //! automatically based on source metadata. For those that don't you can
         //! call it directly to set up a profile.
         void setProfile(const Profile* profile);
-
-        //! Install a tile source instance.
-        void setTileSource(TileSource* tileSource);
-
-        /**
-         * Gets the underlying TileSource engine that serves this map layer. Use with caution.
-         */
-        TileSource* getTileSource() const;
 
         /**
          * Whether the layer represents dynamic data, i.e. it generates data that requires
@@ -232,8 +217,6 @@ namespace osgEarth
         //! Called by Map when removed
         virtual void removedFromMap(const Map*);
 
-        virtual SequenceControl* getSequenceControl();
-
     public:
 
         /**
@@ -283,13 +266,6 @@ namespace osgEarth
 
     protected:
 
-        //! Creates the driver the supplies the actual data.
-        //! By default, this function will either return the tile source passed
-        //! into the CTOR or it will try to load it from a plugin based on the
-        //! driver specification in the TileSourceOptions. You can override this
-        //! method to create your own tile source.
-        virtual TileSource* createTileSource();
-
         //! Opportunity for a subclass to alter and/or override components
         //! of the Profile
         virtual void applyProfileOverrides() { }
@@ -307,7 +283,7 @@ namespace osgEarth
 
         optional<bool> _profileMatchesMapProfile;
         unsigned _tileSize;
-        osg::ref_ptr<Util::MemCache> _memCache;
+        osg::ref_ptr<MemCache> _memCache;
         bool _openCalled;
         bool _writingRequested;
 
@@ -320,22 +296,12 @@ namespace osgEarth
         // cache key for metadata
         std::string getMetadataKey(const Profile*) const;
 
-        // Called by a subclass before open() to indicate whether this
-        // layer should try to open a tile source and fail if unsuccesful.
-        void setTileSourceExpected(bool value) { _tileSourceExpected = value; }
-
-        //! Whether this layer expected a tilesource to be installed
-        bool isTileSourceExpected() const { return _tileSourceExpected; }
-
     private:
-        bool                     _tileSourceExpected;
-        mutable Threading::Mutex _initTileSourceMutex;
-        osg::ref_ptr<TileSource> _tileSource;
-        DataExtentList           _dataExtents;
-        mutable GeoExtent        _dataExtentsUnion;
+        DataExtentList _dataExtents;
+        mutable GeoExtent _dataExtentsUnion;
 
         // The cache ID used at runtime. This will either be the cacheId found in
-        // the TerrainLayerOptions, or a dynamic cacheID generated at runtime.
+        // the TileLayerOptions, or a dynamic cacheID generated at runtime.
         std::string _runtimeCacheId;
 
         // cache policy that may be automatically set by the layer and will
@@ -351,9 +317,6 @@ namespace osgEarth
 
         // methods accesible by Map:
         friend class Map;
-        void storeProxySettings( osgDB::Options* );
-
-        TileSource* createAndOpenTileSource();
 
         // Figure out the cache settings for this layer.
         void establishCacheSettings();
@@ -365,8 +328,8 @@ namespace osgEarth
         Threading::KeyedMutex<TileKey> _sentry;
     };
 
-    typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;
+    typedef std::vector<osg::ref_ptr<TileLayer> > TileLayerVector;
 
-} // namespace TerrainLayer
+} // namespace TileLayer
 
 #endif // OSGEARTH_TERRAIN_LAYER_H

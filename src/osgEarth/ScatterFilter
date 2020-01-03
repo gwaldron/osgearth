@@ -78,11 +78,6 @@ namespace osgEarth
         unsigned _randomSeed;
         Random   _prng;
     };
-
-    namespace Features {
-        typedef osgEarth::ScatterFilter ScatterFilter;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H

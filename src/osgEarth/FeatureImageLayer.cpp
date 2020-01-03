@@ -180,7 +180,6 @@ void
 FeatureImageLayer::init()
 {
     ImageLayer::init();
-    setTileSourceExpected(false);
 
     // Default profile (WGS84) if not set
     if (!getProfile())

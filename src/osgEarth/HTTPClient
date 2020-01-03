@@ -30,53 +30,14 @@
 #include <map>
 #include <vector>
 
-namespace osgEarth {
+namespace osgEarth
+{
     class ProgressCallback;
 }
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-
-    /**
-     * Proxy server configuration.
-     */
-    class OSGEARTH_EXPORT ProxySettings
-    {
-    public:
-        ProxySettings( const Config& conf =Config() );
-        ProxySettings( const std::string& host, int port );
-
-        virtual ~ProxySettings() { }
-
-        std::string& hostName() { return _hostName; }
-        const std::string& hostName() const { return _hostName; }
-
-        int& port() { return _port; }
-        const int& port() const { return _port; }
-
-        std::string& userName() { return _userName; }
-        const std::string& userName() const { return _userName; }
-
-        std::string& password() { return _password; }
-        const std::string& password() const { return _password; }
-
-        void apply(osgDB::Options* dbOptions) const;
-        static bool fromOptions( const osgDB::Options* dbOptions, optional<ProxySettings>& out );
-
-    public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
-
-    protected:
-        std::string _hostName;
-        int _port;
-        std::string _userName;
-        std::string _password;
-    };
-
-
-    typedef std::map<std::string,std::string> Headers;
 
     /**
      * An HTTP request for use with the HTTPClient class.
@@ -98,7 +59,7 @@ namespace osgEarth { namespace Util
         void addParameter( const std::string& name, int value );
         void addParameter( const std::string& name, double value );        
         
-        typedef std::map<std::string,std::string> Parameters;
+        typedef UnorderedMap<std::string,std::string> Parameters;
 
         /** Ready-only access to the parameter list (as built with addParameter) */
         const Parameters& getParameters() const;        
@@ -483,7 +444,5 @@ namespace osgEarth { namespace Util
         HTTPClient::Implementation* create() const;
     };
 } }
-
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::ProxySettings);
 
 #endif // OSGEARTH_HTTP_CLIENT_H

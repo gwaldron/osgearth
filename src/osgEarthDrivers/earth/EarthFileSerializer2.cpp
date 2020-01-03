@@ -472,13 +472,13 @@ namespace
         if (profileLayer.empty())
             return;
 
-        TerrainLayerVector layers;
+        TileLayerVector layers;
         map->getLayers(layers);
-        for(TerrainLayerVector::const_iterator i = layers.begin();
+        for(TileLayerVector::const_iterator i = layers.begin();
             i != layers.end();
             ++i)
         {
-            const TerrainLayer* layer = i->get();
+            const TileLayer* layer = i->get();
             if (profileLayer == layer->getName())
             {
                 const Profile* profile = layer->getProfile();

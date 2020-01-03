@@ -116,11 +116,6 @@ namespace osgEarth
         /** dtor */
         virtual ~RenderSymbol() { }
     };
-
-    namespace Symbology {
-        typedef osgEarth::RenderSymbol RenderSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H

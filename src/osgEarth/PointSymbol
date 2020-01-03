@@ -60,11 +60,6 @@ namespace osgEarth
         optional<float> _size;
         optional<bool>  _smooth;
     };
-
-    namespace Symbology {
-        typedef osgEarth::PointSymbol PointSymbol;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHSYMBOLOGY_POINT_SYMBOL_H

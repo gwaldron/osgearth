@@ -37,6 +37,7 @@
 
 #include <osgEarthDrivers/kml/KML>
 
+#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/ViewerEventHandlers>

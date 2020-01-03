@@ -23,6 +23,7 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/Progress>
 #include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
 #include <cstdlib>
 
 using namespace osgEarth;
@@ -67,7 +68,6 @@ BingImageLayer::init()
 {
     ImageLayer::init();
 
-    setTileSourceExpected(false);
     _debugDirect = false;
     _tileURICache = new TileURICache(true, 1024u);
     
@@ -285,8 +285,6 @@ void
 BingElevationLayer::init()
 {
     ElevationLayer::init();
-
-    setTileSourceExpected(false);
 
     // disable caching by default due to TOS
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;

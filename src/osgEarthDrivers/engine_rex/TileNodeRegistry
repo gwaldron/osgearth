@@ -24,9 +24,9 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/Containers>
 #include <OpenThreads/Atomic>
 #include <osgUtil/RenderBin>
-#include <map>
 
 namespace osgEarth { namespace REX
 {
@@ -41,7 +41,7 @@ namespace osgEarth { namespace REX
             unsigned index;
         };
 
-        typedef std::map<TileKey, Entry> Table;
+        typedef UnorderedMap<TileKey, Entry> Table;
         Table _table;
 
         typedef Table::iterator iterator;
@@ -223,9 +223,8 @@ namespace osgEarth { namespace REX
         mutable Threading::ReadWriteMutex _tilesMutex;
         bool                              _notifyNeighbors;
 
-        //typedef std::vector<TileKey> TileKeyVector;
-        typedef fast_set<TileKey> TileKeySet;
-        typedef std::map<TileKey, TileKeySet> TileKeyOneToMany;
+        typedef UnorderedSet<TileKey> TileKeySet;
+        typedef UnorderedMap<TileKey, TileKeySet> TileKeyOneToMany;
 
         TileKeyOneToMany _notifiers;
 

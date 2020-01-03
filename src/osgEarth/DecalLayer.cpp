@@ -53,9 +53,6 @@ DecalImageLayer::init()
 {
     ImageLayer::init();
 
-    // This layer does not use a TileSource.
-    setTileSourceExpected(false);
-
     // Set the layer profile.
     setProfile(Profile::create("global-geodetic"));
 
@@ -193,9 +190,6 @@ void
 DecalElevationLayer::init()
 {
     ElevationLayer::init();
-
-    // This layer does not use a TileSource.
-    setTileSourceExpected(false);
 
     // Set the layer profile.
     setProfile(Profile::create("global-geodetic"));
@@ -347,9 +341,6 @@ void
 DecalLandCoverLayer::init()
 {
     LandCoverLayer::init();
-
-    // This layer does not use a TileSource.
-    setTileSourceExpected(false);
 
     // Set the layer profile.
     setProfile(Profile::create("global-geodetic"));

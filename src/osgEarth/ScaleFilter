@@ -47,11 +47,6 @@ namespace osgEarth
     protected:
         double _scale;
     };
-
-    namespace Features {
-        typedef osgEarth::ScaleFilter ScaleFilter;
-    }
-
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_SCALE_FILTER_H

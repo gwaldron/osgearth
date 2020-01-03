@@ -36,6 +36,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/AutoTransform>
 #include <osg/Depth>
+#include <osgDB/ReadFile>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgShadow/ConvexPolyhedron>

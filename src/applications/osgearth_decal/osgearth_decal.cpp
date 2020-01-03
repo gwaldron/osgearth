@@ -30,6 +30,7 @@
 #include <osgEarth/DecalLayer>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osgDB/ReadFile>
 #include <iostream>
 
 #define LC "[decal] "

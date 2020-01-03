@@ -97,6 +97,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
 {
     Polygon* output = 0L;
 
+    int is3D = OGR_G_Is3D(geomHandle);
     int numParts = OGR_G_GetGeometryCount( geomHandle );
     if ( numParts == 0 )
     {
@@ -104,9 +105,11 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
         output = new Polygon( numPoints );
         populate( geomHandle, output, numPoints );
 
-        //output->open();
-        //output->rewind( Symbology::Ring::ORIENTATION_CCW );
-        std::reverse(output->begin(), output->end());
+        if (!is3D)
+        {
+            output->open();
+            output->rewind(Symbology::Ring::ORIENTATION_CCW);
+        }
     }
     else if ( numParts > 0 )
     {
@@ -114,21 +117,26 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
         {
             OGRGeometryH partRef = OGR_G_GetGeometryRef( geomHandle, p );
             int numPoints = OGR_G_GetPointCount( partRef );
+
             if ( p == 0 )
             {
                 output = new Polygon( numPoints );
                 populate( partRef, output, numPoints );
-                //output->open();
-                //output->rewind( Symbology::Ring::ORIENTATION_CCW );
-                std::reverse(output->begin(), output->end());
+                if (!is3D)
+                {
+                    output->open();
+                    output->rewind(Symbology::Ring::ORIENTATION_CCW);
+                }
             }
             else
             {
                 Ring* hole = new Ring( numPoints );
                 populate( partRef, hole, numPoints );
-                //hole->open();
-                //hole->rewind( Symbology::Ring::ORIENTATION_CW );
-                std::reverse(hole->begin(), hole->end());
+                if (!is3D)
+                {
+                    hole->open();
+                    hole->rewind( Symbology::Ring::ORIENTATION_CW );
+                }
                 output->getHoles().push_back( hole );
             }
         }

@@ -108,7 +108,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
         if (!is3D)
         {
             output->open();
-            output->rewind(Symbology::Ring::ORIENTATION_CCW);
+            output->rewind(Ring::ORIENTATION_CCW);
         }
     }
     else if ( numParts > 0 )
@@ -125,7 +125,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
                 if (!is3D)
                 {
                     output->open();
-                    output->rewind(Symbology::Ring::ORIENTATION_CCW);
+                    output->rewind(Ring::ORIENTATION_CCW);
                 }
             }
             else
@@ -135,7 +135,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
                 if (!is3D)
                 {
                     hole->open();
-                    hole->rewind( Symbology::Ring::ORIENTATION_CW );
+                    hole->rewind(Ring::ORIENTATION_CW );
                 }
                 output->getHoles().push_back( hole );
             }

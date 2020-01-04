@@ -135,7 +135,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
                 if (!is3D)
                 {
                     hole->open();
-                    hole->rewind( Ring::ORIENTATION_CW );
+                    hole->rewind(Ring::ORIENTATION_CW );
                 }
                 output->getHoles().push_back( hole );
             }

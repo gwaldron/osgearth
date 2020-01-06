@@ -269,10 +269,10 @@ AerodromeRenderer::apply(RunwayNode& node)
     osg::ref_ptr<osg::Node> geom;
 
     osg::ref_ptr<osg::Vec3dArray> geomPoints = feature->getGeometry()->createVec3dArray();
-    if (geomPoints.valid() && geomPoints->size() == 4)
+    if (geomPoints.valid() && geomPoints->size() >= 4)
     {
         std::vector<osg::Vec3d> featurePoints;
-        for (int i=0; i < geomPoints->size(); i++)
+        for (int i=0; i < 4; ++i) //geomPoints->size(); i++)
         {
             featurePoints.push_back(osg::Vec3d((*geomPoints)[i].x(), (*geomPoints)[i].y(), _elevation));
         }
@@ -419,10 +419,10 @@ AerodromeRenderer::apply(StopwayNode& node)
     osg::ref_ptr<osg::Node> geom;
 
     osg::ref_ptr<osg::Vec3dArray> geomPoints = feature->getGeometry()->createVec3dArray();
-    if (geomPoints.valid() && geomPoints->size() == 4)
+    if (geomPoints.valid() && geomPoints->size() >= 4)
     {
         std::vector<osg::Vec3d> featurePoints;
-        for (int i=0; i < geomPoints->size(); i++)
+        for (int i=0; i < 4; ++i) //geomPoints->size(); i++)
         {
             featurePoints.push_back(osg::Vec3d((*geomPoints)[i].x(), (*geomPoints)[i].y(), _elevation));
         }

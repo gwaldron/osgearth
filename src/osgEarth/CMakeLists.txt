@@ -359,6 +359,7 @@ SET(LIB_PUBLIC_HEADERS
     MeshSubdivider
     ModelResource
     ModelSymbol
+    NetworkMonitor
     PointSymbol
     PolygonSymbol
     Query
@@ -694,6 +695,7 @@ set(TARGET_SRC
     MeshSubdivider.cpp
     ModelResource.cpp
     ModelSymbol.cpp
+    NetworkMonitor.cpp
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp

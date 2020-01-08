@@ -20,6 +20,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
 #include <osgEarth/Version>
+#include <osgEarth/NetworkMonitor>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
 #include <curl/curl.h>
@@ -36,6 +37,7 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 using namespace osgEarth::Util;
 
 namespace osgEarth
@@ -459,6 +461,8 @@ namespace
             OE_START_TIMER(http_get);
 
             std::string url = request.getURL();
+
+            METRIC_BEGIN("HTTPClient::doGet", 1, "url", request.getURL().c_str());
 
             const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ?
                 options->getAuthenticationMap() :
@@ -1451,9 +1455,19 @@ HTTPClient::doGet(const HTTPRequest&    request,
     METRIC_BEGIN("HTTPClient::doGet", 1,
                    "url", request.getURL().c_str());
 
+    unsigned long handle = NetworkMonitor::begin(request.getURL(), "pending");
+
     initialize();
 
     HTTPResponse response = _impl->doGet(request, options, progress);
+
+    std::stringstream buf;
+    buf << "code=" << response.getCode();
+    if (response.isCanceled())
+    {
+        buf << " cancelled";
+    }
+    NetworkMonitor::end(handle, buf.str());
 
     METRIC_END("HTTPClient::doGet", 2,
                "response_code", toString<int>(response.getCode()).c_str(),

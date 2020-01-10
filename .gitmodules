@@ -1,0 +1,3 @@
+[submodule "tracy"]
+	path = tracy
+	url = https://lucteo@bitbucket.org/wolfpld/tracy.git

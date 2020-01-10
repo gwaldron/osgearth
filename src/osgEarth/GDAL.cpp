@@ -1773,11 +1773,15 @@ GDALElevationLayer::openImplementation()
         return parent;
 
     _driver = new GDAL::Driver();
-    
-    _driver->setNoDataValue( options().noDataValue().get() );
-    _driver->setMinValidValue( options().minValidValue().get() );
-    _driver->setMaxValidValue( options().maxValidValue().get() );
-    _driver->setMaxDataLevel( options().maxDataLevel().get() );
+
+    if (options().noDataValue().isSet())
+        _driver->setNoDataValue( options().noDataValue().get() );
+    if (options().minValidValue().isSet())
+        _driver->setMinValidValue( options().minValidValue().get() );
+    if (options().maxValidValue().isSet())
+        _driver->setMaxValidValue( options().maxValidValue().get() );
+    if (options().maxDataLevel().isSet())
+        _driver->setMaxDataLevel( options().maxDataLevel().get() );
 
     if (getProfile())
     {

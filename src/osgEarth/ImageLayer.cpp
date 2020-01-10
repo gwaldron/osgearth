@@ -314,9 +314,9 @@ GeoImage
 ImageLayer::createImage(const TileKey&    key,
                         ProgressCallback* progress)
 {
-    ScopedMetric m("ImageLayer::createImage", 2,
-                    "key", key.str().c_str(),
-                    "name", getName().c_str());
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(Stringify() << "Layer " << getName());
+    OE_PROFILING_ZONE_TEXT(Stringify() << "Key " << key.str());
 
     if (getStatus().isError())
     {

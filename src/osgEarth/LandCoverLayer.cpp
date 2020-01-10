@@ -302,7 +302,8 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
                 {
                     if (pixel.r() < 1.0f)
                     {
-                        // normalized code; convert
+                        // normalized code; convert to unnormalized.
+                        // e.g., data coming from a server might be encoded this way
                         int code = (int)(pixel.r()*255.0f);
                         if (code < _codemap.size())
                         {

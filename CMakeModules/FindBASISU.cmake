@@ -4,7 +4,7 @@
 # BASISU_FOUND, if false, do not try to link to geos
 # BASISU_INCLUDE_DIR, where to find the headers
 
-MESSAGE("Finding basis")
+#MESSAGE("Finding basis")
 
 SET(BASISU_DIR "" CACHE PATH "Root directory of BASISU distribution")
 
@@ -28,6 +28,6 @@ IF(BASISU_TRANSCODER_LIBRARY AND BASISU_INCLUDE_DIR)
   SET(BASISU_FOUND "YES")
 ENDIF(BASISU_TRANSCODER_LIBRARY AND BASISU_INCLUDE_DIR)
 
-MESSAGE("Basis found ${BASISU_FOUND}")
-MESSAGE("Basis include ${BASISU_INCLUDE_DIR}")
-MESSAGE("Basis transcoder ${BASISU_TRANSCODER_LIBRARY}")
+#MESSAGE("Basis found ${BASISU_FOUND}")
+#MESSAGE("Basis include ${BASISU_INCLUDE_DIR}")
+#MESSAGE("Basis transcoder ${BASISU_TRANSCODER_LIBRARY}")

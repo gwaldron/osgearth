@@ -72,14 +72,13 @@ _debug   ( false )
 
 void
 GeometryPool::getPooledGeometry(const TileKey&                tileKey,
-                                const MapInfo&                mapInfo,
                                 unsigned                      tileSize,
                                 MaskGenerator*                maskSet,
                                 osg::ref_ptr<SharedGeometry>& out)
 {
     // convert to a unique-geometry key:
     GeometryKey geomKey;
-    createKeyForTileKey( tileKey, tileSize, mapInfo, geomKey );
+    createKeyForTileKey( tileKey, tileSize, geomKey );
 
     if ( _enabled )
     {
@@ -97,7 +96,7 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
         else
         {
             // Not found. Create it.
-            out = createGeometry( tileKey, mapInfo, tileSize, maskSet );
+            out = createGeometry( tileKey, tileSize, maskSet );
 
             if (!masking && out.valid())
             {
@@ -113,18 +112,17 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
 
     else
     {
-        out = createGeometry( tileKey, mapInfo, tileSize, maskSet );
+        out = createGeometry( tileKey, tileSize, maskSet );
     }
 }
 
 void
 GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
                                   unsigned                   tileSize,
-                                  const MapInfo&             mapInfo,
                                   GeometryPool::GeometryKey& out) const
 {
     out.lod  = tileKey.getLOD();
-    out.tileY = mapInfo.isGeocentric()? tileKey.getTileY() : 0;
+    out.tileY = tileKey.getProfile()->getSRS()->isGeographic()? tileKey.getTileY() : 0;
     out.size = tileSize;
 }
 
@@ -206,7 +204,6 @@ namespace
 
 SharedGeometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
-                             const MapInfo& mapInfo,
                              unsigned       tileSize,
                              MaskGenerator* maskSet) const
 {    
@@ -361,7 +358,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         osg::ref_ptr<osg::DrawElementsUInt> maskElements;
 
         MaskGenerator::Result r = maskSet->createMaskPrimitives(
-            mapInfo,
             verts.get(), texCoords.get(), normals.get(), neighbors.get(), neighborNormals.get(),
             maskElements);
 

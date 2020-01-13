@@ -92,7 +92,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     osg::ref_ptr<SharedGeometry> geom;
     context->getGeometryPool()->getPooledGeometry(
         key,
-        MapInfo(map.get()),
         tileSize,
         masks.get(), 
         geom);

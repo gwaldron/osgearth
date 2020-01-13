@@ -78,6 +78,13 @@ namespace osgEarth { namespace REX
         //! Unique identifier of this engine instance
         UID getUID() const { return _uid; }
 
+        //! Generate a standalone tile geometry
+        osg::Node* createStandaloneTile(
+            const TerrainTileModel* model,
+            int createTileFlags,
+            unsigned referenceLOD,
+            const TileKey& subRegion);
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor& nv);

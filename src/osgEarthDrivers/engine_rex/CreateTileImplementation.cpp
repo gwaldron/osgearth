@@ -23,6 +23,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
 #include <osg/Node>
+#include <osg/ValueObject>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

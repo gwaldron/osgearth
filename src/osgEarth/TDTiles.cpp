@@ -202,13 +202,16 @@ BoundingVolume::getJSON() const
 osg::BoundingSphere
 BoundingVolume::asBoundingSphere() const
 {
-    const SpatialReference* epsg4979 = SpatialReference::get("epsg:4979");
-    if (!epsg4979)
+    // Note: this should be epsg:4979 according to the 3D-Tiles spec,
+    // but that only exists in very new versions of PROJ. For the
+    // purposes of osgEarth there's no difference anyway
+    const SpatialReference* srs = SpatialReference::get("epsg:4326");
+    if (!srs)
         return osg::BoundingSphere();
 
     if (region().isSet())
     {
-        GeoExtent extent(epsg4979,
+        GeoExtent extent(srs,
             osg::RadiansToDegrees(region()->xMin()),
             osg::RadiansToDegrees(region()->yMin()),
             osg::RadiansToDegrees(region()->xMax()),

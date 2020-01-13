@@ -21,7 +21,6 @@
 
 #include "Common"
 #include <osgEarth/TileKey>
-#include <osgEarth/MapInfo>
 #include <osg/Geometry>
 
 #define VERTEX_MARKER_DISCARD   1    // do not draw
@@ -91,7 +90,6 @@ namespace osgEarth { namespace REX
 
         //! Generates all the masking geometry and appened it to the passed-in arrays.
         Result createMaskPrimitives(
-            const MapInfo&  mapInfo, 
             osg::Vec3Array* verts, 
             osg::Vec3Array* texCoords,
             osg::Vec3Array* normals,
@@ -100,7 +98,8 @@ namespace osgEarth { namespace REX
             osg::ref_ptr<osg::DrawElementsUInt>& out_elements);
 
     protected:
-        void setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary);
+        void setupMaskRecord(
+            osg::Vec3dArray* boundary);
 
     protected:
         const TileKey _key;

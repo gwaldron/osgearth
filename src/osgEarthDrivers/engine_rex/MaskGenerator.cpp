@@ -21,7 +21,6 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
-#include <osgEarth/MapInfo>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Geometry>
 #include <osgUtil/DelaunayTriangulator>
@@ -161,7 +160,7 @@ _key( key ), _tileSize(tileSize)
         MaskLayer* layer = it->get();
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
-            setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+            setupMaskRecord(layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
         }
 
         // add masks from model layers with embedded masks?
@@ -172,21 +171,17 @@ _key( key ), _tileSize(tileSize)
             ModelLayer* layer = i->get();
             if (layer->getMaskSource() && layer->getMaskMinLevel() <= key.getLevelOfDetail())
             {
-                setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary(1.0f, key.getExtent().getSRS(), (ProgressCallback*)0L) );
+                setupMaskRecord(layer->getOrCreateMaskBoundary(1.0f, key.getExtent().getSRS(), (ProgressCallback*)0L) );
             }
         }
     }
 }
 
 void
-MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary)
+MaskGenerator::setupMaskRecord(osg::Vec3dArray* boundary)
 {
     // Make a "locator" for this key so we can do coordinate conversion:
     GeoLocator geoLocator(_key.getExtent());
-    //osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
-
-    //if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
-    //    geoLocator = geoLocator->getGeographicFromGeocentric();
 
     if ( boundary )
     {
@@ -248,8 +243,7 @@ MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary
 }
 
 MaskGenerator::Result
-MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, 
-                                    osg::Vec3Array* verts, osg::Vec3Array* texCoords, 
+MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCoords, 
                                     osg::Vec3Array* normals, osg::Vec3Array* neighbors,
                                     osg::Vec3Array* neighborNormals,
                                     osg::ref_ptr<osg::DrawElementsUInt>& out_elements)
@@ -260,9 +254,6 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
     }
     
     GeoLocator geoLocator(_key.getExtent());
-    //osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
-    //if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
-    //    geoLocator = geoLocator->getGeographicFromGeocentric();
 
     // Configure up a local tangent plane at the centroid of the tile:
     GeoPoint centroid;

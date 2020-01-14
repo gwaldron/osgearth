@@ -465,6 +465,20 @@ PointDrawable::pushVertex(const osg::Vec3& vert)
 }
 
 void
+PointDrawable::insert(unsigned where, const osg::Vec3& vert)
+{
+  initialize();
+
+  _current->insert(_current->begin() + where, vert);
+  _current->dirty();
+
+  _colors->insert(_colors->begin() + where, _color);
+  _colors->dirty();
+
+  dirtyBound();
+}
+
+void
 PointDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 {
     initialize();

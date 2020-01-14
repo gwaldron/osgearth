@@ -20,6 +20,7 @@
 #include "Shaders"
 #include "TerrainCuller"
 #include "GeometryPool"
+#include "CreateTileImplementation"
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -1376,4 +1377,16 @@ RexTerrainEngineNode::updateState()
 
         _stateUpdateRequired = false;
     }
+}
+
+
+osg::Node*
+RexTerrainEngineNode::createStandaloneTile(
+    const TerrainTileModel* model,
+    int createTileFlags,
+    unsigned referenceLOD,
+    const TileKey& subRegion)
+{
+    CreateTileImplementation impl;
+    return impl.createTile(getEngineContext(), model, createTileFlags, referenceLOD, subRegion);
 }

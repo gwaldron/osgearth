@@ -97,7 +97,12 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
 {
     Polygon* output = 0L;
 
+#if GDAL_VERSION_AT_LEAST(2,0,0)
     int is3D = OGR_G_Is3D(geomHandle);
+#else
+    int is3D = OGR_G_GetCoordinateDimension(geomHandle) == 3;
+#endif
+
     int numParts = OGR_G_GetGeometryCount( geomHandle );
     if ( numParts == 0 )
     {

@@ -23,6 +23,7 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
+    CreateTileImplementation.cpp
     DrawState.cpp
     DrawTileCommand.cpp
     GeometryPool.cpp
@@ -46,6 +47,7 @@ SET(TARGET_SRC
 
 SET(TARGET_H
     Common
+    CreateTileImplementation
     DrawState
     DrawTileCommand
     GeometryPool

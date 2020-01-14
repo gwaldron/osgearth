@@ -28,7 +28,7 @@ void oe_PointDrawable_FS(inout vec4 color)
   #ifdef GL_OES_standard_derivatives
     d = fwidth(r);
   #endif
-    color.a = 1.0 - smoothstep(1.0-d, 1.0+d, r);
+    color.a *= 1.0 - smoothstep(1.0-d, 1.0+d, r);
     if (color.a < 0.1)
         discard;
 #endif

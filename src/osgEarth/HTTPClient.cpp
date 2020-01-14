@@ -610,13 +610,13 @@ namespace
                 for (HTTPRequest::Parameters::const_iterator itr = request.getHeaders().begin(); itr != request.getHeaders().end(); ++itr)
                 {
                     std::stringstream buf;
-                    buf << itr->first << ": " << itr->second;
+                    buf << osgEarth::toLower(itr->first) << ": " << itr->second;
                     headers = curl_slist_append(headers, buf.str().c_str());
                 }
             }
 
             // Disable the default Pragma: no-cache that curl adds by default.
-            headers = curl_slist_append(headers, "Pragma: ");
+            headers = curl_slist_append(headers, "pragma: ");
             curl_easy_setopt(_curl_handle, CURLOPT_HTTPHEADER, headers);
 
             osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
@@ -689,7 +689,7 @@ namespace
             }
 
             // read the file time:
-     response.setLastModified(getCurlFileTime( _curl_handle ));
+            response.setLastModified(getCurlFileTime( _curl_handle ));
 
             if (res == CURLE_OK)
             {

@@ -22,7 +22,6 @@
 #include "Common"
 #include "MaskGenerator"
 #include <osgEarth/TerrainOptions>
-#include <osgEarth/MapInfo>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ResourceReleaser>
@@ -187,7 +186,6 @@ namespace osgEarth { namespace REX
          */
         void getPooledGeometry(
             const TileKey&               tileKey,
-            const MapInfo&               mapInfo,
             unsigned                     tileSize,
             MaskGenerator*               maskSet,
             osg::ref_ptr<SharedGeometry>& out);
@@ -226,12 +224,10 @@ namespace osgEarth { namespace REX
         void createKeyForTileKey(
             const TileKey& tileKey, 
             unsigned       size,
-            const MapInfo& mapInfo,
             GeometryKey&   out) const;
 
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
-            const MapInfo& mapInfo,
             unsigned       tileSize,
             MaskGenerator* maskSet ) const;
 

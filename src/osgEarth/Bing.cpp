@@ -47,7 +47,7 @@ void
 BingImageLayer::Options::fromConfig(const Config& conf)
 {
     _imagerySet.init("Aerial");
-    _imageryMetadataURL.init("http://dev.virtualearth.net/REST/v1/Imagery/Metadata");
+    _imageryMetadataURL.init("https://dev.virtualearth.net/REST/v1/Imagery/Metadata");
 
     conf.get("key", _apiKey);
     conf.get("imagery_set", _imagerySet);
@@ -249,7 +249,7 @@ std::string
 BingImageLayer::getDirectURI(const TileKey& key) const
 {
     return Stringify()
-        << "http://ecn.t"
+        << "https://ecn.t"
         << _apiCount%4
         << ".tiles.virtualearth.net/tiles/h"
         << getQuadKey(key)
@@ -341,7 +341,7 @@ BingElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
     // construct the request URI:
     std::string request = Stringify()
         << std::setprecision(12)
-        << "http://dev.virtualearth.net/REST/v1/Elevation/Bounds"
+        << "https://dev.virtualearth.net/REST/v1/Elevation/Bounds"
         << "?bounds=" << latLonExtent.yMin() << "," << latLonExtent.xMin() << "," << latLonExtent.yMax() << "," << latLonExtent.xMax()
         << "&rows=" << tileSize
         << "&cols=" << tileSize

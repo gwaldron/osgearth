@@ -129,8 +129,8 @@ CreateTileImplementation::createTile(
             {
                 // convert that bounding box to "unit" space (0..1 across the tile)
                 osg::Vec3d min_ndc, max_ndc;
-                geoLocator.worldToUnit(it->min, min_ndc);
-                geoLocator.worldToUnit(it->max, max_ndc);
+                geoLocator.mapToUnit(it->min, min_ndc);
+                geoLocator.mapToUnit(it->max, max_ndc);
 
                 // true if boundary overlaps tile in X dimension:
                 bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
@@ -187,10 +187,10 @@ CreateTileImplementation::createTile(
     // group to hold all the tiles
     osg::Group* group = new osg::Group();
 
-    for (std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
+    for (std::vector<TileKey>::const_iterator subkey = keys.begin(); subkey != keys.end(); ++subkey)
     {
         // Mask generator creates geometry from masking boundaries when they exist.
-        MaskGenerator maskGen(*key, tileSize, map.get());
+        MaskGenerator maskGen(*subkey, tileSize, map.get());
 
         if (maskGen.hasMasks() == true && includeTilesWithMasks == false)
             continue;
@@ -201,7 +201,7 @@ CreateTileImplementation::createTile(
         osg::ref_ptr<SharedGeometry> sharedGeom;
 
         context->getGeometryPool()->getPooledGeometry(
-            *key,
+            *subkey,
             tileSize,
             &maskGen,
             sharedGeom);
@@ -209,7 +209,7 @@ CreateTileImplementation::createTile(
         osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
 
         osg::UserDataContainer* udc = drawable->getOrCreateUserDataContainer();
-        udc->setUserValue("tile_key", key->str());
+        udc->setUserValue("tile_key", subkey->str());
 
         if (sharedGeom.valid())
         {
@@ -237,7 +237,7 @@ CreateTileImplementation::createTile(
                     // Tile coords must be transformed into the local tile's space
                     // for elevation grid lookup:
                     osg::Matrix scaleBias;
-                    key->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
+                    subkey->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
 
                     // Apply elevation to each vertex.
                     for (unsigned i = 0; i < verts->size(); ++i)
@@ -275,7 +275,7 @@ CreateTileImplementation::createTile(
                     maskMax.x() = osg::clampBetween(maskMax.x(), 0.0, 1.0);
                     maskMax.y() = osg::clampBetween(maskMax.y(), 0.0, 1.0);
 
-                    const GeoExtent& e = key->getExtent();
+                    const GeoExtent& e = subkey->getExtent();
                     osg::Vec2d tkMin(e.xMin() + maskMin.x()*e.width(), e.yMin() + maskMin.y()*e.height());
                     osg::Vec2d tkMax(e.xMin() + maskMax.x()*e.width(), e.yMin() + maskMax.y()*e.height());
 
@@ -286,7 +286,7 @@ CreateTileImplementation::createTile(
 
             // Establish a local reference frame for the tile:
             GeoPoint centroid;
-            key->getExtent().getCentroid(centroid);
+            subkey->getExtent().getCentroid(centroid);
 
             osg::Matrix local2world;
             centroid.createLocalToWorld(local2world);

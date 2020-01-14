@@ -26,7 +26,6 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
 #include <osgEarth/DecalLayer>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TerrainEngineNode>
@@ -204,7 +203,7 @@ main(int argc, char** argv)
         viewer.addEventHandler(new ClickToDecal(app));
         OE_NOTICE << LC << "Press 'd' to drop the bomb." << std::endl;
 
-        Metrics::run(viewer);
+        return viewer.run();
     }
     else
     {

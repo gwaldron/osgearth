@@ -22,10 +22,6 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/Memory>
 
-#if OSGEARTH_PROFILING
-#include <../tracy/TracyClient.cpp>
-#endif
-
 using namespace osgEarth::Util;
 
 #define LC "[Metrics] "

@@ -20,13 +20,11 @@
 #ifndef OSGEARTH_METRICS_H
 #define OSGEARTH_METRICS_H 1
 
-#define OSGEARTH_PROFILING 1
-
-#if OSGEARTH_PROFILING
+#ifdef OSGEARTH_PROFILING
 
  // This is something that shouldn't be included in something 
 #define TRACY_ENABLE 1
-#include <../tracy/Tracy.hpp>
+#include <Tracy.hpp>
 
 #define OE_PROFILING_ZONE ZoneScoped
 #define OE_PROFILING_ZONE_NAMED(functionName) ZoneScopedN(functionName)
@@ -45,7 +43,7 @@ inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
 #define OE_PROFILING_ZONE_NAMED(functionName)
 #define OE_PROFILING_ZONE_TEXT(text)
 #define OE_PROFILING_PLOT(name, value)
-#define OE_FRAME_MARK
+#define OE_PROFILING_FRAME_MARK
 #endif
 
 

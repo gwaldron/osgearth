@@ -2617,6 +2617,7 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
 
     if (_settings->getZoomToMouse() == false || in_view == NULL)
     {
+        recalculateCenterFromLookVector();
         double scale = 1.0f + dy;
         setDistance( _distance * scale );
         collisionDetect();

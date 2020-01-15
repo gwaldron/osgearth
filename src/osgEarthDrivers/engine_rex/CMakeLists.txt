@@ -70,6 +70,11 @@ SET(TARGET_H
 	SelectionInfo
 )
 
+IF(TRACY_FOUND)
+    INCLUDE_DIRECTORIES(${TRACY_INCLUDE_DIR})
+    LIST(APPEND TARGET_LIBRARIES_VARS TRACY_LIBRARY )
+ENDIF(TRACY_FOUND)
+
 setup_plugin(osgearth_engine_rex)
 
 # to install public driver includes:

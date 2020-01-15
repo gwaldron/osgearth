@@ -422,7 +422,7 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
 float
 ElevationEnvelope::getElevation(double x, double y)
 {
-    METRIC_SCOPED("ElevationEnvelope::getElevation");
+    OE_PROFILING_ZONE;
     float elevation, resolution;
     sample(x, y, elevation, resolution);
     return elevation;
@@ -431,7 +431,7 @@ ElevationEnvelope::getElevation(double x, double y)
 std::pair<float, float>
 ElevationEnvelope::getElevationAndResolution(double x, double y)
 {
-    METRIC_SCOPED("ElevationEnvelope::getElevationAndResolution");
+    OE_PROFILING_ZONE;
     float elevation, resolution;
     sample(x, y, elevation, resolution);
     return std::make_pair(elevation, resolution);
@@ -441,7 +441,8 @@ unsigned
 ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
                                  std::vector<float>& output)
 {
-    METRIC_SCOPED_EX("ElevationEnvelope::getElevations", 1, "num", toString(input.size()).c_str());
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(Stringify() << "Count " << input.size());
 
     unsigned count = 0u;
 

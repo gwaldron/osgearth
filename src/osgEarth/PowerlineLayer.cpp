@@ -23,6 +23,7 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/PolygonizeLines>
 #include <osgEarth/ECEF>
+#include <osgEarth/GeometryUtils>
 
 using namespace osgEarth;
 
@@ -44,6 +45,10 @@ PowerlineLayer::Options::Options(const ConfigOptions& options)
     fromConfig(_conf);
 }
 
+// XXX cropFeatures is required to be true in order to include line
+// features using their extent instead of their centroid. What we
+// really want is to include line features by extent without cropping
+// them.
 void PowerlineLayer::Options::fromConfig(const Config& conf)
 {
     LayerReference<FeatureSource>::get(conf, "line_features", _lineSourceLayer, _lineSource);
@@ -69,18 +74,41 @@ void PowerlineLayer::Options::mergeConfig(const Config& conf)
 class PowerlineFeatureNodeFactory : public GeomFeatureNodeFactory
 {
 public:
-    PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options)
-        : GeomFeatureNodeFactory(options),
-          _lineSourceLayer(options.lineSourceLayer().get()),
-          _lineSource(options.lineSource().get())
-        {}
+    PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options);
     bool createOrUpdateNode(FeatureCursor* cursor, const Style& style,
                             const FilterContext& context,
                             osg::ref_ptr<osg::Node>& node);
 private:
+    FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
+                                  const FilterContext& cx);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
+    osg::ref_ptr<Geometry> _attachments;
+    std::string _modelName;
 };
+
+PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options)
+    : GeomFeatureNodeFactory(options),
+      _lineSourceLayer(options.lineSourceLayer().get()),
+      _lineSource(options.lineSource().get())
+{
+    if (!options.getConfig().hasChild("tower_models"))
+        return;
+    Config modelsConf = options.getConfig().child("tower_models");
+    ConfigSet models = modelsConf.children("tower_model");
+    if (models.empty())
+        return;
+    // Just use first model for now
+    Config model = models.front();
+    if (model.hasChild("attachment_points"))
+    {
+        _attachments = GeometryUtils::geometryFromWKT(model.child("attachment_points").value());
+    }
+    if (model.hasChild("model"))
+    {
+        _modelName = model.child("model").value();
+    }
+}
 
 FeatureNodeFactory*
 PowerlineLayer::createFeatureNodeFactoryImplementation() const
@@ -102,92 +130,92 @@ namespace
             return itr->second.pointFeature.get();
         }
     }
-    
-    FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures, const FilterContext& cx)
+}
 
-    {
-        FeatureList result;
-        const Session* session = cx.getSession();
+FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
+                                                           FeatureList& towerFeatures, const FilterContext& cx)
 
-        // the map against which we'll be doing elevation clamping
-        osg::ref_ptr<const Map> map = session->getMap();
-        if (!map.valid())
-            return result;
+{
+    FeatureList result;
+    const Session* session = cx.getSession();
 
-        const SpatialReference* mapSRS = map->getSRS();
-        osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
-
-        // establish an elevation query interface based on the features' SRS.
-        ElevationQuery eq(map.get());
-
-        PointMap pointMap;
-        for (auto& feature : towerFeatures)
-        {
-            Geometry* geom = feature->getGeometry();
-            for (osg::Vec3d& pt : *geom)
-            {
-                getPoint(pointMap, pt) = PointEntry(feature);
-            }
-        }
-
-        const SpatialReference* targetSRS = nullptr;
-        if (cx.getSession()->isMapGeocentric())
-        {
-            targetSRS = cx.getSession()->getMapSRS();
-        }
-        else
-        {
-            targetSRS = featureSRS->getGeocentricSRS();
-        }
-        
-        for (auto& feature : powerFeatures)
-        {
-            Geometry* geom = feature->getGeometry();
-            if (geom->getType() == Geometry::TYPE_LINESTRING)
-            {
-                std::vector<float> elevations;
-                eq.getElevations(geom->asVector(), feature->getSRS(), elevations);
-                std::vector<osg::Vec3d> worldPts(geom->size());
-                std::vector<osg::Matrixd> orientations(geom->size());
-                for (int i = 0; i < geom->size(); ++i)
-                {
-                    osg::Vec3d geodeticPt((*geom)[i].x(), (*geom)[i].y(), elevations[i]);
-                    ECEF::transformAndGetRotationMatrix(geodeticPt, featureSRS, worldPts[i],
-                                                        targetSRS, orientations[i]);
-                }
-                // New feature for the cable
-                const int size = geom->size();
-                const osg::Vec3d attach[] = {{5.876, 0.0, 14.162}, {-5.876, 0.0, 14.162}};
-                for (int cable = 0; cable < 2; ++cable)
-                {
-                    Feature* newFeature = new Feature(*feature);
-                    LineString* newGeom = new LineString(size);
-
-                    for (int i = 0; i < size; ++i)
-                    {
-                        double heading = 0.0;
-                        auto itr = findPoint(pointMap, (*geom)[i]);
-                        if (itr != pointMap.end())
-                        {
-                            heading = itr->second.pointFeature->getDouble("heading", 0.0);
-                        }
-                        osg::Matrixd headingMat;
-                        headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
-                        osg::Vec3d worldAttach = attach[cable] * headingMat * orientations[i] + worldPts[i];
-                        osg::Vec3d wgs84; // intermediate point
-                        osg::Vec3d mapAttach;
-                        featureSRS->getGeographicSRS()->transformFromWorld(worldAttach, wgs84);
-                        featureSRS->getGeographicSRS()->transform(wgs84, featureSRS, mapAttach);
-                        newGeom->push_back(mapAttach);
-                    }
-                    newFeature->setGeometry(newGeom);
-                    result.push_back(newFeature);
-                }
-
-            }
-        }
+    // the map against which we'll be doing elevation clamping
+    osg::ref_ptr<const Map> map = session->getMap();
+    if (!map.valid() || !_attachments.valid())
         return result;
+
+    const SpatialReference* mapSRS = map->getSRS();
+    osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
+
+    // establish an elevation query interface based on the features' SRS.
+    ElevationQuery eq(map.get());
+
+    PointMap pointMap;
+    for (auto& feature : towerFeatures)
+    {
+        Geometry* geom = feature->getGeometry();
+        for (osg::Vec3d& pt : *geom)
+        {
+            getPoint(pointMap, pt) = PointEntry(feature);
+        }
     }
+
+    const SpatialReference* targetSRS = nullptr;
+    if (cx.getSession()->isMapGeocentric())
+    {
+        targetSRS = cx.getSession()->getMapSRS();
+    }
+    else
+    {
+        targetSRS = featureSRS->getGeocentricSRS();
+    }
+        
+    for (auto& feature : powerFeatures)
+    {
+        Geometry* geom = feature->getGeometry();
+        if (geom->getType() == Geometry::TYPE_LINESTRING)
+        {
+            std::vector<float> elevations;
+            eq.getElevations(geom->asVector(), feature->getSRS(), elevations);
+            std::vector<osg::Vec3d> worldPts(geom->size());
+            std::vector<osg::Matrixd> orientations(geom->size());
+            for (int i = 0; i < geom->size(); ++i)
+            {
+                osg::Vec3d geodeticPt((*geom)[i].x(), (*geom)[i].y(), elevations[i]);
+                ECEF::transformAndGetRotationMatrix(geodeticPt, featureSRS, worldPts[i],
+                                                    targetSRS, orientations[i]);
+            }
+            // New feature for the cable
+            const int size = geom->size();
+ 
+            for (int cable = 0; cable < 2; ++cable)
+            {
+                Feature* newFeature = new Feature(*feature);
+                LineString* newGeom = new LineString(size);
+
+                for (int i = 0; i < size; ++i)
+                {
+                    double heading = 0.0;
+                    auto itr = findPoint(pointMap, (*geom)[i]);
+                    if (itr != pointMap.end())
+                    {
+                        heading = itr->second.pointFeature->getDouble("heading", 0.0);
+                    }
+                    osg::Matrixd headingMat;
+                    headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
+                    osg::Vec3d worldAttach = (*_attachments)[cable] * headingMat * orientations[i] + worldPts[i];
+                    osg::Vec3d wgs84; // intermediate point
+                    osg::Vec3d mapAttach;
+                    featureSRS->getGeographicSRS()->transformFromWorld(worldAttach, wgs84);
+                    featureSRS->getGeographicSRS()->transform(wgs84, featureSRS, mapAttach);
+                    newGeom->push_back(mapAttach);
+                }
+                newFeature->setGeometry(newGeom);
+                result.push_back(newFeature);
+            }
+        }
+    }
+    return result;
 }
 
 bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, const Style& style,

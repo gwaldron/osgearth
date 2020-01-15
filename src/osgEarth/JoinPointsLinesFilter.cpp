@@ -65,7 +65,7 @@ double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previ
     
     ECEF::transformAndGetRotationMatrix(point3d, context.profile()->getSRS(), world3d,
                                         targetSRS, orientation);
-    // XXX OSG bug weirdness
+    // XXX OSG bug weirdness, fixed in OSG next
     osg::Matrixd toLocal(orientation);
     toLocal.transpose3x3(toLocal);
     

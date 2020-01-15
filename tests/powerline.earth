@@ -1,8 +1,15 @@
 <map name="power tower test">
   <PowerlineModel name="towers">
-    <layout crop_features="true"></layout>
     <features>power-towers</features>
     <line_features>power-lines</line_features>
+    <tower_models>
+      <tower_model>
+        <model>../data/Transmission_Tower.osgb</model>
+        <attachment_points>
+          LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162)
+        </attachment_points>
+      </tower_model>
+    </tower_models>
     <styles>
       <style type="text/css">
         default {
@@ -12,6 +19,7 @@
         }
       </style>
     </styles>
+    <lighting>true</lighting>
   </PowerlineModel>
 
 

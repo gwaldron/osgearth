@@ -132,7 +132,7 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma import_defines(OE_DISABLE_RANGE_OPACITY) \n"
         "uniform vec3 oe_VisibleLayer_ranges; \n"
-        "float oe_layer_opacity; \n"
+        "out float oe_layer_opacity; \n"
         
         "void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView) \n"
         "{ \n"

@@ -64,7 +64,7 @@ void oe_GroundCover_VS_MODEL(inout vec4 vertex_model)
     vertex_model.w = 1.0;
 
     vp_Normal = vec3(0,0,1);
-    vp_Color = vec4(1);
+    vp_Color = vec4(1,1,1,0);
 
     // sample the landcover data
     oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*oe_layer_tilec).st, 0).r;
@@ -97,6 +97,8 @@ uniform float oe_GroundCover_contrast;
 uniform float oe_GroundCover_brightness;
 
 uniform vec3 oe_Camera;  // (vp width, vp height, lodscale)
+
+uniform mat4 osg_ViewMatrix;
 
 // different noise texture channels:
 #define NOISE_SMOOTH   0
@@ -170,6 +172,11 @@ float oe_GroundCover_applyWind(float time, float factor, float randOffset)
 float oe_GroundCover_fastpow(in float x, in float y)
 {
     return x / (x + y - y * x);
+}
+
+float rescale(float d, float v0, float v1)
+{
+    return clamp((d-v0)/(v1-v0), 0, 1);
 }
 
 // MAIN ENTRY POINT  
@@ -281,20 +288,14 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     // Color variation, brightness, and contrast:
     vec3 color = vec3( oe_noise[NOISE_RANDOM_2] );
-    color = ( ((color - 0.5) * oe_GroundCover_contrast + 0.5) * oe_GroundCover_brightness);
+    //color = ( ((color - 0.5) * oe_GroundCover_contrast + 0.5) * oe_GroundCover_brightness);
 
-    float billboardAmount = 1.0;
-    float topDownAmount = 0.0;
+    float d = clamp(dot(vec3(0,0,1), oe_UpVectorView), 0, 1);
+    float topDownAmount = rescale(d, 0.4, 0.6);
+    float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
-    // calculate a [0..1] factor for interpolating from a front billboard view
-    // to a top-down view of the tree (0.0=billboard, 1.0=topdown)
-    topDownAmount = abs(dot(vec3(0, 0, -1), oe_UpVectorView));
-    billboardAmount = 1.0 - pow(topDownAmount, 10.0);
-    topDownAmount = clamp(topDownAmount*1.5, 0.0, 1.0);
 
-    const float topDownThreshold = 0.5;
-
-    if (which < 4 && billboard.atlasIndexSide >= 0) // Front-facing billboard
+    if (which < 4 && billboard.atlasIndexSide >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
@@ -314,16 +315,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         // calculates normals:
         vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
 
-        // if we are looking straight-ish down on the billboard, don't bother with it
-        if (billboard.atlasIndexTop < 0 && 
-            abs(dot(normalize(vertex_view.xyz), faceNormalVector)) < 0.01)
-        {
-            return;
-        }
-
-        const float billboardThreshold = 0.15;
-
-        if (billboardAmount > billboardThreshold)
+        if (billboardAmount > 0.1)
         {
             vp_Color = vec4(color*oe_GroundCover_ao, falloff * billboardAmount);
 
@@ -337,31 +329,34 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         }
     }
 
-    else if (which >= 4 && billboard.atlasIndexTop >= 0 && topDownAmount > topDownThreshold) // top-down billboard
+    else if (which >= 4 && billboard.atlasIndexTop >= 0 && topDownAmount > 0.0) // top-down billboard
     {
         oe_GroundCover_atlasIndex = float(billboard.atlasIndexTop);
 
         // estiblish the local tangent plane:
-        vec3 U = gl_NormalMatrix * vec3(0, 0, 1);
-        vec3 E = cross(U, oe_UpVectorView);
+        vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
+        vec3 E = cross(Z, oe_UpVectorView);
         vec3 N = cross(oe_UpVectorView, E);
 
         // now introduce a "random" rotation
-        vec2 b = vec2(oe_noise[NOISE_RANDOM], oe_noise[NOISE_RANDOM_2])*2.0-1.0;
+        vec2 b = normalize(clamp(vec2(oe_noise[NOISE_RANDOM], oe_noise[NOISE_RANDOM_2]), 0.01, 1.0)*2.0-1.0);
         N = normalize(E*b.x + N*b.y);
-        E = normalize(cross(N, U));
+        E = normalize(cross(N, oe_UpVectorView));
+
+        // a little trick to mitigate z-fighting amongst the topdowns.
+        float yclip = oe_noise[NOISE_RANDOM] * 0.1;
 
         float k = width * 0.5;
-        vec3 C = vertex_view.xyz + (heightVector*0.4);
+        vec3 C = vertex_view.xyz + (heightVector*(0.4+yclip));
         vertex_view =
             which == 4? vec4(C - E*k - N*k, 1.0) :
             which == 5? vec4(C + E*k - N*k, 1.0) :
             which == 6? vec4(C - E*k + N*k, 1.0) :
-            vec4(C + E*k + N*k, 1.0);
+                        vec4(C + E*k + N*k, 1.0);
 
         vp_Normal = vertex_view.xyz - C;
 
-        vp_Color = vec4(color, (topDownAmount - topDownThreshold)*(topDownAmount / topDownThreshold));
+        vp_Color = vec4(color, topDownAmount);
     }
 
 #endif // !OE_IS_SHADOW_CAMERA

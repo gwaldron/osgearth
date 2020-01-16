@@ -688,8 +688,50 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             }
         }
     }
+    else if (nv.getVisitorType() == nv.INTERSECTION_VISITOR)
+    {
+        resolveContent();
+        bool areChildrenReady = true;
+        if (_children.valid())
+        {
+            for (unsigned int i = 0; i < _children->getNumChildren(); i++)
+            {
+                osg::ref_ptr< ThreeDTileNode > childTile = dynamic_cast<ThreeDTileNode*>(_children->getChild(i));
+                if (childTile.valid())
+                {
+                    // Can we traverse the child?
+                    if (childTile->hasContent() && !childTile->isContentReady())
+                    {
+                        areChildrenReady = false;
+                    }
+                }
+            }
+        }
+        else
+        {
+            areChildrenReady = false;
+        }
 
-    osg::MatrixTransform::traverse(nv);
+        if (areChildrenReady && _children.valid() && _children->getNumChildren() > 0)
+        {
+            if (_content.valid() && _tile->refine().isSetTo(REFINE_ADD))
+            {
+                _content->accept(nv);
+            }
+
+            if (_children.valid())
+            {
+                _children->accept(nv);
+            }
+        }
+        else
+        {
+            if (_content.valid())
+            {
+                _content->accept(nv);
+            }
+        }
+    }
 }
 
 namespace {

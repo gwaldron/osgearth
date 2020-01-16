@@ -72,6 +72,10 @@ SET(OSGEARTH_USE_GLES FALSE)
 INCLUDE(CXX11)
 check_for_cxx11_compiler(CXX11_AVAILABLE)
 
+# Special folder for build-time generated include files
+set(OSGEARTH_BUILDTIME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/build_include")
+include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
+
 # Platform-specific stuff
 INCLUDE(oe_ios)
 INCLUDE(oe_osx)

@@ -35,6 +35,17 @@ IF(WIN32)
     LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
 ENDIF(WIN32)
 
+# Generate the BuildConfig header
+if(CXX11_AVAILABLE)
+    set(OSGEARTH_CXX11_DEFINE "#define OSGEARTH_CXX11")
+endif()
+set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig.h")
+message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
+configure_file(
+    BuildConfig.h.in
+    ${OSGEARTH_BUILDCONFIG_HEADER})
+
+# Name all the library files
 SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
@@ -62,6 +73,7 @@ set(TARGET_GLSL
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 set(TARGET_IN
+    BuildConfig.h.in
     Shaders.cpp.in)
 
 configure_shaders(
@@ -405,6 +417,8 @@ SET(LIB_PUBLIC_HEADERS
     rtree.h
 
     FileGDBFeatureSource
+    
+    ${OSGEARTH_BUILDCONFIG_HEADER}
 )
 
 

@@ -73,16 +73,7 @@ namespace osgEarth
 #pragma warning (disable: 4180)
 #endif
 
-// C++11 support
-#ifndef OSGEARTH_CXX11
-    // MSVC older versions did not correctly set __cplusplus so do this instead
-    #ifdef _MSC_VER
-        #if _MSC_VER >= 1900
-            #define OSGEARTH_CXX11
-        #endif
-    #elif __cplusplus >= 201103L
-        #define OSGEARTH_CXX11
-    #endif
-#endif
+// Library build configuration (like C++11 support)
+#include "osgEarth/BuildConfig.h"
 
 #endif // OSGEARTH_COMMON_H

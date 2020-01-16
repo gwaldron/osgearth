@@ -21,9 +21,9 @@
 #define OSGEARTH_METRICS_H 1
 
 #ifdef OSGEARTH_PROFILING
-
- // This is something that shouldn't be included in something 
-#define TRACY_ENABLE 1
+ 
+#define TRACY_ENABLE
+#define TRACY_ON_DEMAND
 #include <Tracy.hpp>
 
 #define OE_PROFILING_ZONE ZoneScoped

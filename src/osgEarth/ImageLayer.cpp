@@ -18,12 +18,14 @@
  */
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ImageMosaic>
+#include <osgEarth/NetworkMonitor>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 using namespace OpenThreads;
 
 #define LC "[ImageLayer] \"" << getName() << "\" "
@@ -318,6 +320,10 @@ ImageLayer::createImage(const TileKey&    key,
     OE_PROFILING_ZONE_TEXT(Stringify() << "Layer " << getName());
     OE_PROFILING_ZONE_TEXT(Stringify() << "Key " << key.str());
 
+    std::stringstream buf;
+    buf << getName() << "::createImage(" << key.getLevelOfDetail() << "/" << key.getTileX() << "/" << key.getTileY() << ")";
+    unsigned long handle = NetworkMonitor::begin(buf.str(), "pending");
+    
     if (getStatus().isError())
     {
         return GeoImage::INVALID;
@@ -326,9 +332,14 @@ ImageLayer::createImage(const TileKey&    key,
     // prevents 2 threads from creating the same object at the same time
     _sentry.lock(key);
 
+    OE_START_TIMER(createImage);
     GeoImage result = createImageInKeyProfile( key, progress );
+    OE_STOP_TIMER(createImage);
+    _internalTime += OE_GET_TIMER(createImage);
 
     _sentry.unlock(key);
+
+    NetworkMonitor::end(handle, "complete");
 
     return result;
 }

@@ -163,6 +163,7 @@ SET(LIB_PUBLIC_HEADERS
     ModelLayer
     ModelSource
     NativeProgramAdapter
+    NetworkMonitor
     NodeUtils
     Notify
     optional
@@ -520,6 +521,7 @@ set(TARGET_SRC
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp
+    NetworkMonitor.cpp
     NodeUtils.cpp
     Notify.cpp
     ObjectIndex.cpp

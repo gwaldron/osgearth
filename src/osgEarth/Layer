@@ -244,6 +244,8 @@ namespace osgEarth
         //! Hints that a subclass can set to influence the engine
         const Hints& getHints() const;
 
+        double getInternalTime() const;
+
     public:
 
         //! Layer's stateset, creating it is necessary
@@ -393,12 +395,14 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
         std::vector<osg::ref_ptr<LayerShader> > _shaders;
+        double _internalTime;
 
         void bumpRevision();
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map; 
         friend class MapNode;
+
                 
     public:
         Layer::Options& options() { return *_options; }

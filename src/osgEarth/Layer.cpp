@@ -268,6 +268,8 @@ Layer::init()
     {
         osg::Object::setName(options().name().get());
     }
+
+    _internalTime = 0.0;
 }
 
 const Status&
@@ -550,4 +552,10 @@ Layer::Hints&
 Layer::layerHints()
 {
     return _hints;
+}
+
+double
+Layer::getInternalTime() const
+{
+    return _internalTime;
 }

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/HTTPClient>
+#include <osgEarth/NetworkMonitor>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
 #include <osgEarth/Version>
@@ -36,6 +37,7 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 using namespace osgEarth::Util;
 
 namespace osgEarth
@@ -1444,6 +1446,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(Stringify() << "url " << request.getURL());
 
+    unsigned long handle = NetworkMonitor::begin(request.getURL(), "pending");
+
     initialize();
 
     HTTPResponse response = _impl->doGet(request, options, progress);
@@ -1453,6 +1457,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {
         OE_PROFILING_ZONE_TEXT("cancelled");
     }
+
+    NetworkMonitor::end(handle, "complete");
     return response;
 }
 

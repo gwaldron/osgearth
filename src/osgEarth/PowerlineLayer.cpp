@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2019-2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,9 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/GeometryUtils>
 
+#include <algorithm>
+#include <iterator>
+
 using namespace osgEarth;
 
 #define LC "[PowerlineLayer]"
@@ -32,6 +35,32 @@ using namespace osgEarth;
 #define OE_TEST OE_NULL
 
 REGISTER_OSGEARTH_LAYER(PowerlineModel, PowerlineLayer);
+
+void PowerlineLayer::ModelOptions::fromConfig(const Config& conf)
+{
+    if (conf.hasChild("attachment_points"))
+    {
+        osg::ref_ptr<Geometry> attachGeom = GeometryUtils::geometryFromWKT(conf.child("attachment_points").value());
+        std::copy(attachGeom->asVector().begin(), attachGeom->asVector().end(),
+                  std::back_inserter(attachment_points()));
+    }
+    if (conf.hasChild("uri"))
+    {
+        uri() = conf.child("uri").value();
+    }
+}
+
+Config PowerlineLayer::ModelOptions::getConfig() const
+{
+    Config conf;
+    if (!attachment_points().empty())
+    {
+        osg::ref_ptr<Geometry> attachGeom = new LineString(&attachment_points());
+        conf.set("attachment_points", GeometryUtils::geometryToWKT(attachGeom.get()));
+    }
+    conf.set("uri", uri());
+    return conf;
+}
 
 PowerlineLayer::Options::Options()
     : FeatureModelLayer::Options()
@@ -55,6 +84,11 @@ void PowerlineLayer::Options::fromConfig(const Config& conf)
     FeatureDisplayLayout layout = _layout.get();
     layout.cropFeatures() = true;
     _layout = layout;
+    ConfigSet models = conf.children("tower_model");
+    for (auto& modelConf : models)
+    {
+        towerModels().push_back(ModelOptions(modelConf));
+    }
 }
 
 Config
@@ -62,6 +96,10 @@ PowerlineLayer::Options::getConfig() const
 {
     Config conf = FeatureModelLayer::Options::getConfig();
     LayerReference<FeatureSource>::set(conf, "line_features", _lineSourceLayer, _lineSource);
+    for (auto& modelOption : towerModels())
+    {
+        conf.add("tower_model", modelOption.getConfig());
+    }
     return conf;
 }
 
@@ -83,7 +121,7 @@ private:
                                   const FilterContext& cx);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
-    osg::ref_ptr<Geometry> _attachments;
+    Vec3dVector _attachments;
     std::string _modelName;
 };
 
@@ -92,22 +130,13 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
       _lineSourceLayer(options.lineSourceLayer().get()),
       _lineSource(options.lineSource().get())
 {
-    if (!options.getConfig().hasChild("tower_models"))
-        return;
-    Config modelsConf = options.getConfig().child("tower_models");
-    ConfigSet models = modelsConf.children("tower_model");
-    if (models.empty())
+    if (options.towerModels().empty())
         return;
     // Just use first model for now
-    Config model = models.front();
-    if (model.hasChild("attachment_points"))
-    {
-        _attachments = GeometryUtils::geometryFromWKT(model.child("attachment_points").value());
-    }
-    if (model.hasChild("model"))
-    {
-        _modelName = model.child("model").value();
-    }
+    const PowerlineLayer::ModelOptions& modelOption = options.towerModels().front();
+    std::copy(modelOption.attachment_points().begin(), modelOption.attachment_points().end(),
+              std::back_inserter(_attachments));
+    _modelName = modelOption.uri().get();
 }
 
 FeatureNodeFactory*
@@ -141,7 +170,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
 
     // the map against which we'll be doing elevation clamping
     osg::ref_ptr<const Map> map = session->getMap();
-    if (!map.valid() || !_attachments.valid())
+    if (!map.valid() || _attachments.empty())
         return result;
 
     const SpatialReference* mapSRS = map->getSRS();
@@ -203,7 +232,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     }
                     osg::Matrixd headingMat;
                     headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
-                    osg::Vec3d worldAttach = (*_attachments)[cable] * headingMat * orientations[i] + worldPts[i];
+                    osg::Vec3d worldAttach = _attachments[cable] * headingMat * orientations[i] + worldPts[i];
                     osg::Vec3d wgs84; // intermediate point
                     osg::Vec3d mapAttach;
                     featureSRS->getGeographicSRS()->transformFromWorld(worldAttach, wgs84);

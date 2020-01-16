@@ -28,6 +28,16 @@ namespace osgEarth
     {
         // XXX Maybe hide some options from FeatureModelLayer?
     public:
+        class ModelOptions : public ConfigOptions
+        {
+            META_ConfigOptions(osgEarth, ModelOptions, ConfigOptions);
+            OE_OPTION(std::string, uri);
+            OE_OPTION_VECTOR(osg::Vec3d, attachment_points);
+        public:
+            void fromConfig(const Config& conf);
+            virtual Config getConfig() const;
+        };
+
         class OSGEARTH_EXPORT Options : public FeatureModelLayer::Options
         {
         public:
@@ -35,6 +45,7 @@ namespace osgEarth
             Options(const ConfigOptions& options);
             OE_OPTION(std::string, lineSourceLayer);
             OE_OPTION(FeatureSource::Options, lineSource);
+            OE_OPTION_VECTOR(ModelOptions, towerModels);
             virtual Config getConfig() const;
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        

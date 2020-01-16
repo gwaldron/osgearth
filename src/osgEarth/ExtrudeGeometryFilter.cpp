@@ -31,6 +31,7 @@
 #include <osgEarth/LineDrawable>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Registry>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -1283,7 +1284,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         cache->consolidateStateSets(group);
 
         osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.setTargetMaximumNumberOfVertices(UINT_MAX);
+        mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
         group->accept(mg);
     }
 

@@ -19,6 +19,7 @@
 #include "LayerDrawable"
 #include "TerrainRenderData"
 #include <osg/ConcurrencyViewerMacros>
+#include <osgEarth/Metrics>
 
 
 using namespace osgEarth::REX;
@@ -83,6 +84,7 @@ namespace
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
+    OE_PROFILING_ZONE;
     //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
 
     // Get this context's state values:

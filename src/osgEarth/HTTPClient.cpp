@@ -455,7 +455,7 @@ namespace
             const HTTPRequest&    request,
             const osgDB::Options* options,
             ProgressCallback*     progress ) const
-        {
+        {            
             OE_START_TIMER(http_get);
 
             std::string url = request.getURL();
@@ -805,11 +805,7 @@ namespace
             if (headers)
             {
                 curl_slist_free_all(headers);
-            }
-
-            METRIC_END("HTTPClient::doGet", 2,
-                "response_code", toString<int>(response.getCode()).c_str(),
-                "canceled", toString<bool>(response.isCanceled()).c_str());
+            }            
 
             return response;
         }
@@ -1114,10 +1110,7 @@ namespace
                 progress->stats("http_get_count") += 1;
                 if ( response.isCanceled() )
                     progress->stats("http_cancel_count") += 1;
-            }
-
-            METRIC_END("HTTPClient::doGet", 1,
-                "response_code", toString<int>(response.getCode()).c_str());
+            }            
 
             return response;
         }
@@ -1448,17 +1441,18 @@ HTTPClient::doGet(const HTTPRequest&    request,
                   const osgDB::Options* options,
                   ProgressCallback*     progress) const
 {
-    METRIC_BEGIN("HTTPClient::doGet", 1,
-                   "url", request.getURL().c_str());
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(Stringify() << "url " << request.getURL());
 
     initialize();
 
     HTTPResponse response = _impl->doGet(request, options, progress);
 
-    METRIC_END("HTTPClient::doGet", 2,
-               "response_code", toString<int>(response.getCode()).c_str(),
-               "canceled", toString<bool>(response.isCanceled()).c_str());
-
+    OE_PROFILING_ZONE_TEXT(Stringify() << "response_code " << response.getCode());
+    if (response.isCanceled())
+    {
+        OE_PROFILING_ZONE_TEXT("cancelled");
+    }
     return response;
 }
 

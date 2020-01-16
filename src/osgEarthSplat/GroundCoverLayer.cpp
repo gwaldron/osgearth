@@ -211,10 +211,14 @@ GroundCoverLayer::init()
 Status
 GroundCoverLayer::openImplementation()
 {
+    Status parent = PatchLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (_renderer.valid())
         _renderer->_settings._grass = options().grass().get();
 
-    return PatchLayer::openImplementation();
+    return Status::OK();
 }
 
 void

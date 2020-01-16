@@ -18,6 +18,7 @@
  */
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Metrics>
+#include <osgEarth/StringUtils>
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
 #include <osg/ContextData>
 #endif
@@ -67,17 +68,18 @@ ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
 void
 ResourceReleaser::releaseGLObjects(osg::State* state) const
 {
+    OE_PROFILING_ZONE;
     if (!_toRelease.empty())
     {
         Threading::ScopedMutexLock lock(_mutex);
         if (!_toRelease.empty())
         {
-            METRIC_SCOPED("ResourceReleaser");
             for (ObjectList::const_iterator i = _toRelease.begin(); i != _toRelease.end(); ++i)
             {
                 osg::Object* object = i->get();
                 object->releaseGLObjects(state);
             }
+            OE_PROFILING_ZONE_TEXT(Stringify() << "Released " << _toRelease.size());
             OE_DEBUG << LC << "Released " << _toRelease.size() << " objects\n";
             _toRelease.clear();
         }

@@ -26,7 +26,6 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
 #include <osgEarth/Registry>
 #include <osgDB/ReadFile>
 #include <iostream>

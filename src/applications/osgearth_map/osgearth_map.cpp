@@ -57,19 +57,28 @@ usage(int argc, char** argv)
 
     return 0;
 }
-
 // Demonstrates how to subclass ImageLayer to directly create textures
 // for use in a layer.
 class MyTextureLayer : public ImageLayer
 {
 public:
+    std::string _path;
     osg::ref_ptr<osg::Texture2D> _tex;
 
-    MyTextureLayer(const char* path)
+    META_Layer(osgEarth, MyTextureLayer, Options, ImageLayer, mytexturelayer);
+
+    void setPath(const char* path)
     {
-        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile(path);
+        _path = path;
+    }
+
+    Status openImplementation()
+    {
+        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile(_path);
         if (image.valid())
             _tex = new osg::Texture2D(image.get());
+        else
+            return Status(Status::ConfigurationError, "no path");
 
         // Establish a geospatial profile for the layer:
         setProfile(Profile::create("global-geodetic"));
@@ -79,10 +88,12 @@ public:
 
         // Restrict the data extents of this layer to LOD 0 (in this case)
         dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, 0));
+
+        return Status::OK();
     }
 
     TextureWindow
-    createTexture(const TileKey& key, ProgressCallback* progress) const
+        createTexture(const TileKey& key, ProgressCallback* progress) const
     {
         // Set the texture matrix corresponding to the tile key:
         osg::Matrixf textureMatrix;
@@ -131,7 +142,8 @@ main(int argc, char** argv)
     map->addLayer(osm);
 
     // a custom layer that displays a user texture:
-    MyTextureLayer* texLayer = new MyTextureLayer("../data/grid2.png");
+    MyTextureLayer* texLayer = new MyTextureLayer();
+    texLayer->setPath("../data/grid2.png");
     texLayer->setOpacity(0.5f);
     map->addLayer(texLayer);  
 

@@ -28,6 +28,8 @@
 #include <osgEarth/ThreadingUtils>
 #include <iostream>
 
+#include <osgEarth/Metrics>
+
 #define LC "[viewer] "
 
 using namespace osgEarth;
@@ -79,7 +81,7 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-        return viewer.run();
+        return Metrics::run(viewer);
     }
     else
     {

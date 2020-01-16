@@ -139,7 +139,7 @@ TileNodeRegistry::addSafely(TileNode* tile)
             << std::endl;
     }
 
-    Metrics::counter("RexStats", "Tiles", _tiles.size());
+    OE_PROFILING_PLOT("Rex Tiles", (float)(_tiles.size()));
 }
 
 void
@@ -158,7 +158,7 @@ TileNodeRegistry::removeSafely(const TileKey& key)
         // remove the tile.
         _tiles.erase( key );
 
-        Metrics::counter("RexStats", "Tiles", _tiles.size());
+        OE_PROFILING_PLOT("Rex Tiles", (float)(_tiles.size()));
     }
 }
 
@@ -313,7 +313,7 @@ TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
         _tiles.clear();
         _notifiers.clear();
 
-        Metrics::counter("RexStats", "Tiles", _tiles.size());
+        OE_PROFILING_PLOT("Rex Tiles", (float)(_tiles.size()));
     }
 
     releaser->push(objects);

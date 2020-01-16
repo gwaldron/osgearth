@@ -20,6 +20,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/MemCache>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -318,6 +319,8 @@ ElevationLayer::createHeightField(const TileKey& key)
 GeoHeightField
 ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
+
     // If the layer is already in an error state, bail out
     if (getStatus().isError())
     {

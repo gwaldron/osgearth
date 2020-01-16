@@ -26,7 +26,6 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
 #include <osgEarth/HTM>
 #include <osgEarth/PlaceNode>
 #include <osgEarth/Random>

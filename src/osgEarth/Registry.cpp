@@ -57,18 +57,18 @@ namespace
 }
 
 Registry::Registry() :
-    osg::Referenced     ( true ),
-    _gdal_registered    ( false ),
-    _numGdalMutexGets   ( 0 ),
-    _uidGen             ( 0 ),
-    _caps               ( 0L ),
-    _defaultFont        ( 0L ),
-    _terrainEngineDriver( "rex" ),
-    _cacheDriver        ( "filesystem" ),
-    _overrideCachePolicyInitialized( false ),
-    _threadPoolSize(2u),
-    _devicePixelRatio(1.0f),
-    _maxVertsPerDrawable(65535)
+osg::Referenced     ( true ),
+_gdal_registered    ( false ),
+_numGdalMutexGets   ( 0 ),
+_uidGen             ( 0 ),
+_caps               ( 0L ),
+_defaultFont        ( 0L ),
+_terrainEngineDriver( "rex" ),
+_cacheDriver        ( "filesystem" ),
+_overrideCachePolicyInitialized( false ),
+_threadPoolSize(2u),
+_devicePixelRatio(1.0f),
+_maxVertsPerDrawable(USHRT_MAX)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();

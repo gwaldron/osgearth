@@ -396,6 +396,7 @@ namespace
             else if (driver == "agglite") c.key() = "FeatureImage";
             else if (driver == "debug") c.key() = "DebugImage";
             else if (driver == "road_surface") c.key() = "RoadSurface";
+            else if (driver == "db") c.key() = "DBImage";
             else if (driver == "composite" && !c.children().empty())
             {
                 ConfigSet children = c.children("image");
@@ -418,6 +419,7 @@ namespace
             else if (driver == "tilecache") c.key() = "TileCacheElevation";
             else if (driver == "flatten_elevation") c.key() = "FlattenElevation";
             else if (driver == "fractal_elevation") c.key() = "FractalElevation";
+            else if (driver == "db") c.key() = "DBElevation";
             else if (driver == "composite" && !c.children().empty())
             {
                 ConfigSet children = c.children("elevation");

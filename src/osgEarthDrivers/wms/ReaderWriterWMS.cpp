@@ -140,7 +140,7 @@ public:
 
         // localize it since we might override them:
         _formatToUse = _options.format().value();
-        _srsToUse = _options.wmsVersion().value() == "1.3.0" ? _options.crs().value() : _options.srs().value();
+        _srsToUse = versionIsAtLeast(_options.wmsVersion().value(), "1.3.0") ? _options.crs().value() : _options.srs().value();
         if (_srsToUse.empty())
         {
             //If they didn't specify a CRS, see if they specified an SRS and try to use that

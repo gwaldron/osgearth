@@ -246,7 +246,7 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
 
         GDALTermProgress( 1.0 * (i+1) / nInputFiles, NULL, NULL);
 
-        GDALDatasetH hDS = GDALOpen(dsFileName, GA_ReadOnly );
+        GDALDatasetH hDS = GDALOpenShared(dsFileName, GA_ReadOnly );
         psDatasetProperties[i].isFileOK = FALSE;
 
         if (hDS)
@@ -485,7 +485,7 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
 
         OE_DEBUG << LC << "Using GDALDataset, no proxy support enabled" << std::endl;
         //Just open the dataset
-        GDALDatasetH hDS = (GDALDatasetH)GDALOpen(dsFileName, GA_ReadOnly);
+        GDALDatasetH hDS = (GDALDatasetH)GDALOpenShared(dsFileName, GA_ReadOnly);
         isProxy = false;
 
 #endif
@@ -655,7 +655,7 @@ GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
  */
 GeoExtent getGeoExtent(std::string& filename)
 {
-    GDALDataset* ds = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly );
+    GDALDataset* ds = (GDALDataset*)GDALOpenShared(filename.c_str(), GA_ReadOnly );
     if (!ds)
     {
         return GeoExtent::INVALID;
@@ -842,7 +842,7 @@ public:
                     ReadResult result = _cacheBin->readString( vrtKey, 0L);
                     if (result.succeeded())
                     {
-                        _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );
+                        _srcDS = (GDALDataset*)GDALOpenShared(result.getString().c_str(), GA_ReadOnly );
                         if (_srcDS)
                         {
                             OE_INFO << LC << INDENT << "Read VRT from cache!" << std::endl;
@@ -902,7 +902,7 @@ public:
             {
                 //If we couldn't build a VRT, just try opening the file directly
                 //Open the dataset
-                _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
+                _srcDS = (GDALDataset*)GDALOpenShared( files[0].c_str(), GA_ReadOnly );
 
                 if (_srcDS)
                 {
@@ -919,7 +919,7 @@ public:
                         buf << "SUBDATASET_" << subDataset << "_NAME";
                         char *pszSubdatasetName = CPLStrdup( CSLFetchNameValue( subDatasets, buf.str().c_str() ) );
                         GDALClose( _srcDS );
-                        _srcDS = (GDALDataset*)GDALOpen( pszSubdatasetName, GA_ReadOnly ) ;
+                        _srcDS = (GDALDataset*)GDALOpenShared( pszSubdatasetName, GA_ReadOnly ) ;
                         CPLFree( pszSubdatasetName );
                     }
                 }
@@ -1617,6 +1617,14 @@ public:
                 rasterIO(bandAlpha, GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0, *_options.interpolation());
             }
 
+            auto pixelSizeInBits = image->getPixelSizeInBits();
+            auto rowStepInBytes = image->getRowStepInBytes();
+            auto imageData = [&](const int& col, const int& row) -> unsigned char*
+            {
+                if (!image->data()) return nullptr;
+                return (image->data() + (col*pixelSizeInBits) / 8 + row*rowStepInBytes);
+            };
+
             for (int src_row = 0, dst_row = tile_offset_top;
                 src_row < target_height;
                 src_row++, dst_row++)
@@ -1629,17 +1637,18 @@ public:
                     unsigned char g = green[src_col + src_row * target_width];
                     unsigned char b = blue[src_col + src_row * target_width];
                     unsigned char a = alpha[src_col + src_row * target_width];
-                    *(image->data(dst_col, dst_row) + 0) = r;
-                    *(image->data(dst_col, dst_row) + 1) = g;
-                    *(image->data(dst_col, dst_row) + 2) = b;
-                    if (!isValidValue(r, bandRed) ||
-                        !isValidValue(g, bandGreen) ||
-                        !isValidValue(b, bandBlue) ||
-                        (bandAlpha && !isValidValue(a, bandAlpha)))
+                    unsigned char* data = imageData(dst_col, dst_row);
+                    *data = r;
+                    *(data + 1) = g;
+                    *(data + 2) = b;
+                    if (!isValidValue_noLock(r, bandRed) ||
+                        !isValidValue_noLock(g, bandGreen) ||
+                        !isValidValue_noLock(b, bandBlue) ||
+                        (bandAlpha && !isValidValue_noLock(a, bandAlpha)))
                     {
                         a = 0.0f;
                     }
-                    *(image->data(dst_col, dst_row) + 3) = a;
+                    *(data + 3) = a;
                 }
             }
 
@@ -1777,8 +1786,8 @@ public:
                         *(image->data(dst_col, dst_row) + 0) = g;
                         *(image->data(dst_col, dst_row) + 1) = g;
                         *(image->data(dst_col, dst_row) + 2) = g;
-                        if (!isValidValue(g, bandGray) ||
-                            (bandAlpha && !isValidValue(a, bandAlpha)))
+                        if (!isValidValue_noLock(g, bandGray) ||
+                            (bandAlpha && !isValidValue_noLock(a, bandAlpha)))
                         {
                             a = 0.0f;
                         }
@@ -1841,7 +1850,7 @@ public:
                         osg::Vec4ub color;
                         osg::Vec4f pixel;
                         if (getPalleteIndexColor(bandPalette, p, color) &&
-                            isValidValue((float)color.r(), bandPalette)) // need this?
+                            isValidValue_noLock((float)color.r(), bandPalette)) // need this?
                         {
                             pixel.r() = (float)color.r();
                         }
@@ -1859,7 +1868,7 @@ public:
                         {
                             color.a() = 0.0f;
                         }
-                        else if (!isValidValue((float)color.r(), bandPalette)) // is this applicable for palettized data?
+                        else if (!isValidValue_noLock((float)color.r(), bandPalette)) // is this applicable for palettized data?
                         {
                             color.a() = 0.0f;
                         }
@@ -1962,7 +1971,7 @@ public:
         if ( _options.interpolation() == INTERP_NEAREST )
         {
             rasterIO(band, GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
-            if (!isValidValue(result, band))
+            if (!isValidValue_noLock(result, band))
             {
                 return NO_DATA_VALUE;
             }
@@ -1984,7 +1993,7 @@ public:
             rasterIO(band, GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
             rasterIO(band, GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
 
-            if ((!isValidValue(urHeight, band)) || (!isValidValue(llHeight, band)) ||(!isValidValue(ulHeight, band)) || (!isValidValue(lrHeight, band)))
+            if ((!isValidValue_noLock(urHeight, band)) || (!isValidValue_noLock(llHeight, band)) ||(!isValidValue_noLock(ulHeight, band)) || (!isValidValue_noLock(lrHeight, band)))
             {
                 return NO_DATA_VALUE;
             }
@@ -2068,7 +2077,7 @@ public:
                 band = _warpedDS->GetRasterBand(1);
             }
 
-            if (_options.interpolation() == INTERP_NEAREST)
+            if (1)
             {
                 double colMin, colMax;
                 double rowMin, rowMax;
@@ -2100,7 +2109,7 @@ public:
                 int startOffset = iBufRowMin * tileSize + iBufColMin;
                 int lineSpace = tileSize * sizeof(float);
 
-                rasterIO(band, GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
+                rasterIO(band, GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace, INTERP_BILINEAR);
 
                 for (int r = 0, ir = tileSize - 1; r < tileSize; ++r, --ir)
                 {

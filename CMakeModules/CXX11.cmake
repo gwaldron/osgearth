@@ -32,22 +32,41 @@
 
 macro(check_for_cxx11_compiler _VAR)
     set(${_VAR})
-    if((MSVC AND NOT ${MSVC_VERSION} VERSION_LESS 1900) OR
-       (CMAKE_COMPILER_IS_GNUCXX AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.9.0) OR
-       (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4))
-        set(${_VAR} 1)
-
-        message(STATUS "Checking for C++11 compiler - available")
-
-        # enable C++11 compilation if available
+    
+    # Windows
+    if(MSVC AND NOT ${MSVC_VERSION} VERSION_LESS 1900)
         set(CMAKE_CXX_STANDARD 11)
-        add_definitions(-DOSGEARTH_CXX11)
+        set(${_VAR} 1) 
 
-        # is GCC < 5, use the old ABI for binary compatibility
-        if (CMAKE_COMPILER_IS_GNUCXX AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
-            add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+    # GCC/Linux
+    elseif(CMAKE_COMPILER_IS_GNUCXX)
+        # test for C++ > C++98
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
+        if(COMPILER_SUPPORTS_CXX11)
+            set(CMAKE_CXX_STANDARD 11)
+            set(${_VAR} 1)      
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+            option(BUILD_ENABLE_CXX11_ABI "Use the new C++-11 ABI, which is not backwards compatible." OFF)
+            if(NOT BUILD_ENABLE_CXX11_ABI)
+                add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+            endif()  
+        else()
+            check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+            if(COMPILER_SUPPORTS_CXX0X)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+            endif()
         endif()
+    
+    # Apple/CLang
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
+        set(CMAKE_CXX_STANDARD 11)
+        set(${_VAR} 1)
+    endif()
+    
+    if (${_VAR})
+        message(STATUS "C++11 compiler - available")
     else()
-        message(STATUS "Checking for C++11 compiler - unavailable")
+        message(STATUS "C++11 compiler - unavailable")
     endif()
 endmacro()

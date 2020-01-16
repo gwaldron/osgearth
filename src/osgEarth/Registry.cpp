@@ -68,7 +68,7 @@ _cacheDriver        ( "filesystem" ),
 _overrideCachePolicyInitialized( false ),
 _threadPoolSize(2u),
 _devicePixelRatio(1.0f),
-_maxVertsPerDrawable(65535)
+_maxVertsPerDrawable(USHRT_MAX)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();

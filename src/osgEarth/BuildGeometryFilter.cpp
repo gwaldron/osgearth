@@ -1009,8 +1009,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
     // The geode is going to contain all of our polygons now, so merge them into one.
     osgUtil::Optimizer optimizer;
     osgUtil::Optimizer::MergeGeometryVisitor mgv;
-    // We only want one Geometry, so don't limit the number of vertices.
-    mgv.setTargetMaximumNumberOfVertices(UINT_MAX);
+    mgv.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
     mgv.apply( *geode.get() );
 
     // and copy them into the output geometry.

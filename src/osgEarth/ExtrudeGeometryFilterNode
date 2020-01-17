@@ -11,7 +11,7 @@ namespace osg
     class Group;
 }
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
     class ExtrudeGeometryFilterNode : public osg::Object
     {
@@ -26,7 +26,7 @@ namespace osgEarth { namespace Util
         ExtrudeGeometryFilterNode(osg::Group* extrusionGroup, const osg::Matrixd& xform);
         ExtrudeGeometryFilterNode(const ExtrudeGeometryFilterNode & rhs, const osg::CopyOp& copyop);
 
-        META_Object(osgEarth::Features, ExtrudeGeometryFilterNode);
+        META_Object(osgEarth, ExtrudeGeometryFilterNode);
 
         const osg::Group * extrusionGroup() const { return _extrusionGroup.get(); }
 
@@ -50,4 +50,4 @@ namespace osgEarth { namespace Util
         osg::Matrixd _xform;
     };
 
-} }
+}

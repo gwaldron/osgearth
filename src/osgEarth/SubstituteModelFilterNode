@@ -6,7 +6,7 @@
 #include <osg/Object>
 #include <osg/Matrixd>
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
     class OSGEARTH_EXPORT SubstituteModelFilterNode : public osg::Object
     {
@@ -27,7 +27,7 @@ namespace osgEarth { namespace Util
 
         }
 
-        META_Object(osgEarth::Features, SubstituteModelFilterNode);
+        META_Object(osgEarth, SubstituteModelFilterNode);
 
 
         typedef std::list<ModelSymbol> ModelSymbolList;
@@ -50,4 +50,5 @@ namespace osgEarth { namespace Util
         bool _clustered;
         ModelSymbolList _modelSymbolList;
     };
-} }
+}
+

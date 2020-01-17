@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -38,6 +38,8 @@ struct OSGEARTHFEATURES_EXPORT OgrUtils
     static void populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints );
     
     static Symbology::Polygon* createPolygon( OGRGeometryH geomHandle );
+
+    static Symbology::MultiGeometry* createTIN(OGRGeometryH geomHandle);
        
     static Symbology::Geometry* createGeometry( OGRGeometryH geomHandle );
 
@@ -49,7 +51,11 @@ struct OSGEARTHFEATURES_EXPORT OgrUtils
 
     static Feature* createFeature( OGRFeatureH handle, const FeatureProfile* profile );
     
-    static AttributeType getAttributeType( OGRFieldType type );  
+    static AttributeType getAttributeType( OGRFieldType type );
+
+    static OGRwkbGeometryType getOGRGeometryType(const Geometry::Type& type);
+    
+    static OGRwkbGeometryType getOGRGeometryType(const Geometry* geometry);
 
 private:
     

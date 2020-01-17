@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,13 +18,8 @@
  */
 
 #include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/LatLongFormatter>
 #include <osgEarth/MapNode>
-#include <osgEarth/Terrain>
 #include <osgEarth/TerrainEngineNode>
-#include <osgViewer/View>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -86,11 +81,18 @@ MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNo
 {
     if ( _label.valid() )
     {
+        osg::Vec3d eye, center, up;
+        view->getCamera()->getViewMatrixAsLookAt(eye, center, up);
+        osg::Vec3d world;
+        mapCoords.toWorld(world);
+        double range = (eye-world).length();
+
         if ( _formatter )
         {
             _label->setText( Stringify()
                 <<  _formatter->format( mapCoords )
                 << ", " << mapCoords.z() 
+                << "; RNG:" << range
                 << "  |  "
                 << mapCoords.getSRS()->getName() );
         }
@@ -101,6 +103,7 @@ MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNo
                 << mapCoords.x()
                 << ", " << mapCoords.y()
                 << ", " << mapCoords.z()
+                << "; RNG:" << range
                 << "  |  "
                 << mapCoords.getSRS()->getName() );
         }

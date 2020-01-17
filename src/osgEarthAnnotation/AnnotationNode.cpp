@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,7 +28,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/Lighting>
+#include <osgEarth/GLUtils>
+#include <osgEarth/CullingUtils>
 
 #include <osg/PolygonOffset>
 #include <osg/Depth>
@@ -40,41 +41,43 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
+#define LC "[AnnotationNode] "
+
 //-------------------------------------------------------------------
 
 Style AnnotationNode::s_emptyStyle;
 
 //-------------------------------------------------------------------
 
-AnnotationNode::AnnotationNode() :
-_dynamic    ( false ),
-_depthAdj   ( false ),
-_priority   ( 0.0f )
+AnnotationNode::AnnotationNode()
 {
-    // always blend.
-    this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
-    // always draw after the terrain.
-    this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
-    
-    _horizonCuller = new HorizonCullCallback();
-    this->addCullCallback( _horizonCuller.get() );
-
-    _mapNodeRequired = true;
-    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    construct();
 }
 
-AnnotationNode::AnnotationNode(const Config& conf) :
-_dynamic    ( false ),
-_depthAdj   ( false ),
-_priority   ( 0.0f )
+AnnotationNode::AnnotationNode(const Config& conf, const osgDB::Options*)
 {
+    construct();
+
+    setName(conf.value("name"));
+}
+
+void
+AnnotationNode::construct()
+{
+    _dynamic = false;
+    _depthAdj = false;
+    _priority = false;
+
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+
     // always draw after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
+
+    _altCallback = new AltitudeCullCallback();
+    this->addCullCallback(_altCallback);
+
     _horizonCuller = new HorizonCullCallback();
     this->addCullCallback( _horizonCuller.get() );
-
-    this->setName( conf.value("name") );
 
     _mapNodeRequired = true;
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -113,16 +116,12 @@ AnnotationNode::traverse(osg::NodeVisitor& nv)
 }
 
 void
-AnnotationNode::setLightingIfNotSet( bool lighting )
+AnnotationNode::setDefaultLighting( bool lighting )
 {
-    osg::StateSet* ss = this->getOrCreateStateSet();
-
-    if ( ss->getMode(GL_LIGHTING) == osg::StateAttribute::INHERIT )
-    {
-        this->getOrCreateStateSet()->setMode(GL_LIGHTING,
-            lighting ? osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-                       osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-    }
+    GLUtils::setLighting(
+        getOrCreateStateSet(),
+        lighting ? osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+                   osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
 }
 
 void
@@ -138,6 +137,8 @@ AnnotationNode::setMapNode( MapNode* mapNode )
                 _horizonCuller->setHorizon( new Horizon(mapNode->getMapSRS()) );
             else
                 _horizonCuller->setEnabled( false );
+
+            static_cast<AltitudeCullCallback*>(_altCallback)->srs() = mapNode->getMapSRS();
         }
 
 		applyStyle( this->getStyle() );
@@ -214,12 +215,9 @@ AnnotationNode::applyRenderSymbology(const Style& style)
 
         if ( render->lighting().isSet() )
         {
-            getOrCreateStateSet()->setDefine(
-                OE_LIGHTING_DEFINE,
+            GLUtils::setLighting(
+                getOrCreateStateSet(),
                 (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
-            //getOrCreateStateSet()->setMode(
-            //    GL_LIGHTING,
-            //    (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
         if ( render->depthOffset().isSet() )
@@ -272,6 +270,17 @@ AnnotationNode::applyRenderSymbology(const Style& style)
 
             getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Depth(osg::Depth::LEQUAL, 0, 1, false));
+        }
+
+        if (render->maxAltitude().isSet())
+        {
+            AltitudeCullCallback* cc = static_cast<AltitudeCullCallback*>(_altCallback);
+            cc->maxAltitude() = render->maxAltitude()->as(Units::METERS);
+        }
+        else
+        {
+            AltitudeCullCallback* cc = static_cast<AltitudeCullCallback*>(_altCallback);
+            cc->maxAltitude().unset();
         }
     }
 }

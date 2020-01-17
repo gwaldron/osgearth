@@ -6,7 +6,10 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_order      0.5
 #pragma vp_define     MP_USE_BLENDING
 
-#pragma import_defines(OE_IS_PICK_CAMERA, OE_IS_DEPTH_CAMERA, OE_IS_SHADOW_CAMERA, OE_TERRAIN_CAST_SHADOWS)
+#pragma import_defines(OE_IS_PICK_CAMERA)
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_TERRAIN_CAST_SHADOWS)
 
 uniform vec4 oe_terrain_color;
 uniform sampler2D oe_layer_tex;

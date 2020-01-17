@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,8 +66,12 @@ namespace osgEarth
         optional<bool>                  _offset;
         optional<ElevationNoDataPolicy> _noDataPolicy;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationLayerOptions);
     
 
+namespace osgEarth
+{
     struct ElevationLayerCallback : public TerrainLayerCallback
     {
         //EMPTY
@@ -80,7 +84,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
     public:
-        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions);
+        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions, elevation);
 
         /**
          * Constructs a blank Elevation Layer;
@@ -138,6 +142,11 @@ namespace osgEarth
          * Whether this layer contains offsets instead of absolute heights
          */
         bool isOffset() const;
+
+    public: // override
+
+        virtual void setVisible(bool value);
+        virtual void setEnabled(bool value);
 
     protected: // Layer
 

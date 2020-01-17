@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,14 +27,16 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL(point, PointSymbol);
 PointSymbol::PointSymbol(const PointSymbol& rhs,const osg::CopyOp& copyop):
 Symbol(rhs, copyop),
 _fill(rhs._fill),
-_size(rhs._size)
+_size(rhs._size),
+_smooth(rhs._smooth)
 {
 }
 
 PointSymbol::PointSymbol( const Config& conf ) :
 Symbol( conf ),
 _fill ( Fill() ), 
-_size ( 1.0 )
+_size ( 1.0 ),
+_smooth( false )
 {
     mergeConfig(conf);
 }
@@ -44,16 +46,18 @@ PointSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "point";
-    conf.addObjIfSet( "fill", _fill );
-    conf.addIfSet( "size", _size );
+    conf.set( "fill", _fill );
+    conf.set( "size", _size );
+    conf.set( "smooth", _smooth );
     return conf;
 }
 
 void 
 PointSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet( "fill", _fill );
-    conf.getIfSet( "size", _size );
+    conf.get( "fill", _fill );
+    conf.get( "size", _size );
+    conf.get( "smooth", _smooth );
 }
 
 
@@ -71,6 +75,9 @@ PointSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "point-script") ) {
         style.getOrCreate<PointSymbol>()->script() = StringExpression(c.value());
+    }
+    else if (match(c.key(), "point-smooth")) {
+        style.getOrCreate<PointSymbol>()->smooth() = as<bool>(c.value(), false);
     }
 }
 

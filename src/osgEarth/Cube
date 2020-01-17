@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -121,9 +121,7 @@ namespace osgEarth
         /** dtor */
         virtual ~CubeSpatialReference();
 
-        virtual GeoLocator* createLocator(
-            double xmin, double ymin, double xmax, double ymax,
-            bool plate_carre =false) const;
+        virtual GeoLocator* createLocator(double xmin, double ymin, double xmax, double ymax) const;
 
         // CUBE is a projected coordinate system.
         virtual bool isGeographic() const { return false; }

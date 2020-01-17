@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -78,7 +78,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions);
+        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions, splat_imagery);
 
         //! Construct a splat layer with default configuration
         SplatLayer();
@@ -96,11 +96,6 @@ namespace osgEarth { namespace Splat
         Zones& zones() { return _zones; }
         const Zones& zones() const { return _zones; }
 
-    public: // Layer
-
-        //! Override
-        bool cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack& ssStack) const;
-
     protected:
 
         //! Override post-ctor init
@@ -112,6 +107,11 @@ namespace osgEarth { namespace Splat
         virtual void addedToMap(const Map* map);
         virtual void removedFromMap(const Map* map);
         virtual void setTerrainResources(TerrainResources* res);
+
+    public:
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
         virtual ~SplatLayer() { }
@@ -132,6 +132,16 @@ namespace osgEarth { namespace Splat
         bool _gpuNoise;
 
         void buildStateSets();
+
+        void aaa();
+
+        struct ZoneSelector : public Layer::TraversalCallback
+        {
+            SplatLayer* _layer;
+            ZoneSelector(SplatLayer* layer) : _layer(layer) { }
+            void operator()(osg::Node*, osg::NodeVisitor*) const;
+        };
+        friend struct ZoneSelector;
     };
 
 } } // namespace osgEarth::Splat

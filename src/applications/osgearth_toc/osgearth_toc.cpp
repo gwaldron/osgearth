@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,14 +20,16 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/ElevationPool>
+#include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/ViewFitter>
+#include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/AnnotationLayer>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -36,12 +38,12 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Annotation;
 
-void createControlPanel( osgViewer::View* );
+void createControlPanel(Container*);
 void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
-static Grid* s_masterGrid;
 static Grid* s_activeBox;
 static Grid* s_inactiveBox;
 static bool s_updateRequired = true;
@@ -127,6 +129,48 @@ struct DumpElevation : public osgGA::GUIEventHandler
     MapNode* _mapNode;
 };
 
+struct DumpLabel : public osgGA::GUIEventHandler
+{
+    DumpLabel(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c), _layer(0L) { }
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
+        {
+            osg::Vec3d world;
+            _mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world);
+
+            GeoPoint coords;
+            coords.fromWorld(s_activeMap->getSRS(), world);
+
+            if (!_layer)
+            {
+                _layer = new AnnotationLayer();
+                _layer->setName("User-created Labels");
+                _mapNode->getMap()->addLayer(_layer);
+            }
+
+            LabelNode* label = new LabelNode();
+            label->setText("Label");
+            label->setPosition(coords);
+
+            Style style;
+            TextSymbol* symbol = style.getOrCreate<TextSymbol>();
+            symbol->alignment() = symbol->ALIGN_CENTER_CENTER;
+            label->setStyle(style);
+
+            _layer->addChild(label);
+
+            osg::ref_ptr<XmlDocument> xml = new XmlDocument(label->getConfig());
+            xml->store(std::cout);
+        }
+        return false;
+    }
+    char _c;
+    MapNode* _mapNode;
+    AnnotationLayer* _layer;
+};
+
 //------------------------------------------------------------------------
 
 int
@@ -145,7 +189,11 @@ main( int argc, char** argv )
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     // Load an earth file 
-    osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
+    Container* uiRoot = new VBox();
+    uiRoot->setAbsorbEvents(false);
+    createControlPanel(uiRoot);
+
+    osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, uiRoot);
     osgEarth::MapNode* mapNode = osgEarth::MapNode::get(loaded);
     if ( !mapNode ) {
         OE_WARN << "No osgEarth MapNode found in the loaded file(s)." << std::endl;
@@ -156,21 +204,20 @@ main( int argc, char** argv )
     s_activeMap = mapNode->getMap();
     s_activeMap->addMapCallback( new MyMapListener() );
 
-    osg::Group* root = new osg::Group();
-
-    // install the control panel
-    createControlPanel( &viewer );
-    root->addChild( loaded );
+    //osg::Group* root = new osg::Group();
+    //root->addChild( loaded );
 
     // update the control panel with the two Maps:
     updateControlPanel();
 
-    viewer.setSceneData( root );
+    viewer.setSceneData( loaded );
 
     // install our control panel updater
     viewer.addUpdateOperation( new UpdateOperation() );
 
     viewer.addEventHandler(new DumpElevation(mapNode, 'E'));
+
+    viewer.addEventHandler(new DumpLabel(mapNode, 'L'));
 
     viewer.run();
 }
@@ -256,14 +303,41 @@ struct ZoomLayerHandler : public ControlEventHandler
         const GeoExtent& extent = _layer->getExtent();
         if (extent.isValid())
         {
-            ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
             std::vector<GeoPoint> points;
             points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
             points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+            
+            ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
             Viewpoint vp;
             if (fitter.createViewpoint(points, vp))
             {
                 s_manip->setViewpoint(vp, 2.0);
+            }
+        }
+        else if (_layer->getNode())
+        {
+            const osg::BoundingSphere& bs = _layer->getNode()->getBound();
+            if (bs.valid())
+            {
+                osg::Vec3d c = bs.center();
+                double r = bs.radius();
+                const SpatialReference* mapSRS = s_activeMap->getSRS();
+
+                std::vector<GeoPoint> points;
+                GeoPoint p;
+                p.fromWorld(mapSRS, osg::Vec3d(c.x()+r, c.y(), c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x()-r, c.y(), c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y()+r, c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y()-r, c.z())); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z()+r)); points.push_back(p);
+                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z()-r)); points.push_back(p);
+
+                ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
+                Viewpoint vp;
+                if (fitter.createViewpoint(points, vp))
+                {
+                    s_manip->setViewpoint(vp, 2.0);
+                }
             }
         }
     }
@@ -274,41 +348,25 @@ struct ZoomLayerHandler : public ControlEventHandler
 
 
 void
-createControlPanel( osgViewer::View* view )
+createControlPanel(Container* container)
 {
-    ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
-
-    s_masterGrid = new Grid();
-    s_masterGrid->setMargin( 5 );
-    s_masterGrid->setPadding( 5 );
-    s_masterGrid->setChildSpacing( 10 );
-    s_masterGrid->setChildVertAlign( Control::ALIGN_CENTER );
-    s_masterGrid->setAbsorbEvents( true );
-    s_masterGrid->setVertAlign( Control::ALIGN_TOP );
-
     //The Map layers
     s_activeBox = new Grid();
-    s_activeBox->setBackColor(0,0,0,0.5);
-    s_activeBox->setMargin( 10 );
+    s_activeBox->setBackColor(0,0,0,0.1);
     s_activeBox->setPadding( 10 );
     s_activeBox->setChildSpacing( 10 );
     s_activeBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_activeBox->setAbsorbEvents( true );
-    s_activeBox->setVertAlign( Control::ALIGN_TOP );
-    s_masterGrid->setControl( 0, 0, s_activeBox );
+    container->addControl(s_activeBox);
 
     //the removed layers
     s_inactiveBox = new Grid();
-    s_inactiveBox->setBackColor(0,0,0,0.5);
-    s_inactiveBox->setMargin( 10 );
+    s_inactiveBox->setBackColor(0,0,0,0.1);
     s_inactiveBox->setPadding( 10 );
     s_inactiveBox->setChildSpacing( 10 );
     s_inactiveBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_inactiveBox->setAbsorbEvents( true );
-    s_inactiveBox->setVertAlign( Control::ALIGN_TOP );
-    s_masterGrid->setControl( 0, 1, s_inactiveBox );
-
-    canvas->addControl( s_masterGrid );
+    container->addControl(s_inactiveBox);
 }
 
 void
@@ -341,10 +399,22 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // the layer name
-    LabelControl* name = new LabelControl( layer->getName() );
-    if (!layer->getEnabled())
-        name->setForeColor(osg::Vec4f(1,1,1,0.35));
-    grid->setControl( gridCol, gridRow, name );
+    if (layer->getEnabled() && (layer->getExtent().isValid() || layer->getNode()))
+    {
+        ButtonControl* name = new ButtonControl(layer->getName());
+        name->clearBackColor();
+        name->setPadding(4);
+        name->addEventHandler( new ZoomLayerHandler(layer) );
+        grid->setControl( gridCol, gridRow, name );
+    }
+    else
+    {
+        LabelControl* name = new LabelControl( layer->getName() );
+        name->setPadding(4);
+        if (!layer->getEnabled())
+            name->setForeColor(osg::Vec4f(1,1,1,0.35));
+        grid->setControl( gridCol, gridRow, name );
+    }
     gridCol++;
 
     // layer type
@@ -370,17 +440,6 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
         opacity->setHeight( 12 );
         opacity->addEventHandler( new LayerOpacityHandler(visibleLayer) );
         grid->setControl( gridCol, gridRow, opacity );
-    }
-    gridCol++;
-
-    // zoom button
-    if (layer->getExtent().isValid())
-    {
-        LabelControl* zoomButton = new LabelControl("GO", 14);
-        zoomButton->setBackColor( .4,.4,.4,1 );
-        zoomButton->setActiveColor( .8,0,0,1 );
-        zoomButton->addEventHandler( new ZoomLayerHandler(layer) );
-        grid->setControl( gridCol, gridRow, zoomButton );
     }
     gridCol++;
 
@@ -457,13 +516,14 @@ updateControlPanel()
 
     int row = 0;
 
-    LabelControl* activeLabel = new LabelControl( "Map Layers", 20, osg::Vec4f(1,1,0,1) );
+    LabelControl* activeLabel = new LabelControl( "Map Layers" );
+    activeLabel->setForeColor(osg::Vec4f(1,1,0,1));
     s_activeBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
-    MapFrame mapf( s_activeMap.get() );
+    LayerVector layers;
+    s_activeMap->getLayers(layers);
 
-    const LayerVector& layers = mapf.layers();
     for (int i = layers.size()-1; i >= 0; --i)
     {
         Layer* layer = layers[i].get();

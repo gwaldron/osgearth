@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -24,6 +24,7 @@
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shadowing>
+#include <osgEarth/ClampableNode>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
@@ -49,7 +50,6 @@ Config
 GroundCoverLayerOptions::getConfig() const
 {
     Config conf = PatchLayerOptions::getConfig();
-    conf.key() = "splat_groundcover";
     conf.set("land_cover_layer", _landCoverLayerName);
     conf.set("mask_layer", _maskLayerName);
     conf.set("lod", _lod);
@@ -62,17 +62,17 @@ GroundCoverLayerOptions::getConfig() const
             zones.add(zone);
     }
     if (!zones.empty())
-        conf.update(zones);
+        conf.set(zones);
     return conf;
 }
 
 void
 GroundCoverLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("land_cover_layer", _landCoverLayerName);
-    conf.getIfSet("mask_layer", _maskLayerName);
-    conf.getIfSet("lod", _lod);
-    conf.getIfSet("cast_shadows", _castShadows);
+    conf.get("land_cover_layer", _landCoverLayerName);
+    conf.get("mask_layer", _maskLayerName);
+    conf.get("lod", _lod);
+    conf.get("cast_shadows", _castShadows);
 
     const Config* zones = conf.child_ptr("zones");
     if (zones) {
@@ -85,39 +85,77 @@ GroundCoverLayerOptions::fromConfig(const Config& conf)
 
 //........................................................................
 
-namespace
+bool
+GroundCoverLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
 {
-    struct GroundCoverLayerAcceptor : public PatchLayer::AcceptCallback
+    // if this is a shadow camera and the layer is configured to cast shadows, accept it.
+    if (osgEarth::Shadowing::isShadowCamera(camera))
     {
-        GroundCoverLayer* _layer;
+        bool use = (_layer->options().castShadows() == true);
+        return use;
+    }
 
-        GroundCoverLayerAcceptor(GroundCoverLayer* layer) : _layer(layer) { }
+    // if this is a depth-pass camera (and not a shadow cam), reject it.
+    bool isDepthCamera = ClampableNode::isDepthCamera(camera);
+    if (isDepthCamera)
+        return false;
 
-        bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
+    // otherwise accept the layer.
+    return true;
+}
+
+bool
+GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
+{
+    return _layer->getLOD() == key.getLOD();
+}
+
+//........................................................................
+
+void
+GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) const
+{
+    if (nv->getVisitorType() == nv->CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+
+        // If we have zones, select the current one and apply its state set.
+        if (_layer->_zones.size() > 0)
         {
-            // if this is a shadow camera and the layer is configured to cast shadows, accept it.
-            if (osgEarth::Shadowing::isShadowCamera(camera))
+            int zoneIndex = 0;
+            osg::Vec3d vp = cv->getViewPoint();
+
+            for(int z=_layer->_zones.size()-1; z > 0 && zoneIndex == 0; --z)
             {
-                bool use = (_layer->options().castShadows() == true);
-                return use;
+                if ( _layer->_zones[z]->contains(vp) )
+                {
+                    zoneIndex = z;
+                }
             }
 
-            // if this is a depth-pass camera (and not a shadow cam), reject it.
-            unsigned clearMask = camera->getClearMask();
-            bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
-            if (isDepthCamera)
-                return false;
+            osg::StateSet* zoneStateSet = 0L;
+            GroundCover* gc = _layer->_zones[zoneIndex]->getGroundCover();
+            if (gc)
+            {
+                zoneStateSet = gc->getStateSet();
+            }
 
-            // otherwise accept the layer.
-            return true;
+            if (zoneStateSet == 0L)
+            {
+                OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
+            }
+            else
+            {            
+                cv->pushStateSet(zoneStateSet);
+                traverse(node, nv);
+                cv->popStateSet();
+            }
         }
-
-        bool acceptKey(const TileKey& key) const
-        {
-            return _layer->getLOD() == key.getLOD();
-        }
-
-    };
+    }
+    else
+    {
+        traverse(node, nv);
+    }
 }
 
 //........................................................................
@@ -153,7 +191,9 @@ GroundCoverLayer::init()
         _zones.push_back(zone.get());
     }
 
-    setAcceptCallback(new GroundCoverLayerAcceptor(this));
+    setAcceptCallback(new LayerAcceptor(this));
+
+    setCullCallback(new ZoneSelector(this));
 }
 
 const Status&
@@ -234,6 +274,8 @@ GroundCoverLayer::removedFromMap(const Map* map)
 void
 GroundCoverLayer::setTerrainResources(TerrainResources* res)
 {
+    PatchLayer::setTerrainResources(res);
+
     if (res)
     {
         if (_groundCoverTexBinding.valid() == false)
@@ -259,44 +301,31 @@ GroundCoverLayer::setTerrainResources(TerrainResources* res)
     }
 }
 
-bool
-GroundCoverLayer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack& stateSetStack) const
+namespace
 {
-    if (Layer::cull(cv, stateSetStack) == false)
-        return false;
-
-    // If we have zones, select the current one and apply its state set.
-    if (_zones.size() > 0)
+    // Returns true if any billboard in the data model uses a "top-down" image.
+    bool groundCoverModelUsesTopImages(const GroundCover* gc)
     {
-        int zoneIndex = 0;
-        osg::Vec3d vp = cv->getViewPoint();
-
-        for(int z=_zones.size()-1; z > 0 && zoneIndex == 0; --z)
+        for(int i=0; i<gc->getBiomes().size(); ++i)
         {
-            if ( _zones[z]->contains(vp) )
+            const GroundCoverBiome* biome = gc->getBiomes()[i].get();
+
+            for(int j=0; j<biome->getObjects().size(); ++j)
             {
-                zoneIndex = z;
+                const GroundCoverObject* object = biome->getObjects()[j];
+
+                if (object->getType() == GroundCoverObject::TYPE_BILLBOARD)
+                {
+                    const GroundCoverBillboard* bb = dynamic_cast<const GroundCoverBillboard*>(object);
+                    if (bb && bb->_topImage.valid())
+                    {
+                        return true;
+                    }
+                }
             }
         }
-
-        osg::StateSet* zoneStateSet = 0L;
-        GroundCover* gc = _zones[zoneIndex]->getGroundCover();
-        if (gc)
-        {
-            zoneStateSet = gc->getStateSet();
-        }
-
-        //osg::StateSet* zoneStateSet = _zones[zoneIndex]->getGroundCover()getStateSet();
-
-        if (zoneStateSet == 0L)
-        {
-            OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
-            exit(-1);
-        }
-        
-        stateSetStack.push_back(zoneStateSet);
+        return false;
     }
-    return true;
 }
 
 void
@@ -360,6 +389,7 @@ GroundCoverLayer::buildStateSets()
         new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
         osg::StateAttribute::OVERRIDE);
 
+    float maxRange = 0.0f;
 
     for (Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
     {
@@ -367,7 +397,7 @@ GroundCoverLayer::buildStateSets()
         GroundCover* groundCover = zone->getGroundCover();
         if (groundCover)
         {
-            if (!groundCover->getBiomes().empty() || groundCover->getTotalNumBillboards() > 0)
+            if (!groundCover->getBiomes().empty() || groundCover->getTotalNumObjects() > 0)
             {
                 osg::StateSet* zoneStateSet = groundCover->getOrCreateStateSet();
                             
@@ -391,6 +421,13 @@ GroundCoverLayer::buildStateSets()
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader.get());
 
+                // whether to support top-down image billboards. We disable it when not in use
+                // for performance reasons.
+                if (groundCoverModelUsesTopImages(groundCover))
+                {
+                    zoneStateSet->setDefine("OE_GROUNDCOVER_USE_TOP_BILLBOARDS");
+                }
+
                 OE_INFO << LC << "Established zone \"" << zone->getName() << "\" at LOD " << getLOD() << "\n";
 
                 osg::Texture* tex = groundCover->createTexture();
@@ -398,7 +435,10 @@ GroundCoverLayer::buildStateSets()
                 zoneStateSet->setTextureAttribute(_groundCoverTexBinding.unit(), tex);
                 zoneStateSet->addUniform(new osg::Uniform(GCTEX_SAMPLER, _groundCoverTexBinding.unit()));
 
-                OE_DEBUG << LC << "buildStateSets completed!\n";
+                if (groundCover->getMaxDistance() > maxRange)
+                {
+                    maxRange = groundCover->getMaxDistance();
+                }
             }
             else
             {
@@ -411,4 +451,37 @@ GroundCoverLayer::buildStateSets()
             OE_DEBUG << LC << "zone contains no ground cover information\n";
         }
     }
+
+    if (maxRange > 0.0f && !options().maxVisibleRange().isSet())
+    {
+        setMaxVisibleRange(maxRange);
+        OE_INFO << LC << "Max visible range set to " << maxRange << std::endl;
+    }
+}
+
+void
+GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
+{
+    for (Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
+    {
+        z->get()->resizeGLObjectBuffers(maxSize);
+    }
+
+    PatchLayer::resizeGLObjectBuffers(maxSize);
+}
+
+void
+GroundCoverLayer::releaseGLObjects(osg::State* state) const
+{
+    for (Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
+    {
+        z->get()->releaseGLObjects(state);
+    }
+
+    PatchLayer::releaseGLObjects(state);
+
+    // For some unknown reason, release doesn't work on the zone 
+    // texture def data (SplatTextureDef). So we have to recreate
+    // it here.
+    //const_cast<GroundCoverLayer*>(this)->buildStateSets();
 }

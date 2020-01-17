@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -551,13 +551,13 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
 
         // for a projected feature, we're done. For a geocentric one, transform the polytope
         // into world (ECEF) space.
-        if ( srs->isGeographic() && !srs->isPlateCarre() )
+        if ( srs->isGeographic() )
         {
             const osg::EllipsoidModel* e = srs->getEllipsoid();
 
             // add a bottom cap, unless the bounds are sufficiently large.
-            double minRad = std::min(e->getRadiusPolar(), e->getRadiusEquator());
-            double maxRad = std::max(e->getRadiusPolar(), e->getRadiusEquator());
+            double minRad = osg::minimum(e->getRadiusPolar(), e->getRadiusEquator());
+            double maxRad = osg::maximum(e->getRadiusPolar(), e->getRadiusEquator());
             double zeroOffset = bs.center().length();
             if ( zeroOffset > minRad * 0.1 )
             {

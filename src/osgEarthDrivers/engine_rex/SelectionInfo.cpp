@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -17,80 +17,148 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "SelectionInfo"
-#include "SurfaceNode"
-#include "RexTerrainEngineOptions"
-
-#include <osgEarth/Profile>
+#include <osgEarth/TileKey>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[SelectionInfo] "
 
-const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 0;
-const double   SelectionInfo::_fLodLowerBound   = 12.0;
-const double   SelectionInfo::_fMorphStartRatio = 0.66;
+const double SelectionInfo::_morphStartRatio = 0.66;
 
-unsigned SelectionInfo::getLODForMorphing(bool isProjected)
+const SelectionInfo::LOD&
+SelectionInfo::getLOD(unsigned lod) const
 {
-    return (isProjected) ? 0 : _uiLODForMorphingRoundEarth;
-}
+    static SelectionInfo::LOD s_dummy;
 
-VisParameters SelectionInfo::visParameters(unsigned lod) const
-{
-    if (lod-_uiFirstLOD>=_vecVisParams.size())
+    if (lod-_firstLOD >= _lods.size())
     {
         // note, this can happen if firstLOD() is set
         OE_DEBUG << LC <<"Index out of bounds"<<std::endl;
-        return VisParameters();
+        return s_dummy;
     }
-    return _vecVisParams[lod-_uiFirstLOD];
+    return _lods[lod-_firstLOD];
 }
 
-bool SelectionInfo::initialized(void) const
+void
+SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* profile, double mtrf, bool restrictPolarSubdivision)
 {
-    return _vecVisParams.size()>0;
-}
-
-void SelectionInfo::initialize(unsigned uiFirstLod, unsigned uiMaxLod, const Profile* profile, double mtrf)
-{
-    if (initialized())
+    if (getNumLODs() > 0)
     {
         OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;
         return;
     }
-    if (uiFirstLod>uiMaxLod)
+
+    if (firstLod > maxLod)
     {
         OE_INFO << LC <<"Error: Inconsistent First and Max LODs"<<std::endl;
         return;
     }
 
-    _uiFirstLOD = uiFirstLod;
+    _firstLOD = firstLod;
 
-    double fLodNear = 0;
-    float fRatio = 1.0;
+    unsigned numLods = maxLod + 1u;
 
-    _numLods = uiMaxLod+1u; // - uiFirstLod;
+    _lods.resize(numLods);
 
-    _vecVisParams.resize(_numLods);
+    OE_INFO << LC << "LOD Ranges:\n";
 
-    for (unsigned lod = 0; lod <= uiMaxLod; ++lod)
+    for (unsigned lod = 0; lod <= maxLod; ++lod)
     {
-        TileKey key(lod, 0, 0, profile);
+        unsigned tx, ty;
+        profile->getNumTiles(lod, tx, ty);
+        TileKey key(lod, tx/2, ty/2, profile);
         GeoExtent e = key.getExtent();
         GeoCircle c = e.computeBoundingGeoCircle();
-        double range = c.getRadius() * mtrf * 2.0;
+        double range = c.getRadius() * mtrf * 2.0 * (1.0/1.405);
+        _lods[lod]._visibilityRange = range;
+        _lods[lod]._minValidTY = 0;
+        _lods[lod]._maxValidTY = INT32_MAX;
 
-        _vecVisParams[lod]._visibilityRange = range;
-        _vecVisParams[lod]._visibilityRange2 = range*range;
+        //OE_INFO << LC << "  " << lod << " = " << range << std::endl;
     }
     
-    fLodNear = 0;
-    double fPrevPos = fLodNear;
-    for (int i=(int)(_numLods-1); i>=0; --i)
+    double metersPerEquatorialDegree = (profile->getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+
+    double prevPos = 0.0;
+
+    for (int lod=(int)(numLods-1); lod>=0; --lod)
     {
-        _vecVisParams[i]._fMorphEnd   = _vecVisParams[i]._visibilityRange;
-        _vecVisParams[i]._fMorphStart = fPrevPos + (_vecVisParams[i]._fMorphEnd - fPrevPos) * _fMorphStartRatio;
-        fPrevPos = _vecVisParams[i]._fMorphStart;
+        double span = _lods[lod]._visibilityRange - prevPos;
+
+        _lods[lod]._morphEnd   = _lods[lod]._visibilityRange;
+        _lods[lod]._morphStart = prevPos + span*_morphStartRatio;
+        //prevPos = _lods[i]._morphStart; // original value
+        prevPos = _lods[lod]._morphEnd;
+
+        // Calc the maximum valid TY (to avoid over-subdivision at the poles)
+        // In a geographic map, this will effectively limit the maximum LOD
+        // progressively starting at about +/- 72 degrees latitude.
+        unsigned startLOD = 6;
+        if (restrictPolarSubdivision && lod >= startLOD && profile->getSRS()->isGeographic())
+        {            
+            const double startAR = 0.1; // minimum allowable aspect ratio at startLOD
+            const double endAR = 0.4;   // minimum allowable aspect ratio at maxLOD
+            double lodT = (double)(lod-startLOD)/(double)(numLods-1);
+            double minAR = startAR + (endAR-startAR)*lodT;
+
+            unsigned tx, ty;
+            profile->getNumTiles(lod, tx, ty);
+            for(int y=ty/2; y>=0; --y)
+            {
+                TileKey k(lod, 0, y, profile);
+                const GeoExtent& e = k.getExtent();
+                double lat = 0.5*(e.yMax()+e.yMin());
+                double width = e.width() * metersPerEquatorialDegree * cos(osg::DegreesToRadians(lat));
+                double height = e.height() * metersPerEquatorialDegree;
+                if (width/height < minAR)
+                {
+                    _lods[lod]._minValidTY = osg::minimum(y+1, (int)(ty-1));
+                    _lods[lod]._maxValidTY = (ty-1)-_lods[lod]._minValidTY;
+                    OE_DEBUG << "LOD " << lod 
+                        << " TY=" << ty
+                        << " minAR=" << minAR
+                        << " minTY=" << _lods[lod]._minValidTY
+                        << " maxTY=" << _lods[lod]._maxValidTY
+                        << " (+/-" << lat << " deg)"
+                        << std::endl;
+                    break;
+                }
+            }
+        }
     }
+}
+
+void
+SelectionInfo::get(const TileKey& key, 
+                   float& out_range,
+                   float& out_startMorphRange,
+                   float& out_endMorphRange) const
+{
+    out_range = 0.0f;
+    out_startMorphRange = 0.0f;
+    out_endMorphRange = 0.0f;
+
+    if (key.getLOD() < _lods.size())
+    {
+        const LOD& lod = _lods[key.getLOD()];
+
+        if (key.getTileY() >= lod._minValidTY && key.getTileY() <= lod._maxValidTY)
+        {
+            out_range = lod._visibilityRange;
+            out_startMorphRange = lod._morphStart;
+            out_endMorphRange = lod._morphEnd;
+        }
+    }
+}
+
+float
+SelectionInfo::getRange(const TileKey& key) const
+{
+    const LOD& lod = _lods[key.getLOD()];
+    if (key.getTileY() >= lod._minValidTY && key.getTileY() <= lod._maxValidTY)
+    {
+        return lod._visibilityRange;
+    }
+    return 0.0f;
 }

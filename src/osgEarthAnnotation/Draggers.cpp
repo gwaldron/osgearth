@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/GeometryClamper>
 #include <osgEarth/IntersectionPicker>
+#include <osgEarth/GLUtils>
 
 #include <osg/AutoTransform>
 #include <osgViewer/View>
@@ -45,7 +46,7 @@ using namespace osgEarth::Annotation;
 /**********************************************************/
 
 Dragger::Dragger( MapNode* mapNode, int modKeyMask, const DragMode& defaultMode ):
-GeoPositionNode( mapNode ),
+GeoPositionNode(),
 _dragging(false),
 _hovered(false),
 _modKeyMask(modKeyMask),
@@ -55,12 +56,11 @@ _verticalMinimum(0.0)
 {    
     setNumChildrenRequiringEventTraversal( 1 );
 
-    //_clampCallback = new ClampDraggerCallback( this );
     _projector = new osgManipulator::LineProjector;
 
-    //setMapNode( mapNode );
-
     this->getOrCreateStateSet()->setRenderBinDetails(50, "DepthSortedBin");
+
+    setMapNode(mapNode);
 }
 
 Dragger::~Dragger()
@@ -371,7 +371,7 @@ _size( 5.0 )
     geode->addDrawable( _shapeDrawable );          
 
     geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    GLUtils::setLighting(geode->getOrCreateStateSet(), osg::StateAttribute::OFF);
 
     getPositionAttitudeTransform()->addChild( geode );
 

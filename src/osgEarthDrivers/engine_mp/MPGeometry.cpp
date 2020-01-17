@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -222,7 +222,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
 
     // activate the tile coordinate set - same for all layers
-    if ( renderColor )
+    if ( renderColor && _layers.size() > 0 )
     {
         state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
     }

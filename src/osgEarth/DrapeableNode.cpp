@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,11 +19,8 @@
 
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingCullSet>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/TerrainEngineNode>
 
 #define LC "[DrapeableNode] "
 
@@ -49,6 +46,7 @@ DrapeableNode::DrapeableNode(const DrapeableNode& rhs, const osg::CopyOp& copy) 
 osg::Group(rhs, copy)
 {
     _drapingEnabled = rhs._drapingEnabled;
+    _updateRequested = rhs._updateRequested;
 }
 
 void
@@ -105,9 +103,6 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
 #undef  LC
 #define LC "[DrapeableNode Serializer] "
 
-#include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
 namespace osgEarth { namespace Serializers { namespace DrapeableNode
 {

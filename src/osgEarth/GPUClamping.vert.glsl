@@ -4,7 +4,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_clamp_vertex
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
-#pragma import_defines(OE_CLAMP_HAS_ATTRIBUTES, OE_GPU_LINES)
+#pragma import_defines(OE_CLAMP_HAS_ATTRIBUTES)
+#pragma import_defines(OE_IS_GEOCENTRIC)
 #pragma include GPUClamping.vert.lib.glsl
 
 #ifdef OE_CLAMP_HAS_ATTRIBUTES
@@ -12,19 +13,10 @@ in vec4 oe_clamp_attrs;     // vertex attribute
 in float oe_clamp_height;   // vertex attribute
 #endif
 
-#ifdef OE_GPU_LINES
-in vec3 oe_GPULines_prev;
-in vec3 oe_GPULines_next;
-vec4 oe_GPULines_prevViewClamped;
-vec4 oe_GPULines_nextViewClamped;
-#endif
-
 out float oe_clamp_alpha;
 
-uniform bool oe_isGeocentric;
 uniform float oe_clamp_altitudeOffset;
 uniform float oe_clamp_horizonDistance2;
-
 
 void oe_clamp_clampViewSpaceVertex(inout vec4 vertexView)
 {
@@ -46,7 +38,7 @@ void oe_clamp_clampViewSpaceVertex(inout vec4 vertexView)
 #endif
 
     // clamp the point and remember it's depth:
-    vec4  clampedPoint;
+    vec4 clampedPoint;
     float depth;
     oe_getClampedViewVertex(pointToClamp, clampedPoint, depth);
 
@@ -82,22 +74,16 @@ void oe_clamp_clampViewSpaceVertex(inout vec4 vertexView)
 void oe_clamp_vertex(inout vec4 vertexView)
 {
     // check distance; alpha out if its beyone the horizon distance.
-    oe_clamp_alpha = oe_isGeocentric ? 
-        clamp(oe_clamp_horizonDistance2 - (vertexView.z*vertexView.z), 0.0, 1.0) :
-        1.0;
+#ifdef OE_IS_GEOCENTRIC
+    oe_clamp_alpha = clamp(oe_clamp_horizonDistance2 - (vertexView.z*vertexView.z), 0.0, 1.0);
+#else
+    oe_clamp_alpha = 1.0;
+#endif
 
     // if visible, calculate clamping.
     // note: no branch divergence in the vertex shader
     if ( oe_clamp_alpha > 0.0 )
     {
         oe_clamp_clampViewSpaceVertex(vertexView);
-
-#ifdef OE_GPU_LINES
-        oe_GPULines_prevViewClamped = gl_ModelViewMatrix * vec4(oe_GPULines_prev, 1.0);
-        oe_clamp_clampViewSpaceVertex(oe_GPULines_prevViewClamped);
-
-        oe_GPULines_nextViewClamped = gl_ModelViewMatrix * vec4(oe_GPULines_next, 1.0);
-        oe_clamp_clampViewSpaceVertex(oe_GPULines_nextViewClamped);
-#endif
     }
 }

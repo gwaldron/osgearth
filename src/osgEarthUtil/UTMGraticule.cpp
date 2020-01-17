@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,19 +22,10 @@
 #include <osgEarthFeatures/TextSymbolizer>
 
 #include <osgEarth/Registry>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/GLUtils>
+#include <osgEarth/Text>
 
-#include <OpenThreads/Mutex>
-#include <OpenThreads/ScopedLock>
-#include <osg/PagedLOD>
-#include <osg/Depth>
-#include <osg/Program>
-#include <osg/ClipNode>
-#include <osg/ClipPlane>
-#include <osgDB/FileNameUtils>
 
 #define LC "[UTMGraticule] "
 
@@ -42,6 +33,11 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+
+#ifndef GL_CLIP_DISTANCE0
+#define GL_CLIP_DISTANCE0 0x3000
+#endif
+
 
 REGISTER_OSGEARTH_LAYER(utm_graticule, UTMGraticule);
 
@@ -55,7 +51,6 @@ UTMData::rebuild(const Profile* profile)
     static std::string s_gzdRows( "CDEFGHJKLMNPQRSTUVWX" );
     const SpatialReference* geosrs = profile->getSRS()->getGeographicSRS();
 
-    // build the lateral zones:
     for( unsigned zone = 0; zone < 60; ++zone )
     {
         for( unsigned row = 0; row < s_gzdRows.size(); ++row )
@@ -165,9 +160,12 @@ UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const St
 
         TextSymbolizer ts(textSym.get());
         
-        osg::Geode* textGeode = new osg::Geode();        
-        osg::Drawable* d = ts.create(name);
-        d->getOrCreateStateSet()->setRenderBinToInherit();
+        osg::Geode* textGeode = new osg::Geode(); 
+        osgText::Text* d = new osgEarth::Text();
+        d->setText(name);
+        ts.apply(d);
+        //osg::Drawable* d = ts.create(name);
+        //d->getOrCreateStateSet()->setRenderBinToInherit();
         textGeode->addDrawable(d);
         Registry::shaderGenerator().run(textGeode, Registry::stateSetCache());
 
@@ -220,6 +218,17 @@ UTMGraticule::init()
 
     // force it to render after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
+
+    _root = new osg::Group();
+
+    // install the range callback for clip plane activation
+    _root->addCullCallback( new RangeUniformCullCallback() );
+
+    if (getEnabled() == true)
+    {
+        rebuild();
+    }
+
 }
 
 void
@@ -236,18 +245,8 @@ UTMGraticule::removedFromMap(const Map* map)
 }
 
 osg::Node*
-UTMGraticule::getOrCreateNode()
+UTMGraticule::getNode() const
 {
-    if (_root.valid() == false)
-    {
-        _root = new osg::Group();
-
-        // install the range callback for clip plane activation
-        _root->addCullCallback( new RangeUniformCullCallback() );
-
-        rebuild();
-    }
-
     return _root.get();
 }
 
@@ -285,8 +284,9 @@ UTMGraticule::rebuild()
 
     //todo: do this right..
     osg::StateSet* set = this->getOrCreateStateSet();
-    set->setMode( GL_LIGHTING, 0 );
+    GLUtils::setLighting(set, 0);
     set->setMode( GL_BLEND, 1 );
+    set->setMode( GL_CLIP_DISTANCE0, 1 );
 
     // set up default options if the caller did not supply them
     if ( !options().gzdStyle().isSet() )
@@ -303,22 +303,6 @@ UTMGraticule::rebuild()
         text->halo()->color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
-    
-    // rebuild the graph:
-    osg::Group* top = _root.get();
-
-    // Horizon clipping plane.
-    osg::ClipPlane* cp = _clipPlane.get();
-    if ( cp == 0L )
-    {
-        osg::ClipNode* clipNode = new osg::ClipNode();
-        osgEarth::Registry::shaderGenerator().run( clipNode );
-        cp = new osg::ClipPlane( 0 );
-        clipNode->addClipPlane( cp );
-        _root->addChild(clipNode);
-        top = clipNode;
-    }
-    top->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
     
     // initialize the UTM sector tables for this profile.
     _utmData.rebuild(_profile.get());

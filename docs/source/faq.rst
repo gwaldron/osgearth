@@ -18,17 +18,23 @@ How do I place a 3D model on the map?
 .....................................
 
     The ``osgEarth::GeoTransform`` class inherits from ``osg::Transform``
-    and will convert map coordinates into OSG world coordinates for you::
+    and will convert map coordinates into OSG world coordinates for you.
+    Place an object at a geospatial position like this::
 
         GeoTransform* xform = new GeoTransform();
-        ...
-        xform->setTerrain( mapNode->getTerrain() );
-        ...
+        GeoPoint point(srs, -121.0, 34.0, 1000.0);
+        xform->setPosition(point);
+
+    If you want your object to automatically clamp to the terrain surface,
+    assign a terrain and leave off the altitude::
+
+        GeoTransform* xform = new GeoTransform();
+        xform->setTerrain(mapNode->getTerrain());
         GeoPoint point(srs, -121.0, 34.0);
         xform->setPosition(point);
 
 
-I added a node, but it has no texture/lighting/etc. in osgEarth. Why?
+I loaded a model, but it has no texture/lighting/etc. in osgEarth. Why?
 .....................................................................
 
     Everything under an osgEarth scene graph is rendered with shaders.
@@ -36,7 +42,7 @@ I added a node, but it has no texture/lighting/etc. in osgEarth. Why?
     need to create shader components in order for them to render properly.
 
     osgEarth has a built-in shader generator for this purpose. Run the
-    shader generator on your node like so:
+    shader generator on your node like so::
 
         osgEarth::Registry::shaderGenerator().run( myNode );
 
@@ -45,87 +51,40 @@ I added a node, but it has no texture/lighting/etc. in osgEarth. Why?
     like sky lighting.
 
 
-How do make the terrain transparent?
-....................................
+Lines or Annotations (FeatureNode, etc.) are not rendering. Why?
+................................................................
 
-    By default, the globe will be opaque white when there are no image layers, or when all the image
-    layers have their opacities set to zero. To make the underlying globe transparent, set the 
-    base color of the terrain to a transparent color like so::
+    Lines render using a shader that requires some initial state to be set.
+    You can apply this state to your top-level camera (or anywhere else 
+    above the geometry) like so::
 
-        <map>
-            <options>
-                <terrain color="#ffffff00" ...
-
-    In code, this option is found in the ``MPTerrainEngineOptions`` class::
-    
-        #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
-        using namespace osgEarth::Drivers::MPTerrainEngine;
+        #include <osgEarth/GLUtils>
         ...
-        MPTerrainEngineOptions options;
-        options.color() = osg::Vec4(1,1,1,0);
+        GLUtils::setGlobalDefaults(camera->getOrCreateStateSet());
 
+    For Annotations (FeatureNodes, PlaceNodes, etc.) best practice is to place
+    an Annotation node as a descendant of the MapNode in your scene graph.
+    You can also add them to an AnnotationLayer and add that layer to the Map.
 
-How do I set the resolution of terrain tiles?
-.............................................
+    Annotations need access to the MapNode in order to render properly. If you 
+    cannot place them under the MapNode, you will have to manually install a few
+    things to make them work::
 
-    Each tile is a grid of vertices. The number of vertices can vary depending on source data
-    and settings. By default (when you have no elevation data) it is an 17x17 grid, tessellated
-    into triangles.
-    
-    You can expressly set the terrain's tile size by using the Map options.
-    osgEarth will then resample all elevation data to the size you specify::
+        #include <osgEarth/CullingUtils>
+        #include <osgEarth/GLUtils>
+        ...
 
-        <map>
-            <options>
-                <terrain>
-                    <tile_size>65</tile_size> 
-                    ...
+        // Manully assign the MapNode to your annotation
+        annotationNode->setMapNode(mapNode);
 
+        // In some group above the annotation, install this callback
+        group->addCullCallback(new InstallViewportSizeUniform());
 
-----
+        // In some group above the annotation, set the GL defaults
+        GLUtils::setGlobalDefaults(group->getOrCreateStateSet());
 
-Other Terrain Formats
----------------------
-
-Does osgEarth work with VirtualPlanetBuilder?
-.............................................
-
-	VirtualPlanetBuilder_ (VPB) is a command-line terrain generation tool. Before osgEarth
-	came along, VPB	was probably the most-used open source tool for building terrains for
-	OSG appliations. We	mention is here because many people ask questions about loading 
-	VPB models or transitioning from VPB to osgEarth.
-	
-	osgEarth differs from VPB in that:
-	
-	* VPB builds static terrain models and saves them to disk. osgEarth generates terrain on
-	  demand as your application runs; you do not (and cannot) save a model to disk.
-	* Changing a VPB terrain generally requires that you rebuild the model. osgEarth does not
-	  require a preprocessing step since it builds the terrain at run time.
-	* osgEarth and VPB both use *GDAL* to read many types of imagery and elevation data from
-	  the local file system. osgEarth also supports network-based data sources through its
-	  plug-in framework.
-
-	osgEarth has a *VPB driver* for "scraping" elevation and imagery tiles from a VPB model.
-    Confiugration of this driver is quite tricky and requires you to understand the details
-    of how VPB models are organized. You're on your own.
-	
-	**Please Note** that this driver only exists as a **last resort** for people that have a VPB
-	model but no longer have access to the source data from which it was built. If at all
-	possible you should feed your source data directly into osgEarth instead of using the VPB
-	driver.
-
-
-Can osgEarth load TerraPage or MetaFlight?
-..........................................
-
-	osgEarth cannot load TerraPage (TXP) or MetaFlight. However, osgEarth does have a
-	"bring your own terrain" plugin that allows you to load an external model and use it as your
-	terrain. The caveat is that since osgEarth doesn't know anything about your terrain model, you
-	will not be able to use some of the features of osgEarth (like being able to add or remove layers).
-	
-	For usage formation, please refer to the ``byo.earth`` example in the repo.
-
-.. _VirtualPlanetBuilder:	http://www.openscenegraph.com/index.php/documentation/tools/virtual-planet-builder
+    Again: MapNode does all this automatically so this is only necessary if you do
+    not place your annotations as descendants of the MapNode.
 
 
 ----

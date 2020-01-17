@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/FeatureCursor>
 
 #include <osgEarth/Registry>
+#include <osgEarth/Progress>
 
 #include <osgDB/WriteFile>
 #include <osg/Notify>
@@ -45,16 +46,16 @@ FeatureTileSourceOptions::getConfig() const
 {
     Config conf = TileSourceOptions::getConfig();
 
-    conf.setObj( "features", _featureOptions );
-    conf.setObj( "styles", _styles );
+    conf.set( "features", _featureOptions );
+    conf.set( "styles", _styles );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
-            conf.update( "geometry_type", "line" );
+            conf.set( "geometry_type", "line" );
         else if ( _geomTypeOverride == Geometry::TYPE_POINTSET )
-            conf.update( "geometry_type", "point" );
+            conf.set( "geometry_type", "point" );
         else if ( _geomTypeOverride == Geometry::TYPE_POLYGON )
-            conf.update( "geometry_type", "polygon" );
+            conf.set( "geometry_type", "polygon" );
     }
 
     return conf;
@@ -70,9 +71,9 @@ FeatureTileSourceOptions::mergeConfig( const Config& conf )
 void
 FeatureTileSourceOptions::fromConfig( const Config& conf )
 {
-    conf.getObjIfSet( "features", _featureOptions );
+    conf.get( "features", _featureOptions );
 
-    conf.getObjIfSet( "styles", _styles );
+    conf.get( "styles", _styles );
     
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -188,7 +189,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
     {
 
         // Each feature has its own embedded style data, so use that:
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(defaultQuery);
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(defaultQuery, progress);
         while( cursor.valid() && cursor->hasMore() )
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -224,7 +225,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                     StringExpression styleExprCopy(  sel.styleExpression().get() );
 
                     FeatureList features;
-                    getFeatures(defaultQuery, key.getExtent(), features);
+                    getFeatures(defaultQuery, key.getExtent(), features, progress);
                     if (!features.empty())
                     {
                         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
@@ -279,19 +280,19 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                     const Style* style = styles->getStyle( sel.getSelectedStyleName() );
                     Query query = sel.query().get();
                     query.tileKey() = key;
-                    queryAndRenderFeaturesForStyle( *style, query, buildData.get(), key.getExtent(), image.get() );
+                    queryAndRenderFeaturesForStyle( *style, query, buildData.get(), key.getExtent(), image.get(), progress);
                 }
             }
         }
         else
         {
             const Style* style = styles->getDefaultStyle();
-            queryAndRenderFeaturesForStyle( *style, defaultQuery, buildData.get(), key.getExtent(), image.get() );
+            queryAndRenderFeaturesForStyle( *style, defaultQuery, buildData.get(), key.getExtent(), image.get(), progress);
         }
     }
     else
     {
-        queryAndRenderFeaturesForStyle( Style(), defaultQuery, buildData.get(), key.getExtent(), image.get() );
+        queryAndRenderFeaturesForStyle( Style(), defaultQuery, buildData.get(), key.getExtent(), image.get(), progress);
     }
 
     // final tile processing after all styles are done
@@ -306,11 +307,16 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
                                                   const Query&     query,
                                                   osg::Referenced* data,
                                                   const GeoExtent& imageExtent,
-                                                  osg::Image*      out_image)
+                                                  osg::Image*      out_image,
+                                                  ProgressCallback* progress)
 {   
     // Get the features
     FeatureList features;
-    getFeatures(query, imageExtent, features );
+    getFeatures(query, imageExtent, features, progress);
+
+    if (progress && progress->isCanceled())
+        return false;
+
     if (!features.empty())
     {
         // Render them.
@@ -320,7 +326,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
 }
 
 void
-FeatureTileSource::getFeatures(const Query& query, const GeoExtent& imageExtent, FeatureList& features)
+FeatureTileSource::getFeatures(const Query& query, const GeoExtent& imageExtent, FeatureList& features, ProgressCallback* progress)
 {
     // first we need the overall extent of the layer:
     const GeoExtent& featuresExtent = getFeatureSource()->getFeatureProfile()->getExtent();
@@ -344,7 +350,7 @@ FeatureTileSource::getFeatures(const Query& query, const GeoExtent& imageExtent,
         while (features.empty())
         {
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( localQuery );
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(localQuery, progress);
 
             while( cursor.valid() && cursor->hasMore() )
             {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -56,13 +56,6 @@ namespace osgEarth
         const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
 
         /**
-         * Whether the map should be run exclusively off of the cache.
-         * Default = false
-         */
-        optional<bool>& cacheOnly() { return _cacheOnly; }
-        const optional<bool>& cacheOnly() const { return _cacheOnly; }
-
-        /**
          * Whether to explicity enable or disable GL lighting on the map node.
          */
         optional<bool>& enableLighting() { return _enableLighting; }
@@ -105,6 +98,11 @@ namespace osgEarth
         optional<float>& overlayResolutionRatio() { return _overlayResolutionRatio; }
         const optional<float>& overlayResolutionRatio() const { return _overlayResolutionRatio; }
 
+        //! Whether to use the cascaded draping module, which is more accurate but
+        //! uses more system resources.
+        optional<bool>& useCascadeDraping() { return _useCascadeDraping; }
+        const optional<bool>& useCascadeDraping() const { return _useCascadeDraping; }
+
         /**
          * Options to conigure the terrain engine (the component that renders the
          * terrain surface).
@@ -120,7 +118,6 @@ namespace osgEarth
 
     private:            
         optional<ProxySettings> _proxySettings;
-        optional<bool> _cacheOnly;
         optional<bool> _enableLighting;
 
         optional<bool>     _overlayVertexWarping;
@@ -129,6 +126,7 @@ namespace osgEarth
         optional<bool>     _overlayMipMapping;
         optional<bool>     _overlayAttachStencil;
         optional<float>    _overlayResolutionRatio;
+        optional<bool> _useCascadeDraping;
 
         optional<Config> _terrainOptionsConf;
         TerrainOptions* _terrainOptions;

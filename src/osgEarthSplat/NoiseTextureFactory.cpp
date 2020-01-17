@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,7 +34,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
     chans = osg::clampBetween(chans, 1u, 4u);
 
-    GLenum type = chans >= 2u ? GL_RGBA : GL_LUMINANCE;
+    GLenum type = chans >= 2u ? GL_RGBA : GL_RED;
     
     osg::Image* image = new osg::Image();
     image->allocateImage(dim, dim, 1, type, GL_UNSIGNED_BYTE);

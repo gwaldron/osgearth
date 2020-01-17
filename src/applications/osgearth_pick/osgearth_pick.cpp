@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/GLUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
@@ -196,7 +197,7 @@ setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
     rttTex->setUnRefImageDataAfterApply( false );
     rttTex->setResizeNonPowerOfTwoHint(false);
 
-    stateSet->setMode(GL_LIGHTING, 0);
+    GLUtils::setLighting(stateSet, 0);
     stateSet->setMode(GL_CULL_FACE, 0);
     stateSet->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), 1);
     

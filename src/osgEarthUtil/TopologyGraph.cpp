@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,18 +23,9 @@
 
 using namespace osgEarth::Util;
 
-#include <algorithm>
-#include <osg/Geode>
-#include <osg/Geometry>
 #include <osg/Point>
 #include <osg/TriangleIndexFunctor>
-#include <osg/ComputeBoundsVisitor>
-#include <osgEarthSymbology/Geometry>
-#include <osgEarth/SpatialReference>
 #include <osgDB/WriteFile>
-#include <map>
-#include <vector>
-#include <set>
 
 #define LC "[TopologyGraph] "
 

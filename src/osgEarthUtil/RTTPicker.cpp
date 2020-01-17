@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,14 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/RTTPicker>
-#include <osgEarth/VirtualProgram>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderLoader>
-#include <osgEarth/ObjectIndex>
-#include <osgEarth/Utils>
+#include <osgEarth/GLUtils>
 
-#include <osgDB/WriteFile>
 #include <osg/BlendFunc>
 
 using namespace osgEarth;
@@ -55,54 +52,6 @@ namespace
             }
         }
     };
-
-    // SHADERS for the RTT pick camera.
-
-    const char* pickVertexEncode =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "#pragma vp_entryPoint oe_pick_encodeObjectID\n"
-        "#pragma vp_location   vertex_clip\n"
-        
-        "uint oe_index_objectid; \n"                        // Vertex stage global containing the Object ID; set in ObjectIndex shader.
-
-        "flat out vec4 oe_pick_encoded_objectid; \n"        // output encoded oid to fragment shader
-        "flat out int oe_pick_color_contains_objectid; \n"  // whether color already contains oid (written by another RTT camera)
-
-        "void oe_pick_encodeObjectID(inout vec4 vertex) \n"
-        "{ \n"
-        "    oe_pick_color_contains_objectid = (oe_index_objectid == 1u) ? 1 : 0; \n"
-        "    if ( oe_pick_color_contains_objectid == 0 ) \n"
-        "    { \n"
-        "        float b0 = float((oe_index_objectid & 0xff000000u) >> 24u); \n"
-        "        float b1 = float((oe_index_objectid & 0x00ff0000u) >> 16u); \n"
-        "        float b2 = float((oe_index_objectid & 0x0000ff00u) >> 8u ); \n"
-        "        float b3 = float((oe_index_objectid & 0x000000ffu)       ); \n"
-        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) / 255.0; \n"
-        "    } \n"
-        "} \n";
-
-    const char* pickFragment =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "#pragma vp_entryPoint oe_pick_renderEncodedObjectID\n"
-        "#pragma vp_location   fragment_output\n"
-        "#pragma vp_order      last\n"
-
-        "flat in vec4 oe_pick_encoded_objectid; \n"
-        "flat in int oe_pick_color_contains_objectid; \n"
-        
-        "out vec4 fragColor; \n"
-
-        "void oe_pick_renderEncodedObjectID(inout vec4 color) \n"
-        "{ \n"
-        "    if ( oe_pick_color_contains_objectid == 1 ) \n"
-        "        fragColor = color; \n"
-        "    else \n"
-        "        fragColor = oe_pick_encoded_objectid; \n"
-        "} \n";
 }
 
 VirtualProgram* 
@@ -112,10 +61,8 @@ RTTPicker::createRTTProgram()
     vp->setName( "osgEarth::RTTPicker" );
 
     // Install RTT picker shaders:
-    ShaderPackage pickShaders;
-    pickShaders.add( "RTTPicker.vert.glsl", pickVertexEncode );
-    pickShaders.add( "RTTPicker.frag.glsl", pickFragment );
-    pickShaders.loadAll( vp );
+    Shaders shaders;
+    shaders.load(vp, shaders.RTTPicker);
 
     // Install shaders and bindings from the ObjectIndex:
     Registry::objectIndex()->loadShaders( vp );
@@ -129,13 +76,13 @@ RTTPicker::RTTPicker(int cameraSize)
     _group = new osg::Group();
 
     // Size of the RTT camera image
-    _rttSize = std::max(cameraSize, 4);    
+    _rttSize = osg::maximum(cameraSize, 4);    
 
     // pixels around the click to test
     _buffer = 2;
     
     // Cull mask for RTT cameras
-    _cullMask = ~0;
+    _cullMask = ~0u;
 }
 
 RTTPicker::~RTTPicker()
@@ -226,6 +173,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
 
     c._image = new osg::Image();
     c._image->allocateImage(_rttSize, _rttSize, 1, GL_RGBA, GL_UNSIGNED_BYTE);    
+    memset(c._image->data(), 0, _rttSize * _rttSize * 4);
     
     // Make an RTT camera and bind it to our image.
     // Note: don't use RF_INHERIT_VIEWPOINT because it's unnecessary and
@@ -254,7 +202,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     osg::StateAttribute::GLModeValue disable = 
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
-    rttSS->setMode(GL_LIGHTING,  disable );
+    GLUtils::setLighting(rttSS, disable);
     rttSS->setMode(GL_CULL_FACE, disable );
     rttSS->setMode(GL_ALPHA_TEST, disable );
 
@@ -355,7 +303,7 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     float v = (mouseY - (float)vp->y())/(float)vp->height();
 
     // check the bounds:
-    if ( u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f )
+    if ( u < 0.0f || u >= 1.0f || v < 0.0f || v >= 1.0f )
         return false;
 
     // install the RTT pick camera under this view's camera if it's not already:
@@ -376,7 +324,7 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     pick._context->_numPicks++;
     if (pick._context->_numPicks == 1)
     {
-        pick._context->_pickCamera->setNodeMask(~0);
+        pick._context->_pickCamera->setNodeMask(~0u);
     }
     
     return true;
@@ -443,16 +391,24 @@ namespace
         bool next()
         {
             // first time, just use the start point
-            if ( _count++ == 0 )
-                return true;
+            if (_count == 0)
+            {
+                if (_offsetX < 0 || _offsetX >= _w || _offsetY < 0 || _offsetY >= _h)
+                    return false;
+                else
+                {
+                    _count++;
+                    return true;
+                }
+            }
 
             // spiral until we get to the next valid in-bounds pixel:
             do {
                 switch(_leg) {
-                case 0: ++_x; if (  _x == _ring ) ++_leg; break;
-                case 1: ++_y; if (  _y == _ring ) ++_leg; break;
-                case 2: --_x; if ( -_x == _ring ) ++_leg; break;
-                case 3: --_y; if ( -_y == _ring ) { _leg = 0; ++_ring; } break;
+                case 0: ++_x; if (  _x == (int)_ring ) ++_leg; break;
+                case 1: ++_y; if (  _y == (int)_ring ) ++_leg; break;
+                case 2: --_x; if ( -_x == (int)_ring ) ++_leg; break;
+                case 3: --_y; if ( -_y == (int)_ring ) { _leg = 0; ++_ring; } break;
                 }
             }
             while(_ring <= _maxRing && (_x+_offsetX < 0 || _x+_offsetX >= _w || _y+_offsetY < 0 || _y+_offsetY >= _h));
@@ -479,7 +435,7 @@ RTTPicker::checkForPickResult(Pick& pick, unsigned frameNumber)
 
     bool hit = false;
     osg::Vec4f value;
-    SpiralIterator iter(image->s(), image->t(), std::max(_buffer,1), pick._u, pick._v);
+    SpiralIterator iter(image->s(), image->t(), osg::maximum(_buffer,1), pick._u, pick._v);
     while (iter.next() && (hit == false))
     {
         value = read(iter.s(), iter.t());

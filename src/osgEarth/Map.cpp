@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,15 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Registry>
-#include <osgEarth/TileSource>
-#include <osgEarth/HeightFieldUtils>
-#include <osgEarth/URI>
-#include <osgEarth/ElevationPool>
 #include <osgEarth/Utils>
-#include <iterator>
 
 using namespace osgEarth;
 
@@ -33,12 +27,12 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-Map::ElevationLayerCB::ElevationLayerCB(Map* map) : _map(map) { }
+Map::VisibleLayerCB::VisibleLayerCB(Map* map) : _map(map) { }
 
-void Map::ElevationLayerCB::onVisibleChanged(VisibleLayer* layer) {
+void Map::VisibleLayerCB::onVisibleChanged(VisibleLayer* layer) {
     osg::ref_ptr<Map> map;
     if ( _map.lock(map) )
-        _map->notifyElevationLayerVisibleChanged(layer);
+        _map->notifyLayerVisibleChanged(layer);
 }
 
 Map::LayerCB::LayerCB(Map* map) : _map(map) { }
@@ -121,9 +115,8 @@ Map::ctor()
     // encode this map in the read options.
     OptionsData<const Map>::set(_readOptions.get(), "osgEarth.Map", this);
 
-    // set up a callback that the Map will use to detect Elevation Layer
-    // visibility changes
-    _elevationLayerCB = new ElevationLayerCB(this);
+    // set up a callback that the Map will use to detect Layer visibility changes
+    _visibleLayerCB = new VisibleLayerCB(this);
 
     // create a callback that the Map will use to detect setEnabled calls
     _layerCB = new LayerCB(this);
@@ -145,7 +138,7 @@ Map::getElevationPool() const
 }
 
 void
-Map::notifyElevationLayerVisibleChanged(VisibleLayer* layer)
+Map::notifyLayerVisibleChanged(VisibleLayer* layer)
 {
     // bump the revision safely:
     Revision newRevision;
@@ -154,11 +147,15 @@ Map::notifyElevationLayerVisibleChanged(VisibleLayer* layer)
         newRevision = ++_dataModelRevision;
     }
 
-    // reinitialize the elevation pool:
-    _elevationPool->clear();
+    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+    if (elevationLayer)
+    {
+        // reinitialize the elevation pool:
+        _elevationPool->clear();
+    }
 
     MapModelChange change(
-        MapModelChange::TOGGLE_ELEVATION_LAYER,
+        MapModelChange::TOGGLE_LAYER,
         newRevision,
         layer);
 
@@ -260,6 +257,29 @@ Map::setCache(Cache* cache)
         cacheSettings->setCache(cache);
 }
 
+void
+Map::getAttributions(StringSet& attributions) const
+{
+    LayerVector layers;
+    getLayers(layers);
+
+    for (LayerVector::const_iterator itr = layers.begin(); itr != layers.end(); ++itr)
+    {
+        if (itr->get()->getEnabled())
+        {
+            VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(itr->get());
+            if (!visibleLayer || visibleLayer->getVisible())
+            {
+                std::string attribution = itr->get()->getAttribution();
+                if (!attribution.empty())
+                {
+                    attributions.insert(attribution);
+                }
+            }
+        }
+    }
+}
+
 MapCallback*
 Map::addMapCallback(MapCallback* cb) const
 {
@@ -329,7 +349,7 @@ Map::addLayer(Layer* layer)
         }
 
         // tell the layer it was just added.
-        layer->addedToMap(this);
+        //layer->addedToMap(this);
 
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -369,7 +389,7 @@ Map::insertLayer(Layer* layer, unsigned index)
         }
 
         // tell the layer it was just added.
-        layer->addedToMap(this);
+        //layer->addedToMap(this);
 
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -409,13 +429,13 @@ Map::removeLayer(Layer* layer)
         }
 
         // tell the layer it was just removed.
-        layerToRemove->removedFromMap(this);
+        //layerToRemove->removedFromMap(this);
     }
 
     uninstallLayerCallbacks(layerToRemove.get());
 
     // a separate block b/c we don't need the mutex
-    if ( newRevision >= 0 ) // layerToRemove.get() )
+    if ( newRevision >= 0 )
     {
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
@@ -481,13 +501,17 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
 void
 Map::installLayerCallbacks(Layer* layer)
 {
+    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
+    if (visibleLayer)
+    {
+        visibleLayer->addCallback(_visibleLayerCB.get());
+    }
+
     // If this is an elevation layer, install a callback so we know when
     // it's visibility changes:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
     {
-        elevationLayer->addCallback(_elevationLayerCB.get());
-
         // invalidate the elevation pool
         getElevationPool()->clear();
     }
@@ -499,12 +523,16 @@ Map::installLayerCallbacks(Layer* layer)
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
+    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
+    if (visibleLayer)
+    {
+        visibleLayer->removeCallback(_visibleLayerCB.get());
+    }
+
     // undo the things we did in prepareLayer:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
     {
-        elevationLayer->removeCallback(_elevationLayerCB.get());
-
         // invalidate the pool
         getElevationPool()->clear();
     }
@@ -526,13 +554,19 @@ Map::openLayer(Layer* layer)
     }
 
     // Attempt to open the layer. Don't check the status here.
-    layer->open();
+    if (layer->open().isOK())
+    {
+        layer->addedToMap(this);
+    }
 }
 
 void
 Map::closeLayer(Layer* layer)
 {
-    //NOP
+    if (layer)
+    {
+        layer->removedFromMap(this);
+    }
 }
 
 Revision
@@ -708,13 +742,13 @@ Map::calculateProfile()
 
         // Finally, if there is still no profile, default to global geodetic.
         if (!profile.valid())
-        {            
+        {
             profile = Registry::instance()->getGlobalGeodeticProfile();
         }
 
 
         // Set the map's profile!
-        _profile = profile.release();        
+        _profile = profile.release();
 
         // create a "proxy" profile to use when querying elevation layers with a vertical datum
         if ( _profile->getSRS()->getVerticalDatum() != 0L )
@@ -733,7 +767,7 @@ Map::calculateProfile()
 
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapInfoEstablished( MapInfo(this) );
+            //i->get()->onMapInfoEstablished( MapInfo(this) );
         }
     }
 
@@ -754,27 +788,42 @@ Map::getWorldSRS() const
 }
 
 bool
-Map::sync(MapFrame& frame) const
+Map::isFast(const TileKey& key, const LayerVector& layers) const
 {
-    bool result = false;
+    if (getCache() == NULL)
+        return false;
 
-    if ( frame._mapDataModelRevision != _dataModelRevision || !frame._initialized )
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
-        // hold the read lock while copying the layer lists.
-        Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
+        Layer* layer = i->get();
+        if (!layer)
+            continue;
 
-        if (!frame._initialized)
-            frame._layers.reserve(_layers.size());
+        if (!layer->getEnabled())
+            continue;
 
-        frame._layers.clear();
+        TerrainLayer* terrainlayer = dynamic_cast<TerrainLayer*>(layer);
+        if (terrainlayer)
+        {
+            if (terrainlayer->getCacheSettings()->cachePolicy()->isCacheDisabled())
+              return false;
 
-        std::copy(_layers.begin(), _layers.end(), std::back_inserter(frame._layers));
+            //If no data is available on this tile, we'll be fast
+            if (!terrainlayer->mayHaveData(key))
+                continue;
 
-        // sync the revision numbers.
-        frame._initialized = true;
-        frame._mapDataModelRevision = _dataModelRevision;
+            // No tile source? skip it
+            osg::ref_ptr< TileSource > source = terrainlayer->getTileSource();
+            if (!source.valid())
+                continue;
 
-        result = true;
+            //If the tile is blacklisted, it should also be fast.
+            if (source->getBlacklist()->contains(key))
+                continue;
+
+            if (!terrainlayer->isCached(key))
+                return false;
+        }
     }
-    return result;
+    return true;
 }

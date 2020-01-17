@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -42,7 +42,7 @@ PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings
     if (pcp && (pcp != _pcp))
     {
         // Reset all sampler matrix states since their uniform locations are going to change.
-        _layerOrder.clear();
+        //_runningLayerDrawOrder = 0;
         _elevTexelCoeff.clear();
         _morphConstants.clear();
         _parentTextureExists.clear();
@@ -61,10 +61,7 @@ PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings
         _elevTexelCoeffUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevTexelCoeff"));
         _parentTextureExistsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_texParentExists"));
         _layerUidUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
-        _layerOpacityUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_opacity"));
         _layerOrderUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
-        _layerMinRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_minRange"));
-        _layerMaxRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_maxRange"));
         _morphConstantsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
     }
 

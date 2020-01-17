@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,6 @@
 #define OSGEARTH_TERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Terrain>
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/TerrainTileModelFactory>
@@ -29,9 +28,11 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/TileKey>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
+#include <osg/BoundingBox>
 #include <osgUtil/RenderBin>
 #include <set>
 
@@ -82,7 +83,7 @@ namespace osgEarth
          * @param progress Optional progress/stats tracking callback
          */
         virtual TerrainTileModel* createTileModel(
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             ProgressCallback*            progress ) =0;
@@ -179,12 +180,20 @@ namespace osgEarth
         // Request that the terrain tiles be rebuilt.
         virtual void dirtyTerrain();
 
+    public:
+        class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
+        {
+        public:
+            virtual void modifyBoundingBox(const TileKey& key, osg::BoundingBox& box) const =0;
+        };
 
+        void addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
+        void removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
 
     public: // TerrainEngine
 
         TerrainTileModel* createTileModel(
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             ProgressCallback*            progress);
@@ -250,6 +259,8 @@ namespace osgEarth
         bool _requireParentTextures;
         bool _requireElevationBorder;
         bool _requireFullDataAtFirstLOD;
+        
+        osg::ref_ptr<const Map> _map;
 
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.
@@ -283,11 +294,14 @@ namespace osgEarth
          * @param referenceLOD If non-zero, adjust the vertex dimensions of the returned tile
          *        to match this LOD. Example: ask for a tile at tileKey.lod=15, tile is 17x17.
          *        Specific a referenceLOD=16, tile will be 33x33.
+         * @param area Restrict the processed area to a subarea of the tile model.
+         *        If not valid then the entire tile model will be used.
          */
         virtual osg::Node* createTile(
             const TerrainTileModel* model,
             int createTileFlags =CREATE_TILE_DEFAULT_FLAGS,
-            unsigned referenceLOD =0u) { return 0L; }
+            unsigned referenceLOD =0u,
+            const TileKey& area =TileKey()) { return 0L; }
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;
@@ -302,17 +316,15 @@ namespace osgEarth
         
         struct ImageLayerController : public ImageLayerCallback
         {
-            ImageLayerController( const Map* map, TerrainEngineNode* engine );
+            ImageLayerController( TerrainEngineNode* engine );
             void onColorFiltersChanged( ImageLayer* layer ); 
 
         private:
-            MapFrame           _mapf;
             TerrainEngineNode* _engine;
             friend class TerrainEngineNode;
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
-        osg::ref_ptr<const Map>            _map;
         bool                               _redrawRequired;
         float                              _verticalScale;
         osg::ref_ptr<Terrain>              _terrainInterface;
@@ -336,11 +348,17 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<CreateTileModelCallback> > CreateTileModelCallbacks;
         CreateTileModelCallbacks _createTileModelCallbacks;
         mutable Threading::ReadWriteMutex _createTileModelCallbacksMutex;
+        
+        typedef std::vector<osg::ref_ptr<ModifyTileBoundingBoxCallback> > ModifyTileBoundingBoxCallbacks;
+        ModifyTileBoundingBoxCallbacks _modifyTileBoundingBoxCallbacks;
 
         osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
 
         osg::ref_ptr<ComputeRangeCallback> _computeRangeCallback;
 
+    public:
+
+        void fireModifyTileBoundingBoxCallbacks(const TileKey& key, osg::BoundingBox& box);
 
     public:
 

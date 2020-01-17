@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -20,6 +20,9 @@
 
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Locators>
+#include <osgEarth/Map>
+#include <osgEarth/MapInfo>
+#include <osgEarth/ModelLayer>
 #include <osgEarthSymbology/Geometry>
 
 #include <osgUtil/DelaunayTriangulator>
@@ -151,9 +154,9 @@ namespace
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map) :
 _key( key ), _tileSize(tileSize)
 {
-    MapFrame frame(map);
     MaskLayerVector maskLayers;
-    frame.getLayers(maskLayers);
+    map->getLayers(maskLayers);
+
     for(MaskLayerVector::const_iterator it = maskLayers.begin();
         it != maskLayers.end(); 
         ++it)
@@ -161,7 +164,19 @@ _key( key ), _tileSize(tileSize)
         MaskLayer* layer = it->get();
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
-            setupMaskRecord(frame.getMapInfo(), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+            setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+        }
+
+        // add masks from model layers with embedded masks?
+        ModelLayerVector modelLayers;
+        map->getLayers(modelLayers);
+        for(ModelLayerVector::const_iterator i = modelLayers.begin(); i != modelLayers.end(); ++i)
+        {
+            ModelLayer* layer = i->get();
+            if (layer->getMaskSource() && layer->getMaskMinLevel() <= key.getLevelOfDetail())
+            {
+                setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary(1.0f, key.getExtent().getSRS(), (ProgressCallback*)0L) );
+            }
         }
     }
 }
@@ -238,6 +253,7 @@ MaskGenerator::Result
 MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, 
                                     osg::Vec3Array* verts, osg::Vec3Array* texCoords, 
                                     osg::Vec3Array* normals, osg::Vec3Array* neighbors,
+                                    osg::Vec3Array* neighborNormals,
                                     osg::ref_ptr<osg::DrawElementsUInt>& out_elements)
 {
     if (_maskRecords.size() <= 0)
@@ -588,6 +604,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
     normals->reserve(normals->size() + trigPoints->size());
     if ( neighbors )
         neighbors->reserve(neighbors->size() + trigPoints->size()); 
+    if ( neighborNormals )
+        neighborNormals->reserve(neighborNormals->size() + trigPoints->size()); 
 
     // Iterate through point to convert to model coords, calculate normals, and set up tex coords
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
@@ -617,9 +635,11 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
 
         verts->push_back(local);
 
-        // use same vert for neighbor to prevent morphing
+        // use same data for neighbor to prevent morphing
         if ( neighbors )
-            neighbors->push_back( local );  
+            neighbors->push_back( local );
+        if ( neighborNormals )
+            neighborNormals->push_back( normal );
 
         // set up text coords
         texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? VERTEX_MARKER_BOUNDARY : VERTEX_MARKER_PATCH) );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,21 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/OverlayDecorator>
-#include <osgEarth/DrapingTechnique>
-#include <osgEarth/MapInfo>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
-#include <osg/ComputeBoundsVisitor>
 #include <osg/ShapeDrawable>
-#include <osgShadow/ConvexPolyhedron>
-#include <osgUtil/LineSegmentIntersector>
 
-#include <iomanip>
-#include <stack>
 
 #define LC "[OverlayDecorator] "
 
@@ -105,13 +95,13 @@ namespace
         {
             double l,r,b,t,n,f;
             m.getOrtho(l,r,b,t,n,f);
-            m.makeOrtho(l,r,b,t, std::max(n, newNear), std::min(f,newFar));
+            m.makeOrtho(l,r,b,t, osg::maximum(n, newNear), osg::minimum(f,newFar));
         }
         else
         {
             double v,a,n,f;
             m.getPerspective(v,a,n,f);
-            m.makePerspective(v,a, std::max(n, newNear), std::min(f, newFar));
+            m.makePerspective(v,a, osg::maximum(n, newNear), osg::minimum(f, newFar));
         }
     }
 
@@ -167,7 +157,7 @@ namespace
 
                 if ( t0 >= 0.0 && t1 >= 0.0 )
                 {
-                    osg::Vec3d v = d*std::min(t0,t1);
+                    osg::Vec3d v = d*osg::minimum(t0,t1);
                     dist2 = v.length2();
                 }
                 else if ( t0 >= 0.0 )
@@ -500,7 +490,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
 
     // clamp the far plane (for RTT purposes) to the horizon distance.
-    double maxFar = std::min( horizonDistance, _maxHorizonDistance );
+    double maxFar = osg::minimum( horizonDistance, _maxHorizonDistance );
     cv->clampProjectionMatrix( projMatrix, zNear, maxFar );
 
     // prepare to calculate the ideal far plane for RTT extent resolution.
@@ -529,7 +519,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // clamp down the far plane:
     if ( maxDist2 != 0.0 )
     {
-        maxFar = std::min( zNear+sqrt(maxDist2), maxFar );
+        maxFar = osg::minimum( zNear+sqrt(maxDist2), maxFar );
     }
 
     // reset the projection matrix if we changed the far:
@@ -685,7 +675,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                 // This causes problems for the draping projection matrix optimizer, so
                 // for now instead of re-doing that code we will just center the eyepoint
                 // here by using the larger of xmin and xmax. -gw.                
-                double x = std::max( fabs(xmin), fabs(xmax) );
+                double x = osg::maximum( fabs(xmin), fabs(xmax) );
                 xmin = -x, xmax = x;
             }
 
@@ -732,7 +722,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             osg::ref_ptr<osg::Node> camNode = osgDB::readRefNodeFile(fn);
             camNode->setName("camera");
 
-            // visible overlay BEFORE cutting:
+            // visible overlay BEFORE cutting:brb
             //uncutVisiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
             //osg::ref_ptr<osg::Node> overlay = osgDB::readRefNodeFile(fn);
             //overlay->setName("overlay");
@@ -883,4 +873,55 @@ void
 OverlayDecorator::setMaxHorizonDistance( double horizonDistance )
 {
     _maxHorizonDistance = horizonDistance;
+}
+
+
+void
+OverlayDecorator::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Group::resizeGLObjectBuffers(maxSize);
+
+    Threading::ScopedWriteLock lock(_perViewDataMutex);
+
+    for(PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i)
+    {
+        PerViewData& pvd = i->second;
+        if (pvd._sharedTerrainStateSet.valid())
+            pvd._sharedTerrainStateSet->resizeGLObjectBuffers(maxSize);
+
+        for(std::vector<TechRTTParams>::iterator t = pvd._techParams.begin(); t != pvd._techParams.end(); ++t)
+        {
+            if (t->_rttCamera.valid())
+                t->_rttCamera->resizeGLObjectBuffers(maxSize);
+            if (t->_rttToPrimaryMatrixUniform.valid())
+                t->_rttToPrimaryMatrixUniform->resizeGLObjectBuffers(maxSize);
+            if (t->_techniqueData.valid())
+                t->_techniqueData->resizeGLObjectBuffers(maxSize);
+        }
+    }
+}
+
+void
+OverlayDecorator::releaseGLObjects(osg::State* state) const
+{
+    osg::Group::releaseGLObjects(state);
+
+    Threading::ScopedWriteLock lock(_perViewDataMutex);
+
+    for(PerViewDataMap::const_iterator i = _perViewData.begin(); i != _perViewData.end(); ++i)
+    {
+        const PerViewData& pvd = i->second;
+        if (pvd._sharedTerrainStateSet.valid())
+            pvd._sharedTerrainStateSet->releaseGLObjects(state);
+
+        for(std::vector<TechRTTParams>::const_iterator t = pvd._techParams.begin(); t != pvd._techParams.end(); ++t)
+        {
+            if (t->_rttCamera.valid())
+                t->_rttCamera->releaseGLObjects(state);
+            if (t->_rttToPrimaryMatrixUniform.valid())
+                t->_rttToPrimaryMatrixUniform->releaseGLObjects(state);
+            if (t->_techniqueData.valid())
+                t->_techniqueData->releaseGLObjects(state);
+        }
+    }
 }

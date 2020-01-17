@@ -1,0 +1,121 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_SCREEN_SPACE_LAYOUT_IMPL_H
+#define OSGEARTH_SCREEN_SPACE_LAYOUT_IMPL_H 1
+
+#include <osgEarth/ScreenSpaceLayout>
+#include <osgEarth/Containers>
+#include <osgUtil/RenderBin>
+
+namespace osgEarth { namespace Internal
+{
+    // Sort wrapper to satisfy the template processor.
+    struct SortContainer
+    {
+        SortContainer(DeclutterSortFunctor& f) : _f(f) { }
+        const DeclutterSortFunctor& _f;
+        bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs) const
+        {
+            return _f(lhs, rhs);
+        }
+    };
+
+    // Custom sorting functor that sorts drawables front-to-back, and when drawables share the
+    // same parent Geode, sorts them in traversal order.
+    struct SortFrontToBackPreservingGeodeTraversalOrder
+    {
+        bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs) const
+        {
+            if (lhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getParent(0) == lhs->getDrawable()->getParent(0))
+            {
+                const osg::Group* parent = static_cast<const osg::Group*>(lhs->getDrawable()->getParent(0));
+                return parent->getChildIndex(lhs->getDrawable()) > parent->getChildIndex(rhs->getDrawable());
+            }
+            else
+            {
+                return (lhs->_depth < rhs->_depth);
+            }
+        }
+    };
+
+    // Custom sorting functor that sorts drawables by Priority, and when drawables share the
+    // same parent Geode, sorts them in traversal order.
+    struct SortByPriorityPreservingGeodeTraversalOrder : public DeclutterSortFunctor
+    {
+        bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs) const
+        {
+            if (lhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getNumParents() > 0 &&
+                rhs->getDrawable()->getParent(0) == lhs->getDrawable()->getParent(0))
+            {
+                const osg::Group* parent = static_cast<const osg::Group*>(lhs->getDrawable()->getParent(0));
+                return parent->getChildIndex(lhs->getDrawable()) > parent->getChildIndex(rhs->getDrawable());
+            }
+
+            else
+            {
+                const ScreenSpaceLayoutData* lhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(lhs->getDrawable()->getUserData());
+                float lhsPriority = lhsdata ? lhsdata->_priority : 0.0f;
+
+                const ScreenSpaceLayoutData* rhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(rhs->getDrawable()->getUserData());
+                float rhsPriority = rhsdata ? rhsdata->_priority : 0.0f;
+
+                float diff = lhsPriority - rhsPriority;
+
+                if (diff != 0.0f)
+                    return diff > 0.0f;
+
+                // first fallback on depth:
+                diff = lhs->_depth - rhs->_depth;
+                if (diff != 0.0f)
+                    return diff < 0.0f;
+
+                // then fallback on traversal order.
+#if OSG_VERSION_GREATER_THAN(3,6,0)
+                diff = float(lhs->_traversalOrderNumber) - float(rhs->_traversalOrderNumber);
+#else
+                diff = float(lhs->_traversalNumber) - float(rhs->_traversalNumber);
+#endif
+                return diff < 0.0f;
+            }
+        }
+    };
+
+    // Data structure shared across entire layout system.
+    /*internal*/
+    struct ScreenSpaceLayoutContext : public osg::Referenced
+    {
+        ScreenSpaceLayoutOptions _options;
+        bool _debug;
+
+        ScreenSpaceLayoutContext()
+        {
+            _debug = (::getenv("OSGEARTH_DECLUTTER_DEBUG") != NULL);
+        }
+    };
+
+} }
+
+
+#endif

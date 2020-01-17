@@ -1,0 +1,110 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_TRITON_HEIGHT_MAP
+#define OSGEARTH_TRITON_HEIGHT_MAP 1
+
+#include "Common"
+#include <osgEarth/Containers>
+#include <osgEarth/ImageLayer>
+#include <osg/Node>
+#include <osg/Camera>
+#include <osg/Texture2D>
+
+namespace osgEarth {
+    class Horizon;
+}
+
+namespace osgEarth { namespace Triton
+{
+    /**
+     * Creates a height map that Triton can use to mask out the ocean where 
+     * the terrain is above sea level.
+     */
+    class OSGEARTHTRITON_EXPORT TritonHeightMap : public osg::Node
+    {
+    public:
+
+        TritonHeightMap();
+
+        //! Sets the root of the terrain scene graph
+        void setTerrain(osg::Node*);
+
+        //! Sets the masking layer
+        void setMaskLayer(const osgEarth::ImageLayer* layer);
+
+        //! Configure the generator; return success t/f
+        bool configure(unsigned texSize, osg::State& state);
+
+        //! Fetch the heightmap texture and matrix generated for a camera.
+        bool getTextureAndMatrix(osg::RenderInfo&, GLint& out_texName, osg::Matrix& out_matrix);
+
+        //! Mark all height maps (for all cameras) for regeneration
+        void dirty();
+
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor&);
+
+    protected:
+
+        virtual ~TritonHeightMap();
+
+    private:
+
+        struct CameraLocal
+        {
+            osg::ref_ptr<osg::Camera> _rtt;
+            osg::ref_ptr<osg::Texture2D> _tex;
+            osg::Matrix _texMatrix;
+            osg::Matrix _mvpw;
+            unsigned _frameNum;
+        };
+
+        typedef osgEarth::PerObjectFastMap<const osg::Camera*, CameraLocal> Locals;
+
+        struct SetDirty : public Locals::Functor
+        {
+            void operator()(CameraLocal&);
+        };
+
+        //! Sets up an RTT camera for the first time
+        void setup(CameraLocal& local, const std::string& name);
+
+        //! Updates an RTT camera for the new view/projection matrices of the camera
+        void update(CameraLocal& local, const osg::Camera*, osgEarth::Horizon*);
+
+        //! Whether FBO configuration has happened yet
+        bool isConfigurationComplete() const;
+        
+        //! Figures out the best FBO format on this GPU
+        static bool getBestFBOConfig(osg::State& state, GLint& internalFormat, GLenum& sourceFormat);
+        
+        
+        Locals _local;
+        osg::observer_ptr<osg::Node> _terrain;
+        unsigned _texSize;
+        GLint _internalFormat;
+        GLenum _sourceFormat;
+        osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
+        osg::ref_ptr<osg::Referenced> _terrainCallback;
+    };
+
+} } // namespace osgEarth::Triton
+
+#endif // OSGEARTH_TRITON_HEIGHT_MAP

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -33,6 +33,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/GLUtils>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgText/Text>
@@ -56,9 +57,10 @@ osg::Camera* createHud(double width, double height)
     hud->setClearMask(GL_DEPTH_BUFFER_BIT);
     hud->setRenderOrder(osg::Camera::POST_RENDER);    
     hud->setAllowEventFocus(false);
-    hud->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    hud->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    hud->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON);
+    osg::StateSet* hudSS = hud->getOrCreateStateSet();
+    GLUtils::setLighting(hudSS, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    hudSS->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    hudSS->setMode( GL_BLEND, osg::StateAttribute::ON);
 
     return hud;
 }
@@ -310,17 +312,19 @@ public:
           Style style;
           LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
           ls->stroke()->color() = Color::Yellow;
-          ls->stroke()->width() = 2.0f;
-          ls->tessellation() = 20;
+          ls->stroke()->width() = 3.0f;
+          ls->tessellationSize()->set(100.0, Units::KILOMETERS);
 
-          style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-          style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
+          AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
+          alt->clamping() = alt->CLAMP_TO_TERRAIN;
+          alt->technique() = alt->TECHNIQUE_DRAPE;
+
+          RenderSymbol* render = style.getOrCreate<RenderSymbol>();
+          render->lighting() = false;
 
           feature->style() = style;
-
-          _featureNode = new FeatureNode( _mapNode, feature );
-          //Disable lighting
-          _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+          _featureNode = new FeatureNode( feature );
+          _featureNode->setMapNode(_mapNode);
           _root->addChild( _featureNode.get() );
 
       }
@@ -389,7 +393,7 @@ main(int argc, char** argv)
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
-    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator.get() ) );
+    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, mapNode, calculator.get() ) );
 
     viewer.setSceneData( root );    
 

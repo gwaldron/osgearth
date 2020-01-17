@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,15 +18,10 @@
  */
 #include <osgEarthUtil/TMSPackager>
 #include <osgEarthUtil/TMS>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
-#include <osgEarth/TaskService>
 #include <osgEarth/FileUtils>
-#include <osgEarth/CacheEstimator>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
 #include <osgDB/FileUtils>
-#include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 
 
@@ -452,7 +447,7 @@ void TMSPackager::writeXML(TerrainLayer* layer, Map* map)
     tileMap->setTitle( _layerName );
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );
-    tileMap->generateTileSets( std::min(23u, maxLevel+1) );
+    tileMap->generateTileSets( osg::minimum(23u, maxLevel+1) );
 
 
     // write out the tilemap catalog:

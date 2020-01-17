@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -18,7 +18,6 @@
  */
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Metrics>
-#include <osg/Version>
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
 #include <osg/ContextData>
 #endif
@@ -67,8 +66,6 @@ ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
 void
 ResourceReleaser::releaseGLObjects(osg::State* state) const
 {
-    osg::Drawable::releaseGLObjects(state);
-
     if (!_toRelease.empty())
     {
         Threading::ScopedMutexLock lock(_mutex);

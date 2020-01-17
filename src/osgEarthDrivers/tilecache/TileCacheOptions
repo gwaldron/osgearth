@@ -1,0 +1,79 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_TILECACHE_DRIVEROPTIONS
+#define OSGEARTH_DRIVER_TILECACHE_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+
+    class TileCacheOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public:
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
+
+        optional<std::string>& layer() { return _layer; }
+        const optional<std::string>& layer() const { return _layer; }
+
+        optional<std::string>& format() { return _format; }
+        const optional<std::string>& format() const { return _format; }
+
+    public:
+        TileCacheOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
+            TileSourceOptions( opt )
+        {
+            setDriver( "tilecache" );
+            fromConfig( _conf );
+        }
+
+        /** dtor */
+        virtual ~TileCacheOptions() { }
+
+    protected:
+        Config getConfig() const {
+            Config conf = TileSourceOptions::getConfig();
+            conf.set("url", _url );
+            conf.set("layer", _layer);
+            conf.set("format", _format);
+            return conf;
+        }
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.get( "url", _url );
+            conf.get( "layer", _layer );
+            conf.get( "format", _format );
+        }
+
+        optional<URI>         _url;
+        optional<std::string> _layer;
+        optional<std::string> _format;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_TILECACHE_DRIVEROPTIONS
+

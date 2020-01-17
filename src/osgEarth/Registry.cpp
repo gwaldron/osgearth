@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,30 +19,16 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderFactory>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/TaskService>
-#include <osgEarth/IOTypes>
-#include <osgEarth/ColorFilter>
-#include <osgEarth/StateSetCache>
-#include <osgEarth/HTTPClient>
-#include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
 
-#include <osgEarth/Units>
-#include <osg/Notify>
-#include <osg/Version>
-#include <osgDB/Registry>
-#include <osgDB/Options>
 #include <osgText/Font>
 
 #include <gdal_priv.h>
+
 #include <ogr_api.h>
-#include <cpl_error.h>
-#include <stdlib.h>
-#include <locale>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -114,6 +100,7 @@ _devicePixelRatio(1.0f)
     //osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml; charset=utf8", "kml");
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
@@ -187,7 +174,7 @@ Registry::~Registry()
 }
 
 Registry*
-Registry::instance(bool erase)
+Registry::instance(bool reset)
 {
     // Make sure the gdal mutex is created before the Registry so it will still be around when the registry is destroyed statically.
     // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
@@ -195,19 +182,38 @@ Registry::instance(bool erase)
 
     static osg::ref_ptr<Registry> s_registry = new Registry;
 
-    if (erase)
+    if (reset)
     {
-        s_registry->destruct();
-        s_registry = 0;
+        s_registry->release();
+        s_registry = new Registry();
     }
 
     return s_registry.get(); // will return NULL on erase
 }
 
 void
-Registry::destruct()
+Registry::release()
 {
-    //NOP
+    // Clear out the state set cache
+    if (_stateSetCache.valid())
+    {
+        _stateSetCache->releaseGLObjects(NULL);
+        _stateSetCache->clear();
+    }
+
+    // Clear out the VirtualProgram shared program repository
+    _programRepo.lock();
+    _programRepo.releaseGLObjects(NULL);
+    _programRepo.unlock();
+    
+    // SpatialReference cache
+    _srsMutex.lock();
+    _srsCache.clear();
+    _srsMutex.unlock();
+
+    // Shared object index
+    if (_objectIndex.valid())
+        _objectIndex = new ObjectIndex();
 }
 
 OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()
@@ -267,21 +273,6 @@ Registry::getSphericalMercatorProfile() const
 }
 
 const Profile*
-Registry::getCubeProfile() const
-{
-    if ( !_cube_profile.valid() )
-    {
-        GDAL_SCOPED_LOCK;
-
-        if ( !_cube_profile.valid() ) // double-check pattern
-        {
-            const_cast<Registry*>(this)->_cube_profile = new UnifiedCubeProfile();
-        }
-    }
-    return _cube_profile.get();
-}
-
-const Profile*
 Registry::getNamedProfile( const std::string& name ) const
 {
     if ( name == STR_GLOBAL_GEODETIC )
@@ -290,8 +281,6 @@ Registry::getNamedProfile( const std::string& name ) const
         return getGlobalMercatorProfile();
     else if ( name == STR_SPHERICAL_MERCATOR )
         return getSphericalMercatorProfile();
-    else if ( name == STR_CUBE )
-        return getCubeProfile();
     else
         return NULL;
 }
@@ -649,10 +638,10 @@ Registry::getStateSetCache() const
     return _stateSetCache.get();
 }
 
-ProgramSharedRepo*
-Registry::getProgramSharedRepo()
+ProgramRepo&
+Registry::getProgramRepo()
 {
-    return &_programRepo;
+    return _programRepo;
 }
 
 ObjectIndex*

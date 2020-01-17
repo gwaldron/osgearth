@@ -5,6 +5,7 @@
 # SQLITE3_INCLUDE_DIR, where to find the headers
 
 FIND_PATH(SQLITE3_INCLUDE_DIR sqlite3.h
+  PATHS
     ${SQLITE3_DIR}/include/sqlite
     $ENV{SQLITE3_DIR}/include/sqlite
     $ENV{SQLITE3_DIR}/Source/lib/sqlite #Windows Binary Installer
@@ -22,8 +23,9 @@ FIND_PATH(SQLITE3_INCLUDE_DIR sqlite3.h
 )
 
 FIND_LIBRARY(SQLITE3_LIBRARY
-    NAMES sqlite3 libsqlite3
-    PATHS
+  NAMES
+    sqlite3 libsqlite3
+  PATHS
     ${SQLITE3_DIR}/lib
     $ENV{SQLITE3_DIR}/lib
     $ENV{SQLITE3_DIR}/bin #Windows Binary Installer

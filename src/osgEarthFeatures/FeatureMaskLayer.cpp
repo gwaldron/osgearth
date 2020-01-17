@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,8 @@
  */
 #include <osgEarthFeatures/FeatureMaskLayer>
 #include <osgEarthFeatures/FeatureCursor>
+#include <osgEarth/Map>
+#include <osgEarth/Progress>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -45,17 +47,16 @@ FeatureMaskLayerOptions::mergeConfig( const Config& conf )
 void
 FeatureMaskLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("feature_source", _featureSourceLayer);
-    conf.getObjIfSet("features", _featureSource);
+    conf.get("feature_source", _featureSourceLayer);
+    conf.get("features", _featureSource);
 }
 
 Config
 FeatureMaskLayerOptions::getConfig() const
 {
     Config conf = MaskLayerOptions::getConfig();
-    conf.key() = "feature_mask";
-    conf.addIfSet("feature_source", _featureSourceLayer);
-    conf.addObjIfSet("features", _featureSource);
+    conf.set("feature_source", _featureSourceLayer);
+    conf.set("features", _featureSource);
     return conf;
 }
 
@@ -149,7 +150,7 @@ FeatureMaskLayer::getOrCreateMaskBoundary(float heightScale,
         Threading::ScopedMutexLock lock(_boundaryMutex);
         if (!_boundary.valid())
         {
-            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor();
+            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(progress);
             if (cursor.valid() && cursor->hasMore())
             {
                 Feature* f = cursor->nextFeature();

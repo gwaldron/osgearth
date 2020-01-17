@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -45,6 +45,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
+
+//#define SUPPORT_JPL_TILESERVICE
 
 //----------------------------------------------------------------------------
 
@@ -114,7 +116,7 @@ public:
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
+        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, dbOptions );
         if ( !capabilities.valid() )
         {
             return Status::Error( Status::ResourceUnavailable, "Unable to read WMS GetCapabilities." );
@@ -180,25 +182,37 @@ public:
         // Next, try to glean the extents from the layer list
         if ( capabilities.valid() )
         {
-            //TODO: "layers" mights be a comma-separated list. need to loop through and
-            //combine the extents?? yes
-            WMSLayer* layer = capabilities->getLayerByName( _options.layers().value() );
-            if ( layer )
-            {
-                // Get the lat/lon extents
-                double minLon, minLat, maxLon, maxLat;
-                layer->getLatLonExtents(minLon, minLat, maxLon, maxLat);
-                GeoExtent wgs84Extent(SpatialReference::create("wgs84"), minLon, minLat, maxLon, maxLat);
-                getDataExtents().push_back(DataExtent(wgs84Extent, 0));
+            StringTokenizer tok(",");
+            StringVector tized;
+            tok.tokenize(_options.layers().value(), tized);
 
-                // If we don't have a profile yet, transform the lat/lon extents to the requested srs and use it as the extents of the profile.
-                if (!result.valid())
+            for (StringVector::const_iterator itr = tized.begin(); itr != tized.end(); ++itr)
+            {
+                std::string layerName = *itr;
+                WMSLayer* layer = capabilities->getLayerByName(layerName);
+                if (layer)
                 {
-                    const SpatialReference* srs = SpatialReference::create(_srsToUse);
-                    GeoExtent nativeExtent;
-                    wgs84Extent.transform(srs, nativeExtent);
-                    result = Profile::create(srs, nativeExtent.xMin(), nativeExtent.yMin(), nativeExtent.xMax(), nativeExtent.yMax());
+                    // Get the lat/lon extents
+                    double minLon, minLat, maxLon, maxLat;
+                    layer->getLatLonExtents(minLon, minLat, maxLon, maxLat);
+                    GeoExtent wgs84Extent(SpatialReference::create("wgs84"), minLon, minLat, maxLon, maxLat);
+                    getDataExtents().push_back(DataExtent(wgs84Extent, 0));
                 }
+            }
+
+            // If we don't have a profile yet, transform the lat/lon extents to the requested srs and use it as the extents of the profile.
+            if (!result.valid())
+            {
+                const SpatialReference* srs = SpatialReference::create(_srsToUse);
+                GeoExtent totalExtent(srs);
+                for (DataExtentList::const_iterator itr = getDataExtents().begin(); itr != getDataExtents().end(); ++itr)
+                {
+                    GeoExtent dataExtent = *itr;
+                    GeoExtent nativeExtent;
+                    dataExtent.transform(srs, nativeExtent);
+                    totalExtent.expandToInclude(nativeExtent);
+                }
+                result = Profile::create(srs, totalExtent.xMin(), totalExtent.yMin(), totalExtent.xMax(), totalExtent.yMax());
             }
         }
 
@@ -208,21 +222,22 @@ public:
             result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         }    
 
+#ifdef SUPPORT_JPL_TILESERVICE
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
         URI tsUrl = _options.tileServiceUrl().value();
         if ( tsUrl.empty() )
         {
-            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService") );
+            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService"), tsUrl.context());
         }
 
         OE_INFO << LC << "Testing for JPL/TileService at " << tsUrl.full() << std::endl;
-        _tileService = TileServiceReader::read(tsUrl.full(), dbOptions);
-        if (_tileService.valid())
+        osg::ref_ptr<TileService> tileService = TileServiceReader::read(tsUrl.full(), dbOptions);
+        if (tileService.valid())
         {
             OE_INFO << LC << "Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
-            _tileService->getMatchingPatterns(
+            tileService->getMatchingPatterns(
                 _options.layers().value(),
                 _formatToUse,
                 _options.style().value(),
@@ -233,7 +248,7 @@ public:
 
             if (patterns.size() > 0)
             {
-                result = _tileService->createProfile( patterns );
+                result = tileService->createProfile( patterns );
                 _prototype = _options.url()->full() + sep + patterns[0].getPrototype();
             }
         }
@@ -241,6 +256,7 @@ public:
         {
             OE_INFO << LC << "No JPL/TileService spec found; assuming standard WMS" << std::endl;
         }
+#endif
 
         // Use the override profile if one is passed in.
         if ( getProfile() == 0L )
@@ -289,54 +305,12 @@ public:
         }
 
         // Try to get the image first
-        out_response = URI( uri ).readImage( _dbOptions.get(), progress);
+        out_response = URI(uri, _options.url()->context()).readImage( _dbOptions.get(), progress);
 
         if ( out_response.succeeded() )
         {
             image = out_response.getImage();
         }
-        
-#if 0
-        if ( !out_response.succeeded() )
-        {
-            // If it failed, see whether there's any info in the response.
-            OE_WARN << LC << "Failed, response:\n" << out_response.metadata().toJSON(true);
-            
-            // BAD: caches string data in an image cache. -gw
-            out_response = URI( uri ).readString( _dbOptions.get(), progress );      
-
-            // get the mime type:
-            std::string mt = out_response.metadata().value( IOMetadata::CONTENT_TYPE );
-
-            if ( mt == "application/vnd.ogc.se_xml" || mt == "text/xml" )
-            {
-                std::istringstream content( out_response.getString() );
-
-                // an XML result means there was a WMS service exception:
-                Config se;
-                if ( se.fromXML(content) )
-                {
-                    Config ex = se.child("serviceexceptionreport").child("serviceexception");
-                    if ( !ex.empty() )
-                    {
-                        OE_INFO << LC << "WMS Service Exception: " << ex.toJSON(true) << std::endl;
-                    }
-                    else
-                    {
-                        OE_INFO << LC << "WMS Response: " << se.toJSON(true) << std::endl;
-                    }
-                }
-                else
-                {
-                    OE_INFO << LC << "WMS: unknown error." << std::endl;
-                }
-            }     
-        }
-        else
-        {
-            image = out_response.getImage();
-        }
-#endif
 
         return image.release();
     }
@@ -418,11 +392,7 @@ public:
         }
 
         // Just return an empty image if we didn't get any images
-#if OSG_VERSION_LESS_THAN(3,1,4)
-        unsigned size = seq->getNumImages();
-#else
         unsigned size = seq->getNumImageData();
-#endif
 
         if (size == 0)
         {
@@ -538,7 +508,6 @@ private:
     const WMSOptions                 _options;
     std::string                      _formatToUse;
     std::string                      _srsToUse;
-    osg::ref_ptr<TileService>        _tileService;
     osg::ref_ptr<const Profile>      _profile;
     std::string                      _prototype;
     std::vector<std::string>         _timesVec;

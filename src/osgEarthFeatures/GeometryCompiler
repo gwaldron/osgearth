@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -112,6 +112,10 @@ namespace osgEarth { namespace Features
         optional<bool>& useGPUScreenSpaceLines() { return _useGPULines; }
         const optional<bool>& useGPUScreenSpaceLines() const { return _useGPULines; }
 
+        /** Whether to use OSG tessellator (default=false) */
+        optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
+        const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
+
     public:
         Config getConfig() const;
 
@@ -135,7 +139,7 @@ namespace osgEarth { namespace Features
         optional<bool>                 _validate;
         optional<float>                _maxPolyTilingAngle;
         optional<bool>                 _useGPULines;
-
+        optional<bool>                 _useOSGTessellator;
 
         static GeometryCompilerOptions s_defaults;
 

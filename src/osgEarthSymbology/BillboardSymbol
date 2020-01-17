@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,20 +46,34 @@ namespace osgEarth { namespace Symbology
 
     public: // properties
 
-        /** Width of the billboard image in meters */
+        //! URL or the top image
+        optional<StringExpression>& topURL() { return _topURL; }
+        const optional<StringExpression>& topURL() const { return _topURL; }
+
+        //! Width of the billboard image in meters */
         optional<float>& width() { return _width; }
         const optional<float>& width() const { return _width; }
 
-        /** Height of the billboard image in meters */
+        //! Height of the billboard image in meters */
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
-        
+
+        //! Percentage by which to vary width and height [0..1] default = 0
+        optional<float>& sizeVariation() { return _sizeVariation; }
+        const optional<float>& sizeVariation() const { return _sizeVariation; }
+
+        //! Weighting of this symbol versus others in the same group.
+        //! Should be an integer >= 1. Default = 1.
+        optional<unsigned>& selectionWeight() { return _selectionWeight; }
+        const optional<unsigned>& selectionWeight() const { return _selectionWeight; }
         
     public: // non-serialized properties (for programmatic use only)
 
-        /** Explicit model to use for model placement */
-        void setImage(osg::Image* image) { _image = image; }
-        const osg::Image* getImage() const { return _image.get(); }
+        void setSideImage(osg::Image* value) { _sideImage = value; }
+        osg::Image* getSideImage() const { return _sideImage.get(); }
+
+        void setTopImage(osg::Image* value) { _topImage = value; }
+        osg::Image* getTopImage() const { return _topImage.get(); }
 
     public:
         virtual Config getConfig() const;
@@ -72,9 +86,13 @@ namespace osgEarth { namespace Symbology
         virtual InstanceResource* createResource() const;
 
     protected:
+        optional<StringExpression> _topURL;
         optional<float> _width;
         optional<float> _height;
-        osg::ref_ptr<osg::Image> _image;
+        optional<float> _sizeVariation;
+        optional<unsigned> _selectionWeight;
+        osg::ref_ptr<osg::Image> _sideImage;
+        osg::ref_ptr<osg::Image> _topImage;
     };
 
 } } // namespace osgEarth::Symbology

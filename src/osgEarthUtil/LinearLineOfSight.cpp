@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,10 +21,7 @@
 */
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarth/TerrainEngineNode>
-#include <osgUtil/LineSegmentIntersector>
-#include <osgSim/LineOfSight>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -338,7 +335,7 @@ LinearLineOfSightNode::draw(bool backgroundThread)
         mt->setMatrix(osg::Matrixd::translate(_startWorld));
         mt->addChild(geode);  
 
-        getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        GLUtils::setLighting(getOrCreateStateSet(), osg::StateAttribute::OFF);
     }
 
 

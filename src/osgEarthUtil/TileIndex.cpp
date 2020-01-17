@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -30,7 +30,6 @@
 
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
-#include <ogr_api.h>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
@@ -122,7 +121,7 @@ TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string 
 
     GeoExtent transformed = extent.transform( _features->getFeatureProfile()->getSRS() );
     query.bounds() = transformed.bounds();
-    osg::ref_ptr< osgEarth::Features::FeatureCursor> cursor = _features->createFeatureCursor( query );
+    osg::ref_ptr< osgEarth::Features::FeatureCursor> cursor = _features->createFeatureCursor( query, 0L );
 
     while (cursor->hasMore())
     {

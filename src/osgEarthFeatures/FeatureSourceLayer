@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #define OSGEARTH_FEATURES_FEATURE_SOURCE_LAYER_H 1
 
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/Layer>
 
 namespace osgEarth { namespace Features
 {
@@ -37,8 +38,11 @@ namespace osgEarth { namespace Features
         const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
     public:
-        Config getConfig() const {
-            return _featureSource->getConfig();
+        virtual Config getConfig() const {
+            Config conf = LayerOptions::getConfig();
+            if (_featureSource.isSet())
+                conf.merge(_featureSource->getConfig());
+            return conf;
         }
     private:
         optional<FeatureSourceOptions> _featureSource;
@@ -53,7 +57,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions);
+        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions, feature_source);
 
         /**
          * Construct an empty feature source layer.
@@ -80,12 +84,12 @@ namespace osgEarth { namespace Features
          */
         virtual const Status& open();
 
-        // Serialize this layer.
-        virtual Config getConfig() const;
-
 
     protected:
         osg::ref_ptr<FeatureSource> _featureSource;
+
+        // constructor for subclasses
+        FeatureSourceLayer(FeatureSourceLayerOptions* options);
     };
 
 

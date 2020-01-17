@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -49,7 +49,6 @@ namespace osgEarth
 {
     class ProgressCallback;
     class Map;
-    class MapFrame;
 
     /**
      * Configuration options for a tile source driver.
@@ -105,8 +104,11 @@ namespace osgEarth
         optional<bool>           _coverage;
         optional<std::string>    _osgOptionString;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileSourceOptions);
 
-
+namespace osgEarth
+{
     /**
      * A collection of tiles that should be considered blacklisted
      */
@@ -177,8 +179,8 @@ namespace osgEarth
         typedef unsigned Mode;
 
         /** Open for reading only */
-        static const Mode MODE_READ;  
-        
+        static const Mode MODE_READ;
+
         /** Open for writing */
         static const Mode MODE_WRITE;
 
@@ -231,6 +233,9 @@ namespace osgEarth
         float getMaxValidValue() const { return _maxValidValue; }
         void setMaxValidValue(float value) { _maxValidValue = value; }
 
+        //! The attribution string to be displayed for this TileSource
+        virtual std::string getAttribution() const { return ""; }
+
         /**
          * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
@@ -264,7 +269,7 @@ namespace osgEarth
          * image with one 32-bit channel and call storeImage.)
          */
         virtual bool storeHeightField(const TileKey&    key,
-                                      osg::HeightField* hf,
+                                      const osg::HeightField* hf,
                                       ProgressCallback* progress);
 
     public:
@@ -278,7 +283,7 @@ namespace osgEarth
 
         /**
          * TimeStamp indicating the last time the data at this source changed
-         * Default is 0, i.e. the beginning of time itself (1970). It is up to 
+         * Default is 0, i.e. the beginning of time itself (1970). It is up to
          * the TileSource implementation whether to populate this field. The
          * Map engine can use it for per-session caching purposes.
          */
@@ -307,7 +312,7 @@ namespace osgEarth
          * cache if one is configured. But a TileSource can report that caching should
          * not be used (for whatever reason) by returning CachePolicy::NO_CACHE.
          */
-        virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const 
+        virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const
             { return CachePolicy::DEFAULT; }
 
         /**
@@ -321,7 +326,7 @@ namespace osgEarth
         const TileSourceOptions& getOptions() const { return _options; }
 
         /**
-         * Set the L2 cache size default (if the size was not set in 
+         * Set the L2 cache size default (if the size was not set in
          * the options or environment). Must call this before open().
          */
         void setDefaultL2CacheSize(int size);
@@ -367,11 +372,11 @@ namespace osgEarth
             ProgressCallback*     progress );
 
     protected:
-        
+
         virtual ~TileSource();
 
         /**
-         * Subclass can call this to set a Profile after opening the 
+         * Subclass can call this to set a Profile after opening the
          * data store.
          */
         void setProfile( const Profile* profile );
@@ -382,12 +387,6 @@ namespace osgEarth
          * later, e.g. in the event of an unrecoverable error.
          */
         void setStatus(const Status& value) { _status = value; }
-
-        /**
-         * Accesses the map frame that synchronizes with a map if one is set.
-         * Note; the map frame might be empty/invalid.
-         */
-        MapFrame& getMapFrame() const;
 
         //! Compat - do not override
         unsigned getTileSize() const { return getPixelsPerTile(); }
@@ -410,7 +409,7 @@ namespace osgEarth
         DataExtentList  _dataExtents;
         Status          _status;
         Mode            _mode;
-        unsigned        _tileSize;     
+        unsigned        _tileSize;
         float           _noDataValue;
         float           _minValidValue;
         float           _maxValidValue;

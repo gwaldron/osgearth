@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,12 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/HTM>
-#include <osgEarth/CullingUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/StringUtils>
 #include <osgEarthAnnotation/LabelNode>
-#include <osg/Geometry>
-#include <osgText/Text>
 #include <osgEarth/DrapeableNode>
 
 using namespace osgEarth;
@@ -292,7 +287,7 @@ HTMGroup::HTMGroup()
 {
     _settings._maxObjectsPerCell = 128;
     _settings._rangeFactor.init( 7.0f );
-    _settings._debugGeom = true;
+    _settings._debugGeom = false;
     _settings._minCellSize = 10000;
     _settings._maxCellSize = 500000;
     _settings._storeObjectsInLeavesOnly = false;

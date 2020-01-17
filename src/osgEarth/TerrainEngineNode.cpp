@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,18 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/Capabilities>
-#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/TerrainResources>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
-#include <osgEarth/TerrainTileModelFactory>
-#include <osgEarth/TraversalData>
-#include <osgDB/ReadFile>
-#include <osg/CullFace>
-#include <osg/PolygonOffset>
-#include <osgViewer/View>
 
 #define LC "[TerrainEngineNode] "
 
@@ -64,9 +54,7 @@ namespace osgEarth
 //------------------------------------------------------------------------
 
 
-TerrainEngineNode::ImageLayerController::ImageLayerController(const Map*         map,
-                                                              TerrainEngineNode* engine) :
-_mapf  ( map ),
+TerrainEngineNode::ImageLayerController::ImageLayerController(TerrainEngineNode* engine) :
 _engine( engine )
 {    
     //nop
@@ -141,9 +129,8 @@ TerrainEngineNode::~TerrainEngineNode()
     //Remove any callbacks added to the image layers
     if (_map.valid())
     {
-        MapFrame mapf( _map.get() );        
         ImageLayerVector imageLayers;
-        mapf.getLayers(imageLayers);
+        _map->getLayers(imageLayers);
 
         for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
@@ -236,13 +223,11 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     // Create a layer controller. This object affects the uniforms
     // that control layer appearance properties
-    _imageLayerController = new ImageLayerController(_map.get(), this);
+    _imageLayerController = new ImageLayerController(this);
 
     // register the layer Controller it with all pre-existing image layers:
-    MapFrame mapf(_map.get());
     ImageLayerVector imageLayers;
-    mapf.getLayers(imageLayers);
-
+    _map->getLayers(imageLayers);
     for (ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i)
     {
         i->get()->addCallback(_imageLayerController.get());
@@ -256,7 +241,7 @@ TerrainEngineNode::computeBound() const
 {
     if ( getEllipsoidModel() )
     {
-        double maxRad = std::max(
+        double maxRad = osg::maximum(
             getEllipsoidModel()->getRadiusEquator(),
             getEllipsoidModel()->getRadiusPolar());
 
@@ -303,17 +288,16 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 }
 
 TerrainTileModel*
-TerrainEngineNode::createTileModel(const MapFrame&              frame,
+TerrainEngineNode::createTileModel(const Map*                   map,
                                    const TileKey&               key,
                                    const CreateTileModelFilter& filter,
-                                   ProgressCallback*            progress
-    )
+                                   ProgressCallback*            progress)
 {
     TerrainEngineRequirements* requirements = this;
 
     // Ask the factory to create a new tile model:
     osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
-        frame, 
+        map, 
         key, 
         filter,
         requirements,         
@@ -355,6 +339,40 @@ TerrainEngineNode::removeCreateTileModelCallback(CreateTileModelCallback* callba
     }
 }
 
+void
+TerrainEngineNode::addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback)
+{
+    Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
+    _modifyTileBoundingBoxCallbacks.push_back(callback);
+}
+
+void
+TerrainEngineNode::removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback)
+{
+    Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
+    for (ModifyTileBoundingBoxCallbacks::iterator i = _modifyTileBoundingBoxCallbacks.begin();
+        i != _modifyTileBoundingBoxCallbacks.end();
+        ++i)
+    {
+        if (i->get() == callback)
+        {
+            _modifyTileBoundingBoxCallbacks.erase(i);
+            break;
+        }
+    }
+}
+
+void
+TerrainEngineNode::fireModifyTileBoundingBoxCallbacks(const TileKey& key, osg::BoundingBox& box)
+{
+    Threading::ScopedReadLock sharedLock(_createTileModelCallbacksMutex);
+    for (ModifyTileBoundingBoxCallbacks::iterator i = _modifyTileBoundingBoxCallbacks.begin();
+        i != _modifyTileBoundingBoxCallbacks.end();
+        ++i)
+    {
+        i->get()->modifyBoundingBox(key, box);
+    }
+}
 
 namespace
 {

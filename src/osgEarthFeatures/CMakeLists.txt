@@ -51,6 +51,7 @@ SET(LIB_PUBLIC_HEADERS
     FilterContext
     GeometryCompiler
     GeometryUtils
+    ImageToFeatureLayer
     LabelSource
     MVT
     OgrUtils
@@ -95,6 +96,7 @@ SET(TARGET_SRC
     FilterContext.cpp
     GeometryCompiler.cpp
     GeometryUtils.cpp
+    ImageToFeatureLayer.cpp
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
@@ -129,6 +131,10 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   )
 
   ADD_DEFINITIONS(-DOSGEARTH_HAVE_MVT)
+  
+  IF (PROTOBUF_USE_DLLS)
+    ADD_DEFINITIONS(-DPROTOBUF_USE_DLLS)
+  ENDIF()  
 
 ENDIF()
 

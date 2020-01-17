@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -491,16 +491,6 @@ namespace osgEarth { namespace Util
                 out_maxSeconds = _max_vp_duration_s;
             }
 
-#if 0 // removed. please set the matrix yourself.
-            /** The camera projection matrix type */
-            void setCameraProjection( const CameraProjection& value );
-            const CameraProjection& getCameraProjection() const { return _camProjType; }
-
-            /** Frustum offset (in pixels) */
-            void setCameraFrustumOffsets( const osg::Vec2s& offsets );
-            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }
-#endif
-
             /** Whether to automatically adjust an orthographic camera so that it "tracks" the last known FOV and Aspect Ratio. */
             bool getOrthoTracksPerspective() const { return _orthoTracksPerspective; }
             void setOrthoTracksPerspective(bool value) { _orthoTracksPerspective = value; }
@@ -518,6 +508,9 @@ namespace osgEarth { namespace Util
 
             void setThrowDecayRate(double throwDecayRate) { _throwDecayRate = osg::clampBetween(throwDecayRate, 0.0, 1.0); }
             double getThrowDecayRate () const { return _throwDecayRate; }
+
+            void setZoomToMouse(bool value) { _zoomToMouse = value; }
+            bool getZoomToMouse() const { return _zoomToMouse; }
 
         private:
 
@@ -564,6 +557,8 @@ namespace osgEarth { namespace Util
 
             bool _throwingEnabled;
             double _throwDecayRate;
+
+            bool _zoomToMouse;
         };
 
     public:
@@ -626,6 +621,20 @@ namespace osgEarth { namespace Util
         TetherCallback* getTetherCallback() { return _tetherCallback.get(); }
 
         /**
+         * Post-camera-update callback; use to access the camera position after
+         * the call to updateCamera (for frame synchronization)
+         */
+        class UpdateCameraCallback : public osg::Referenced
+        {
+        public:
+            virtual void onUpdateCamera(const osg::Camera*) { }
+        protected:
+            virtual ~UpdateCameraCallback() { }
+        };
+        void setUpdateCameraCallback(UpdateCameraCallback* cb) { _updateCameraCallback = cb; }
+        UpdateCameraCallback* getUpdateCameraCallback() { return _updateCameraCallback.get(); }
+
+        /**
          * Move the focal point of the camera using deltas (normalized screen coords).
          */
         virtual void pan( double dx, double dy );
@@ -638,7 +647,7 @@ namespace osgEarth { namespace Util
         /**
          * Zoom the camera using deltas (dy only)
          */
-        virtual void zoom( double dx, double dy );
+        virtual void zoom( double dx, double dy, osg::View* view );
 
         /**
          * Drag the earth using deltas
@@ -798,6 +807,12 @@ namespace osgEarth { namespace Util
         // This sets the camera's roll based on your location on the globe.
         void recalculateRoll();
 
+        // Gets the matrix without a pre-MapNode transform (i.e., map world space)
+        osg::Matrixd getWorldMatrix() const;
+
+        // Gets the inverse matrix without a pre-MapNode transform (i.e., map world space)
+        osg::Matrixd getWorldInverseMatrix() const;
+
     protected:
 
         enum TaskType
@@ -822,7 +837,7 @@ namespace osgEarth { namespace Util
 
         // "ticks" the resident Task, which allows for multi-frame animation of navigation
         // movements.
-        bool serviceTask();
+        bool serviceTask(osg::View*);
 
         // returns the Euler Angles baked into _rotation, the local frame's rotation quaternion.
         void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch) const;
@@ -842,11 +857,9 @@ namespace osgEarth { namespace Util
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
         osg::Quat computeCenterRotation(const osg::Vec3d& center) const;
 
-        void updateTether();
+        void updateTether(double t);
 
         void updateSetViewpoint();
-
-        void updateHandCam( const osg::Timer_t& now );
 
         bool isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const;
 
@@ -900,11 +913,6 @@ namespace osgEarth { namespace Util
         virtual void handleContinuousAction( const Action& action, osg::View* view );
         virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
 
-        /**
-         * Gets the viewpoint of the TetherNode.
-         */
-        Viewpoint getTetherNodeViewpoint() const;
-
     protected:
 
         // makeshift "stack" of the last 2 incoming events.
@@ -912,15 +920,14 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
 
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
+        bool _pushed;
 
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<MapNode>   _mapNode;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _srs;
 
-        double                  _time_s_last_frame;
         double                  _time_s_now;
-        double                  _delta_t;
         bool                    _thrown;
         double                  _throw_dx;
         double                  _throw_dy;
@@ -992,6 +999,8 @@ namespace osgEarth { namespace Util
 
         TetherMode              _lastTetherMode;
 
+        osg::Matrix             _mapNodeFrame, _mapNodeFrameInverse;
+
         // returns "t", the parametric coefficient of a timed transition. 1=finished.
         double setViewpointFrame(double time_s);
 
@@ -1027,6 +1036,8 @@ namespace osgEarth { namespace Util
         osg::Node::NodeMask  _findNodeTraversalMask;
 
         osg::ref_ptr<TetherCallback> _tetherCallback;
+
+        osg::ref_ptr<UpdateCameraCallback> _updateCameraCallback;
 
         bool _userWillCallUpdateCamera;
 

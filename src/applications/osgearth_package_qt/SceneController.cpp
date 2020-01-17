@@ -269,7 +269,8 @@ void SceneController::setBounds(const osgEarth::GeoPoint& p1, const osgEarth::Ge
 
     if (!_bboxNode.valid())
     {
-      _bboxNode = new osgEarth::Annotation::FeatureNode(_mapNode.get(), feature);
+      _bboxNode = new osgEarth::Annotation::FeatureNode(feature);
+      _bboxNode->setMapNode( _mapNode.get() );
       _bboxNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
       _annoRoot->addChild( _bboxNode.get() );
     }

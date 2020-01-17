@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,15 +24,13 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/BboxDrawable>
-#include <osgEarthFeatures/BuildTextFilter>
-#include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
-#include <osgEarth/Registry>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
 #include <osgEarth/ScreenSpaceLayout>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/Lighting>
+#include <osgEarth/Shaders>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderGenerator>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -41,86 +39,138 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+namespace
+{
+    const char* iconVS =
+        "#version " GLSL_VERSION_STR "\n"
+        "out vec2 oe_PlaceNode_texcoord; \n"
+        "void oe_PlaceNode_icon_VS(inout vec4 vertex) \n"
+        "{ \n"
+        "    oe_PlaceNode_texcoord = gl_MultiTexCoord0.st; \n"
+        "} \n";
+
+    const char* iconFS =
+        "#version " GLSL_VERSION_STR "\n"
+        "in vec2 oe_PlaceNode_texcoord; \n"
+        "uniform sampler2D oe_PlaceNode_tex; \n"
+        "void oe_PlaceNode_icon_FS(inout vec4 color) \n"
+        "{ \n"
+        "    color = texture(oe_PlaceNode_tex, oe_PlaceNode_texcoord); \n"
+        "} \n";
+}
+
+osg::observer_ptr<osg::StateSet> PlaceNode::s_geodeStateSet;
+osg::observer_ptr<osg::StateSet> PlaceNode::s_imageStateSet;
+
 PlaceNode::PlaceNode() :
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+GeoPositionNode()
 {
-    //nop
+    construct();
+    compile();
 }
 
-PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const GeoPoint&    position,
-                     osg::Image*        image,
+PlaceNode::PlaceNode(const std::string& text,
+                     const Style& style,
+                     osg::Image* image) :
+GeoPositionNode()
+{
+    construct();
+
+    _text = text;
+    _image = image;
+    _style = style;
+
+    compile();
+}
+
+PlaceNode::PlaceNode(const GeoPoint& position,
                      const std::string& text,
-                     const Style&       style ) :
-
-GeoPositionNode( mapNode ),
-_image   ( image ),
-_text    ( text ),
-_style   ( style ),
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+                     const Style& style,
+                     osg::Image* image) :
+GeoPositionNode()
 {
-    init();
-    setPosition(position);
-}
+    construct();
 
-PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const GeoPoint&    position,
-                     const std::string& text,
-                     const Style&       style ) :
-
-GeoPositionNode( mapNode ),
-_text    ( text ),
-_style   ( style ),
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
-{
-    init();
+    _text = text;
+    _image = image;
+    _style = style;
     setPosition(position);
-}
 
-PlaceNode::PlaceNode(MapNode*              mapNode,
-                     const GeoPoint&       position,
-                     const Style&          style,
-                     const osgDB::Options* dbOptions ) :
-GeoPositionNode ( mapNode ),
-_style    ( style ),
-_dbOptions        ( dbOptions ),
-_geode            ( 0L ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
-{
-    init();
-    setPosition(position);
+    compile();
 }
 
 void
-PlaceNode::init()
+PlaceNode::construct()
 {
-    osg::StateSet* ss = this->getOrCreateStateSet();
+    _geode = 0L;
+    _labelRotationRad = 0.0f;
+    _followFixedCourse = false;
+    _imageDrawable = 0L;
+    _bboxDrawable = 0L;
+    _textDrawable = 0L;
 
-    // Draw place nodes in screen space.
-    ScreenSpaceLayout::activate(ss);
+    // This class makes its own shaders
+    ShaderGenerator::setIgnoreHint(this, true);
 
-    // Disable lighting for place nodes by default
-    ss->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
+    // Construct the shared state sets
+    if (s_geodeStateSet.lock(_geodeStateSet) == false)
+    {
+        static Threading::Mutex s_mutex;
+        Threading::ScopedMutexLock lock(s_mutex);
 
-    osgEarth::clearChildren( getPositionAttitudeTransform() );
+        if (s_geodeStateSet.lock(_geodeStateSet) == false)
+        {
+            s_geodeStateSet = _geodeStateSet = new osg::StateSet();
 
-    _geode = new osg::Geode();
+            // draw in the screen-space bin
+            ScreenSpaceLayout::activate(_geodeStateSet.get());
+
+            // completely disable depth buffer
+            _geodeStateSet->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1);
+
+            // Disable lighting for place nodes by default
+            _geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+        }
+    }
+
+    if (s_imageStateSet.lock(_imageStateSet) == false)
+    {
+        static Threading::Mutex s_mutex;
+        Threading::ScopedMutexLock lock(s_mutex);
+
+        if (s_imageStateSet.lock(_imageStateSet) == false)
+        {
+            s_imageStateSet = _imageStateSet = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
+            vp->setName("PlaceNode::imageStateSet");
+            vp->setFunction("oe_PlaceNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_PlaceNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            _imageStateSet->addUniform(new osg::Uniform("oe_PlaceNode_tex", 0));
+        }
+    }
+}
+
+void
+PlaceNode::compile()
+{
+    osg::Group* pat = getPositionAttitudeTransform();
+    pat->removeChildren(0, pat->getNumChildren());
+
+    _geode = new osg::Group();
+    _geode->setCullingActive(false);
+    _geode->setStateSet(_geodeStateSet.get());
 
     // ensure that (0,0,0) is the bounding sphere control/center point.
     // useful for things like horizon culling.
     _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
 
-    osg::Drawable* text = 0L;
+    getPositionAttitudeTransform()->addChild(_geode);
+
+    _imageDrawable = 0L;
+    _bboxDrawable = 0L;
+    _textDrawable = 0L;
 
     const TextSymbol* symbol = _style.get<TextSymbol>();
 
@@ -148,7 +198,11 @@ PlaceNode::init()
 
     osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
 
-    const IconSymbol* icon = instance->asIcon();
+    const IconSymbol* icon = 0;
+    if (instance.valid())
+    {
+        icon = instance->asIcon();
+    }
 
     if ( !_image.valid() )
     {
@@ -168,7 +222,7 @@ PlaceNode::init()
 
         if ( !imageURI.empty() )
         {
-            _image = imageURI.getImage( _dbOptions.get() );
+            _image = imageURI.getImage( _readOptions.get() );
         }
     }
 
@@ -237,12 +291,14 @@ PlaceNode::init()
         }
 
         //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
-        //decluttering doesn't respect Transforms above the drawable.
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading, scale );
-        if ( imageGeom )
+        //decluttering doesn't respect Transforms above the drawable.        
+        _imageDrawable = AnnotationUtils::createImageGeometry(_image.get(), offset, 0, heading, scale);
+        if (_imageDrawable)
         {
-            _geode->addDrawable( imageGeom );
-            imageBox = osgEarth::Utils::getBoundingBox( imageGeom );
+            // todo: optimize this better:
+            _imageDrawable->getOrCreateStateSet()->merge(*_imageStateSet.get());
+            _geode->addChild(_imageDrawable);
+            imageBox = _imageDrawable->getBoundingBox();
         }    
     }
 
@@ -253,39 +309,34 @@ PlaceNode::init()
             textSymbol->alignment() = textSymbol->ALIGN_LEFT_CENTER;
     }
 
-    text = AnnotationUtils::createTextDrawable(
+    _textDrawable = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
             imageBox );
 
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
-    if ( bboxsymbol && text )
+    if ( bboxsymbol && _textDrawable )
     {
-        osg::Drawable* bboxGeom = new BboxDrawable( osgEarth::Utils::getBoundingBox(text), *bboxsymbol );
-        _geode->addDrawable(bboxGeom);
+        _bboxDrawable = new BboxDrawable( _textDrawable->getBoundingBox(), *bboxsymbol );
+        _geode->addChild(_bboxDrawable);
     }
 
-    if ( text )
+    if ( _textDrawable )
     {
-        _geode->addDrawable( text );
+        _geode->addChild( _textDrawable );
     }
-    
-    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
-    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    getPositionAttitudeTransform()->addChild( _geode );
+#if 0 // test a drop line
+    LineDrawable* line = new LineDrawable(GL_LINES);
+    line->pushVertex(osg::Vec3(0,0,0));
+    line->pushVertex(osg::Vec3(0,0,-100000));
+    line->finish();
+    getPositionAttitudeTransform()->addChild(line);
+#endif
 
-    // for clamping and occlusion culling    
-    //OE_WARN << LC << "PlaceNode::applyStyle: " << _style.getConfig().toJSON(true) << std::endl;
+    setDefaultLighting( false );
+
     applyStyle( _style );
-
-    setLightingIfNotSet( false );
-    
-    // generate shaders:
-    Registry::shaderGenerator().run(
-        this,
-        "osgEarth.PlaceNode",
-        Registry::stateSetCache() );
 
     setPriority(getPriority());
 
@@ -318,10 +369,14 @@ PlaceNode::updateLayoutData()
     }
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for (unsigned i = 0; i < _geode->getNumDrawables(); ++i)
-    {
-        _geode->getDrawable(i)->setUserData(_dataLayout.get());
-    }
+    if (_imageDrawable)
+        _imageDrawable->setUserData(_dataLayout.get());
+
+    if (_bboxDrawable)
+        _bboxDrawable->setUserData(_dataLayout.get());
+
+    if (_textDrawable)
+        _textDrawable->setUserData(_dataLayout.get());
 
     _dataLayout->setPriority(getPriority());    
     
@@ -376,79 +431,90 @@ PlaceNode::setText( const std::string& text )
 
     _text = text;
 
-    if (_geode)
+    if (_textDrawable)
     {
-        for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
-        {
-            osgText::Text* d = dynamic_cast<osgText::Text*>( _geode->getDrawable(i) );
-            if ( d )
-            {
-			    TextSymbol* symbol =  _style.getOrCreate<TextSymbol>();
-			    osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
-			    if ( symbol && symbol->encoding().isSet() )
-			    {
-				    text_encoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
-			    }
+		TextSymbol* symbol =  _style.getOrCreate<TextSymbol>();
+		osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+		if ( symbol && symbol->encoding().isSet() )
+		{
+			text_encoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+		}
 
-                d->setText( text, text_encoding );
-                break;
-            }
-        }
+        _textDrawable->setText( text, text_encoding );
     }
 }
-
 
 void
 PlaceNode::setStyle(const Style& style)
 {
     // changing the style requires a complete rebuild.
     _style = style;
-    init();
+    compile();
 }
 
+void
+PlaceNode::setStyle(const Style& style, const osgDB::Options* readOptions)
+{
+    // changing the style requires a complete rebuild.
+    _style = style;
+    _readOptions = readOptions;
+    compile();
+}
 
 void
 PlaceNode::setIconImage(osg::Image* image)
 {
-    // changing the icon requires a complete rebuild.
-    _image = image;
-    init();
+    if (_image != image)
+    {
+        _image = image;
+        if (_imageDrawable)
+        {            
+            osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(_imageDrawable->getStateSet()->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+            if (texture)
+            {                
+                texture->setImage(_image);
+            }            
+        }
+        else
+        {
+            compile();
+        }
+    }
 }
-
 
 void
 PlaceNode::setDynamic( bool value )
 {
     GeoPositionNode::setDynamic( value );
     
-    if (_geode)
-    {
-        for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
-        {
-            _geode->getDrawable(i)->setDataVariance( 
-                value ? osg::Object::DYNAMIC : osg::Object::STATIC );
-        }
-    }
+    osg::Object::DataVariance dv = value ? osg::Object::DYNAMIC : osg::Object::STATIC;
+
+    if (_textDrawable)
+        _textDrawable->setDataVariance(dv);
+
+    if (_bboxDrawable)
+        _bboxDrawable->setDataVariance(dv);
+
+    if (_imageDrawable)
+        _imageDrawable->setDataVariance(dv);
 }
 
 //-------------------------------------------------------------------
 
 OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 
-
-PlaceNode::PlaceNode(MapNode*              mapNode,
-                     const Config&         conf,
-                     const osgDB::Options* dbOptions) :
-GeoPositionNode ( mapNode, conf ),
-_dbOptions( dbOptions ),
-_labelRotationRad ( 0. ),
-_followFixedCourse( false )
+PlaceNode::PlaceNode(const Config&         conf,
+                     const osgDB::Options* readOptions) :
+GeoPositionNode(conf, readOptions),
+_readOptions( readOptions )
 {
-    conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "text",   _text );
+    construct();
+
+    conf.get( "style",  _style );
+    conf.get( "text",   _text );
 
     optional<URI> imageURI;
-    conf.getIfSet( "icon", imageURI );
+    conf.get( "icon", imageURI );
     if ( imageURI.isSet() )
     {
         _image = imageURI->getImage();
@@ -456,8 +522,7 @@ _followFixedCourse( false )
             _image->setFileName( imageURI->base() );
     }
 
-    init();
-    setPosition(getPosition());
+    compile();
 }
 
 void
@@ -465,11 +530,11 @@ PlaceNode::setConfig(const Config& conf)
 {
     GeoPositionNode::setConfig(conf);
 
-    conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "text",   _text );
+    conf.get( "style",  _style );
+    conf.get   ( "text",   _text );
 
     optional<URI> imageURI;
-    conf.getIfSet( "icon", imageURI );
+    conf.get( "icon", imageURI );
     if ( imageURI.isSet() )
     {
         _image = imageURI->getImage();
@@ -477,20 +542,21 @@ PlaceNode::setConfig(const Config& conf)
             _image->setFileName( imageURI->base() );
     }
 
-    init();
+    //init();
 }
 
 Config
 PlaceNode::getConfig() const
 {
-    Config conf( "place" );
-    conf.add   ( "text",   _text );
-    conf.addObj( "style",  _style );
+    Config conf = GeoPositionNode::getConfig();
+    conf.key() = "place";
+    conf.set( "text",   _text );
+    conf.set( "style",  _style );
     if ( _image.valid() ) {
         if ( !_image->getFileName().empty() )
-            conf.add( "icon", _image->getFileName() );
+            conf.set( "icon", _image->getFileName() );
         else if ( !_image->getName().empty() )
-            conf.add( "icon", _image->getName() );
+            conf.set( "icon", _image->getName() );
     }
 
     return conf;

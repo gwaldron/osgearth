@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -58,7 +58,8 @@ AnnotationNode(),
 _options           ( options ),
 _needsRebuild      ( true ),
 _styleSheet        ( styleSheet ),
-_clampDirty        (false)
+_clampDirty        (false),
+_index             ( 0 )
 {
     _features.push_back( feature );
 
@@ -79,49 +80,10 @@ AnnotationNode(),
 _options        ( options ),
 _needsRebuild   ( true ),
 _styleSheet     ( styleSheet ),
-_clampDirty     ( false )
+_clampDirty     ( false ),
+_index          ( 0 )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
-    setStyle( style );
-}
-
-FeatureNode::FeatureNode(MapNode* mapNode,
-                         Feature* feature,
-                         const Style& in_style,
-                         const GeometryCompilerOptions& options,
-                         StyleSheet* styleSheet) :
-AnnotationNode(),
-_options           ( options ),
-_needsRebuild      ( true ),
-_styleSheet        ( styleSheet ),
-_clampDirty        (false)
-{
-    _features.push_back( feature );
-
-    FeatureNode::setMapNode( mapNode );
-
-    Style style = in_style;
-    if (style.empty() && feature->style().isSet())
-    {
-        style = *feature->style();
-    }
-
-    setStyle( style );
-}
-
-FeatureNode::FeatureNode(MapNode* mapNode,
-                         const FeatureList& features,
-                         const Style& style,
-                         const GeometryCompilerOptions& options,
-                         StyleSheet* styleSheet):
-AnnotationNode(),
-_options        ( options ),
-_needsRebuild   ( true ),
-_styleSheet     ( styleSheet ),
-_clampDirty     ( false )
-{
-    _features.insert( _features.end(), features.begin(), features.end() );
-    FeatureNode::setMapNode( mapNode );
     setStyle( style );
 }
 
@@ -158,6 +120,7 @@ FeatureNode::build()
         options.ignoreAltitudeSymbol() = true;
     }
 
+    _clamperData.clear();
 
     osg::Node* node = _compiled.get();
     if (_needsRebuild || !_compiled.valid() )
@@ -187,7 +150,7 @@ FeatureNode::build()
         GeometryCompiler compiler( options );
         Session* session = new Session( getMapNode()->getMap(), _styleSheet.get() );
 
-        FilterContext context( session, new FeatureProfile( _extent ), _extent );
+        FilterContext context( session, new FeatureProfile( _extent ), _extent, _index);
 
         _compiled = compiler.compile( clone, style, context );
         node = _compiled.get();
@@ -238,9 +201,7 @@ FeatureNode::build()
             this->addChild( _attachPoint );
 
             // set default lighting based on whether we are extruding:
-            setLightingIfNotSet( style.has<ExtrusionSymbol>() );
-
-            //applyRenderSymbology( style );
+            setDefaultLighting( style.has<ExtrusionSymbol>() );
         }
 
         applyRenderSymbology(style);
@@ -249,8 +210,12 @@ FeatureNode::build()
         {
             if ( ap.sceneClamping )
             {
-                getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-                clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
+                // Need dynamic data variance since scene clamping will change the verts
+                SetDataVarianceVisitor sdv(osg::Object::DYNAMIC);
+                this->accept(sdv);
+
+                getMapNode()->getTerrain()->addTerrainCallback(_clampCallback.get());
+                clamp(getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain());
             }
             else
             {
@@ -301,6 +266,21 @@ void FeatureNode::setStyleSheet(StyleSheet* styleSheet)
     _styleSheet = styleSheet;
 }
 
+FeatureIndexBuilder* FeatureNode::getIndex()
+{
+    return _index;
+}
+
+void FeatureNode::setIndex(FeatureIndexBuilder* index)
+{
+    if (_index != index)
+    {
+        _index = index;
+        _needsRebuild = true;
+        build();
+    }
+}
+
 Feature* FeatureNode::getFeature()
 {
     if (_features.size() == 1)
@@ -321,7 +301,7 @@ void FeatureNode::setFeature(Feature* feature)
     build();
 }
 
-void FeatureNode::init()
+void FeatureNode::dirty()
 {
     _needsRebuild = true;
     build();
@@ -371,10 +351,10 @@ FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
         bool relative = alt && alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN && alt->technique() == alt->TECHNIQUE_SCENE;
         float offset = alt ? alt->verticalOffset()->eval() : 0.0f;
 
-        GeometryClamper clamper;
+        GeometryClamper clamper(_clamperData);
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
-        clamper.setPreserveZ( relative );
+        clamper.setUseVertexZ( relative );
         clamper.setOffset( offset );
 
         this->accept( clamper );
@@ -405,11 +385,11 @@ FeatureNode::traverse(osg::NodeVisitor& nv)
 OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 
 
-FeatureNode::FeatureNode(MapNode*              mapNode,
-                         const Config&         conf,
-                         const osgDB::Options* dbOptions ) :
-AnnotationNode(conf),
-_clampDirty(false)
+FeatureNode::FeatureNode(const Config&         conf,
+                         const osgDB::Options* readOptions ) :
+AnnotationNode(conf, readOptions),
+_clampDirty(false),
+_index(0)
 {
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )
@@ -427,18 +407,19 @@ _clampDirty(false)
 
     optional<GeoInterpolation> geoInterp;
 
-    conf.getObjIfSet( "style", _style );
+    conf.get( "style", _style );
 
-    FeatureNode::setMapNode( mapNode );
+    //FeatureNode::setMapNode( mapNode );
 
     if ( srs.valid() && geom.valid() )
     {
         Feature* feature = new Feature(geom.get(), srs.get() );
 
-        conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );
-        conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
+        conf.get( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );
+        conf.get( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
 
         _features.push_back( feature );
+
         build();
     }
 }
@@ -457,7 +438,7 @@ FeatureNode::getConfig() const
         conf.set("name", getName());
 
         Config geomConf("geometry");
-        geomConf.value() = GeometryUtils::geometryToWKT( feature->getGeometry() );
+        geomConf.setValue(GeometryUtils::geometryToWKT( feature->getGeometry() ));
         conf.add(geomConf);
 
         std::string srs = feature->getSRS() ? feature->getSRS()->getHorizInitString() : "";
@@ -472,7 +453,7 @@ FeatureNode::getConfig() const
 
     if (!_style.empty() )
     {
-        conf.addObj( "style", _style );
+        conf.set( "style", _style );
     }
 
     return conf;

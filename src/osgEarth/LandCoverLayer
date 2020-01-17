@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -75,7 +75,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT LandCoverLayer : public ImageLayer
     {
     public:
-        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions);
+        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions, land_cover);
 
         /** Construct an emptry land cover layer. Use options() to configure */
         LandCoverLayer();
@@ -101,6 +101,15 @@ namespace osgEarth
         virtual TileSource* createTileSource();
 
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
+
+        struct MetaImageComponent {
+            MetaImageComponent() : pixel(0L) { }
+            osg::ref_ptr<osg::Image> image;
+            osg::Matrix scaleBias;
+            ImageUtils::PixelReader pixel;
+        };
+        typedef std::map<TileKey, MetaImageComponent> MetaImage;
+        bool readMetaImage(MetaImage&, const TileKey&, double, double, osg::Vec4f& output, ProgressCallback*);
     };
 
 } // namespace osgEarth

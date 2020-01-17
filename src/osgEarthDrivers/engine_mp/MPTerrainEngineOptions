@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,7 +40,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _quickRelease      ( true ),
             _normalizeEdges    ( true ),
             _color             ( Color::White ),
-            _incrementalUpdate ( false ),
             _smoothing         ( false ),
             _normalMaps        ( false ),
             _adaptivePolarRangeFactor( true )
@@ -92,12 +91,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>& adaptivePolarRangeFactor() { return _adaptivePolarRangeFactor; }
         const optional<bool>& adaptivePolarRangeFactor() const { return _adaptivePolarRangeFactor; }
 
-    public:
-
-        /** @deprecated */
-        optional<bool>& incrementalUpdate() { return _incrementalUpdate; }
-        const optional<bool>& incrementalUpdate() const { return _incrementalUpdate; }
-
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -105,7 +98,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.set( "quick_release_gl_objects", _quickRelease );
             conf.set( "normalize_edges", _normalizeEdges);
             conf.set( "color", _color );
-            conf.set( "incremental_update", _incrementalUpdate );
             conf.set( "elevation_smoothing", _smoothing );
             conf.set( "normal_maps", _normalMaps );
             conf.set( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
@@ -120,14 +112,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "skirt_ratio", _skirtRatio );
-            conf.getIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.getIfSet( "normalize_edges", _normalizeEdges );
-            conf.getIfSet( "color", _color );
-            conf.getIfSet( "incremental_update", _incrementalUpdate );
-            conf.getIfSet( "elevation_smoothing", _smoothing );
-            conf.getIfSet( "normal_maps", _normalMaps );
-            conf.getIfSet( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
+            conf.get( "skirt_ratio", _skirtRatio );
+            conf.get( "quick_release_gl_objects", _quickRelease );
+            conf.get( "normalize_edges", _normalizeEdges );
+            conf.get( "color", _color );
+            conf.get( "elevation_smoothing", _smoothing );
+            conf.get( "normal_maps", _normalMaps );
+            conf.get( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
        }
 
         optional<float>               _skirtRatio;
@@ -135,7 +126,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<float>               _lodFallOff;
         optional<bool>                _normalizeEdges;
         optional<Color>               _color;
-        optional<bool>                _incrementalUpdate;
         optional<bool>                _smoothing;
         optional<bool>                _normalMaps;
         optional<bool>                _adaptivePolarRangeFactor;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,10 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationQuery>
-#include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/Map>
-#include <osgEarth/ElevationPool>
-#include <osgUtil/IntersectionVisitor>
 #include <osgSim/LineOfSight>
 
 #define LC "[ElevationQuery] "
@@ -30,7 +27,6 @@ using namespace osgEarth;
 
 ElevationQuery::ElevationQuery()
 {
-    reset();
 }
 
 ElevationQuery::ElevationQuery(const Map* map)
@@ -38,23 +34,10 @@ ElevationQuery::ElevationQuery(const Map* map)
     setMap(map);
 }
 
-ElevationQuery::ElevationQuery(const MapFrame& mapFrame)
-{
-    setMapFrame(mapFrame);
-}
-
 void
 ElevationQuery::setMap(const Map* map)
 {
-    _mapf.setMap(map);
-    reset();
-}
-
-void
-ElevationQuery::setMapFrame(const MapFrame& frame)
-{
-    _mapf = frame;
-    reset();
+    _map = map;
 }
 
 void
@@ -63,30 +46,52 @@ ElevationQuery::reset()
     // set read callback for IntersectionVisitor
     _ivrc = new osgSim::DatabaseCacheReadCallback();
 
-    // find terrain patch layers.
-    gatherTerrainModelLayers();
+    _terrainModelLayers.clear();
+    _elevationLayers.clear();
+
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+    {
+        map->getLayers(_elevationLayers);
+        
+        // cache a vector of terrain patch models.
+        LayerVector layers;
+        map->getLayers(layers);
+        for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (i->get()->options().terrainPatch() == true)
+            {
+                _terrainModelLayers.push_back(i->get());
+            }
+        }
+
+        // revisions are now in sync.
+        _mapRevision = map->getDataModelRevision();
+    }
 
     // clear any active envelope
     _envelope = 0L;
 }
-
 void
 ElevationQuery::sync()
 {
-    if ( _mapf.needsSync() )
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
     {
-        _mapf.sync();
-        reset();
+        if (_mapRevision != map->getDataModelRevision())
+        {
+            reset();
+        }
     }
 }
 
 void
-ElevationQuery::gatherTerrainModelLayers()
+ElevationQuery::gatherTerrainModelLayers(const Map* map)
 {
     // cache a vector of terrain patch models.
     _terrainModelLayers.clear();
     LayerVector layers;
-    _mapf.getLayers(layers);
+    map->getLayers(layers);
     for (LayerVector::const_iterator i = layers.begin();
         i != layers.end();
         ++i)
@@ -196,7 +201,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         {
             // find the scene graph for this layer:
             Layer* layer = i->get();
-            osg::Node* node = layer->getOrCreateNode();
+            osg::Node* node = layer->getNode();
             if ( node )
             {
                 // configure for intersection:
@@ -250,14 +255,21 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                 }
             }
         }
-    }
+    } 
 
-    if ( _mapf.elevationLayers().empty() )
+    if (_elevationLayers.empty())
     {
         // this means there are no heightfields.
         out_elevation = NO_DATA_VALUE;
         return true;
     }
+
+    // secure map pointer:
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+    {
+        return false;
+    }    
 
     // tile size (resolution of elevation tiles)
     unsigned tileSize = 257; // yes?
@@ -268,7 +280,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     // attempt to map the requested resolution to an LOD:
     if (desiredResolution > 0.0)
     {
-        int level = _mapf.getProfile()->getLevelOfDetailForHorizResolution(desiredResolution, tileSize);
+        int level = map->getProfile()->getLevelOfDetailForHorizResolution(desiredResolution, tileSize);
         if ( level > 0 )
             lod = level;
     }
@@ -278,7 +290,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         !point.getSRS()->isHorizEquivalentTo(_envelope->getSRS()) ||
         lod != _envelope->getLOD())
     {        
-        _envelope = _mapf.getElevationPool()->createEnvelope(point.getSRS(), lod);
+        _envelope = map->getElevationPool()->createEnvelope(point.getSRS(), lod);
     }
 
     // sample the elevation, and if requested, the resolution as well:

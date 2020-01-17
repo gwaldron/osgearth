@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -44,16 +44,16 @@ public:
     {
         if (conf.key() == "change_attribute")
         {
-            conf.getIfSet("key", _key);
-            conf.getIfSet("value", _value);
+            conf.get("key", _key);
+            conf.get("value", _value);
         }
     }
 
     virtual Config getConfig() const
     {
         Config config("change_attribute");
-        config.addIfSet("key", _key);
-        config.addIfSet("value", _value);
+        config.set("key", _key);
+        config.set("value", _value);
         return config;
     }
 

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -119,6 +119,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::set<UID>& newLayers() { return _newLayers; }
 
         void refreshSharedSamplers(const RenderBindings& bindings);
+
+        bool isDirty() const { return _dirty; }
         
     public: // osg::Node
 
@@ -140,7 +142,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
         double                             _lastTraversalTime;
-        OpenThreads::Atomic                _lastAcceptSurfaceFrame;
         unsigned                           _count;
         bool                               _childrenReady;
         unsigned int                       _minExpiryFrames;
@@ -151,6 +152,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::set<UID>                      _newLayers;
         bool                               _empty;
         bool                               _isRootTile;
+        bool                               _imageUpdatesActive;
+        TileKey                            _subdivideTestKey;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;
@@ -167,11 +170,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool accept_cull(TerrainCuller*);
 
-        bool cull_stealth(TerrainCuller*);
+        bool cull_spy(TerrainCuller*);
 
-        bool accept_cull_stealth(TerrainCuller*);
+        bool accept_cull_spy(TerrainCuller*);
 
         bool shouldSubDivide(TerrainCuller*, const SelectionInfo&);
+
+        // whether this tile should render the given pass
+        bool passInLegalRange(const RenderingPass&) const;
 
         /** Load (or continue loading) content for the tiles in this quad. */
         void load(TerrainCuller*);

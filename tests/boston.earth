@@ -16,25 +16,21 @@ to extruded buildings.
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
       
-    <feature_model name="buildings">
+    <feature_model name="buildings" max_range="20000">
+         
         <features name="buildings" driver="ogr">
             <url>../data/boston_buildings_utm19.shp</url>
 			<resample min_length="2.5"/>
         </features>
         
         <!--
-           The "layout" element activates tiling and paging of the feature set. If you
-           omit the layout element, the entire feature set will render as one pre-loaded
-           model (no tiling or paging).
-           
-           Each "level" is a level of detail for features, and should select a style
-              to use for that level. It also can specify min and max camera ranges,
-              in meters.
-              
-           The "tile size factor" controls how a feature is tiled. The higher this factor,
-              the smaller the tile size, and the more tiles will be used to render a given
-              level of detail. The default is 15. tile size = max range / tile size factor.
-        -->
+         ! The "layout" element activates tiling and paging of the feature set. If you
+         ! omit the layout element, the entire feature set will render as one pre-loaded
+         ! model (no tiling or paging).
+         !  
+         ! Each "level" is a level of detail for features, and should select a style
+         ! to use for that level. It also can specify min and max camera ranges, in meters.
+         -->
         
         <layout tile_size="500">
             <level name="default" max_range="20000" style="buildings"/>
@@ -96,9 +92,6 @@ to extruded buildings.
             <level max_range="1000" style="default"/>
         </layout>
         
-        <instancing>true</instancing>
-		<cluster_culling>false</cluster_culling>
-        
         <styles>
             <style type="text/css">
                 default {
@@ -124,8 +117,6 @@ to extruded buildings.
             <level max_range="2000"/>
         </layout>
         
-        <instancing>true</instancing>
-		<cluster_culling>false</cluster_culling>
         <feature_indexing enabled="false"/>
         
         <styles>

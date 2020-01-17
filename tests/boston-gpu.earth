@@ -107,17 +107,13 @@ to extruded buildings.
             <level max_range="1000" style="default"/>
         </layout>
         
-        <instancing>true</instancing>
-		<cluster_culling>false</cluster_culling>
-        
         <styles>
             <style type="text/css">
                 default {
                     model:             "../data/streetlight.osgb";
                     model-script:      positionAlongSegments();
 					model-heading:     feature.properties.heading;
-                    altitude-clamping: terrain;                    
-                    render-depth-offset:    false;
+                    altitude-clamping: terrain;
                 }
             </style>
             <script language="javascript" profile="full">
@@ -130,26 +126,23 @@ to extruded buildings.
     <feature_model name="Parks" enabled="true">
         <features name="parks" driver="ogr" build_spatial_index="true">
             <url>../data/boston-parks.shp</url>
-        </features>
+        </features>       
         
-        <layout tile_size_factor="3">
+        <layout tile_size="1000">
             <level max_range="2000"/>
         </layout>
-        
-        <instancing>true</instancing>
-		<cluster_culling>false</cluster_culling>
         
         <styles>
             <style type="text/css">
                 parks {
-                   model:                  "../data/loopix/tree4.osgb.(0.15).scale";
-				   //model-scale:            0.15 + 0.1*Math.random();
+                   model:                  "../data/loopix/tree4.osgb";
+				   model-scale:            0.15 + 0.1*Math.random();
                    model-placement:        random;
                    model-density:          3000;
 				   model-heading:          Math.random() * 360.0;
                    altitude-clamping:      terrain;
+				   render-transparent:     true;
 				   render-min-alpha:       0.15;
-                   render-depth-offset:    false;
                 }
             </style>
         </styles>        

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -51,11 +51,51 @@ usage(const char* name)
 
 struct App
 {
+    App() {
+        _playing = false;
+        readout = new ui::LabelControl();
+        readout->setVertAlign(ui::Control::ALIGN_CENTER);
+    }
+
     osg::ref_ptr<PlaceNode> sunPos;
     osg::ref_ptr<PlaceNode> moonPos;
     SkyNode* sky;
+    ui::LabelControl* readout;
+
+    void play() { _playing = true; }
+    void stop() { _playing = false; }
+
+    void tick() {
+        if (_playing) {
+            TimeStamp t = sky->getDateTime().asTimeStamp() + 1;
+            sky->setDateTime(DateTime(t));
+        }
+        readout->setText(sky->getDateTime().asRFC1123());
+    }
+    
+    bool _playing;
 };
 
+struct Play : public ui::ControlEventHandler {
+    Play(App& app) : _app(app) { }
+    void onClick(ui::Control*) { _app.play(); }
+    App& _app;
+};
+
+struct Stop : public ui::ControlEventHandler {
+    Stop(App& app) : _app(app) { }
+    void onClick(ui::Control*) { _app.stop(); }
+    App& _app;
+};
+
+ui::Container* createUI(App& app)
+{
+    ui::HBox* vcr = new ui::HBox();
+    vcr->addControl(new ui::ButtonControl("Play", new Play(app)));
+    vcr->addControl(new ui::ButtonControl("Stop", new Stop(app)));
+    vcr->addControl(app.readout);
+    return vcr;
+}
 
 int
 main(int argc, char** argv)
@@ -91,15 +131,13 @@ main(int argc, char** argv)
 
         MapNode* mapNode = MapNode::get(node);
 
-        app.sunPos = new PlaceNode(mapNode, GeoPoint(), mark.get(), "Sun");
+        app.sunPos = new PlaceNode("Sun", Style(), mark.get());
         app.sunPos->setDynamic(true);
         mapNode->addChild( app.sunPos.get() );
 
-        app.moonPos = new PlaceNode(mapNode, GeoPoint(), mark.get(), "Moon");
+        app.moonPos = new PlaceNode("Moon", Style(), mark.get());
         app.moonPos->setDynamic(true);
-
-        mapNode->addChild( app.moonPos.get() );        
-
+        mapNode->addChild( app.moonPos.get() ); 
 
         app.sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);        
         const Ephemeris* ephemeris = 0L;
@@ -113,6 +151,9 @@ main(int argc, char** argv)
         llf.setPrecision( 8 );
 
         viewer.setSceneData( root );
+
+        ui::ControlCanvas* container = ui::ControlCanvas::getOrCreate(&viewer);
+        container->addChild(createUI(app));
 
         while(!viewer.done())
         {
@@ -136,6 +177,8 @@ main(int argc, char** argv)
                 app.moonPos->setPosition( moonPos );
                 app.moonPos->setText( "Moon\n" + llf.format(moonPos) );
             }
+
+            app.tick();
         }
     }
     else

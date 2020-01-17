@@ -24,7 +24,7 @@ using namespace osgEarth::Symbology;
 void
 GroundCoverBiomeOptions::fromConfig(const Config& conf) 
 {
-    conf.getIfSet("classes", _biomeClasses);
+    conf.get("classes", _biomeClasses);
     const ConfigSet& symbols = conf.children();
     for (ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
         Symbol* s = SymbolRegistry::instance()->create(*i);
@@ -81,7 +81,7 @@ GroundCoverOptions::getConfig() const
         for (int i = 0; i < _biomes.size(); ++i) {
             biomes.add("biome", _biomes[i].getConfig());
         }
-        conf.update(biomes);
+        conf.set(biomes);
     }
     return conf;
 }
@@ -89,14 +89,14 @@ GroundCoverOptions::getConfig() const
 void
 GroundCoverOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("name", _name);
-    conf.getIfSet("lod", _lod);
-    conf.getIfSet("max_distance", _maxDistance);
-    conf.getIfSet("density", _density);
-    conf.getIfSet("fill", _fill);
-    conf.getIfSet("wind", _wind);
-    conf.getIfSet("brightness", _brightness);
-    conf.getIfSet("contrast", _contrast);
+    conf.get("name", _name);
+    conf.get("lod", _lod);
+    conf.get("max_distance", _maxDistance);
+    conf.get("density", _density);
+    conf.get("fill", _fill);
+    conf.get("wind", _wind);
+    conf.get("brightness", _brightness);
+    conf.get("contrast", _contrast);
     const Config* biomes = conf.child_ptr("biomes");
     if (biomes) {
         const ConfigSet& biomesVec = biomes->children();
@@ -129,9 +129,11 @@ GroundCover::configure(const osgDB::Options* readOptions)
         _biomes.push_back( biome.get() );
     }
 
+    GroundCoverBiome::ImageCache cache;
+
     for (int i = 0; i<_biomes.size(); ++i)
     {
-        if ( _biomes[i]->configure( options().biomes()[i], readOptions ) == false )
+        if ( _biomes[i]->configure( options().biomes()[i], readOptions, cache ) == false )
         {
             OE_WARN << LC << "One of the biomes in layer \"" << getName() << "\" is improperly configured\n";
             return false;
@@ -142,12 +144,12 @@ GroundCover::configure(const osgDB::Options* readOptions)
 }
 
 int
-GroundCover::getTotalNumBillboards() const
+GroundCover::getTotalNumObjects() const
 {
     int count = 0;
     for(int i=0; i<_biomes.size(); ++i)
     {
-        count += _biomes[i]->getBillboards().size();
+        count += _biomes[i]->getObjects().size();
     }
     return count;
 }
@@ -191,57 +193,141 @@ osg::Shader*
 GroundCover::createShader() const
 {
     std::stringstream biomeBuf;
-    std::stringstream billboardBuf;
+    std::stringstream objectsBuf;
+    std::stringstream billboardsBuf;
 
-    int totalBillboards = getTotalNumBillboards();
+    int totalObjects = getTotalNumObjects();
+
+    unsigned numBillboards = 0;
 
     // encode all the biome data.
     biomeBuf << 
         "struct oe_GroundCover_Biome { \n"
-        "    int firstBillboardIndex; \n"
-        "    int numBillboards; \n"
+        "    int firstObjectIndex; \n"
+        "    int numObjects; \n"
         "    float density; \n"
         "    float fill; \n"
         "    vec2 maxWidthHeight; \n"
         "}; \n"
-
         "const oe_GroundCover_Biome oe_GroundCover_biomes[" << getBiomes().size() << "] = oe_GroundCover_Biome[" << getBiomes().size() << "] ( \n";
 
-    billboardBuf <<
+    billboardsBuf <<
         "struct oe_GroundCover_Billboard { \n"
-        "    int arrayIndex; \n"
+        "    int atlasIndexSide; \n"
+        "    int atlasIndexTop; \n"
         "    float width; \n"
         "    float height; \n"
+        "    float sizeVariation; \n"
         "}; \n"
-
-        "const oe_GroundCover_Billboard oe_GroundCover_billboards[" << totalBillboards << "] = oe_GroundCover_Billboard[" << totalBillboards << "](\n";
+        "const oe_GroundCover_Billboard oe_GroundCover_billboards[%NUM_BILLBOARDS%] = oe_GroundCover_Billboard[%NUM_BILLBOARDS%](\n";
     
-    int index = 0;
+    objectsBuf <<
+        "struct oe_GroundCover_Object { \n"
+        "    int type; // 0=billboard \n"
+        "    int objectArrayIndex; // index into the type's object array \n"
+        "}; \n"
+        "const oe_GroundCover_Object oe_GroundCover_objects[%NUM_OBJECTS%] = oe_GroundCover_Object[%NUM_OBJECTS%](\n";
+
+    // Since the texture array containing the billboard images contains each
+    // unique image only once, we need to maps unique image to array indexes
+    // here as well. This table maps each unique image to its texture array index.
+    typedef std::map<osg::Image*, int> ImageSet;
+    ImageSet uniqueImages;
+
+    int objectIndex = 0;
+    int nextAtlasIndex = 0;
+    unsigned totalNumObjectsInserted = 0;
+
     for(int i=0; i<getBiomes().size(); ++i)
     {
         const GroundCoverBiome* biome = getBiomes()[i].get();
 
         float maxWidth = 0.0f, maxHeight = 0.0f;
         
-        int firstIndex = index;
+        int firstObjectIndexOfBiome = objectIndex;
 
-        for(int j=0; j<biome->getBillboards().size(); ++j)
+        // This will be larger than biome->getObjects().size() IF any of the
+        // objects have a weight greater than 1.
+        unsigned numObjectsInsertedInBiome = 0;
+
+        for(int j=0; j<biome->getObjects().size(); ++j)
         {
-            const GroundCoverBillboard& bb = biome->getBillboards()[j];
+            const GroundCoverObject* object = biome->getObjects()[j];
 
-            billboardBuf
-                << "    oe_GroundCover_Billboard("
-                << index 
-                << ", float(" << bb._width << ")"
-                << ", float(" << bb._height << ")"
-                << ")";
-            
-            ++index;
-            if ( index < totalBillboards )
-                billboardBuf << ",\n";
+            if (object->getType() == GroundCoverObject::TYPE_BILLBOARD)
+            {
+                const GroundCoverBillboard* bb = dynamic_cast<const GroundCoverBillboard*>(object);
 
-            maxWidth = std::max(maxWidth, bb._width);
-            maxHeight = std::max(maxHeight, bb._height);
+                // If we already used this image, use its original tex array index; 
+                // otherwise use the next available index.
+                int atlasSideIndex = -1;
+                if (bb->_sideImage.valid())
+                {
+                    ImageSet::iterator u = uniqueImages.find(bb->_sideImage.get());
+                    if (u != uniqueImages.end())
+                    {
+                        atlasSideIndex = u->second;
+                    }
+                    else
+                    {
+                        atlasSideIndex = nextAtlasIndex++;
+                        uniqueImages[bb->_sideImage.get()] = atlasSideIndex;
+                    }
+                }
+
+                int atlasTopIndex = -1;
+                if (bb->_topImage.valid())
+                {
+                    ImageSet::iterator u = uniqueImages.find(bb->_topImage.get());
+                    if (u != uniqueImages.end())
+                    {
+                        atlasTopIndex = u->second;
+                    }
+                    else
+                    {
+                        atlasTopIndex = nextAtlasIndex++;
+                        uniqueImages[bb->_topImage.get()] = atlasTopIndex;
+                    }
+                }
+
+                if (numBillboards > 0)
+                    billboardsBuf << ", \n";
+
+                const BillboardSymbol* symbol = bb->_symbol.get();
+
+                billboardsBuf
+                    << "    oe_GroundCover_Billboard("
+                    << atlasSideIndex << ", " << atlasTopIndex
+                    << ", float(" << symbol->width().get() << ")"
+                    << ", float(" << symbol->height().get() << ")"
+                    << ", float(" << symbol->sizeVariation().get() << ")"
+                    << ")";
+
+                maxWidth = osg::maximum(
+                    maxWidth, 
+                    symbol->width().get() + (symbol->width().get()*symbol->sizeVariation().get()));
+
+                maxHeight = osg::maximum(
+                    maxHeight, 
+                    symbol->height().get() + (symbol->height().get()*symbol->sizeVariation().get()));
+
+                // apply the selection weight by adding the object multiple times
+                unsigned weight = osg::maximum(symbol->selectionWeight().get(), 1u);
+                for(unsigned w=0; w<weight; ++w)
+                {
+                    objectsBuf 
+                        << (totalNumObjectsInserted>0?",\n":"")
+                        << "   oe_GroundCover_Object("
+                        << (int)object->getType() << ", "
+                        << (int)numBillboards
+                        << ")";
+                    ++numObjectsInsertedInBiome;
+                    ++totalNumObjectsInserted;
+                }
+
+                ++numBillboards;
+                ++objectIndex;
+            }
         }
 
         // We multiply the height x 2 below because billboards have their origin
@@ -251,9 +337,9 @@ GroundCover::createShader() const
         // directions, but that's OK since we are rarely if ever going to GPU-cull
         // a billboard at the top of the viewport. -gw
 
-        biomeBuf << "    oe_GroundCover_Biome(" 
-            << firstIndex << ", "
-            << biome->getBillboards().size() 
+        biomeBuf << "    oe_GroundCover_Biome("
+            << firstObjectIndexOfBiome << ", "
+            << numObjectsInsertedInBiome //<< biome->getObjects().size() 
             << ", float(" << options().density().get() << ")"
             << ", float(" << options().fill().get() << ")"
             << ", vec2(float(" << maxWidth << "),float(" << maxHeight*2.0f << ")))";
@@ -265,24 +351,45 @@ GroundCover::createShader() const
     biomeBuf
         << "\n);\n";
 
-    billboardBuf
+    billboardsBuf
+        << "\n); \n";
+
+    objectsBuf
         << "\n); \n";
 
     biomeBuf 
-        << "void oe_GroundCover_getBiome(in int biomeIndex, out oe_GroundCover_Biome biome) { \n"
-        << "    biome = oe_GroundCover_biomes[biomeIndex]; \n"
+        << "void oe_GroundCover_getBiome(in int index, out oe_GroundCover_Biome biome) { \n"
+        << "    biome = oe_GroundCover_biomes[index]; \n"
+        << "} \n";
+
+    objectsBuf
+        << "void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object output) { \n"
+        << "    output = oe_GroundCover_objects[index]; \n"
         << "} \n";
         
-    billboardBuf
-        << "void oe_GroundCover_getBillboard(in int billboardIndex, out oe_GroundCover_Billboard billboard) { \n"
-        << "    billboard = oe_GroundCover_billboards[billboardIndex]; \n"
+    billboardsBuf
+        << "void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard output) { \n"
+        << "    output = oe_GroundCover_billboards[index]; \n"
         << "} \n";
+
+    std::string biomeStr = biomeBuf.str();
+
+    std::string billboardsStr = billboardsBuf.str();
+    replaceIn(billboardsStr, "%NUM_BILLBOARDS%", Stringify()<<numBillboards);
+
+    std::string objectsStr = objectsBuf.str();
+    replaceIn(objectsStr, "%NUM_OBJECTS%", Stringify() << totalNumObjectsInserted); //getTotalNumObjects());
     
     osg::ref_ptr<ImageLayer> layer;
 
     osg::Shader* shader = new osg::Shader();
-    shader->setName( "GroundCoverLayer" );
-    shader->setShaderSource( Stringify() << "#version 330\n" << biomeBuf.str() << "\n" << billboardBuf.str() );
+    shader->setName( "GroundCover lookup tables" );
+    shader->setShaderSource( Stringify() 
+        << "#version " GLSL_VERSION_STR "\n"
+        << biomeStr << "\n"
+        << objectsStr << "\n"
+        << billboardsStr << "\n" 
+    );
     return shader;
 }
 
@@ -292,7 +399,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     const char* defaultCode = "int oe_GroundCover_getBiomeIndex(in vec4 coords) { return -1; }\n";
 
     std::stringstream buf;
-    buf << "#version 330\n";
+    buf << "#version " GLSL_VERSION_STR "\n";
 
         if ( !landCoverDict )
     {
@@ -348,46 +455,87 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     return shader;
 }
 
+namespace
+{
+    int nextPowerOf2(int x) {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+}
+
 osg::Texture*
 GroundCover::createTexture() const
 {
+    // Creates a texture array containing all the billboard images.
+    // Each image is included only once.
     osg::Texture2DArray* tex = new osg::Texture2DArray();
 
     int arrayIndex = 0;
     float s = -1.0f, t = -1.0f;
 
+    typedef std::set<osg::Image*> ImageSet;
+    typedef std::vector<osg::Image*> ImageVector;
+    ImageSet uniqueImages;
+    ImageVector imagesToAdd;
+    
+
     for(int b=0; b<getBiomes().size(); ++b)
     {
         const GroundCoverBiome* biome = getBiomes()[b].get();
 
-        for(int i=0; i<biome->getBillboards().size(); ++i, ++arrayIndex)
+        for(int i=0; i<biome->getObjects().size(); ++i)
         {
-            const GroundCoverBillboard& bb = biome->getBillboards()[i];
-
-            osg::ref_ptr<osg::Image> im;
-
-            if ( s < 0 )
+            const GroundCoverObject* obj = biome->getObjects()[i].get();
+            if (obj->getType() == obj->TYPE_BILLBOARD)
             {
-                s  = bb._image->s();
-                t  = bb._image->t();
-                im = bb._image.get();
-                tex->setTextureSize(s, t, getTotalNumBillboards());                              
-            }
-            else
-            {
-                if ( bb._image->s() != s || bb._image->t() != t )
+                const GroundCoverBillboard* bb = dynamic_cast<const GroundCoverBillboard*>(obj);
+
+                if (bb->_sideImage.valid() && uniqueImages.find(bb->_sideImage.get()) == uniqueImages.end())
                 {
-                    ImageUtils::resizeImage( bb._image.get(), s, t, im );
+                    imagesToAdd.push_back(bb->_sideImage.get());
+                    uniqueImages.insert(bb->_sideImage.get());
                 }
-                else
+            
+                if (bb->_topImage.valid() && uniqueImages.find(bb->_topImage.get()) == uniqueImages.end())
                 {
-                    im = bb._image.get();
+                    imagesToAdd.push_back(bb->_topImage.get());
+                    uniqueImages.insert(bb->_topImage.get());
                 }
             }
-
-            tex->setImage( arrayIndex, im.get() );
         }
     }
+    
+    for(unsigned i=0; i<imagesToAdd.size(); ++i)
+    {
+        osg::Image* image = imagesToAdd[i];
+        osg::ref_ptr<osg::Image> im;
+
+        // make sure the texture array is POT - required now for mipmapping to work
+        if ( s < 0 )
+        {
+            s  = nextPowerOf2(image->s());
+            t  = nextPowerOf2(image->t());
+            tex->setTextureSize(s, t, imagesToAdd.size());
+        }
+
+        if ( image->s() != s || image->t() != t )
+        {
+            ImageUtils::resizeImage( image, s, t, im );
+        }
+        else
+        {
+            im = image;
+        }
+
+        tex->setImage( i, im.get() );
+    }
+
+    OE_INFO << LC << "Created texture with " << imagesToAdd.size() << " unique images" << std::endl; 
 
     tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
@@ -395,15 +543,28 @@ GroundCover::createTexture() const
     tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
     tex->setUnRefImageDataAfterApply( true );
     tex->setMaxAnisotropy( 4.0 );
-    tex->setResizeNonPowerOfTwoHint( false );
 
     return tex;
+}
+
+void
+GroundCover::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if (getStateSet())
+        getStateSet()->resizeGLObjectBuffers(maxSize);
+}
+
+void
+GroundCover::releaseGLObjects(osg::State* state) const
+{
+    if (getStateSet())
+        getStateSet()->releaseGLObjects(state);
 }
 
 //............................................................................
 
 bool
-GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
+GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo, ImageCache& cache)
 {
     GroundCoverBiomeOptions in( conf );
 
@@ -415,30 +576,89 @@ GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo
         const BillboardSymbol* bs = dynamic_cast<BillboardSymbol*>( i->get() );
         if ( bs )
         {
-            URI imageURI = bs->url()->evalURI();
+            // Start with the side image, which is mandatory:
+            osg::ref_ptr<osg::Image> sideImage;
 
-            osg::Image* image = const_cast<osg::Image*>( bs->getImage() );
-            if ( !image )
+            // Symbol contains an image instance?
+            if (bs->getSideImage())
             {
-                image = imageURI.getImage(dbo);
+                sideImage = const_cast<osg::Image*>(bs->getSideImage());
+            }
+            else if (bs->url().isSet())
+            {
+                // Load the image from the URI:
+                URI imageURI = bs->url()->evalURI();
+
+                // If image was already loaded into a biome, share it:
+                ImageCache::iterator ic = cache.find(imageURI);
+                if (ic != cache.end())
+                {
+                    sideImage = ic->second.get();
+                }
+
+                if (!sideImage.valid())
+                {
+                    sideImage = imageURI.getImage(dbo);
+                    if (sideImage.valid())
+                    {
+                        cache[imageURI] = sideImage.get();
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Failed to load billboard image from \"" << imageURI.full() << "\"" << std::endl;
+                    }
+                }
             }
 
-            if ( image )
+            if (!sideImage.valid())
             {
-                getBillboards().push_back( GroundCoverBillboard(image, bs->width().get(), bs->height().get()) );
+                OE_WARN << LC << "A billboard is missing the mandatory image" << std::endl;
+                return false;
             }
-            else
+
+            // Next process the top image (optional)
+            // Check for an actual instance in the symbol:
+            osg::ref_ptr<osg::Image> topImage;
+
+            if (bs->getTopImage())
             {
-                OE_WARN << LC << "Failed to load billboard image from \"" << imageURI.full() << "\"\n";
+                topImage = const_cast<osg::Image*>(bs->getTopImage());
+            }
+            else if (bs->topURL().isSet())
+            {
+                // Load the image from the URI:
+                URI imageURI = bs->topURL()->evalURI();
+
+                // If image was already loaded into a biome, share it:
+                ImageCache::iterator ic = cache.find(imageURI);
+                if (ic != cache.end())
+                {
+                    topImage = ic->second.get();
+                }
+
+                if (!topImage.valid())
+                {
+                    topImage = imageURI.getImage(dbo);
+                    if (topImage.valid())
+                    {
+                        cache[imageURI] = topImage.get();
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Failed to load billboard top image from \"" << imageURI.full() << "\"\n";
+                    }
+                }
+            }
+
+
+            if ( sideImage.valid() )
+            {
+                getObjects().push_back( new GroundCoverBillboard(sideImage.get(), topImage.get(), bs) );
             }
         } 
-        else
-        {
-            OE_WARN << LC << "Unrecognized symbol in land cover biome\n";
-        }
     }
 
-    if ( getBillboards().size() == 0 )
+    if ( getObjects().size() == 0 )
     {
         OE_WARN << LC << "A biome failed to install any billboards.\n";
         return false;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -107,6 +107,12 @@ namespace osgEarth { namespace Util
     public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);
+
+    public:
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+        virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
         virtual ~ShadowCaster() { }

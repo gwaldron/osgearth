@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -95,8 +95,12 @@ namespace osgEarth
         optional<Distance> _maxRange;
         optional<bool>  _auto;
     };
+}
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::DepthOffsetOptions);
 
+namespace osgEarth
+{
     /**
      * Interface for adding depth offset methods to anothe class without
      * disturbing the class hierarchy. Use this in conjuction with the
@@ -143,8 +147,7 @@ namespace osgEarth
         bool                         _supported;
         bool                         _dirty;
         osg::observer_ptr<osg::Node> _graph;
-        osg::ref_ptr<osg::Uniform>   _minBiasUniform, _maxBiasUniform;
-        osg::ref_ptr<osg::Uniform>   _minRangeUniform, _maxRangeUniform;
+        osg::ref_ptr<osg::Uniform>   _paramsUniform;
         DepthOffsetOptions           _options;
     };
 

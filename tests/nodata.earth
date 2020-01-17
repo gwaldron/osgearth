@@ -17,6 +17,6 @@ Demonstrates the use of a file with nodata.  The white circle is a GeoTiff which
     <options lighting="false"/>
 
     <viewpoints>
-        <viewpoint name="NoData" heading="0.0" height="0" lat="5.0" long="15.0" pitch="-90" range="1e6"/>
+        <viewpoint name="NoData" heading="0.0" height="0" lat="5.0" long="15.0" pitch="-75" range="1000000"/>
     </viewpoints>
 </map>

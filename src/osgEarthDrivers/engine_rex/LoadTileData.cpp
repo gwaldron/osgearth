@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -34,34 +34,14 @@ _context(context),
 _enableCancel(true)
 {
     this->setTileKey(tilenode->getKey());
-    _mapFrame.setMap(context->getMap());
+    _map = context->getMap();
     _engine = context->getEngine();
 }
 
-namespace
-{
-    struct MyProgress : public ProgressCallback {
-        LoadTileData* _req;
-        MyProgress(LoadTileData* req) : _req(req) {}
-        bool isCanceled() {
-            if (_canceled == false && _req->isIdle())
-                _canceled = true;
-            return ProgressCallback::isCanceled();
-        }
-    };
-}
-
-
 // invoke runs in the background pager thread.
 void
-LoadTileData::invoke()
+LoadTileData::invoke(ProgressCallback* progress)
 {
-    if (!_mapFrame.isValid())
-        return;
-
-    // we're in a pager thread, so must lock safe pointers
-    // (don't access _context from here!)
-
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
         return;
@@ -70,22 +50,19 @@ LoadTileData::invoke()
     if (!_engine.lock(engine))
         return;
 
-    // ensure the map frame is up to date:
-    if (_mapFrame.needsSync())
-        _mapFrame.sync();
-
-    // Only use a progress callback is cancelation is enabled.
-    osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return;
 
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
-        _mapFrame,
+        map.get(),
         tilenode->getKey(),
         _filter,
-        progress.get() );
+        _enableCancel? progress : 0L);
 
-    // if the operation was canceled, set the request to idle and delete any existing data.
-    if (progress && (progress->isCanceled() || progress->needsRetry()))
+    // if the operation was canceled, set the request to idle and delete the tile model.
+    if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
         setState(Request::IDLE);
@@ -101,11 +78,15 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
     if (!_context.lock(context))
         return;
 
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return;
+
     // ensure we got an actual datamodel:
     if (_dataModel.valid())
     {
         // ensure it's in sync with the map revision (not out of date):
-        if (context->getMap() != NULL && _dataModel->getRevision() == context->getMap()->getDataModelRevision())
+        if (map.valid() && _dataModel->getRevision() == map->getDataModelRevision())
         {
             // ensure the tile node hasn't expired:
             osg::ref_ptr<TileNode> tilenode;
@@ -171,7 +152,10 @@ LoadTileData::createStateSet() const
     if (!_context.lock(context))
         return NULL;
 
-    osg::ref_ptr<const osgEarth::Map> map = context->getMap();
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return NULL;
+
     if (_dataModel.valid() && map.valid() &&
         _dataModel->getRevision() == map->getDataModelRevision())
     {

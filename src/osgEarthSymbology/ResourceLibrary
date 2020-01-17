@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
-#include <osgEarthSymbology/MarkerResource>
 #include <osgEarthSymbology/InstanceResource>
 #include <osgEarthSymbology/ModelResource>
 #include <osgEarthSymbology/ModelSymbol>
@@ -142,7 +141,6 @@ namespace osgEarth { namespace Symbology
         mutable Threading::ReadWriteMutex  _mutex;
 
         ResourceMap<SkinResource>          _skins;
-        ResourceMap<MarkerResource>        _markers;
         ResourceMap<InstanceResource>      _instances;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;

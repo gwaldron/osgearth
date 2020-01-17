@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -60,6 +60,7 @@ namespace
             osg::StateSet* stateSet = engine->getSurfaceStateSet();
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            vp->setName("TerrainShader");
             _package.loadAll( vp, _dbOptions.get() );
 
 
@@ -156,14 +157,7 @@ namespace
 
         void onUninstall(TerrainEngineNode* engine)
         {
-            if ( engine )
-            {
-                if ( _options.landCoverGroup().isSet() )
-                {
-                    //TODO
-                    //engine->removeLandCoverGroup( _options.landCoverGroup().get() );
-                }
-            }
+            //nop
         }
 
         const TerrainShaderOptions              _options;

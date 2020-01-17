@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -27,62 +27,11 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/Locators>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/TileKeyDataStore>
 #include <osg/Texture>
 #include <osg/Matrix>
 
 namespace osgEarth
 {
-    //! @deprecated
-    class TerrainData : public osg::Referenced
-    {
-    public:
-        enum Type 
-        {
-            TYPE_IMAGE,
-            TYPE_ELEVATION,
-            TYPE_NORMAL,
-            TYPE_MATERIAL,
-            TYPE_VECTOR,
-            TYPE_UNKNOWN
-        };
-
-        void setType(Type type) { _type = type; }
-        const Type& getType() const { return _type; }
-
-    protected:
-        Type _type;
-
-        TerrainData() : _type(TYPE_UNKNOWN) { }
-        virtual ~TerrainData() { }
-    };
-
-    
-    //! @deprecated
-    class OSGEARTH_EXPORT TerrainRaster : public TerrainData
-    {
-    public:
-        TerrainRaster() : TerrainData() { }
-
-        /** Raster image. */
-        void setImage(osg::Image* image) { _image = image; }
-        osg::Image* getImage() const { return _image.get(); }
-
-        void setLayer(Layer* layer) { _layer = layer; }
-        Layer* getLayer() const { return _layer.get(); }
-
-    protected:
-        virtual ~TerrainRaster() { }
-
-        osg::ref_ptr<osg::Image> _image;
-        osg::ref_ptr<Layer>      _layer;
-    };
-
-
-
-    //...start old stuff
-
-
     /**
      * Data model backing an individual layer of a terrain tile.
      */
@@ -267,11 +216,6 @@ namespace osgEarth
         HeightFieldNeighborhood                 _heightFields;
         bool                                    _requiresUpdateTraverse;
     };
-
-    /**
-     * Data store that references TerrainTileModel by TileKey.
-     */
-    typedef TileKeyDataStore<const TerrainTileModel> TerrainTileModelStore;
 }
 
 #endif // OSGEARTH_TERRAIN_TILE_MODEL_H

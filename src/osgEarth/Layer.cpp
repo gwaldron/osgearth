@@ -1,6 +1,7 @@
+
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,9 +20,6 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderLoader>
-#include <osgEarth/SceneGraphCallback>
-#include <osgDB/Registry>
-#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 
@@ -43,7 +41,7 @@ ConfigOptions(co)
 
 void
 LayerOptions::setDefaults()
-{    
+{
     _enabled.init(true);
     _terrainPatch.init(false);
 }
@@ -55,10 +53,10 @@ Config LayerOptions::getConfig() const
     conf.set("enabled", _enabled);
     conf.set("cacheid", _cacheId);
     if (_cachePolicy.isSet() && !_cachePolicy->empty())
-        conf.setObj("cache_policy", _cachePolicy);
+        conf.set("cache_policy", _cachePolicy);
     conf.set("shader_define", _shaderDefine);
     conf.set("shader", _shader);
-
+    conf.set("attribution", _attribution);
     conf.set("terrain", _terrainPatch);
     return conf;
 }
@@ -67,11 +65,12 @@ void LayerOptions::fromConfig(const Config& conf)
 {
     setDefaults();
 
-    conf.getIfSet("name", _name);
-    conf.getIfSet("enabled", _enabled);
-    conf.getIfSet("cache_id", _cacheId); // compat
-    conf.getIfSet("cacheid", _cacheId);
-    conf.getObjIfSet("cache_policy", _cachePolicy);
+    conf.get("name", _name);
+    conf.get("enabled", _enabled);
+    conf.get("cache_id", _cacheId); // compat
+    conf.get("cacheid", _cacheId);
+    conf.get("attribution", _attribution);
+    conf.get("cache_policy", _cachePolicy);
 
     // legacy support:
     if (!_cachePolicy.isSet())
@@ -81,17 +80,25 @@ void LayerOptions::fromConfig(const Config& conf)
         if ( conf.value<bool>( "cache_enabled", true ) == false )
             _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
     }
-    conf.getIfSet("shader_define", _shaderDefine);
-    conf.getIfSet("shader", _shader);
+    conf.get("shader_define", _shaderDefine);
+    conf.get("shader", _shader);
 
-    conf.getIfSet("terrain", _terrainPatch);
-    conf.getIfSet("patch", _terrainPatch);
+    conf.get("terrain", _terrainPatch);
+    conf.get("patch", _terrainPatch);
 }
 
 void LayerOptions::mergeConfig(const Config& conf)
 {
     ConfigOptions::mergeConfig(conf);
     fromConfig(_conf);
+}
+
+//.................................................................
+
+void
+Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
+{
+    node->accept(*nv);
 }
 
 //.................................................................
@@ -180,7 +187,9 @@ Layer::getCacheID() const
 Config
 Layer::getConfig() const
 {
-    return options().getConfig();
+    Config conf = options().getConfig();
+    conf.key() = getConfigKey();
+    return conf;
 }
 
 bool
@@ -221,22 +230,12 @@ Layer::open()
     {
         osg::Object::setName(options().name().get());
     }
-    
+
     // Install any shader #defines
     if (options().shaderDefine().isSet() && !options().shaderDefine()->empty())
     {
         OE_INFO << LC << "Setting shader define " << options().shaderDefine().get() << "\n";
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
-    }
-
-    // Load any user defined shaders
-    if (options().shader().isSet() && !options().shader()->empty())
-    {
-        OE_INFO << LC << "Installing inline shader code\n";
-        VirtualProgram* vp = VirtualProgram::getOrCreate(this->getOrCreateStateSet());
-        ShaderPackage package;
-        package.add("", options().shader().get());
-        package.loadAll(vp, getReadOptions());
     }
 
     return _status;
@@ -246,6 +245,18 @@ void
 Layer::close()
 {
     setStatus(Status::OK());
+}
+
+void
+Layer::setTerrainResources(TerrainResources* res)
+{
+    // Install an earth-file shader if necessary (once)
+    if (options().shader().isSet() && !_shader.valid())
+    {
+        OE_INFO << LC << "Installing inline shader code" << std::endl;
+        _shader = new LayerShader(options().shader().get());
+        _shader->install(this, res);
+    }
 }
 
 void
@@ -266,12 +277,8 @@ Layer::getTypeName() const
 Layer*
 Layer::create(const ConfigOptions& options)
 {
-    return create(options.getConfig().key(), options);
-}
+    std::string name = options.getConfig().key();
 
-Layer*
-Layer::create(const std::string& name, const ConfigOptions& options)
-{
     if ( name.empty() )
     {
         OE_WARN << "[Layer] ILLEGAL- Layer::create requires a plugin name" << std::endl;
@@ -331,16 +338,33 @@ void
 Layer::removeCallback(LayerCallback* cb)
 {
     CallbackVector::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-    if ( i != _callbacks.end() ) 
+    if ( i != _callbacks.end() )
         _callbacks.erase( i );
 }
 
-bool
-Layer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack& stateSetStack) const
+void
+Layer::apply(osg::Node* node, osg::NodeVisitor* nv) const
 {
-    //if (getStateSet())
-    //    cv->pushStateSet(getStateSet());
-    return true;
+    if (_traversalCallback.valid())
+    {
+        _traversalCallback->operator()(node, nv);
+    }
+    else
+    {
+        node->accept(*nv);
+    }
+}
+
+void
+Layer::setCullCallback(TraversalCallback* cb)
+{
+    _traversalCallback = cb;
+}
+
+const Layer::TraversalCallback*
+Layer::getCullCallback() const
+{
+    return _traversalCallback.get();
 }
 
 const GeoExtent&
@@ -361,6 +385,12 @@ Layer::getOrCreateStateSet()
     return _stateSet.get();
 }
 
+osg::StateSet*
+Layer::getStateSet() const
+{
+    return _stateSet.get();
+}
+
 void
 Layer::fireCallback(LayerCallback::MethodPtr method)
 {
@@ -369,4 +399,47 @@ Layer::fireCallback(LayerCallback::MethodPtr method)
         LayerCallback* cb = dynamic_cast<LayerCallback*>(i->get());
         if (cb) (cb->*method)(this);
     }
+}
+
+std::string
+Layer::getAttribution() const
+{
+    // Get the attribution from the layer if it's set.
+    if (_options->attribution().isSet())
+    {
+        return *_options->attribution();
+    }
+    return "";
+}
+
+void
+Layer::setAttribution(const std::string& attribution)
+{
+    _options->attribution() = attribution;
+}
+
+void
+Layer::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Object::resizeGLObjectBuffers(maxSize);
+    if (getNode())
+        getNode()->resizeGLObjectBuffers(maxSize);
+    if (getStateSet())
+        getStateSet()->resizeGLObjectBuffers(maxSize);
+}
+
+void
+Layer::releaseGLObjects(osg::State* state) const
+{
+    osg::Object::releaseGLObjects(state);
+    if (getNode())
+        getNode()->releaseGLObjects(state);
+    if (getStateSet())
+        getStateSet()->releaseGLObjects(state);
+}
+
+void
+Layer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
+{
+    //NOP
 }

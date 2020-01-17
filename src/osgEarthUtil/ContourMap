@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -54,13 +54,13 @@ namespace osgEarth { namespace Util
 
     public:
         void fromConfig(const Config& conf) {
-            conf.getIfSet("opacity", _opacity);
-            conf.getIfSet("grayscale", _grayscale);
+            conf.get("opacity", _opacity);
+            conf.get("grayscale", _grayscale);
         }
         Config getConfig() const {
             Config conf;
-            conf.addIfSet("opacity", _opacity);
-            conf.addIfSet("grayscale", _grayscale);
+            conf.set("opacity", _opacity);
+            conf.set("grayscale", _grayscale);
             return conf;
         }
         
@@ -118,7 +118,7 @@ namespace osgEarth { namespace Util
                                                     public ContourMapOptions
     {
     public:
-        META_Object(osgEarthUtil, ContourMapExtension);
+        META_OE_Extension(osgEarthUtil, ContourMapExtension, contour_map);
 
         ContourMapExtension() { }
         ContourMapExtension(const ConfigOptions& co) : ContourMapOptions(co) { }
@@ -128,12 +128,10 @@ namespace osgEarth { namespace Util
         bool disconnect(MapNode*);
 
     public: // Extension
-        
-        // for serialization
-        virtual const ConfigOptions& getConfigOptions() const { return *this; }
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
 
     protected:
-        ContourMapExtension(const ContourMapExtension& rhs, const osg::CopyOp& op) { } // unused
         virtual ~ContourMapExtension() { }
 
         osg::ref_ptr<ContourMap> _effect;

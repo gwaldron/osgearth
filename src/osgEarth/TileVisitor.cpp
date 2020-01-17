@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,13 +20,20 @@
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/FileUtils>
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,10)
+#include <osg/os_utils>
+#define OS_SYSTEM osg_system
+#else
+#define OS_SYSTEM system
+#endif
+
 using namespace osgEarth;
 
 TileVisitor::TileVisitor():
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(5)
+_maxLevel(99)
 {
 }
 
@@ -36,7 +43,7 @@ _tileHandler( handler ),
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(5)
+_maxLevel(99)
 {
 }
 
@@ -424,7 +431,7 @@ public:
 
       virtual void operator()(ProgressCallback* progress )
       {         
-          system(_command.c_str());     
+          OS_SYSTEM(_command.c_str());     
 
           // Cleanup the temp files and increment the progress on the visitor.
           cleanupTempFiles();

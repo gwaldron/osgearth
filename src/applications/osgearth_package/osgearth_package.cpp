@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -74,13 +74,12 @@ usage( const std::string& msg = "" )
         << "            [--keep-empties]                : writes out fully transparent image tiles (normally discarded)\n"
         << "            [--continue-single-color]       : continues to subdivide single color tiles, subdivision typicall stops on single color images\n"
         << "            [--elevation-pixel-depth]       : pixeldepth for elevations\n"
-        << "            [--db-options]                : db options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
-        << "            [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
-        << "            [--mt]                          ; Use multithreading to process the tiles." << std::endl
-        << "            [--concurrency]                 ; The number of threads or processes to use if --mp or --mt are provided." << std::endl
-        << "            [--alpha-mask]                  ; Mask out imagery that isn't in the provided extents." << std::endl
-        << std::endl
-        << "            [--verbose]                     ; Displays progress of the operation" << std::endl;
+        << "            [--db-options]                  : osgDB options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
+        << "            [--mp]                          : Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
+        << "            [--mt]                          : Use multithreading to process the tiles." << std::endl
+        << "            [--concurrency]                 : The number of threads or processes to use if --mp or --mt are provided." << std::endl
+        << "            [--alpha-mask]                  : Mask out imagery that isn't in the provided extents." << std::endl
+        << "            [--verbose]                     : Displays progress of the operation" << std::endl;
 
     return -1;
 }
@@ -127,17 +126,17 @@ makeTMS( osg::ArgumentParser& args )
     //Read the max level
     unsigned int maxLevel = 5;
     while (args.read("--max-level", maxLevel));
-    
+
 
     std::vector< Bounds > bounds;
-    // restrict packaging to user-specified bounds.    
+    // restrict packaging to user-specified bounds.
     double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
     while (args.read("--bounds", xmin, ymin, xmax, ymax ))
-    {        
+    {
         Bounds b;
         b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
         bounds.push_back( b );
-    }    
+    }
 
     std::string tileList;
     while (args.read( "--tiles", tileList ) );
@@ -165,24 +164,24 @@ makeTMS( osg::ArgumentParser& args )
     // Read in an index shapefile
     std::string index;
     while (args.read("--index", index))
-    {        
+    {
         //Open the feature source
         OGRFeatureOptions featureOpt;
-        featureOpt.url() = index;        
+        featureOpt.url() = index;
 
         osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
         Status s = features->open();
         if (s.isError())
             return usage(s.message());
 
-        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
         while (cursor.valid() && cursor->hasMore())
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
             osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
             GeoExtent ext( feature->getSRS(), featureBounds );
             ext = ext.transform( mapNode->getMapSRS() );
-            bounds.push_back( ext.bounds() );            
+            bounds.push_back( ext.bounds() );
         }
     }
 
@@ -192,7 +191,7 @@ makeTMS( osg::ArgumentParser& args )
 
     // find a .earth file on the command line
     std::string earthFile = findArgumentWithExtension( args, ".earth" );
-    
+
     // folder to which to write the TMS archive.
     std::string rootFolder;
     if( !args.read( "--out", rootFolder ) )
@@ -218,7 +217,7 @@ makeTMS( osg::ArgumentParser& args )
 
     osg::ref_ptr<osgDB::Options> options = new osgDB::Options( dbOptions );
 
-    // whether to keep 'empty' tiles    
+    // whether to keep 'empty' tiles
     bool keepEmpties = args.read( "--keep-empties" );
 
     //TODO:  Single color
@@ -227,7 +226,7 @@ makeTMS( osg::ArgumentParser& args )
     // elevation pixel depth
     unsigned elevationPixelDepth = 32;
     args.read( "--elevation-pixel-depth", elevationPixelDepth );
-    
+
     // create a folder for the output
     osgDB::makeDirectory( rootFolder );
     if( !osgDB::fileExists( rootFolder ) )
@@ -238,7 +237,7 @@ makeTMS( osg::ArgumentParser& args )
 
     int elevationLayerIndex = -1;
     args.read("--elevation", elevationLayerIndex);
-    
+
     Map* map = mapNode->getMap();
 
 
@@ -246,13 +245,13 @@ makeTMS( osg::ArgumentParser& args )
 
     // If we are given a task file, load it up and create a new TileKeyListVisitor
     if (!tileList.empty())
-    {        
+    {
         TaskList tasks( mapNode->getMap()->getProfile() );
         tasks.load( tileList );
 
         TileKeyListVisitor* v = new TileKeyListVisitor();
         v->setKeys( tasks.getKeys() );
-        visitor = v;     
+        visitor = v;
         // This process is a lowly worker, and shouldn't write out the XML file.
         writeXML = false;
     }
@@ -268,7 +267,7 @@ makeTMS( osg::ArgumentParser& args )
             {
                 v->setNumThreads(concurrency);
             }
-            visitor = v;            
+            visitor = v;
         }
         else if (args.read("--mp"))
         {
@@ -281,7 +280,7 @@ makeTMS( osg::ArgumentParser& args )
             }
 
             if (batchSize > 0)
-            {            
+            {
                 v->setBatchSize(batchSize);
             }
 
@@ -299,13 +298,13 @@ makeTMS( osg::ArgumentParser& args )
 
             v->setEarthFile( earthFile );
 
-            visitor = v;            
+            visitor = v;
         }
         else
         {
             // Create a single thread visitor
-            visitor = new TileVisitor();            
-        }        
+            visitor = new TileVisitor();
+        }
     }
 
     osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
@@ -316,24 +315,24 @@ makeTMS( osg::ArgumentParser& args )
     }
 
     visitor->setMinLevel( minLevel );
-    visitor->setMaxLevel( maxLevel );        
+    visitor->setMaxLevel( maxLevel );
 
 
     for (unsigned int i = 0; i < bounds.size(); i++)
     {
         GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
-        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;                
+        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;
         visitor->addExtent( extent );
-    }    
+    }
 
 
     // Setup a TMSPackager with all the options.
     TMSPackager packager;
     packager.setExtension(extension);
     packager.setVisitor(visitor.get());
-    packager.setDestination(rootFolder);    
+    packager.setDestination(rootFolder);
     packager.setElevationPixelDepth(elevationPixelDepth);
-    packager.setWriteOptions(options.get());    
+    packager.setWriteOptions(options.get());
     packager.setOverwrite(overwrite);
     packager.setKeepEmpties(keepEmpties);
     packager.setApplyAlphaMask(applyAlphaMask);
@@ -348,18 +347,20 @@ makeTMS( osg::ArgumentParser& args )
     }
 
     std::string outEarthFile = osgDB::concatPaths( rootFolder, osgDB::getSimpleFileName( outEarth ) );
-    
+
 
     // Package an individual image layer
     if (imageLayerIndex >= 0)
-    {        
-        ImageLayer* layer = map->getLayerAt<ImageLayer>(imageLayerIndex);
-        if (layer)
+    {
+        ImageLayerVector imageLayers;
+        map->getLayers(imageLayers);
+        osg::ref_ptr< ImageLayer > layer = imageLayers[imageLayerIndex];
+        if (layer.valid())
         {
-            packager.run(layer, map);
+            packager.run(layer.get(), map);
             if (writeXML)
             {
-                packager.writeXML(layer, map);
+                packager.writeXML(layer.get(), map);
             }
         }
         else
@@ -370,14 +371,16 @@ makeTMS( osg::ArgumentParser& args )
     }
     // Package an individual elevation layer
     else if (elevationLayerIndex >= 0)
-    {        
-        ElevationLayer* layer = map->getLayerAt<ElevationLayer>(elevationLayerIndex);
-        if (layer)
+    {
+        ElevationLayerVector elevationLayers;
+        map->getLayers(elevationLayers);
+        osg::ref_ptr< ElevationLayer > layer = elevationLayers[elevationLayerIndex];
+        if (layer.valid())
         {
-            packager.run(layer, map);
+            packager.run(layer.get(), map);
             if (writeXML)
             {
-                packager.writeXML(layer, map );
+                packager.writeXML(layer.get(), map );
             }
         }
         else
@@ -393,7 +396,7 @@ makeTMS( osg::ArgumentParser& args )
 
         // Package all the ImageLayer's
         for (unsigned int i = 0; i < imageLayers.size(); i++)
-        {            
+        {
             ImageLayer* layer = imageLayers[i].get();
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
@@ -402,7 +405,7 @@ makeTMS( osg::ArgumentParser& args )
             if (verbose)
             {
                 OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
-            }                
+            }
 
             if (writeXML)
             {
@@ -424,14 +427,14 @@ makeTMS( osg::ArgumentParser& args )
 
                 outMap->addLayer( new ImageLayer( layerOptions ) );
             }
-        }    
+        }
 
         // Package all the ElevationLayer's
         ElevationLayerVector elevationLayers;
         map->getLayers(elevationLayers);
 
         for (unsigned int i = 0; i < elevationLayers.size(); i++)
-        {            
+        {
             ElevationLayer* layer = elevationLayers[i].get();
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
@@ -440,7 +443,7 @@ makeTMS( osg::ArgumentParser& args )
             if (verbose)
             {
                 OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
-            }      
+            }
             if (writeXML)
             {
                 packager.writeXML(layer, map);

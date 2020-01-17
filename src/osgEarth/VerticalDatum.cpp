@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,12 +18,10 @@
  */
 
 #include <osgEarth/VerticalDatum>
-#include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
-#include <osgDB/ReaderWriter>
 
 using namespace osgEarth;
 

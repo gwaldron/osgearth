@@ -1,0 +1,37 @@
+<!--
+osgEarth Sample - Apply a Vertical Scale to the Terrain
+Run: osgearth_toc --uniform scale 1 5
+-->
+<map name="readymap.org" type="geocentric">
+
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+
+    <elevation name="readymap_elevation" driver="tms" vdatum="egm96">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+
+    <terrainshader>
+        <uniform name="scale" value="2"/>
+        <code>
+          <![CDATA[
+            #pragma vp_entryPoint applyScale
+            #pragma vp_location vertex_view
+            
+            uniform float scale;
+            vec4 oe_layer_tilec;
+            vec3 oe_UpVectorView;
+            float oe_terrain_getElevation(in vec2);
+            
+            void applyScale(inout vec4 vertexView)
+            {
+                float e = oe_terrain_getElevation(oe_layer_tilec);
+                vertexView.xyz += oe_UpVectorView*e*(scale-1.0);
+            }
+          ]]>
+        </code>
+    </terrainshader>
+
+    <xi:include href="viewpoints.xml"/>
+</map>

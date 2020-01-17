@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,10 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
+
+namespace osgEarth {
+    class Map;
+}
 
 namespace osgEarth { namespace Features
 {
@@ -68,7 +72,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions);
+        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions, feature_model);
 
         //! Create a feature layer with defaults. Use options() to set it up before adding
         //! the layer to a Map.
@@ -88,6 +92,7 @@ namespace osgEarth { namespace Features
         
         //! The feature source from which to read geometry. Use this OR setFeatureLayer
         void setFeatureSource(FeatureSource* fs);
+        FeatureSource* getFeatureSource() const;
 
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();
@@ -110,7 +115,7 @@ namespace osgEarth { namespace Features
         virtual const Status& open();
 
         // The Node representing this layer.
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         //! Extent of the feature layer, if available (INVALID if not)
         virtual const GeoExtent& getExtent() const;
@@ -118,10 +123,10 @@ namespace osgEarth { namespace Features
     protected: // Layer
         
         // called by the map when this layer is added
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const Map*);
 
         // called by the map when this layer is removed
-        virtual void removedFromMap(const class Map*);
+        virtual void removedFromMap(const Map*);
 
         // post-ctor initialization
         virtual void init();

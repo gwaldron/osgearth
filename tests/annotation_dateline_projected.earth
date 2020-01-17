@@ -30,13 +30,13 @@ LINESTRING(140.385 35.765 0, 141.1 35.4917 3944.77, 142.163 35.1617 9645.92, 142
 
        <!--An image overlay that crosses the date line and should be split into two chunks-->
         <imageoverlay>
-            <url>../data/flag_us.png</url>
+            <url>../data/fractal.png</url>
             <geometry>POLYGON((170 26, 190 26, 190 56, 170 56))</geometry>
         </imageoverlay>
 
         <!--An image overlay with non-axis aligned corners-->
         <imageoverlay>
-            <url>../data/flag_us.png</url>
+            <url>../data/fractal.png</url>
             <geometry>POLYGON((-81 26, -40.5 45, -40.5 75.5, -81 60))</geometry>
         </imageoverlay>
 

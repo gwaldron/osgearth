@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,16 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/AtlasBuilder>
-#include <osgEarthSymbology/Skins>
-#include <osgEarth/ImageUtils>
-#include <osgDB/Options>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
-#include <vector>
-#include <string>
-#include <stdlib.h> // for ::getenv
 
 #define LC "[AtlasBuilder] "
 
@@ -256,8 +250,8 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     }
 
     // protecte against a div0
-    maxS = std::max(maxS, 1u);
-    maxT = std::max(maxT, 1u);
+    maxS = osg::maximum(maxS, 1u);
+    maxT = osg::maximum(maxT, 1u);
 
     OE_INFO << LC <<
         "Final atlas size will be (" << maxS << ", " << maxT << ")" << std::endl;
@@ -306,8 +300,8 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     
     // for each source in this atlas layer, apply its texture matrix info
     // to the new catalog.
-    maxS = std::max(maxS, 1u);
-    maxT = std::max(maxT, 1u);
+    maxS = osg::maximum(maxS, 1u);
+    maxT = osg::maximum(maxT, 1u);
 
     for(int r=0; r<(int)mainAtlasList.size(); ++r)
     {

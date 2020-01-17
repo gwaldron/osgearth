@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -182,7 +182,7 @@ seed( osg::ArgumentParser& args )
 
         if (status.isOK())
         {
-            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
             while (cursor.valid() && cursor->hasMore())
             {
                 osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -406,8 +406,8 @@ int list( osg::ArgumentParser& args )
     MapNode* mapNode = MapNode::findMapNode( node.get() );
     if ( !mapNode )
         return usage( "Input file was not a .earth file" );
-
-    Map* map = mapNode->getMap();
+    
+    const Map* map = mapNode->getMap();
     const Cache* cache = map->getCache();
 
     if ( !cache )
@@ -417,12 +417,9 @@ int list( osg::ArgumentParser& args )
         << "Cache config: " << std::endl
         << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
-    MapFrame mapf( mapNode->getMap() );
 
     TerrainLayerVector layers;
-    mapf.getLayers(layers);
-    //std::copy( mapf.imageLayers().begin(), mapf.imageLayers().end(), std::back_inserter(layers) );
-    //std::copy( mapf.elevationLayers().begin(), mapf.elevationLayers().end(), std::back_inserter(layers) );
+    map->getLayers(layers);
 
     for( TerrainLayerVector::iterator i =layers.begin(); i != layers.end(); ++i )
     {

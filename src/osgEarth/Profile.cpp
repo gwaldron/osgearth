@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,13 +20,6 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Registry>
 #include <osgEarth/TileKey>
-#include <osgEarth/Cube>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/StringUtils>
-#include <osgEarth/Bounds>
-#include <osgDB/FileNameUtils>
-#include <algorithm>
-#include <sstream>
 
 using namespace osgEarth;
 
@@ -68,10 +61,10 @@ ProfileOptions::fromConfig( const Config& conf )
     if ( !conf.value().empty() )
         _namedProfile = conf.value();
 
-    conf.getIfSet( "srs", _srsInitString );
+    conf.get( "srs", _srsInitString );
 
-    conf.getIfSet( "vdatum", _vsrsInitString );
-    conf.getIfSet( "vsrs", _vsrsInitString ); // back compat
+    conf.get( "vdatum", _vsrsInitString );
+    conf.get( "vsrs", _vsrsInitString ); // back compat
 
     if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
     {
@@ -82,8 +75,10 @@ ProfileOptions::fromConfig( const Config& conf )
             conf.value<double>( "ymax", 0 ) );
     }
 
-    conf.getIfSet( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
-    conf.getIfSet( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+    conf.get( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+    conf.get( "tx", _numTilesWideAtLod0 );
+    conf.get( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+    conf.get( "ty", _numTilesHighAtLod0 );
 }
 
 Config
@@ -92,7 +87,7 @@ ProfileOptions::getConfig() const
     Config conf( "profile" );
     if ( _namedProfile.isSet() )
     {
-        conf.value() = _namedProfile.value();
+        conf.setValue(_namedProfile.value());
     }
     else
     {
@@ -101,10 +96,10 @@ ProfileOptions::getConfig() const
 
         if ( _bounds.isSet() )
         {
-            conf.update( "xmin", toString(_bounds->xMin()) );
-            conf.update( "ymin", toString(_bounds->yMin()) );
-            conf.update( "xmax", toString(_bounds->xMax()) );
-            conf.update( "ymax", toString(_bounds->yMax()) );
+            conf.set( "xmin", toString(_bounds->xMin()) );
+            conf.set( "ymin", toString(_bounds->yMin()) );
+            conf.set( "xmax", toString(_bounds->xMax()) );
+            conf.set( "ymax", toString(_bounds->yMax()) );
         }
 
         conf.set( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
@@ -317,13 +312,12 @@ Profile::createNamed(const std::string& name)
     if ( ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
     {
         // Yes I know this is not really Plate Carre but it will stand in for now.
-        return Profile::create(
-            "+proj=eqc +units=m +no_defs",
-            -20037508, -10001966,
-             20037508,  10001966,
-            "", // vdatum
-            2, 1 );
+        osg::Vec3d ex;
+        const SpatialReference* plateCarre = SpatialReference::get("plate-carre");
+        const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+        wgs84->transform(osg::Vec3d(180,90,0), plateCarre, ex);
 
+        return Profile::create(plateCarre, -ex.x(), -ex.y(), ex.x(), ex.y(), 2u, 1u);
     }
 
     else
@@ -591,14 +585,16 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
     }
 }
 
-#if 1
-
 GeoExtent
 Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) const
 {
     // initialize the output flag
     if ( out_clamped )
         *out_clamped = false;
+
+    // null checks
+    if (input.isInvalid())
+        return GeoExtent::INVALID;
 
     // begin by transforming the input extent to this profile's SRS.
     GeoExtent inputInMySRS = input.transform(getSRS());
@@ -662,57 +658,6 @@ Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) cons
         return result;
     }    
 }
-
-#else
-
-GeoExtent
-Profile::clampAndTransformExtent( const GeoExtent& input, bool* out_clamped ) const
-{
-    if ( out_clamped )
-        *out_clamped = false;
-
-    // do the clamping in LAT/LONG.
-    const SpatialReference* geo_srs = getSRS()->getGeographicSRS();
-
-    // get the input in lat/long:
-    GeoExtent gcs_input =
-        input.getSRS()->isGeographic()?
-        input :
-        input.transform( geo_srs );
-
-    // bail out on a bad transform:
-    if ( !gcs_input.isValid() )
-        return GeoExtent::INVALID;
-
-    // bail out if the extent's do not intersect at all:
-    if ( !gcs_input.intersects(_latlong_extent, false) )
-        return GeoExtent::INVALID;
-
-    // clamp it to the profile's extents:
-    GeoExtent clamped_gcs_input = GeoExtent(
-        gcs_input.getSRS(),
-        osg::clampBetween( gcs_input.xMin(), _latlong_extent.xMin(), _latlong_extent.xMax() ),
-        osg::clampBetween( gcs_input.yMin(), _latlong_extent.yMin(), _latlong_extent.yMax() ),
-        osg::clampBetween( gcs_input.xMax(), _latlong_extent.xMin(), _latlong_extent.xMax() ),
-        osg::clampBetween( gcs_input.yMax(), _latlong_extent.yMin(), _latlong_extent.yMax() ) );
-
-    if ( out_clamped )
-        *out_clamped = (clamped_gcs_input != gcs_input);
-
-    // finally, transform the clamped extent into this profile's SRS and return it.
-    GeoExtent result =
-        clamped_gcs_input.getSRS()->isEquivalentTo( this->getSRS() )?
-        clamped_gcs_input :
-        clamped_gcs_input.transform( this->getSRS() );
-
-    if (result.isValid())
-    {
-        OE_DEBUG << LC << "clamp&xform: input=" << input.toString() << ", output=" << result.toString() << std::endl;
-    }
-
-    return result;
-}
-#endif
 
 namespace
 {

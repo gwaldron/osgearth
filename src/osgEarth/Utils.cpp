@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,25 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
-#include <osgEarth/ECEF>
-#include <osgEarth/CullingUtils>
-#include <osg/Version>
-#include <osg/CoordinateSystemNode>
-#include <osg/MatrixTransform>
 #include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
-
-//------------------------------------------------------------------------
-
-void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler)
-{
-    osgViewer::View::EventHandlers::iterator itr = std::find(view->getEventHandlers().begin(), view->getEventHandlers().end(), handler);
-    if (itr != view->getEventHandlers().end())
-    {
-        view->getEventHandlers().erase(itr);
-    }
-}
 
 //------------------------------------------------------------------------
 

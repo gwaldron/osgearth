@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -21,9 +21,8 @@
 */
 #include <osgEarth/DateTime>
 #include <osgEarth/StringUtils>
-#include <math.h>
-#include <iomanip>
-#include <stdio.h>
+
+#include <stdio.h> 
 
 using namespace osgEarth;
 
@@ -92,6 +91,15 @@ DateTime::DateTime(int year, int month, int day, double hour)
     tm* temp = ::gmtime( &_time_t );
     if ( temp ) _tm = *temp;
     else memset( &_tm, 0, sizeof(tm) );
+}
+
+DateTime::DateTime(int year, double dayOfYear)
+{
+    TimeStamp utc = DateTime(year,1,1,0).asTimeStamp() + (int)((dayOfYear-1.0)*24.0*3600.0);
+    _time_t = utc;
+    tm* temp = ::gmtime( &_time_t );
+    if ( temp ) _tm = *temp;
+    else memset( &_tm, 0, sizeof(tm) );    
 }
 
 DateTime::DateTime(const std::string& input) :
@@ -231,7 +239,7 @@ double
 DateTime::getJulianDay() const
 {
     int d = (1461 * (year() + 4800 + (month() - 14) / 12)) / 4 + (367 * (month() - 2 - 12 * ((month() - 14) / 12))) / 12 - (3 * ((year() + 4900 + (month()-14)/12)/100))/4 + day() - 32075;
-    return (double)d + hours()/24.0;
+    return (double)(d-0.5) + hours()/24.0;
 }
 
 //------------------------------------------------------------------------
@@ -313,4 +321,11 @@ namespace
     seconds = minutes * 60 + tm->tm_sec;
 
     return seconds;
+}
+
+DateTime
+DateTime::operator+(double hours) const
+{
+    double seconds = (double)asTimeStamp() + (hours*3600.0);
+    return DateTime((TimeStamp)seconds);
 }

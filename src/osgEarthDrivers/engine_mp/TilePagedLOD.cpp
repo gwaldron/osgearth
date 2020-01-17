@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -117,12 +117,16 @@ _debug    ( false )
 {
     if ( live )
     {
+// Disabling progress cancellation for mp engine.  This is causing issuses periodically with flat heightfields being generated and 
+// we haven't found an immediate fix for it yet.
+#if 0
         _progress = new MyProgressCallback();
         _progress->_frameOfLastCull = 0;
         _progress->_tiles = live;
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setUserData( _progress.get() );
         setDatabaseOptions( options );
+#endif
     }
 }
 

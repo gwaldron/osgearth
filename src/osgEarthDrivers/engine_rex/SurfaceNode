@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -33,6 +33,7 @@
 #include <osg/Geode>
 #include <osgText/Text>
 #include <osgUtil/CullVisitor>
+#include <OpenThreads/Atomic>
 #include <vector>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
@@ -80,11 +81,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         // A box can have 4 children. 
         // Returns true if any child box intersects the sphere of radius centered around point
-        inline bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float lodScale) {
-            double X = radiusSquared / (lodScale*lodScale);
+        inline bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared) {
             for(int c=0; c<4; ++c) {
                 for(int j=0; j<8; ++j) {
-                    if ( (_childrenCorners[c][j]-point).length2() < X )
+                    if ( (_childrenCorners[c][j]-point).length2() < radiusSquared )
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        bool anyChildBoxWithinRange(float range, osg::NodeVisitor& nv) const {
+            for(int c=0; c<4; ++c) {
+                for(int j=0; j<8; ++j) {
+                    if (nv.getDistanceToViewPoint(_childrenCorners[c][j], true) < range)
                         return true;
                 }
             }
@@ -95,15 +105,23 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::BoundingSphere computeBound() const;
 
+        osg::Node* getDebugNode() const { return _debugNode.get(); }
+
+        void setLastFramePassedCull(unsigned fn);
+
+        unsigned getLastFramePassedCull() const { return _lastFramePassedCull; }
+
+        float getPixelSizeOnScreen(osg::CullStack* cull) const;
+
     protected:
         virtual ~SurfaceNode() { }
 
         TileKey                     _tileKey;
         osg::ref_ptr<TileDrawable>  _drawable;
-        osg::ref_ptr<osg::Group>    _debugGeode;
+        osg::ref_ptr<osg::Node>     _debugNode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
-        
+        OpenThreads::Atomic         _lastFramePassedCull;
         HorizonTileCuller           _horizonCuller;        
 
         typedef osg::Vec3 VectorPoints[8];

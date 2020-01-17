@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -125,8 +125,8 @@ public:
         if ( _options.coverage() == true )
         {
             image = new osg::Image();
-            image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_LUMINANCE, GL_FLOAT);
-            image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+            image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_RED, GL_FLOAT);
+            image->setInternalTextureFormat(GL_R16F);
             ImageUtils::markAsUnNormalized(image, true);
         }
         return image;
@@ -371,10 +371,6 @@ public:
             osg::ref_ptr<Geometry> croppedGeometry;
             if ( geometry->crop( cropPoly.get(), croppedGeometry ) )
             {
-                const PolygonSymbol* poly =
-                    feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
-                    masterPoly;
-
                 if ( _options.coverage() == true && covValue.isSet() )
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
@@ -382,7 +378,11 @@ public:
                 }
                 else
                 {
-                    osg::Vec4f color = poly->fill()->color();
+                    const PolygonSymbol* poly =
+                        feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
+                        masterPoly;
+
+                    osg::Vec4f color = poly ? poly->fill()->color() : Color::White;
                     rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
                 
@@ -398,17 +398,18 @@ public:
             osg::ref_ptr<Geometry> croppedGeometry;
             if ( geometry->crop( cropPoly.get(), croppedGeometry ) )
             {
-                const LineSymbol* line =
-                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
-                    masterLine;
-
                 if ( _options.coverage() == true && covValue.isSet() )
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
                     rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
                 }
                 else
-                {   osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+                {   
+                    const LineSymbol* line =
+                        feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                        masterLine;
+                    
+                    osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : Color::White;
                     rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
             }

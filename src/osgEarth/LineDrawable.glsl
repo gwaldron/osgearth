@@ -1,54 +1,124 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+#pragma vp_name GPU Lines Screen Projected Model
+#pragma vp_entryPoint oe_LineDrawable_VS_VIEW
+#pragma vp_location vertex_view
+#pragma vp_order last
 
-#pragma vp_name GPU Lines Screen Projected
-#pragma vp_entryPoint oe_GPULinesProj_VS_CLIP
-#pragma vp_location vertex_clip
-#pragma import_defines(OE_GPULINES_STIPPLE_PATTERN, OE_GPULINES_WIDTH, OE_GPU_CLAMPING)
+uniform vec2 oe_LineDrawable_limits;
+flat out int oe_LineDrawable_draw;
 
-uniform vec2 oe_ViewportSize;
+// Input attributes for adjacent points
+in vec3 oe_LineDrawable_prev;
+in vec3 oe_LineDrawable_next;
 
-in vec3 oe_GPULines_prev;
-in vec3 oe_GPULines_next;
-uniform float oe_GPULines_width;
+// Shared stage globals
+vec4 oe_LineDrawable_prevView;
+vec4 oe_LineDrawable_nextView;
 
-#ifdef OE_GPULINES_STIPPLE_PATTERN
-flat out vec2 oe_GPULines_rv;
-#endif
-
-#ifdef OE_GPU_CLAMPING
-// Stage globals set in GPUClamping.vert.glsl only when OE_GPU_LINES is enabled
-vec4 oe_GPULines_prevViewClamped;
-vec4 oe_GPULines_nextViewClamped;
-#endif // OE_GPU_CLAMPING
-
-void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
+void oe_LineDrawable_VS_VIEW(inout vec4 currView)
 {
-    vec2 arVec = vec2(
-        oe_ViewportSize.x/oe_ViewportSize.y,
-        1.0);
+    oe_LineDrawable_draw = 1;
+    int first = int(oe_LineDrawable_limits[0]);
+    int last = int(oe_LineDrawable_limits[1]);
+    if (first >= 0)
+    {
+        if (gl_VertexID < first || (last > 0 && gl_VertexID > last))
+        {
+            oe_LineDrawable_draw = 0;
+        }
+    }
 
-#if defined(OE_GPU_CLAMPING)
-    vec4 prevClip = gl_ProjectionMatrix * oe_GPULines_prevViewClamped;
-    vec4 nextClip = gl_ProjectionMatrix * oe_GPULines_nextViewClamped;
+    // Compute the change in the view vertex so that we can apply the same
+    // delta to the prev and next vectors. (An example would be if the verts
+    // were GPU-clamped or otherwise permuted in another shader component.)
+    vec4 originalView = gl_ModelViewMatrix * gl_Vertex;
+    vec4 deltaView = currView - originalView;
+
+    // calculate prev/next points in post-transform view space:
+    oe_LineDrawable_prevView = gl_ModelViewMatrix * vec4(oe_LineDrawable_prev,1) + deltaView;
+    oe_LineDrawable_nextView = gl_ModelViewMatrix * vec4(oe_LineDrawable_next,1) + deltaView;
+
+    // clamp the current vertex to the near clip plane (or at least to Z=0)
+    // to prevent clip space coordinate freakouts! (only in perspective camera)
+    if (currView.z > 0.0 && gl_ProjectionMatrix[3][3] == 0.0)
+    {
+        if (oe_LineDrawable_prevView != currView)
+        {
+            vec3 v = currView.xyz-oe_LineDrawable_prevView.xyz;
+            float r = -oe_LineDrawable_prevView.z / v.z;
+            currView.xyz = oe_LineDrawable_prevView.xyz + v*r;
+        }
+        else
+        {
+            vec3 v = oe_LineDrawable_nextView.xyz-currView.xyz;
+            float r = currView.z / -v.z;
+            currView.xyz += v*r;
+        }
+    }
+}
+
+
+
+[break]
+
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+#pragma vp_name GPU Lines Screen Projected Clip
+#pragma vp_entryPoint oe_LineDrawable_VS_CLIP
+#pragma vp_location vertex_clip
+#pragma import_defines(OE_LINE_SMOOTH)
+
+// Set by the InstallCameraUniform callback
+uniform vec3 oe_Camera;
+
+// Set by GLUtils methods
+uniform float oe_GL_LineWidth;
+uniform int oe_GL_LineStipplePattern;
+
+// Input attributes for adjacent points
+in vec3 oe_LineDrawable_prev;
+in vec3 oe_LineDrawable_next;
+
+flat out int oe_LineDrawable_draw;
+flat out vec2 oe_LineDrawable_rv;
+
+// Shared stage globals
+vec4 oe_LineDrawable_prevView;
+vec4 oe_LineDrawable_nextView;
+
+#ifdef OE_LINE_SMOOTH
+out float oe_LineDrawable_lateral;
 #else
-    vec4 prevClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_prev, 1.0);
-    vec4 nextClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_next, 1.0);
+float oe_LineDrawable_lateral;
 #endif
 
-    vec2 currUnit = currClip.xy/currClip.w * arVec;
-    vec2 prevUnit = prevClip.xy/prevClip.w * arVec;
-    vec2 nextUnit = nextClip.xy/nextClip.w * arVec;
+void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
+{
+    if (oe_LineDrawable_draw == 0)
+        return;
 
-#ifdef OE_GPULINES_WIDTH
-    float thickness = OE_GPULINES_WIDTH; //abs(oe_GPULines_width);
+    // Transform the prev and next points in clip space.
+    vec4 prevClip = gl_ProjectionMatrix * oe_LineDrawable_prevView;
+    vec4 nextClip = gl_ProjectionMatrix * oe_LineDrawable_nextView;
+
+    // Transform all points into pixel space
+    vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_Camera.xy;
+
+#ifdef OE_LINE_SMOOTH
+    float thickness = floor(oe_GL_LineWidth + 1.0);
 #else
-    float thickness = 1.0;
+    float thickness = max(0.5, floor(oe_GL_LineWidth));
 #endif
 
     float len = thickness;
+    int code = (gl_VertexID+2) & 3; // gl_VertexID % 4
+    bool isStart = code <= 1;
+    bool isRight = code==0 || code==2;
 
-    // even-indexed verts are negative, odd-indexed are positive
-    float orientation = (gl_VertexID & 0x01) == 0? -1.0 : 1.0;
+    oe_LineDrawable_lateral = isRight? -1.0 : 1.0;
 
     vec2 dir = vec2(0.0);
 
@@ -59,36 +129,32 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     // space because the equivalency gets mashed after projection.
 
     // starting point uses (next - current)
-    if (gl_Vertex.xyz == oe_GPULines_prev)
+    if (gl_Vertex.xyz == oe_LineDrawable_prev)
     {
-        dir = normalize(nextUnit - currUnit);
+        dir = normalize(nextPixel - currPixel);
         stippleDir = dir;
     }
     
     // ending point uses (current - previous)
-    else if (gl_Vertex.xyz == oe_GPULines_next)
+    else if (gl_Vertex.xyz == oe_LineDrawable_next)
     {
-        dir = normalize(currUnit - prevUnit);
+        dir = normalize(currPixel - prevPixel);
         stippleDir = dir;
     }
 
-    // middle? join
     else
     {
-        vec2 dirA = normalize(currUnit - prevUnit);
-        vec2 dirB = normalize(nextUnit - currUnit);
+        vec2 dirIn  = normalize(currPixel - prevPixel);
+        vec2 dirOut = normalize(nextPixel - currPixel);
 
-        // Edge case: segment that doubles back on itself:
-        if (dot(dirA,dirB) < -0.99)
+        if (dot(dirIn,dirOut) < -0.999999)
         {
-            dir = dirA;
+            dir = isStart? dirOut : dirIn;
         }
-
-        // Normal case - create a mitered corner:
         else
         {
-            vec2 tangent = normalize(dirA+dirB);
-            vec2 perp = vec2(-dirA.y, dirA.x);
+            vec2 tangent = normalize(dirIn+dirOut);
+            vec2 perp = vec2(-dirIn.y, dirIn.x);
             vec2 miter = vec2(-tangent.y, tangent.x);
             dir = tangent;
             len = thickness / dot(miter, perp);
@@ -98,96 +164,107 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
             if (len > thickness*limit)
             {
                 len = thickness;
-                dir = dirB;
+                dir = isStart? dirOut : dirIn;
             }
         }
-        stippleDir = dirB;
+
+        stippleDir = dirOut;
     }
 
     // calculate the extrusion vector in pixels
-    // note: seems like it should be len/2, BUT we are in [-1..1] space
-    vec2 extrudePixels = vec2(-dir.y, dir.x) * len;
+    // note: seems like it should be len/2, BUT remember we are in [-w..w] space
+    vec2 extrudePixel = vec2(-dir.y, dir.x) * len;
 
     // and convert to unit space:
-    vec2 extrudeUnit = extrudePixels / oe_ViewportSize;
+    vec2 extrudeUnit = extrudePixel / oe_Camera.xy;
+        
+    // calculate the offset in clip space and apply it.
+    vec2 offset = extrudeUnit * oe_LineDrawable_lateral * currClip.w;
+    currClip.xy += offset;
 
-    // and from that make a clip-coord offset vector
-    vec4 offset = vec4(extrudeUnit*orientation*currClip.w, 0.0, 0.0);
-    currClip += offset;
+    // prepare for stippling:
+    if (oe_GL_LineStipplePattern != 0xffff)
+    {
+        // Line creation is done. Now, calculate a rotation angle
+        // for use by out fragment shader to do GPU stippling. 
+        // This "rotates" the fragment coordinate onto the X axis so that
+        // we can apply stippling along the direction of the line.
+        // Note: this depends on the GLSL "provoking vertex" being at the 
+        // beginning of the line segment!
 
-#ifdef OE_GPULINES_STIPPLE_PATTERN
-    // Line creation is done. Now, calculate a rotation angle
-    // for use by out fragment shader to do GPU stippling. 
-    // This "rotates" the fragment coordinate onto the X axis so that
-    // we can apply stippling along the direction of the line.
-    // Note: this depends on the GLSL "provoking vertex" being at the 
-    // beginning of the line segment!
+        // flip the vector so stippling always proceedes from left to right
+        // regardless of the direction of the segment
+        stippleDir = normalize(stippleDir.x < 0.0 ? -stippleDir : stippleDir);
 
-    // flip the vector so stippling always proceedes from left to right
-    // regardless of the direction of the segment
-    stippleDir = normalize(stippleDir.x < 0? -stippleDir : stippleDir);
+        // calculate the rotation angle that will project the
+        // fragment coord onto the X-axis for stipple pattern sampling.
+        float way = sign(cross(vec3(1, 0, 0), vec3(stippleDir, 0)).z);
+        float angle = acos(dot(vec2(1, 0), stippleDir)) * way;
 
-    // calculate the rotation angle that will project the
-    // fragment coord onto the X-axis for stipple pattern sampling.
-    float way = sign(cross(vec3(1, 0, 0), vec3(stippleDir, 0)).z);
-    float angle = acos(dot(vec2(1, 0), stippleDir)) * way;
+        // quantize the rotation angle to mitigate precision problems
+        // when connecting segments with slightly different vectors
+        const float pi = 3.14159265359;
+        const float q = pi/8.0;
+        angle = floor(angle/q) * q;
 
-    // quantize the rotation angle to mitigate precision problems
-    // when connecting segments with slightly different vectors
-    const float pi = 3.14159265359;
-    const float q = pi/8.0;
-    angle = floor(angle/q) * q;
-
-    // send it to the fragment shader.
-    oe_GPULines_rv = vec2(cos(angle), sin(angle));
-#endif
+        // send it to the fragment shader.
+        oe_LineDrawable_rv = vec2(cos(angle), sin(angle));
+    }
 }
 
 
 [break]
 
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name GPU Lines Screen Projected FS
-#pragma vp_entryPoint oe_GPULinesProj_Stippler_FS
+#pragma vp_entryPoint oe_LineDrawable_Stippler_FS
 #pragma vp_location fragment_coloring
-#pragma import_defines (OE_GPULINES_STIPPLE_PATTERN, OE_GPULINES_STIPPLE_FACTOR)
+#pragma import_defines(OE_LINE_SMOOTH)
 
-#ifdef OE_GPULINES_STIPPLE_PATTERN
-flat in vec2 oe_GPULines_rv;
+uniform int oe_GL_LineStippleFactor;
+uniform int oe_GL_LineStipplePattern;
+
+flat in vec2 oe_LineDrawable_rv;
+flat in int oe_LineDrawable_draw;
+
+#ifdef OE_LINE_SMOOTH
+in float oe_LineDrawable_lateral;
 #endif
 
-void oe_GPULinesProj_Stippler_FS(inout vec4 color)
+void oe_LineDrawable_Stippler_FS(inout vec4 color)
 {
-#ifdef OE_GPULINES_STIPPLE_PATTERN
+    if (oe_LineDrawable_draw == 0)
+        discard;
 
-    // we could make these unfiorms if necessary
-    const int pattern = OE_GPULINES_STIPPLE_PATTERN;
+    if (oe_GL_LineStipplePattern != 0xffff)
+    {
+        // coordinate of the fragment, shifted to 0:
+        vec2 coord = (gl_FragCoord.xy - 0.5);
 
-#ifdef OE_GPULINES_STIPPLE_FACTOR
-    const int factor = OE_GPULINES_STIPPLE_FACTOR;
-#else
-    const int factor = 1;
-#endif
+        // rotate the frag coord onto the X-axis so we can sample the 
+        // stipple pattern:
+        vec2 coordProj =
+            mat2(oe_LineDrawable_rv.x, -oe_LineDrawable_rv.y,
+                 oe_LineDrawable_rv.y,  oe_LineDrawable_rv.x)
+            * coord;
 
-    // coordinate of the fragment, shifted to 0:
-    vec2 coord = (gl_FragCoord.xy - 0.5);
+        // sample the stippling pattern (16-bits repeating)
+        int ci = int(mod(coordProj.x, 16.0 * float(oe_GL_LineStippleFactor))) / oe_GL_LineStippleFactor;
+        int pattern16 = 0xffff & (oe_GL_LineStipplePattern & (1 << ci));
+        if (pattern16 == 0)
+            discard; 
 
-    // rotate the frag coord onto the X-axis so we can sample the 
-    // stipple pattern:
-    vec2 coordProj =
-        mat2(oe_GPULines_rv.x, -oe_GPULines_rv.y,
-             oe_GPULines_rv.y,  oe_GPULines_rv.x)
-        * coord;
+        // uncomment to debug stipple direction vectors
+        //color.b = 0;
+        //color.r = oe_LineDrawable_rv.x;
+        //color.g = oe_LineDrawable_rv.y;
+    }
 
-    // sample the stippling pattern (16-bits repeating)
-    int ci = int(mod(coordProj.x, 16 * factor)) / factor;
-    if ((pattern & (1 << ci)) == 0)
-        discard; 
-
-    // uncomment to debug stipple direction vectors
-    //color.b = 0;
-    //color.r = oe_GPULines_rv.x;
-    //color.g = oe_GPULines_rv.y;
+#ifdef OE_LINE_SMOOTH
+    // anti-aliasing
+    float L = abs(oe_LineDrawable_lateral);
+    color.a = color.a * smoothstep(0.0, 1.0, 1.0-(L*L));
 #endif
 }

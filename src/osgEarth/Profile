@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -87,7 +87,12 @@ namespace osgEarth
         optional<int>         _numTilesWideAtLod0;
         optional<int>         _numTilesHighAtLod0;
     };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ProfileOptions);
 
+
+namespace osgEarth
+{
     /**
      * A "profile" defines the layout of a data source. The profile conveys the
      * spatial reference system (SRS), the geospatial extents within that SRS, and

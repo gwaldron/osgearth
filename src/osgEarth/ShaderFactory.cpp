@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,16 +18,9 @@
  */
 #include <osgEarth/ShaderFactory>
 
-#include <osgEarth/ShaderUtils>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
-#include <osg/Shader>
-#include <osg/Program>
-#include <osg/State>
-#include <osg/Notify>
-#include <sstream>
 
 #define LC "[ShaderFactory] "
 
@@ -42,26 +35,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
-
-
-namespace
-{
-    void insertRangeConditionals(const Function& f, std::ostream& buf)
-    {
-        if ( f._minRange.isSet() && !f._maxRange.isSet() )
-        {
-            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << "))\n" << INDENT;
-        }
-        else if ( !f._minRange.isSet() && f._maxRange.isSet() )
-        {
-            buf << INDENT << "if (" << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
-        }
-        else if ( f._minRange.isSet() && f._maxRange.isSet() )
-        {
-            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << ") && " << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
-        }
-    }
-}
 
 
 ShaderFactory::ShaderFactory()
@@ -344,7 +317,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
             {
-                //insertRangeConditionals( i->second, buf );
                 buf << INDENT << i->second._name << "(vp_Vertex); \n";
             }
         }
@@ -421,13 +393,11 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
 
     //.................................................................................
-    
-#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
-
+  
+#if OSG_VERSION_LESS_THAN(3,5,8)
     // for all stages EXCEPT vertex, we will switch over to the OSG aliased
-    // matrix uniforms. Why except vertex? OSG [3.4] does something internally to
-    // convert these for hte VERTEX shader stage only... and if you try to 
-    // use them anyway, they won't work :(
+    // matrix uniforms. Why except vertex? OSG<3.5.8 only replaces these
+    // in the vertex shader and not other stages.
 
     gl_ModelViewMatrix           = "osg_ModelViewMatrix",
     gl_ProjectionMatrix          = "osg_ProjectionMatrix",
@@ -441,7 +411,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         "uniform mat4 osg_ProjectionMatrix;\n"
         "uniform mat3 osg_NormalMatrix;\n";
 #endif
-
 
     if ( hasTCS )
     {
@@ -559,14 +528,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         for(std::set<std::string>::const_iterator i = types.begin(); i != types.end(); ++i)
         {
             buf << *i << " VP_Interpolate3(" << *i << "," << *i << "," << *i << ");\n";
-        }       
-
-        //buf <<
-        //    "\n// TES user-supplied interpolators: \n"
-        //    "float VP_Interpolate3(float,float,float); \n"
-        //    "vec2  VP_Interpolate3(vec2,vec2,vec2); \n"
-        //    "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
-        //    "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
+        }
 
 #if 0
         buf <<
@@ -742,7 +704,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         addExtensionsToBuffer(buf, in_extensions);
 
-        buf << glMatrixUniforms << "\n";
+        //buf << glMatrixUniforms << "\n";
 
         if ( hasVS || hasTCS || hasTES )
         {
@@ -1072,22 +1034,6 @@ ShaderFactory::createColorFilterChainFragmentShader(const std::string&      func
     bufstr = buf.str();
     return new osg::Shader(osg::Shader::FRAGMENT, bufstr);
 }
-
-
-//osg::Uniform*
-//ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
-//                                      osg::StateAttribute::GLModeValue value) const
-//{
-//    osg::Uniform* u = 0L;
-//
-//    if ( mode == GL_LIGHTING )
-//    {
-//        u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
-//        u->set( (value & osg::StateAttribute::ON) != 0 );
-//    }
-//
-//    return u;
-//}
 
 std::string
 ShaderFactory::getRangeUniformName() const

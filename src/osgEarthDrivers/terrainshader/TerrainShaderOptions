@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,7 +30,7 @@ namespace osgEarth { namespace TerrainShader
     /**
      * Options for applying an inline shader to the terrain.
      */
-    class TerrainShaderOptions : public DriverConfigOptions // NO EXPORT; header only
+    class TerrainShaderOptions : public ConfigOptions // NO EXPORT; header only
     {
     public:
         struct Code
@@ -60,33 +60,27 @@ namespace osgEarth { namespace TerrainShader
         std::vector<Uniform>& uniforms() { return _uniforms; }
         const std::vector<Uniform>& uniforms() const { return _uniforms; }
 
-        optional<std::string>& landCoverGroup() { return _landCoverGroup; }
-        const optional<std::string>& landCoverGroup() const { return _landCoverGroup; }
-
-        optional<unsigned>& landCoverLOD() { return _landCoverLOD; }
-        const optional<unsigned>& landCoverLOD() const { return _landCoverLOD; }
-
     public:
-        TerrainShaderOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
+        TerrainShaderOptions( const ConfigOptions& opt =ConfigOptions() ) : ConfigOptions( opt )
         {
-            setDriver( "terrainshader" );
-            _landCoverLOD.init(15);
             fromConfig( _conf );
         }
 
         virtual ~TerrainShaderOptions() { }
 
     public:
-        Config getConfig() const
+        virtual Config getConfig() const
         {
-            Config conf = DriverConfigOptions::getConfig();
+            Config conf = ConfigOptions::getConfig();
 
+            conf.remove("code");
             for(unsigned i=0; i<_code.size(); ++i) {
                 Config c("code", _code[i]._source);
-                c.addIfSet("url", _code[i]._uri);
+                c.set("url", _code[i]._uri);
                 conf.add( c );
             }
 
+            conf.remove("sampler");
             for(unsigned i=0; i<_samplers.size(); ++i) {
                 Config c("sampler");
                 c.add("name", _samplers[i]._name);
@@ -103,33 +97,35 @@ namespace osgEarth { namespace TerrainShader
                 conf.add( c );
             }
 
+            conf.remove("uniform");
             for(unsigned i=0; i<_uniforms.size(); ++i) {
                 Config c("uniform");
-                c.add("name", _uniforms[i]._name);
-                c.addIfSet("value", _uniforms[i]._value);
+                c.set("name", _uniforms[i]._name);
+                c.set("value", _uniforms[i]._value);
                 conf.add( c );
             }
-
-            //conf.addIfSet("land_cover", _landCover);
-            conf.addIfSet("land_cover_group", _landCoverGroup);
-            conf.addIfSet("land_cover_lod",   _landCoverLOD);
+            
             return conf;
         }
 
     protected:
-        void mergeConfig( const Config& conf ) {
-            DriverConfigOptions::mergeConfig( conf );
+        virtual void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
     private:
         void fromConfig( const Config& conf ) {
 
+            _code.clear();
+            _samplers.clear();
+            _uniforms.clear();
+
             ConfigSet s = conf.children("code");
             for(ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
                 _code.push_back(Code());
                 _code.back()._source = i->value();
-                i->getIfSet("url", _code.back()._uri);
+                i->get("url", _code.back()._uri);
             }
 
             s = conf.children("sampler");
@@ -146,7 +142,7 @@ namespace osgEarth { namespace TerrainShader
                 }
                 else {
                    optional<URI> uri;
-                   i->getIfSet("url", uri);
+                   i->get("url", uri);
                    if ( uri.isSet() )
                        _samplers.back()._uris.push_back( uri.get() );
                 }
@@ -156,19 +152,13 @@ namespace osgEarth { namespace TerrainShader
             for(ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
                 _uniforms.push_back(Uniform());
                 _uniforms.back()._name = i->value("name");
-                i->getIfSet("value", _uniforms.back()._value);
+                i->get("value", _uniforms.back()._value);
             }
-            
-            //conf.getIfSet("land_cover", _landCover);
-            conf.getIfSet("land_cover_group", _landCoverGroup);
-            conf.getIfSet("land_cover_lod",   _landCoverLOD);
         }
 
         std::vector<Code>     _code;
         std::vector<Sampler>  _samplers;
         std::vector<Uniform>  _uniforms;
-        optional<std::string> _landCoverGroup;
-        optional<unsigned>    _landCoverLOD;
     };
 
 } } // namespace osgEarth::TerrainShader

@@ -1,42 +1,33 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint oe_depthOffset_vertex
+#pragma vp_entryPoint oe_DepthOffset_vertex
 #pragma vp_location   vertex_view
 #pragma vp_order      0.8
 
-uniform float oe_depthOffset_minBias;
-uniform float oe_depthOffset_maxBias;
-uniform float oe_depthOffset_minRange;
-uniform float oe_depthOffset_maxRange;
+uniform vec4 oe_DepthOffset_params;
 
-//uniform mat4 gl_ProjectionMatrix;
-
-float oe_depthOffset_biasClip;
-
-void oe_depthOffset_vertex(inout vec4 vertexView)
+void oe_DepthOffset_vertex(inout vec4 vertexView)
 {
     // calculate range to target:
     float range = length(vertexView.xyz);
 
+    // extract params for clarity.
+    float minBias = oe_DepthOffset_params[0];
+    float maxBias = oe_DepthOffset_params[1];
+    float minRange = oe_DepthOffset_params[2];
+    float maxRange = oe_DepthOffset_params[3];
+
     // calculate the depth offset bias for this range:
-    float ratio = (clamp(range, oe_depthOffset_minRange, oe_depthOffset_maxRange)-oe_depthOffset_minRange)/(oe_depthOffset_maxRange-oe_depthOffset_minRange);
-    float bias = oe_depthOffset_minBias + ratio * (oe_depthOffset_maxBias-oe_depthOffset_minBias);
+    float ratio = (clamp(range, minRange, maxRange)-minRange)/(maxRange-minRange);
+    float bias = minBias + ratio * (maxBias-minBias);
 
 	// clamp the bias to 1/2 of the range of the vertex. We don't want to 
     // pull the vertex TOO close to the camera and certainly not behind it.
     bias = min(bias, range*0.5);
-    bias = min(bias, oe_depthOffset_maxBias);
+    bias = min(bias, maxBias);
 
-    //vec4 p0 = gl_ProjectionMatrix * vec4(0,0,0,1);
-    //vec4 p1 = gl_ProjectionMatrix * vec4(0,0,-bias,1);
-    //oe_depthOffset_biasClip = distance(p0, p1);
-    //oe_depthOffset_biasClip = p1.z;
-
-    //vec4 refPointClip = gl_ProjectionMatrix * vec4(0.0, 0.0, -bias, 1.0);
-    //oe_depthOffset_biasClip = refPointClip.z;
-
-    //   pull the vertex towards the camera.
+    // pull the vertex towards the camera.
     vec3 pullVec = normalize(vertexView.xyz);
     vec3 simVert3 = vertexView.xyz - pullVec*bias;
     vertexView = vec4(simVert3, 1.0);

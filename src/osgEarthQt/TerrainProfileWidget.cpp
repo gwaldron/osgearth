@@ -256,11 +256,11 @@ void TerrainProfileWidget::updatePosition(double lat, double lon, const std::str
   if (!_markerNode.valid())
   {
     _markerNode = new osgEarth::Annotation::PlaceNode(
-        _mapNode.get(),
         GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::ALTMODE_RELATIVE),
-        _markerImage.get(),
         text,
-        _placeStyle);
+        _placeStyle,
+        _markerImage.get());
+    _markerNode->setMapNode( _mapNode.get() );
 
     _markerNode->setDynamic(true);
 
@@ -317,7 +317,8 @@ void TerrainProfileWidget::drawProfileLine()
 
   if (!_lineNode.valid())
   {
-    _lineNode = new osgEarth::Annotation::FeatureNode( _mapNode.get(), feature );
+    _lineNode = new osgEarth::Annotation::FeatureNode( feature );
+    _lineNode->setMapNode( _mapNode.get() );
     _lineNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     _root->addChild( _lineNode.get() );
   }

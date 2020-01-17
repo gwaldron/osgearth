@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -41,7 +41,7 @@ GeometryCompilerOptions(options)
         
 void FeatureModelLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("feature_source", _featureSourceLayer);
+    conf.get("feature_source", _featureSourceLayer);
 }
 
 Config
@@ -50,7 +50,6 @@ FeatureModelLayerOptions::getConfig() const
     Config conf = VisibleLayerOptions::getConfig();
     conf.merge(FeatureModelOptions::getConfig());
     conf.merge(GeometryCompilerOptions::getConfig());
-    conf.key() = "feature_model";
 
     conf.set("feature_source", _featureSourceLayer);
     return conf;
@@ -100,6 +99,8 @@ FeatureModelLayer::init()
     // Depth sorting by default
     getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 
+    // activate opacity support
+    installDefaultOpacityShader();
 }
 
 void FeatureModelLayer::setFeatureModelLayerOptions(const FeatureModelLayerOptions& options)
@@ -154,6 +155,12 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
     }
 }
 
+FeatureSource*
+FeatureModelLayer::getFeatureSource() const
+{
+    return _featureSource.get();
+}
+
 void
 FeatureModelLayer::setCreateFeatureNodeFactoryCallback(CreateFeatureNodeFactoryCallback* value)
 {
@@ -167,7 +174,7 @@ FeatureModelLayer::getCreateFeatureNodeFactoryCallback() const
 }
 
 osg::Node*
-FeatureModelLayer::getOrCreateNode()
+FeatureModelLayer::getNode() const
 {
     return _root.get();
 }
@@ -225,15 +232,24 @@ FeatureModelLayer::addedToMap(const Map* map)
             this,
             &FeatureModelLayer::setFeatureSourceLayer);
     }
-
-    // re-create the graph if necessary.
-    create();
+    else
+    {
+        // re-create the graph if necessary.
+        create();
+    }
 }
 
 void
 FeatureModelLayer::removedFromMap(const Map* map)
 {
     _featureSourceLayerListener.clear();
+    
+    if (_root.valid())
+    {
+        _root->removeChildren(0, _root->getNumChildren());
+    }
+
+    _session = 0L;
 }
 
 void
@@ -267,10 +283,13 @@ FeatureModelLayer::create()
             setStatus(Status::OK());
         }
 
-        else if (getStatus().isOK())
-        {
-            setStatus(Status(Status::ConfigurationError));
-        }
+        //else if (getStatus().isOK())
+        //{
+        //    if (!_featureSource.valid())
+        //        setStatus(Status(Status::ConfigurationError, "No feature source"));
+        //    else if (!_session.valid())
+        //        setStatus(Status(Status::ConfigurationError, "No Session"));
+        //}
     }
 }
 

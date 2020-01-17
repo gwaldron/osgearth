@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -38,6 +38,7 @@ namespace osgEarth
     class ResourceReleaser;
     class DrapingManager;
     class ClampingManager;
+    class CascadeDrapingDecorator;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -253,6 +254,7 @@ namespace osgEarth
         ResourceReleaser*  _resourceReleaser;
         DrapingManager*    _drapingManager;
         ClampingManager*   _clampingManager;
+        CascadeDrapingDecorator* _cascadeDrapingDecorator;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 
@@ -263,6 +265,10 @@ namespace osgEarth
         void onLayerAdded(Layer* layer, unsigned index);
         void onLayerRemoved(Layer* layer, unsigned index);
         void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
+
+        // internal
+        osg::Node* getDrapingDump();
+        CascadeDrapingDecorator* getCascadeDrapingDecorator() const;
 
     private:
 

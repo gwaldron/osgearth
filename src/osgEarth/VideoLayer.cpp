@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -54,17 +54,14 @@ Config
 VideoLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
-    conf.key() = "video";
-
     conf.set("url", _url);
-
     return conf;
 }
 
 void
 VideoLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet("url", _url );
+    conf.get("url", _url );
 }
 
 void
@@ -88,12 +85,20 @@ _optionsConcrete(options)
     init();    
 }
 
+void
+VideoLayer::init()
+{
+    ImageLayer::init();
+    
+    // Configure the layer to use createTexture() to return data
+    setUseCreateTexture();
+}
+
 const Status&
 VideoLayer::open()
 {
     if ( !_openCalled )
     {
-
         if (!options().url().isSet())
         {
             return setStatus(Status::Error(Status::ConfigurationError, "Missing required url"));
@@ -136,20 +141,12 @@ VideoLayer::open()
 }
 
 osg::Texture* VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)
-{    
-    if (key.getLOD() > 0) return 0;
-
-    bool flip = _texture->getImage()->getOrigin()==osg::Image::TOP_LEFT;
-    osg::Matrixf scale = osg::Matrixf::scale(0.5, flip? -1.0 : 1.0, 1.0);         
-
-    if (key.getTileX() == 0)
+{   
+    bool flip = _texture->getImage()->getOrigin() == osg::Image::TOP_LEFT;    
+    key.getExtent().createScaleBias(key.getProfile()->getExtent(), textureMatrix);
+    if (flip)
     {
-        textureMatrix = scale;
-    }
-    else if (key.getTileX() == 1)
-    {
-        textureMatrix =  scale * osg::Matrixf::translate(0.5, 0.0, 0.0);
-    }
-
+        textureMatrix *= osg::Matrixf::scale(1.0, flip ? -1.0 : 1.0, 1.0);
+    }  
     return _texture.get();
 }

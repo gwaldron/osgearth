@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -64,7 +64,7 @@ namespace osgEarth { namespace Drivers
         {
             Config conf = TileSourceOptions::getConfig();
             conf.set( "attr", _attr );
-            conf.setObj( "features", _featureOptions );
+            conf.set( "features", _featureOptions );
             conf.set( "offset", _offset );
 
             return conf;
@@ -76,8 +76,8 @@ namespace osgEarth { namespace Drivers
         }
 
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "attr", _attr );
-            conf.getIfSet( "offset", _offset );
+            conf.get( "attr", _attr );
+            conf.get( "offset", _offset );
 
             if ( conf.hasChild("features") )
                 _featureOptions->merge( conf.child("features") );

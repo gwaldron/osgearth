@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -23,9 +23,6 @@
 #include <osg/Fog>
 #include <osgEarthUtil/Shaders>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/TerrainEngineNode>
 
 #define LC "[Fog] "
 
@@ -69,6 +66,7 @@ FogEffect::~FogEffect()
 void FogEffect::attach( osg::StateSet* stateSet )
 {
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateSet );
+    vp->setName("Fog");
     Shaders pkg;
     pkg.load( vp, pkg.Fog_Vertex );
     pkg.load( vp, pkg.Fog_Fragment );

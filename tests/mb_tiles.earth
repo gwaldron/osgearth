@@ -1,15 +1,15 @@
 <!--
 osgEarth Sample
-This example shows how to access an MBTiles dataset. 
+This example shows how to access an MBTiles dataset.
 The MBTiles datasets are very large so they are no in the osgEarth repository.
 You can download the sample from:
 https://www.arcgis.com/home/item.html?id=7b650618563741ca9a5186c1aa69126e
 -->
 
-<map name="MBTiles" type="geocentric" version="2">    
-      
+<map name="MBTiles" type="geocentric" version="2">
+
     <image name="Sample MBTiles Database" driver="mbtiles">
-        <filename>world_countries.mbtiles</filename>
+        <filename>../data/world_countries.mbtiles</filename>
     </image>
-   
+
 </map>

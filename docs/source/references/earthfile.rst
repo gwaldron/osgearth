@@ -10,7 +10,7 @@ The *map* is the top-level element in an earth file.
     <map name    = "my map"
          type    = "geocentric"
          version = "2" >
-         
+
         <:ref:`options   <MapOptions>`>
         <:ref:`image     <ImageLayer>`>
         <:ref:`elevation <ElevationLayer>`>
@@ -90,73 +90,54 @@ These options control the rendering of the terrain surface.
 
     <map>
         <options>
-            <terrain driver                = "mp"
+            <terrain driver                = "rex"
                      lighting              = "true"
                      min_tile_range_factor = "6"
-                     min_lod               = "0"
-                     max_lod               = "23"
                      first_lod             = "0"
-                     cluster_culling       = "true"
-                     mercator_fast_path    = "true"
                      blending              = "false"
                      color                 = "#ffffffff"
                      tile_size             = "17"
                      normalize_edges       = "false"
-                     elevation_smoothing   = "false"
-                     normal_maps           = "false">
+                     compress_normal_maps  = "false"
+                     normal_maps           = "true"
+                     min_expiry_frames     = "0"
+                     min_expiry_time       = "0" >
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
 +=======================+====================================================================+
-| driver                | Terrain engine plugin to load. Default = "mp".                     |
+| driver                | Terrain engine plugin to load. Default = "rex".                    |
 |                       | Please refer to the driver reference guide for properties specific |
 |                       | to each individual plugin.                                         |
 +-----------------------+--------------------------------------------------------------------+
-| lighting              | Whether to enable GL_LIGHTING on the terrain. By default this is   |
-|                       | unset, meaning it will inherit the lighting mode of the scene.     |
+| lighting              | Whether the terrain will accept lighting if present. Default=true  |
 +-----------------------+--------------------------------------------------------------------+
 | min_tile_range_factor | Determines how close you need to be to a terrain tile for it to    |
 |                       | display. The value is the ratio of a tile's extent to its          |
 |                       | For example, if a tile has a 10km radius, and the MTRF=7, then the |
-|                       | tile will become visible at a range of about 70km.                 |
-+-----------------------+--------------------------------------------------------------------+
-| min_lod               | The lowest level of detail that the terrain is guaranteed to       |
-|                       | display, even if no source data is available at that LOD. The      |
-|                       | terrain will continue to subdivide up to this LOD even if it runs  |
-|                       | out of data.                                                       |
-+-----------------------+--------------------------------------------------------------------+
-| max_lod               | The highest level of detail at which the terrain will render, even |
-|                       | if there is higher resolution source data available.               |
+|                       | tile will become visible at a range of about 70km. Default=6.0     |
 +-----------------------+--------------------------------------------------------------------+
 | first_lod             | The lowest level of detail at which the terrain will display tiles.|
 |                       | I.e., the terrain will never display a lower LOD than this.        |
-+-----------------------+--------------------------------------------------------------------+
-| cluster_culling       | Disable "cluster culling" by setting this to ``false``. You may    |
-|                       | wish to do this is you are placing the camera underground.         |
-+-----------------------+--------------------------------------------------------------------+
-| mercator_fast_path    | The *mercator fast path* allows the renderer to display Mercator   |
-|                       | projection imagery without reprojecting it. You can disable this   |
-|                       | technique (and allow reprojection as necessary) by setting this    |
-|                       | to ``false``.                                                      |
 +-----------------------+--------------------------------------------------------------------+
 | blending              | Set this to ``true`` to enable GL blending on the terrain's        |
 |                       | underlying geometry. This lets you make the globe partially        |
 |                       | transparent. This is handy for seeing underground objects.         |
 +-----------------------+--------------------------------------------------------------------+
 | tile_size             | The dimensions of each terrain tile. Each terrain tile will have   |
-|                       | ``tile_size`` X ``tile_size`` vertices.                            |
+|                       | ``tile_size`` X ``tile_size`` vertices. Default=17                 |
 +-----------------------+--------------------------------------------------------------------+
 | normalize_edges       | Calculate normal vectors along the edges of terrain tiles so that  |
-|                       | lighting appears smoother from one tile to the next.               |
-+-----------------------+--------------------------------------------------------------------+
-| elevation_smoothing   | Whether to smooth the transition across elevation data insets.     |
-|                       | Doing so will give a smoother appearance to disparate height field |
-|                       | data, but elevations will not be as accurate. Default = false      |
+|                       | lighting appears smoother from one tile to the next. Default=false |
 +-----------------------+--------------------------------------------------------------------+
 | normal_maps           | Whether to generate and use normal maps in place of geometry       |
 |                       | normals. Normal maps are used with lighting to create the          |
 |                       | appearance of higher-resolution terrain than can be represented    |
 |                       | with triangles alone. Default is engine-dependent.                 |
++-----------------------+--------------------------------------------------------------------+
+| compress_normal_maps  | Whether to compress normal maps before sending them to the GPU.    |
+|                       | You must have the NVIDIA Texture Tools image processor plugin      |
+|                       | built in your OpenSceneGraph build.  Default is false              |
 +-----------------------+--------------------------------------------------------------------+
 | min_expiry_frames     | The number of frames that a terrain tile hasn't been seen before   |
 |                       | it can be considered for expiration. Default = 0                   |
@@ -175,30 +156,31 @@ An *image layer* is a raster image overlaid on the map's geometry.
 .. parsed-literal::
 
     <map>
-        <image name           = "my image layer"
-               driver         = "gdal"
-               nodata_image   = "http://readymap.org/nodata.png"
-               opacity        = "1.0"
-               min_range      = "0"
-               max_range      = "100000000"
-               min_level      = "0"
-               max_level      = "23"
-               min_resolution = "100.0"
-               max_resolution = "0.0"
-               max_data_level = "23"
-               enabled        = "true"
-               visible        = "true"
-               shared         = "false"
-               shared_sampler = "string"
-               shared_matrix  = "string"
-               coverage       = "false"
-               feather_pixels = "false"
-               min_filter     = "LINEAR"
-               mag_filter     = "LINEAR" 
-               texture_compression = "auto" >
+        <image name              = "my image layer"
+               driver            = "gdal"
+               nodata_image      = "http://readymap.org/nodata.png"
+               opacity           = "1.0"
+               min_range         = "0"
+               max_range         = "100000000"
+               attenuation_range = "0"
+               min_level         = "0"
+               max_level         = "23"
+               min_resolution    = "100.0"
+               max_resolution    = "0.0"
+               max_data_level    = "23"
+               enabled           = "true"
+               visible           = "true"
+               shared            = "false"
+               shared_sampler    = "string"
+               shared_matrix     = "string"
+               coverage          = "false"
+               min_filter        = "LINEAR"
+               mag_filter        = "LINEAR"
+               blend             = "interpolate"
+               altitude          = "0"
+               texture_compression = "none" >
 
             <:ref:`cache_policy <CachePolicy>`>
-            <:ref:`color_filters <ColorFilterChain>`>
             <:ref:`proxy <ProxySettings>`>
 
 
@@ -222,6 +204,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
 +-----------------------+--------------------------------------------------------------------+
 | max_range             | Maximum visibility range, in meters from the camera. The tile will |
 |                       | not be drawn beyond this range.                                    |
++-----------------------+--------------------------------------------------------------------+
+| attenuation_range     | Distance over which to blend towards min_range or max_range.       |
+|                       | (not supported for text or icons, only geometry)                   |
 +-----------------------+--------------------------------------------------------------------+
 | min_level             | Minimum visibility level of detail.                                |
 +-----------------------+--------------------------------------------------------------------+
@@ -262,10 +247,6 @@ An *image layer* is a raster image overlaid on the map's geometry.
 |                       | coverage disables any interpolation, filtering, or compression as  |
 |                       | these will corrupt the sampled data values on the GPU.             |
 +-----------------------+--------------------------------------------------------------------+
-| feather_pixels        | Whether to feather out alpha regions for this image layer with the |
-|                       | featherAlphaRegions function. Used to get proper blending when you |
-|                       | have datasets that abutt exactly with no overlap.                  |
-+-----------------------+--------------------------------------------------------------------+
 | min_filter            | OpenGL texture minification filter to use for this layer.          |
 |                       | Options are NEAREST, LINEAR, NEAREST_MIPMAP_NEAREST,               |
 |                       | NEAREST_MIPMIP_LINEAR, LINEAR_MIPMAP_NEAREST, LINEAR_MIPMAP_LINEAR |
@@ -276,6 +257,13 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | texture_compression   | "auto" to compress textures on the GPU;                            |
 |                       | "none" to disable.                                                 |
 |                       | "fastdxt" to use the FastDXT real time DXT compressor              |
++-----------------------+--------------------------------------------------------------------+
+| blend                 | "modulate" to multiply pixels with the framebuffer;                |
+|                       | "interpolate" to blend with the framebuffer based on alpha (def)   |
++-----------------------+--------------------------------------------------------------------+
+| altitude              | Meters above sea level at which to render this image layer. You    |
+|                       | can use this to render a weather or cloud layer above the ground,  |
+|                       | for example, as a visual aide. Default=0                           |
 +-----------------------+--------------------------------------------------------------------+
 
 
@@ -345,15 +333,13 @@ will composite all elevation data into a single heightmap and use that to build 
 
 Model Layer
 ~~~~~~~~~~~
-A *Model Layer* renders non-terrain data, like vector features or external 3D models.
+A *Model Layer* renders an external 3D model as a map layer.
 
 .. parsed-literal::
 
     <map>
         <model name    = "my model layer"
-               driver  = "feature_geom"
-               enabled = "true"
-               visible = "true" >
+               driver  = "simple" >
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -365,18 +351,12 @@ A *Model Layer* renders non-terrain data, like vector features or external 3D mo
 |                       | Please refer to the driver reference guide for properties specific |
 |                       | to each individual plugin.                                         |
 +-----------------------+--------------------------------------------------------------------+
-| enabled               | Whether to include this layer in the map. You can only set this at |
-|                       | load time; it is just an easy way of "commenting out" a layer in   |
-|                       | the earth file.                                                    |
-+-----------------------+--------------------------------------------------------------------+
-| visible               | Whether to draw the layer.                                         |
-+-----------------------+--------------------------------------------------------------------+
 
 The Model Layer also allows you to define a cut-out mask. The terrain engine will cut a hole
 in the terrain surface matching a *boundary geometry* that you supply. You can use the tool
 *osgearth_boundarygen* to create such a geometry.
 
-This is useful if you have an external terrain model and you want to insert it into the 
+This is useful if you have an external terrain model and you want to insert it into the
 osgEarth terrain. The model MUST be in the same coordinate system as the terrain.
 
 .. parsed-literal::
@@ -391,11 +371,11 @@ The Mask can take any polygon feature as input. You can specify masking geometry
 by using an inline geometry:
 
 .. parsed-literal::
-    
+
     <features ...>
         <geometry>POLYGON((120 42 0, 121 41 0, 121 40 0))</geometry>
 
-Or you use a shapefile or other feature source, in which case osgEarth will use the 
+Or you use a shapefile or other feature source, in which case osgEarth will use the
 *first* feature in the source.
 
 Refer to the *mask.earth* sample for an example.
@@ -499,27 +479,8 @@ Proxy Settings
            port     = "8080"
            username = "jason"
            password = "helloworld" >
-           
+
 Hopefully the properties are self-explanatory.
-
-
-
-.. _ColorFilterChain:
-
-Color Filters
-~~~~~~~~~~~~~
-A *color filter* is a pluggable shader that can alter the appearance of the
-color data in a layer before the osgEarth engine composites it into the terrain.
-
-.. parsed-literal::
-
-    <image>
-        <color_filters>
-            <gamma rgb="1.3">
-            ...
-            
-You can chain multiple color filters together. Please refer to :doc:`/references/colorfilters` for
-details on color filters.
 
 .. _Libraries:
 
@@ -531,8 +492,8 @@ Preload any libraries.
 
     <libraries>a</libraries>
 
-Multiple library names could be listed by using ';' as separator. 
-    
+Multiple library names could be listed by using ';' as separator.
+
     <libraries>a;b;c;d;e</libraries>
 
 The libraries are searched in the osg library path and library name needs to follow the osg nodekit library name convention (postfixed with osg library version)

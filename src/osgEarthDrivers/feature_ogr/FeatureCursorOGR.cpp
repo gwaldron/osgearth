@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -75,7 +75,9 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH              dsHandle,
                                    const FeatureSource*        source,
                                    const FeatureProfile*       profile,
                                    const Symbology::Query&     query,
-                                   const FeatureFilterChain*   filters) :
+                                   const FeatureFilterChain*   filters,
+                                   ProgressCallback*           progress) :
+FeatureCursor     ( progress ),
 _source           ( source ),
 _dsHandle         ( dsHandle ),
 _layerHandle      ( layerHandle ),
@@ -242,6 +244,15 @@ FeatureCursorOGR::readChunk()
             OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
             if ( handle )
             {
+                /*
+                // Crop the geometry by the spatial filter.  Could be useful for tiling.
+                if (_spatialFilter)
+                {
+                    OGRGeometryH geomRef = OGR_F_GetGeometryRef(handle);
+                    OGRGeometryH intersection = OGR_G_Intersection(geomRef, _spatialFilter);
+                    OGR_F_SetGeometry(handle, intersection);
+                }
+                */
                 osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get() );
 
                 if (feature.valid())

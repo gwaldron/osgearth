@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -96,6 +96,19 @@ namespace osgEarth { namespace Features
         optional<Angle>& maxCreaseAngle() { return _maximumCreaseAngle; }
         const optional<Angle>& maxCreaseAngle() const { return _maximumCreaseAngle; }
 
+        /**
+         * Use OSG geometry tessellator.
+         * tessellate optimized for 3D geometry. Default is false.
+         */
+        optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
+        const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
+
+        /**
+         * Shader policy to use when appropriate
+         */
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+
     protected:
         Style                      _style;
 
@@ -105,6 +118,8 @@ namespace osgEarth { namespace Features
         optional<float>            _maxPolyTilingAngle_deg;
         optional<bool>             _optimizeVertexOrdering;
         optional<Angle>            _maximumCreaseAngle;
+        optional<bool>             _useOSGTessellator;
+        optional<ShaderPolicy>     _shaderPolicy;
         
         void tileAndBuildPolygon(
             Geometry*               input,

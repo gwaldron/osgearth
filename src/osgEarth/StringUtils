@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include <locale>
 #include <iomanip>
 #include <map>
+#include <set>
 #include <ctype.h>
 
 namespace osgEarth
@@ -38,17 +39,18 @@ namespace osgEarth
     extern OSGEARTH_EXPORT const std::string EMPTY_STRING;
 
     typedef std::vector<std::string> StringVector;
+    typedef std::set<std::string> StringSet;
 
     /** Replaces all the instances of "pattern" with "replacement" in "in_out" */
     extern OSGEARTH_EXPORT std::string& replaceIn(
-        std::string&       in_out, 
-        const std::string& pattern, 
+        std::string&       in_out,
+        const std::string& pattern,
         const std::string& replacement );
 
     /** Replaces all the instances of "pattern" with "replacement" in "in_out" (case-insensitive) */
     extern OSGEARTH_EXPORT std::string& ciReplaceIn(
-        std::string&       in_out, 
-        const std::string& pattern, 
+        std::string&       in_out,
+        const std::string& pattern,
         const std::string& replacement );
 
     /**
@@ -61,12 +63,16 @@ namespace osgEarth
      */
     extern OSGEARTH_EXPORT void trim2( std::string& str );
 
+    //! Removes leading and trailing whitespace, and replaces all other
+    //! whitespace with single spaces
+    extern OSGEARTH_EXPORT std::string trimAndCompress(const std::string& in);
+
     /**
      * True is "ref" starts with "pattern"
      */
-    extern OSGEARTH_EXPORT bool startsWith( 
-        const std::string& ref, 
-        const std::string& pattern, 
+    extern OSGEARTH_EXPORT bool startsWith(
+        const std::string& ref,
+        const std::string& pattern,
         bool               caseSensitive =true,
         const std::locale& locale        =std::locale() );
 
@@ -74,8 +80,8 @@ namespace osgEarth
      * True is "ref" ends with "pattern"
      */
     extern OSGEARTH_EXPORT bool endsWith(
-        const std::string& ref, 
-        const std::string& pattern, 
+        const std::string& ref,
+        const std::string& pattern,
         bool               caseSensitive =true,
         const std::locale& locale        =std::locale() );
 
@@ -118,8 +124,8 @@ namespace osgEarth
     /** Makes an HTML color ("#rrggbb" or "#rrggbbaa") from an OSG color. */
     extern OSGEARTH_EXPORT std::string vec4fToHtmlColor( const osg::Vec4f& c );
 
-    /** Makes a valid filename, hopefully, out of a string (without touching slashes) */
-    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input );
+    /** Makes a valid filename out of a string */
+    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input, bool allowSubdir=false );
 
     /** Generates a hashed integer for a string (poor man's MD5) */
     extern OSGEARTH_EXPORT unsigned hashString( const std::string& input );
@@ -136,7 +142,7 @@ namespace osgEarth
     * Gets a pretty printed version of the given size in MB.
     */
     extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );
-    
+
     //------------------------------------------------------------------------
     // conversion templates
 
@@ -201,7 +207,7 @@ namespace osgEarth
 
     // snips a substring and parses it.
     template<typename T> inline bool
-    as(const std::string& in, unsigned start, unsigned len, T default_value) 
+    as(const std::string& in, unsigned start, unsigned len, T default_value)
     {
         std::string buf;
         std::copy( in.begin()+start, in.begin()+start+len, std::back_inserter(buf) );
@@ -236,7 +242,7 @@ namespace osgEarth
 
     /**
      * Assembles and returns an inline string using a stream-like << operator.
-     * Example: 
+     * Example:
      *     std::string str = Stringify() << "Hello, world " << variable;
      */
     struct Stringify
@@ -273,7 +279,7 @@ namespace osgEarth
         buf << val.r() << " " << val.g() << " " << val.b() << " " << val.a(); return (*this); }
 
     /**
-     * Splits a string up into a vector of strings based on a set of 
+     * Splits a string up into a vector of strings based on a set of
      * delimiters, quotes, and rules.
      */
     class OSGEARTH_EXPORT StringTokenizer
@@ -299,7 +305,7 @@ namespace osgEarth
         void addQuote( char delim, bool keepInToken =false );
 
         void addQuotes( const std::string& delims, bool keepInTokens =false );
-        
+
     private:
         typedef std::map<char,bool> TokenMap;
         TokenMap _delims;

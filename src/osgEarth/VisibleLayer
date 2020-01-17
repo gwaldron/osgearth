@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,6 +30,12 @@ namespace osgEarth
     class OSGEARTH_EXPORT VisibleLayerOptions : public LayerOptions
     {
     public:
+        enum Blend {
+            BLEND_INTERPOLATE,
+            BLEND_MODULATE
+        };
+
+    public:
         VisibleLayerOptions();
         VisibleLayerOptions(const ConfigOptions& options);
 
@@ -43,6 +49,22 @@ namespace osgEarth
         /** Opacity of the visible layer [0..1] */
         optional<float>& opacity() { return _opacity; }
         const optional<float>& opacity() const { return _opacity; }
+        
+        //! The initial minimum camera range at which this layer is visible.
+        optional<float>& minVisibleRange() { return _minRange; }
+        const optional<float>& minVisibleRange() const { return _minRange; }
+
+        //! The initial maximum camera range at which this layer is visible.
+        optional<float>& maxVisibleRange() { return _maxRange; }
+        const optional<float>& maxVisibleRange() const { return _maxRange; }
+
+        //! Distance (m) over which to ramp min and max range blending
+        optional<float>& attenuationRange() { return _attenuationRange; }
+        const optional<float>& attenuationRange() const { return _attenuationRange; }
+
+        //! Blending function (default = interpolate)
+        optional<Blend>& blend() { return _blend; }
+        const optional<Blend>& blend() const { return _blend; }
 
     public:
         virtual Config getConfig() const;
@@ -53,6 +75,10 @@ namespace osgEarth
         void setDefaults();       
         optional<bool> _visible;
         optional<float> _opacity;
+        optional<float> _minRange;
+        optional<float> _maxRange;
+        optional<float> _attenuationRange;
+        optional<Blend> _blend;
     };
 
 
@@ -60,6 +86,7 @@ namespace osgEarth
     {
         virtual void onVisibleChanged(class VisibleLayer* layer) { }
         virtual void onOpacityChanged(class VisibleLayer* layer) { }
+        virtual void onVisibleRangeChanged(class VisibleLayer* layer) { }
         typedef void (VisibleLayerCallback::*MethodPtr)(class VisibleLayer* layer);
     };
 
@@ -70,7 +97,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT VisibleLayer : public Layer
     {
     public:
-        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions);
+        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions, visible_layer);
 
     protected:
         // Construcable from a base class only.
@@ -87,6 +114,18 @@ namespace osgEarth
         virtual void setOpacity(float value);
         float getOpacity() const;
 
+        //! Minimum camera range at which this image layer is visible (if supported)
+        float getMinVisibleRange() const;
+        void setMinVisibleRange( float minVisibleRange );
+        
+        //! Maximum camera range at which this image layer is visible (if supported)
+        float getMaxVisibleRange() const;
+        void setMaxVisibleRange( float maxVisibleRange );
+        
+        //! Distance (m) over which to ramp min and max range blending
+        float getAttenuationRange() const;
+        void setAttenuationRange( float value );
+
     public: // Layer
 
         virtual const Status& open();
@@ -97,8 +136,15 @@ namespace osgEarth
 
         void fireCallback(VisibleLayerCallback::MethodPtr);
 
+        //! Subclass can call this to install a default shader for applying
+        //! opacity when the layer doesn't handle it itself
+        void installDefaultOpacityShader();
+
     private: 
         osg::ref_ptr<osg::Uniform> _opacityU;
+        osg::ref_ptr<osg::Uniform> _rangeU;
+        void initializeBlending();
+        void initializeMinMaxRangeOpacity();
     };
 
     typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;

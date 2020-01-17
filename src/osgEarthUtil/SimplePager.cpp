@@ -1,14 +1,10 @@
 #include <osgEarthUtil/SimplePager> 
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
-#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
-#include <osgDB/Options>
-#include <osg/UserDataContainer>
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
-#include <osg/Geode>
 
 using namespace osgEarth::Util;
 
@@ -260,7 +256,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     // notify any callbacks.
     fire_onCreateNode(key, node.get());
 
-    tileRadius = std::max(tileBounds.radius(), static_cast<osg::BoundingSphere::value_type>(tileRadius));
+    tileRadius = osg::maximum(tileBounds.radius(), static_cast<osg::BoundingSphere::value_type>(tileRadius));
 
     //osg::PagedLOD* plod = new osg::PagedLOD;
     osg::PagedLOD* plod = 

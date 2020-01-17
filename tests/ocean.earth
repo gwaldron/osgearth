@@ -1,43 +1,46 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+osgEarth Sample - Simple Ocean with surface texture
 
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
+You can adjust the sea level with a uniform; e.g.:
 
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+  --uniform ocean_seaLevel 0 100
+  
 -->
-<map name="readymap.org" type="geocentric" version="2">
+<map name="readymap.org" type="geocentric">
 
-    <options>
-        <terrain driver="rex"/>
-    </options>
-    
-    <image name="ReadyMap.org - Imagery" driver="tms">
+    <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-        
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
+
+    <elevation name="readymap_elevation" driver="tms" vdatum="egm96">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-    
-    <simple_ocean>      
-        <color>#1D2C4FF7</color>
-        <max_altitude>500000</max_altitude>
-        <mask_layer>ocean_mask</mask_layer>
+
+    <simple_ocean>
+        <max_altitude>1e10</max_altitude>
+        <texture>../data/textures/water_modulate.png</texture>
+        <texture_lod>13</texture_lod>
+        <use_bathymetry>true</use_bathymetry>
     </simple_ocean>
-    
-    <image name="ocean_mask" visible="false" shared="true" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
-    </image>
-        
+
     <viewpoints>
-        <viewpoint name="Los Angeles" heading="35.27" height="97.48" lat="34.051" long="-117.974" pitch="-17" range="136405"/>
-        <viewpoint name="Above water" heading="-76.17264538992794" height="-199.5569639196619" lat="33.27975381179682" long="-118.3307776586542" pitch="-10.06523772274543" range="3739.161570538204"/>
-        <viewpoint name="Below water" heading="-24.96310172368127" height="-1300.000076910481" lat="33.27360337088133" long="-118.5514448058582" pitch="-10.0770016631354" range="6375.084038302656"/>
+        <viewpoint name="San Clemente">
+            <heading>-4.56648</heading>
+            <pitch>-15.6443</pitch>
+            <range>9272.95m</range>
+            <long>-118.4811706646827</long>
+            <lat>32.80594432832285</lat>
+            <height>-139.788777125068</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Capri">
+            <heading>50.1869</heading>
+            <pitch>-14.3472</pitch>
+            <range>8118.73m</range>
+            <long>14.21358890393404</long>
+            <lat>40.53085371008456</lat>
+            <height>-296.9707998111844</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
     </viewpoints>
 </map>

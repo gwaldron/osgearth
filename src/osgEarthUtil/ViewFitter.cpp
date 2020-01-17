@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -79,6 +79,11 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
         p.toWorld(world[i]);
 
         extent.expandToInclude(p.x(), p.y());
+    }
+
+    if (extent.area() == 0.0)
+    {
+        extent.expand(0.001, 0.001);
     }
     
     double eyeDist;
@@ -203,7 +208,7 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     double half_fovx_rad = half_fovy_rad * ar;
     double Zx = Mx / tan(half_fovx_rad);
     double Zy = My / tan(half_fovy_rad);
-    double Zbest = std::max(Zx, Zy);
+    double Zbest = osg::maximum(Zx, Zy);
 
     // Calcluate the new viewpoint.
     //osg::Vec3d FPworld = centroid;

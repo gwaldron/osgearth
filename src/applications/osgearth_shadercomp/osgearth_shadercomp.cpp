@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -41,6 +41,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/GLUtils>
 #include <osgEarthUtil/Controls>
 
 using namespace osgEarth;
@@ -295,7 +296,7 @@ namespace TEST_5
 
         osg::Group* root = new osg::Group();
         root->getOrCreateStateSet()->setRenderBinDetails( 0, "TraversalOrderBin" );
-        root->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+        GLUtils::setLighting(root->getOrCreateStateSet(), 0);
 
         root->addChild( n1 );
         root->addChild( n2 );

@@ -20,14 +20,14 @@
 
 SET(OSG_DIR "" CACHE PATH "Set to base OpenSceneGraph install path")
 
-MACRO( FIND_OSG_INCLUDE THIS_OSG_INCLUDE_DIR THIS_OSG_INCLUDE_FILE )
-
-FIND_PATH( ${THIS_OSG_INCLUDE_DIR} ${THIS_OSG_INCLUDE_FILE}
+FIND_PATH(OSG_INCLUDE_DIR osg/Node
     PATHS
         ${OSG_DIR}
         $ENV{OSG_SOURCE_DIR}
         $ENV{OSGDIR}
         $ENV{OSG_DIR}
+        $ENV{OSG}
+        $ENV{OSG}
         /usr/local/
         /usr/
         /sw/ # Fink
@@ -38,13 +38,28 @@ FIND_PATH( ${THIS_OSG_INCLUDE_DIR} ${THIS_OSG_INCLUDE_FILE}
         ~/Library/Frameworks
         /Library/Frameworks
     PATH_SUFFIXES
-        /include/
+        /include
 )
 
-ENDMACRO( FIND_OSG_INCLUDE THIS_OSG_INCLUDE_DIR THIS_OSG_INCLUDE_FILE )
-
-FIND_OSG_INCLUDE( OSG_GEN_INCLUDE_DIR   osg/Config )
-FIND_OSG_INCLUDE( OSG_INCLUDE_DIR       osg/Node )
+FIND_PATH(OSG_GEN_INCLUDE_DIR osg/Config
+    PATHS
+        ${OSG_DIR}
+        $ENV{OSG_SOURCE_DIR}
+        $ENV{OSGDIR}
+        $ENV{OSG_DIR}
+        $ENV{OSG}
+        /usr/local/
+        /usr/
+        /sw/ # Fink
+        /opt/local/ # DarwinPorts
+        /opt/csw/ # Blastwave
+        /opt/
+        [HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session\ Manager\\Environment;OSG_ROOT]/
+        ~/Library/Frameworks
+        /Library/Frameworks
+    PATH_SUFFIXES
+        /include
+)
 
 ###### libraries ######
 
@@ -59,6 +74,7 @@ FIND_LIBRARY(${MYLIBRARY}
         $ENV{OSG_DIR}
         $ENV{OSGDIR}
         $ENV{OSG_ROOT}
+        $ENV{OSG}
         ~/Library/Frameworks
         /Library/Frameworks
         /usr/local
@@ -118,19 +134,6 @@ FIND_OSG_LIBRARY( OSGMANIPULATOR_LIBRARY_DEBUG osgManipulatord )
 
 FIND_OSG_LIBRARY( OSGPARTICLE_LIBRARY osgParticle )
 FIND_OSG_LIBRARY( OSGPARTICLE_LIBRARY_DEBUG osgParticled )
-
-IF(OPENSCENEGRAPH_VERSION VERSION_LESS "3.5.6")
-  FIND_OSG_LIBRARY( OSGQT_LIBRARY osgQt )
-  FIND_OSG_LIBRARY( OSGQT_LIBRARY_DEBUG osgQtd )
-ELSE(OPENSCENEGRAPH_VERSION VERSION_LESS "3.5.6")
-  IF(Qt5Widgets_FOUND)
-    FIND_OSG_LIBRARY( OSGQT_LIBRARY osgQt5 )
-    FIND_OSG_LIBRARY( OSGQT_LIBRARY_DEBUG osgQt5d )
-  ELSE(Qt5Widgets_FOUND)
-    FIND_OSG_LIBRARY( OSGQT_LIBRARY osgQt )
-    FIND_OSG_LIBRARY( OSGQT_LIBRARY_DEBUG osgQtd )
-  ENDIF(Qt5Widgets_FOUND)
-ENDIF(OPENSCENEGRAPH_VERSION VERSION_LESS "3.5.6")
 
 FIND_OSG_LIBRARY( OPENTHREADS_LIBRARY OpenThreads )
 FIND_OSG_LIBRARY( OPENTHREADS_LIBRARY_DEBUG OpenThreadsd )

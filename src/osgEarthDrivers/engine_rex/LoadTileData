@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
@@ -41,7 +41,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public: // Loader::Request
 
         /** Fetches the data for the tile node. */
-        void invoke();
+        void invoke(ProgressCallback*);
 
         /** Applies the fetched data to the tile node (scene-graph safe) */
         void apply(const osg::FrameStamp*);
@@ -56,7 +56,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TerrainTileModel> _dataModel;
         TileRenderModel _renderModel;
         CreateTileModelFilter _filter;
-        MapFrame _mapFrame;
+        osg::observer_ptr< const Map > _map;
         bool _enableCancel;
 
         virtual ~LoadTileData() { }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -105,6 +105,16 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
             key,
             true, // convertToHAE
             progress );
+
+        // Check for cancelation before writing to a cache
+        if (progress && progress->isCanceled())
+        {
+            if (out_hf.valid())
+            {
+                OE_DEBUG << LC << "Cancelation with a valid HF; this would cache bad data." << std::endl;
+            }
+            return false;
+        }
 
         // If the map failed to provide any suitable data sources at all, replace the
         // heightfield with data from its parent (if available). 

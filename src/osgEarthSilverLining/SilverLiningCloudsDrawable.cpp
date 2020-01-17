@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,10 @@
 #include "SilverLiningContext"
 #include "SilverLiningContextNode"
 #include <osgEarth/SpatialReference>
+
+#ifndef SILVERLINING_MAJOR_VERSION
+#include <Version.h>
+#endif
 
 #undef  LC
 #define LC "[SilverLining:SkyDrawable] "
@@ -57,15 +61,15 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.
         if ( adapters.empty() )
         {
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader()) );
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader()) );
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader()) );
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader()) );
-            //adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader()) );
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader(), NULL, "SkyShader"));
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader(), NULL, "BillboardShader"));
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader(), NULL, "StarShader"));
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader(), NULL, "PrecipitationShader"));
+            //adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader(), NULL, "AtmosphericLimbShader"));
 
             SL_VECTOR(unsigned) handles = _SL->getAtmosphere()->GetActivePlanarCloudShaders();
             for(int i=0; i<handles.size(); ++i)          
-                adapters.push_back( new osgEarth::NativeProgramAdapter(state, handles[i]) );
+                adapters.push_back( new osgEarth::NativeProgramAdapter(state, handles[i], NULL, "PlanarCloudShader"));
         }
         adapters.apply( state );
 
@@ -74,7 +78,12 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             _SL->getCallback()->onDrawClouds(_SL->getAtmosphereWrapper());
 
         renderInfo.getState()->disableAllVertexArrays();
-        _SL->getAtmosphere()->DrawObjects( true, true, true );
+
+#if ((SILVERLINING_MAJOR_VERSION >= 5) && (SILVERLINING_MINOR_VERSION >= 30))
+        _SL->getAtmosphere()->DrawObjects(true, true, true, 0.0f, false, 0, true, true, true, _SL->getSRS()->isGeographic());
+#else
+        _SL->getAtmosphere()->DrawObjects(true, true, true);
+#endif
 
         // Restore the GL state to where it was before.
         state->dirtyAllVertexArrays();
@@ -86,11 +95,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 }
 
 osg::BoundingBox
-#if OSG_VERSION_GREATER_THAN(3,3,1)
 CloudsDrawable::computeBoundingBox() const
-#else
-CloudsDrawable::computeBound() const
-#endif
 {
     osg::BoundingBox cloudBoundBox;
     if ( !_SL->ready() )

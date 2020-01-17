@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2011 Pelican Mapping
  * http://osgearth.org
  *
@@ -37,6 +37,9 @@ namespace osgEarth
     public:
         //! Constructs a new clampable node.
         ClampableNode();
+
+		//! Whether the given camera is a depth camera.
+		static bool isDepthCamera(const osg::Camera* camera);
 
     public: // osg::Node
 

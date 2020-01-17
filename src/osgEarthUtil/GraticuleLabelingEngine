@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -46,6 +46,12 @@ namespace osgEarth { namespace Util
 
         bool getVisible(osg::Camera* camera);
 
+        //! Set the labeling style for all labels
+        void setStyle(const Style& style);
+
+        //! Set the labeling style for X and Y labels separately
+        void setStyles(const Style& xStyle, const Style& yStyle);
+
     public: // osg::Node
         void traverse(osg::NodeVisitor& nv);
 
@@ -76,6 +82,13 @@ namespace osgEarth { namespace Util
             AcceptCameraData(osg::NodeVisitor& nv) : _nv(nv) { }
             void operator()(CameraData& data);
             osg::NodeVisitor& _nv;
+        };
+
+        struct UpdateLabelStyles : public CameraDataMap::Functor {
+            UpdateLabelStyles(const Style& xStyle, const Style& yStyle) : _xStyle(&xStyle), _yStyle(&yStyle) { }
+            void operator()(CameraData& data);
+            const Style* _xStyle;
+            const Style* _yStyle;
         };
 
         osg::ref_ptr<const SpatialReference> _srs;

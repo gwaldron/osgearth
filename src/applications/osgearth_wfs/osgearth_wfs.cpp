@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -103,7 +103,7 @@ main(int argc, char** argv)
         }
 
         // Get the features
-        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(query);
+        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(query, 0L);
         FeatureList features;
         cursor->fill(features);
         OE_NOTICE << "Got " << features.size() << " features" << std::endl;
@@ -113,7 +113,7 @@ main(int argc, char** argv)
         style.getOrCreateSymbol<TextSymbol>()->content() = StringExpression("[NAME]");
 
         // Create the FeatureNode with the features and the style.
-        osg::ref_ptr< FeatureNode > featureNode = new FeatureNode(mapNode, features, style);
+        osg::ref_ptr< FeatureNode > featureNode = new FeatureNode(features, style);
         mapNode->addChild(featureNode.get());                
 
         viewer.setSceneData( node );

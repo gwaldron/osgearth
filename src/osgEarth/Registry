@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/SharedSARepo>
 #include <osgEarth/Containers>
 #include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
@@ -54,8 +53,6 @@ namespace osgEarth
     class ObjectIndex;
     class Units;
 
-    typedef SharedSARepo<osg::Program> ProgramSharedRepo;
-
 
     extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
 
@@ -65,9 +62,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT Registry : public osg::Referenced
     {
     public:
-        /** Access the global Registry singleton. */
-        static Registry* instance(bool erase = false);
-
+        /** Access the global Registry singleton. Pass in true to destroy it and create a new one. */
+        static Registry* instance(bool reset = false);
 
         /** Gets a well-known named profile instance. */
         const Profile* getNamedProfile( const std::string& name ) const;
@@ -80,9 +76,6 @@ namespace osgEarth
 
         /** Gets the spherical-mercator builtin profile (mercator/sphere) */
         const Profile* getSphericalMercatorProfile() const;
-
-        /** @deprecated Gets the unified cube builtin profile */
-        const Profile* getCubeProfile() const;
 
         /** Gets a spatial reference object */
         SpatialReference* getOrCreateSRS(const SpatialReference::Key& key);
@@ -187,8 +180,8 @@ namespace osgEarth
          * A shared cache for osg::Program objects created by the shader
          * composition subsystem (VirtualProgram).
          */
-        ProgramSharedRepo* getProgramSharedRepo();
-        static ProgramSharedRepo* programSharedRepo() { return instance()->getProgramSharedRepo(); }
+        ProgramRepo& getProgramRepo();
+        static ProgramRepo& programRepo() { return instance()->getProgramRepo(); }
 
         /**
          * Gets a reference to the global task service manager.
@@ -291,13 +284,13 @@ namespace osgEarth
         * This value is useful when running in high dpi environments on high resolution displays.
         */
         void setDevicePixelRatio(float devicePixelRatio);
-
+        
+        //! Release any resources held by the registry so it can be re-used
+        void release();
 
     protected:
         virtual ~Registry();
         Registry();
-
-        void destruct();
 
         bool _gdal_registered;
 
@@ -358,7 +351,7 @@ namespace osgEarth
         std::set<Activity,ActivityLess> _activities;
         mutable Threading::Mutex _activityMutex;
 
-        ProgramSharedRepo _programRepo;
+        ProgramRepo _programRepo;
 
         optional<bool> _unRefImageDataAfterApply;
 

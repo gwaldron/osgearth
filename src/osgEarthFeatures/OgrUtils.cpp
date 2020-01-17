@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -49,7 +49,7 @@ int IsFieldSet(OGRFeatureH handle, int i)
 void
 OgrUtils::populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )
 {
-    for( int v = numPoints-1; v >= 0; v-- ) // reverse winding.. we like ccw
+    for (unsigned int v = 0; v < numPoints; ++v)
     {
         double x=0, y=0, z=0;
         OGR_G_GetPoint( geomHandle, v, &x, &y, &z );
@@ -57,6 +57,37 @@ OgrUtils::populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int nu
         if ( target->size() == 0 || p != target->back() ) // remove dupes
             target->push_back( p );
     }
+}
+
+Symbology::MultiGeometry*
+OgrUtils::createTIN(OGRGeometryH geomHandle)
+{
+    Symbology::MultiGeometry *multi = new Symbology::MultiGeometry;
+
+    int numParts = OGR_G_GetGeometryCount(geomHandle);
+    if (numParts > 0)
+    {
+        for (int p = 0; p < numParts; p++)
+        {
+            OGRGeometryH partRef = OGR_G_GetGeometryRef(geomHandle, p);
+
+            OGRwkbGeometryType partWkbType = OGR_G_GetGeometryType(partRef);
+
+            unsigned int numSubParts = OGR_G_GetGeometryCount(partRef);
+            OGRGeometryH subPartRef = OGR_G_GetGeometryRef(partRef, 0);
+            unsigned int numSubPoints = OGR_G_GetPointCount(subPartRef);
+            Symbology::Polygon *output = new Symbology::Polygon(numSubPoints);
+            populate(subPartRef, output, numSubPoints);
+            output->open();
+
+            // Rewind the triangle so it's oriented correctly
+            std::reverse(output->begin(), output->end());
+
+            multi->add(output);
+        }
+    }
+
+    return multi;
 }
 
 Symbology::Polygon*
@@ -83,14 +114,16 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
                 output = new Symbology::Polygon( numPoints );
                 populate( partRef, output, numPoints );
                 //output->open();
-                output->rewind( Symbology::Ring::ORIENTATION_CCW );
+                //output->rewind( Symbology::Ring::ORIENTATION_CCW );
+                std::reverse(output->begin(), output->end());
             }
             else
             {
                 Symbology::Ring* hole = new Symbology::Ring( numPoints );
                 populate( partRef, hole, numPoints );
                 //hole->open();
-                hole->rewind( Symbology::Ring::ORIENTATION_CW );
+                //hole->rewind( Symbology::Ring::ORIENTATION_CW );
+                std::reverse(hole->begin(), hole->end());
                 output->getHoles().push_back( hole );
             }
         }
@@ -145,6 +178,15 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
         output = new Symbology::PointSet( numPoints );
         populate( geomHandle, output, numPoints );
         break;
+
+#ifdef GDAL_HAS_M_TYPES
+    case wkbTINZ:
+    case wkbTIN:
+    case wkbTINM:
+    case wkbTINZM:
+        output = createTIN(geomHandle);
+        break;
+#endif
 
     case wkbGeometryCollection:
     case wkbGeometryCollection25D:
@@ -217,6 +259,72 @@ OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, 
     return shape_handle;
 }
 
+OGRwkbGeometryType
+OgrUtils::getOGRGeometryType(const osgEarth::Symbology::Geometry::Type& geomType)
+{
+    OGRwkbGeometryType requestedType = wkbUnknown;
+
+    switch (geomType)
+    {
+    case osgEarth::Symbology::Geometry::TYPE_POLYGON:
+        requestedType = wkbPolygon;
+        break;
+    case osgEarth::Symbology::Geometry::TYPE_POINTSET:
+        requestedType = wkbPoint;
+        break;
+    case osgEarth::Symbology::Geometry::TYPE_LINESTRING:
+        requestedType = wkbLineString;
+        break;
+    case osgEarth::Symbology::Geometry::TYPE_RING:
+        requestedType = wkbLinearRing;
+        break;
+    default:
+    case Geometry::TYPE_UNKNOWN:
+        break;
+    }
+
+    return requestedType;
+}
+
+OGRwkbGeometryType
+OgrUtils::getOGRGeometryType(const osgEarth::Symbology::Geometry* geometry)
+{
+    OGRwkbGeometryType requestedType = wkbUnknown;
+
+    switch (geometry->getType())
+    {
+    case osgEarth::Symbology::Geometry::TYPE_POLYGON:
+        requestedType = wkbPolygon;
+        break;
+    case osgEarth::Symbology::Geometry::TYPE_POINTSET:
+        requestedType = wkbPoint;
+        break;
+    case osgEarth::Symbology::Geometry::TYPE_LINESTRING:
+        requestedType = wkbLineString;
+        break;
+    case osgEarth::Symbology::Geometry::TYPE_RING:
+        requestedType = wkbLinearRing;
+        break;
+    case Geometry::TYPE_UNKNOWN: 
+        break;
+    case Geometry::TYPE_MULTI:
+    {
+        const osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<const MultiGeometry*>(geometry);
+        if (multi)
+        {
+            osgEarth::Symbology::Geometry::Type componentType = multi->getComponentType();
+            requestedType = componentType == Geometry::TYPE_POLYGON ? wkbMultiPolygon :
+                componentType == Geometry::TYPE_POINTSET ? wkbMultiPoint :
+                componentType == Geometry::TYPE_LINESTRING ? wkbMultiLineString :
+                wkbNone;
+        }
+    }
+    break;
+    }
+
+    return requestedType;
+}
+
 OGRGeometryH
 OgrUtils::createOgrGeometry(const osgEarth::Symbology::Geometry* geometry, OGRwkbGeometryType requestedType)
 {
@@ -224,36 +332,7 @@ OgrUtils::createOgrGeometry(const osgEarth::Symbology::Geometry* geometry, OGRwk
 
     if (requestedType == wkbUnknown)
     {
-        osgEarth::Symbology::Geometry::Type geomType = geometry->getType();
-        switch( geomType)
-        {
-        case osgEarth::Symbology::Geometry::TYPE_POLYGON:  
-            requestedType = wkbPolygon;
-            break;
-        case osgEarth::Symbology::Geometry::TYPE_POINTSET:  
-            requestedType = wkbPoint;
-            break;
-        case osgEarth::Symbology::Geometry::TYPE_LINESTRING:
-            requestedType = wkbLineString;
-            break;
-        case osgEarth::Symbology::Geometry::TYPE_RING:
-            requestedType = wkbLinearRing;
-            break;            
-        case Geometry::TYPE_UNKNOWN: break;
-        case Geometry::TYPE_MULTI: 
-            {
-                const osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<const MultiGeometry*>(geometry);
-                if (multi)
-                {
-                    osgEarth::Symbology::Geometry::Type componentType = multi->getComponentType();
-                    requestedType = componentType == Geometry::TYPE_POLYGON ? wkbMultiPolygon : 
-                        componentType == Geometry::TYPE_POINTSET ? wkbMultiPoint :
-                        componentType == Geometry::TYPE_LINESTRING ? wkbMultiLineString :
-                        wkbNone;                    
-                }
-            }
-            break;
-        }
+        requestedType = getOGRGeometryType(geometry);
     }
 
     OGRwkbGeometryType shape_type =

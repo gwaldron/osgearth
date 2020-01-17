@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -63,7 +63,7 @@ void SymbolRegistry::parseSLD(const Config& c, class Style& style) const
 {
     for (SymbolFactoryList::const_iterator itr = _factories.begin(); itr != _factories.end(); itr++)
     {
-        itr->get()->parseSLD( c, style );        
+        itr->get()->parseSLD( c, style );     
     }
 }
 
@@ -86,14 +86,14 @@ osg::Object(rhs, copyop)
 void
 Symbol::mergeConfig(const Config& conf)
 {
-    conf.getObjIfSet("script", _script);
+    conf.get("script", _script);
 }
 
 Config
 Symbol::getConfig() const
 {
     Config conf;
-    conf.addObjIfSet("script", _script);
+    conf.set("script", _script);
     return conf;
 }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,14 +19,13 @@
 
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
-#include <osgEarth/DateTime>
 #include <osgEarth/ThreadingUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/Registry>
-#include <osg/Notify>
+#include <osgDB/ConvertUTF>
 #include <stack>
-#include <errno.h>
+
+#include <errno.h> 
 
 #ifdef WIN32
 #  include <windows.h>
@@ -35,7 +34,6 @@
 #  include <stdlib.h>
 #endif
 
-#include <sys/types.h>
 
 #ifdef WIN32
 #  include <sys/utime.h>
@@ -43,11 +41,7 @@
 #  include <utime.h>
 #endif
 
-#include <sys/stat.h>
-#include <time.h>
 
-#include <list>
-#include <sstream>
 
 // currently this impl is for _all_ platforms, except as defined.
 // the mac version will change soon to reflect the path scheme under osx, but
@@ -128,6 +122,27 @@
 
 
 using namespace osgEarth;
+
+namespace osgEarth
+{
+#ifdef OSG_USE_UTF8_FILENAME
+#define OSGDB_STRING_TO_FILENAME(s) osgDB::convertUTF8toUTF16(s)
+#define OSGDB_FILENAME_TO_STRING(s) osgDB::convertUTF16toUTF8(s)
+#define OSGDB_FILENAME_TEXT(x) L ## x
+#define OSGDB_WINDOWS_FUNCT(x) x ## W
+#define OSGDB_WINDOWS_FUNCT_STRING(x) #x "W"
+    typedef wchar_t filenamechar;
+    typedef std::wstring filenamestring;
+#else
+#define OSGDB_STRING_TO_FILENAME(s) s
+#define OSGDB_FILENAME_TO_STRING(s) s
+#define OSGDB_FILENAME_TEXT(x) x
+#define OSGDB_WINDOWS_FUNCT(x) x ## A
+#define OSGDB_WINDOWS_FUNCT_STRING(x) #x "A"
+    typedef char filenamechar;
+    typedef std::string filenamestring;
+#endif
+}
 
 
 std::string

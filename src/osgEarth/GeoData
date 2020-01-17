@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -236,9 +236,17 @@ namespace osgEarth
         bool createWorldUpVector( osg::Vec3d& out_up ) const;
 
         /**
-         * Calculates the distance in meters from this geopoint to another.
+         * The great-circle distance, in meters, from this point to another.
+         * This calculation does not consider altitude.
          */
         double distanceTo(const GeoPoint& rhs) const;
+
+        /**
+         * Interpolates a point between this point and another point,
+         * along a great circle, using the parameter t [0..1]. It will also
+         * interpolate the altitude value.
+         */
+        GeoPoint interpolate(const GeoPoint& rhs, double t) const;
 
 
         bool operator == (const GeoPoint& rhs) const;
@@ -318,8 +326,11 @@ namespace osgEarth
          GeoPoint _center;
          double   _radius;
      };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GeoPoint);
 
-
+namespace osgEarth
+{
     /**
      * An axis-aligned geospatial extent. A bounding box that is aligned with a
      * spatial reference's coordinate system.
@@ -466,7 +477,7 @@ namespace osgEarth
          */
         void expandToInclude( double x, double y ); 
         void expandToInclude( const osg::Vec3d& v ) { expandToInclude(v.x(), v.y()); }
-        void expandToInclude( const Bounds& bounds );
+        //void expandToInclude( const Bounds& bounds );
 
         /**
          * Expand this extent to include the bounds of another extent.
@@ -517,7 +528,8 @@ namespace osgEarth
          * validity nor for SRS equivalence -- so be sure to validate those beforehand.
          * It also assumes the output matrix is preset to the identity.
          */
-        bool createScaleBias(const GeoExtent& target, osg::Matrix& output) const;
+        bool createScaleBias(const GeoExtent& target, osg::Matrixd& output) const;
+        bool createScaleBias(const GeoExtent& target, osg::Matrixf& output) const;
 
         /**
          * Generates a BoundingSphere encompassing the extent and a vertical 
@@ -541,6 +553,7 @@ namespace osgEarth
         void setOriginAndSize(double west, double south, double width, double height);
     };
 
+
     /**
      * A geospatial area with tile data LOD extents
      */
@@ -548,8 +561,11 @@ namespace osgEarth
     {
     public:
         DataExtent(const GeoExtent& extent);
+        DataExtent(const GeoExtent& extent, const std::string &description);
         DataExtent(const GeoExtent& extent, unsigned minLevel );
+        DataExtent(const GeoExtent& extent, unsigned minLevel, const std::string &description);
         DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
+        DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel, const std::string &description);
 
         /** dtor */
         virtual ~DataExtent() { }
@@ -562,9 +578,13 @@ namespace osgEarth
         optional<unsigned>& maxLevel() { return _maxLevel; }
         const optional<unsigned>& maxLevel() const { return _maxLevel; }
 
+        /** description for the data extents */
+        const osgEarth::optional<std::string>& description() const { return _description; }
+
     private:
         optional<unsigned> _minLevel;
         optional<unsigned> _maxLevel;
+        optional<std::string> _description;
     };
 
     typedef std::vector< DataExtent > DataExtentList;
@@ -809,16 +829,9 @@ namespace osgEarth
          * Gets a pointer to the underlying OSG heightfield.
          */
         const osg::HeightField* getHeightField() const;
-        osg::HeightField* getHeightField();
 
         //! Normal map
         const NormalMap* getNormalMap() const;
-        NormalMap* getNormalMap();
-
-        /**
-         * Gets a pointer to the underlying OSG heightfield, and releases the internal reference.
-         */
-        osg::HeightField* takeHeightField();
 
         /**
          * Gets the X interval of this GeoHeightField

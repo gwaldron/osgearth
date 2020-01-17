@@ -1,6 +1,25 @@
 Release Notes
 =============
 
+Version 2.10.1 (April 2019)
+---------------------------
+* Bug fix and performance release based on the 2.10 branch.
+
+Version 2.10 (November 2018)
+----------------------------
+* REX terrain engine promoted to default. Old MP engine is now in legacy support mode.
+* Removed the osgEarthQt nodekit from the SDK, along with all Qt examples
+* Cleanup of the internal serialization architecture (i.e. osgEarth::Config)
+* Compatibility with OSG 3.6.x release/branch
+* GL3 and GLCORE profile support
+* VirtualProgram performance improvements
+* New LineDrawable and PointDrawable classes for cross-GL-profile support
+* Better progress/cancelation handling throughout the SDK, including feature subsystem
+* Prototype support for ECI reference frames
+* Support for "new" osgText implementation in VirtualProgram framework
+* New ClusterNode utility class for clustering proximite objects
+* Removed deprecations: MaskNode, Profiler, StateSetLOD, TileKeyDataStore, WrapperLayer, MarkerResource, MarkerSymbol, StencilVolumeNode, TritonNode, AnnotationEvents, PolyhedralLineOfSight, some CullingUtils objects
+
 Version 2.9 (February 2018)
 ---------------------------
 

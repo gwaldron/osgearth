@@ -73,7 +73,7 @@ config.json was:
                 }
 
                 forest {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;
@@ -82,7 +82,7 @@ config.json was:
                 }
 
                 grass {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;
@@ -198,7 +198,7 @@ config.json was:
     </feature_model>
 
     <image name="esri imagery" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
         <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
     </image>
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
  */
 #include "EarthFileSerializer"
 #include <osgEarth/FileUtils>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Extension>
 #include <osgEarth/StringUtils>
 #include <osgEarth/FileUtils>
@@ -181,7 +180,7 @@ namespace
         {
             _rewriteAbsolutePaths = false;
             _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
-            _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+            _newReferrerFolder  = osgDB::getFilePath( _newReferrerAbsPath );
         }
 
         /** Whether to make absolute paths into relative paths if possible */
@@ -218,7 +217,7 @@ namespace
                 std::string newValue = resolve(inputURI);
                 if ( newValue != input.value() )
                 {
-                    input.value() = newValue;
+                    input.setValue(newValue);
                     input.setReferrer( _newReferrerAbsPath );
                 }
 
@@ -333,8 +332,7 @@ namespace
 
     bool addLayer(const Config& conf, Map* map)
     {
-        std::string name = conf.key();
-        Layer* layer = Layer::create(name, conf);
+        Layer* layer = Layer::create(conf);
         if (layer)
         {
             map->addLayer(layer);
@@ -438,23 +436,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             // nop - handled earlier
         }
 
-#if 0
-        else if ( i->key() == "image" )
-        {
-            addImageLayer( *i, map );
-        }
-
-        else */if ( i->key() == "model" )
-        {
-            addModelLayer( *i, map );
-        }
-
-        else if ( i->key() == "mask" )
-        {
-            addMaskLayer( *i, map );
-        }
-#endif
-
         else if ( i->key() == "external" || i->key() == "extensions" )
         {
             externalConfig = *i;
@@ -464,7 +445,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
                 Extension* extension = loadExtension(*e);
                 if (extension)
                     extensions.push_back(extension);
-                //addExtension( *e, mapNode.get() );
             }
         }
 

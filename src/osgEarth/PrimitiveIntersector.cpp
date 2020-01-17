@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,11 +18,7 @@
  */
 
 #include <osgEarth/PrimitiveIntersector>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Utils>
-#include <osg/Geode>
-#include <osg/KdTree>
-#include <osg/Notify>
 #include <osg/TemplatePrimitiveFunctor>
 
 #define LC "[PrmitiveIntersector] "
@@ -445,9 +441,9 @@ void PrimitiveIntersector::leave()
 
 void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable)
 {
-    if (reachedLimit()) return;
+    if (reachedLimit() || !drawable) return;
 
-    osg::BoundingBox bb = Utils::getBoundingBox(drawable);
+    osg::BoundingBox bb = drawable->getBoundingBox();
 
     if (bb.valid())
         bb.expandBy(osg::BoundingSphere(bb.center(), (_thickness - _start).length()));

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,7 +36,9 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Shaders>
+#include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
+#include <osgEarth/PointDrawable>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -95,6 +97,7 @@ namespace
 
         osg::Vec2Array* texCoords = 0;
         osg::Vec3Array* normals = 0;
+
         if (genTexCoords)
         {
             texCoords = new osg::Vec2Array();
@@ -128,9 +131,9 @@ namespace
 
                 if (normals)
                 {
-                    osg::Vec3 normal( gx, gy, gz);
+                    osg::Vec3d normal(gx, gy, gz);
                     normal.normalize();
-                    normals->push_back( normal );
+                    normals->push_back( osg::Vec3f(normal) );
                 }
 
 
@@ -139,11 +142,12 @@ namespace
                     int x_plus_1 = x < lonSegments-1 ? x+1 : 0;
                     int y_plus_1 = y+1;
                     el->push_back( y*lonSegments + x );
-                    el->push_back( y_plus_1*lonSegments + x );
-                    el->push_back( y*lonSegments + x_plus_1 );
                     el->push_back( y*lonSegments + x_plus_1 );
                     el->push_back( y_plus_1*lonSegments + x );
+
+                    el->push_back( y*lonSegments + x_plus_1 );
                     el->push_back( y_plus_1*lonSegments + x_plus_1 );
+                    el->push_back( y_plus_1*lonSegments + x );
                 }
             }
         }
@@ -192,22 +196,15 @@ namespace
 
 //---------------------------------------------------------------------------
 
-SimpleSkyNode::SimpleSkyNode(const SpatialReference* srs) :
-SkyNode()
-{
-    initialize(srs);
-}
-
-SimpleSkyNode::SimpleSkyNode(const SpatialReference* srs,
-                             const SimpleSkyOptions& options) :
+SimpleSkyNode::SimpleSkyNode(const SimpleSkyOptions& options) :
 SkyNode ( options ),
 _options( options )
 {
-    initialize(srs);
+    construct();
 }
 
 void
-SimpleSkyNode::initialize(const SpatialReference* srs)
+SimpleSkyNode::construct()
 {
     // protect us from the ShaderGenerator.
     ShaderGenerator::setIgnoreHint(this, true);
@@ -234,9 +231,9 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     }
 
     // only supports geocentric for now.
-    if ( srs && !srs->isGeographic() )
+    if (getReferencePoint().isValid())
     {
-        OE_WARN << LC << "Sorry, SimpleSky only supports geocentric maps." << std::endl;
+        OE_WARN << LC << "Found an ephemeris reference point, but SimpleSky does not support projected maps" << std::endl;
         return;
     }
 
@@ -244,12 +241,15 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     _cullContainer = new osg::Group();
     
     // set up the astronomical parameters:
-    _ellipsoidModel = srs ? srs->getEllipsoid() : new osg::EllipsoidModel();
+    osg::ref_ptr<const SpatialReference> wgs84 = SpatialReference::get("wgs84");
+    _ellipsoidModel = wgs84->getEllipsoid();
     _innerRadius = osg::minimum(
         _ellipsoidModel->getRadiusPolar(),
         _ellipsoidModel->getRadiusEquator() );
     _outerRadius = _innerRadius * 1.025f;
-    _sunDistance = 149600000000.0; //_innerRadius * 12000.0f;
+
+    CelestialBody sun = getEphemeris()->getSunPosition(DateTime());
+    _sunDistance = sun.altitude.as(Units::METERS);
     
     if ( Registry::capabilities().supportsGLSL() )
     {
@@ -258,10 +258,6 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
         _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
         _lightPosUniform->set( lightPos / lightPos.length() );
         stateset->addUniform( _lightPosUniform.get() );
-
-        // default GL_LIGHTING uniform setting
-        //stateset->addUniform(
-        //    Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
 
         stateset->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
 
@@ -276,6 +272,12 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
         makeMoon();
 
         makeStars();
+
+        // Decorations are shown by default, so hide them as needed
+        if (_options.sunVisible() == false) setSunVisible(false);
+        if (_options.moonVisible() == false) setMoonVisible(false);
+        if (_options.starsVisible() == false) setStarsVisible(false);
+        if (_options.atmosphereVisible() == false) setAtmosphereVisible(false);
     }
 
     // Update everything based on the date/time.
@@ -321,7 +323,23 @@ SimpleSkyNode::traverse( osg::NodeVisitor& nv )
     } 
 
     SkyNode::traverse( nv ); 
-} 
+}
+
+void
+SimpleSkyNode::releaseGLObjects(osg::State* state) const
+{
+    SkyNode::releaseGLObjects(state);
+    if (_cullContainer.valid())
+        _cullContainer->releaseGLObjects(state);
+}
+
+void
+SimpleSkyNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    SkyNode::resizeGLObjectBuffers(maxSize);
+    if (_cullContainer.valid())
+        _cullContainer->resizeGLObjectBuffers(maxSize);
+}
 
 void
 SimpleSkyNode::onSetEphemeris()
@@ -378,8 +396,8 @@ void
 SimpleSkyNode::setSunPosition(const osg::Vec3d& pos)
 {
     osg::Vec3d npos = pos;
+    _light->setPosition(osg::Vec4(npos, 0.0f)); // directional light
     npos.normalize();
-    _light->setPosition( osg::Vec4(npos, 0.0f) ); // directional light
 
     //OE_NOTICE << pos.x() << ", " << pos.y() << ", " << pos.z() << std::endl;
     
@@ -391,6 +409,13 @@ SimpleSkyNode::setSunPosition(const osg::Vec3d& pos)
     if ( _sunXform.valid() )
     {
         _sunXform->setMatrix( osg::Matrix::translate(pos) );
+
+        if (_moonXform.valid())
+        {
+            osg::Vec3d moonToSun = _sunXform->getMatrix().getTrans() - _moonXform->getMatrix().getTrans();
+            moonToSun.normalize();
+            _moonXform->getOrCreateStateSet()->getOrCreateUniform("moonToSun", osg::Uniform::FLOAT_VEC3)->set(osg::Vec3f(moonToSun));
+        }
     }
 }
 
@@ -400,6 +425,13 @@ SimpleSkyNode::setMoonPosition(const osg::Vec3d& pos)
     if (_moonXform.valid())
     {
         _moonXform->setMatrix(osg::Matrixd::translate(pos));
+        
+        if (_sunXform.valid())
+        {
+            osg::Vec3d moonToSun = _sunXform->getMatrix().getTrans() - _moonXform->getMatrix().getTrans();
+            moonToSun.normalize();
+            _moonXform->getOrCreateStateSet()->getOrCreateUniform("moonToSun", osg::Uniform::FLOAT_VEC3)->set(osg::Vec3f(moonToSun));
+        }
     }
 }
 
@@ -440,7 +472,7 @@ SimpleSkyNode::makeSceneLighting()
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
     vp->setName( "SimpleSky Scene Lighting" );
 
-    if (_options.atmosphericLighting() == true)// && !Registry::capabilities().isGLES() )
+    if (_options.atmosphericLighting() == true)
     {
         Shaders pkg;
         pkg.load( vp, pkg.Ground_ONeil_Vert );
@@ -451,7 +483,6 @@ SimpleSkyNode::makeSceneLighting()
     else
     {
         _phong = new PhongLightingEffect();
-        //_phong->setCreateLightingUniform( false );
         _phong->attach( stateset );
         OE_INFO << LC << "Using Phong lighting\n";
     }
@@ -517,8 +548,8 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
     
     // configure the state set:
     osg::StateSet* atmosSet = drawable->getOrCreateStateSet();
-    atmosSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-    atmosSet->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON );
+    GLUtils::setLighting(atmosSet, osg::StateAttribute::OFF);
+    atmosSet->setAttributeAndModes( new osg::CullFace(osg::CullFace::FRONT), osg::StateAttribute::ON );
     atmosSet->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
     atmosSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false) ); // no zbuffer
     atmosSet->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
@@ -559,8 +590,8 @@ SimpleSkyNode::makeSun()
     //sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); 
 
     const double zoomFactor = 80.0; // to account for the solare glare
-    const double sunRadius = 695700000.0;
-    sun->addDrawable(s_makeDiscGeometry(sunRadius * zoomFactor));
+    const double sunRadius = 695508000.0; // radius of the run in meters
+    sun->addDrawable(s_makeDiscGeometry(sunRadius*zoomFactor));
 
     osg::StateSet* set = sun->getOrCreateStateSet();
     set->setMode( GL_BLEND, 1 );
@@ -610,17 +641,23 @@ SimpleSkyNode::makeMoon()
 {
     osg::ref_ptr< osg::EllipsoidModel > em = new osg::EllipsoidModel( 1738140.0, 1735970.0 );   
     
-    osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator(), true );    
+    osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator()*_options.moonScale().get(), true );    
     osg::StateSet* stateSet = moonDrawable->getOrCreateStateSet();
 
     //TODO:  Embed this texture in code or provide a way to have a default resource directory for osgEarth.
     //       Right now just need to have this file somewhere in your OSG_FILE_PATH
-    stateSet->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-    osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile( "moon_1024x512.jpg" );
+    //stateSet->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    osg::ref_ptr<osg::Image> image = _options.moonImageURI()->getImage();
+    if (!image.valid())
+    {
+        OE_WARN << LC << "Failed to load moon texture from " << _options.moonImageURI()->full() << std::endl;
+    }
 
-    osg::Texture2D * texture = new osg::Texture2D( image );
+    osg::Texture2D* texture = new osg::Texture2D( image.get() );
     texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
     texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
+    texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     texture->setResizeNonPowerOfTwoHint(false);
     stateSet->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 #ifdef OSG_GL3_AVAILABLE
@@ -639,14 +676,14 @@ SimpleSkyNode::makeMoon()
     (*colors)[0] = osg::Vec4(1, 1, 1, 1 );
 
     // configure the stateset
-    stateSet->setMode( GL_LIGHTING, osg::StateAttribute::ON );
+    //GLUtils::setLighting(stateSet, osg::StateAttribute::ON );
+
     stateSet->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON);
     stateSet->setRenderBinDetails( BIN_MOON, "RenderBin" );
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     stateSet->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
     
-#if 1 //defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-
+#if 1
     stateSet->addUniform(new osg::Uniform("moonTex", 0));
 
     // create shaders
@@ -661,6 +698,57 @@ SimpleSkyNode::makeMoon()
         ShaderLoader::load(pkg.Moon_Frag, pkg) );
     program->addShader( fs );
     stateSet->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+#else
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+
+    const char* VS =
+        "#version 330\n"
+        "#pragma import_defines(OE_NUM_LIGHTS) \n"
+        "out vec2 oe_SimpleSky_moonTexCoord;\n"
+        "out float oe_SimpleSky_lighting;\n"
+        "struct osg_LightSourceParameters  \n"
+        "{    \n"
+           "vec4 ambient;              // Aclarri    \n"
+           "vec4 diffuse;              // Dcli    \n"
+           "vec4 specular;             // Scli    \n"
+           "vec4 position;             // Ppli    \n"
+           "//vec4 halfVector;           // Derived: Hi    \n"
+           "vec3 spotDirection;        // Sdli    \n"
+           "float spotExponent;        // Srli    \n"
+           "float spotCutoff;          // Crli                               \n"
+                                      "// (range: [0.0,90.0], 180.0)    \n"
+           "float spotCosCutoff;       // Derived: cos(Crli)                  \n"
+                                      "// (range: [1.0,0.0],-1.0)    \n"
+           "float constantAttenuation; // K0    \n"
+           "float linearAttenuation;   // K1    \n"
+           "float quadraticAttenuation;// K2   \n"
+
+           "bool enabled; \n"
+        "};   \n"
+        "uniform osg_LightSourceParameters osg_LightSource[OE_NUM_LIGHTS]; \n"
+        "void oe_SimpleSky_moonVS(inout vec4 vertexModel) { \n"
+        "    oe_SimpleSky_moonTexCoord = gl_MultiTexCoord0.st; \n"
+        "    oe_SimpleSky_lighting = 1.0; \n"
+        "} \n";
+
+    const char* FS =
+        "#version 330\n"
+        "in vec2 oe_SimpleSky_moonTexCoord;\n"
+        "in float oe_SimpleSky_lighting;\n"
+        "uniform sampler2D oe_SimpleSky_moonTex; \n"
+        "void oe_SimpleSky_moonFS(inout vec4 color) { \n"
+        "    color = texture(oe_SimpleSky_moonTex, oe_SimpleSky_moonTexCoord); \n"
+        "    color.rgb *= oe_SimpleSky_lighting; \n"
+        "} \n";
+
+
+    vp->setFunction("oe_SimpleSky_moonVS", VS, ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction("oe_SimpleSky_moonFS", FS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+
+    stateSet->addUniform(new osg::Uniform("oe_SimpleSky_moonTex", 0));
+
 #endif
 
     // A nested camera isolates the projection matrix calculations so the node won't 
@@ -679,6 +767,8 @@ SimpleSkyNode::makeMoon()
     _moonXform = new osg::MatrixTransform();   
     _moonXform->setMatrix( osg::Matrix::translate( moon.geocentric ) ); 
     _moonXform->addChild( _moon.get() );
+
+    //_moonXform->getOrCreateStateSet()->addUniform(new osg::Uniform("moonToSun", osg::Vec3f(0,0,1)));
 
     _cullContainer->addChild( _moonXform.get() );
 
@@ -748,75 +838,55 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 {
     double minMag = DBL_MAX, maxMag = DBL_MIN;
 
-    osg::Vec3Array* coords = new osg::Vec3Array();
-    std::vector<StarData>::const_iterator p;
-    for( p = stars.begin(); p != stars.end(); p++ )
+    PointDrawable* drawable = new PointDrawable();
+    drawable->setPointSize(_options.starSize().get());
+    drawable->allocate(stars.size());
+
+    for(unsigned p=0; p<stars.size(); ++p)
     {
+        const StarData& star = stars[p];
+
         osg::Vec3d v = getEphemeris()->getECEFfromRADecl(
-            p->right_ascension, 
-            p->declination, 
+            star.right_ascension, 
+            star.declination, 
             _starRadius );
 
-        coords->push_back( v );
+        drawable->setVertex(p, v);
 
-        if ( p->magnitude < minMag ) minMag = p->magnitude;
-        if ( p->magnitude > maxMag ) maxMag = p->magnitude;
+        if ( star.magnitude < minMag ) minMag = star.magnitude;
+        if ( star.magnitude > maxMag ) maxMag = star.magnitude;
     }
 
-    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
-    for( p = stars.begin(); p != stars.end(); p++ )
+    for(unsigned p=0; p<stars.size(); ++p)
     {
-        float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
-        colors->push_back( osg::Vec4(c,c,c,1.0f) );
+        const StarData& star = stars[p];
+        float c = (star.magnitude-minMag) / (maxMag-minMag);
+        drawable->setColor(p, osg::Vec4(c,c,c,1.0f));
     }
 
-    osg::Geometry* geometry = new osg::Geometry;
-    geometry->setUseVertexBufferObjects(true);
+    drawable->finish();
 
-    geometry->setVertexArray( coords );
-    geometry->setColorArray( colors );
-    geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
+    osg::StateSet* sset = drawable->getOrCreateStateSet();
 
-    osg::StateSet* sset = geometry->getOrCreateStateSet();
+    const osgEarth::Capabilities& caps = osgEarth::Registry::capabilities();
 
-#if !defined(OSG_GL3_AVAILABLE)
-    // In GL3, PointSprite is no longer available, and is always on.
-    sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
-#endif
-    sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
-
-    Shaders pkg;
-    std::string starVertSource, starFragSource;
-    if ( Registry::capabilities().isGLES() )
-    {
-        starVertSource = ShaderLoader::load(pkg.Stars_GLES_Vert, pkg);
-        starFragSource = ShaderLoader::load(pkg.Stars_GLES_Frag, pkg);
-    }
-    else
-    {
-        starVertSource = ShaderLoader::load(pkg.Stars_Vert, pkg);
-        starFragSource = ShaderLoader::load(pkg.Stars_Frag, pkg);
-    }
-
-    osg::Program* program = new osg::Program;
-    program->addShader( new osg::Shader(osg::Shader::VERTEX, starVertSource) );
-    program->addShader( new osg::Shader(osg::Shader::FRAGMENT, starFragSource) );
-    sset->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    VirtualProgram* vp = VirtualProgram::getOrCreate(drawable->getOrCreateStateSet());
+    vp->setName("SimpleSky Stars");
+    Shaders shaders;
+    shaders.load(vp, shaders.Stars_Vert);
+    shaders.load(vp, shaders.Stars_Frag);
+    vp->setInheritShaders(false);
 
     sset->setRenderBinDetails( BIN_STARS, "RenderBin");
     sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     sset->setMode(GL_BLEND, 1);
 
-    osg::Geode* starGeode = new osg::Geode;
-    starGeode->addDrawable( geometry );
-
     // A separate camera isolates the projection matrix calculations.
     osg::Camera* cam = new osg::Camera();
     cam->getOrCreateStateSet()->setRenderBinDetails( BIN_STARS, "RenderBin" );
     cam->setRenderOrder( osg::Camera::NESTED_RENDER );
-    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
-    cam->addChild( starGeode );
 
+    cam->addChild( drawable );
     return cam;
 }
 

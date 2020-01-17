@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,10 +22,8 @@
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
+#include <osgEarth/GLUtils>
 #include <osg/MatrixTransform>
-#include <osg/Point>
-#include <osg/LineWidth>
-#include <osg/LineStipple>
 #include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
@@ -337,7 +335,7 @@ FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset,
 {
     if ( point )
     {
-        float size = std::max( 0.1f, *point->size() );
-        stateset->setAttributeAndModes(new osg::Point(size), 1);
+        float size = osg::maximum( 0.1f, *point->size() );
+        GLUtils::setPointSize(stateset, size, 1);
     }
 }

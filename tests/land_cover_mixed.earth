@@ -50,6 +50,7 @@
     <terrainshader>
         <code>
             <![CDATA[
+            #version 330
             #pragma vp_entryPoint colorize
             #pragma vp_location fragment_coloring
             uniform sampler2D CLASSMAP;

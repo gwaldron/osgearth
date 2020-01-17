@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,7 +26,6 @@
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
-#include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthSymbology/ModelSymbol>
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarthSymbology/AltitudeSymbol>
@@ -42,6 +41,8 @@
 
 namespace osgEarth { namespace Symbology 
 {
+    class StyleSheet;
+
     /**
      * Style is an unordered collection of Symbols that describes how to render
      * geometry and other objects.
@@ -54,6 +55,9 @@ namespace osgEarth { namespace Symbology
 
         /** Constructs a style by deserializing it from a Config. */
         Style(const Config& conf);
+
+        /** Constructs a stype by deserializing it from a Config. */
+        Style(const Config& conf, const StyleSheet* sheet);
 
         /** Copy constructor. By default, duplicates all the symbols; but if you 
             specify SHALLOW_COPY, the new one will point to the same symbols. */
@@ -145,16 +149,16 @@ namespace osgEarth { namespace Symbology
 
         template<typename T> T* getOrCreate() { return getOrCreateSymbol<T>(); } // alias
 
-	/** Access to list of symbols currently defining the style */
-	SymbolList& symbols() { return _symbols; }
-	const SymbolList& symbols() const { return _symbols; }
+        /** Access to list of symbols currently defining the style */
+        SymbolList& symbols() { return _symbols; }
+        const SymbolList& symbols() const { return _symbols; }
 
         /** Serializes this object into a Config. */
-        virtual Config getConfig( bool keepOrigType =true ) const;
+        virtual Config getConfig(bool keepOrigType = true) const;
 
-        void mergeConfig( const Config& conf );
+        void mergeConfig(const Config& conf, const StyleSheet* sheet);
 
-        void fromSLD(const Config&);
+        void fromSLD(const Config&, const StyleSheet*);
         
     protected:
         std::string                 _name;
@@ -169,5 +173,6 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Symbology::Style);
 
 #endif // OSGEARTHSYMBOLOGY_STYLE_H

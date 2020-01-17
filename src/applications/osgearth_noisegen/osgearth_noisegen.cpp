@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -48,7 +48,7 @@ int usage()
         "                  --out string         ; output filename\n"
         "                  [--frequency n]      ; default = 16\n"
         "                  [--octaves n]        ; default = 12\n"
-        ;
+        << std::endl;
     return -1;
 }
 /**

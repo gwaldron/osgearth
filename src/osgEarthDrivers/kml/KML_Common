@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -102,6 +102,14 @@ namespace osgEarth_kml
 					if (url.empty())
 					{
 						url = link->value();
+					}
+
+					std::string httpQuery = getValue(link, "httpQuery");
+					if (!httpQuery.empty())
+					{
+					    std::stringstream buf;
+					    buf << url << "?" << httpQuery;
+						url = buf.str();
 					}
 					return url;
 				}

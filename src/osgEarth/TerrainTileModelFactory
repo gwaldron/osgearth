@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -28,8 +28,6 @@
 
 namespace osgEarth
 {
-    class MapFrame;
-
     /**
      * Filter you can pass to TerrainTileModelFactory::createTileModel
      */
@@ -83,7 +81,7 @@ namespace osgEarth
          * @param progress     Progress tracking callback
          */
         virtual TerrainTileModel* createTileModel(
-            const MapFrame&                  frame,
+            const Map*                       map,
             const TileKey&                   key,
             const CreateTileModelFilter&     filter,
             const TerrainEngineRequirements* requirements,
@@ -93,7 +91,7 @@ namespace osgEarth
 
         virtual void addColorLayers(
             TerrainTileModel*                model,
-            const MapFrame&                  frame,
+            const Map*                       map,
             const TerrainEngineRequirements* reqs,
             const TileKey&                   key,
             const CreateTileModelFilter&     filter,
@@ -101,21 +99,15 @@ namespace osgEarth
 
         virtual void addElevation(
             TerrainTileModel*            model,
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             unsigned                     border,
             ProgressCallback*            progress);
 
-        virtual void addNormalMap(
-            TerrainTileModel*            model,
-            const MapFrame&              frame,
-            const TileKey&               key,
-            ProgressCallback*            progress);
-
         virtual void addPatchLayers(
             TerrainTileModel*            model,
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             ProgressCallback*            progress);
@@ -124,7 +116,7 @@ namespace osgEarth
 
         /** Find a heightfield in the cache, or fetch it from the source. */
         bool getOrCreateHeightField(
-            const MapFrame&                 frame,
+            const Map*                      map,
             const TileKey&                  key,
             ElevationSamplePolicy           samplePolicy,
             ElevationInterpolation          interpolation,
@@ -145,9 +137,11 @@ namespace osgEarth
             osg::Image* image) const;
 
         osg::Texture* createNormalTexture(
-            osg::Image* image) const;
+            osg::Image* image,
+            bool compress
+            ) const;
 
-        const TerrainOptions& _options;
+        const TerrainOptions _options;
         
 
         /** Key into the height field cache */

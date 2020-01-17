@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,6 +66,11 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         if (_SL->getCallback())
             _SL->getCallback()->onDrawSky(_SL->getAtmosphereWrapper());
 
+        osg::Matrix projMat = renderInfo.getState()->getProjectionMatrix();
+        _SL->getAtmosphere()->SetProjectionMatrix(projMat.ptr());
+        osg::Matrix viewMat = renderInfo.getCurrentCamera()->getViewMatrix();
+        _SL->getAtmosphere()->SetCameraMatrix(viewMat.ptr());
+
         // draw the sky.
         _SL->getAtmosphere()->DrawSky(
             true,
@@ -78,27 +83,17 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         renderInfo.getState()->dirtyAllVertexArrays();
         renderInfo.getState()->dirtyAllAttributes();
 
-#if 0
-#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
-        osg::GLExtensions* api = renderInfo.getState()->get<osg::GLExtensions>();
-#else
-        osg::GL2Extensions* api = osg::GL2Extensions::Get(renderInfo.getState()->getContextID(), true);
-#endif
-        api->glUseProgram((GLuint)0);
+        // Reset the saved program.  SilverLining exits its functionality with a glUseProgram(0). Without this line,
+        // GL Core 3.3 rendering will attempt to load uniforms without an active program, which is an error.  This
+        // tells the state that there is currently no installed program, so if it needs one, to load one.
         renderInfo.getState()->setLastAppliedProgramObject(0L);
-#endif
-
         renderInfo.getState()->apply();
     }
 	}
 }
 
 osg::BoundingBox
-#if OSG_VERSION_GREATER_THAN(3,3,1)
 SkyDrawable::computeBoundingBox() const
-#else
-SkyDrawable::computeBound() const
-#endif
 {
     osg::BoundingBox skyBoundBox;
     if ( !_SL->ready() )

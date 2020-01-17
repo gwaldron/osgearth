@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,25 +18,15 @@
  */
 #include <osgEarthUtil/Controls>
 #include <osgEarth/NodeUtils>
-#include <osg/Geometry>
-#include <osg/NodeCallback>
 #include <osg/Depth>
-#include <osg/TextureRectangle>
-#include <osgGA/GUIEventHandler>
-#include <osgText/Text>
-#include <osgUtil/RenderBin>
-#include <osgUtil/Statistics>
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
 #include <osgEarthFeatures/PolygonizeLines>
-#include <osg/Version>
-#include <osgEarth/Common>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ShaderGenerator>
+#include <osgEarth/GLUtils>
+#include <osgEarth/Shaders>
+#include <osgEarth/Text>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -68,11 +58,11 @@ namespace
             x41 =  x4*cosa + y4*sina,
             y41 = -x4*sina + y3*cosa;
 
-        float xmin = std::min(x11, std::min(x21, std::min(x31, x41)));
-        float ymin = std::min(y11, std::min(y21, std::min(y31, y41)));
+        float xmin = osg::minimum(x11, osg::minimum(x21, osg::minimum(x31, x41)));
+        float ymin = osg::minimum(y11, osg::minimum(y21, osg::minimum(y31, y41)));
 
-        float xmax = std::max(x11, std::max(x21, std::max(x31, x41)));
-        float ymax = std::max(y11, std::max(y21, std::max(y31, y41)));
+        float xmax = osg::maximum(x11, osg::maximum(x21, osg::maximum(x31, x41)));
+        float ymax = osg::maximum(y11, osg::maximum(y21, osg::maximum(y31, y41)));
 
         out_w = xmax-xmin;
         out_h = ymax-ymin;
@@ -168,6 +158,8 @@ Control::Control( const Alignment& halign, const Alignment& valign, const Gutter
 void
 Control::init()
 {
+    setStateSet(getGeomStateSet());
+
     _x.init(0);
     _y.init(0);
     _width.init(1);
@@ -190,6 +182,28 @@ Control::init()
 
     _geode = new osg::Geode();
     this->addChild( _geode );
+}
+
+// shared state set for control geometry
+osg::observer_ptr<osg::StateSet> Control::s_geomStateSet;
+
+osg::ref_ptr<osg::StateSet>
+Control::getGeomStateSet()
+{
+    osg::ref_ptr<osg::StateSet> stateSet;
+    if (s_geomStateSet.lock(stateSet) == false)
+    {
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_geomStateSet.lock(stateSet) == false)
+        {
+            s_geomStateSet = stateSet = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet.get());
+            vp->setName("Control::geomStateSet");
+            vp->setInheritShaders(false);
+        }
+    }
+    return stateSet;
 }
 
 void
@@ -597,13 +611,15 @@ Control::draw(const ControlContext& cx)
 
     // by default, rendering a Control directly results in a colored quad. Usually however
     // you will not render a Control directly, but rather one of its subclasses.
-    if ( visible()  && parentIsVisible() )
+    if ( visible() && parentIsVisible() )
     {
-        if ( !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
+        if (_renderSize.x() > 0 && _renderSize.y() > 0)
         {
             float vph = cx._vp->height();
 
             // draw the background poly:
+            if ((_backColor.isSet() && _backColor->a() > 0.0f) ||
+                (_activeColor.isSet() && _activeColor->a() > 0.0f && _active))
             {
                 _geom = newGeometry();
 
@@ -629,7 +645,7 @@ Control::draw(const ControlContext& cx)
             }
 
             // draw the border:
-            if ( _borderColor.isSet() && _borderWidth > 0.0f )
+            if ( _borderColor.isSet() && _borderColor->a() > 0.0f && _borderWidth > 0.0f )
             {
                 float rx = _renderPos.x() - padding().left();
                 float ry = _renderPos.y() - padding().top();
@@ -702,9 +718,12 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
 namespace
 {
     // override osg Text to get at some of the internal properties
-    struct LabelText : public osgText::Text
+    struct LabelText : public osgEarth::Text
     {
-        LabelText() : osgText::Text() { setDataVariance(osg::Object::DYNAMIC); }
+        LabelText() : osgEarth::Text()
+        { 
+            setDataVariance(osg::Object::DYNAMIC); 
+        }
         const osg::BoundingBox& getTextBB() const { return _textBB; }
         const osg::Matrix& getATMatrix(int contextID) const { 
         #if OSG_MIN_VERSION_REQUIRED(3,5,6)
@@ -750,7 +769,8 @@ _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
 _backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
-{    
+{ 
+    //setStateSet(textStateSet());
     setFont( Registry::instance()->getDefaultFont() );    
     setForeColor( foreColor );
     setBackColor( osg::Vec4f(0,0,0,0) );
@@ -895,9 +915,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         t->setAlignment( osgText::Text::LEFT_TOP ); 
         t->setColor( foreColor().value() );
 
-        // set up the font. When you do this, OSG automatically tries to put the text object
-        // in the transparent render bin. We do not want that, so we will set it back to
-        // INHERIT.
+        // set up the font.
         if ( _font.valid() )
             t->setFont( _font.get() );
 
@@ -910,7 +928,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             t->setBackdropColor( haloColor().value() );
         }
 
-        osg::BoundingBox bbox = t->getTextBB();
+        osg::BoundingBox bbox = t->getBoundingBox(); //t->getTextBB();
         if ( cx._viewContextID != ~0u )
         {
             //the Text's autoTransformCache matrix puts some mojo on the bounding box
@@ -1010,6 +1028,7 @@ _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
 _opacity      ( 1.0f )
 {
+    setStateSet(getImageStateSet());
     setImage( image );
 }
 
@@ -1018,7 +1037,50 @@ _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
 _opacity      ( 1.0f )
 {
+    setStateSet(getImageStateSet());
     setTexture( texture );
+}
+
+// shared state set for image geometry
+osg::observer_ptr<osg::StateSet> ImageControl::s_imageStateSet;
+
+osg::ref_ptr<osg::StateSet>
+ImageControl::getImageStateSet()
+{
+    osg::ref_ptr<osg::StateSet> stateSet;
+    if (s_imageStateSet.lock(stateSet) == false)
+    {
+        static Threading::Mutex m;
+        Threading::ScopedMutexLock lock(m);
+        if (s_imageStateSet.lock(stateSet) == false)
+        {
+            s_imageStateSet = stateSet = new osg::StateSet();
+
+            const char* vert =
+                "#version " GLSL_VERSION_STR "\n"
+                "out vec2 oe_Controls_texCoord; \n"
+                "void oe_Controls_renderImageVert(inout vec4 vert) { \n"
+                "    oe_Controls_texCoord = gl_MultiTexCoord0.xy; \n"
+                "}\n";
+
+            const char* frag =
+                "#version " GLSL_VERSION_STR "\n"
+                "in vec2 oe_Controls_texCoord; \n"
+                "uniform sampler2D oe_Controls_tex; \n"
+                "void oe_Controls_renderImageFrag(inout vec4 color) { \n"
+                "    vec4 texel = texture(oe_Controls_tex, oe_Controls_texCoord); \n"
+                "    color = color * texel; \n"
+                "}\n";
+
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet.get());
+            vp->setName("Control::imageStateSet");
+            vp->setInheritShaders(false);
+            vp->setFunction("oe_Controls_renderImageVert", vert, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_Controls_renderImageFrag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
+        }
+    }
+
+    return stateSet;
 }
 
 void
@@ -1195,11 +1257,11 @@ ImageControl::draw( const ControlContext& cx )
 
     g->setTexCoordArray( 0, t );
 
-    g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, _texture.get(), osg::StateAttribute::ON );
+    osg::StateSet* ss = g->getOrCreateStateSet();
 
-    /*osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
-    g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
-     */
+    ss->setTextureAttributeAndModes( 0, _texture.get(), osg::StateAttribute::ON );
+    ss->addUniform(new osg::Uniform("oe_Controls_tex", (int)0));
+
     getGeode()->addDrawable( g );
 
     _dirty = false;
@@ -1390,12 +1452,13 @@ CheckBoxControl::fireValueChanged( ControlEventHandler* oneHandler )
 }
 
 void
-CheckBoxControl::setValue( bool value )
+CheckBoxControl::setValue( bool value, bool notify )
 {
     if ( value != _value )
     {
         _value = value;
-        fireValueChanged();
+        if (notify)
+            fireValueChanged();
         dirty();
     }
 }
@@ -1621,8 +1684,8 @@ Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
-        float w = width().isSet()  ? std::max( width().value(),  _renderSize.x() ) : _renderSize.x();
-        float h = height().isSet() ? std::max( height().value(), _renderSize.y() ) : _renderSize.y();
+        float w = width().isSet()  ? osg::maximum( width().value(),  _renderSize.x() ) : _renderSize.x();
+        float h = height().isSet() ? osg::maximum( height().value(), _renderSize.y() ) : _renderSize.y();
 
         _renderSize.set(
             w + padding().x(),
@@ -2085,7 +2148,7 @@ Grid::expandToInclude( int col, int row )
     }
 
     // and that we have sufficient rows:
-    unsigned maxRows = std::max( (unsigned)getNumRows(), (unsigned)(row+1) );
+    unsigned maxRows = osg::maximum( (unsigned)getNumRows(), (unsigned)(row+1) );
 
     // expand everything and use empty groups as placeholders
     for( unsigned r=0; r<maxRows; ++r )
@@ -2267,45 +2330,36 @@ _height   ( 0 )
     //nop
 }
 
-// version helper.
-#if OSG_VERSION_GREATER_THAN(3,3,0)
-#   define AS_ADAPTER(e) e->asGUIEventAdapter()
-#else
-#   define AS_ADAPTER(e) e
-#endif
+#define AS_ADAPTER(e) e->asGUIEventAdapter()
 
 void
 ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(nv);
 
-    osg::ref_ptr<ControlCanvas> canvas;
-    if ( _canvas.lock(canvas) )
+    const osgGA::EventQueue::Events& events = ev->getEvents();
+    if (events.size() > 0)
     {
-        const osgGA::EventQueue::Events& events = ev->getEvents();
-        if ( events.size() > 0 )
+        osg::ref_ptr<ControlCanvas> canvas;
+        if (_canvas.lock(canvas))
         {
-            osg::ref_ptr<ControlCanvas> canvas;
-            if ( _canvas.lock(canvas) )
+            osgGA::GUIActionAdapter* aa = ev->getActionAdapter();
+
+            for (osgGA::EventQueue::Events::const_iterator e = events.begin(); e != events.end(); ++e)
             {
-                osgGA::GUIActionAdapter* aa = ev->getActionAdapter();
+                osgGA::GUIEventAdapter* ea = AS_ADAPTER(e->get());
 
-                for(osgGA::EventQueue::Events::const_iterator e = events.begin(); e != events.end(); ++e)
+                // check for a resize each frame. Don't rely on the RESIZE event;
+                // it does always convey the new viewport dimensions (they aren't
+                // always available until the following FRAME event)
+                if (ea->getEventType() == ea->FRAME)
                 {
-                    osgGA::GUIEventAdapter* ea = AS_ADAPTER(e->get());
+                    handleResize(aa->asView(), canvas.get());
+                }
 
-                    // check for a resize each frame. Don't rely on the RESIZE event;
-                    // it does always convey the new viewport dimensions (they aren't
-                    // always available until the following FRAME event)
-                    if ( ea->getEventType() == ea->FRAME )
-                    {
-                        handleResize(aa->asView(), canvas.get());
-                    }
-
-                    if (canvas->handle( *ea, *aa ))
-                    {
-                        e->get()->setHandled(true);
-                    }
+                if (canvas->handle(*ea, *aa))
+                {
+                    e->get()->setHandled(true);
                 }
             }
         }
@@ -2684,9 +2738,13 @@ ControlCanvas::getOrCreate(osg::View* view)
         return canvas;
 
     canvas = new ControlCanvas();
-
-    // ControlCanvas does NOT work as a direct child of the View's camera.
+    
+    //TODO: Revisit this after 2.10. We should be connecting ControlCanvas to a Camera,
+    //not a View, because in the case of an MRT or other RTT-camera based setup, this
+    //approach will not work properly.
+#if 1
     osg::Group* group = 0L;
+    // ControlCanvas does NOT work as a direct child of the View's camera.
     if ( view->getCamera()->getNumChildren() > 0 )
     {
         group = view->getCamera()->getChild(0)->asGroup();
@@ -2703,6 +2761,10 @@ ControlCanvas::getOrCreate(osg::View* view)
     }
 
     group->addChild( canvas );
+#else
+    view->getCamera()->addChild(canvas);
+#endif
+
     return canvas;
 }
 
@@ -2753,7 +2815,7 @@ ControlCanvas::init()
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     osg::StateSet* ss = getOrCreateStateSet();
-    ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+    GLUtils::setLighting(ss, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
     ss->setRenderBinDetails( 0, "TraversalOrderBin" );
@@ -2810,8 +2872,8 @@ ControlCanvas::handle(const osgGA::GUIEventAdapter& ea,
 
     for( unsigned i=getNumChildren()-1; i>0; --i )
     {
-        Control* control = static_cast<Control*>( getChild(i) );
-        if ( control->isDirty() )
+        Control* control = dynamic_cast<Control*>( getChild(i) );
+        if ( control && control->isDirty() )
         {
             aa.requestRedraw();
             break;
@@ -2825,8 +2887,9 @@ ControlCanvas::handle(const osgGA::GUIEventAdapter& ea,
     {
         for( unsigned i=1; i<getNumChildren(); ++i )
         {
-            Control* control = static_cast<Control*>( getChild(i) );
-            control->handle(ea, aa, _context);
+            Control* control = dynamic_cast<Control*>( getChild(i) );
+            if (control)
+                control->handle(ea, aa, _context);
         }
         return handled;
     }
@@ -2837,8 +2900,8 @@ ControlCanvas::handle(const osgGA::GUIEventAdapter& ea,
 
     for( unsigned i=getNumChildren()-1; i>0; --i )
     {
-        Control* control = static_cast<Control*>( getChild(i) );
-        if ( control->intersects( canvasX, canvasY ) )
+        Control* control = dynamic_cast<Control*>( getChild(i) );
+        if ( control && control->intersects( canvasX, canvasY ) )
         {
             handled = control->handle( ea, aa, _context );
             if ( handled )
@@ -2874,9 +2937,8 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
     int bin = 0;
     for( unsigned i=1; i<getNumChildren(); ++i )
     {
-        Control* control = static_cast<Control*>( getChild(i) );
-
-        if ( control->isDirty() || _contextDirty )
+        Control* control = dynamic_cast<Control*>( getChild(i) );
+        if ( control && (control->isDirty() || _contextDirty))
         {
             osg::Vec2f size;
             control->calcSize( _context, size );
@@ -2893,10 +2955,6 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
     {
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
-
-    // we don't really need to rebuild shaders on every dirty; we could probably
-    // just do it on add/remove controls; but that's an optimization for later
-    Registry::shaderGenerator().run( this, "osgEarth.ControlCanvas" );
 
     _contextDirty = false;
 }
@@ -2915,8 +2973,8 @@ ControlCanvas::traverse(osg::NodeVisitor& nv)
                 {
                     for( unsigned i=1; i<getNumChildren(); ++i )
                     {
-                        Control* control = static_cast<Control*>( getChild(i) );
-                        if ( control->isDirty() )
+                        Control* control = dynamic_cast<Control*>( getChild(i) );
+                        if ( control && control->isDirty() )
                         {
                             needsUpdate = true;
                             break;

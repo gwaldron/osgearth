@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -70,11 +70,11 @@ namespace osgEarth { namespace Util
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.addIfSet("delay", _delay);
-            conf.addIfSet("duration", _duration);
-            conf.addIfSet("vertical_scale", _vscale);
-            conf.addIfSet("blend_imagery", _blendImagery);
-            conf.addIfSet("blend_elevation", _blendElevation);
+            conf.set("delay", _delay);
+            conf.set("duration", _duration);
+            conf.set("vertical_scale", _vscale);
+            conf.set("blend_imagery", _blendImagery);
+            conf.set("blend_elevation", _blendElevation);
             return conf;
         }
 
@@ -86,11 +86,11 @@ namespace osgEarth { namespace Util
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("delay", _delay);
-            conf.getIfSet("duration", _duration);
-            conf.getIfSet("vertical_scale", _vscale);
-            conf.getIfSet("blend_imagery", _blendImagery);
-            conf.getIfSet("blend_elevation", _blendElevation);
+            conf.get("delay", _delay);
+            conf.get("duration", _duration);
+            conf.get("vertical_scale", _vscale);
+            conf.get("blend_imagery", _blendImagery);
+            conf.get("blend_elevation", _blendElevation);
         }
 
     private:

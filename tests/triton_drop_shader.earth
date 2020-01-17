@@ -1,10 +1,5 @@
 <map name="drop the ocean">
     
-    <options>        
-        <terrain driver="mp">
-        </terrain>
-    </options>
-    
     <image name="readymap_imagery" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
@@ -25,7 +20,7 @@
         </viewpoint>            
     </viewpoints>
     
-    <ocean driver="triton"/>
+    <triton/>
     
     <terrainshader>
       <code>
@@ -41,8 +36,8 @@
           out float oe_triton_elev; // osgearth-specific
           
           // amount by which to perturb the ocean verts
-          const float strength = 2.9;
-          //uniform float strength;
+          //const float strength = 5.0;
+          uniform float strength;
           
           // Triton maximum underwater visibility distance (negated)
           const float minElev = -100.0;

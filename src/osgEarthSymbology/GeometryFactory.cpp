@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -100,8 +100,8 @@ GeometryFactory::createArc(const osg::Vec3d& center,
         numSegments = (unsigned)::ceil(circumference / segLen);
     }
 
-    double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) );
-    double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) );
+    double startRad = osg::minimum( start.as(Units::RADIANS), end.as(Units::RADIANS) );
+    double endRad   = osg::maximum( start.as(Units::RADIANS), end.as(Units::RADIANS) );
 
     if ( endRad == startRad )
         endRad += 2*osg::PI;
@@ -237,8 +237,8 @@ GeometryFactory::createEllipticalArc(const osg::Vec3d& center,
         numSegments = (unsigned)::ceil(circumference / segLen);
     }
 
-    double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) );// - osg::PI_2;
-    double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) );// - osg::PI_2;
+    double startRad = osg::minimum( start.as(Units::RADIANS), end.as(Units::RADIANS) );// - osg::PI_2;
+    double endRad   = osg::maximum( start.as(Units::RADIANS), end.as(Units::RADIANS) );// - osg::PI_2;
 
     if ( endRad == startRad )
     {

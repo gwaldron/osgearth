@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -92,8 +92,6 @@ namespace osgEarth
         std::string getSubElementText( const std::string& tag ) const;
 
         void addSubElement(const std::string& tag, const std::string& text);
-
-        void addSubElement(const std::string& tag, const Properties& attrs, const std::string& text);
 
         virtual Config getConfig(const std::string& sourceURI) const;
 

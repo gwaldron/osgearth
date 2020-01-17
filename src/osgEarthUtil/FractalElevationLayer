@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -107,7 +107,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FractalElevationLayer : public ElevationLayer
     {
     public:
-        META_Layer(osgEarth, FractalElevationLayer, FractalElevationLayerOptions);
+        META_Layer(osgEarth, FractalElevationLayer, FractalElevationLayerOptions, fractal_elevation);
 
         //! Create a blank layer to be configurated through options().
         FractalElevationLayer();

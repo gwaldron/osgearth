@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -28,7 +28,7 @@
 
 namespace osgEarth
 {
-    /** Basic timestamp (seconds from the epoch) */
+    /** Basic timestamp (seconds from the 1970 epoch) */
     typedef ::time_t TimeStamp;
 
     /** Time span (in seconds) */
@@ -56,6 +56,9 @@ namespace osgEarth
         /** DateTime from year, month [1-12], date [1-31], hours [0-24) */
         DateTime(int year, int month, int day, double hours);
 
+        /** DateTime from year and fractional day-of-year [1..365] */
+        DateTime(int year, double dayOfYear);
+
         /** DateTime from an ISO 8601 string */
         DateTime(const std::string& iso8601);
 
@@ -72,13 +75,17 @@ namespace osgEarth
         /** Julian day (fractional) corresponding to this DateTime */
         double getJulianDay() const;
 
+        /** Seconds since Jan 1, 1970 00:00 UTC */
+        TimeStamp asTimeStamp() const { return _time_t; }
+
+        /** Adds hours to return a new DateTime */
+        DateTime operator + (double hours) const;
+
     public:
         int    year()  const;
         int    month() const;
         int    day()   const;
         double hours() const;
-
-        TimeStamp   asTimeStamp() const { return _time_t; }
 
     protected:
         ::tm     _tm;

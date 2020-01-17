@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -74,6 +74,8 @@ namespace osgEarth
 
     public: // osg::Node
 
+        void accept(osg::NodeVisitor&);
+
         void traverse(osg::NodeVisitor&);
 
     private:
@@ -95,6 +97,7 @@ namespace osgEarth
             osg::ref_ptr<ReadbackImage> _image;
             osg::ref_ptr<osg::PixelBufferObject> _imagePBO;
             Threading::Promise<osg::Image> _imagePromise;
+            GLuint _fragmentsWritten;
         };
 
         mutable Threading::Mutex _mutex;
@@ -104,6 +107,7 @@ namespace osgEarth
         mutable JobQueue _finishedJobs; // queue for jobs waiting for the promise to resolve
 
         //osg::ref_ptr<osg::Uniform> _distortionU;
+        mutable osg::buffered_object<GLuint> _samplesQuery;
 
     public: // internal
 

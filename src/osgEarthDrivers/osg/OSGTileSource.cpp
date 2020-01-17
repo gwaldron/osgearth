@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -60,7 +60,8 @@ class OSGTileSource : public TileSource
 public:
     OSGTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
-      _options( options )
+      _options( options ),
+      _maxLOD(0)
     {
         //nop
     }

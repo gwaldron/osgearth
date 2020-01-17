@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,17 +20,10 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/MemCache>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReadFile>
-#include <osgDB/WriteFile>
 
 #define LC "[TileSource] "
 
@@ -110,7 +103,7 @@ TileBlacklist::read(const std::string &filename)
 
 void
 TileBlacklist::write(const std::string &filename) const
-{ 
+{
     std::string path = osgDB::getFilePath(filename);
     if (!path.empty() && !osgDB::fileExists(path) && !osgDB::makeDirectory(path))
     {
@@ -147,12 +140,12 @@ DriverConfigOptions   ( options ),
 _L2CacheSize          ( 16 ),
 _bilinearReprojection ( true ),
 _coverage             ( false )
-{ 
+{
     fromConfig( _conf );
 }
 
 
-Config 
+Config
 TileSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
@@ -161,7 +154,7 @@ TileSourceOptions::getConfig() const
     conf.set( "bilinear_reprojection", _bilinearReprojection );
     conf.set( "coverage", _coverage );
     conf.set( "osg_option_string", _osgOptionString );
-    conf.setObj( "profile", _profileOptions );
+    conf.set( "profile", _profileOptions );
     return conf;
 }
 
@@ -177,12 +170,12 @@ TileSourceOptions::mergeConfig( const Config& conf )
 void
 TileSourceOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "blacklist_filename", _blacklistFilename);
-    conf.getIfSet( "l2_cache_size", _L2CacheSize );
-    conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
-    conf.getIfSet( "coverage", _coverage );
-    conf.getIfSet( "osg_option_string", _osgOptionString );
-    conf.getObjIfSet( "profile", _profileOptions );
+    conf.get( "blacklist_filename", _blacklistFilename);
+    conf.get( "l2_cache_size", _L2CacheSize );
+    conf.get( "bilinear_reprojection", _bilinearReprojection );
+    conf.get( "coverage", _coverage );
+    conf.get( "osg_option_string", _osgOptionString );
+    conf.get( "profile", _profileOptions );
 }
 
 
@@ -212,7 +205,7 @@ _maxValidValue(  32000.0f )
         _blacklistFilename = _options.blacklistFilename().value();
     }
 
-    
+
     if (!_blacklistFilename.empty() && osgDB::fileExists(_blacklistFilename))
     {
         _blacklist = TileBlacklist::read(_blacklistFilename);
@@ -288,7 +281,7 @@ TileSource::open(const Mode&           openMode,
             {
                 _status = status;
             }
-            else 
+            else
             {
                 _status = Status::Error("No profile available");
             }
@@ -318,7 +311,7 @@ TileSource::setPixelsPerTile(unsigned size)
 
 osg::Image*
 TileSource::createImage(const TileKey&        key,
-                        ImageOperation*       prepOp, 
+                        ImageOperation*       prepOp,
                         ProgressCallback*     progress )
 {
     if (getStatus().isError())
@@ -335,7 +328,7 @@ TileSource::createImage(const TileKey&        key,
     osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
     // Check for cancelation. The TileSource implementation should do this
-    // internally but we check here once last time just in case the 
+    // internally but we check here once last time just in case the
     // implementation does not.
     if (progress && progress->isCanceled())
     {
@@ -357,7 +350,7 @@ TileSource::createImage(const TileKey&        key,
 
 osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
-                              HeightFieldOperation* prepOp, 
+                              HeightFieldOperation* prepOp,
                               ProgressCallback*     progress )
 {
     if (getStatus().isError())
@@ -374,9 +367,9 @@ TileSource::createHeightField(const TileKey&        key,
     }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
-    
+
     // Check for cancelation. The TileSource implementation should do this
-    // internally but we check here once last time just in case the 
+    // internally but we check here once last time just in case the
     // implementation does not.
     if (progress && progress->isCanceled())
     {
@@ -414,14 +407,14 @@ TileSource::createHeightField(const TileKey&        key,
     {
         ImageToHeightFieldConverter conv;
         hf = conv.convert( image.get() );
-    }      
+    }
     return hf;
 }
 
 bool
 TileSource::storeHeightField(const TileKey&     key,
-                             osg::HeightField*  hf,
-                              ProgressCallback* progress)
+                             const osg::HeightField*  hf,
+                             ProgressCallback* progress)
 {
     if (getStatus().isError() || hf == 0L )
         return 0L;
@@ -436,7 +429,7 @@ TileSource::storeHeightField(const TileKey&     key,
 }
 
 bool
-TileSource::isOK() const 
+TileSource::isOK() const
 {
     return _status.isOK();
 }

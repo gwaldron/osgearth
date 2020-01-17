@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,8 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Ephemeris>
-#include <osg/CoordinateSystemNode>
-#include <sstream>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -59,13 +57,14 @@ namespace
     struct Sun
     {
         // http://www.stjarnhimlen.se/comp/tutorial.html#5
+        // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
         CelestialBody getPosition(const DateTime& dt) const
         {
             static const osg::EllipsoidModel WGS84;
 
-            const double JD_REFTIME = 2451544;
+            // Reference to 1999Dec31.0TDT
+            const double JD_REFTIME = DateTime(1999,12,31,0.0).getJulianDay();
             double d = dt.getJulianDay() - JD_REFTIME;
-            //double d = dayNumber(dt.year(), dt.month(), dt.day(), dt.hours());
 
             double w = 282.9404 + 4.70935E-5 * d;
             const double a = 1.0;
@@ -133,11 +132,25 @@ namespace
             }
 #endif
 
-            WGS84.convertLatLongHeightToXYZ(
-                sun.latitude.as(Units::RADIANS),
-                sun.longitude.as(Units::RADIANS),
-                sun.altitude.as(Units::METERS),
-                sun.geocentric.x(), sun.geocentric.y(), sun.geocentric.z());
+            // geocentric:
+            {
+                WGS84.convertLatLongHeightToXYZ(
+                    sun.latitude.as(Units::RADIANS),
+                    sun.longitude.as(Units::RADIANS),
+                    sun.altitude.as(Units::METERS),
+                    sun.geocentric.x(), sun.geocentric.y(), sun.geocentric.z());
+            }
+
+            // ECI:
+            {
+                double RA = sun.rightAscension.as(Units::RADIANS);
+                double DECL = sun.declination.as(Units::RADIANS);
+                double R = sun.altitude.as(Units::METERS);
+                sun.eci.set(
+                    R*cos(DECL)*cos(RA),
+                    R*cos(DECL)*sin(RA),
+                    R*sin(DECL));
+            }
 
             //OE_DEBUG << "RA = " << RA << ", DECL = " << DECL << ", LAT = " << r2d(out_lat) << ", LON = " << r2d(out_lon) << std::endl;
 
@@ -155,11 +168,10 @@ namespace
         CelestialBody getPosition(const DateTime& dt) const
         {
             static const osg::EllipsoidModel WGS84;
-
-            const double JD_REFTIME = 2451544;
+            
+            // Reference to 1999Dec31.0TDT
+            const double JD_REFTIME = DateTime(1999,12,31,0.0).getJulianDay();
             double d = dt.getJulianDay() - JD_REFTIME;
-            //double d = dayNumber(year, month, date, hoursUTC);
-
             double N = d2r(125.1228 - 0.0529538083 * d);  nrad(N);
             double i = d2r(5.1454);                       
             double w = d2r(318.0634 + 0.1643573223 * d);  nrad(w);
@@ -252,7 +264,8 @@ namespace
             double Decl = atan2(ze, sqrt(xe*xe + ye*ye));
           
             // finally, adjust for the time of day (rotation of the earth).
-            double UT = d2r(d - floor(d)); nrad(UT);
+            double UT = 2.0*osg::PI * (d - floor(d));
+            //double UT = d - floor(d); // 0..1
             double GMST0 = Ls + d2r(180.0); nrad(GMST0);
 
             // Note. The paper creates a "correction" called called "topographic RA/DECL"
@@ -274,11 +287,26 @@ namespace
             moon.longitude.set(earthLon, Units::RADIANS);
             moon.altitude.set(r, Units::METERS);
 
-            WGS84.convertLatLongHeightToXYZ(
-                moon.latitude.as(Units::RADIANS),
-                moon.longitude.as(Units::RADIANS),
-                moon.altitude.as(Units::METERS),
-                moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());            
+            // geocentric:
+            {
+                WGS84.convertLatLongHeightToXYZ(
+                    moon.latitude.as(Units::RADIANS),
+                    moon.longitude.as(Units::RADIANS),
+                    moon.altitude.as(Units::METERS),
+                    moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());
+            }
+
+            // ECI:
+            {
+                double RA = moon.rightAscension.as(Units::RADIANS);
+                double DECL = moon.declination.as(Units::RADIANS);
+                double R = moon.altitude.as(Units::METERS);
+                moon.eci.set(
+                    R*cos(DECL)*cos(RA),
+                    R*cos(DECL)*sin(RA),
+                    R*sin(DECL));
+            }
+
 
             return moon;
         }

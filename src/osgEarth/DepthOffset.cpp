@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,16 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/DepthOffset>
-#include <osgEarth/StringUtils>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 
-#include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Depth>
 
@@ -36,10 +32,6 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
-
-// vertex-only method - just pull the actual vertex. test for a while
-// and accept if it works consistently.
-#define VERTEX_ONLY_METHOD 1
 
 //------------------------------------------------------------------------
 
@@ -98,12 +90,12 @@ _minRange(     1000.0f ),
 _maxRange( 10000000.0f ),
 _auto    ( true )
 {
-    conf.getIfSet( "enabled",   _enabled );
-    conf.getIfSet( "min_bias",  _minBias );
-    conf.getIfSet( "max_bias",  _maxBias );
-    conf.getIfSet( "min_range", _minRange );
-    conf.getIfSet( "max_range", _maxRange );
-    conf.getIfSet( "auto",      _auto );
+    conf.get( "enabled",   _enabled );
+    conf.get( "min_bias",  _minBias );
+    conf.get( "max_bias",  _maxBias );
+    conf.get( "min_range", _minRange );
+    conf.get( "max_range", _maxRange );
+    conf.get( "auto",      _auto );
 }
 
 
@@ -111,12 +103,12 @@ Config
 DepthOffsetOptions::getConfig() const
 {
     Config conf("depth_offset");
-    conf.addIfSet( "enabled",   _enabled );
-    conf.addIfSet( "min_bias",  _minBias );
-    conf.addIfSet( "max_bias",  _maxBias );
-    conf.addIfSet( "min_range", _minRange );
-    conf.addIfSet( "max_range", _maxRange );
-    conf.addIfSet( "auto",      _auto );
+    conf.set( "enabled",   _enabled );
+    conf.set( "min_bias",  _minBias );
+    conf.set( "max_bias",  _maxBias );
+    conf.set( "min_range", _minRange );
+    conf.set( "max_range", _maxRange );
+    conf.set( "auto",      _auto );
     return conf;
 }
 
@@ -142,10 +134,7 @@ DepthOffsetAdapter::init()
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        _minBiasUniform  = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_minBias");
-        _maxBiasUniform  = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_maxBias");
-        _minRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_minRange");
-        _maxRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_maxRange");
+        _paramsUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_DepthOffset_params");
         updateUniforms();
     }
 }
@@ -174,10 +163,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
 
         // uninstall uniforms and shaders.
         osg::StateSet* s = _graph->getStateSet();
-        s->removeUniform( _minBiasUniform.get() );
-        s->removeUniform( _maxBiasUniform.get() );
-        s->removeUniform( _minRangeUniform.get() );
-        s->removeUniform( _maxRangeUniform.get() );
+        s->removeUniform( _paramsUniform.get() );
         
         shaders.unload( VirtualProgram::get(s), shaders.DepthOffsetVertex );
 
@@ -194,12 +180,11 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         // so the stateset doesn't get merged by a state set optimizer
         s->setDataVariance(s->DYNAMIC);
 
-        s->addUniform( _minBiasUniform.get() );
-        s->addUniform( _maxBiasUniform.get() );
-        s->addUniform( _minRangeUniform.get() );
-        s->addUniform( _maxRangeUniform.get() );
+        s->addUniform( _paramsUniform.get() );
         
-        shaders.load(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);    
+        VirtualProgram* vp = VirtualProgram::getOrCreate(s);
+        vp->setName("DepthOffset");
+        shaders.load(vp, shaders.DepthOffsetVertex);    
 
         // disable depth writes
         s->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false), 1);
@@ -220,10 +205,11 @@ DepthOffsetAdapter::updateUniforms()
 {
     if ( !_supported ) return;
 
-    _minBiasUniform->set( (float)_options.minBias()->as(Units::METERS) );
-    _maxBiasUniform->set( (float)_options.maxBias()->as(Units::METERS) );
-    _minRangeUniform->set( (float)_options.minRange()->as(Units::METERS) );
-    _maxRangeUniform->set( (float)_options.maxRange()->as(Units::METERS) );
+    _paramsUniform->set(osg::Vec4f(
+        (float)_options.minBias()->as(Units::METERS),
+        (float)_options.maxBias()->as(Units::METERS),
+        (float)_options.minRange()->as(Units::METERS),
+        (float)_options.maxRange()->as(Units::METERS)));
 }
 
 void 
@@ -255,7 +241,7 @@ DepthOffsetAdapter::recalculate()
         {
             GeometryAnalysisVisitor v;
             _graph->accept( v );
-            float maxLen = std::max(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
+            float maxLen = osg::maximum(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
             _options.minRange() = sqrtf(maxLen) * 19.0f;
             _dirty = false;
             OE_TEST << LC << "Recalcluated." << std::endl;

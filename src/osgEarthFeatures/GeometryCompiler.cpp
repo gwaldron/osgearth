@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,7 +66,7 @@ GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
 _maxGranularity_deg    ( 10.0 ),
 _mergeGeometry         ( true ),
 _clustering            ( false ),
-_instancing            ( false ),
+_instancing            ( true ),
 _ignoreAlt             ( false ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
@@ -75,7 +75,8 @@ _optimize              ( false ),
 _optimizeVertexOrdering( true ),
 _validate              ( false ),
 _maxPolyTilingAngle    ( 45.0f ),
-_useGPULines           ( false )
+_useGPULines           ( false ),
+_useOSGTessellator     ( false )
 {
     if (::getenv("OSGEARTH_GPU_SCREEN_SPACE_LINES") != 0L)
     {
@@ -98,7 +99,8 @@ _optimize              ( s_defaults.optimize().value() ),
 _optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
 _validate              ( s_defaults.validate().value() ),
 _maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
-_useGPULines           ( s_defaults.useGPUScreenSpaceLines().value() )
+_useGPULines           ( s_defaults.useGPUScreenSpaceLines().value() ),
+_useOSGTessellator     ( s_defaults.useOSGTessellator().value() )
 {
     fromConfig(conf.getConfig());
 }
@@ -106,48 +108,51 @@ _useGPULines           ( s_defaults.useGPUScreenSpaceLines().value() )
 void
 GeometryCompilerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet   ( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet   ( "merge_geometry",   _mergeGeometry );
-    conf.getIfSet   ( "clustering",       _clustering );
-    conf.getIfSet   ( "instancing",       _instancing );
-    conf.getObjIfSet( "feature_name",     _featureNameExpr );
-    conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
-    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
-    conf.getIfSet   ( "optimize", _optimize );
-    conf.getIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.getIfSet   ( "validate", _validate );
-    conf.getIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.getIfSet   ( "use_gpu_screen_space_lines", _useGPULines );
+    conf.get( "max_granularity",  _maxGranularity_deg );
+    conf.get( "merge_geometry",   _mergeGeometry );
+    conf.get( "clustering",       _clustering );
+    conf.get( "instancing",       _instancing );
+    conf.get( "feature_name",     _featureNameExpr );
+    conf.get( "ignore_altitude",  _ignoreAlt );
+    conf.get( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.get( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.get( "optimize_state_sharing", _optimizeStateSharing );
+    conf.get( "optimize", _optimize );
+    conf.get( "optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.get( "validate", _validate );
+    conf.get( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.get( "use_gpu_screen_space_lines", _useGPULines );
+    conf.get( "use_osg_tessellator", _useOSGTessellator );
+    
 
-    conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+    conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.get( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 }
 
 Config
 GeometryCompilerOptions::getConfig() const
 {
     Config conf;
-    conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
-    conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
-    conf.addIfSet   ( "clustering",       _clustering );
-    conf.addIfSet   ( "instancing",       _instancing );
-    conf.addObjIfSet( "feature_name",     _featureNameExpr );
-    conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
-    conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
-    conf.addIfSet   ( "optimize", _optimize );
-    conf.addIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.addIfSet   ( "validate", _validate );
-    conf.addIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.addIfSet   ( "use_gpu_screen_space_lines", _useGPULines );
+    conf.set( "max_granularity",  _maxGranularity_deg );
+    conf.set( "merge_geometry",   _mergeGeometry );
+    conf.set( "clustering",       _clustering );
+    conf.set( "instancing",       _instancing );
+    conf.set( "feature_name",     _featureNameExpr );
+    conf.set( "ignore_altitude",  _ignoreAlt );
+    conf.set( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.set( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.set( "optimize_state_sharing", _optimizeStateSharing );
+    conf.set( "optimize", _optimize );
+    conf.set( "optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.set( "validate", _validate );
+    conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
+    conf.set( "use_gpu_screen_space_lines", _useGPULines );
+    conf.set( "use_osg_tessellator", _useOSGTessellator );
 
-    conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+    conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.set( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
     return conf;
 }
 
@@ -436,7 +441,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
-        //filter.useGPULines()    = *_options.useGPUScreenSpaceLines();
+        filter.shaderPolicy()   = *_options.shaderPolicy();
+        filter.useOSGTessellator() = *_options.useOSGTessellator();
 
         if (_options.maxPolygonTilingAngle().isSet())
             filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
@@ -460,7 +466,14 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if ( text || icon )
     {
-        if ( altRequired )
+        // Only clamp annotation types when the technique is 
+        // explicity set to MAP. Otherwise, the annotation subsystem
+        // will automatically use SCENE clamping.
+        bool altRequiredForAnnotations =
+            altRequired &&
+            altitude->technique().isSetTo(altitude->TECHNIQUE_MAP);
+
+        if ( altRequiredForAnnotations )
         {
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
@@ -485,7 +498,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             // no ss cache because we will optimize later.
             Registry::shaderGenerator().run( 
                 resultGroup.get(),
-                "osgEarth.GeomCompiler" );
+                "GeometryCompiler shadergen" );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
         {
@@ -548,7 +561,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     
 
     //test: dump the tile to disk
-    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
+    //OE_WARN << "Writing GC node file to out.osgt..." << std::endl;
+    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osgt" );
 
 #ifdef PROFILING
     static double totalTime = 0.0;

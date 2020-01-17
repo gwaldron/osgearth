@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -87,7 +87,7 @@ public:
         {
             if ( _features->getFeatureProfile() )
             {
-                osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
+                osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(progress);
                 if ( cursor.valid() && cursor->hasMore() )
                 {
                     Feature* f = cursor->nextFeature();

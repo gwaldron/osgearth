@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,13 +66,13 @@ namespace osgEarth { namespace Util
     public:
         virtual Config getConfig() const;
 
-        virtual void fromConfig(const Config& conf);
-
     protected:
-        void mergeConfig(const Config& conf) {
+        virtual void mergeConfig(const Config& conf) {
             VisibleLayerOptions::mergeConfig(conf);
             fromConfig(conf);
         }
+
+        void fromConfig(const Config& conf);
 
         optional<URI> _sqidURI;
         osg::ref_ptr<StyleSheet> _styleSheet;
@@ -89,7 +89,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MGRSGraticule : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions);
+        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions, mgrs_graticule);
 
         //! Constructs a default graticule
         MGRSGraticule();
@@ -115,7 +115,7 @@ namespace osgEarth { namespace Util
 
         virtual void removedFromMap(const Map* map);
         
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         virtual void init();
 
@@ -134,8 +134,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const Profile> _profile;
 
         osg::ref_ptr<FeatureProfile> _featureProfile;
-
-        osg::ref_ptr<osg::ClipPlane> _clipPlane;
 
         osg::ref_ptr<osg::Group> _root;
 

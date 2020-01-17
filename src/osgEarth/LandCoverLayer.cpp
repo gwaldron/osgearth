@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,12 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/LandCoverLayer>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
-#include <osgEarth/MetaTile>
 #include <osgEarth/SimplexNoise>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
@@ -98,9 +95,7 @@ namespace
 
         void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
         {
-            if (sourceLayer->getEnabled() && 
-                sourceLayer->isKeyInLegalRange(key) &&
-                sourceLayer->mayHaveDataInExtent(key.getExtent()))
+            if (sourceLayer->getEnabled())
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {
@@ -127,7 +122,7 @@ namespace
                 // cannot interpolate coverage data:
                 read->setBilinear( false );
 
-                warp = sourceLayer->options().warp().get();
+                warp = sourceLayer->options().warp().get();                
             }
         }
     };
@@ -188,7 +183,7 @@ namespace
 
         osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
         
-        CachePolicy getCachePolicyHint() const {
+        CachePolicy getCachePolicyHint(const Profile* targetProfile) const {
             return CachePolicy::NO_CACHE;
         }
 
@@ -233,13 +228,17 @@ namespace
             setProfile( profile );
         }
 
+        DataExtentList combinedExtents;
+
         for(unsigned i=0; i<options().coverages().size(); ++i)
         {
             LandCoverCoverageLayerOptions coverageOptions = options().coverages()[i];
             if (coverageOptions.enabled() == false)
                 continue;
 
-            coverageOptions.cachePolicy() = CachePolicy::NO_CACHE; // TODO: yes? no?
+            // We never want to cache data from a coverage, because the "parent" layer
+            // will be caching the entire result of a multi-coverage composite.
+            coverageOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
             // Create the coverage layer:
             LandCoverCoverageLayer* layer = new LandCoverCoverageLayer( coverageOptions );
@@ -258,14 +257,11 @@ namespace
             {
                 OE_WARN << "Layer \"" << layer->getName() << "\": " << s.toString() << std::endl;
             }
-
-            // Integrate data extents into this tile source.
-            const DataExtentList& de = layer->getDataExtents();
-            for(DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
-            {
-                getDataExtents().push_back(*dei);
-            }
         }
+
+        // Normally we would collect and store the layer's DataExtents here.
+        // Since this is possibly a composited layer with warping, we just
+        // let it default so we can oversample the data with warping.
 
         return STATUS_OK;
     }
@@ -297,7 +293,7 @@ namespace
         ImageUtils::markAsUnNormalized(out.get(), true);
 
         // Allocate a suitable format:
-        GLint internalFormat = GL_LUMINANCE32F_ARB;
+        GLint internalFormat = GL_R16F;
 
         int tilesize = getPixelsPerTile();
 
@@ -311,11 +307,7 @@ namespace
         float du = 1.0f / (float)(out->s()-1);
         float dv = 1.0f / (float)(out->t()-1);
 
-        osg::Vec4 nodata;
-        if (internalFormat == GL_LUMINANCE16F_ARB)
-            nodata.set(-32768, -32768, -32768, -32768);
-        else
-            nodata.set(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
+        osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
 
         unsigned pixelsWritten = 0u;
 
@@ -327,7 +319,10 @@ namespace
                 for(int L = layers.size()-1; L >= 0 && !wrotePixel; --L)
                 {
                     if (progress && progress->isCanceled())
+                    {
+                        OE_DEBUG << LC << key.str() << " canceled" << std::endl;
                         return 0L;
+                    }
 
                     ILayer& layer = layers[L];
                     if ( !layer.valid )
@@ -412,13 +407,16 @@ _warp(0.0f)
 void
 LandCoverLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("warp", _warp);
-    conf.getIfSet("noise_lod", _noiseLOD);
+    conf.get("warp", _warp);
+    conf.get("noise_lod", _noiseLOD);
 
     ConfigSet layerConfs = conf.child("coverages").children("coverage");
     for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
     {
-        _coverages.push_back(LandCoverCoverageLayerOptions(*i));
+        // Must set this here because of an artichectural vestige that will be resolved in 3.x
+        Config li = *i;
+        li.set("coverage", true);
+        _coverages.push_back(LandCoverCoverageLayerOptions(li));
     }
 }
 
@@ -426,10 +424,9 @@ Config
 LandCoverLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
-    conf.key() = "land_cover";
 
-    conf.addIfSet("warp", _warp);
-    conf.addIfSet("noise_lod", _noiseLOD);
+    conf.set("warp", _warp);
+    conf.set("noise_lod", _noiseLOD);
 
     if (_coverages.size() > 0)
     {
@@ -440,7 +437,7 @@ LandCoverLayerOptions::getConfig() const
         {
             images.add("coverage", i->getConfig());
         }
-        conf.update(images);
+        conf.set(images);
     }
 
     return conf;
@@ -501,121 +498,173 @@ LandCoverLayer::createTileSource()
     return new LandCoverTileSource(options());
 }
 
-GeoImage
-LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+bool
+LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, double u, double v, osg::Vec4f& output, ProgressCallback* progress)
 {
-    if (true) // warping enabled
+    // Find the key containing the uv coordinates.
+    int x = int(floor(u));
+    int y = int(floor(v));
+    TileKey actualKey = (x != 0 || y != 0)? key.createNeighborKey(x, -y) : key;
+
+    if (actualKey.valid())
     {
-        MetaImage metaImage;
+        // Transform the uv to be relative to the tile it's actually in.
+        // Don't forget: stupid computer requires us to handle negatives by hand.
+        u = u >= 0.0 ? fmod(u, 1.0) : 1.0+fmod(u, 1.0);
+        v = v >= 0.0 ? fmod(v, 1.0) : 1.0+fmod(v, 1.0);
 
-        for (int x = -1; x <= 1; ++x)
+        MetaImageComponent* comp = 0L;
+
+        MetaImage::iterator i = metaImage.find(actualKey);
+        if (i != metaImage.end())
         {
-            for (int y = -1; y <= 1; ++y)
-            {
-                if (progress && progress->isCanceled())
-                    return GeoImage::INVALID;
-
-                // compute the neighoring key:
-                TileKey subkey = key.createNeighborKey(x, y);
-                if (subkey.valid())
-                {
-                    // compute the closest ancestor key with actual data for the neighbor key:
-                    TileKey bestkey = getBestAvailableTileKey(subkey);
-                    if (bestkey.valid())
-                    {
-                        // load the image and store it to the metaimage.
-                        GeoImage tile = ImageLayer::createImageImplementation(bestkey, progress);
-                        if (tile.valid())
-                        {
-                            osg::Matrix scaleBias;
-                            subkey.getExtent().createScaleBias(bestkey.getExtent(), scaleBias);
-                            metaImage.setImage(x, y, tile.getImage(), scaleBias);
-                        }
-                    }
-                }
-            }
+            comp = &i->second;
         }
-
-        const osg::Image* mainImage = metaImage.getImage(0, 0);
-        if ( !mainImage)
-            return GeoImage::INVALID;
-
-        // new image for the warped data:
-        osg::ref_ptr<osg::Image> image = new osg::Image();
-        image->allocateImage(
-            mainImage->s(),
-            mainImage->t(),
-            mainImage->r(),
-            mainImage->getPixelFormat(),
-            mainImage->getDataType(),
-            mainImage->getPacking());
-        image->setInternalTextureFormat(mainImage->getInternalTextureFormat());
-        ImageUtils::markAsUnNormalized(image.get(), true);
-
-        ImageUtils::PixelWriter write(image.get());
-
-        // Configure the noise function:
-        SimplexNoise noiseGen;
-        noiseGen.setNormalize(true);
-        noiseGen.setRange(0.0, 1.0);
-        noiseGen.setFrequency(4.0);
-        noiseGen.setPersistence(0.8);
-        noiseGen.setLacunarity(2.2);
-        noiseGen.setOctaves(8);
-
-        osg::Vec2d cov;
-        osg::Vec2 noiseCoords;
-        osg::Vec4 pixel;
-        osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
-        
-        float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
-
-        for (int t = 0; t < image->t(); ++t)
+        else
         {
-            double v = (double)t / (double)(image->t() - 1);
-            for (int s = 0; s < image->s(); ++s)
+            // compute the closest ancestor key with actual data for the neighbor key:
+            TileKey bestkey = getBestAvailableTileKey(actualKey);
+
+            // should not need this fallback loop but let's do it anyway
+            GeoImage tile;
+            while (bestkey.valid() && !tile.valid())
             {
-                double u = (double)s / (double)(image->s() - 1);
-                
-                if (progress && progress->isCanceled())
-                    return GeoImage::INVALID;
-
-                cov.set(u, v);
-
-                // first read the unwarped pixel to get the warping value.
-                // (warp is stored in pixel.g)
-                metaImage.read(cov.x(), cov.y(), pixel);
-                float warp = pixel.g() * pdL;
-
-                noiseCoords = getSplatCoords(key, options().noiseLOD().get(), cov);
-                double noise = getNoise(noiseGen, noiseCoords);
-                cov = warpCoverageCoords(cov, noise, warp);
-
-                if (metaImage.read(cov.x(), cov.y(), pixel))
+                // load the image and store it to the metaimage.
+                tile = ImageLayer::createImageImplementation(bestkey, progress);
+                if (tile.valid())
                 {
-                    // only apply the warping if the location of the warped pixel
-                    // came from the same source layer. Otherwise you will get some
-                    // unsavory speckling. (Layer index is stored in pixel.b)
-                    osg::Vec4 unwarpedPixel;
-                    if (metaImage.read(u, v, unwarpedPixel) && pixel.b() != unwarpedPixel.b())
-                        write(unwarpedPixel, s, t);
-                    else
-                        write(pixel, s, t);
+                    comp = &metaImage[actualKey];
+                    comp->image = tile.getImage();
+                    actualKey.getExtent().createScaleBias(bestkey.getExtent(), comp->scaleBias);
+                    comp->pixel.setImage(comp->image.get());
+                    comp->pixel.setBilinear(false);
                 }
                 else
                 {
-                    write(nodata, s, t);
+                    bestkey = bestkey.createParentKey();
                 }
+
+                if (progress && progress->isCanceled())
+                    return false;
             }
         }
 
-        return GeoImage(image.get(), key.getExtent());
+        if (comp)
+        {
+            // scale/bias to this tile's extent and sample the image.
+            u = u * comp->scaleBias(0, 0) + comp->scaleBias(3, 0);
+            v = v * comp->scaleBias(1, 1) + comp->scaleBias(3, 1);
+            output = comp->pixel(u, v);
+            return true;
+        }
+    }
+    return false;
+}
+
+GeoImage
+LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+{
+    MetaImage metaImage;
+
+    // Grab a test sample to see what the output parameters should be:
+    osg::Vec4f dummy;
+    if (!readMetaImage(metaImage, getBestAvailableTileKey(key), 0.5, 0.5, dummy, progress))
+        return GeoImage::INVALID;
+    osg::Image* mainImage = metaImage.begin()->second.image.get();
+        
+    // Allocate the output image:
+    osg::ref_ptr<osg::Image> output = new osg::Image();
+    output->allocateImage(
+        mainImage->s(),
+        mainImage->t(),
+        mainImage->r(),
+        mainImage->getPixelFormat(),
+        mainImage->getDataType(),
+        mainImage->getPacking());
+    output->setInternalTextureFormat(mainImage->getInternalTextureFormat());
+    ImageUtils::markAsUnNormalized(output.get(), true);
+    ImageUtils::PixelWriter write(output.get());
+
+    // Configure the noise function:
+    SimplexNoise noiseGen;
+    noiseGen.setNormalize(true);
+    noiseGen.setRange(0.0, 1.0);
+    noiseGen.setFrequency(4.0);
+    noiseGen.setPersistence(0.8);
+    noiseGen.setLacunarity(2.2);
+    noiseGen.setOctaves(8);
+
+    osg::Vec2d cov;
+    osg::Vec2 noiseCoords;
+    osg::Vec4 pixel;
+    osg::Vec4 warpedPixel;
+    osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
+        
+    // scales the key's LOD to the noise function's LOD:
+    float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
+
+    // loop over the pixels and write each one.
+    for (int t = 0; t < output->t(); ++t)
+    {
+        double v = (double)t / (double)(output->t() - 1);
+        for (int s = 0; s < output->s(); ++s)
+        {
+            double u = (double)s / (double)(output->s() - 1);
+
+            // coverage sampling coordinates:
+            cov.set(u, v);
+
+            // first read the unwarped pixel to get the warping value.
+            // (warp is stored in pixel.g)
+            bool wrotePixel = false;
+            if (readMetaImage(metaImage, key, u, v, pixel, progress) &&
+                pixel.g() != NO_DATA_VALUE)
+            {
+                float warp = pixel.g() * pdL;
+                if (warp != 0.0)
+                {
+                    // use the noise function to warp the uv coordinates:
+                    noiseCoords = getSplatCoords(key, options().noiseLOD().get(), cov);
+                    double noise = getNoise(noiseGen, noiseCoords);
+                    cov = warpCoverageCoords(cov, noise, warp);
+
+                    // now read the pixel at the warped location:
+                    if (readMetaImage(metaImage, key, cov.x(), cov.y(), warpedPixel, progress) &&
+                        warpedPixel.b() != NO_DATA_VALUE)
+                    {
+                        // only apply the warping if the location of the warped pixel
+                        // came from the same source layer. Otherwise you will get some
+                        // unsavory speckling. (Layer index is stored in pixel.b)
+                        if (pixel.b() == warpedPixel.b())
+                            write(warpedPixel, s, t);
+                        else
+                            write(pixel, s, t);
+
+                        wrotePixel = true;
+                    }
+                }
+                else
+                {
+                    write(pixel, s, t);
+                    wrotePixel = true;
+                }
+            }
+
+            // if we didn't get a coverage value, just write NODATA
+            if (!wrotePixel)
+            {
+                write(nodata, s, t);
+            }            
+                
+            if (progress && progress->isCanceled())
+            {
+                OE_DEBUG << LC << key.str() << " canceled" << std::endl;
+                return GeoImage::INVALID;
+            }
+        }
     }
 
-    else
-    {
-        return ImageLayer::createImageImplementation(key, progress);
-    }
+    return GeoImage(output.get(), key.getExtent());
 }
 
 const LandCoverClass*

@@ -116,7 +116,7 @@ namespace
           osgEarth::ModelLayer* model = dynamic_cast<osgEarth::ModelLayer*>(_layer.get());
           if (model && _map.valid())
           {
-            osg::ref_ptr<osg::Node> temp = model->getOrCreateNode();
+            osg::ref_ptr<osg::Node> temp = model->getNode();
             if (temp.valid())
             {
               osg::NodePathList nodePaths = temp->getParentalNodePaths();

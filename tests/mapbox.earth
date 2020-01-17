@@ -32,9 +32,6 @@ Please change your API key to your own MapBox account, this key is for demo purp
             <invert_y>true</invert_y>
         </features>
 
-
-        <instancing>true</instancing>
-
         <feature_indexing enabled="true"></feature_indexing>
 
         <styles>
@@ -72,7 +69,7 @@ Please change your API key to your own MapBox account, this key is for demo purp
                 }
 
                 forest {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;
@@ -82,7 +79,7 @@ Please change your API key to your own MapBox account, this key is for demo purp
                 }
 
                 grass {
-                   model:               "../data/tree.ive";
+                   model:               "../data/tree.osg";
                    model-placement:     random;
                    model-density:       10000;
                    model-scale:         2.5;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MapFrame>
-#include <osgEarth/Cache>
 #include <osgEarth/Map>
-#include <osgEarth/ElevationPool>
 
 using namespace osgEarth;
 
@@ -39,8 +37,7 @@ _map                 ( rhs._map.get() ),
 _mapInfo             ( rhs._mapInfo ),
 _highestMinLevel     ( rhs._highestMinLevel ),
 _mapDataModelRevision( rhs._mapDataModelRevision ),
-_layers              ( rhs._layers ),
-_pool                ( rhs._pool.get() )
+_layers              ( rhs._layers )
 {
     //no sync required here; we copied the arrays etc
 }
@@ -55,8 +52,9 @@ _highestMinLevel( 0 )
 }
 
 bool
-MapFrame::isValid() const
+MapFrame::valid() const
 {
+    // only a momentary result since this is an observer_ptr!
     return _map.valid();
 }
 
@@ -64,7 +62,6 @@ void
 MapFrame::setMap(const Map* map)
 {
     _layers.clear();
-    _pool = 0L;
 
     _map = map;
     if ( map )
@@ -81,10 +78,15 @@ MapFrame::setMap(const Map* map)
     }
 }
 
-ElevationPool*
+osg::ref_ptr<ElevationPool>
 MapFrame::getElevationPool() const
 {
-    return static_cast<ElevationPool*>(_pool.get());
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+    {
+        return osg::ref_ptr<ElevationPool>(map->getElevationPool());
+    }
+    else return 0L;
 }
 
 bool
@@ -95,12 +97,13 @@ MapFrame::sync()
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {
-        changed = map->sync( *this );
-        if ( changed )
+        if (map->getDataModelRevision() != _mapDataModelRevision)
         {
+            _layers.clear();
+            map->getLayers(_layers);
             refreshComputedValues();
+            _mapDataModelRevision = map->getDataModelRevision();
         }
-        _pool = map->getElevationPool();
     }
     else
     {
@@ -116,9 +119,6 @@ MapFrame::sync()
 bool
 MapFrame::needsSync() const
 {
-    if ( !isValid() )
-        return false;
-
     osg::ref_ptr<const Map> map;
     return 
         _map.lock(map) &&
@@ -129,19 +129,9 @@ void
 MapFrame::release()
 {
     _layers.clear();
-    _pool = 0L;
+    _elevationLayers.clear();
     _initialized = false;
     _highestMinLevel = 0;
-}
-
-UID
-MapFrame::getUID() const
-{
-    osg::ref_ptr<const Map> map;
-    if ( _map.lock(map) )
-        return map->getUID();
-    else
-        return (UID)0;
 }
 
 bool

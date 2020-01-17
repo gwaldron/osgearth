@@ -1,0 +1,703 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_SCREEN_SPACE_LAYOUT_CALLOUT_H
+#define OSGEARTH_SCREEN_SPACE_LAYOUT_CALLOUT_H 1
+
+#include <osgEarth/ScreenSpaceLayoutImpl>
+
+// https://github.com/JCash/voronoi
+#define JC_VORONOI_IMPLEMENTATION
+#define JCV_REAL_TYPE double
+#define JCV_ATAN2 atan2
+#define JCV_FLT_MAX 1.7976931348623157E+308
+#include "jc_voronoi.h"
+
+// whether to use the rotated axis-aligned bounding box method for
+// calculating a Voronoi site centroid (as opposed to a simple centroid)
+#define USE_ROTATED_AABB_CENTROID_METHOD 1
+
+
+namespace osgEarth { namespace Internal
+{
+    using namespace osgEarth;
+
+    struct jcv_point_comparator {
+        bool operator()(const jcv_point& a, const jcv_point& b) const {
+            if (a.x < b.x) return true;
+            else if (a.x > b.x) return false;
+            else return a.y < b.y;
+        }
+    };
+
+    /**
+    * Custom RenderLeaf sorting algorithm for deconflicting drawables
+    * as callouts.
+    */
+    struct CalloutImplementation : public osgUtil::RenderBin::SortCallback
+    {
+        struct BBox
+        {
+            BBox() : LL(DBL_MAX,DBL_MAX), UR(-DBL_MAX,-DBL_MAX) { }
+            void expandToInclude(double x, double y) {
+                LL.x() = osg::minimum(LL.x(), x);
+                UR.x() = osg::maximum(UR.x(), x);
+                LL.y() = osg::minimum(LL.y(), y);
+                UR.y() = osg::maximum(UR.y(), y);
+            }
+            osg::Vec2d LL, UR;
+        };
+
+        struct Element
+        {
+            osg::Drawable* _drawable;
+            osgEarth::Text* _text;
+            osgUtil::RenderLeaf* _leaf;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
+            unsigned _frame;
+            osg::Vec3d _anchor;
+            osg::Vec3d _offsetVector;
+            double _offsetLength;
+            unsigned _leaderLineIndex;
+
+            Element();
+            bool operator < (const Element&) const; // comparator
+            void move(float dir);
+        };
+
+        typedef std::map<osg::Drawable*, Element> Elements;
+
+        struct CameraLocal 
+        {
+            CameraLocal();
+            const osg::Camera* _camera;      // camera associated with the data structure
+            unsigned _frame;
+            osg::Matrix _scalebias;          // scale bias matrix for the viewport
+            Elements _elements;
+            osg::Matrix _vpm;
+            bool _vpmChanged;
+            osg::ref_ptr<LineDrawable> _leaders;
+            bool _leadersDirty;
+            osg::Vec4f _leaderColor;
+            std::vector<jcv_point> _points;
+            std::map<jcv_point, Element*, jcv_point_comparator> _lookup;
+            osg::ref_ptr<LineDrawable> _voronoi;
+
+            void initDebug();
+        };
+
+        ScreenSpaceLayoutContext* _context;
+        DeclutterSortFunctor* _customSortFunctor;
+        PerObjectFastMap<const osg::Camera*, CameraLocal> _cameraLocal;
+        bool _resetWhenViewChanges;
+
+        //! Constructor
+        CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f);
+
+        //! Override from SortCallback
+        void sortImplementation(osgUtil::RenderBin*);
+
+        void push(osgUtil::RenderLeaf* leaf, CameraLocal& local);
+
+        void sort(CameraLocal& local);
+    };
+
+    CalloutImplementation::Element::Element() :
+        _drawable(NULL),
+        _text(NULL),
+        _frame(0u),
+        _leaderLineIndex(INT_MAX),
+        _offsetVector(0,1,0)
+    {
+        //todo
+    }
+
+    bool CalloutImplementation::Element::operator<(const Element& rhs) const
+    {
+        return ((intptr_t)_drawable < (intptr_t)rhs._drawable);
+    }
+
+    void
+    CalloutImplementation::Element::move(float dir)
+    {
+        // rotate little more than 1/4 turn:
+        const double rotation = osg::PI / 16; //1.7; //osg::PI / 32; //1.6;
+        const osg::Quat q(dir*rotation, osg::Vec3d(0, 0, 1));
+        _offsetVector = q * _offsetVector;
+    }   
+
+    CalloutImplementation::CameraLocal::CameraLocal() :
+        _camera(0), 
+        _frame(0), 
+        _vpmChanged(true),
+        _leadersDirty(false),
+        _leaderColor(1,1,1,1)
+    {
+        _leaders = new LineDrawable(GL_LINES);
+        _leaders->setCullingActive(false);
+        _leaders->setDataVariance(osg::Object::DYNAMIC);
+        _leaders->setColor(_leaderColor);
+        _leaders->setLineSmooth(true);
+        GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+    }
+
+    void CalloutImplementation::CameraLocal::initDebug()
+    {
+        _voronoi = new LineDrawable(GL_LINES);
+        _voronoi->setCullingActive(false);
+        _voronoi->setDataVariance(osg::Object::DYNAMIC);
+        _voronoi->setColor(osg::Vec4f(1,0,0,1));
+        _voronoi->setLineWidth(1.0f);
+        GLUtils::setLighting(_voronoi->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+    }
+
+    CalloutImplementation::CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f) :
+        _context(context),
+        _customSortFunctor(f),
+        _resetWhenViewChanges(false)
+    {
+        //nop
+    }
+
+    namespace {
+        inline float signOf(float x) {
+            return x<0.0f? -1.0f: x>0.0f? 1.0f : 0.0f;
+        }
+    }
+
+    void CalloutImplementation::push(osgUtil::RenderLeaf* leaf, CameraLocal& local)
+    {
+        static Element prototype;
+        const osg::Vec3d zero(0,0,0);
+
+        osg::Drawable* drawable = leaf->_drawable.get();
+        std::pair<Elements::iterator,bool> result = local._elements.insert(std::make_pair(drawable,prototype));
+        Element& element = result.first->second;
+
+        bool isNew = 
+            (result.second == true) ||
+            (local._frame - element._frame > 1);
+
+        element._frame = local._frame;
+        element._leaf = leaf;
+
+        if (element._drawable == NULL)
+        {
+            element._drawable = drawable;
+            element._text = dynamic_cast<osgEarth::Text*>(drawable);
+            element._drawable->setDataVariance(osg::Object::DYNAMIC);
+        }
+
+        element._anchor = 
+            zero * 
+            (*leaf->_modelview) * 
+            (*leaf->_projection) * 
+            local._scalebias;
+
+        const osg::Viewport* vp = local._camera->getViewport();
+
+        if (isNew)
+        {
+            element._offsetVector = element._anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
+            element._offsetVector.normalize();
+        }
+        else if (_resetWhenViewChanges && local._vpmChanged)
+        {
+            element._offsetVector = element._anchor - osg::Vec3d(0.5*vp->width(), 0.5*vp->height(), 0.0);
+            element._offsetVector.normalize();
+        }
+
+        if (element._leaderLineIndex == INT_MAX)
+        {
+            element._leaderLineIndex = local._leaders->getNumVerts();
+            local._leaders->pushVertex(osg::Vec3f());
+            local._leaders->pushVertex(osg::Vec3f());
+            local._leadersDirty = true;
+        }
+
+        if (ScreenSpaceLayout::globallyEnabled)
+        {
+            double leaderLen = osg::minimum((double)_context->_options.leaderLineMaxLength().get(), element._offsetLength);
+            osg::Vec3d pos = element._anchor + element._offsetVector*leaderLen;
+
+            // alignment of text relative to the leader line
+            const float margin = 5.0f;
+            osg::Vec3d alignment;
+            const osg::BoundingBox& bb = element._drawable->getBoundingBox();
+            alignment.x() = element._offsetVector.x() * 0.5*(bb.xMax()-bb.xMin()) + margin*signOf(element._offsetVector.x());
+            alignment.y() = element._offsetVector.y() * 0.5*(bb.yMax()-bb.yMin()) + margin*signOf(element._offsetVector.y());
+
+            leaf->_modelview->makeTranslate(pos + alignment);
+
+            // and update the leader line endpoints
+            if (element._anchor != local._leaders->getVertex(element._leaderLineIndex))
+            {
+                local._leaders->setVertex(element._leaderLineIndex, element._anchor);
+            }
+            if (pos != local._leaders->getVertex(element._leaderLineIndex + 1))
+            {
+                local._leaders->setVertex(element._leaderLineIndex + 1, pos);
+            }
+
+            // and update the colors of the leader line
+            if (element._text)
+            {
+                osg::Vec4f color =
+                    _context->_options.leaderLineColor().isSet() ? _context->_options.leaderLineColor().get() :
+                    element._text->getDrawMode() & osgText::Text::BOUNDINGBOX ? element._text->getBoundingBoxColor() :
+                    local._leaderColor;
+
+                local._leaders->setColor(element._leaderLineIndex, color);
+                local._leaders->setColor(element._leaderLineIndex + 1, color);
+            }
+        }
+        else
+        {
+            leaf->_modelview->makeTranslate(element._anchor);
+        }
+    }
+
+    void CalloutImplementation::sort(CameraLocal& local)
+    {
+        if (local._elements.empty())
+            return;
+
+        const osg::Viewport* vp = local._camera->getViewport();
+
+        local._points.clear();
+        local._lookup.clear();
+
+        for (Elements::reverse_iterator i = local._elements.rbegin();
+            i != local._elements.rend();
+            ++i)
+        {
+            Element& element = i->second;
+
+            if (element._leaf != NULL)
+            {
+                if (element._frame == element._frame)
+                {
+                    // i.e., visible
+                    element._leaf->_depth = 1.0f;
+
+                    local._points.resize(local._points.size()+1);
+
+                    jcv_point& back = local._points.back();
+
+                    back.x = element._anchor.x();
+                    back.y = element._anchor.y();
+
+                    local._lookup[back] = &element;
+                }
+            }
+        }
+
+        // Use a Voronoi diagram to find the best location for each callout.
+        // Use the "visual center" of the point's site as the label location.
+        jcv_diagram diagram;
+        ::memset(&diagram, 0, sizeof(jcv_diagram));
+        jcv_rect bounds;
+        const double K = 0;
+        bounds.min.x = vp->x()+K, bounds.min.y = vp->y()+K;
+        bounds.max.x = vp->x() + vp->width()-K*2, bounds.max.y = vp->y() + vp->height()-K*2;
+        jcv_diagram_generate(local._points.size(), &local._points[0], &bounds, &diagram);
+
+        if (local._voronoi.valid())
+        {
+            local._voronoi->clear();
+        }
+
+#ifdef USE_ROTATED_AABB_CENTROID_METHOD
+        osg::Quat q;
+#endif
+
+        const jcv_site* sites = jcv_diagram_get_sites(&diagram);
+        for(int i=0; i<diagram.numsites; ++i)
+        {
+            const jcv_site* site = &sites[i];
+
+            Element* element = local._lookup[site->p];
+            if (element)
+            {
+#ifdef USE_ROTATED_AABB_CENTROID_METHOD
+                // This centroid-finding method calculates an axis-aligned bounding box formed by
+                // first rotating the site so that its longest edge is axis-aligned. This seems to
+                // provide a better centroid in some cases, esp for trianglar sites.
+
+                // first find the longest edge in the site:
+                const jcv_graphedge* edge = NULL;
+                const jcv_graphedge* longestEdge = NULL;
+
+                jcv_real maxLen2 = 0;
+                for(edge = site->edges; edge; edge = edge->next)
+                {
+                    jcv_real dx = edge->pos[1].x - edge->pos[0].x;
+                    jcv_real dy = edge->pos[1].y - edge->pos[1].y;
+                    jcv_real len2 = dx*dx + dy*dy;
+                    if (len2 > maxLen2)
+                    {
+                        maxLen2 = len2;
+                        longestEdge = edge;
+                    }
+                }
+
+                // now compute a rotation that transforms the longest edge so that 
+                // it is parallel with x=0
+                osg::Vec3d v(longestEdge->pos[1].x-longestEdge->pos[0].x, longestEdge->pos[1].y-longestEdge->pos[0].y, 0);
+                q.makeRotate(v, osg::Vec3d(0,1,0));
+
+                // now calculate an axis-aligned bounding box for the rotated site:
+                BBox bb;
+                const jcv_graphedge* lastEdge = NULL;
+                osg::Vec3d p0, p1;
+                for(edge = site->edges; edge; edge = edge->next)
+                {
+                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);                    
+                    p1.set(edge->pos[1].x, edge->pos[1].y, 0);
+
+                    if (local._voronoi.valid())
+                    {
+                        local._voronoi->pushVertex(p0);
+                        local._voronoi->pushVertex(p1);
+                    }
+
+                    // rotate the point into the aabb frame and incorporate it
+                    // into the bounding box.
+                    p0 = q*p0;
+                    bb.expandToInclude(p0.x(), p0.y());
+                }
+
+                // finally take the centroid and transform it back into the original frame:
+                osg::Vec3d centroid(
+                    bb.LL.x() + 0.5*(bb.UR.x()-bb.LL.x()),
+                    bb.LL.y() + 0.5*(bb.UR.y()-bb.LL.y()),
+                    0);
+                
+                centroid = q.inverse()*centroid;
+
+#else
+                // This centroid-finding method is the typical bounding-box centroid.
+                BBox bb;
+
+                const jcv_graphedge* edge = site->edges;
+                while(edge)
+                {
+                    bb.expandToInclude(edge->pos[0].x, edge->pos[0].y);
+
+                    if (local._voronoi.valid())
+                    {
+                        local._voronoi->pushVertex(osg::Vec3(edge->pos[0].x, edge->pos[0].y, 0));
+                        local._voronoi->pushVertex(osg::Vec3(edge->pos[1].x, edge->pos[1].y, 0));
+                    }
+
+                    edge = edge->next;
+                }
+
+                osg::Vec3d centroid(
+                    bb.LL.x() + 0.5*(bb.UR.x()-bb.LL.x()),
+                    bb.LL.y() + 0.5*(bb.UR.y()-bb.LL.y()),
+                    0);
+#endif
+
+                element->_offsetVector = centroid - element->_anchor;
+                element->_offsetLength = element->_offsetVector.length();
+                element->_offsetVector.normalize();
+            }
+        }
+        jcv_diagram_free(&diagram);
+
+        if (local._voronoi.valid())
+        {
+            local._voronoi->finish();
+        }
+    }
+
+    // runs in CULL thread after culling completes
+    void CalloutImplementation::sortImplementation(osgUtil::RenderBin* bin)
+    {
+        const ScreenSpaceLayoutOptions& options = _context->_options;
+
+        bin->copyLeavesFromStateGraphListToRenderLeafList();
+
+        osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
+
+        // first, sort the leaves:
+        if (_customSortFunctor && ScreenSpaceLayout::globallyEnabled)
+        {
+            // if there's a custom sorting function installed
+            std::sort(leaves.begin(), leaves.end(), SortContainer(*_customSortFunctor));
+        }
+        else if (options.sortByDistance() == true)
+        {
+            // default behavior:
+            std::sort(leaves.begin(), leaves.end(), SortFrontToBackPreservingGeodeTraversalOrder());
+        }
+
+        // nothing to sort? bail out
+        if (leaves.empty())
+            return;
+
+        // access the per-camera persistent data:
+        osg::Camera* cam = bin->getStage()->getCamera();
+
+        // bail out if this camera is a master camera with no GC
+        // (e.g., in a multi-screen layout)
+        if (cam == NULL || (cam->getGraphicsContext() == NULL && !cam->isRenderToTextureCamera()))
+            return;
+
+        CameraLocal& local = _cameraLocal.get(cam);
+        local._camera = cam;
+
+        static osg::Vec4f invisible(1,0,0,0);
+        local._leaders->setColor(invisible);
+        local._leaders->setLineWidth(_context->_options.leaderLineWidth().get());
+
+        if (_context->_debug && !local._voronoi.valid() && ScreenSpaceLayout::globallyEnabled)
+            local.initDebug();
+
+        osg::GraphicsContext* gc = cam->getGraphicsContext();
+        local._frame = gc && gc->getState() && gc->getState()->getFrameStamp() ?
+            gc->getState()->getFrameStamp()->getFrameNumber() : 0u;
+
+        const osg::Viewport* vp = cam->getViewport();
+        local._scalebias =
+            osg::Matrix::translate(1, 1, 1) *
+            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
+
+        for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
+            i != leaves.end();
+            ++i)
+        {
+            push(*i, local);
+        }
+
+        if (ScreenSpaceLayout::globallyEnabled)
+        {
+            sort(local);
+        }
+
+        // clear out the RenderLeaf pointers (since they change each frame)
+        for (Elements::iterator i = local._elements.begin();
+            i != local._elements.end();
+            ++i)
+        {
+            Element& element = i->second;
+            element._leaf = NULL;
+        }
+    }
+
+
+    /**
+    * Custom draw routine for our declutter render bin.
+    */
+    struct CalloutDraw : public osgUtil::RenderBin::DrawCallback
+    {
+        ScreenSpaceLayoutContext*                 _context;
+        PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
+        osg::ref_ptr<osg::Uniform>                _fade;
+        CalloutImplementation*                    _sortCallback;
+
+        struct RunningState
+        {
+            RunningState() : lastFade(-1.0f), lastPCP(NULL) { }
+            float lastFade;
+            const osg::Program::PerContextProgram* lastPCP;
+        };
+
+        /**
+        * Constructs the decluttering draw callback.
+        * @param context A shared context among all decluttering objects.
+        */
+        CalloutDraw(ScreenSpaceLayoutContext* context)
+            : _context(context)
+        {
+            // create the fade uniform.
+            _fade = new osg::Uniform(osg::Uniform::FLOAT, FADE_UNIFORM_NAME);
+            _fade->set(1.0f);
+        }
+
+        /**
+        * Draws a bin. Most of this code is copied from osgUtil::RenderBin::drawImplementation.
+        * The modifications are (a) skipping code to render child bins, (b) setting a bin-global
+        * projection matrix in orthographic space, and (c) calling our custom "renderLeaf()" method
+        * instead of RenderLeaf::render()
+        */
+        void drawImplementation(osgUtil::RenderBin* bin, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous)
+        {
+            osg::State& state = *renderInfo.getState();
+
+            unsigned int numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
+            if (numToPop > 1) --numToPop;
+            unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
+
+            if (bin->getStateSet())
+            {
+                state.insertStateSet(insertStateSetPosition, bin->getStateSet());
+            }
+
+            // apply a window-space projection matrix.
+            const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
+            if (vp)
+            {
+                //TODO see which is faster
+
+                osg::ref_ptr<osg::RefMatrix>& m = _ortho2D.get();
+                if (!m.valid())
+                    m = new osg::RefMatrix();
+
+                //m->makeOrtho2D( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1 );
+                m->makeOrtho(vp->x(), vp->x() + vp->width() - 1, vp->y(), vp->y() + vp->height() - 1, -1000, 1000);
+                state.applyProjectionMatrix(m.get());
+            }
+
+            // initialize the fading uniform
+            RunningState rs;
+
+            // render the list
+            osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
+
+            for (osgUtil::RenderBin::RenderLeafList::reverse_iterator rlitr = leaves.rbegin();
+                rlitr != leaves.rend();
+                ++rlitr)
+            {
+                osgUtil::RenderLeaf* rl = *rlitr;
+                //if (rl->_depth > 0.0f)
+                {
+                    renderLeaf(rl, renderInfo, previous, rs);
+                    previous = rl;
+                }
+            }
+
+            if (bin->getStateSet())
+            {
+                state.removeStateSet(insertStateSetPosition);
+            }
+
+            if (ScreenSpaceLayout::globallyEnabled)
+            {
+                // the leader lines
+                CalloutImplementation::CameraLocal& local = _sortCallback->_cameraLocal.get(renderInfo.getCurrentCamera());
+
+                if (local._leadersDirty)
+                {
+                    local._leaders->dirty();
+                    local._leadersDirty = false;
+                }
+
+                renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
+
+                renderInfo.getState()->apply(local._leaders->getStateSet());
+                renderInfo.getState()->apply(local._leaders->getGPUStateSet());
+                glDepthFunc(GL_ALWAYS);
+                glDepthMask(GL_FALSE);
+                glEnable(GL_BLEND);
+
+                if (renderInfo.getState()->getUseModelViewAndProjectionUniforms())
+                    renderInfo.getState()->applyModelViewAndProjectionUniformsIfRequired();
+
+                local._leaders->draw(renderInfo);
+
+                // the debug diagram
+                if (local._voronoi.valid())
+                {
+                    local._voronoi->draw(renderInfo);
+                }
+            }
+        }
+
+        /**
+        * Renders a single leaf. We already applied the projection matrix, so here we only
+        * need to apply a modelview matrix that specifies the ortho offset of the drawable.
+        *
+        * Most of this code is copied from RenderLeaf::draw() -- but I removed all the code
+        * dealing with nested bins, since decluttering does not support them.
+        */
+        void renderLeaf(osgUtil::RenderLeaf* leaf, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous, RunningState& rs)
+        {
+            osg::State& state = *renderInfo.getState();
+
+            // don't draw this leaf if the abort rendering flag has been set.
+            if (state.getAbortRendering())
+            {
+                //cout << "early abort"<<endl;
+                return;
+            }
+
+            state.applyModelViewMatrix(leaf->_modelview.get());
+
+            if (previous)
+            {
+                // apply state if required.
+                osgUtil::StateGraph* prev_rg = previous->_parent;
+                osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+                osgUtil::StateGraph* rg = leaf->_parent;
+                if (prev_rg_parent != rg->_parent)
+                {
+                    osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
+
+                    // send state changes and matrix changes to OpenGL.
+                    state.apply(rg->getStateSet());
+
+                }
+                else if (rg != prev_rg)
+                {
+                    // send state changes and matrix changes to OpenGL.
+                    state.apply(rg->getStateSet());
+                }
+            }
+            else
+            {
+                // apply state if required.
+                osgUtil::StateGraph::moveStateGraph(state, NULL, leaf->_parent->_parent);
+
+                state.apply(leaf->_parent->getStateSet());
+            }
+
+            // if we are using osg::Program which requires OSG's generated uniforms to track
+            // modelview and projection matrices then apply them now.
+            if (state.getUseModelViewAndProjectionUniforms())
+                state.applyModelViewAndProjectionUniformsIfRequired();
+
+            // apply the fading uniform
+            const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+            if (pcp)
+            {
+                if (pcp != rs.lastPCP || leaf->_depth != rs.lastFade)
+                {
+                    rs.lastFade = ScreenSpaceLayout::globallyEnabled ? leaf->_depth : 1.0f;
+                    _fade->set(rs.lastFade);
+                    pcp->apply(*_fade.get());
+                }
+            }
+            rs.lastPCP = pcp;
+
+            // draw the drawable
+            leaf->_drawable->draw(renderInfo);
+
+            if (leaf->_dynamic)
+            {
+                state.decrementDynamicObjectCount();
+            }
+        }
+    };
+} }
+
+#endif // OSGEARTH_SCREEN_SPACE_LAYOUT_CALLOUT_H

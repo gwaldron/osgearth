@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ namespace osgEarth { namespace BumpMap
                              public BumpMapOptions
     {
     public:
-        META_Object(osgearth_ext_BumpMap, BumpMapExtension);
+        META_OE_Extension(osgEarth, BumpMapExtension, bumpmap);
 
         // CTORs
         BumpMapExtension();
@@ -60,10 +60,6 @@ namespace osgEarth { namespace BumpMap
         bool connect(MapNode* mapNode);
 
         bool disconnect(MapNode* mapNode);
-
-
-    protected: // Object
-        BumpMapExtension(const BumpMapExtension& rhs, const osg::CopyOp& op) { }
 
     private:
         osg::ref_ptr<const osgDB::Options>   _dbOptions;

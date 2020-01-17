@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -21,8 +21,7 @@
 
 #include "EngineContext"
 #include "TerrainRenderData"
-
-#include <osgEarth/MapFrame>
+#include "SelectionInfo"
 
 #include <osg/NodeVisitor>
 #include <osgUtil/CullVisitor>
@@ -47,23 +46,23 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TerrainCuller : public osg::NodeVisitor, public osg::CullStack
     {
     public:
-        const MapFrame* _frame;
         TerrainRenderData _terrain;
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;
-        unsigned _currentTileDrawCommands;
-        DrawTileCommand* _firstTileDrawCommandForTile;
+        DrawTileCommand* _firstDrawCommandForTile;
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
         LayerExtentVector* _layerExtents;
+        bool _isSpy;
+        std::vector<PatchLayer*> _patchLayers;
 
     public:
         /** A new terrain culler */
         TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
 
         /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const MapFrame& frame, LayerExtentVector& layerExtents, const RenderBindings& bindings);
+        void setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }
@@ -74,8 +73,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** The CullVIsitor that parents this culler. */
         osgUtil::CullVisitor& getParent() { return *_cv; }
 
+        bool isCulledToBBox(osg::Transform* node, const osg::BoundingBox& box);
+
     public: // osg::NodeVisitor
         void apply(osg::Node& node);
+        void apply(TileNode& node);
+        void apply(SurfaceNode& node);
         
         float getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const;
 

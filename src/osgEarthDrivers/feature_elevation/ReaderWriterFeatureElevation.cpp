@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -50,7 +50,6 @@ using namespace std;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-#include <osgEarth/Profiler>
 #include <osgEarth/Metrics>
 
 
@@ -64,6 +63,9 @@ public:
       _offset(-0.1)
     {
         _offset = _options.offset().getOrUse(_offset);
+
+        // default tile size:
+        setPixelsPerTile(257u);
     }
 
     virtual ~FeatureElevationTileSource() { }
@@ -164,7 +166,7 @@ public:
             query.bounds() = extentInFeatureSRS.bounds();
             
 		    FeatureList featureList;
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query, progress);
             while ( cursor.valid() && cursor->hasMore() )
             {
                 Feature* f = cursor->nextFeature();

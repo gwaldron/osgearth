@@ -40,6 +40,7 @@ property includes the value type in parentheses following its description.
   :integer:               Integral number
   :numeric_expr:          Expression (simple or JavaScript) resolving to a number
   :string:                Simple text string
+  :boolean:               true or false
   :string_expr:           Expression (simple or JavaScript) resolving to a text string
   :uri_string:            String denoting a resource location (like a URL or file path).
                           URIs can be absolute or relative; relative URIs are always
@@ -57,53 +58,61 @@ control the color and style of the vector data.
 
 +-----------------------+---------------------------------------+----------------------------+
 | Property              | Description                           | Value(s)                   |
-+=======================+=======================================+============================+
-| fill                  | Fill color for a polygon.             | HTML color                 |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke                | Line color (or polygon outline color, | HTML color                 |
-|                       | if ``fill`` is present)               |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-width          | Line width                            | float with units           |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-min-pixels     | Minimum rendering width; Prevents a   | float (pixels)             |
-|                       | line from getting thinner than this   |                            |
-|                       | value in pixels. Only applies when    |                            |
-|                       | the ``stroke-width`` is NOT in pixels |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-tessellation   | Number of times to subdivide a line   | integer                    |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-linejoin       | Join style for polygonized lines.     | miter, round               |
-|                       | Only applies with ``stroke-width``    |                            |
-|                       | is in world units (and not pixels)    |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-linecap        | Cap style for polygonized lines.      | square, flat, round        |
-|                       | Only applies with ``stroke-width``    |                            |
-|                       | is in world units (and not pixels)    |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-rounding-ratio | For joins and caps that are set to    | float (0.4)                |
-|                       | ``round``, the resolution of the      |                            |
-|                       | rounded corner. Value is the ratio of |                            |
-|                       | line width to corner segment length.  |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-stipple-pattern| Stippling pattern bitmask. Each set   | integer (65535)            |
-|                       | bit represents an "on" pixel in the   |                            |
-|                       | pattern.                              |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-stipple-factor | Stipple factor for pixel-width lines. | integer (1)                |
-|                       | Number of times to repeat each bit in |                            |
-|                       | the stippling pattern                 |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| stroke-crease-angle   | When outlining extruded polygons,     | float degrees (0.0)        |
-|                       | only draw a post outline if the angle |                            |
-|                       | between the adjoining faces exceeds   |                            |
-|                       | this value. This has the effect of    |                            |
-|                       | only outlining corners that are       |                            |
-|                       | sufficiently "sharp".                 |                            |
-+-----------------------+---------------------------------------+----------------------------+
-| point-fill            | Fill color for a point.               | HTML color                 |
-+-----------------------+---------------------------------------+----------------------------+
-| point-size            | Size for a GL point geometry          | float (1.0)                |
-+-----------------------+---------------------------------------+----------------------------+
++================================+=======================================+============================+
+| fill                           | Fill color for a polygon.             | HTML color                 |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke                         | Line color (or polygon outline color, | HTML color                 |
+|                                | if ``fill`` is present)               |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-width                   | Line width                            | float with units           |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-smooth                  | Enable line antialiasing              | boolean (false)            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-min-pixels              | Minimum rendering width; Prevents a   | float (pixels)             |
+|                                | line from getting thinner than this   |                            |
+|                                | value in pixels. Only applies when    |                            |
+|                                | the ``stroke-width`` is NOT in pixels |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-tessellation-size       | Subdivide the line with this as the   | float with units           |
+|                                | maximum segment length. Use to make   |                            |
+|                                | long lines conform to the surface     |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-tessellation-segments   | Number of times to subdivide a line   | integer (0)                |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-linejoin                | Join style for polygonized lines.     | miter, round               |
+|                                | Only applies with ``stroke-width``    |                            |
+|                                | is in world units (and not pixels)    |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-linecap                 | Cap style for polygonized lines.      | square, flat, round        |
+|                                | Only applies with ``stroke-width``    |                            |
+|                                | is in world units (and not pixels)    |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-rounding-ratio          | For joins and caps that are set to    | float (0.4)                |
+|                                | ``round``, the resolution of the      |                            |
+|                                | rounded corner. Value is the ratio of |                            |
+|                                | line width to corner segment length.  |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-stipple-pattern         | Stippling pattern bitmask. Each set   | integer (65535)            |
+|                                | bit represents an "on" pixel in the   |                            |
+|                                | pattern.                              |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-stipple-factor          | Stipple factor for pixel-width lines. | integer (1)                |
+|                                | Number of times to repeat each bit in |                            |
+|                                | the stippling pattern                 |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| stroke-crease-angle            | When outlining extruded polygons,     | float degrees (0.0)        |
+|                                | only draw a post outline if the angle |                            |
+|                                | between the adjoining faces exceeds   |                            |
+|                                | this value. This has the effect of    |                            |
+|                                | only outlining corners that are       |                            |
+|                                | sufficiently "sharp".                 |                            |
++--------------------------------+---------------------------------------+----------------------------+
+| point-fill                     | Fill color for a point.               | HTML color                 |
++--------------------------------+---------------------------------------+----------------------------+
+| point-size                     | Size for a GL point geometry          | float (1.0)                |
++--------------------------------+---------------------------------------+----------------------------+
+| point-smooth                   | Altialiasing/rounding                 | boolean (false)            |
++--------------------------------+---------------------------------------+----------------------------+
 
 
 Altitude
@@ -380,11 +389,11 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existence and appearance of
 | text-halo                      | Outline color of the text; Omit this property altogether for no    |
 |                                | outline. (HTML Color)                                              |
 +--------------------------------+--------------------------------------------------------------------+
-| text-halo-offset               | Outline thickness (float, pixels)                                  |
+| text-halo-offset               | Outline thickness (float, % of glyph width, default 0.0625)        |
 +--------------------------------+--------------------------------------------------------------------+
-| text-offset-x                  | The x offset of the text in pixels                                 |
+| text-offset-x                  | The x offset of the text in % of glyph width, default 0.0625       |
 +--------------------------------+--------------------------------------------------------------------+
-| text-offset-y                  | The y offset of the text in pixels                                 |
+| text-offset-y                  | The y offset of the text in % of glyph width, default 0.0625       |
 +--------------------------------+--------------------------------------------------------------------+
 | text-align                     | Alignment of the text string relative to its anchor point:         |
 |                                |   * ``left-top``                                                   |

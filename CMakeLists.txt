@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
 
 if(COMMAND cmake_policy)
     # Works around warnings libraries linked against that don't
@@ -26,8 +26,8 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 9)
-SET(OSGEARTH_PATCH_VERSION 0)
+SET(OSGEARTH_MINOR_VERSION 10)
+SET(OSGEARTH_PATCH_VERSION 2)
 SET(OSGEARTH_SOVERSION     0)
 
 SET(OSGEARTH_PLUGIN_PREFIX "")
@@ -53,6 +53,12 @@ SET(OpenThreads_SOURCE_DIR ${OSGEARTH_SOURCE_DIR})
 # Good place to look for the OSG 3rd party libs
 SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
 
+IF(THIRD_PARTY_DIR)
+    LIST(APPEND CMAKE_INCLUDE_PATH ${THIRD_PARTY_DIR}/include)
+    LIST(APPEND CMAKE_LIBRARY_PATH ${THIRD_PARTY_DIR}/lib)
+    MESSAGE(STATUS "CMAKE_INCLUDE_PATH=${CMAKE_INCLUDE_PATH}")
+ENDIF(THIRD_PARTY_DIR)
+
 # We have some custom .cmake scripts not in the official distribution.
 # Maybe this can be used override existing behavior if needed?
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
@@ -69,22 +75,34 @@ SET(OSGEARTH_USE_GLES FALSE)
 
 # check for iOS build
 OPTION(OSGEARTH_BUILD_PLATFORM_IPHONE "Enable IPhoneSDK Device support" OFF)
-OPTION(OSGEARTH_BUILD_PLATFORM_IPHONE_SIMULATOR "Enable IPhoneSDK Simulator support" OFF)
 
-IF(OSGEARTH_BUILD_PLATFORM_IPHONE OR OSGEARTH_BUILD_PLATFORM_IPHONE_SIMULATOR)
+IF(OSGEARTH_BUILD_PLATFORM_IPHONE)
+
     SET(OSGEARTH_USE_GLES TRUE)
-    #you need to manually set the default sdk version here
-    SET (IPHONE_SDKVER "10.2" CACHE STRING "iOS SDK-Version")
-    SET (IPHONE_VERSION_MIN "8.0" CACHE STRING "IOS minimum os version, use 7.0 or greater to get 64bit support")
-    SET (IPHONE_PLATFORMSROOT "/Applications/Xcode.app/Contents/Developer/Platforms")
 
-    IF(OSGEARTH_BUILD_PLATFORM_IPHONE)
-        SET(CMAKE_OSX_SYSROOT "${IPHONE_PLATFORMSROOT}/iPhoneOS.platform/Developer/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk" CACHE STRING "System root for iOS" FORCE)
-        SET(CMAKE_OSX_ARCHITECTURES "armv7;armv7s;arm64" CACHE STRING "Build architectures for iOS" FORCE)
-    ELSE()
-        SET(CMAKE_OSX_SYSROOT "${IPHONE_PLATFORMSROOT}/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator${IPHONE_SDKVER}.sdk" CACHE STRING "System root for iOS" FORCE)
-        SET(CMAKE_OSX_ARCHITECTURES "i386" CACHE STRING "Build architectures for iOS Simulator" FORCE)
-    ENDIF()
+    # set sdk and min versions
+    SET (IPHONE_SDKVER "10.2" CACHE STRING "IOS SDK-Version")
+    SET (IPHONE_VERSION_MIN "7.0" CACHE STRING "IOS minimum os version, use 7.0 or greater to get 64bit support")
+
+    # get full path to sdk from requested versions
+    SET (IPHONE_DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer")
+    SET (IPHONE_SDKROOT "${IPHONE_DEVROOT}/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk")
+
+    # optionally enable bitcode for the build
+    SET (IPHONE_ENABLE_BITCODE "NO" CACHE STRING "IOS Enable Bitcode")
+
+    # seamless toggle between device and simulator
+    SET(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos;-iphonesimulator")
+
+    # set deployment target to min version
+    SET(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${IPHONE_VERSION_MIN}" CACHE STRING "Deployment target for iOS" FORCE)
+
+    # Set standard architectures
+    SET(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)")
+
+    # set the sdk path as our sysroot
+    SET(CMAKE_OSX_SYSROOT "${IPHONE_SDKROOT}" CACHE STRING "System root for iOS" FORCE)
+
 ENDIF ()
 
 
@@ -125,19 +143,28 @@ FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(Poco)
 
 FIND_PACKAGE(LevelDB)
+
+SET (WITH_STATIC_ROCKSDB FALSE CACHE BOOL "Use static library of RocksDB")
+
 IF(MINGW)
     FIND_PACKAGE(RocksDB CONFIG)
     IF(RocksDB_FOUND)
         MESSAGE(STATUS "Found RocksDB " ${RocksDB_VERSION})
     ENDIF()
 ELSE(MINGW)
-    FIND_PACKAGE(RocksDB)
+    IF (WITH_STATIC_ROCKSDB)
+      FIND_PACKAGE(RocksDB REQUIRED COMPONENTS STATIC)
+    ELSE()
+      FIND_PACKAGE(RocksDB)
+    ENDIF()
 ENDIF(MINGW)
 
 FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)
+FIND_PACKAGE(WEBP QUIET)
 
 FIND_PACKAGE(Protobuf QUIET)
+SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
 IF (WITH_EXTERNAL_DUKTAPE)
@@ -152,60 +179,19 @@ IF (WITH_EXTERNAL_TINYXML)
     FIND_PACKAGE(TinyXML)
 ENDIF (WITH_EXTERNAL_TINYXML)
 
-IF(UNIX)
+IF(UNIX AND NOT ANDROID)
     # Not sure what this will do on Cygwin and Msys
     # Also, remember OS X X11 is a user installed option so it may not exist.
     FIND_PACKAGE(X11)
     # Some Unicies need explicit linkage to the Math library or the build fails.
     FIND_LIBRARY(MATH_LIBRARY m)
-ENDIF(UNIX)
+ENDIF(UNIX AND NOT ANDROID)
 
 
-OPTION(OSGEARTH_QT_BUILD "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
-OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
-set(OSGEARTH_QT_VERSION 5 CACHE STRING "Qt version to use")
-
-IF(OSGEARTH_QT_BUILD)
-  # To select a specific version of QT define DESIRED_QT_VERSION
-  # via cmake -DDESIRED_QT_VERSION=5
-  # QUIET option disables messages if the package cannot be found.
-  IF  (OSGEARTH_QT_VERSION)
-      IF  (OSGEARTH_QT_VERSION MATCHES "5")
-          FIND_PACKAGE(Qt5Widgets REQUIRED)
-      ELSEIF (OSGEARTH_QT_VERSION MATCHES "4")
-          FIND_PACKAGE(Qt4 REQUIRED)
-      ENDIF()
-  ELSE()
-      FIND_PACKAGE(Qt5Widgets QUIET)
-      IF ( NOT Qt5Widgets_FOUND )
-          FIND_PACKAGE(Qt4 REQUIRED)
-      ENDIF()
-  ENDIF()
-ENDIF(OSGEARTH_QT_BUILD)
-
-IF(Qt5Widgets_FOUND)
-  message(STATUS "Qt: Using version 5")
-  FIND_PACKAGE(Qt5Core QUIET)
-  FIND_PACKAGE(Qt5Gui QUIET)
-  FIND_PACKAGE(Qt5OpenGL QUIET)
-  FIND_PACKAGE(Qt5OpenGLExtensions QUIET)
-  IF ( Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND AND Qt5OpenGLExtensions_FOUND )
-    SET(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS} ${Qt5OpenGLExtensions_INCLUDE_DIRS})
-  ENDIF ()
-ELSEIF(QT4_FOUND)
-  message(STATUS "Qt: Using version 4")
-  INCLUDE(${QT_USE_FILE})
-  SET(QT_INCLUDES ${QT_INCLUDES} ${QT_INCLUDE_DIR} ${QT_QTCORE_INCLUDE_DIR} ${QT_QTGUI_INCLUDE_DIR}${QT_QTOPENGL_INCLUDE_DIR} )
-  SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
-ENDIF ()
-
-
-# Common global definitions
-#ADD_DEFINITIONS(-D)
 # Platform specific definitions
 
 
-IF(WIN32)
+IF(WIN32 AND NOT ANDROID)
   FIND_PACKAGE(GLCORE)
   IF(GLCORE_FOUND)
       INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
@@ -228,7 +214,7 @@ IF(WIN32)
         ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
         ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
     ENDIF(MSVC)
-ENDIF(WIN32)
+ENDIF(WIN32 AND NOT ANDROID)
 
 # Common to all platforms:
 
@@ -238,6 +224,10 @@ SET(CMAKE_RELWITHDEBINFO_POSTFIX "rd" CACHE STRING "add a postfix, usually empty
 SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a postfix, usually empty on windows")
 
 INCLUDE(OsgEarthMacroUtils)
+
+# Detect C++11 compiler support and set a variable.
+INCLUDE(CXX11)
+check_for_cxx11_compiler(CXX11_AVAILABLE)
 
 DETECT_OSG_VERSION()
 
@@ -251,6 +241,7 @@ FIND_PACKAGE(OSG)
 INCLUDE_DIRECTORIES(
     ${OSGEARTH_SOURCE_DIR}/src
     ${OSG_INCLUDE_DIR}
+    ${OSG_GEN_INCLUDE_DIR}
 )
 
 #FIND_PACKAGE(GDAL)
@@ -267,12 +258,12 @@ ENDIF("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 # Installation stuff
 
 
-IF(UNIX AND NOT WIN32 AND NOT APPLE)
+IF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
   IF(CMAKE_SIZEOF_VOID_P MATCHES "8")
       SET(LIB_POSTFIX "64" CACHE STRING "suffix for 32/64 dir placement")
       MARK_AS_ADVANCED(LIB_POSTFIX)
   ENDIF(CMAKE_SIZEOF_VOID_P MATCHES "8")
-ENDIF(UNIX AND NOT WIN32 AND NOT APPLE)
+ENDIF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
 IF(NOT DEFINED LIB_POSTFIX)
     SET(LIB_POSTFIX "")
 ENDIF(NOT DEFINED LIB_POSTFIX)
@@ -345,7 +336,7 @@ ADD_SUBDIRECTORY(src)
 
 # Set defaults for Universal Binaries. We want 32-bit Intel/PPC on 10.4
 # and 32/64-bit Intel/PPC on >= 10.5. Anything <= 10.3 doesn't support.
-IF(APPLE)
+IF(APPLE AND NOT ANDROID)
 
     # These are just defaults/recommendations, but how we want to build
     # out of the box. But the user needs to be able to change these options.
@@ -378,7 +369,7 @@ IF(APPLE)
     OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
     SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
 
-ENDIF(APPLE)
+ENDIF(APPLE AND NOT ANDROID)
 
 
 # This needs to be run very last so other parts of the scripts can take

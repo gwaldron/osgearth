@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -131,7 +131,12 @@ typedef struct
 static void
 getFiles(const osgDB::Options& options, const std::string &file, const std::vector<std::string> &exts, const std::vector<std::string> &blackExts, std::vector<std::string> &files)
 {
-    if (osgDB::fileType(file) == osgDB::DIRECTORY)
+    // Special cases for gdal virtual file systems
+    if (startsWith(file, "/vsi"))
+    {
+        files.push_back(file);
+    }
+    else if (osgDB::fileType(file) == osgDB::DIRECTORY)
     {
         osgDB::DirectoryContents contents = osgDB::getDirectoryContents(file);
         for (osgDB::DirectoryContents::iterator itr = contents.begin(); itr != contents.end(); ++itr)
@@ -261,15 +266,13 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
             if (psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_ROTATION_PARAM1] != 0 ||
                 psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_ROTATION_PARAM2] != 0)
             {
-                fprintf( stderr, "GDAL Driver does not support rotated geo transforms. Skipping %s\n",
-                             dsFileName);
+                OE_WARN << LC << "GDAL Driver does not support rotated geo transforms. Skipping " << dsFileName << std::endl;
                 GDALClose(hDS);
                 continue;
             }
             if (psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_NS_RES] >= 0)
             {
-                fprintf( stderr, "GDAL Driver does not support positive NS resolution. Skipping %s\n",
-                             dsFileName);
+                OE_WARN << LC << "GDAL Driver does not support positive NS resolution. Skipping " << dsFileName << std::endl;
                 GDALClose(hDS);
                 continue;
             }
@@ -320,19 +323,19 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                     (proj == NULL && projectionRef != NULL) ||
                     (proj != NULL && projectionRef != NULL && EQUAL(proj, projectionRef) == FALSE))
                 {
-                    fprintf( stderr, "gdalbuildvrt does not support heterogeneous projection. Skipping %s\n",dsFileName);
+                    OE_WARN << LC << "gdalbuildvrt does not support heterogeneous projections. Skipping " << dsFileName << std::endl;
                     GDALClose(hDS);
                     continue;
                 }
                 int _nBands = GDALGetRasterCount(hDS);
                 if (nBands != _nBands)
                 {
-                    fprintf( stderr, "gdalbuildvrt does not support heterogeneous band numbers. Skipping %s\n",
-                             dsFileName);
+                    OE_WARN << LC << "gdalbuildvrt does not support heterogeneous band numbers. Skipping " << dsFileName << std::endl;
                     GDALClose(hDS);
+                    hDS = NULL;
                     continue;
                 }
-                for(j=0;j<nBands;j++)
+                for(j=0;j<nBands && hDS != NULL;j++)
                 {
                     GDALRasterBandH hRasterBand = GDALGetRasterBand( hDS, j+1 );
                     if (bandProperties[j].colorInterpretation != GDALGetRasterColorInterpretation(hRasterBand) ||
@@ -341,6 +344,7 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                         fprintf( stderr, "gdalbuildvrt does not support heterogeneous band characteristics. Skipping %s\n",
                              dsFileName);
                         GDALClose(hDS);
+                        hDS = NULL;
                     }
                     if (bandProperties[j].colorTable)
                     {
@@ -351,13 +355,15 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                             fprintf( stderr, "gdalbuildvrt does not support heterogeneous band characteristics. Skipping %s\n",
                              dsFileName);
                             GDALClose(hDS);
+                            hDS = NULL;
                             break;
                         }
                         /* We should check that the palette are the same too ! */
                     }
                 }
-                if (j != nBands)
+                if (j != nBands || hDS == NULL)
                     continue;
+
                 if (product_minX < minX) minX = product_minX;
                 if (product_minY < minY) minY = product_minY;
                 if (product_maxX > maxX) maxX = product_maxX;
@@ -389,10 +395,14 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                 }
             }
 
-            psDatasetProperties[i].isFileOK = 1;
-            nCount ++;
-            bFirst = FALSE;
-            GDALClose(hDS);
+            if (hDS != NULL)
+            {
+                psDatasetProperties[i].isFileOK = 1;
+                nCount ++;
+                bFirst = FALSE;
+                GDALClose(hDS);
+                hDS = NULL;
+            }
         }
         else
         {
@@ -758,8 +768,18 @@ public:
         // source connection:
         std::string source;
 
-        if ( _options.url().isSet() )
-            source = _options.url()->full();
+        if (_options.url().isSet())
+        {
+            // Use the base instead of the full if this is a gdal virtual file system
+            if (startsWith(_options.url()->base(), "/vsi"))
+            {
+                source = _options.url()->base();
+            }
+            else
+            {
+                source = _options.url()->full();
+            }
+        }
         else if ( _options.connection().isSet() )
             source = _options.connection().value();
 
@@ -1155,6 +1175,7 @@ public:
         double maxResolution = osg::minimum(resolutionX, resolutionY);
 
         OE_INFO << LC << INDENT << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+        OE_INFO << LC << INDENT << "Tile size = " << getPixelsPerTile() << std::endl;
 
         if (_options.maxDataLevelOverride().isSet())
         {
@@ -1257,7 +1278,7 @@ public:
         return 0;
     }
 
-    static void getPalleteIndexColor(GDALRasterBand* band, int index, osg::Vec4ub& color)
+    static bool getPalleteIndexColor(GDALRasterBand* band, int index, osg::Vec4ub& color)
     {
         const GDALColorEntry *colorEntry = band->GetColorTable()->GetColorEntry( index );
         GDALPaletteInterp interp = band->GetColorTable()->GetPaletteInterpretation();
@@ -1270,7 +1291,7 @@ public:
             color.g() = 0;
             color.b() = 0;
             color.a() = 1;
-
+            return false;
         }
         else
         {
@@ -1332,6 +1353,11 @@ public:
                 color.b() = static_cast<unsigned char>(colorEntry->c1*255.0f);
                 color.a() = static_cast<unsigned char>(255.0f);
             }
+            else
+            {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -1638,25 +1664,25 @@ public:
                 case GDT_Byte:
                     glDataType = GL_FLOAT;
                     gdalSampleSize = 1;
-                    internalFormat = GL_LUMINANCE32F_ARB;
+                    internalFormat = GL_R16F; // so we can still rep NO_DATA_VALUE?
                     break;
 
                 case GDT_UInt16:
                 case GDT_Int16:
                     glDataType = GL_FLOAT;
                     gdalSampleSize = 2;
-                    internalFormat = GL_LUMINANCE32F_ARB;
+                    internalFormat = GL_R16F;
                     break;
 
                 default:
                     glDataType = GL_FLOAT;
                     gdalSampleSize = 4;
-                    internalFormat = GL_LUMINANCE32F_ARB;
+                    internalFormat = GL_R32F;
                 }
 
                 // Create an un-normalized luminance image to hold coverage values.
                 image = new osg::Image();
-                image->allocateImage( tileSize, tileSize, 1, GL_LUMINANCE, glDataType );
+                image->allocateImage( tileSize, tileSize, 1, GL_RED, glDataType );
                 image->setInternalTextureFormat( internalFormat );
                 ImageUtils::markAsUnNormalized( image.get(), true );
                 memset(image->data(), 0, image->getImageSizeInBytes());
@@ -1776,8 +1802,8 @@ public:
 
             if ( _options.coverage() == true )
             {
-                image->allocateImage(tileSize, tileSize, 1, GL_LUMINANCE, GL_FLOAT);
-                image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+                image->allocateImage(tileSize, tileSize, 1, GL_RED, GL_FLOAT);
+                image->setInternalTextureFormat(GL_R16F);
                 ImageUtils::markAsUnNormalized(image.get(), true);
 
                 // initialize all coverage texels to NODATA. -gw
@@ -1811,20 +1837,29 @@ public:
                     unsigned char p = palette[src_col + src_row * target_width];
 
                     if ( _options.coverage() == true )
-                    {
-                        osg::Vec4 pixel;
-                        if ( isValidValue(p, bandPalette) )
-                            pixel.r() = (float)p;
+                    {                        
+                        osg::Vec4ub color;
+                        osg::Vec4f pixel;
+                        if (getPalleteIndexColor(bandPalette, p, color) &&
+                            isValidValue((float)color.r(), bandPalette)) // need this?
+                        {
+                            pixel.r() = (float)color.r();
+                        }
                         else
+                        {
                             pixel.r() = NO_DATA_VALUE;
+                        }
 
                         write(pixel, dst_col, dst_row);
                     }
                     else
                     {
                         osg::Vec4ub color;
-                        getPalleteIndexColor( bandPalette, p, color );
-                        if (!isValidValue( p, bandPalette))
+                        if (!getPalleteIndexColor( bandPalette, p, color ))
+                        {
+                            color.a() = 0.0f;
+                        }
+                        else if (!isValidValue((float)color.r(), bandPalette)) // is this applicable for palettized data?
                         {
                             color.a() = 0.0f;
                         }

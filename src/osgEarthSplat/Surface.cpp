@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -197,4 +197,22 @@ Surface::createLUTBuffer(const LandCoverDictionary* landCoverDict) const
     ShaderGenerator::setIgnoreHint(buf, true);
 
     return buf;
+}
+
+void
+Surface::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if (getStateSet())
+        getStateSet()->resizeGLObjectBuffers(maxSize);
+
+    _textureDef.resizeGLObjectBuffers(maxSize);
+}
+
+void
+Surface::releaseGLObjects(osg::State* state) const
+{
+    if (getStateSet())
+        getStateSet()->releaseGLObjects(state);
+
+    _textureDef.releaseGLObjects(state);
 }

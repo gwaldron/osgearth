@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -231,7 +231,7 @@ public:
                     osg::Vec3d center = result->getBound().center();
                     OE_DEBUG << "Radius=" << result->getBound().radius() << " center=" << center.x() << "," << center.y() << "," << center.z() << std::endl;                    
                     plod->setCenter(result->getBound().center());
-                    plod->setRadius(std::max(result->getBound().radius(), 
+                    plod->setRadius(osg::maximum(result->getBound().radius(), 
                                              static_cast<osg::BoundingSphere::value_type>(maxRange)));
 
                 }

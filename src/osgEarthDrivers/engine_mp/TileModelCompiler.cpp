@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -1604,10 +1604,10 @@ namespace
 
             // Utility arrays:
             std::vector<osg::Vec3> boundaryVerts;
-            boundaryVerts.reserve( 2 * std::max(d.numRows, d.numCols) );
+            boundaryVerts.reserve( 2 * osg::maximum(d.numRows, d.numCols) );
 
             std::vector< float > boundaryElevations;
-            boundaryElevations.reserve( 2 * std::max(d.numRows, d.numCols) );
+            boundaryElevations.reserve( 2 * osg::maximum(d.numRows, d.numCols) );
 
             //Recalculate the west side
             if (w_neighbor && w_neighbor->getNumColumns() == d.originalNumCols && w_neighbor->getNumRows() == d.originalNumRows)
@@ -2128,7 +2128,7 @@ namespace
         geode->addDrawable(t);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
-        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0); // ok .. FFP debugging code
 
         return geode;
     }

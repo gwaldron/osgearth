@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -199,7 +199,7 @@ namespace osgEarth { namespace SilverLining
         bool GetFogEnabled() const; 
         void GetFogSettings(float &density, osg::Vec3 &color) const;
         void GetHorizonColor(float yaw, float pitch, osg::Vec3 &color) const;
-        bool GetEnvironmentMap(GLuint &environmentMapTex, int facesToRender = 6, bool floatingPoint = false, void* cameraID = 0,bool drawClouds = true, bool drawSunAndMoon = true) const;
+        bool GetEnvironmentMap(GLuint &environmentMapTex, int facesToRender = 6, bool floatingPoint = false, void* cameraID = 0,bool drawClouds = true, bool drawSunAndMoon = true, bool isGeocentric = false) const;
         void SetHaze(const osg::Vec3 &color, double depth, double density);
     public:
         Atmosphere(uintptr_t handle) : _handle(handle) { }

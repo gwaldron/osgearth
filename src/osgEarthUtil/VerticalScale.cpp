@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
 * Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
@@ -21,8 +21,6 @@
 */
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
 
 #define LC "[VerticalScale] "
@@ -139,13 +137,13 @@ VerticalScale::onUninstall(TerrainEngineNode* engine)
 void
 VerticalScale::mergeConfig(const Config& conf)
 {
-    conf.getIfSet( "scale", _scale );
+    conf.get( "scale", _scale );
 }
 
 Config
 VerticalScale::getConfig() const
 {
     Config conf("vertical_scale");
-    conf.addIfSet( "scale", _scale );
+    conf.set( "scale", _scale );
     return conf;
 }

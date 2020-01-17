@@ -89,8 +89,9 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
             // If there's an active (non-identity matrix), apply it
             if ( entry->_matrix.valid() )
             {
-                entry->_matrix->postMult( *cv->getModelViewMatrix() );
-                cv->pushModelViewMatrix( entry->_matrix.get(), osg::Transform::RELATIVE_RF );
+                osg::ref_ptr<osg::RefMatrix> m = osg::clone(entry->_matrix.get());
+                m->postMult( *cv->getModelViewMatrix() );
+                cv->pushModelViewMatrix( m.get(), osg::Transform::RELATIVE_RF );
             }
 
             // After pushing the matrix, we can perform the culling bounds test.

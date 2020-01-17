@@ -15,7 +15,6 @@ http://readymap.org
     
     <options>
         <profile>plate-carre</profile>
-        <terrain driver="rex" tile_size="2" morph_terrain="false"/>
     </options>
     
     <image name="readymap_imagery" driver="tms">

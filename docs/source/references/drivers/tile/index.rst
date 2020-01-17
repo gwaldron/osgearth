@@ -9,6 +9,7 @@ terrain engine. It can produce image tiles, elevation grid tiles, or both.
    agglite
    arcgis
    arcgis_map_cache
+   cesiumion
    colorramp
    debug
    gdal

@@ -53,5 +53,8 @@
                 <image>water2.jpg</image>
             </range>
 		</class>
+        <class name="no-data">
+			<image>barren.jpg</image>
+        </class>
 	</classes>
 </catalog>

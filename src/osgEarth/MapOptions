@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,14 +28,13 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/GeoCommon>
 #include <osgEarth/Profile>
-#include <osgEarth/TerrainOptions>
 
 namespace osgEarth
 {
     /**
      * Configuration for a runtime map.
      */
-    class OSGEARTH_EXPORT MapOptions : public ConfigOptions // no export (header-only)
+    class OSGEARTH_EXPORT MapOptions : public ConfigOptions
     {
     public:
         enum CoordinateSystemType

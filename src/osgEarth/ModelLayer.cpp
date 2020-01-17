@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,11 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ModelLayer>
-#include <osgEarth/Map>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/Lighting>
+#include <osgEarth/GLUtils>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] Layer \"" << getName() << "\" "
@@ -53,29 +49,8 @@ VisibleLayerOptions()
 {
     setDefaults();
     fromConfig( _conf );
-    if (!driverOptions.empty())
-        _driver = driverOptions;
+    _driver = driverOptions;
     name() = in_name;
-}
-
-ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
-VisibleLayerOptions(rhs)
-{
-    _driver = optional<ModelSourceOptions>(rhs._driver);
-    _lighting = optional<bool>(rhs._lighting);
-    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
-    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
-}
-
-ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
-{
-    VisibleLayerOptions::operator =(rhs);
-    _driver = optional<ModelSourceOptions>(rhs._driver);
-    _lighting = optional<bool>(rhs._lighting);
-    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
-    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
-
-    return *this;
 }
 
 void
@@ -89,7 +64,6 @@ Config
 ModelLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
-    conf.key() = "model";
 
     conf.set( "name",           _name );
     conf.set( "lighting",       _lighting );
@@ -99,14 +73,17 @@ ModelLayerOptions::getConfig() const
     if ( mask().isSet() )
         conf.set( "mask", mask()->getConfig() );
 
+    if ( driver().isSet() )
+        conf.merge(driver()->getConfig());
+
     return conf;
 }
 
 void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "lighting",       _lighting );
-    conf.getIfSet( "mask_min_level", _maskMinLevel );
+    conf.get( "lighting",       _lighting );
+    conf.get( "mask_min_level", _maskMinLevel );
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -175,19 +152,11 @@ ModelLayer::~ModelLayer()
     //nop
 }
 
-Config
-ModelLayer::getConfig() const
-{
-    Config layerConf = Layer::getConfig();
-    layerConf.key() = "model";
-    layerConf.set("driver", options().driver()->getDriver());
-    return layerConf;
-}
-
 void
 ModelLayer::init()
 {
     VisibleLayer::init();
+    installDefaultOpacityShader();
     _root = new osg::Group();
     _root->setName(getName());
 }
@@ -195,7 +164,7 @@ ModelLayer::init()
 const Status&
 ModelLayer::open()
 {
-    if ( !_modelSource.valid() && options().driver().isSet() )
+    if ( VisibleLayer::open().isOK() && !_modelSource.valid() && options().driver().isSet() )
     {
         std::string driverName = options().driver()->getDriver();
 
@@ -321,8 +290,19 @@ ModelLayer::addedToMap(const Map* map)
     }
 }
 
+void
+ModelLayer::removedFromMap(const Map* map)
+{
+    // dispose of the scene graph.
+    while (_root->getNumChildren() > 0)
+    {
+        getSceneGraphCallbacks()->fireRemoveNode(_root->getChild(0));
+        _root->removeChildren(0, 1);
+    }
+}
+
 osg::Node*
-ModelLayer::getOrCreateNode()
+ModelLayer::getNode() const
 {
     return _root.get();
 }
@@ -345,14 +325,10 @@ ModelLayer::setLightingEnabledNoLock(bool value)
         {
             osg::StateSet* stateset = i->second->getOrCreateStateSet();
 
-            stateset->setMode( 
-                GL_LIGHTING, value ? osg::StateAttribute::ON : 
+            GLUtils::setLighting(
+                stateset,
+                value ? osg::StateAttribute::ON : 
                 (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
-
-            if ( Registry::capabilities().supportsGLSL() )
-            {
-                stateset->setDefine(OE_LIGHTING_DEFINE, value);
-            }
         }
     }
 }

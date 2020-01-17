@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -40,58 +40,24 @@ namespace osgEarth { namespace Annotation
     public:
         META_AnnotationNode(osgEarthAnnotation, PlaceNode);
 
-        /**
-         * Constructs a new place node
-         *
-         * @param mapNode   MapNode that helps position this annotation
-         * @param position  Initial location of the annotation
-         * @param iconImage Image of the place icon
-         * @param labelText Text to place next to the icon
-         * @param style     Optional style settings.
-         */
-        PlaceNode(
-            MapNode*           mapNode,
-            const GeoPoint&    position,
-            osg::Image*        iconImage,
-            const std::string& labelText,
-            const Style&       style =Style() );
+        //! Constructs a new empty place node.
+        PlaceNode();
 
-        /**
-         * Constructs a new place node. You can specify an icon marker by
-         * adding a IconSymbol to the Style.
-         *
-         * @param mapNode   MapNode that helps position this annotation
-         * @param position  Initial location of the annotation
-         * @param labelText Text to place next to the icon
-         * @param style     Optional style settings.
-         */
-        PlaceNode(
-            MapNode*           mapNode,
-            const GeoPoint&    position,
-            const std::string& labelText,
-            const Style&       style =Style() );
+        //! Construct new node with text content and default styling.
+        PlaceNode(const std::string& text,
+                  const Style&       style =Style(),
+                  osg::Image*        image =0L);
+        
+        //! Construct new node with position, text content and default styling.
+        PlaceNode(const GeoPoint&    position,
+                  const std::string& text  ="",
+                  const Style&       style =Style(),
+                  osg::Image*        image =0L);
 
-        /**
-         * Constuct a new place node entirely from symbology
-         *
-         * @param mapNode   MapNode that helps position this annotation
-         * @param position  Initial location of the annotation
-         * @param style     Style settings.
-         * @param dbOptions I/O options for embedded resource loading
-         */
+        //! Deserialize a place node.
         PlaceNode(
-            MapNode*              mapNode,
-            const GeoPoint&       position,
-            const Style&          style,
-            const osgDB::Options* dbOptions);
-
-        /**
-         * Deserializes a place node from Config data. (internal method)
-         */
-        PlaceNode(
-            MapNode*              mapNode,
-            const Config&         conf,
-            const osgDB::Options* dbOptions );
+            const Config& conf,
+            const osgDB::Options* readOptions );
 
         /**
          * Image to use for the icon
@@ -108,7 +74,8 @@ namespace osgEarth { namespace Annotation
         /**
          * Style (for text and placement)
          */
-        void setStyle( const Style& style );
+        void setStyle(const Style& style );
+        void setStyle(const Style& style, const osgDB::Options* readOptions);
         const Style& getStyle() const { return _style; }
 
     public: // GeoPositionNode override
@@ -128,11 +95,14 @@ namespace osgEarth { namespace Annotation
 
         virtual ~PlaceNode() { }
 
-        osg::ref_ptr<osg::Image>           _image;
-        std::string                        _text;
-        Style                              _style;
-        class osg::Geode*                  _geode;
-        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<osg::Image>            _image;
+        std::string                         _text;
+        Style                               _style;
+        osg::Group*                         _geode;
+        osg::Geometry*                      _imageDrawable;
+        osg::Drawable*                      _bboxDrawable;
+        osgText::Text*                      _textDrawable;
+        osg::ref_ptr<const osgDB::Options>  _readOptions;
         osg::ref_ptr<ScreenSpaceLayoutData> _dataLayout;
 
         /** rotation of the label **/
@@ -141,18 +111,24 @@ namespace osgEarth { namespace Annotation
         GeoPoint                 _geoPointLoc;
         GeoPoint                 _geoPointProj;
 
-        void init();
+        //void init();
         void updateLayoutData();
+        void construct();
+        void compile();
 
     public:
-        // required by META_Node, but this object is not cloneable
-        PlaceNode();
 
         void setConfig(const Config& conf);
 
     private:
+
         PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
 
+    private:
+        static osg::observer_ptr<osg::StateSet> s_geodeStateSet;
+        static osg::observer_ptr<osg::StateSet> s_imageStateSet;
+
+        osg::ref_ptr<osg::StateSet> _geodeStateSet, _imageStateSet;
     };
 
 } } // namespace osgEarth::Annotation

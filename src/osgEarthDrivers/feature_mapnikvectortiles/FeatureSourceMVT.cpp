@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
@@ -64,7 +64,7 @@ public:
         //nop
     }
 
-    FeatureCursor* createFeatureCursor( const Symbology::Query& query )
+    FeatureCursor* createFeatureCursor( const Symbology::Query& query, ProgressCallback* progress )
     {
         if (!query.tileKey().isSet())
         {

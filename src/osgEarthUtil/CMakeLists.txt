@@ -10,7 +10,6 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
     ActivityMonitorTool
-    AnnotationEvents
     AutoClipPlaneHandler
     AutoScaleCallback
     ArcGIS
@@ -20,6 +19,7 @@ SET(HEADERS_ROOT
     Controls
     ContourMap
     ClampCallback
+    ClusterNode
     DataScanner
     EarthManipulator
     Ephemeris
@@ -33,7 +33,6 @@ SET(HEADERS_ROOT
     GeodeticGraticule
     GeodeticLabelingEngine
     GraticuleLabelingEngine
-    HorizonClipPlane
     HTM
     LatLongFormatter
     LineOfSight
@@ -46,7 +45,6 @@ SET(HEADERS_ROOT
     MouseCoordsTool
     MultiElevationLayer
     Ocean
-    PolyhedralLineOfSight
     RadialLineOfSight
     RTTPicker
     Shaders
@@ -92,7 +90,8 @@ set(TARGET_GLSL
     Shadowing.vert.glsl
     Shadowing.frag.glsl
     SimpleOceanLayer.vert.glsl
-    SimpleOceanLayer.frag.glsl)
+    SimpleOceanLayer.frag.glsl
+    RTTPicker.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)
@@ -105,12 +104,12 @@ configure_shaders(
 
 SET(SOURCES_ROOT
     ActivityMonitorTool.cpp
-    AnnotationEvents.cpp
     ArcGIS.cpp
     AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     ClipSpace.cpp
+    ClusterNode.cpp
     Controls.cpp
     ContourMap.cpp
     DataScanner.cpp
@@ -124,7 +123,6 @@ SET(SOURCES_ROOT
     GeodeticGraticule.cpp
     GeodeticLabelingEngine.cpp
     GraticuleLabelingEngine.cpp
-    HorizonClipPlane.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
@@ -136,7 +134,6 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
     Ocean.cpp
-    PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     RTTPicker.cpp
     Shadowing.cpp

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MaskLayer>
-#include <osgEarth/Map>
-#include <osgEarth/Registry>
 
 #define LC "[MaskLayer] "
 
@@ -45,14 +43,14 @@ MaskLayerOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
     conf.key() = "mask";
-    conf.addIfSet( "min_level", _minLevel );
+    conf.set( "min_level", _minLevel );
     return conf;
 }
 
 void
 MaskLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "min_level", _minLevel );
+    conf.get( "min_level", _minLevel );
 }
 
 void

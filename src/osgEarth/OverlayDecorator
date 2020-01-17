@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -97,6 +97,10 @@ namespace osgEarth
     public: // osg::Node
         void traverse( osg::NodeVisitor& nv );
 
+    public: // osg::Object
+        void resizeGLObjectBuffers(unsigned maxSize);
+        void releaseGLObjects(osg::State* state) const;
+
     public: // NotiferGroup listener interface
         void onGroupChanged(osg::Group* group);
 
@@ -115,7 +119,7 @@ namespace osgEarth
             osg::Matrixd                  _rttProjMatrix;    // Projection matrix of RTT camera
             osg::Group*                   _group;            // contains the overlay graphics
             osg::StateSet*                _terrainStateSet;  // same object as in PerViewData (shared across techniques)
-            osg::ref_ptr<osg::Referenced> _techniqueData;    // technique sets this if needed
+            osg::ref_ptr<osg::Object>     _techniqueData;    // technique sets this if needed
             const double*                 _horizonDistance;  // points to the PVD horizon distance
             TerrainResources*             _terrainResources; // for accessing image units
             osg::Vec3d                    _eyeWorld;         // eyepoint in world coords
@@ -152,7 +156,7 @@ namespace osgEarth
         typedef std::map<osg::Camera*, PerViewData> PerViewDataMap;
 
         PerViewDataMap _perViewData;
-        Threading::ReadWriteMutex _perViewDataMutex;
+        mutable Threading::ReadWriteMutex _perViewDataMutex;
 
         typedef std::vector< osg::ref_ptr<OverlayTechnique> > Techniques;
         Techniques _techniques;
@@ -216,6 +220,9 @@ namespace osgEarth
         virtual void cullOverlayGroup(
             OverlayDecorator::TechRTTParams& params,
             osgUtil::CullVisitor*            cv ) { }
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize) { }
+        virtual void releaseGLObjects(osg::State* state) const { }
     };
 
 } // namespace osgEarth

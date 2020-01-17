@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -52,15 +52,6 @@ namespace osgEarth
         ModelLayerOptions(
             const std::string& name, 
             const ModelSourceOptions& driverOptions);
-
-        /** Copy ctor*/
-        ModelLayerOptions(const ModelLayerOptions& rhs);
-
-        /** dtor */
-        virtual ~ModelLayerOptions() { }
-
-        /** Assignment operator */
-        ModelLayerOptions& operator = (const ModelLayerOptions&);
 
         /**
          * Options for the underlying model source driver.
@@ -118,7 +109,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarth, ModelLayer, ModelLayerOptions);
+        META_Layer(osgEarth, ModelLayer, ModelLayerOptions, model);
 
         /**
          * Blank ModelLayer. Use options() to setup before calling open.
@@ -183,17 +174,17 @@ namespace osgEarth
 
     public: // Layer
 
-        /** Open the layer and return its status */
+        //! Open the layer and return its status
         virtual const Status& open();
 
         //! Called when this layer is added to a Map
         virtual void addedToMap(const Map*);
 
-        //! Node created by this model layer
-        virtual osg::Node* getOrCreateNode();
+        //! Called when this layer is removed from a Map
+        virtual void removedFromMap(const Map*);
 
-        /** Serialize this layer */
-        virtual Config getConfig() const;
+        //! Node created by this model layer
+        virtual osg::Node* getNode() const;
 
         //! Generate a cache ID for this layer
         virtual std::string getCacheID() const;

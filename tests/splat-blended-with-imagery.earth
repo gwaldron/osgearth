@@ -28,8 +28,12 @@
     <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
         
-    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
+    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover" blend="modulate" max_range="250000" attenuation_range="100000">
         <zones>
             <zone name="default">
                 <surface>
@@ -38,10 +42,6 @@
             </zone>
         </zones>
     </splat_imagery>
-    
-    <image name="readymap_imagery" driver="tms" min_range="500000">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
             
     <xi:include href="viewpoints.xml"/>
 </map>

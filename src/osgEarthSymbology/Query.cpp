@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,7 +31,6 @@ _bounds(rhs._bounds),
 _expression(rhs._expression),
 _orderby(rhs._orderby),
 _tileKey(rhs._tileKey),
-_mapFrame(rhs._mapFrame),
 _limit(rhs._limit)
 {
     //nop
@@ -40,12 +39,12 @@ _limit(rhs._limit)
 void
 Query::mergeConfig( const Config& conf )
 {
-    if ( !conf.getIfSet( "expr", _expression ) )
-        if ( !conf.getIfSet( "where", _expression ) )
-            if ( !conf.getIfSet( "sql", _expression ) )
-                conf.getIfSet( "expression", _expression );
+    if ( !conf.get( "expr", _expression ) )
+        if ( !conf.get( "where", _expression ) )
+            if ( !conf.get( "sql", _expression ) )
+                conf.get( "expression", _expression );
 
-    conf.getIfSet("orderby", _orderby);
+    conf.get("orderby", _orderby);
 
     Config b = conf.child( "extent" );
     if( !b.empty() )
@@ -57,16 +56,16 @@ Query::mergeConfig( const Config& conf )
             b.value<double>( "ymax", 0.0 ) );
     }
 
-    conf.getIfSet("limit", _limit);
+    conf.get("limit", _limit);
 }
 
 Config
 Query::getConfig() const
 {
     Config conf( "query" );
-    conf.addIfSet( "expr", _expression );
-    conf.addIfSet( "orderby", _orderby);
-    conf.addIfSet( "limit", _limit);
+    conf.set( "expr", _expression );
+    conf.set( "orderby", _orderby);
+    conf.set( "limit", _limit);
     if ( _bounds.isSet() ) {
         Config bc( "extent" );
         bc.add( "xmin", toString(_bounds->xMin()) );
@@ -131,14 +130,3 @@ Query::combineWith( const Query& rhs ) const
 
     return merged;
 }
-
-void Query::setMap(const Map* map)
-{
-    _mapFrame.setMap(map);
-}
-
-void Query::setMap(const MapFrame& mapf)
-{
-    _mapFrame = mapf;
-}
-

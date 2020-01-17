@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2019 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -107,18 +107,27 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSource : public osg::Object, public Revisioned
     {
     public:      
-        /**
-         * Constructs a new feature source with the provided read/write options.
-         */
-        FeatureSource(
-            const ConfigOptions&  options =ConfigOptions(),
-            const osgDB::Options* readOptions =0L );
+        //! Constructs a new feature source
+        FeatureSource();
+        
+        //! Constructs a new feature source with preset options
+        FeatureSource(const ConfigOptions& options);
+        
+        //! Apply the read options
+        void setReadOptions(const osgDB::Options* readOptions);
 
-        /**
-         * Opens the feature source and returns an initial status.
-         */
+        //! Opens the feature source and returns an initial status.
+        const Status& open();
+
+        //! Opens the feature source and returns an initial status.
+        //! Same as calling setReadOptions followed by open()
         const Status& open(const osgDB::Options* readOptions);
-        const Status& open() { return open(0L); }
+
+        virtual const Status& create(
+            const FeatureProfile* profile,
+            const FeatureSchema& schema,
+            const Geometry::Type& geometryType,
+            const osgDB::Options* readOptions);
 
         /**
          * Status of the feature source
@@ -143,8 +152,9 @@ namespace osgEarth { namespace Features
          *
          * Caller takes ownership of the returned object.
          */
-        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query) =0;
-        FeatureCursor* createFeatureCursor();
+        virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query, ProgressCallback* progress) =0;
+
+        FeatureCursor* createFeatureCursor(ProgressCallback* progress);
 
         /**
          * Whether this FeatureSource supports inserting and deleting features
@@ -258,9 +268,6 @@ namespace osgEarth { namespace Features
          * Dirties the feature profile
          */
         void dirtyFeatureProfile() { _featureProfile = 0;}
-
-        
-        void setReadOptions(const osgDB::Options* readOptions) { _readOptions = readOptions; }
         
     protected:
         
@@ -302,7 +309,6 @@ namespace osgEarth { namespace Features
 
         Status                             _status;
 
-        friend class Map;
         friend class FeatureSourceFactory;
     };
 
@@ -325,7 +331,9 @@ namespace osgEarth { namespace Features
         static FeatureSource* create( const FeatureSourceOptions& options );
     };
 
-} } // namespace osgEarth::Features
+} }  // namespace osgEarth::Features
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Features::FeatureSourceOptions);
 
 #endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
 

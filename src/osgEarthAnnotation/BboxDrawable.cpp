@@ -1,6 +1,6 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2019 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -54,7 +54,13 @@ osg::Geometry()
     if ( bboxSymbol.fill().isSet() )
     {
         c->push_back( bboxSymbol.fill()->color() );
-        addPrimitiveSet( new osg::DrawArrays(GL_POLYGON, 0, v->getNumElements()) );
+        osg::DrawElements* de = new osg::DrawElementsUByte(GL_TRIANGLE_STRIP);
+        de->addElement(0);
+        de->addElement(1);
+        de->addElement(3);
+        de->addElement(2);
+        addPrimitiveSet(de);
+        //addPrimitiveSet( new osg::DrawArrays(GL_POLYGON, 0, v->getNumElements()) );
     }
 
     if ( bboxSymbol.border().isSet() )
@@ -66,12 +72,6 @@ osg::Geometry()
     }
 
     setColorArray( c );
-
-    // add the static "isText=true" uniform; this is a hint for the annotation shaders
-    // if they get installed.
-    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, AnnotationUtils::UNIFORM_IS_TEXT());
-    s_isTextUniform->set( false );
-    getOrCreateStateSet()->addUniform( s_isTextUniform.get() );
 
     // Disable culling since this bounding box will eventually be drawn in screen space.
     setCullingActive(false);

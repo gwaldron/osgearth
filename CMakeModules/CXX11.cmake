@@ -34,8 +34,13 @@ macro(check_for_cxx11_compiler _VAR)
     
     set(${_VAR})
 
-    # Default: use C++11 if the compiler supports it:
-    option(BUILD_USE_CXX11 ON)
+    # Default: use C++11 if the compiler supports it, unless it is
+	# GCC < 5 in which default to OFF.
+	if (CMAKE_COMPILER_IS_GNUCXX AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
+	    option(BUILD_USE_CXX11 OFF)
+	else()
+		option(BUILD_USE_CXX11 ON)
+	endif();
 
     if (BUILD_USE_CXX11)
         

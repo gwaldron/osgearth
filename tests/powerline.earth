@@ -54,6 +54,16 @@
         <long>-0.6506</long>
         <lat>44.8695</lat>
       </viewpoint>
+      <viewpoint name="Rhone Valley">
+        <heading>62.3351</heading>
+        <pitch>-8.42197</pitch>
+        <range>5279.5m</range>
+        <long>7.297303744118898</long>
+        <lat>46.21744910621433</lat>
+        <height>532.5380253428593</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+</viewpoint>
+
     </viewpoints>
 <!--    
     <xi:include href="readymap_imagery.xml"/>

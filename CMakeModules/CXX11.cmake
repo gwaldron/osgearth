@@ -31,42 +31,63 @@
 # of osgEarth we are using these minimum requirements.
 
 macro(check_for_cxx11_compiler _VAR)
+    
     set(${_VAR})
-    
-    # Windows
-    if(MSVC AND NOT ${MSVC_VERSION} VERSION_LESS 1900)
-        set(CMAKE_CXX_STANDARD 11)
-        set(${_VAR} 1) 
 
-    # GCC/Linux
-    elseif(CMAKE_COMPILER_IS_GNUCXX)
-        # test for C++ > C++98
-        include(CheckCXXCompilerFlag)
-        check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
-        if(COMPILER_SUPPORTS_CXX11)
+    # Default: use C++11 if the compiler supports it:
+    option(BUILD_USE_CXX11 ON)
+
+    if (BUILD_USE_CXX11)
+        
+        if(MSVC AND NOT ${MSVC_VERSION} VERSION_LESS 1900)
+        
+            # Windows
             set(CMAKE_CXX_STANDARD 11)
-            set(${_VAR} 1)      
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-            option(BUILD_ENABLE_CXX11_ABI "Use the new C++-11 ABI, which is not backwards compatible." OFF)
-            if(NOT BUILD_ENABLE_CXX11_ABI)
-                add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
-            endif()  
-        else()
-            check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-            if(COMPILER_SUPPORTS_CXX0X)
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+            set(${_VAR} 1) 
+
+        elseif(CMAKE_COMPILER_IS_GNUCXX)
+
+            # GCC/Linux
+            
+            # test for C++ > C++98
+            include(CheckCXXCompilerFlag)
+            check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
+            
+            if(COMPILER_SUPPORTS_CXX11)
+			
+                set(CMAKE_CXX_STANDARD 11)
+                set(${_VAR} 1)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+                
+                # GCC 5+ lets you disable the C++11 ABI for compatibility with older compiler versions
+                option(BUILD_ENABLE_GCC_CXX11_ABI "Use the new C++11 ABI, which is not backwards compatible." ON)
+                if(NOT BUILD_ENABLE_GCC_CXX11_ABI)
+                    add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+                endif()
+				
+            else()
+			
+                check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+                if(COMPILER_SUPPORTS_CXX0X)
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+                endif()
+				
             endif()
+        
+        elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
+        
+            # Clang/Apple
+            set(CMAKE_CXX_STANDARD 11)
+            set(${_VAR} 1)
+            
         endif()
-    
-    # Apple/CLang
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
-        set(CMAKE_CXX_STANDARD 11)
-        set(${_VAR} 1)
+        
     endif()
     
     if (${_VAR})
-        message(STATUS "C++11 compiler - available")
+        message(STATUS "Building with C++11 support")
     else()
-        message(STATUS "C++11 compiler - unavailable")
+        message(STATUS "Building without C++11 support")
     endif()
+    
 endmacro()

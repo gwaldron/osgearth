@@ -59,11 +59,18 @@ TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, u
         }
         else // GEOINTERP_RHUMB_LINE
         {
-            double lat1 = osg::DegreesToRadians(p0.y()), lon1 = osg::DegreesToRadians(p0.x());
-            double lat2 = osg::DegreesToRadians(p1.y()), lon2 = osg::DegreesToRadians(p1.x());
+            // rhumb lines break down at the poles to introduce a fudge factor if necessary
+            double lat1 = p0.y(), lon1 = p0.x();
+            double lat2 = p1.y(), lon2 = p1.x();
+
+            lat1 = osg::clampBetween(lat1, -89.99999, 89.99999);
+            lat2 = osg::clampBetween(lat2, -89.99999, 89.99999);
+
+            lat1 = osg::DegreesToRadians(lat1), lon1 = osg::DegreesToRadians(lon1);
+            lat2 = osg::DegreesToRadians(lat2), lon2 = osg::DegreesToRadians(lon2);
 
             double totalDistance = GeoMath::rhumbDistance( lat1, lon1, lat2, lon2 );
-            double bearing  = GeoMath::rhumbBearing( lat1, lon1, lat2, lon2 );
+            double bearing = GeoMath::rhumbBearing( lat1, lon1, lat2, lon2 );
 
             double interpDistance = t * totalDistance;
 

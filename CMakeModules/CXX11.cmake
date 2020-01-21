@@ -40,7 +40,7 @@ macro(check_for_cxx11_compiler _VAR)
 	    option(BUILD_USE_CXX11 OFF)
 	else()
 		option(BUILD_USE_CXX11 ON)
-	endif();
+	endif()
 
     if (BUILD_USE_CXX11)
         

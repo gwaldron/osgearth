@@ -18,7 +18,7 @@
 #include "BuildingVisitor"
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace osgEarth::Buildings;
 
 void

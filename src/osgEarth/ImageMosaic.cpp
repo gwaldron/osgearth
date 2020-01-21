@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #define LC "[ImageMosaic] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 /***************************************************************************/
@@ -65,7 +66,7 @@ ImageMosaic::createImage()
 {
     if (_images.size() == 0)
     {
-        OE_DEBUG << "ImageMosaic has no images..." << std::endl;
+        OE_INFO << "ImageMosaic has no images..." << std::endl;
         return 0;
     }
 
@@ -108,7 +109,6 @@ ImageMosaic::createImage()
     osg::ref_ptr<osg::Image> image = new osg::Image;
     image->allocateImage(pixelsWide, pixelsHigh, tileDepth, tile->_image->getPixelFormat(), tile->_image->getDataType());
     image->setInternalTextureFormat(tile->_image->getInternalTextureFormat());
-    ImageUtils::markAsNormalized(image.get(), ImageUtils::isNormalized(tile->getImage()));
 
     //Initialize the image to be completely white!
     //memset(image->data(), 0xFF, image->getImageSizeInBytes());

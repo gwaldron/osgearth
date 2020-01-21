@@ -1,7 +1,6 @@
-
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,8 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Layer>
+#include <osgEarth/Cache>
 #include <osgEarth/Registry>
+#include <osgEarth/SceneGraphCallback>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/TileKey>
+#include <osgEarth/TerrainResources>
+#include <osg/StateSet>
 
 using namespace osgEarth;
 
@@ -27,70 +31,61 @@ using namespace osgEarth;
 
 //.................................................................
 
-LayerOptions::LayerOptions() :
-ConfigOptions()
-{
-    fromConfig(_conf);
-}
-
-LayerOptions::LayerOptions(const ConfigOptions& co) :
-ConfigOptions(co)
-{
-    fromConfig(_conf);
-}
-
-void
-LayerOptions::setDefaults()
-{
-    _enabled.init(true);
-    _terrainPatch.init(false);
-}
-
-Config LayerOptions::getConfig() const
+Config
+Layer::Options::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
-    conf.set("name", _name);
-    conf.set("enabled", _enabled);
-    conf.set("cacheid", _cacheId);
-    if (_cachePolicy.isSet() && !_cachePolicy->empty())
-        conf.set("cache_policy", _cachePolicy);
-    conf.set("shader_define", _shaderDefine);
-    conf.set("shader", _shader);
-    conf.set("attribution", _attribution);
-    conf.set("terrain", _terrainPatch);
+    conf.set("name", name());
+    conf.set("enabled", enabled());
+    conf.set("cacheid", cacheId());
+    if (cachePolicy().isSet() && !cachePolicy()->empty())
+        conf.set("cache_policy", cachePolicy());
+    conf.set("shader_define", shaderDefine());
+    conf.set("attribution", attribution());
+    conf.set("terrain", terrainPatch());
+    conf.set("proxy", _proxySettings );
+
+    for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
+        i != shaders().end();
+        ++i)
+    {
+        conf.add("shader", i->getConfig());
+    }
+
     return conf;
 }
 
-void LayerOptions::fromConfig(const Config& conf)
+void
+Layer::Options::fromConfig(const Config& conf)
 {
-    setDefaults();
+    // defaults:
+    _enabled.init(true);
+    _terrainPatch.init(false);
 
-    conf.get("name", _name);
-    conf.get("enabled", _enabled);
-    conf.get("cache_id", _cacheId); // compat
-    conf.get("cacheid", _cacheId);
-    conf.get("attribution", _attribution);
-    conf.get("cache_policy", _cachePolicy);
+    conf.get("name", name());
+    conf.get("enabled", enabled());
+    conf.get("cache_id", cacheId()); // compat
+    conf.get("cacheid", cacheId());
+    conf.get("attribution", attribution());
+    conf.get("cache_policy", cachePolicy());
 
     // legacy support:
-    if (!_cachePolicy.isSet())
+    if (!cachePolicy().isSet())
     {
         if ( conf.value<bool>( "cache_only", false ) == true )
             _cachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
         if ( conf.value<bool>( "cache_enabled", true ) == false )
             _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
     }
-    conf.get("shader_define", _shaderDefine);
-    conf.get("shader", _shader);
+    conf.get("shader_define", shaderDefine());
 
-    conf.get("terrain", _terrainPatch);
-    conf.get("patch", _terrainPatch);
-}
+    const ConfigSet& shadersConf = conf.children("shader");
+    for(ConfigSet::const_iterator i = shadersConf.begin(); i != shadersConf.end(); ++i)
+        shaders().push_back(ShaderOptions(*i));
 
-void LayerOptions::mergeConfig(const Config& conf)
-{
-    ConfigOptions::mergeConfig(conf);
-    fromConfig(_conf);
+    conf.get("terrain", terrainPatch());
+    conf.get("patch", terrainPatch());
+    conf.get("proxy", _proxySettings );
 }
 
 //.................................................................
@@ -104,7 +99,8 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 //.................................................................
 
 Layer::Layer() :
-_options(&_optionsConcrete)
+_options(&_optionsConcrete),
+_revision(0u)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -113,8 +109,9 @@ _options(&_optionsConcrete)
     init();
 }
 
-Layer::Layer(LayerOptions* optionsPtr) :
-_options(optionsPtr? optionsPtr : &_optionsConcrete)
+Layer::Layer(Layer::Options* optionsPtr) :
+_options(optionsPtr? optionsPtr : &_optionsConcrete),
+_revision(0u)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -125,6 +122,12 @@ _options(optionsPtr? optionsPtr : &_optionsConcrete)
 Layer::~Layer()
 {
     OE_DEBUG << LC << "~Layer\n";
+}
+
+void
+Layer::bumpRevision()
+{
+    ++_revision;
 }
 
 void
@@ -166,6 +169,24 @@ Layer::setReadOptions(const osgDB::Options* readOptions)
 
     // Store it for further propagation!
     _cacheSettings->store(_readOptions.get());
+
+    //Store the proxy settings in the options structure.
+    if (options().proxySettings().isSet())
+    {
+        options().proxySettings()->apply(_readOptions.get());
+    }
+}
+
+const osgDB::Options*
+Layer::getReadOptions() const
+{
+    return _readOptions.get();
+}
+
+void
+Layer::setCacheID(const std::string& value)
+{
+    options().cacheId() = value;
 }
 
 std::string
@@ -208,9 +229,36 @@ Layer::setEnabled(bool value)
     }
 }
 
+const Status&
+Layer::setStatus(const Status& status) const
+{
+    _status = status;
+    return _status;
+}
+
+const Status&
+Layer::setStatus(const Status::Code& code, const std::string& message) const
+{
+    return setStatus(Status(code, message));
+}
+
+void
+Layer::setCachePolicy(const CachePolicy& value)
+{
+    options().cachePolicy() = value;
+}
+
+const CachePolicy&
+Layer::getCachePolicy() const
+{
+    return options().cachePolicy().get();
+}
+
 void
 Layer::init()
 {
+    _isOpen = false;
+
     // For detecting scene graph changes at runtime
     _sceneGraphCallbacks = new SceneGraphCallbacks(this);
 
@@ -225,6 +273,11 @@ Layer::init()
 const Status&
 Layer::open()
 {
+    if (_isOpen)
+    {
+        return getStatus();
+    }
+
     // Copy the layer options name into the Object name.
     if (options().name().isSet())
     {
@@ -238,24 +291,64 @@ Layer::open()
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
 
-    return _status;
+    setStatus(openImplementation());
+
+    _isOpen = getStatus().isOK();
+
+    return getStatus();
 }
 
-void
+const Status&
+Layer::open(const osgDB::Options* readOptions)
+{
+    setReadOptions(readOptions);
+    return open();
+}
+
+Status
+Layer::openImplementation()
+{
+    return Status::NoError;
+}
+
+Status
+Layer::closeImplementation()
+{
+    return Status::NoError;
+}
+
+Status
 Layer::close()
 {
+    Status s = closeImplementation();
     setStatus(Status::OK());
+    _isOpen = false;
+    return s;
+}
+
+bool
+Layer::isOpen() const
+{
+    return _isOpen;
+}
+
+const Status&
+Layer::getStatus() const
+{
+    return _status;
 }
 
 void
 Layer::setTerrainResources(TerrainResources* res)
 {
     // Install an earth-file shader if necessary (once)
-    if (options().shader().isSet() && !_shader.valid())
+    for(std::vector<ShaderOptions>::const_iterator i = options().shaders().begin();
+        i != options().shaders().end();
+        ++i)
     {
-        OE_INFO << LC << "Installing inline shader code" << std::endl;
-        _shader = new LayerShader(options().shader().get());
-        _shader->install(this, res);
+        LayerShader* shader = new LayerShader(*i);
+        shader->install(this, res);
+        _shaders.push_back(shader);
     }
 }
 
@@ -279,9 +372,12 @@ Layer::create(const ConfigOptions& options)
 {
     std::string name = options.getConfig().key();
 
+    if (name.empty())
+        name = options.getConfig().value("driver");
+
     if ( name.empty() )
     {
-        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a plugin name" << std::endl;
+        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
         return 0L;
     }
 
@@ -442,4 +538,16 @@ void
 Layer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
 {
     //NOP
+}
+
+const Layer::Hints&
+Layer::getHints() const
+{
+    return _hints;
+}
+
+Layer::Hints&
+Layer::layerHints()
+{
+    return _hints;
 }

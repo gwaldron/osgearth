@@ -18,7 +18,7 @@
  */
 #include "DrawTileCommand"
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[DrawTileCommand] "
@@ -127,27 +127,17 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
     {
         PatchLayer::DrawContext dc;
 
-        //TODO: might not need any of this. review. -gw
-        dc.colorTexture = _colorSamplers? (*_colorSamplers)[SamplerBinding::COLOR]._texture.get() : 0L;
-        if (_sharedSamplers)
-        {
-            dc.elevationTexture = (*_sharedSamplers)[SamplerBinding::ELEVATION]._texture.get();
-            dc.normalTexture    = (*_sharedSamplers)[SamplerBinding::NORMAL]._texture.get();
-            dc.coverageTexture  = (*_sharedSamplers)[SamplerBinding::COVERAGE]._texture.get();
-        }
-        dc.key = _key;
-        dc.range = _range;
+        dc._key = _key;
+        dc._range = _range;
+        dc._geom = _geom.get();
         _drawCallback->draw(ri, dc, layerData);
-
-        // evaluate this.
-        ds._samplerState.clear();
     }
 
     else
     // If there's a geometry, draw it now:
     if (_geom.valid())
     {
-        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode(); //GL_TRIANGLES;
+        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
         _geom->draw(ri);
     }    
 }

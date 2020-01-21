@@ -1561,7 +1561,6 @@ private:
 };
 } // namespace osgEarth
 
-
 /**
 	A TiXmlHandle is a class that wraps a node pointer with null checks; this is
 	an incredibly useful thing. Note that TiXmlHandle is not part of the TinyXml
@@ -1720,7 +1719,6 @@ public:
 
 private:
     osgEarth::TiXmlNode* node;
-
 };
 
 

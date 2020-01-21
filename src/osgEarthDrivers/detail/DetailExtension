@@ -23,7 +23,7 @@
 #include "DetailTerrainEffect"
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/Controls>
 
 namespace osgEarth { namespace Detail
 {

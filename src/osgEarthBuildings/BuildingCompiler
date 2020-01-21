@@ -30,11 +30,11 @@
 #include "FilterUsage"
 
 #include <osgEarth/Progress>
-#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarth/FeatureCursor>
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
 
     /** 
      * Created an OSG graph from one or more Building objects.

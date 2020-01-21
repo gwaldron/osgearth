@@ -1,35 +1,26 @@
 <!--
-osgEarth Sample
-Demonstrates use of the "agglite" feature rasterization driver.
+FeatureImage - rasterizes feature data into an image layer.
 -->
 
-<map name="Geometry Rasterizer Demo" type="round" version="2">
+<Map name="Demo: FeatureImage Rasterizer">
 
-    <image name="world" driver="gdal">
-        <url>../data/world.tif</url>
-        <cache_policy usage="no_cache"/>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
     
-    <image name="world_boundaries" driver="agglite" opacity="0.5">
-
-        <!-- Configure the OGR feature driver to read the shapefile. -->
-        <features name="world" driver="ogr">
-            <url>../data/world.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-        
+    <OGRFeatures name="world-data">
+        <url>../data/world.shp</url>
+    </OGRFeatures>
+    
+    <FeatureImage name="World Boundaries">
+        <features>world-data</features>
         <styles>        
             <style type="text/css">
                 default {
-					fill:          #ff7700;
-                    stroke:		   #ffff00;
-                    stroke-width:  1px;
+                    fill:          #ff7700;
+                    stroke:        #ffff00;
+                    stroke-width:  5km;
                 }
             </style>
         </styles>
-        
-        <cache_policy usage="no_cache"/>
-        
-    </image>
+    </FeatureImage>
   
-</map>
+</Map>

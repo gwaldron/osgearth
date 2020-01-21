@@ -19,7 +19,8 @@
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Map>
-#include <osgEarth/Metrics>
+#include <osgEarth/Registry>
+#include <osgEarth/LandCoverLayer>
 
 #include <osg/ConcurrencyViewerMacros>
 #include <osg/Texture2D>
@@ -39,6 +40,7 @@ _heightFieldCache( true, 128 )
 
     // Create an empty texture that we can use as a placeholder
     _emptyTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
+    _emptyTexture->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 }
 
 TerrainTileModel*
@@ -59,14 +61,16 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
     // assemble all the components:
     addColorLayers(model.get(), map, requirements, key, filter, progress);
 
-    addPatchLayers(model.get(), map, key, filter, progress);
-
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
         unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
 
         addElevation( model.get(), map, key, filter, border, progress );
     }
+
+    addLandCover(model.get(), map, key, filter, progress);
+
+    //addPatchLayers(model.get(), map, key, filter, progress);
 
     // done.
     return model.release();
@@ -106,14 +110,15 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
         if (imageLayer)
         {
+            TextureWindow window;
             osg::Texture* tex = 0L;
-            osg::Matrixf textureMatrix;
 
             if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveData(key))
             {
                 if (imageLayer->useCreateTexture())
                 {
-                    tex = imageLayer->createTexture( key, progress, textureMatrix );
+                    window = imageLayer->createTexture( key, progress );
+                    tex = window.getTexture();
                 }
 
                 else
@@ -123,7 +128,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                     if (geoImage.valid())
                     {
                        if (imageLayer->isCoverage()) {
-                          tex = createCoverageTexture(geoImage.getImage(), imageLayer);
+                            tex = createCoverageTexture(geoImage.getImage());
                           tex->setName(key.str() + ":coverage");
                        }
                        else {
@@ -152,7 +157,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                 layerModel->setImageLayer(imageLayer);
 
                 layerModel->setTexture(tex);
-                layerModel->setMatrix(new osg::RefMatrixf(textureMatrix));
+                layerModel->setMatrix(new osg::RefMatrixf(window.getMatrix()));
 
                 model->colorLayers().push_back(layerModel);
 
@@ -197,7 +202,6 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
         i != patchLayers.end();
         ++i )
     {
-
         PatchLayer* layer = i->get();
 
         if (!filter.accept(layer))
@@ -208,14 +212,12 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
 
         if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->acceptKey(key))
         {
-            PatchLayer::TileData* tileData = layer->createTileData(key);
-            if (tileData)
+            GeoNode node = layer->createNode(key, progress);
+            if (node.valid())
             {
                 TerrainTilePatchLayerModel* patchModel = new TerrainTilePatchLayerModel();
                 patchModel->setPatchLayer(layer);
-                patchModel->setTileData(tileData);
-
-                model->patchLayers().push_back(patchModel);
+                patchModel->setNode(node.getNode());
             }
         }
     }
@@ -236,20 +238,32 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
 
-    if (!filter.empty() && !filter.elevation().isSetTo(true))
+    bool accepted = true;
+    ElevationLayerVector layers;
+    map->getLayers(layers);
+
+    if (!filter.empty())
+    {
+        accepted = false;
+        for(ElevationLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (filter.accept(i->get()))
+            {
+                accepted = true;
+                break;
+            }
+        }
+    }
+    if (!accepted)
         return;
 
-    osg::CVMarkerSeries series("SubloadParentTask");
-    osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::addElevation");
-
-    const osgEarth::ElevationInterpolation& interp =
-        map->getMapOptions().elevationInterpolation().get();
+    const osgEarth::RasterInterpolation& interp = map->getElevationInterpolation();
 
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;
     osg::ref_ptr<NormalMap> normalMap;
 
-    bool hfOK = getOrCreateHeightField(map, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
+    bool hfOK = getOrCreateHeightField(map, layers, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
 
     if (hfOK == false && key.getLOD() == _options.firstLOD().get())
     {
@@ -313,17 +327,25 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
 bool
 TerrainTileModelFactory::getOrCreateHeightField(const Map*                      map,
+                                                const ElevationLayerVector&     layers,
                                                 const TileKey&                  key,
                                                 ElevationSamplePolicy           samplePolicy,
-                                                ElevationInterpolation          interpolation,
+                                                RasterInterpolation             interpolation,
                                                 unsigned                        border,
                                                 osg::ref_ptr<osg::HeightField>& out_hf,
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
-   // Get layers earlier for VRV_PATCH
-   ElevationLayerVector layers;
-   map->getLayers(layers);
+   // gather the combined revision (additive is fine)
+    int combinedLayerRevision = 0;
+    for(ElevationLayerVector::const_iterator i = layers.begin();
+        i != layers.end();
+        ++i)
+    {
+        // need layer UID too? gw
+        combinedLayerRevision += i->get()->getRevision();
+    }
+  
 
    // VRV_PATCH
    CacheBin* cacheBin = 0;
@@ -377,7 +399,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
-    cachekey._revision     = map->getDataModelRevision();
+    cachekey._revision     = (int)map->getDataModelRevision() + combinedLayerRevision;
     cachekey._samplePolicy = samplePolicy;
 
     if (progress)
@@ -476,6 +498,37 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
     return populated;
 }
 
+void
+TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
+                                      const Map*                   map,
+                                      const TileKey&               key,
+                                      const CreateTileModelFilter& filter,
+                                      ProgressCallback*            progress)
+{
+    LandCoverLayerVector layers;
+    map->getLayers(layers);
+
+    osg::ref_ptr<osg::Image> coverageImage;
+
+    osg::ref_ptr<osg::Texture> tex;
+
+    if (layers.populateLandCoverImage(coverageImage, key, progress))
+    {
+        tex = createCoverageTexture(coverageImage.get());
+    }
+
+    if (tex)
+    {
+        tex->setName(model->getKey().str());
+
+        TerrainTileLandCoverModel* landCoverModel = new TerrainTileLandCoverModel();
+
+        landCoverModel->setTexture(tex.get());
+
+        model->landCoverModel() = landCoverModel;
+    }
+}
+
 osg::Texture*
 TerrainTileModelFactory::createImageTexture(osg::Image*       image,
                                             const ImageLayer* layer) const
@@ -521,18 +574,21 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
         tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }
 
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
     layer->applyTextureCompressionMode(tex);
 
     ImageUtils::activateMipMaps(tex);
-
+    
     return tex;
 }
 
 osg::Texture*
-TerrainTileModelFactory::createCoverageTexture(osg::Image*       image,
-                                               const ImageLayer* layer) const
+TerrainTileModelFactory::createCoverageTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+
+    tex->setInternalFormat(GL_R16F);
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
@@ -542,6 +598,8 @@ TerrainTileModelFactory::createCoverageTexture(osg::Image*       image,
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
 
     tex->setMaxAnisotropy( 1.0f );
+
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
     return tex;
 }
@@ -557,6 +615,7 @@ TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
     tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint( false );
     tex->setMaxAnisotropy( 1.0f );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     return tex;
 }
 
@@ -568,7 +627,6 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
         // Only compress the image if it's not already compressed.
         if (image->getPixelFormat() != GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
         {
-            METRIC_SCOPED("normalmap compression");
             // See if we have a CPU compressor generator:
             osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
             if (ip)
@@ -590,9 +648,8 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setMaxAnisotropy(1.0f);
-	
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
     ImageUtils::activateMipMaps(tex);
-	
     return tex;
 }

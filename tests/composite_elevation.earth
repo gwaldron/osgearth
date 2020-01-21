@@ -1,0 +1,29 @@
+<!--
+CompositeElevation
+
+This example demonstrates how to load multiple heightfield layers and treat them as one.
+
+Note: Gaps, peaks, and valleys in the visualization are due to missing data in the source
+files. This is not a bug! A good technique for fixing this would be to provide a world-wide
+lo-res heightfield underlay.
+-->
+
+<Map>
+    <ContourMap/>
+    
+    <CompositeElevation>
+        <layers>
+            <GDALElevation name="Mt Fuji, Japan">
+                <url>..\data\terrain\mt_fuji_90m.tif</url>
+            </GDALElevation>
+
+            <GDALElevation name="Mt Rainier, USA">
+                <url>..\data\terrain\mt_rainier_90m.tif</url>
+            </GDALElevation>
+
+            <GDALElevation name = "Mt Everest, Nepal">
+                <url>..\data\terrain\mt_everest_90m.tif</url>
+            </GDALElevation>
+        </layers>
+    </CompositeElevation>
+</Map>

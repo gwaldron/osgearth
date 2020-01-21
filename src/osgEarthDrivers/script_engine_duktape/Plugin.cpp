@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgDB/ReaderWriter>
-#include <osgEarthFeatures/ScriptEngine>
+#include <osgEarth/ScriptEngine>
 #include <osgEarth/Common>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
@@ -31,7 +31,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
     /**
      * Driver plugin entry point - creates a DuktapeEngine instance.
      */
-    class DuktapeScriptEngineDriver : public osgEarth::Features::ScriptEngineDriver
+    class DuktapeScriptEngineDriver : public osgEarth::ScriptEngineDriver
     {
     public:
         DuktapeScriptEngineDriver()

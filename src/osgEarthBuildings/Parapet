@@ -21,11 +21,11 @@
 
 #include "Common"
 #include "Elevation"
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Geometry>
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     class BuildContext;
     

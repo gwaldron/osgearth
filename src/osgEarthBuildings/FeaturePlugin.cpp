@@ -27,15 +27,15 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthSymbology/StyleSheet>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
+#include <osgEarth/OGRFeatureSource>
 
 #define LC "[Building Plugin] "
 
 #define PLUGIN_EXTENTION "building"
 
-using namespace osgEarth::Drivers;
+using namespace osgEarth;
 
 
 namespace osgEarth { namespace Buildings
@@ -73,16 +73,11 @@ namespace osgEarth { namespace Buildings
             OE_INFO << LC << "Input = " << inputFile << "\n";
 
             // Try to open as a feature source:
-            OGRFeatureOptions ogr;
-            ogr.url() = inputFile;
-            osg::ref_ptr<FeatureSource> fs = FeatureSourceFactory::create( ogr );
-            if ( !fs.valid() )
-            {
-                OE_WARN << LC << "Failed to create feature soruce from input file\n";
-                return ReadResult::FILE_NOT_FOUND;
-            }
+            osg::ref_ptr<OGRFeatureSource> fs = new OGRFeatureSource();
+            fs->setURL( inputFile );
+            fs->setReadOptions(options);
 
-            const Status& status = fs->open(options);
+            const Status& status = fs->open();
             if (status.isError())
             {
                 OE_WARN << LC << "No feature data: " << status.message() << std::endl;
@@ -90,7 +85,7 @@ namespace osgEarth { namespace Buildings
             }
 
             // Create a cursor to iterator over the feature data:
-            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(0L);
+            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(Query(), NULL);
             if ( !cursor.valid() )
             {
                 OE_WARN << LC << "Failed to open a cursor from input file\n";

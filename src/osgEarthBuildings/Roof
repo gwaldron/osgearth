@@ -20,16 +20,16 @@
 #define OSGEARTH_BUILDINGS_ROOF_H
 
 #include "Common"
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/Color>
-#include <osgEarthSymbology/Skins>
-#include <osgEarthSymbology/ModelResource>
-#include <osgEarthSymbology/ModelSymbol>
+#include <osgEarth/Geometry>
+#include <osgEarth/Color>
+#include <osgEarth/Skins>
+#include <osgEarth/ModelResource>
+#include <osgEarth/ModelSymbol>
 #include <vector>
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     class Elevation;
     class BuildContext;

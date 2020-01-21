@@ -27,16 +27,16 @@
 
 #include <osgEarth/CacheBin>
 #include <osgEarth/StateSetCache>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureIndex>
-#include <osgEarthUtil/SimplePager>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FeatureIndex>
+#include <osgEarth/SimplePager>
 
 #include <osgDB/ObjectCache>
 
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
 
     class OSGEARTHBUILDINGS_EXPORT BuildingPager : public osgEarth::Util::SimplePager
     {

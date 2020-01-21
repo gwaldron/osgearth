@@ -23,8 +23,8 @@
 #include "SimpleSkyNode"
 #include "SimpleSkyShaders"
 
-#include <osgEarthUtil/StarData>
-#include <osgEarthUtil/Ephemeris>
+#include <osgEarth/StarData>
+#include <osgEarth/Ephemeris>
 
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/NodeUtils>
@@ -659,6 +659,7 @@ SimpleSkyNode::makeMoon()
     texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
     texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     texture->setResizeNonPowerOfTwoHint(false);
+    texture->setUnRefImageDataAfterApply(true);
     stateSet->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 #ifdef OSG_GL3_AVAILABLE
     // Adjust for loss of GL_LUMINANCE in glTexture2D's format parameter.  OSG handles the texture's internal format,
@@ -895,7 +896,7 @@ SimpleSkyNode::getDefaultStars(std::vector<StarData>& out_stars)
 {
     out_stars.clear();
 
-    for(const char **sptr = s_defaultStarData; *sptr; sptr++)
+    for(const char **sptr = Util::s_defaultStarData; *sptr; sptr++)
     {
         std::stringstream ss(*sptr);
         out_stars.push_back(StarData(ss));

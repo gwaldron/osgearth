@@ -20,8 +20,8 @@
 #include "Analyzer"
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
-#include <osgEarthSymbology/Query>
-#include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/Query>
+#include <osgEarth/StyleSheet>
 #include <osgUtil/Optimizer>
 #include <osgUtil/Statistics>
 #include <osg/Version>
@@ -36,8 +36,7 @@
 #define LC "[BuildingPager] "
 
 using namespace osgEarth::Buildings;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 
 #define OE_TEST OE_DEBUG
 

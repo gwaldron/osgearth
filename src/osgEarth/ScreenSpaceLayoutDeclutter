@@ -456,7 +456,7 @@ namespace osgEarth { namespace Internal
                     DrawableInfo& info = local._memory[drawable];
 
                     bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
-                    bool isBbox = drawable && (strcmp(drawable->className(),"BboxDrawable")==0);
+                    bool isBbox = drawable && drawable->className()=="BboxDrawable";
                     bool fullyOut = true;
 
                     if (info._frame > 0u)

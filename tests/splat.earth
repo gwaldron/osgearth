@@ -4,13 +4,7 @@
 -->
 
 <map>
-    <options>
-        <terrain driver="rex"/>
-    </options>
-    
-    <elevation name="readymap_elevation" driver="tms" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
 
     <!-- Pre-load the splatting nodekit -->
     <libraries>osgEarthSplat</libraries>
@@ -19,20 +13,10 @@
     <xi:include href="../data/land_cover_dictionary.xml"/>
     
     <!-- Land cover layer defines world wide classes -->
-    <land_cover name="LandCover" max_data_level="15">
-        <cache_policy usage="no_cache"/>
-        <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <profile>global-geodetic</profile>
-                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-                <warp>0.05</warp>
-            </coverage>
-        </coverages>
-    </land_cover>
+    <xi:include href="esa_land_cover.xml"/>
         
     <!-- Procedural terrain imagery from land cover data -->
-    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
+    <SplatImage name="Splat Imagery">
         <zones>
             <zone name="default">
                 <surface>
@@ -40,18 +24,18 @@
                 </surface>
             </zone>
         </zones>
-    </splat_imagery>
+    </SplatImage>
     
     <!-- GPU trees from land cover data -->
-    <splat_groundcover name="Trees" land_cover_layer="LandCover">
+    <GroundCover name="Trees">
         <lod>13</lod>
         <cast_shadows>true</cast_shadows>
         <zones>
             <zone name="default">
                 <groundcover>
-                    <max_distance>6400</max_distance>
-                    <density>3.4</density>
-                    <fill>0.45</fill>
+                    <max_distance>7300</max_distance>
+                    <spacing>12</spacing>
+                    <fill>0.60</fill>
                     <brightness>2.0</brightness>
                     <contrast>0.5</contrast>
                     <biomes>
@@ -64,29 +48,31 @@
                 </groundcover>
             </zone>
         </zones>
-    </splat_groundcover>
+    </GroundCover>
 
     <!-- GPU grass from land cover data -->
-    <splat_groundcover name="Grass" land_cover_layer="LandCover">
+    <GroundCover name="Grass">    
         <lod>19</lod>
+        <grass>true</grass>
         <cast_shadows>false</cast_shadows>
         <zones>
             <zone name="default">
                 <groundcover>
-                    <max_distance>150</max_distance>
-                    <density>3.8</density>
-                    <fill>0.50</fill>
-                    <wind>0.15</wind>
+                    <max_distance>80</max_distance>
+                    <spacing>0.25</spacing>
+                    <fill>0.65</fill>
+                    <wind>0.10</wind>
                     <biomes>
-                        <biome name="Grass" classes="forest">
-                            <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
+                        <biome name="Grass" classes="grassland forest">
+                            <billboard url="../data/hiclipart.com/grass1.png" width="0.5" height="0.5" size_variation="1.5" selection_weight="3"/>
+                            <billboard url="../data/hiclipart.com/grass2.png" width="0.5" height="0.5" size_variation="2" selection_weight="5"/>
+                            <billboard url="../data/hiclipart.com/tallgrass.png" width="0.5" height="0.5" size_variation="1" selection_weight="1"/>
                         </biome>
                     </biomes>
                 </groundcover>
             </zone>
         </zones>
-    </splat_groundcover>
-
+    </GroundCover>
     
     <xi:include href="viewpoints.xml"/>
 </map>

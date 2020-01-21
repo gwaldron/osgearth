@@ -27,12 +27,11 @@
 #include <osgEarth/Config>
 #include <osg/Referenced>
 #include <osgEarth/URI>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/FeatureSource>
 
 namespace osgEarth { namespace Aerodrome
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     /**
      * Aerodrome

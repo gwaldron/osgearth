@@ -28,17 +28,20 @@
 
 namespace osgEarth
 {
+    class ElevationLayerVector;
+
     /**
      * Filter you can pass to TerrainTileModelFactory::createTileModel
      */
     class CreateTileModelFilter
     {
     public:
-        CreateTileModelFilter() : _elevation(false) { }
+        //! Default constructor
+        CreateTileModelFilter() { }
 
-        /** Whether to fetch elevation data and normal maps */
-        optional<bool>& elevation() { return _elevation; }
-        const optional<bool>& elevation() const { return _elevation; }
+        //! Copy constructor
+        CreateTileModelFilter(const CreateTileModelFilter& rhs) :
+            _layers(rhs._layers) { }
 
         /** List of other layers to accept */
         std::set<UID>& layers() { return _layers; }
@@ -49,15 +52,13 @@ namespace osgEarth
         }
 
         bool empty() const {
-            return !_elevation.isSet() && _layers.empty();
+            return _layers.empty();
         }
 
         void clear() {
-            _elevation.unset();
             _layers.clear();
         }
     protected:
-        optional<bool> _elevation;
         std::set<UID> _layers;
     };
 
@@ -68,8 +69,7 @@ namespace osgEarth
     {
     public:
         /** Constructor */
-        TerrainTileModelFactory(
-            const TerrainOptions& options);
+        TerrainTileModelFactory(const TerrainOptions& options);
 
         /**
          * Creates a tile model and populates it with data from the map.
@@ -105,6 +105,13 @@ namespace osgEarth
             unsigned                     border,
             ProgressCallback*            progress);
 
+        virtual void addLandCover(
+            TerrainTileModel*            model,
+            const Map*                   map,
+            const TileKey&               key,
+            const CreateTileModelFilter& filter,
+            ProgressCallback*            progress);
+
         virtual void addPatchLayers(
             TerrainTileModel*            model,
             const Map*                   map,
@@ -117,9 +124,10 @@ namespace osgEarth
         /** Find a heightfield in the cache, or fetch it from the source. */
         bool getOrCreateHeightField(
             const Map*                      map,
+            const ElevationLayerVector&     layers,
             const TileKey&                  key,
             ElevationSamplePolicy           samplePolicy,
-            ElevationInterpolation          interpolation,
+            RasterInterpolation             interpolation,
             unsigned                        border,
             osg::ref_ptr<osg::HeightField>& out_hf,
             osg::ref_ptr<NormalMap>&        out_normalMap,
@@ -130,25 +138,23 @@ namespace osgEarth
             const ImageLayer* layer) const;
 
         osg::Texture* createCoverageTexture(
-            osg::Image*       image,
-            const ImageLayer* layer) const;
+            osg::Image* image) const;
 
         osg::Texture* createElevationTexture(
             osg::Image* image) const;
 
         osg::Texture* createNormalTexture(
             osg::Image* image,
-            bool compress
-            ) const;
+            bool compress ) const;
 
-        const TerrainOptions _options;
+        const TerrainOptions& _options;
         
 
         /** Key into the height field cache */
         struct HFCacheKey 
         {
             TileKey               _key;
-            Revision              _revision;
+            int                   _revision;
             ElevationSamplePolicy _samplePolicy;
 
             bool operator < (const HFCacheKey& rhs) const {
@@ -165,7 +171,6 @@ namespace osgEarth
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<NormalMap> _normalMap;
         };
-        //typedef osg::ref_ptr<osg::HeightField> HFCacheValue;
         typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
         HFCache _heightFieldCache;
         bool    _heightFieldCacheEnabled;

@@ -5,26 +5,21 @@ This one demonstrates how to generate inline styles using JavaScript
 and a custom selector. 
 -->
 
-<map name="Inline styling" type="geocentric" version="2">
-    
-    <options>
-        <lighting>false</lighting>
-        <overlay_blending>false</overlay_blending>
-    </options>
+<map name="Demo: inline scripted styling">
 
-    <image name="world" driver="gdal">
+    <GDALImage name="world">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
     
-    <model name="countries" driver="feature_geom">
-                          
-        <features name="states" driver="ogr">
-            <url>../data/world.shp</url>
-            <filters>
-                <buffer distance="-0.05"/>
-            </filters>
-        </features>
+    <OGRFeatures name="country-data">
+        <url>../data/world.shp</url>
+        <filters>
+            <buffer distance="-0.05"/>
+        </filters>
+    </OGRFeatures>
         
+    
+    <FeatureModel name="countries" features="country-data">
         <styles>            
             <script language="javascript">
             <![CDATA[
@@ -42,7 +37,7 @@ and a custom selector.
                         var r = Math.floor(Math.random()*255);
                         var g = Math.floor(Math.random()*255);
                         var b = Math.floor(Math.random()*255);
-                        g_styles.push( "{fill:#"+hex(r)+hex(g)+hex(b)+"6f; altitude-clamping:terrain-drape;}" );
+                        g_styles.push( "{fill:#"+hex(r)+hex(g)+hex(b)+";altitude-clamping:terrain-drape;}" );
                     }
                 }
                 initialize();
@@ -56,7 +51,7 @@ and a custom selector.
             </script>
             
             <selector style_expr="randomColor()"/>
-        </styles>
-        
-    </model>
+        </styles>        
+    </FeatureModel>
+    
 </map>

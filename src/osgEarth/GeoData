@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,8 +23,8 @@
 #include <osgEarth/GeoCommon>
 #include <osgEarth/Bounds>
 #include <osgEarth/SpatialReference>
-#include <osgEarth/Units>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Status>
 
 #include <osg/Referenced>
 #include <osg/Image>
@@ -236,15 +236,13 @@ namespace osgEarth
         bool createWorldUpVector( osg::Vec3d& out_up ) const;
 
         /**
-         * The great-circle distance, in meters, from this point to another.
-         * This calculation does not consider altitude.
+         * Calculates the distance in meters from this geopoint to another.
          */
         double distanceTo(const GeoPoint& rhs) const;
 
         /**
-         * Interpolates a point between this point and another point,
-         * along a great circle, using the parameter t [0..1]. It will also
-         * interpolate the altitude value.
+         * Interpolates a point between this point and another point
+         * using the parameter t [0..1].
          */
         GeoPoint interpolate(const GeoPoint& rhs, double t) const;
 
@@ -599,6 +597,9 @@ namespace osgEarth
         /** Construct an empty (invalid) geoimage. */
         GeoImage();
 
+        //! Construct an image with an error status
+        GeoImage(const Status&);
+
         /** 
          * Constructs a new goereferenced image.
          */
@@ -614,6 +615,9 @@ namespace osgEarth
          * True if this is a valid geo image. 
          */
         bool valid() const;
+
+        //! Error status if set
+        const Status& getStatus() const { return _status; }
 
         /**
          * Gets a pointer to the underlying OSG image.
@@ -699,6 +703,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<osg::Image> _image;
         GeoExtent                _extent;
+        Status                   _status;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;
@@ -707,18 +712,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT NormalMap : public osg::Image
     {
     public:
-        // to help with initializing the normal map
-        struct pixelData
-        {
-           unsigned char x;
-           unsigned char y;
-           unsigned char z;
-           unsigned char w;
-        };
-        
-        NormalMap(const osg::Image & rhs);
-
         NormalMap(unsigned s, unsigned t);
+
+        NormalMap(const osg::Image& image);
 
         void set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature =0.0f);
 
@@ -744,6 +740,9 @@ namespace osgEarth
     public:
         /** Constructs an empty (invalid) heightfield. */
         GeoHeightField();
+
+        //! Construct a heightfield with an error status
+        GeoHeightField(const Status&);
 
         /**
          * Constructs a new georeferenced heightfield.
@@ -771,6 +770,9 @@ namespace osgEarth
          */
         bool valid() const;
 
+        //! Status indicator
+        const Status& getStatus() const { return _status; }
+
         /**
          * Gets the elevation value at a specified point.
          *
@@ -796,7 +798,7 @@ namespace osgEarth
             const SpatialReference* inputSRS, 
             double                  x,
             double                  y,
-            ElevationInterpolation  interp,
+            RasterInterpolation     interp,
             const SpatialReference* srsWithOutputVerticalDatum,
             float&                  out_elevation ) const;
 
@@ -804,7 +806,7 @@ namespace osgEarth
             const SpatialReference* inputSRS, 
             double                  x,
             double                  y,
-            ElevationInterpolation  interp,
+            RasterInterpolation     interp,
             const SpatialReference* srsWithOutputVerticalDatum,
             float&                  out_elevation,
             osg::Vec3&              out_normal ) const;
@@ -819,7 +821,7 @@ namespace osgEarth
          * Subsamples the heightfield, returning a new heightfield corresponding to
          * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
          */
-        GeoHeightField createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, ElevationInterpolation interpolation) const;
+        GeoHeightField createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, RasterInterpolation interpolation) const;
 
         /**
          * Gets the geospatial extent of the heightfield.
@@ -869,6 +871,7 @@ namespace osgEarth
         osg::ref_ptr<NormalMap>        _normalMap;
         GeoExtent                      _extent;
         float                          _minHeight, _maxHeight;
+        Status                         _status;
 
         void init();
     };
@@ -876,8 +879,44 @@ namespace osgEarth
 	typedef std::vector<GeoHeightField> GeoHeightFieldVector;
 
 
+    /**
+    * A georeferenced node.
+    */
+    class OSGEARTH_EXPORT GeoNode
+    {
+    public:
+        //! Construct an empty (invalid) GeoNode
+        GeoNode();
 
+        //! Construct an image with an error status
+        GeoNode(const Status&);
 
+        //! Constructs a new goereferenced node
+        GeoNode(osg::Node* node, const GeoExtent& extent);
+
+        //! Global invalid node
+        static GeoNode INVALID;
+
+    public:
+        //! True if this is a valid object
+        bool valid() const;
+
+        //! Error status if set
+        const Status& getStatus() const { return _status; }
+
+        //! The underlying OSG node
+        osg::Node* getNode() const { return _node.get(); }
+
+        //! The node's extent
+        const GeoExtent& getExtent() const { return _extent; }
+
+    private:
+        osg::ref_ptr<osg::Node> _node;
+        GeoExtent               _extent;
+        Status                  _status;
+    };
+
+    typedef std::vector<GeoNode> GeoNodeVector;
 }
 
 #endif // OSGEARTH_GEODATA_H

@@ -20,12 +20,12 @@
 #define OSGEARTH_BUILDINGS_BUILDING_SYMBOL_H
 
 #include "Common"
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/Symbol>
+#include <osgEarth/Style>
+#include <osgEarth/Symbol>
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     /**
      * Styling information for constructing buildings.

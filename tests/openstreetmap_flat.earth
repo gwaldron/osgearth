@@ -1,21 +1,20 @@
 <!-- 
 OpenStreetMap's Mapnik "Slippy Map" - Projected.
-See:
 http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
 -->
 
-<map name="OpenStreetMap" type="projected" version="2">
+<map name="OpenStreetMap Projected Map">
 
     <options>
         <profile>spherical-mercator</profile>
-        <terrain driver="rex" tile_size="2" morph_imagery="false"/>
+        <terrain tile_size="2" morph_imagery="false"/>
     </options>
     
-    <image name="osm_mapnik" driver="xyz">
+    <XYZImage name="osm_mapnik">
         <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="none"/>
-    </image>
+    </XYZImage>
     
     <xi:include href="viewpoints_flat.xml"/>
 </map>

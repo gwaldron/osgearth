@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -69,6 +69,14 @@ CacheSettings::integrateCachePolicy(const optional<CachePolicy>& policy)
 }
 
 void
+CacheSettings::integrateCachePolicy(const CachePolicy& policy)
+{
+    optional<CachePolicy> temp;
+    temp = policy;
+    integrateCachePolicy(temp);
+}
+
+void
 CacheSettings::store(osgDB::Options* readOptions)
 {
     if (readOptions)
@@ -98,10 +106,18 @@ CacheSettings::get(const osgDB::Options* readOptions)
 std::string
 CacheSettings::toString() const
 {
-    return Stringify()
-        << "cache=" << (_cache.valid() ? _cache->className() : "none")
-        << "; policy=" << _policy->usageString()
-        << "; bin=" << (_activeBin.get() ? "yes" : "no");
+    if (_cache.valid() && _policy->isCacheEnabled())
+    {
+        return Stringify()
+            << "[cache=" << (_cache.valid() ? _cache->className() : "none")
+            << "; policy=" << _policy->usageString()
+            << "; bin=" << (_activeBin.get() ? "yes" : "no")
+            << "]";
+    }
+    else
+    {
+        return "[no cache]";
+    }
 }
 
 //------------------------------------------------------------------------

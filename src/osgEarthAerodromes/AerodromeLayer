@@ -33,10 +33,10 @@ namespace osgEarth { namespace Aerodrome
     /**
      * Options structure used to configure an AerodromLayer
      */
-    class AerodromeLayerOptions : public VisibleLayerOptions
+    class AerodromeLayerOptions : public VisibleLayer::Options
     {
     public:
-        AerodromeLayerOptions( const ConfigOptions& opt =ConfigOptions() ) : VisibleLayerOptions( opt ),
+        AerodromeLayerOptions( const ConfigOptions& opt =ConfigOptions() ) : VisibleLayer::Options( opt ),
             _range(50000.0f)
         {
             // init properties here
@@ -62,7 +62,7 @@ namespace osgEarth { namespace Aerodrome
     public:
         Config getConfig() const
         {
-            Config conf = VisibleLayerOptions::getConfig();
+            Config conf = VisibleLayer::Options::getConfig();
             conf.set("catalog", _catalog);
             conf.set("range", _range);
             conf.set("render_order", _renderOrder);
@@ -73,7 +73,7 @@ namespace osgEarth { namespace Aerodrome
     protected:
         void mergeConfig(const Config& conf)
         {
-            VisibleLayerOptions::mergeConfig( conf );
+            VisibleLayer::Options::mergeConfig( conf );
             fromConfig( conf );
         }
 
@@ -99,23 +99,17 @@ namespace osgEarth { namespace Aerodrome
     class OSGEARTHAERODROME_EXPORT AerodromeLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthAerodrome, AerodromeLayer, AerodromeLayerOptions, aerodromes);
-
-        //! Default constructor
-        AerodromeLayer();
-
-        //! Constructor with initialization options
-        AerodromeLayer(const AerodromeLayerOptions& options);
+        META_Layer(osgEarthAerodrome, AerodromeLayer, AerodromeLayerOptions, VisibleLayer, Aerodromes);
 
     public: // Layer
 
         //! The root node of this layer's scene graph
         virtual osg::Node* getNode() const;
 
-        //! Opens any data stores associated with the layer
-        virtual const Status& open();
-
     protected: // Layer
+
+        //! Opens any data stores associated with the layer
+        virtual Status openImplementation();
 
         //! Called after this layer is added to the map
         virtual void addedToMap(const Map* map);
@@ -129,7 +123,7 @@ namespace osgEarth { namespace Aerodrome
     protected:
 
         /** DTOR is protected to prevent this object from being allocated on the stack */
-        virtual ~AerodromeLayer();
+        virtual ~AerodromeLayer() { }
 
         osg::ref_ptr<AerodromeCatalog> _catalog;
         osg::ref_ptr<osg::Group> _root;

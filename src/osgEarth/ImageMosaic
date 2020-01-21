@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 #include <osg/Image>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Pairs an OSG image with TileKey parameters.
@@ -74,6 +74,6 @@ namespace osgEarth
 
         TileImageList _images;
     };
-}
+} }
 
 #endif // OSGEARTH_COMPOSITING_H

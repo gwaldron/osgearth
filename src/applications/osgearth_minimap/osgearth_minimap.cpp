@@ -22,40 +22,35 @@
 
 #include <osg/Notify>
 #include <osgViewer/Viewer>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/FeatureNode>
 #include <osgViewer/CompositeViewer>
-#include <osgEarthDrivers/gdal/GDALOptions>
-#include <osgEarth/ImageLayer>
+#include <osgEarth/GDAL>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Drivers;
-
 
 /**
  * Makes a simple projected MapNode that contains a basemap of the world
  */
-MapNode* makeMiniMapNode( ) {    
-    MapOptions mapOpt;
-    mapOpt.coordSysType() = MapOptions::CSTYPE_PROJECTED;  
-    mapOpt.profile() = ProfileOptions("plate-carre");
-    Map* map = new Map( mapOpt );    
+MapNode* makeMiniMapNode( )
+{
+    Map* map = new Map();
+    map->setProfile(Profile::create("plate-carre"));
 
-    GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
-    map->addLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+    GDALImageLayer* basemap = new GDALImageLayer();
+    basemap->setURL("../data/world.tif");
+    map->addLayer(basemap);
 
     // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.enableLighting() = false;    
+    MapNode* mapNode = new MapNode(map);
+    mapNode->setEnableLighting(false);
 
-    return new MapNode( map, mapNodeOptions );
+    return mapNode;
 }
 
 osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
@@ -71,13 +66,13 @@ osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
     }
     else
     {
-        osgEarth::Symbology::LineString* geom = new osgEarth::Symbology::LineString();
+        osgEarth::LineString* geom = new osgEarth::LineString();
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
         geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMin(), 0));
         geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMax(), 0));
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMax(), 0));
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
-        osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(geom, osgEarth::SpatialReference::create("wgs84"));
+        osgEarth::Feature* feature = new osgEarth::Feature(geom, osgEarth::SpatialReference::create("wgs84"));
         Style style;
         style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Yellow;
         feature->style() = style;

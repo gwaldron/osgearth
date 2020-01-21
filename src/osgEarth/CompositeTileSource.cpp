@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,15 +34,15 @@ TileSourceOptions( options )
 }
 
 void
-CompositeTileSourceOptions::add( const ImageLayerOptions& options )
+CompositeTileSourceOptions::add( const ImageLayer::Options& options )
 {
     Component c;
-    c._imageLayerOptions = options;
+    c._ImageLayerOptions = options;
     _components.push_back( c );
 }
 
 void
-CompositeTileSourceOptions::add( const ElevationLayerOptions& options )
+CompositeTileSourceOptions::add( const ElevationLayer::Options& options )
 {
     Component c;
     c._elevationLayerOptions = options;
@@ -56,8 +56,8 @@ CompositeTileSourceOptions::getConfig() const
 
     for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
     {
-        if ( i->_imageLayerOptions.isSet() )
-            conf.add( "image", i->_imageLayerOptions->getConfig() );
+        if ( i->_ImageLayerOptions.isSet() )
+            conf.add( "image", i->_ImageLayerOptions->getConfig() );
         else if ( i->_elevationLayerOptions.isSet() )
             conf.add( "elevation", i->_elevationLayerOptions->getConfig() );
     }
@@ -78,19 +78,19 @@ CompositeTileSourceOptions::fromConfig( const Config& conf )
     const ConfigSet& images = conf.hasChild("images") ? conf.child("images").children() : conf.children("image");
     for( ConfigSet::const_iterator i = images.begin(); i != images.end(); ++i )
     {
-        add( ImageLayerOptions( *i ) );
+        add( ImageLayer::Options( *i ) );
     }
 
     const ConfigSet& elevations = conf.hasChild("elevations") ? conf.child("elevations").children() : conf.children("elevation");
     for( ConfigSet::const_iterator i = elevations.begin(); i != elevations.end(); ++i )
     {
-        add( ElevationLayerOptions( *i ) );
+        add( ElevationLayer::Options( *i ) );
     }
     
     const ConfigSet& heightfields = conf.hasChild("heightfields") ? conf.child("heightfields").children() : conf.children("heightfield");
     for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); ++i )
     {
-        add( ElevationLayerOptions( *i ) );
+        add( ElevationLayer::Options( *i ) );
     }
 
     if (conf.children("model").size() > 0 || conf.children("overlay").size() > 0 )
@@ -165,7 +165,7 @@ CompositeTileSource::createImage(const TileKey&    key,
             // If the progress got cancelled (due to any reason, including network error)
             // then return NULL to prevent this tile from being built and cached with
             // incomplete or partial data.
-            if (progress && progress->isCanceled()) 
+            if (progress && progress->isCanceled())
             {
                 OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
                 return 0L;
@@ -335,7 +335,7 @@ CompositeTileSource::add( ImageLayer* layer )
     _imageLayers.push_back( layer );
     CompositeTileSourceOptions::Component comp;
     comp._layer = layer;
-    comp._imageLayerOptions = layer->options();
+    comp._ImageLayerOptions = layer->options();
     _options._components.push_back( comp );    
 
     return true;
@@ -378,19 +378,19 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
         i != _options._components.end(); )
     {        
-        if ( i->_imageLayerOptions.isSet() && !i->_layer.valid() )
+        if ( i->_ImageLayerOptions.isSet() && !i->_layer.valid() )
         {
             // Disable the l2 cache for composite layers so that we don't get run out of memory on very large datasets.
-            i->_imageLayerOptions->driver()->L2CacheSize() = 0;
+            i->_ImageLayerOptions->driver()->L2CacheSize() = 0;
 
-            osg::ref_ptr< ImageLayer > layer = new ImageLayer(*i->_imageLayerOptions);
+            osg::ref_ptr< ImageLayer > layer = new ImageLayer(*i->_ImageLayerOptions);
             layer->setReadOptions(_dbOptions.get());
             Status status = layer->open();
             if (status.isOK())
             {
                 i->_layer = layer.get();
                 _imageLayers.push_back( layer.get() );
-                OE_INFO << LC << "Added image layer " << layer->getName() << " (" << i->_imageLayerOptions->driver()->getDriver() << ")\n";
+                OE_INFO << LC << "Added image layer " << layer->getName() << " (" << i->_ImageLayerOptions->driver()->getDriver() << ")\n";
             }
             else
             {
@@ -427,49 +427,43 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             i = _options._components.erase( i );
         }
         else
-        {
+        {            
             TileSource* source = i->_layer->getTileSource();
-            if (source)
+
+            // If no profile is specified assume they want to use the profile of the first layer in the list.
+            if (!profile.valid())
             {
-                // If no profile is specified assume they want to use the profile of the first layer in the list.
-                if (!profile.valid())
-                {
-                    profile = source->getProfile();
-                }
-
-                _dynamic = _dynamic || source->isDynamic();
-                
-                // gather extents                        
-                const DataExtentList& extents = source->getDataExtents();  
-
-                // If even one of the layers' data extents is unknown, the entire composite
-                // must have unknown data extents:
-                if (extents.empty())
-                {
-                    dataExtentsValid = false;
-                    getDataExtents().clear();
-                }
-
-                if (dataExtentsValid)
-                {
-                    for (DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j)
-                    {
-                        // Convert the data extent to the profile that is actually used by this TileSource
-                        DataExtent dataExtent = *j;
-                        GeoExtent ext = dataExtent.transform(profile->getSRS());
-                        unsigned int minLevel = 0;
-                        unsigned int maxLevel = profile->getEquivalentLOD(source->getProfile(), *dataExtent.maxLevel() );
-                        dataExtent = DataExtent(ext, minLevel, maxLevel);
-                        getDataExtents().push_back( dataExtent );
-                    }
-                }
-            }
-            else
-            {
-                OE_WARN << LC << "Tile Source is NULL (" << i->_layer->getName() << ") ... " << std::endl;
+                profile = source->getProfile();
             }
 
-            ++i;        
+            _dynamic = _dynamic || source->isDynamic();
+            
+            // gather extents                        
+            const DataExtentList& extents = source->getDataExtents();  
+
+            // If even one of the layers' data extents is unknown, the entire composite
+            // must have unknown data extents:
+            if (extents.empty())
+            {
+                dataExtentsValid = false;
+                getDataExtents().clear();
+            }
+
+            if (dataExtentsValid)
+            {
+                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                {                
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;                
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
+                    getDataExtents().push_back( dataExtent );
+                }
+            }            
+
+            ++i;
         }
     }
 

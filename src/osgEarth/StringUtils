@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,7 +34,7 @@
 #include <set>
 #include <ctype.h>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     extern OSGEARTH_EXPORT const std::string EMPTY_STRING;
 
@@ -313,7 +313,14 @@ namespace osgEarth
         bool     _allowEmpties;
         bool     _trimTokens;
     };
+} }
+
+
+namespace osgEarth
+{
+    namespace Strings = osgEarth::Util;
 }
+
 
 #endif // OSGEARTH_STRING_UTILS_H
 

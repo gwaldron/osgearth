@@ -41,7 +41,7 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
                 
 vec3 vp_Normal;
 vec4 oe_layer_tilec;
-int oe_terrain_vertexMarker;
+flat in int oe_terrain_vertexMarker;
 
 // Vertex Markers (see MaskGenerator.cpp)
 #define VERTEX_MARKER_DISCARD   1    // do not draw

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -84,37 +84,40 @@ namespace osgEarth
         osg::observer_ptr<osg::Object> _sender;
     };
 
-    /**
-     * Extends the osg::PagedLOD class to invoke SceneGraphCallbacks
-     * when nodes are added or removed from the live scene graph.
-     * (Note, this object does not invoke the preMergeNode method.)
-     */
-    class OSGEARTH_EXPORT PagedLODWithSceneGraphCallbacks : public osg::PagedLOD
+    namespace Util
     {
-    public:
-        PagedLODWithSceneGraphCallbacks(SceneGraphCallbacks* host);
-
         /**
-         * Gets the SceneGraphCallbacks.
+         * Extends the osg::PagedLOD class to invoke SceneGraphCallbacks
+         * when nodes are added or removed from the live scene graph.
+         * (Note, this object does not invoke the preMergeNode method.)
          */
-        SceneGraphCallbacks* getSceneGraphCallbacks() const;
+        class OSGEARTH_EXPORT PagedLODWithSceneGraphCallbacks : public osg::PagedLOD
+        {
+        public:
+            PagedLODWithSceneGraphCallbacks(SceneGraphCallbacks* host);
 
-        /**
-         * Sets the SceneGraphCallbacks
-         */
-        void setSceneGraphCallbacks(SceneGraphCallbacks* host);
+            /**
+             * Gets the SceneGraphCallbacks.
+             */
+            SceneGraphCallbacks* getSceneGraphCallbacks() const;
 
-    public: // osg::Group
+            /**
+             * Sets the SceneGraphCallbacks
+             */
+            void setSceneGraphCallbacks(SceneGraphCallbacks* host);
+
+        public: // osg::Group
         
-        virtual bool addChild(osg::Node* child);
-        virtual bool insertChild(unsigned index, osg::Node* child);
-        virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
-        virtual void childRemoved(unsigned pos, unsigned num);
+            virtual bool addChild(osg::Node* child);
+            virtual bool insertChild(unsigned index, osg::Node* child);
+            virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
+            virtual void childRemoved(unsigned pos, unsigned num);
 
-    private:
-        osg::observer_ptr<SceneGraphCallbacks> _host;
-        osg::observer_ptr<osg::Object> _sender;
-    };
+        private:
+            osg::observer_ptr<SceneGraphCallbacks> _host;
+            osg::observer_ptr<osg::Object> _sender;
+        };
+    }
 }
 
 #endif // OSGEARTH_SCENE_GRAPH_CALLBACK_H

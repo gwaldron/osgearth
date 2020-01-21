@@ -4,7 +4,7 @@
  using a LandCoverLayer, construct a "coverage" element that maps
  the data source's value codes to each of these land cover classes.
  -->
- <land_cover_dictionary>
+ <LandCoverDictionary>
     <version>1</version>
     <classes>
         <class name="no-data"/>
@@ -20,4 +20,4 @@
         <class name="urban"/>
         <class name="asphalt"/>
     </classes>
-</land_cover_dictionary>
+</LandCoverDictionary>

@@ -23,29 +23,27 @@
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
+#include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/TerrainProfile>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/TerrainProfile>
 #include <osgEarth/GeoMath>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/GLUtils>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureNode>
 #include <osgText/Text>
 #include <osgText/Font>
 #include <osg/io_utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
-
+using namespace osgEarth::Contrib;
 
 //Creates a simple HUD camera
 osg::Camera* createHud(double width, double height)

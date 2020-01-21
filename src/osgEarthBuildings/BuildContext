@@ -21,12 +21,12 @@
 
 #include "Common"
 #include <osgEarth/Random>
-#include <osgEarthSymbology/ResourceLibrary>
+#include <osgEarth/ResourceLibrary>
 #include <osgDB/Options>
 
 namespace osgEarth { namespace Buildings 
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     class /*header-only*/ BuildContext
     {

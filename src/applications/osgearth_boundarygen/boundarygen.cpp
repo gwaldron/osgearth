@@ -83,6 +83,13 @@ int main(int argc, char** argv)
     bool convexOnly = arguments.read("--convex-hull");
     bool view = arguments.read("--view");
 
+    std::string ext;
+    while (arguments.read("-e",ext))
+    {
+        std::string libName = osgDB::Registry::instance()->createLibraryNameForExtension(ext);
+        osgDB::Registry::instance()->loadLibrary(libName);
+    }
+
     osg::ref_ptr<osg::Node> modelNode = osgDB::readNodeFiles( arguments );
     if (!modelNode.valid())
         return usage( argv, "Unable to load model." );

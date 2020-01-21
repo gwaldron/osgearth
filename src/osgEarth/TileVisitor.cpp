@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 #endif
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 TileVisitor::TileVisitor():
 _total(0),
@@ -196,33 +197,37 @@ bool TileVisitor::handleTile( const TileKey& key )
 
 
 /*****************************************************************************************/
-/**
- * A TaskRequest that runs a TileHandler in a background thread.
- */
-class HandleTileTask : public TaskRequest
+
+namespace
 {
-public:
-    HandleTileTask( TileHandler* handler, TileVisitor* visitor, const TileKey& key ):      
-      _handler( handler ),
-          _visitor(visitor),
-          _key( key )
-      {
+    /**
+     * A TaskRequest that runs a TileHandler in a background thread.
+     */
+    class HandleTileTask : public TaskRequest
+    {
+    public:
+        HandleTileTask( TileHandler* handler, TileVisitor* visitor, const TileKey& key ):      
+          _handler( handler ),
+              _visitor(visitor),
+              _key( key )
+          {
 
-      }
-
-      virtual void operator()(ProgressCallback* progress )
-      {         
-          if (_handler.valid())
-          {                           
-              _handler->handleTile( _key, *_visitor.get() );
-              _visitor->incrementProgress(1);
           }
-      }
 
-      osg::ref_ptr<TileHandler> _handler;
-      TileKey _key;
-      osg::ref_ptr<TileVisitor> _visitor;
-};
+          virtual void operator()(ProgressCallback* progress )
+          {         
+              if (_handler.valid())
+              {                           
+                  _handler->handleTile( _key, *_visitor.get() );
+                  _visitor->incrementProgress(1);
+              }
+          }
+
+          osg::ref_ptr<TileHandler> _handler;
+          TileKey _key;
+          osg::ref_ptr<TileVisitor> _visitor;
+    };
+}
 
 MultithreadedTileVisitor::MultithreadedTileVisitor():
 _numThreads( OpenThreads::GetNumberOfProcessors() )
@@ -416,47 +421,50 @@ void MultiprocessTileVisitor::setEarthFile( const std::string& earthFile )
     _earthFile = earthFile;
 }
 
-/**
-* Executes a command in an external process
-*/
-class ExecuteTask : public TaskRequest
+namespace
 {
-public:
-    ExecuteTask(const std::string& command, TileVisitor* visitor, unsigned int count):            
-      _command( command ),
-      _visitor( visitor ),
-      _count( count )
-      {
-      }
-
-      virtual void operator()(ProgressCallback* progress )
-      {         
-          OS_SYSTEM(_command.c_str());     
-
-          // Cleanup the temp files and increment the progress on the visitor.
-          cleanupTempFiles();
-          _visitor->incrementProgress( _count );
-      }
-
-      void addTempFile( const std::string& filename )
-      {
-          _tempFiles.push_back(filename);
-      }
-
-      void cleanupTempFiles()
-      {
-          for (unsigned int i = 0; i < _tempFiles.size(); i++)
+    /**
+    * Executes a command in an external process
+    */
+    class ExecuteTask : public TaskRequest
+    {
+    public:
+        ExecuteTask(const std::string& command, TileVisitor* visitor, unsigned int count):            
+          _command( command ),
+          _visitor( visitor ),
+          _count( count )
           {
-              remove( _tempFiles[i].c_str() );
           }
-      }
+
+          virtual void operator()(ProgressCallback* progress )
+          {         
+              OS_SYSTEM(_command.c_str());     
+
+              // Cleanup the temp files and increment the progress on the visitor.
+              cleanupTempFiles();
+              _visitor->incrementProgress( _count );
+          }
+
+          void addTempFile( const std::string& filename )
+          {
+              _tempFiles.push_back(filename);
+          }
+
+          void cleanupTempFiles()
+          {
+              for (unsigned int i = 0; i < _tempFiles.size(); i++)
+              {
+                  remove( _tempFiles[i].c_str() );
+              }
+          }
 
 
-      std::vector< std::string > _tempFiles;
-      std::string _command;
-      TileVisitor* _visitor;
-      unsigned int _count;
-};
+          std::vector< std::string > _tempFiles;
+          std::string _command;
+          TileVisitor* _visitor;
+          unsigned int _count;
+    };
+}
 
 void MultiprocessTileVisitor::processBatch()
 {       

@@ -17,10 +17,6 @@ SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
 #OpenThreads, osg, osgDB and osgUtil are included elsewhere.
 SET(TARGET_COMMON_LIBRARIES
     osgEarth
-    osgEarthFeatures
-    osgEarthUtil
-    osgEarthSymbology
-    osgEarthAnnotation
 )
 
 SET(TARGET_DEFAULT_PREFIX "test_")

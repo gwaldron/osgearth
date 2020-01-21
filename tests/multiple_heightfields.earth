@@ -8,29 +8,23 @@ files. This is not a bug! A good technique for fixing this would be to provide a
 lo-res heightfield underlay.
 -->
 
-<map type="geocentric" version="2">
+<map name="Multiple elevation layers">
 
+    <ContourMap/>
     
-    <contour_map opacity="1"/>
-    
-    <image driver="gdal" name="world-tiff" enabled="false">
+    <GDALImage name="world-tiff" enabled="false">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
 
-    <elevation name = "mt_fuji" driver = "gdal">
+    <GDALElevation name="Mt Fuji, Japan">
       <url>..\data\terrain\mt_fuji_90m.tif</url>
-    </elevation>
+    </GDALElevation>
 
-    <elevation name = "mt_rainier" driver = "gdal">
+    <GDALElevation name="Mt Rainier, USA">
       <url>..\data\terrain\mt_rainier_90m.tif</url>
-    </elevation>
+    </GDALElevation>
 
-    <elevation name = "mt_everest" driver = "gdal">
+    <GDALElevation name = "Mt Everest, Nepal">
       <url>..\data\terrain\mt_everest_90m.tif</url>
-    </elevation>
-
-    <options>
-        <lighting>false</lighting>
-        <cache_policy usage="no_cache"/>
-    </options>
+    </GDALElevation>
 </map>

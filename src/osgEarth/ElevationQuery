@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include <osgEarth/ModelLayer>
 #include <osgUtil/LineSegmentIntersector>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * @deprecated after 2.10 - Use ElevationPool instead, via Map::getElevationPool to
@@ -135,6 +135,6 @@ namespace osgEarth
         Revision _mapRevision;
     };
 
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_ELEVATION_QUERY_H

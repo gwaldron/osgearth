@@ -1,6 +1,4 @@
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology osgEarthUtil)
-
 set(TARGET_GLSL
     RexEngine.vert.glsl
     RexEngine.elevation.glsl
@@ -25,6 +23,7 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
+    CreateTileImplementation.cpp
     DrawState.cpp
     DrawTileCommand.cpp
     GeometryPool.cpp
@@ -48,12 +47,12 @@ SET(TARGET_SRC
 
 SET(TARGET_H
     Common
+    CreateTileImplementation
     DrawState
     DrawTileCommand
     GeometryPool
     Shaders
     RexTerrainEngineNode
-    RexTerrainEngineOptions
     LayerDrawable
     LoadTileData
     MaskGenerator
@@ -70,6 +69,11 @@ SET(TARGET_H
     Unloader
 	SelectionInfo
 )
+
+IF(TRACY_FOUND)
+    INCLUDE_DIRECTORIES(${TRACY_INCLUDE_DIR})
+    LIST(APPEND TARGET_LIBRARIES_VARS TRACY_LIBRARY )
+ENDIF(TRACY_FOUND)
 
 setup_plugin(osgearth_engine_rex)
 

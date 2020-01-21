@@ -3,11 +3,9 @@ osgEarth Sample - Logrithmic depth buffer.
 
 Enable the logrithmic depth buffer by running osgearth_viewer with --logdepth
 -->
-<map name="readymap.org" type="geocentric" version="2">
+<map name="Demo: Logarithmic Depth Buffer (use --logdepth)">
 
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
     
     <viewpoints>
         <viewpoint name="Plane" heading="0" height="-1526.619580102153" lat="0.7502917292180486" long="-90.00003984212466" pitch="-88.99970818676897" range="19080841.37590883"/>

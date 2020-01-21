@@ -19,9 +19,10 @@
 #include "LayerDrawable"
 #include "TerrainRenderData"
 #include <osg/ConcurrencyViewerMacros>
+#include <osgEarth/Metrics>
 
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[LayerDrawable] "
@@ -33,6 +34,7 @@ _drawOrder(0),
 _layer(0L),
 _visibleLayer(0L),
 _imageLayer(0L),
+_patchLayer(0L),
 _clearOsgState(false),
 _draw(true)
 {
@@ -82,6 +84,7 @@ namespace
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
+    OE_PROFILING_ZONE;
     //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
 
     // Get this context's state values:
@@ -104,10 +107,21 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     {
         // This just means that the fragment shader for this layer doesn't use oe_layer_uid
     }
+    osg::ref_ptr<osg::Referenced> layerData;
+
+    if (_patchLayer && _patchLayer->getDrawCallback())
+    {
+        _patchLayer->getDrawCallback()->preDraw(ri, layerData);
+    }
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        tile->draw(ri, *_drawState, 0L);
+        tile->draw(ri, *_drawState, layerData);
+    }
+
+    if (_patchLayer && _patchLayer->getDrawCallback())
+    {
+        _patchLayer->getDrawCallback()->postDraw(ri, layerData);
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes

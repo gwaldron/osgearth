@@ -22,15 +22,14 @@
 
 #include <osg/Notify>
 #include <osgViewer/Viewer>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/FilterContext>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Filter>
+#include <osgEarth/FilterContext>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 
 

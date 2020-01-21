@@ -20,11 +20,11 @@
 #define OSGEARTH_BUILDINGS_COMPILER_SETTINGS_H
 
 #include "Common"
-#include <osgEarthSymbology/Tags>
+#include <osgEarth/Tags>
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     /**
      * Settings that control the BuildingCompiler and CompilerOutput processes

@@ -9,13 +9,13 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/VirtualProgram>
-#include <osgEarthSymbology/BillboardSymbol>
+#include <osgEarth/BillboardSymbol>
+#include <osgEarth/Registry>
 
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
-using namespace osgEarth::Symbology;
 
 #define LC "[GroundCover] "
 
@@ -55,6 +55,7 @@ ConfigOptions(co),
 _lod(14),
 _maxDistance(1000.0f),
 _density(1.0f),
+_spacing(25.0f),
 _fill(1.0f),
 _wind(0.0f),
 _brightness(1.0f),
@@ -72,6 +73,7 @@ GroundCoverOptions::getConfig() const
     conf.set("lod", _lod);
     conf.set("max_distance", _maxDistance);
     conf.set("density", _density);
+    conf.set("spacing", _spacing);
     conf.set("fill", _fill);
     conf.set("wind", _wind);
     conf.set("brightness", _brightness);
@@ -93,6 +95,7 @@ GroundCoverOptions::fromConfig(const Config& conf)
     conf.get("lod", _lod);
     conf.get("max_distance", _maxDistance);
     conf.get("density", _density);
+    conf.get("spacing", _spacing);
     conf.get("fill", _fill);
     conf.get("wind", _wind);
     conf.get("brightness", _brightness);
@@ -163,7 +166,7 @@ GroundCover::getOrCreateStateSet()
 
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", options().wind().get()));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 0.5f));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 1.0f)); //0.5f));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
 
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_density", options().density().get()));
@@ -177,17 +180,16 @@ GroundCover::getOrCreateStateSet()
     return _stateSet.get();
 }
 
-#define SET_GET_UNIFORM(NAME, UNIFORM) \
-    void GroundCover::set##NAME (float value) { getOrCreateStateSet()->getUniform(UNIFORM)->set(value); } \
-    float GroundCover::get##NAME () const { float value = 0.0f; if (getStateSet()) getStateSet()->getUniform(UNIFORM)->get(value); return value; }
+#define SET_GET_UNIFORM(NAME, PROP, UNIFORM) \
+    void GroundCover::set##NAME (float value) { getOrCreateStateSet()->getUniform(UNIFORM)->set(value); options(). PROP () = value; } \
+    float GroundCover::get##NAME () const { return options(). PROP() .get(); }
 
-SET_GET_UNIFORM(Wind, "oe_GroundCover_windFactor")
-SET_GET_UNIFORM(Density, "oe_GroundCover_density")
-SET_GET_UNIFORM(Fill, "oe_GroundCover_fill")
-SET_GET_UNIFORM(MaxDistance, "oe_GroundCover_maxDistance")
-SET_GET_UNIFORM(Brightness, "oe_GroundCover_brightness")
-SET_GET_UNIFORM(Contrast, "oe_GroundCover_contrast")
-
+SET_GET_UNIFORM(Wind, wind, "oe_GroundCover_windFactor")
+SET_GET_UNIFORM(Density, density, "oe_GroundCover_density")
+SET_GET_UNIFORM(Fill, fill, "oe_GroundCover_fill")
+SET_GET_UNIFORM(MaxDistance, maxDistance, "oe_GroundCover_maxDistance")
+SET_GET_UNIFORM(Brightness, brightness, "oe_GroundCover_brightness")
+SET_GET_UNIFORM(Contrast, contrast, "oe_GroundCover_contrast")
 
 osg::Shader*
 GroundCover::createShader() const
@@ -406,20 +408,25 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
         buf << defaultCode;
         OE_WARN << LC << "No land cover dictionary; generating default coverage predicate\n";
     }
-    else if ( !layer )
-    {
-        buf << defaultCode;
-        OE_WARN << LC << "No classification layer; generating default coverage predicate\n";
-    }
+    //else if ( !layer )
+    //{
+    //    buf << defaultCode;
+    //    OE_WARN << LC << "No classification layer; generating default coverage predicate\n";
+    //}
     else
     {
-        const std::string& sampler = layer->shareTexUniformName().get();
-        const std::string& matrix  = layer->shareTexMatUniformName().get();
-
+#if 0
+        const std::string& sampler = layer->getSharedTextureUniformName());
+        const std::string& matrix  = layer->getSharedTextureMatrixUniformName());
         buf << "uniform sampler2D " << sampler << ";\n"
             << "uniform mat4 " << matrix << ";\n"
             << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"
             << "    float value = textureLod(" << sampler << ", (" << matrix << " * coords).st, 0).r;\n";
+#else
+        buf << "float oe_LandCover_coverage; \n"
+            << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"
+            << "    float value = oe_LandCover_coverage; \n";
+#endif
 
         for(int biomeIndex=0; biomeIndex<getBiomes().size(); ++biomeIndex)
         {
@@ -541,7 +548,7 @@ GroundCover::createTexture() const
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
     tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
-    tex->setUnRefImageDataAfterApply( true );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     tex->setMaxAnisotropy( 4.0 );
 
     return tex;

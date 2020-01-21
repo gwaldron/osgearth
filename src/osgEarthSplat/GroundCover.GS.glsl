@@ -57,7 +57,7 @@ uniform sampler2D oe_GroundCover_noiseTex;
 // Tile coordinates [0..1]
 in vec4 oe_layer_tilec;
 
-int oe_terrain_vertexMarker;
+flat in int oe_terrain_vertexMarker;
 #define VERTEX_MARKER_DISCARD 1
 
 // Output tex coords
@@ -142,7 +142,7 @@ float oe_GroundCover_fastpow(in float x, in float y)
 }
 
 void oe_GroundCover_geom()
-{
+{    
     vec4 center = vec4(0,0,0,1);
     vec2 tileUV = vec2(0,0);
 

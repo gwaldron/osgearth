@@ -23,8 +23,8 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 
 #define LC "[viewer] "
 

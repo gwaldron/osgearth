@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -74,6 +74,21 @@ namespace
             points[i].set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), alt );
         }
     }
+
+    // Make a MatrixTransform suitable for use with a Locator object based on the given extents.
+    // Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the
+    // _inverse member isn't updated properly.  Calling Locator::setTransform works correctly.
+    osg::Matrixd
+    getTransformFromExtents(double minX, double minY, double maxX, double maxY)
+    {
+        osg::Matrixd transform;
+        transform.set(
+            maxX - minX, 0.0, 0.0, 0.0,
+            0.0, maxY - minY, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            minX, minY, 0.0, 1.0);
+        return transform;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -107,7 +122,7 @@ SpatialReference::createCube()
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
 	{
-        result = new CubeSpatialReference( handle );
+        result = new Contrib::CubeSpatialReference( handle );
 	}
 	else 
 	{
@@ -387,21 +402,12 @@ _ellipsoidId(0u)
 }
 
 SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
-osg::Referenced ( true ),
-_initialized    ( false ),
-_handle         ( handle ),
-_owns_handle    ( ownsHandle ),
-_is_geographic  ( false ),
-_is_geocentric  ( false ),
-_is_mercator    ( false ),
-_is_north_polar ( false ), 
-_is_south_polar ( false ),
-_is_cube        ( false ),
-_is_contiguous  ( false ),
-_is_user_defined( false ),
-_is_ltp         ( false ),
-_is_spherical_mercator( false ),
-_ellipsoidId(0u)
+osg::Referenced( true ),
+_initialized   ( false ),
+_handle        ( handle ),
+_owns_handle   ( ownsHandle ),
+_is_ltp        ( false ),
+_is_geocentric ( false )
 {
     //nop
 }
@@ -704,13 +710,6 @@ SpatialReference::getGeodeticSRS() const
 }
 
 const SpatialReference*
-SpatialReference::getECEF() const
-{
-    OE_DEPRECATED(SpatialReference::getECEF, getGeocentricSRS);
-    return getGeocentricSRS();
-}
-
-const SpatialReference*
 SpatialReference::getGeocentricSRS() const
 {
     if ( !_initialized )
@@ -890,47 +889,6 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
     csn->setEllipsoidModel( _ellipsoid.get() );
     
     return true;
-}
-
-// Make a MatrixTransform suitable for use with a Locator object based on the given extents.
-// Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the
-// _inverse member isn't updated properly.  Calling Locator::setTransform works correctly.
-static osg::Matrixd
-getTransformFromExtents(double minX, double minY, double maxX, double maxY)
-{
-    osg::Matrixd transform;
-    transform.set(
-        maxX-minX, 0.0,       0.0, 0.0,
-        0.0,       maxY-minY, 0.0, 0.0,
-        0.0,       0.0,       1.0, 0.0,
-        minX,      minY,      0.0, 1.0); 
-    return transform;
-}
-
-GeoLocator*
-SpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax ) const
-{
-    if ( !_initialized )
-        const_cast<SpatialReference*>(this)->init();
-
-    GeoLocator* locator = new GeoLocator( GeoExtent(this, xmin, ymin, xmax, ymax) );
-    locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
-    locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
-    // note: not setting the format/cs on purpose.
-
-    if ( isGeographic() )
-    {
-        locator->setTransform( getTransformFromExtents(
-            osg::DegreesToRadians( xmin ),
-            osg::DegreesToRadians( ymin ),
-            osg::DegreesToRadians( xmax ),
-            osg::DegreesToRadians( ymax ) ) );
-    }
-    else
-    {
-        locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
-    }
-    return locator;
 }
 
 bool
@@ -1415,40 +1373,28 @@ bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
                                              unsigned int numx, unsigned int numy ) const
 {
     std::vector<osg::Vec3d> points;
-    points.reserve(numx*numy);
 
     const double dx = (in_xmax - in_xmin) / (numx - 1);
     const double dy = (in_ymax - in_ymin) / (numy - 1);
 
     unsigned int pixel = 0;
     double fc = 0.0;
-    // Don't create a Vec3d each inner loop
-    osg::Vec3d currPt;
-    double& curPX = currPt.x();
-    double& curPY = currPt.y();
-    currPt.z() = 0.0;
-
     for (unsigned int c = 0; c < numx; ++c, ++fc)
     {
         const double dest_x = in_xmin + fc * dx;
         double fr = 0.0;
-        curPX = dest_x;
-
         for (unsigned int r = 0; r < numy; ++r, ++fr)
         {
             const double dest_y = in_ymin + fr * dy;
-            
-            curPY = dest_y;
-            points.push_back(currPt); //osg::Vec3d(dest_x, dest_y, 0)
-            ++pixel;
+
+            points.push_back(osg::Vec3d(dest_x, dest_y, 0));
+            pixel++;     
         }
     }
 
     if ( transform( points, to_srs ) )
     {
-        const unsigned int numPoints = points.size();
-
-        for( unsigned i=0; i<numPoints; ++i )
+        for( unsigned i=0; i<points.size(); ++i )
         {
             x[i] = points[i].x();
             y[i] = points[i].y();
@@ -1531,7 +1477,7 @@ SpatialReference::_init()
 
     // Extract the base units:
     std::string units = getOGRAttrValue( _handle, "UNIT", 0, true );
-    double unitMultiplier = osgEarth::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
+    double unitMultiplier = osgEarth::Util::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
     if ( _is_geographic )
         _units = Units(units, units, Units::TYPE_ANGULAR, unitMultiplier);
     else

@@ -25,11 +25,11 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/ExampleResources>
 
-#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarth/AnnotationData>
 
 #include <osgEarthDrivers/kml/KML>
 
@@ -40,8 +40,6 @@
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 

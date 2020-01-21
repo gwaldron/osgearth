@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2018 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_GLSL_COLOR_FILTER
+#define OSGEARTHUTIL_GLSL_COLOR_FILTER
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/ColorFilter>
+#include <osg/Shader>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Color filter that lets you inject custom GLSL code.
+     */
+    class OSGEARTHUTIL_EXPORT GLSLColorFilter : public osgEarth::ColorFilter
+    {
+    public:
+        GLSLColorFilter();
+        GLSLColorFilter(const Config& conf);
+        virtual ~GLSLColorFilter() { }
+
+        void setType(const osg::Shader::Type& type) { _type = type; }
+        const osg::Shader::Type& getType() const { return _type.get(); }
+
+        void setEntryPointFunctionName(const std::string& name) { _functionName = name; }
+
+        void setCode(const std::string& code) { _code = code; }
+        const std::string& getCode() const { return _code; }
+
+    public: // ColorFilter
+        virtual std::string getEntryPointFunctionName() const;
+        virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
+
+    protected:
+        unsigned                    _instanceId;
+        optional<osg::Shader::Type> _type;
+        optional<std::string>       _functionName;
+        std::string                 _code;
+        
+        void init();
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_GLSL_COLOR_FILTER

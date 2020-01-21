@@ -26,29 +26,8 @@ using namespace osgEarth::Aerodrome;
 
 #define LC "[AerodromeLayer] "
 
+REGISTER_OSGEARTH_LAYER(aerodrome, AerodromeLayer);
 REGISTER_OSGEARTH_LAYER(aerodromes, AerodromeLayer);
-
-//...................................................................
-
-AerodromeLayer::AerodromeLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-AerodromeLayer::AerodromeLayer(const AerodromeLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
-
-AerodromeLayer::~AerodromeLayer()
-{
-    //nop
-}
 
 void
 AerodromeLayer::init()
@@ -66,8 +45,8 @@ AerodromeLayer::getNode() const
     return _root.get();
 }
 
-const Status&
-AerodromeLayer::open()
+Status
+AerodromeLayer::openImplementation()
 {
     if (options().catalog().isSet())
     {
@@ -80,7 +59,7 @@ AerodromeLayer::open()
         _catalog->fromConfig(options().getConfig());
     }
 
-    return VisibleLayer::open();
+    return VisibleLayer::openImplementation();
 }
 
 void

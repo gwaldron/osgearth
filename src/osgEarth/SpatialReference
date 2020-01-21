@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,7 +36,10 @@ namespace osgEarth
     const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
     const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
 
-    class OSGEARTH_EXPORT GeoLocator;
+    namespace Util
+    {
+        class GeoLocator;
+    }
 
     /** 
      * SpatialReference holds information describing the reference ellipsoid/datum
@@ -269,9 +272,6 @@ namespace osgEarth
         /** Gets the geocentric reference system associated with this SRS' ellipsoid. */
         const SpatialReference* getGeocentricSRS() const;
 
-        //! @deprecated after 2.10 - call getGeocentricSRS() instead
-        const SpatialReference* getECEF() const;
-
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */
         const VerticalDatum* getVerticalDatum() const;
 
@@ -304,15 +304,6 @@ namespace osgEarth
 
         /** Populates the provided CSN with information from this SRS. */
         bool populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const;
-
-        /**
-         * Creates a new Locator object based on this spatial reference.
-         *
-         * @param xmin, ymin, xmax, ymax
-         *      Extents of the tile for which to create a locator. These should
-         *      be in degrees for a geographic/geocentric scene.
-         */
-        virtual GeoLocator* createLocator(double xmin, double ymin, double xmax, double ymax) const;
 
 		/**
 		 * Gets the underlying OGRLayerH that this SpatialReference owns.

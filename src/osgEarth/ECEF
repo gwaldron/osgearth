@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include <osgEarth/SpatialReference>
 #include <osg/Matrix>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     struct OSGEARTH_EXPORT ECEF
     {
@@ -75,6 +75,6 @@ namespace osgEarth
             const SpatialReference* outputSRS,
             osg::Matrixd&           out_rotation );
     };
-}
+} }
 
 #endif // OSGEARTH_ECEF_H

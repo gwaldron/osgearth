@@ -24,12 +24,12 @@
 #include "Building"
 #include "FilterUsage"
 
-#include <osgEarthFeatures/Session>
+#include <osgEarth/Session>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
 
     /**
      * Buildings a flat roof as OSG geometry.

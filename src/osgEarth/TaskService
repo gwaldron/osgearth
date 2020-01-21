@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,7 +30,7 @@
 #include <string>
 #include <map>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT TaskRequest : public osg::Referenced
     {
@@ -289,7 +289,7 @@ namespace osgEarth
 
         void reallocate( int targetNumThreads );
     };
-}
+} }
 
 #endif // OSGEARTH_TASK_SERVICE
 

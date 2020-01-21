@@ -25,7 +25,7 @@
 #include <vector>
 
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * SelectionInfo is a data structure that holds the LOD distance switching 
@@ -58,11 +58,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //! Fetch the effective visibility range and morphing range for a key
         void get(const TileKey& key, float& out_range, float& out_startMorphRange, float& out_endMorphRange) const;
 
-        //! Scale factor for range calculations. This defaults to 1.0 but will change
-        //! if the LOD scale is set or if the nv.getDistanceToViewPoint modifies its
-        //! return value in any way.
-        float computeRangeScale(osg::NodeVisitor* nv) const;
-
         //! Get just the visibility range for a TileKey.
         float getRange(const TileKey& key) const;
 
@@ -72,6 +67,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         static const double _morphStartRatio;
     };
 
-} } } // namespace
+} } // namespace
 
 #endif

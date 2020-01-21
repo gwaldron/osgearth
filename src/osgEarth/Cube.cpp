@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,8 @@
 #include <osgEarth/Cube>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 
 #define LC "[Cube] "
 
@@ -289,106 +291,6 @@ CubeUtils::faceToCube( double& in_out_x, double& in_out_y, int face )
 
 // --------------------------------------------------------------------------
 
-CubeFaceLocator::CubeFaceLocator(unsigned int face):
-_face(face)
-{
-    //NOP
-}
-
-CubeFaceLocator::~CubeFaceLocator()
-{
-}
-
-
-bool
-CubeFaceLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world ) const
-{
-#if ((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION < 8))
-    // OSG 2.7 bug workaround: bug fix in Locator submitted by GW
-    const_cast<CubeFaceLocator*>(this)->_inverse.invert( _transform );
-#endif
-
-    if ( _coordinateSystemType == GEOCENTRIC )
-    {
-        //Convert the NDC coordinate into face space
-        osg::Vec3d faceCoord = local * _transform;
-
-        double lat_deg, lon_deg;
-        if ( !CubeUtils::faceCoordsToLatLon( faceCoord.x(), faceCoord.y(), _face, lat_deg, lon_deg ))
-            return false;
-
-        //OE_NOTICE << "LatLon=" << latLon <<  std::endl;
-
-        // convert to geocentric:
-        _ellipsoidModel->convertLatLongHeightToXYZ(
-            osg::DegreesToRadians( lat_deg ),
-            osg::DegreesToRadians( lon_deg ),
-            local.z(),
-            world.x(), world.y(), world.z() );
-
-        return true;
-    }    
-    return true;
-}
-
-
-bool
-CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
-{
-#if ((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION < 8))
-    // OSG 2.7 bug workaround: bug fix in Locator submitted by GW
-    const_cast<CubeFaceLocator*>(this)->_inverse.invert( _transform );
-#endif
-
-    switch(_coordinateSystemType)
-    {
-    case(GEOCENTRIC):
-        {         
-            double longitude, latitude, height;
-
-            _ellipsoidModel->convertXYZToLatLongHeight(world.x(), world.y(), world.z(), latitude, longitude, height );
-
-            int face=-1;
-            double x, y;
-
-            double lat_deg = osg::RadiansToDegrees(latitude);
-            double lon_deg = osg::RadiansToDegrees(longitude);
-
-            bool success = CubeUtils::latLonToFaceCoords( lat_deg, lon_deg, x, y, face, _face );
-
-            if (!success)
-            {
-                OE_WARN << LC << "Couldn't convert to face coords " << std::endl;
-                return false;
-            }
-            if (face != _face)
-            {
-                OE_WARN << LC
-                    << "Face should be " << _face << " but is " << face
-                    << ", lat = " << lat_deg
-                    << ", lon = " << lon_deg
-                    << std::endl;
-            }
-
-            local = osg::Vec3d( x, y, height ) * _inverse;
-            return true;
-        }
-
-
-    case(GEOGRAPHIC):
-    case(PROJECTED):
-        // Neither of these is supported for this locator..
-        {        
-            local = world * _inverse;
-            return true;      
-        }
-    }    
-
-    return false;
-}
-
-// --------------------------------------------------------------------------
-
 CubeSpatialReference::CubeSpatialReference( void* handle ) :
 SpatialReference(handle, std::string("OSGEARTH"))
 {
@@ -418,25 +320,6 @@ CubeSpatialReference::_init()
     // on a spheroid with WGS84-ish radius. Not perfect but close enough for
     // the purposes of this class
     _units = Units("Cube face", "cube", Units::TYPE_LINEAR, 42949672.96/4.0);
-}
-
-GeoLocator*
-CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax) const
-{
-    int face;
-    CubeUtils::cubeToFace( xmin, ymin, xmax, ymax, face );
-
-    GeoLocator* result = new CubeFaceLocator( face );
-
-    osg::Matrixd transform;
-    transform.set(
-        xmax-xmin, 0.0,       0.0, 0.0,
-        0.0,       ymax-ymin, 0.0, 0.0,
-        0.0,       0.0,       1.0, 0.0,
-        xmin,      ymin,      0.0, 1.0); 
-    result->setTransform( transform );
-
-    return result;
 }
 
 const SpatialReference*

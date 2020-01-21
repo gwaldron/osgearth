@@ -24,7 +24,7 @@
 #include <osg/Drawable>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Scene graph node that will call releaseGLObjects() on objects
@@ -57,6 +57,6 @@ namespace osgEarth
         mutable ObjectList _toRelease;
         mutable Threading::Mutex _mutex;
     };
-}
+} }
 
 #endif // OSGEARTH_RESOURCE_RELEASER

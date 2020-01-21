@@ -26,22 +26,16 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/TMS>
 
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/LogarithmicDepthBuffer>
 
-#include <osgEarthFeatures/FeatureModelLayer>
-
-#include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
-#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/OGRFeatureSource>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 #define IMAGERY_URL      "http://readymap.org/readymap/tiles/1.0.0/22/"
@@ -110,28 +104,28 @@ main(int argc, char** argv)
 void addImagery(Map* map)
 {
     // add a TMS imagery layer:
-    TMSOptions imagery;
-    imagery.url() = IMAGERY_URL;
-    map->addLayer( new ImageLayer("ReadyMap imagery", imagery) );
+    TMSImageLayer* layer = new TMSImageLayer();
+    layer->setURL(IMAGERY_URL);
+    map->addLayer(layer);
 }
 
 
 void addElevation(Map* map)
 {
     // add a TMS elevation layer:
-    TMSOptions elevation;
-    elevation.url() = ELEVATION_URL;
-    map->addLayer( new ElevationLayer("ReadyMap elevation", elevation) );
+    TMSElevationLayer* layer = new TMSElevationLayer();
+    layer->setURL(ELEVATION_URL);
+    map->addLayer(layer);
 }
 
 
 void addBuildings(Map* map)
 {
     // create a feature source to load the building footprint shapefile.
-    OGRFeatureOptions buildingData;
-    buildingData.name() = "buildings";
-    buildingData.url() = BUILDINGS_URL;
-    buildingData.buildSpatialIndex() = true;
+    OGRFeatureSource* data = new OGRFeatureSource();
+    data->setName("buildings");
+    data->setURL(BUILDINGS_URL);
+    data->options().buildSpatialIndex() = true;
     
     // a style for the building data:
     Style buildingStyle;
@@ -188,8 +182,8 @@ void addBuildings(Map* map)
 
     FeatureModelLayer* layer = new FeatureModelLayer();
     layer->setName("Buildings");
-    layer->options().featureSource() = buildingData;
-    layer->options().styles() = styleSheet;
+    layer->setFeatureSource(data);
+    layer->setStyleSheet(styleSheet);
     layer->options().layout() = layout;
 
     map->addLayer(layer);
@@ -199,10 +193,9 @@ void addBuildings(Map* map)
 void addStreets(Map* map)
 {
     // create a feature source to load the street shapefile.
-    OGRFeatureOptions feature_opt;
-    feature_opt.name() = "streets";
-    feature_opt.url() = STREETS_URL;
-    feature_opt.buildSpatialIndex() = true;
+    OGRFeatureSource* data = new OGRFeatureSource();
+    data->setURL(STREETS_URL);
+    data->options().buildSpatialIndex() = true;
 
     // a resampling filter will ensure that the length of each segment falls
     // within the specified range. That can be helpful to avoid cropping 
@@ -210,7 +203,7 @@ void addStreets(Map* map)
     ResampleFilterOptions resample;
     resample.minLength() = 0.0f;
     resample.maxLength() = 25.0f;
-    feature_opt.filters().push_back( resample );
+    data->options().filters().push_back( resample );
 
     // a style:
     Style style;
@@ -239,24 +232,22 @@ void addStreets(Map* map)
     layout.maxRange() = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureModelLayerOptions streets;
-    streets.name() = "streets";
-    streets.featureSource() = feature_opt;
-    streets.layout() = layout;
-    streets.styles() = new StyleSheet();
-    streets.styles()->addStyle( style );
+    FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setFeatureSource(data);
+    layer->options().layout() = layout;
+    layer->setStyleSheet(new StyleSheet());
+    layer->getStyleSheet()->addStyle(style);
 
-    map->addLayer(new FeatureModelLayer(streets));
+    map->addLayer(layer);
 }
 
 
 void addParks(Map* map)
 {
     // create a feature source to load the shapefile.
-    OGRFeatureOptions parksData;
-    parksData.name() = "parks";
-    parksData.url() = PARKS_URL;
-    parksData.buildSpatialIndex() = true;
+    OGRFeatureSource* data = new OGRFeatureSource();
+    data->setURL(PARKS_URL);
+    data->options().buildSpatialIndex() = true;
 
     // a style:
     Style style;
@@ -289,18 +280,16 @@ void addParks(Map* map)
     layout.addLevel(FeatureLevel(0.0f, 2000.0f, "parks"));
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureModelLayerOptions parks;
-    parks.name() = "parks";
-    parks.featureSource() = parksData;
-    parks.layout() = layout;
-    parks.styles() = new StyleSheet();
-    parks.styles()->addStyle( style );
+    FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setFeatureSource(data);
+    layer->options().layout() = layout;
+    layer->setStyleSheet(new StyleSheet());
+    layer->getStyleSheet()->addStyle(style);
 
-    Layer* parksLayer = new FeatureModelLayer(parks);
-    map->addLayer(parksLayer);
+    map->addLayer(layer);
 
-    if (parksLayer->getStatus().isError())
+    if (layer->getStatus().isError())
     {
-        OE_WARN << parksLayer->getStatus().message() << std::endl;
+        OE_WARN << layer->getStatus().message() << std::endl;
     }
 }

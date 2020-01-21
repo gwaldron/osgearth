@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H
 #define OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H 1
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Interface for querying terrain engine feature requirements.
@@ -29,6 +29,7 @@ namespace osgEarth
     public:
         virtual bool elevationTexturesRequired() const =0;
         virtual bool normalTexturesRequired() const =0;
+        virtual bool landCoverTexturesRequired() const =0;
         virtual bool parentTexturesRequired() const =0;
         virtual bool elevationBorderRequired() const =0;
         virtual bool fullDataAtFirstLodRequired() const =0;
@@ -36,6 +37,6 @@ namespace osgEarth
     public:
         virtual ~TerrainEngineRequirements() { }
     };
-}
+} }
 
 #endif // OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H

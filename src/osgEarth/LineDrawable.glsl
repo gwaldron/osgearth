@@ -1,5 +1,4 @@
 #version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_name GPU Lines Screen Projected Model
 #pragma vp_entryPoint oe_LineDrawable_VS_VIEW
 #pragma vp_location vertex_view
@@ -38,24 +37,6 @@ void oe_LineDrawable_VS_VIEW(inout vec4 currView)
     // calculate prev/next points in post-transform view space:
     oe_LineDrawable_prevView = gl_ModelViewMatrix * vec4(oe_LineDrawable_prev,1) + deltaView;
     oe_LineDrawable_nextView = gl_ModelViewMatrix * vec4(oe_LineDrawable_next,1) + deltaView;
-
-    // clamp the current vertex to the near clip plane (or at least to Z=0)
-    // to prevent clip space coordinate freakouts! (only in perspective camera)
-    if (currView.z > 0.0 && gl_ProjectionMatrix[3][3] == 0.0)
-    {
-        if (oe_LineDrawable_prevView != currView)
-        {
-            vec3 v = currView.xyz-oe_LineDrawable_prevView.xyz;
-            float r = -oe_LineDrawable_prevView.z / v.z;
-            currView.xyz = oe_LineDrawable_prevView.xyz + v*r;
-        }
-        else
-        {
-            vec3 v = oe_LineDrawable_nextView.xyz-currView.xyz;
-            float r = currView.z / -v.z;
-            currView.xyz += v*r;
-        }
-    }
 }
 
 
@@ -63,7 +44,6 @@ void oe_LineDrawable_VS_VIEW(inout vec4 currView)
 [break]
 
 #version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_name GPU Lines Screen Projected Clip
 #pragma vp_entryPoint oe_LineDrawable_VS_CLIP
 #pragma vp_location vertex_clip
@@ -216,7 +196,6 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 [break]
 
 #version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name GPU Lines Screen Projected FS
 #pragma vp_entryPoint oe_LineDrawable_Stippler_FS

@@ -17,12 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "ElevationCompiler"
-#include <osgEarthFeatures/Session>
+#include <osgEarth/Session>
 #include <osgUtil/SmoothingVisitor>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Buildings;
 
 #define LC "[ElevationCompiler] "

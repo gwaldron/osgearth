@@ -20,12 +20,11 @@
 #define OSGEARTH_DRIVER_INTERSECT_FEATUREFILTER_OPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/FeatureSource>
 
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     /**
      * Options for the Raster feature driver.
@@ -41,8 +40,11 @@ namespace osgEarth { namespace Drivers
         }
 
         /** Features to load and use as boundary geometries */
-        optional<FeatureSourceOptions>& features() { return _features; }
-        const optional<FeatureSourceOptions>& features() const { return _features; }
+        optional<std::string>& featureSourceLayer() { return _layerName; }
+        const optional<std::string>& featureSourceLayer() const { return _layerName; }
+
+        optional<FeatureSource::Options>& featureSource() { return _features; }
+        const optional<FeatureSource::Options>& featureSource() const { return _features; }
 
         /** If true (the default), accept features whose centroids are contained in the boundaries */
         optional<bool>& contains() { return _contains; }
@@ -52,7 +54,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "intersect";
-            conf.set( "features", _features );
+            LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
             conf.set( "contains", _contains );
             return conf;
         }
@@ -65,12 +67,13 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.get( "features", _features );
+            LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
             conf.get( "contains", _contains );
         }
 
-        optional<FeatureSourceOptions> _features;
-        optional<bool>                 _contains;
+        optional<std::string>            _layerName;
+        optional<FeatureSource::Options> _features;
+        optional<bool>                   _contains;
     };
 
 } } // namespace osgEarth::Drivers

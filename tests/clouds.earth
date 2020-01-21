@@ -1,13 +1,11 @@
 <!--
 osgEarth Sample - Rendering a cloud layer with a layer shader
 -->
-<map name="Imagery with clouds" type="geocentric">
+<map name="Imagery with clouds">
     
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
     
-    <image name="clouds" driver="osg">
+    <GDALImage name="clouds">
         <url>../data/cloud_combined_2048.jpg</url>
         <profile>global-geodetic</profile>
         <shader>
@@ -31,5 +29,5 @@ osgEarth Sample - Rendering a cloud layer with a layer shader
             
           ]]>
         </shader>
-    </image>
+    </GDALImage>
 </map>

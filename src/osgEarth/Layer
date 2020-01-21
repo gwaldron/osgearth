@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,153 +16,166 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTH_LAYER_H
-#define OSGEARTH_LAYER_H 1
+#define OSGEARTH_LAYER_H
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/Status>
-#include <osgEarth/TileKey>
 #include <osgEarth/PluginLoader>
-#include <osgEarth/CachePolicy>
-#include <osgEarth/TerrainResources>
 #include <osgEarth/Cache>
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/LayerShader>
+#include <osgEarth/Revisioning>
+#include <osgEarth/IOTypes>
 #include <osg/BoundingBox>
 #include <osg/Callback>
-#include <osg/StateSet>
-#include <osgDB/Options>
 #include <vector>
 
-namespace osgUtil {
-    class CullVisitor;
+namespace osg {
+    class StateSet;
+}
+namespace osgDB {
+    class Options;
 }
 
-namespace osgEarth
-{
-    class SequenceControl;
-
-    /**
-     * Base serializable options class for configuring a Layer.
-     */
-    class OSGEARTH_EXPORT LayerOptions : public ConfigOptions
-    {
-    public:
-        /** Name of the layer */
-        optional<std::string>& name() { return _name; }
-        const optional<std::string>& name() const { return _name; }
-
-        /**
-         * Whether to open and use this layer in the map. When a layer
-         * is not enabled, osgEarth components will ignore it altogether.
-         * Layers are enabled by default.
-         */
-        optional<bool>& enabled() { return _enabled; }
-        const optional<bool>& enabled() const { return _enabled; }
-
-        /**
-         * Uniquely identifies the caching location to use for this
-         * layer if a cache is enabled and if this layer does any caching.
-         * By default, the cache system will automatically generate a
-         * cache ID for each Layer, but you can set one manually here.
-         */
-        optional<std::string>& cacheId() { return _cacheId; }
-        const optional<std::string>& cacheId() const { return _cacheId; }
-
-        /**
-         * The caching policy directs how to use caching for this layer
-         * if a cache is available.
-         */
-        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
-        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
-
-        /**
-         * If set, calls setDefine() on the layer's stateset to make the
-         * #define available in shader code.
-         */
-        optional<std::string>& shaderDefine() { return _shaderDefine; }
-        const optional<std::string>& shaderDefine() const { return _shaderDefine; }
-
-        /**
-         * Shader snippet(s) to inject into this layer's stateset.
-         */
-        optional<ShaderOptions>& shader() { return _shader; }
-        const optional<ShaderOptions>& shader() const { return _shader; }
-
-        /**
-         * Whether this layer should be treated as part of the terrain
-         * for the purposes of elevation queries, clamping, etc.
-         */
-        optional<bool>& terrainPatch() { return _terrainPatch; }
-        const optional<bool>& terrainPatch() const { return _terrainPatch; }
-
-        /**
-         * The attribution to be displayed for this layer
-         */
-        optional<std::string>& attribution() { return _attribution; }
-        const optional<std::string>& attribution() const { return _attribution; }
-
-    public:
-        LayerOptions();
-        LayerOptions(const ConfigOptions& configOptions);
-
-        virtual Config getConfig() const;
-        void fromConfig(const Config& conf);
-        virtual void mergeConfig(const Config& conf);
-
-    protected:
-        void setDefaults();
-
-        optional<std::string> _name;
-        optional<bool> _enabled;
-        optional<std::string> _cacheId;
-        optional<CachePolicy> _cachePolicy;
-        optional<std::string> _shaderDefine;
-        optional<ShaderOptions> _shader;
-        optional<bool> _terrainPatch;
-        optional<std::string> _attribution;
-    };
+//! Macro to use when defining a LayerOptions class
+#define META_LayerOptions(LIBRARY, MYCLASS, SUPERCLASS) \
+    protected: \
+        virtual void mergeConfig(const osgEarth::Config& conf) { \
+            SUPERCLASS ::mergeConfig(conf); \
+            fromConfig(conf); \
+        } \
+    public: \
+        OE_COMMENT("Construct empty layer options") \
+        MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
+        \
+        OE_COMMENT("Construct layer options from serialized data") \
+        MYCLASS (const osgEarth::ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
 
 
-    /**
-     * Base callback for all Layer types
-     */
-    struct LayerCallback : public osg::Referenced
-    {
-        // MERGE: This was NOP with 'shadow changes from Glen' so check with shadows
-        //! Called after Layer::setEnabled changes the enabled state
-        virtual void onEnabledChanged(class Layer* layer) { }
-
-        typedef void (LayerCallback::*MethodPtr)(class Layer* layer);
-    };
-
-
-#define META_Layer(LIBRARY, TYPE, OPTIONS, SLUG) \
+//! Macro to use when defining a Layer class
+#define META_Layer(LIBRARY, MYCLASS, OPTIONS, SUPERCLASS, SLUG) \
     private: \
         OPTIONS * _options; \
         OPTIONS   _optionsConcrete; \
-        TYPE ( const TYPE& rhs, const osg::CopyOp& op ) { } \
+        MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
+    protected: \
+        OE_COMMENT("Construct a new layer with default options") \
+        MYCLASS (OPTIONS* optr) : SUPERCLASS (optr? optr: &_optionsConcrete), _options(optr ? optr : &_optionsConcrete) { } \
     public: \
-        META_Object(LIBRARY, TYPE); \
+        META_Object(LIBRARY, MYCLASS); \
+        \
+        OE_COMMENT("Construct a new layer with default options") \
+        MYCLASS () : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete) { MYCLASS::init(); } \
+        \
+        OE_COMMENT("Construct a new layer with user-defined options") \
+        MYCLASS (const OPTIONS& o) : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete), _optionsConcrete(o) { MYCLASS::init(); } \
+        \
+        OE_COMMENT("Mutable options for this layer") \
         OPTIONS& options() { return *_options; } \
+        \
+        OE_COMMENT("Immutable options for this layer") \
         const OPTIONS& options() const { return *_options; } \
+        \
+        OE_COMMENT("Configuration key for this layer (e.g. for earth files)") \
         virtual const char* getConfigKey() const { return #SLUG ; }
+
+
+//! Macro to use when defining a Layer class
+#define META_Layer_Abstract(LIBRARY, MYCLASS, OPTIONS, SUPERCLASS) \
+    private: \
+        OPTIONS * _options; \
+        MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
+    protected: \
+        OE_COMMENT("Construct a new layer with default options") \
+        MYCLASS (OPTIONS* optr) : SUPERCLASS (optr), _options(optr) { } \
+        MYCLASS () : SUPERCLASS () { } \
+    public: \
+        OE_COMMENT("Mutable options for this layer") \
+        OPTIONS& options() { return *_options; } \
+        \
+        OE_COMMENT("Immutable options for this layer") \
+        const OPTIONS& options() const { return *_options; }
+
+//! Templated inline property implementation macro
+#define OE_LAYER_PROPERTY_IMPL(CLASS, TYPE, FUNC, OPTION) \
+    void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
+    const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
+
+#ifndef OSGEARTH_CXX11
+#define final
+#endif
+
+namespace osgEarth
+{
+    class GeoExtent;
+    class SequenceControl;
+    class TerrainResources;
+    class TileKey;
+
+    //! Base class for layer property callbacks
+    struct LayerCallback : public osg::Referenced
+    {
+        //! Called after Layer::setEnabled changes the enabled state
+        virtual void onEnabledChanged(class Layer* layer) { }
+        typedef void (LayerCallback::*MethodPtr)(class Layer* layer);
+    };
 
     /**
      * Base class for all Map layers.
+     *
+     * Subclass Layer to create a new layer type. Use the META_Layer macro
+     * to establish the standard options framework.
+     *
+     * When you create a Layer, init() is called. Do all one-time construction 
+     * activity where.
+     *
+     * When you add a Layer to a Map, the follow methods are called in order:
+     *
+     *   setReadOptions() sets OSG options for IO activity;
+     *   open() to initialize any underlying data sources;
+     *   addedToMap() to signal to the layer that it is now a member of a Map.
      */
     class OSGEARTH_EXPORT Layer : public osg::Object
     {
-    public:
-        META_Layer(osgEarth, Layer, LayerOptions, layer);
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ConfigOptions
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ConfigOptions);
+            OE_OPTION(std::string, name);
+            OE_OPTION(bool, enabled);
+            OE_OPTION(std::string, cacheId);
+            OE_OPTION(CachePolicy, cachePolicy);
+            OE_OPTION(std::string, shaderDefine);
+            OE_OPTION(bool, terrainPatch);
+            OE_OPTION(std::string, attribution);
+            OE_OPTION(ShaderOptions, shader);
+            OE_OPTION_VECTOR(ShaderOptions, shaders);
+            OE_OPTION(ProxySettings, proxySettings);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
+    public:
+        META_Object(osgEarth, Layer);
+
+    public:
+        //! Hints that a layer can set to influence the operation of
+        //! the map engine
+        class Hints
+        {
+        public:
+            OE_OPTION(CachePolicy, cachePolicy);
+            OE_OPTION(unsigned, L2CacheSize);
+            OE_OPTION(bool, dynamic);
+        };
+
+    public:
         //! Constructs a map layer
         Layer();
-
-        //! Constructs a map layer by deserializing options.
-        Layer(LayerOptions* options);
 
         //! This layer's unique ID.
         //! This value is generated automatically at runtime and is not
@@ -170,19 +183,26 @@ namespace osgEarth
         UID getUID() const { return _uid; }
 
         //! osgDB read options for this Layer.
+        //! If you set this, do so prior to calling open().
         virtual void setReadOptions(const osgDB::Options* options);
 
         //! osgDB read options for this Layer.
-        const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
+        const osgDB::Options* getReadOptions() const;
 
-        //! Open a layer and return the status.
-        virtual const Status& open();
+        //! Open a layer.
+        virtual const Status& open() final;
+
+        //! Open a layer. Shortcut for calling setReadOptions() followed by open().
+        virtual const Status& open(const osgDB::Options* options) final;
 
         //! Close this layer.
-        virtual void close();
+        virtual Status close() final;
 
-        //! Gets the status of this layer
-        const Status& getStatus() const { return _status; }
+        //! Whether the layer is open
+        bool isOpen() const;
+
+        //! Status of this layer
+        const Status& getStatus() const;
 
         //! @deprecated (remove after 2.10)
         //! Sequence controller if the layer has one.
@@ -198,22 +218,31 @@ namespace osgEarth
         //! This will return false if the layer is set to disabled OR if getStatus returns an error.
         virtual bool getEnabled() const;
 
-        //! Gets a optional scene graph provided by the layer.
+        //! Cacheing policy. Only set this before opening the layer or adding to a map.
+        void setCachePolicy(const CachePolicy& value);
+        const CachePolicy& getCachePolicy() const;
+
+        //! Optional scene graph provided by the layer.
         //! When this layer is added to a Map, the MapNode will call this method and
         //! add the return value to its scene graph; and remove it when the Layer
         //! is removed from the Map.
         virtual osg::Node* getNode() const { return 0L; }
 
         //! Extent of this layer's data.
-        //! This method may return GeoExtent::INVALID which just means that the
-        //!information is unavailable.        
+        //! This method may return GeoExtent::INVALID which means that the
+        //! extent is unavailable (not necessarily that there is no data).
         virtual const GeoExtent& getExtent() const;
 
-        //! Caching ID for this layer
+        //! Unique caching ID for this layer.
+        //! Only set this before opening the layer or adding to a map.
+        void setCacheID(const std::string& value);
         virtual std::string getCacheID() const;
 
-        //! SceneGraphCallbacks that one can use to detect scene graph changes
+        //! Callbacks that one can use to detect scene graph changes
         SceneGraphCallbacks* getSceneGraphCallbacks() const;
+
+        //! Hints that a subclass can set to influence the engine
+        const Hints& getHints() const;
 
     public:
 
@@ -226,21 +255,18 @@ namespace osgEarth
         //! How (and if) to use this layer when rendering terrain tiles.
         enum RenderType
         {
-            // Layer does not draw anything (directly)
+            //! Layer does not draw anything (directly)
             RENDERTYPE_NONE,
 
-            // Layer requires a terrain rendering pass that draws terrain tiles with texturing
+            //! Layer requires a terrain rendering pass that draws terrain tiles with texturing
             RENDERTYPE_TERRAIN_SURFACE,
 
-            // Layer requires a terrain rendering pass that emits terrian patches or
-            // invokes a custom drawing function
+            //! Layer requires a terrain rendering pass that emits terrian patches or
+            //! invokes a custom drawing function
             RENDERTYPE_TERRAIN_PATCH,
 
-            // Layer that renders its own node graph or other geometry (no terrain)
-            RENDERTYPE_CUSTOM = RENDERTYPE_NONE,
-
-            // @deprecated Backwards compatibility
-            RENDERTYPE_TILE = RENDERTYPE_TERRAIN_SURFACE
+            //! Layer that renders its own node graph or other geometry (no terrain)
+            RENDERTYPE_CUSTOM = RENDERTYPE_NONE
         };
 
         //! Rendering type of this layer
@@ -254,15 +280,6 @@ namespace osgEarth
 
         //! Class type name without namespace. For example if the leaf class type
         const char* getTypeName() const;
-
-        //! Map will call this function when this Layer is added to a Map.
-        virtual void addedToMap(const class Map*) { }
-
-        //! Map will call this function when this Layer is removed from a Map.
-        virtual void removedFromMap(const class Map*) { }
-
-        //! MapNode will call this function when terrain resources are available.
-        virtual void setTerrainResources(TerrainResources*);
 
         //! Attribution to be displayed by the application
         virtual std::string getAttribution() const;
@@ -288,6 +305,12 @@ namespace osgEarth
         //! Called to traverse this layer
         void apply(osg::Node* node, osg::NodeVisitor* nv) const;
 
+        //! Map will call this function when this Layer is added to a Map.
+        virtual void addedToMap(const class Map*) { }
+
+        //! Map will call this function when this Layer is removed from a Map.
+        virtual void removedFromMap(const class Map*) { }
+
     public: // osg::Object
 
         virtual void setName(const std::string& name);
@@ -311,43 +334,81 @@ namespace osgEarth
         //! Removes a property notification callback from this layer
         void removeCallback(LayerCallback* cb);
 
+        //! MapNode will call this function when terrain resources are available.
+        virtual void setTerrainResources(TerrainResources*);
+
+        //! Revision number of this layer
+        unsigned getRevision() const { return (unsigned)_revision; }
 
     protected:
+
+        //! Constructs a map layer by deserializing options.
+        Layer(Layer::Options* options);
 
         //! DTOR
         virtual ~Layer();
 
         //! post-ctor initialization, chain to subclasses.
+        //! MAKE SURE you call the superclass init() if you override this!
         virtual void init();
 
+        //! Called by open() to connect to external resources and return a status.
+        //! MAKE SURE you call superclass openImplementation() if you override this!
+        //! This is where you will connect to back-end data sources if
+        //! appropriate. When added to a map, init() is called before open()
+        //! and addedToMap() is called after open() if it succeeds.
+        //! By default, returns STATUS_OK.
+        virtual Status openImplementation();
+
+        //! Called by close() to shut down the resources associated with a layer.
+        virtual Status closeImplementation();
+
         //! Sets the status for this layer - internal
-        const Status& setStatus(const Status& status) { _status = status; return _status; }
+        const Status& setStatus(const Status& status) const;
         
         //! Sets the status for this layer with a message - internal
-        const Status& setStatus(const Status::Code& statusCode, const std::string& message) { 
-            return setStatus(Status(statusCode, message));
-        }
+        const Status& setStatus(const Status::Code& statusCode, const std::string& message) const;
 
         //! invoke layer callbacks
         void fireCallback(LayerCallback::MethodPtr);
+
+        //! mutable layer hints for the subclas to optionally access
+        Hints& layerHints();
 
     private:
         UID _uid;
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
-        Status _status;
+        mutable Status _status;
+        mutable Threading::Mutex _mutex;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
-        osg::ref_ptr<LayerShader> _shader;
+        Hints _hints;
+        bool _isOpen;
+        OpenThreads::Atomic _revision;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
         CallbackVector _callbacks;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
+        std::vector<osg::ref_ptr<LayerShader> > _shaders;
+
+        void bumpRevision();
 
         // allow the map access to the addedToMap/removedFromMap methods
-        friend class Map;
+        friend class Map; 
+        friend class MapNode;
+                
+    public:
+        Layer::Options& options() { return *_options; }
+        const Layer::Options& options() const { return *_options; }
+        virtual const char* getConfigKey() const { return "layer" ; }
+
+    private:
+        Layer::Options * _options;
+        Layer::Options   _optionsConcrete;
+        Layer ( const Layer& rhs, const osg::CopyOp& op ) { }
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;
@@ -363,4 +424,4 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-#endif // OSGEARTH_IMAGE_TERRAIN_LAYER_H
+#endif // OSGEARTH_LAYER_H

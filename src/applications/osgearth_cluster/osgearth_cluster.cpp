@@ -22,23 +22,23 @@
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
 #include <osgEarth/Registry>
+#include <osgDB/ReadFile>
 #include <iostream>
 
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/PlaceNode>
 
-#include <osgEarthUtil/ClusterNode>
+#include <osgEarth/ClusterNode>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
+using namespace osgEarth::Contrib;
 
 int
 usage(const char* name)

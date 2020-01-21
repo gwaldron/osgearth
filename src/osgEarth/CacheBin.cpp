@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -74,14 +74,14 @@ namespace
         void apply(osg::Node& node)
         {
             apply(node.getStateSet());
-            //applyUserData(node);
+            applyUserData(node);
             traverse(node);
         }
 
         void apply(osg::Drawable& drawable)
         {
             apply(drawable.getStateSet());
-            //applyUserData(*drawable);
+            applyUserData(drawable);
             
             osg::Geometry* geom = drawable.asGeometry();
             if (geom)
@@ -107,14 +107,13 @@ namespace
         {
             if (!ss) return;
 
-            /*
             osg::StateSet::AttributeList& a0 = ss->getAttributeList();
             for (osg::StateSet::AttributeList::iterator i = a0.begin(); i != a0.end(); ++i)
             {
                 osg::StateAttribute* sa = i->second.first.get();
                 applyUserData(*sa);
             }
-            */
+
             // Disable the texture image-unref feature so we can share the resource 
             // across cached tiles.
             osg::StateSet::TextureAttributeList& a = ss->getTextureAttributeList();
@@ -133,23 +132,26 @@ namespace
                         }
                         else
                         {
-                            //applyUserData(*sa);
+                            applyUserData(*sa);
                         }
                     }
                 }
             }
 
-            //applyUserData(*ss);
+            applyUserData(*ss);
         }
 
         void applyUserData(osg::Object& object)
-        {/*
+        {
+            // VRV PATCH
+            // Don't do this -- it will disable indirect processing in VRV.
+#if 0
             if (object.getUserData())
             {
                 _userDataClears++;
             }
             object.setUserDataContainer(0L);
-        */
+#endif
         }
     };
 

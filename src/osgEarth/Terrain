@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/TerrainOptions>
 #include <osg/OperationThread>
 #include <osg/View>
 
@@ -219,13 +218,6 @@ namespace osgEarth
             float       my,
             osg::Vec3d& out_world ) const;
 
-        //bool getWorldCoordsUnderMouse(
-        //    osg::View*  view,
-        //    float       mx,
-        //    float       my,
-        //    osg::Vec3d& out_world,
-        //    osg::ref_ptr<osg::Node>& out_node ) const;
-
     public:
         /**
          * Adds a terrain callback.
@@ -265,7 +257,8 @@ namespace osgEarth
         virtual ~Terrain() { }
 
     private:
-        Terrain( osg::Node* graph, const Profile* profile, const TerrainOptions& options );
+        //! Construct the Terrain graph interface
+        Terrain(osg::Node* graph, const Profile* profile);
 
         /** update traversal. */
         void update();
@@ -280,7 +273,6 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile>  _profile;
         osg::observer_ptr<osg::Node> _graph;
-        const TerrainOptions&        _terrainOptions;
 
         osg::ref_ptr<osg::OperationQueue> _updateQueue;
         

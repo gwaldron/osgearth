@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -262,7 +262,7 @@ PointGroup::optimize()
     // Merge all non-dynamic drawables to reduce the total number of 
     // OpenGL calls.
     osgUtil::Optimizer::MergeGeometryVisitor mg;
-    mg.setTargetMaximumNumberOfVertices(65536);
+    mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
     accept(mg);
 }
 
@@ -462,6 +462,20 @@ PointDrawable::pushVertex(const osg::Vec3& vert)
     _colors->dirty();
 
     dirtyBound();
+}
+
+void
+PointDrawable::insert(unsigned where, const osg::Vec3& vert)
+{
+  initialize();
+
+  _current->insert(_current->begin() + where, vert);
+  _current->dirty();
+
+  _colors->insert(_colors->begin() + where, _color);
+  _colors->dirty();
+
+  dirtyBound();
 }
 
 void

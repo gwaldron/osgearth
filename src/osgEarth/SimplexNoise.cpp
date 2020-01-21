@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,8 @@
 #define POW2(x) ((double)(x==0 ? 1 : (2 << (x-1))))
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
+using namespace osgEarth::Util;
 
 const SimplexNoise::Grad SimplexNoise::grad3[12] = {
     Grad(1, 1, 0), Grad(-1, 1, 0), Grad(1, -1, 0), Grad(-1, -1, 0),
@@ -499,20 +501,20 @@ double SimplexNoise::Noise(double x, double y, double z, double w) const
 {
     double n0, n1, n2, n3, n4; // Noise contributions from the five corners
     // Skew the (x,y,z,w) space to determine which cell of 24 simplices we're in
-    const double s = (x + y + z + w) * F4; // Factor for 4D skewing
-    const int i = FastFloor(x + s);
-    const int j = FastFloor(y + s);
-    const int k = FastFloor(z + s);
-    const int l = FastFloor(w + s);
-    const double t = (i + j + k + l) * G4; // Factor for 4D unskewing
-    const double X0 = i - t; // Unskew the cell origin back to (x,y,z,w) space
-    const double Y0 = j - t;
-    const double Z0 = k - t;
-    const double W0 = l - t;
-    const double x0 = x - X0;    // The x,y,z,w distances from the cell origin
-    const double y0 = y - Y0;
-    const double z0 = z - Z0;
-    const double w0 = w - W0;
+    double s = (x + y + z + w) * F4; // Factor for 4D skewing
+    int i = FastFloor(x + s);
+    int j = FastFloor(y + s);
+    int k = FastFloor(z + s);
+    int l = FastFloor(w + s);
+    double t = (i + j + k + l) * G4; // Factor for 4D unskewing
+    double X0 = i - t; // Unskew the cell origin back to (x,y,z,w) space
+    double Y0 = j - t;
+    double Z0 = k - t;
+    double W0 = l - t;
+    double x0 = x - X0;    // The x,y,z,w distances from the cell origin
+    double y0 = y - Y0;
+    double z0 = z - Z0;
+    double w0 = w - W0;
     // For the 4D case, the simplex is a 4D shape I won't even try to describe.
     // To find out which of the 24 possible simplices we're in, we need to
     // determine the magnitude ordering of x0, y0, z0 and w0.
@@ -524,50 +526,50 @@ double SimplexNoise::Noise(double x, double y, double z, double w) const
     int rankw = 0;
     if(x0 > y0)
     {
-        ++rankx;
+        rankx++;
     } else
     {
-        ++ranky;
+        ranky++;
     }
 
     if(x0 > z0)
     {
-        ++rankx;
+        rankx++;
     } else
     {
-        ++rankz;
+        rankz++;
     }
 
     if(x0 > w0)
     {
-        ++rankx;
+        rankx++;
     } else
     {
-        ++rankw;
+        rankw++;
     }
 
     if(y0 > z0)
     {
-        ++ranky;
+        ranky++;
     } else
     {
-        ++rankz;
+        rankz++;
     }
 
     if(y0 > w0)
     {
-        ++ranky;
+        ranky++;
     } else
     {
-        ++rankw;
+        rankw++;
     }
 
     if(z0 > w0)
     {
-        ++rankz;
+        rankz++;
     } else
     {
-        ++rankw;
+        rankw++;
     }
 
     int i1, j1, k1, l1; // The integer offsets for the second simplex corner
@@ -593,35 +595,32 @@ double SimplexNoise::Noise(double x, double y, double z, double w) const
     k3 = rankz >= 1 ? 1 : 0;
     l3 = rankw >= 1 ? 1 : 0;
     // The fifth corner has all coordinate offsets = 1, so no need to compute that.
-    const double x1 = x0 - i1 + G4; // Offsets for second corner in (x,y,z,w) coords
-    const double y1 = y0 - j1 + G4;
-    const double z1 = z0 - k1 + G4;
-    const double w1 = w0 - l1 + G4;
-    const double TwoG4 = 2.0*G4;
-    const double x2 = x0 - i2 + TwoG4; // Offsets for third corner in (x,y,z,w) coords
-    const double y2 = y0 - j2 + TwoG4;
-    const double z2 = z0 - k2 + TwoG4;
-    const double w2 = w0 - l2 + TwoG4;
-    const double ThreeG4 = 3.0*G4;
-    const double x3 = x0 - i3 + ThreeG4; // Offsets for fourth corner in (x,y,z,w) coords
-    const double y3 = y0 - j3 + ThreeG4;
-    const double z3 = z0 - k3 + ThreeG4;
-    const double w3 = w0 - l3 + ThreeG4;
-    const double FourG4 = 4.0*G4;
-    const double x4 = x0 - 1.0 + FourG4; // Offsets for last corner in (x,y,z,w) coords
-    const double y4 = y0 - 1.0 + FourG4;
-    const double z4 = z0 - 1.0 + FourG4;
-    const double w4 = w0 - 1.0 + FourG4;
+    double x1 = x0 - i1 + G4; // Offsets for second corner in (x,y,z,w) coords
+    double y1 = y0 - j1 + G4;
+    double z1 = z0 - k1 + G4;
+    double w1 = w0 - l1 + G4;
+    double x2 = x0 - i2 + 2.0*G4; // Offsets for third corner in (x,y,z,w) coords
+    double y2 = y0 - j2 + 2.0*G4;
+    double z2 = z0 - k2 + 2.0*G4;
+    double w2 = w0 - l2 + 2.0*G4;
+    double x3 = x0 - i3 + 3.0*G4; // Offsets for fourth corner in (x,y,z,w) coords
+    double y3 = y0 - j3 + 3.0*G4;
+    double z3 = z0 - k3 + 3.0*G4;
+    double w3 = w0 - l3 + 3.0*G4;
+    double x4 = x0 - 1.0 + 4.0*G4; // Offsets for last corner in (x,y,z,w) coords
+    double y4 = y0 - 1.0 + 4.0*G4;
+    double z4 = z0 - 1.0 + 4.0*G4;
+    double w4 = w0 - 1.0 + 4.0*G4;
     // Work out the hashed gradient indices of the five simplex corners
-    const int ii = i & 255;
-    const int jj = j & 255;
-    const int kk = k & 255;
-    const int ll = l & 255;
-    const int gi0 = perm[ii+perm[jj+perm[kk+perm[ll]]]] % 32;
-    const int gi1 = perm[ii+i1+perm[jj+j1+perm[kk+k1+perm[ll+l1]]]] % 32;
-    const int gi2 = perm[ii+i2+perm[jj+j2+perm[kk+k2+perm[ll+l2]]]] % 32;
-    const int gi3 = perm[ii+i3+perm[jj+j3+perm[kk+k3+perm[ll+l3]]]] % 32;
-    const int gi4 = perm[ii+1+perm[jj+1+perm[kk+1+perm[ll+1]]]] % 32;
+    int ii = i & 255;
+    int jj = j & 255;
+    int kk = k & 255;
+    int ll = l & 255;
+    int gi0 = perm[ii+perm[jj+perm[kk+perm[ll]]]] % 32;
+    int gi1 = perm[ii+i1+perm[jj+j1+perm[kk+k1+perm[ll+l1]]]] % 32;
+    int gi2 = perm[ii+i2+perm[jj+j2+perm[kk+k2+perm[ll+l2]]]] % 32;
+    int gi3 = perm[ii+i3+perm[jj+j3+perm[kk+k3+perm[ll+l3]]]] % 32;
+    int gi4 = perm[ii+1+perm[jj+1+perm[kk+1+perm[ll+1]]]] % 32;
     // Calculate the contribution from the five corners
     double t0 = 0.6 - x0*x0 - y0*y0 - z0*z0 - w0*w0;
     if(t0<0) n0 = 0.0;
@@ -704,7 +703,7 @@ SimplexNoise::createSeamlessImage(unsigned dim) const
         {
             for (unsigned t = 0; t < dim; ++t)
             {
-                value = read(s, t);
+                read(value, s, t);
                 value.r() = (value.r()+bias)*scale;
                 write(value, s, t);
             }

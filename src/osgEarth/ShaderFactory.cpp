@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,17 +24,21 @@
 
 #define LC "[ShaderFactory] "
 
-#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-    static bool s_GLES_SHADERS = true;
-#else
-    static bool s_GLES_SHADERS = false;
-#endif
+namespace
+{
+    #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+        static bool s_GLES_SHADERS = true;
+    #else
+        static bool s_GLES_SHADERS = false;
+    #endif
+}
 
 #define INDENT "    "
 #define RANGE  osgEarth::Registry::instance()->shaderFactory()->getRangeUniformName()
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
+using namespace osgEarth::Util;
 
 
 ShaderFactory::ShaderFactory()
@@ -146,12 +150,16 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     varDefs.insert( "vec4 vp_Vertex" );
 
     // parse the vp_varyings (which were injected by the ShaderLoader)
+    // We actually only care about the in's. Because any varying that 
+    // doesn't have an "in" somewhere in the shader list is not actually
+    // being used as a varying, in which case we don't need it in the
+    // interface block.
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
         osg::Shader* shader = s->data()._shader->getNominalShader();
         if ( shader )
         {
-            ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);
+            ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying_in", varDefs);
         }
     }
 
@@ -399,30 +407,17 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // matrix uniforms. Why except vertex? OSG<3.5.8 only replaces these
     // in the vertex shader and not other stages.
 
-    if (osg::State::getUseUboTransformStack())
-    {
-       gl_ModelViewMatrix = "osg.ModelViewMatrix";
-       gl_ProjectionMatrix = "osg.ProjectionMatrix";
-       gl_ModelViewProjectionMatrix = "osg.ModelViewProjectionMatrix";
-       gl_NormalMatrix = "osg.NormalMatrix";
-       gl_FrontColor = "osg_FrontColor";
-
-       glMatrixUniforms = osg::State::getTransformUboDeclaration();
-    }
-    else {
-       gl_ModelViewMatrix = "osg_ModelViewMatrix",
-          gl_ProjectionMatrix = "osg_ProjectionMatrix",
-          gl_ModelViewProjectionMatrix = "osg_ModelViewProjectionMatrix",
-          gl_NormalMatrix = "osg_NormalMatrix",
-          gl_FrontColor = "osg_FrontColor";
-
-       glMatrixUniforms =
-          "uniform mat4 osg_ModelViewMatrix;\n"
-          "uniform mat4 osg_ModelViewProjectionMatrix;\n"
-          "uniform mat4 osg_ProjectionMatrix;\n"
-          "uniform mat3 osg_NormalMatrix;\n";
-    }
-
+    gl_ModelViewMatrix           = "osg_ModelViewMatrix",
+    gl_ProjectionMatrix          = "osg_ProjectionMatrix",
+    gl_ModelViewProjectionMatrix = "osg_ModelViewProjectionMatrix",
+    gl_NormalMatrix              = "osg_NormalMatrix",
+    gl_FrontColor                = "osg_FrontColor";
+    
+    glMatrixUniforms =
+        "uniform mat4 osg_ModelViewMatrix;\n"
+        "uniform mat4 osg_ModelViewProjectionMatrix;\n"
+        "uniform mat4 osg_ProjectionMatrix;\n"
+        "uniform mat3 osg_NormalMatrix;\n";
 #endif
 
     if ( hasTCS )

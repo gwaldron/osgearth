@@ -27,22 +27,21 @@
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ScreenSpaceLayout>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/MGRSFormatter>
-#include <osgEarthUtil/Controls>
-#include <osgEarthAnnotation/TrackNode>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/MGRSFormatter>
+#include <osgEarth/Controls>
+#include <osgEarth/TrackNode>
+#include <osgEarth/Color>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Symbology;
 
 #define LC "[osgearth_tracks] "
 

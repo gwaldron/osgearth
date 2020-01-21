@@ -25,10 +25,9 @@
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Containers>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/Style>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Buildings;
 
 #define LC "[BuildingCatalog] "

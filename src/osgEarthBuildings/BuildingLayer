@@ -23,9 +23,9 @@
 #include "BuildingLayerOptions"
 #include "BuildingCatalog"
 #include <osgEarth/VisibleLayer>
-#include <osgEarthUtil/SimplePager>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/Session>
+#include <osgEarth/SimplePager>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/Session>
 
 namespace osgEarth { namespace Buildings 
 {
@@ -36,24 +36,15 @@ namespace osgEarth { namespace Buildings
     class OSGEARTHBUILDINGS_EXPORT BuildingLayer : public VisibleLayer
     {
     public:
-        META_Layer(osgEarthBuildings, BuildingLayer, BuildingLayerOptions, buildings);
-
-        //! Default constructor
-        BuildingLayer();
-
-        //! Constructor with initialization options
-        BuildingLayer(const BuildingLayerOptions& options);
+        META_Layer(osgEarthBuildings, BuildingLayer, BuildingLayerOptions, VisibleLayer, Buildings);
 
         //! Sets the source of buildings data - call before opening layer
         void setFeatureSource(FeatureSource*);
-        FeatureSource* getFeatureSource() const { return _featureSource.get(); }
+        FeatureSource* getFeatureSource() const { return _featureSource.getLayer(); }
 
         BuildingPager* pager();
 
     public: // Layer
-
-        // opens the layer and returns the status
-        virtual const Status& open();
 
         // The Node representing this layer.
         virtual osg::Node* getNode() const;
@@ -62,6 +53,9 @@ namespace osgEarth { namespace Buildings
         virtual const GeoExtent& getExtent() const;
 
     protected: // Layer
+
+        // opens the layer and returns the status
+        virtual Status openImplementation();
         
         // called by the map when this layer is added
         virtual void addedToMap(const class Map*);
@@ -76,9 +70,10 @@ namespace osgEarth { namespace Buildings
 
         osg::ref_ptr<osg::Group> _root;
         osg::ref_ptr<BuildingCatalog> _catalog;
-        osg::ref_ptr<FeatureSource> _featureSource;
         osg::ref_ptr<Session> _session;
         osg::observer_ptr<const Map> _map;
+        LayerReference<StyleSheet> _styleSheet;
+        LayerReference<FeatureSource> _featureSource;
 
         void createSceneGraph();
         

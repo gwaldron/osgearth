@@ -22,11 +22,10 @@
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
 #include <iostream>
 
 #define LC "[viewer] "

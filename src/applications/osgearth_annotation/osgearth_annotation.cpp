@@ -22,29 +22,29 @@
 
 #include <osgEarth/MapNode>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 
-#include <osgEarthAnnotation/ImageOverlay>
-#include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/RectangleNode>
-#include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/LocalGeometryNode>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/ModelNode>
+#include <osgEarth/ImageOverlay>
+#include <osgEarth/CircleNode>
+#include <osgEarth/RectangleNode>
+#include <osgEarth/EllipseNode>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/LocalGeometryNode>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/ModelNode>
 
-#include <osgEarthAnnotation/AnnotationEditing>
-#include <osgEarthAnnotation/ImageOverlayEditor>
+#include <osgEarth/ImageOverlayEditor>
 
-#include <osgEarthSymbology/GeometryFactory>
+#include <osgEarth/GeometryFactory>
 
 #include <osgViewer/Viewer>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
+using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 using namespace osgEarth::Util;
 
 //------------------------------------------------------------------
@@ -253,8 +253,6 @@ main(int argc, char** argv)
             true);
 
         annoGroup->addChild( circle );
-
-        editGroup->addChild( new CircleNodeEditor(circle) );
     }
 
 	{
@@ -273,8 +271,6 @@ main(int argc, char** argv)
             true);
 
 		annoGroup->addChild( circle );
-
-        editGroup->addChild( new CircleNodeEditor(circle) );
 	}
 
     //--------------------------------------------------------------------
@@ -295,8 +291,6 @@ main(int argc, char** argv)
             Angle(360.0 - 45.0, Units::DEGREES), 
             true);
         annoGroup->addChild( ellipse );
-
-        editGroup->addChild( new EllipseNodeEditor(ellipse) );
     }
 	{
 		Style ellipseStyle;
@@ -313,8 +307,6 @@ main(int argc, char** argv)
             Angle(40.0, Units::DEGREES), 
             true);
 		annoGroup->addChild( ellipse );
-
-        editGroup->addChild( new EllipseNodeEditor(ellipse) );
 	}
     
     //--------------------------------------------------------------------
@@ -331,8 +323,6 @@ main(int argc, char** argv)
             Distance(600, Units::KILOMETERS ),
             rectStyle);
         annoGroup->addChild( rect );
-
-        editGroup->addChild( new RectangleNodeEditor(rect) );
     }    
 
     //--------------------------------------------------------------------

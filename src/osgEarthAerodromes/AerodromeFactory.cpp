@@ -36,13 +36,13 @@
 #include "WindsockNode"
 #include "AerodromeRenderer"
 
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FeatureCursor>
 
 #include <osgEarth/Registry>
 
-#include <osgEarthUtil/HTM>
+#include <osgEarth/HTM>
 
 #include <osg/PagedLOD>
 #include <osgDB/FileNameUtils>
@@ -50,9 +50,8 @@
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Aerodrome;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 using namespace osgEarth::Util;
 
 #define LC "[AerodromeFactory] "
@@ -240,31 +239,14 @@ AerodromeFactory::~AerodromeFactory()
 template <typename T, typename Y, typename P>
 void AerodromeFactory::createFeatureNodes(P featureOpts, AerodromeNode* aerodrome, const osgDB::Options* options, void (*processor)(T* node, AerodromeNode* aerodrome))
 {
-    if (!featureOpts.featureOptions().isSet())
+    LayerReference<FeatureSource> client;
+    Status s = client.open(featureOpts.featureSource(), options);
+    if (s.isError() || !client.getLayer())
     {
-        OE_WARN << LC << "Cannot create features: feature source is not set." << std::endl;
+        OE_WARN << LC << "Skipping feature source; open failed: " << s.message() << std::endl;
         return;
     }
-
-    if (!aerodrome)
-    {
-        OE_WARN << LC << "Cannot create features: AerodromeNode is not set." << std::endl;
-        return;
-    }
-
-    osg::ref_ptr<FeatureSource> featureSource = FeatureSourceFactory::create(featureOpts.featureOptions().value());
-    if (!featureSource.valid())
-    {
-        OE_WARN << LC << "Skipping boundary source; failed to create driver \"" << featureOpts.featureOptions()->getDriver() << "\"" << std::endl;
-        return;
-    }
-
-    const Status& status = featureSource->open(options);
-    if (status.isError())
-    {
-        OE_WARN << LC << "Skipping boundary source; open failed: " << status.message() << std::endl;
-        return;
-    }
+    FeatureSource* featureSource = client.getLayer();
 
     Y* parentGroup = new Y();
     aerodrome->addChild(parentGroup);
@@ -281,12 +263,12 @@ void AerodromeFactory::createFeatureNodes(P featureOpts, AerodromeNode* aerodrom
     {
         Feature* f = cursor->nextFeature();
 
-        ///* **************************************** */
-        ///* Necessary but not sure why               */
+        /* **************************************** */
+        /* Necessary but not sure why               */
 
-        //const SpatialReference* ecefSRS = f->getSRS()->getGeocentricSRS();
+        const SpatialReference* ecefSRS = f->getSRS()->getGeocentricSRS();
 
-        ///* **************************************** */
+        /* **************************************** */
 
         OE_DEBUG << LC << "Adding feature to aerodrome: " << aerodrome->icao() << std::endl;
 
@@ -309,31 +291,15 @@ void AerodromeFactory::createFeatureNodes(P featureOpts, AerodromeNode* aerodrom
 template <typename T, typename Y, typename P>
 void AerodromeFactory::createMergedFeatureNodes(P featureOpts, AerodromeNode* aerodrome, const osgDB::Options* options, void (*processor)(T* node, AerodromeNode* aerodrome))
 {
-    if (!featureOpts.featureOptions().isSet())
+    LayerReference<FeatureSource> client;
+    Status s = client.open(featureOpts.featureSource(), options);
+    if (s.isError() || client.getLayer() == 0L)
     {
-        OE_WARN << LC << "Cannot create features: feature source is not set." << std::endl;
+        OE_WARN << LC << "Skipping boundary source; open failed: " << s.message() << std::endl;
         return;
     }
 
-    if (!aerodrome)
-    {
-        OE_WARN << LC << "Cannot create features: AerodromeNode is not set." << std::endl;
-        return;
-    }
-
-    osg::ref_ptr<FeatureSource> featureSource = FeatureSourceFactory::create(featureOpts.featureOptions().value());
-    if (!featureSource.valid())
-    {
-        OE_WARN << LC << "Skipping boundary source; failed to create driver \"" << featureOpts.featureOptions()->getDriver() << "\"" << std::endl;
-        return;
-    }
-
-    const Status& status = featureSource->open(options);
-    if (status.isError())
-    {
-        OE_WARN << LC << "Skipping boundary source; open failed: " << status.message() << std::endl;
-        return;
-    }
+    FeatureSource* featureSource = client.getLayer();
 
     Y* parentGroup = new Y();
     aerodrome->addChild(parentGroup);
@@ -356,12 +322,12 @@ void AerodromeFactory::createMergedFeatureNodes(P featureOpts, AerodromeNode* ae
     {
         Feature* f = cursor->nextFeature();
 
-        ///* **************************************** */
-        ///* Necessary but not sure why               */
+        /* **************************************** */
+        /* Necessary but not sure why               */
 
-        //const SpatialReference* ecefSRS = f->getSRS()->getGeocentricSRS();
+        const SpatialReference* ecefSRS = f->getSRS()->getGeocentricSRS();
 
-        ///* **************************************** */
+        /* **************************************** */
 
         OE_DEBUG << LC << "Adding feature to aerodrome: " << aerodrome->icao() << std::endl;
 
@@ -394,7 +360,7 @@ void AerodromeFactory::createMergedFeatureNodes(P featureOpts, AerodromeNode* ae
 
 void AerodromeFactory::createBoundaryNodes(BoundaryFeatureOptions boundaryOpts, AerodromeNode* aerodrome, const osgDB::Options* options)
 {
-    if (!boundaryOpts.featureOptions().isSet())
+    if (!boundaryOpts.featureSource().isSet())
     {
         OE_WARN << LC << "Cannot create boundary features: feature source is not set." << std::endl;
         return;
@@ -406,13 +372,17 @@ void AerodromeFactory::createBoundaryNodes(BoundaryFeatureOptions boundaryOpts, 
         return;
     }
 
-    osg::ref_ptr<FeatureSource> featureSource = FeatureSourceFactory::create(boundaryOpts.featureOptions().value());
-    const Status& status = featureSource->open(options);
-    if (status.isError())
+    LayerReference<FeatureSource> boundaries;
+    Status status = boundaries.open(boundaryOpts.featureSource(), options);
+    if (status.isError() || boundaries.getLayer() == 0L)
     {
         OE_WARN << LC << "No feature data: " << status.message() << std::endl;
         return;
     }
+    //osg::ref_ptr<FeatureSource> featureSource = FeatureSource::create(boundaryOpts.featureOptions().value());
+    //featureSource->setReadOptions(options);
+    //const Status& status = featureSource->open();
+    FeatureSource* featureSource = boundaries.getLayer();
     
     Query query;
     query.expression() = s_makeQuery(boundaryOpts.icaoAttr().value(), aerodrome->icao());
@@ -422,12 +392,12 @@ void AerodromeFactory::createBoundaryNodes(BoundaryFeatureOptions boundaryOpts, 
     {
         Feature* f = cursor->nextFeature();
 
-        ///* **************************************** */
-        ///* Necessary but not sure why               */
+        /* **************************************** */
+        /* Necessary but not sure why               */
 
-        //const SpatialReference* ecefSRS = f->getSRS()->getGeocentricSRS();
+        const SpatialReference* ecefSRS = f->getSRS()->getGeocentricSRS();
 
-        ///* **************************************** */
+        /* **************************************** */
 
         OE_DEBUG << LC << "Adding boundary to aerodrome: " << aerodrome->icao() << std::endl;
 
@@ -572,25 +542,14 @@ AerodromeFactory::seedAerodromes(AerodromeCatalog* catalog, const osgDB::Options
 
     for(BoundaryOptionsSet::const_iterator i = catalog->boundaryOptions().begin(); i != catalog->boundaryOptions().end(); ++i)
     {
-        if (!i->featureOptions().isSet())
+        LayerReference<FeatureSource> boundary;
+        Status s = boundary.open(i->featureSource(), options);
+        if (s.isError() || !boundary.getLayer())
         {
-            OE_WARN << LC << "Skipping boundary source: feature source is not set." << std::endl;
+            OE_WARN << LC << "Skipping boundary source; failed to open feature source \"" << i->featureSource()->name().get() << "\" (error=" << s.message() << ")" << std::endl;
             continue;
         }
-
-        osg::ref_ptr<FeatureSource> featureSource = FeatureSourceFactory::create(i->featureOptions().value());
-        if (!featureSource.valid())
-        {
-            OE_WARN << LC << "Skipping boundary source; failed to create driver \"" << i->featureOptions()->getDriver() << "\"" << std::endl;
-            continue;
-        }
-
-        const Status& status = featureSource->open(options);
-        if (status.isError())
-        {
-            OE_WARN << LC << "Skipping boundary source; open failed: " << status.message() << std::endl;
-            continue;
-        }
+        FeatureSource* featureSource = boundary.getLayer();
 
         osg::ref_ptr<FeatureCursor> cursor = featureSource->createFeatureCursor(0L);
         while ( cursor.valid() && cursor->hasMore() )

@@ -24,15 +24,15 @@
 #include "BuildingCatalog"
 #include "BuildingSymbol"
 #include <osgEarth/Progress>
-#include <osgEarthFeatures/Session>
-#include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/AltitudeFilter>
+#include <osgEarth/Session>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/AltitudeFilter>
 
 namespace osgEarth { namespace Buildings
 {
     class BuildingSymbol;
 
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
 
     /** 
      * Creates one or more Building instances based on Feature input.

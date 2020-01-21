@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -33,19 +33,6 @@
 
 namespace osgEarth
 {
-    // placeholder - might go away -gw
-    class OSGEARTH_EXPORT GeoNode : public osg::Object
-    {
-    public:
-        META_Object(osgEarth, GeoNode);
-        GeoNode() { }
-        GeoNode(const GeoNode& rhs, const osg::CopyOp& copy) { }
-        GeoNode(osg::Node* node, const GeoExtent& extent) : _node(node), _extent(extent) { }
-
-        osg::ref_ptr<osg::Node> _node;
-        GeoExtent _extent;
-    };
-
     /**
      * Node that will render node graphs to textures, one at a time.
      */

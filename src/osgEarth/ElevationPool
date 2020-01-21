@@ -24,6 +24,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Containers>
 #include <osg/Timer>
 #include <map>
 
@@ -91,7 +92,7 @@ namespace osgEarth
         void clear();
         
         void stopThreading();
-	
+
     protected:
 
         osg::observer_ptr<const Map> _map;
@@ -110,7 +111,7 @@ namespace osgEarth
         class Tile : public osg::Referenced
         {
         public:
-            Tile() : _status(STATUS_EMPTY), _loadTime(0) { }
+            Tile() : _status(STATUS_EMPTY) { }
             TileKey             _key;           // key used to request this tile
             Bounds              _bounds;
             GeoHeightField      _hf;
@@ -145,7 +146,7 @@ namespace osgEarth
         // actual references are held in the MRU. That way when all pointers drop off
         // the back of the MRU, the Tile is destroyed and the main observer goes to 
         // NULL and is removed.
-        typedef std::map<TileKey, osg::observer_ptr<Tile> > Tiles;
+        typedef UnorderedMap<TileKey, osg::observer_ptr<Tile> > Tiles;
         Tiles _tiles;
         Threading::Mutex  _tilesMutex;
 
@@ -220,7 +221,7 @@ namespace osgEarth
 
         /**
          * Gets a elevation value for each input point and puts them in output.
-         * Returns the number of successful elevations. Failed queries are set to
+         * Returns the number of successful queries. Failed queries are set to
          * NO_DATA_VALUE in the output vector.
          */
         unsigned getElevations(

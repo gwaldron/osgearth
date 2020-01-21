@@ -21,16 +21,17 @@
 */
 
 #include <osg/Notify>
+#include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/LinearLineOfSight>
-#include <osgEarthUtil/RadialLineOfSight>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/LinearLineOfSight>
+#include <osgEarth/RadialLineOfSight>
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
 #include <osg/Depth>
@@ -39,6 +40,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 
 
 osg::AnimationPath* createAnimationPath(const GeoPoint& pos, const SpatialReference* mapSRS, float radius, double looptime)
@@ -105,34 +107,34 @@ osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialRefere
     return positioner;
 }
 
-class CacheExtentNodeVisitor : public osg::NodeVisitor
-{
-public:
-    CacheExtentNodeVisitor(GeoExtent& extent):
-      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-          _extent(extent)
-      {
-      }
-
-      void apply(osg::Node& node)
-      {
-          TerrainTileNode* tile = dynamic_cast<TerrainTileNode*>(&node);
-          if (tile && tile->getKey().valid())
-          {              
-              if (tile->getKey().getExtent().intersects(_extent) && tile->getKey().getLevelOfDetail() < 11)
-              {
-                  // Set this tile to not expire.
-                  tile->setMinimumExpirationTime(DBL_MAX);
-                  OE_NOTICE << "Preloading children for " << tile->getKey().str() << std::endl;
-                  tile->loadChildren();
-              }
-          }          
-          traverse(node);
-      }
-
-      GeoExtent _extent;
-};
-
+//class CacheExtentNodeVisitor : public osg::NodeVisitor
+//{
+//public:
+//    CacheExtentNodeVisitor(GeoExtent& extent):
+//      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+//          _extent(extent)
+//      {
+//      }
+//
+//      void apply(osg::Node& node)
+//      {
+//          TerrainTileNode* tile = dynamic_cast<TerrainTileNode*>(&node);
+//          if (tile && tile->getKey().valid())
+//          {              
+//              if (tile->getKey().getExtent().intersects(_extent) && tile->getKey().getLevelOfDetail() < 11)
+//              {
+//                  // Set this tile to not expire.
+//                  tile->setMinimumExpirationTime(DBL_MAX);
+//                  OE_NOTICE << "Preloading children for " << tile->getKey().str() << std::endl;
+//                  tile->loadChildren();
+//              }
+//          }          
+//          traverse(node);
+//      }
+//
+//      GeoExtent _extent;
+//};
+//
 
 int
 main(int argc, char** argv)
@@ -267,10 +269,9 @@ main(int argc, char** argv)
 
     GeoPoint center(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE);
 
-    GeoExtent extent(geoSRS, center.x() - 0.5, center.y() - 0.5, center.x() + 0.5, center.y() + 0.5);
-    CacheExtentNodeVisitor v(extent);
-
-    root->accept(v);
+    //GeoExtent extent(geoSRS, center.x() - 0.5, center.y() - 0.5, center.x() + 0.5, center.y() + 0.5);
+    //CacheExtentNodeVisitor v(extent);
+    //root->accept(v);
 
     while (!viewer.done())
     {        

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -34,6 +34,7 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //---------------------------------------------------------------------------
 
@@ -70,7 +71,7 @@ namespace
             setCullingActive( false );
             osg::StateSet* ss = getOrCreateStateSet();
             ss->setMode(GL_DEPTH_TEST, 0);
-            ss->setRenderBinDetails(1, "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
+            ss->setRenderBinDetails(dm.getRenderBinNumber(), "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
         }
 
     public: // osg::Node
@@ -493,8 +494,6 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     rttStateSet->setDefine(OE_LIGHTING_DEFINE, forceOff);
     //rttStateSet->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, forceOff) );
-    rttStateSet->addUniform( new osg::Uniform("oe_drapingTechnique", true) );
-    
     rttStateSet->setMode( GL_LIGHTING, forceOff );
     
     // activate blending within the RTT camera's FBO
@@ -569,8 +568,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // shaders
     Shaders pkg;
-    pkg.load( terrain_vp, pkg.DrapingVertex );
-    pkg.load( terrain_vp, pkg.DrapingFragment );
+    pkg.load( terrain_vp, pkg.Draping );
 }
 
 

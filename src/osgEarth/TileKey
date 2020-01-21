@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ namespace osgEarth
         /**
          * Constructs an invalid TileKey.
          */
-        TileKey() : _lod(0), _x(0), _y(0) { memset(_keyChars, 0, sizeof(_keyChars)); }
+        TileKey() : _lod(0), _x(0), _y(0), _hash(0) { }
 
         /**
          * Creates a new TileKey with the given tile xy at the specified level of detail
@@ -190,14 +190,28 @@ namespace osgEarth
             unsigned minimumLOD =0) const;
 
     protected:
-        char _keyChars[50];
         std::string _key;
         unsigned int _lod;
         unsigned int _x;
         unsigned int _y;
         osg::ref_ptr<const Profile> _profile;
         GeoExtent _extent;
+        size_t _hash;
+
+    public:
+        size_t hash() const { return _hash; }
     };
 }
+
+#ifdef OSGEARTH_CXX11
+namespace std {
+    // std::hash specialization for TileKey
+    template<> struct hash<osgEarth::TileKey> {
+        inline size_t operator()(const osgEarth::TileKey& value) const {
+            return value.hash();
+        }
+    };
+}
+#endif
 
 #endif // OSGEARTH_TILE_KEY_H

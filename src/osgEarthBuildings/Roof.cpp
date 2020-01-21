@@ -24,7 +24,7 @@
 #define LC "[Roof] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace osgEarth::Buildings;
 
 Roof::Roof() :

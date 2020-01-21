@@ -36,6 +36,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/AutoTransform>
 #include <osg/Depth>
+#include <osgDB/ReadFile>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgShadow/ConvexPolyhedron>
@@ -45,7 +46,8 @@
 #define LC "[CascadeDrapingDecorator] "
 
 using namespace osgEarth;
-
+using namespace osgEarth::Contrib;
+using namespace osgEarth::Util;
 
 
 // Whether to intersect the ellipsoid versus the horizon plane when

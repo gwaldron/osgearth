@@ -21,14 +21,15 @@
 */
 
 #include <osg/Notify>
+#include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/Controls>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/FileUtils>
@@ -36,13 +37,13 @@
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
 
-#include <osgEarthAnnotation/ImageOverlay>
-#include <osgEarthAnnotation/ImageOverlayEditor>
+#include <osgEarth/ImageOverlay>
+#include <osgEarth/ImageOverlayEditor>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Contrib;
 
 static Grid* s_layerBox = NULL;
 

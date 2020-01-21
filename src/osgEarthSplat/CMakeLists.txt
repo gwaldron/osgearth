@@ -17,6 +17,8 @@ set(TARGET_GLSL
     Splat.vert.view.glsl
     Splat.frag.glsl
     Splat.util.glsl
+    Grass.VS.glsl
+    GroundCover.VS.glsl
     GroundCover.TCS.glsl
     GroundCover.TES.glsl
     GroundCover.GS.glsl
@@ -36,7 +38,6 @@ set(TARGET_SRC
     Coverage.cpp
     GroundCover.cpp
     GroundCoverLayer.cpp
-    LandUseTileSource.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
 	SplatCatalog.cpp
@@ -51,7 +52,6 @@ set(LIB_PUBLIC_HEADERS
 	Export
     GroundCover
     GroundCoverLayer
-    LandUseTileSource
     NoiseTextureFactory
     RoadSurfaceLayer
 	SplatCoverageLegend
@@ -81,13 +81,9 @@ ENDIF(WIN32)
 
 LINK_INTERNAL(${LIB_NAME}
     osgEarth
-    osgEarthFeatures
-    osgEarthSymbology
-    osgEarthAnnotation
-    osgEarthUtil
 )
 
-LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGMANIPULATOR_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY)
+LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGDB_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY)
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
 # Add this project to the NodeKits solution folder

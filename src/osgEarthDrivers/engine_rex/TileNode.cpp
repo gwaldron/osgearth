@@ -29,30 +29,16 @@
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/TraversalData>
-#include <osgEarth/Shadowing>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/TraversalData>
-
-#include <osg/Uniform>
-#include <osg/ComputeBoundsVisitor>
-#include <osg/ValueObject>
 
 #include <osg/ConcurrencyViewerMacros>
-
-#include <osgDB/WriteFile>
-
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
 
-//#define VRV_THROTTLING
-#ifdef VRV_THROTTLING
 const int MAX_NUM_CHILDREN_CREATED_PER_FRAME = 4;
-#endif
-
 // Whether to check the child nodes for culling before traversing them.
 // This could prevent premature Loader requests, but it increases cull time.
 //#define VISIBILITY_PRECHECK
@@ -77,14 +63,9 @@ namespace
 TileNode::TileNode() : 
 _dirty        ( false ),
 _childrenReady( false ),
-_minExpiryTime( 0.0 ),
-_minExpiryFrames( 0 ),
 _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
-_count(0),
-_stitchNormalMap(false),
 _empty(false),              // an "empty" node exists but has no geometry or children.,
-_isRootTile(false),
 _imageUpdatesActive(false)
 {
     //nop
@@ -109,7 +90,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     if (!map.valid())
         return;
 
-    unsigned tileSize = context->getOptions().tileSize().get();
+    unsigned tileSize = options().tileSize().get();
 
     // Mask generator creates geometry from masking boundaries when they exist.
     osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
@@ -118,7 +99,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     osg::ref_ptr<SharedGeometry> geom;
     context->getGeometryPool()->getPooledGeometry(
         key,
-        MapInfo(map.get()),
         tileSize,
         masks.get(), 
         geom);
@@ -136,26 +116,19 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     TileDrawable* surfaceDrawable = new TileDrawable(
         key, 
         geom.get(),
-        context->getOptions().tileSize().get() );
+        options().tileSize().get() );
 
     // Give the tile Drawable access to the render model so it can properly
     // calculate its bounding box and sphere.
     surfaceDrawable->setModifyBBoxCallback(context->getModifyBBoxCallback());
 
     // Create the node to house the tile drawable:
-    _surface = new SurfaceNode(
-        key,
-        MapInfo(map.get()),
-        context->getRenderBindings(),
-        surfaceDrawable );
+    _surface = new SurfaceNode(key, surfaceDrawable);
     
     // create a data load request for this new tile:
     _loadRequest = new LoadTileData( this, context );
     _loadRequest->setName( _key.str() );
     _loadRequest->setTileKey( _key );
-
-    // whether the stitch together normal maps for adjacent tiles.
-    _stitchNormalMap = context->_options.normalizeEdges() == true;
 
     // Encode the tile key in a uniform
     unsigned tw, th;
@@ -263,7 +236,7 @@ TileNode::computeBound() const
     if (_surface.valid())
     {
         bs = _surface->getBound();
-        const osg::BoundingBox bbox = _surface->getAlignedBoundingBox();
+        const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
         _tileKeyValue.a() = osg::maximum( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
     }    
     return bs;
@@ -276,8 +249,8 @@ TileNode::isDormant(const osg::FrameStamp* fs) const
 
     bool dormant = 
            fs &&
-           fs->getFrameNumber() - _lastTraversalFrame > osg::maximum(_minExpiryFrames, minMinExpiryFrames) &&
-           fs->getReferenceTime() - _lastTraversalTime > _minExpiryTime;
+           fs->getFrameNumber() - _lastTraversalFrame > osg::maximum(options().minExpiryFrames().get(), minMinExpiryFrames) &&
+           fs->getReferenceTime() - _lastTraversalTime > options().minExpiryTime().get();
     return dormant;
 }
 
@@ -293,9 +266,6 @@ TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix
     {
         if ( _surface.valid() )
             _surface->setElevationRaster( image, matrix );
-
-        if ( _patch.valid() )
-            _patch->setElevationRaster( image, matrix );
     }
 }
 
@@ -315,15 +285,17 @@ TileNode::getElevationMatrix() const
 void
 TileNode::setDirty(bool value)
 {
+    _loadRequest->clearLayerFilter();
     _dirty = value;
-    
-    if (_dirty == false && !_newLayers.empty())
-    {
-        _loadRequest->filter().clear();
-        _loadRequest->filter().layers() = _newLayers;
-        _newLayers.clear();
-        _dirty = true;
-    }
+}
+
+void
+TileNode::refreshLayers(const std::set<UID>& layers)
+{
+    for(std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        _loadRequest->addLayerToFilter(*i);
+
+    _dirty = true;
 }
 
 void
@@ -333,9 +305,6 @@ TileNode::releaseGLObjects(osg::State* state) const
 
     if ( _surface.valid() )
         _surface->releaseGLObjects(state);
-
-    if ( _patch.valid() )
-        _patch->releaseGLObjects(state);
 
     _renderModel.releaseGLObjects(state);
 }
@@ -347,9 +316,6 @@ TileNode::resizeGLObjectBuffers(unsigned maxSize)
 
     if ( _surface.valid() )
         _surface->resizeGLObjectBuffers(maxSize);
-
-    if ( _patch.valid() )
-        _patch->resizeGLObjectBuffers(maxSize);
 
     _renderModel.resizeGLObjectBuffers(maxSize);
 }
@@ -365,7 +331,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     {
         // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
         // allowable on-screen tile size in pixels.
-        if (context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+        if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
         {
             float tileSizeInPixels = -1.0;
 
@@ -379,7 +345,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
                 tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
             }
         
-            return (tileSizeInPixels > context->getOptions().tilePixelSize().get());
+            return (tileSizeInPixels > options().tilePixelSize().get());
         }
 
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
@@ -455,7 +421,7 @@ TileNode::cull(TerrainCuller* culler)
     bool canAcceptSurface = false;
     
     // Don't load data in progressive mode until the parent is up to date
-    if (context->getOptions().progressive() == true)
+    if (options().progressive() == true)
     {
         TileNode* parent = getParentTile();
         if ( parent && parent->isDirty() )
@@ -473,7 +439,8 @@ TileNode::cull(TerrainCuller* culler)
         canLoadData       = false;
     }
 
-#ifdef VRV_THROTTLING
+#if 0 // GW MERGE 2.10.x
+    // VRV_PATCH
     if (culler->_numberChildrenCreated >= MAX_NUM_CHILDREN_CREATED_PER_FRAME) {
        canCreateChildren = false;
     }
@@ -488,9 +455,7 @@ TileNode::cull(TerrainCuller* culler)
         {
             _mutex.lock();
 
-#ifdef VRV_THROTTLING
-
-            if ( !_childrenReady )
+            if ( !_childrenReady ) // double check inside mutex
             {
                 //VRV_PATCH
                 //TODO: GW: Replace with a proper throttling mechanism without hard-coded values
@@ -514,19 +479,6 @@ TileNode::cull(TerrainCuller* culler)
                 // This means that you cannot start loading data immediately; must wait a frame.
                 canLoadData = false;
             }
-#else
-
-            if ( !_childrenReady )
-            {
-                OE_START_TIMER(createChildren);
-                createChildren( context );
-                REPORT("TileNode::createChildren", createChildren);
-                _childrenReady = true;
-
-                // This means that you cannot start loading data immediately; must wait a frame.
-                canLoadData = false;
-            }
-#endif
 
             _mutex.unlock();
         }
@@ -693,29 +645,18 @@ TileNode::createChildren(EngineContext* context)
     for(unsigned int quadrant= _children.size(); quadrant<4; ++quadrant)
     {
         TileNode* node = new TileNode();
-        if (context->getOptions().minExpiryFrames().isSet())
-        {
-            node->setMinimumExpirationFrames( *context->getOptions().minExpiryFrames() );
-        }
-        if (context->getOptions().minExpiryTime().isSet())
-        {         
-            node->setMinimumExpirationTime( *context->getOptions().minExpiryTime() );
-        }
 
         // Build the surface geometry:
         node->create( getKey().createChildKey(quadrant), this, context );
 
         // Add to the scene graph.
         addChild( node );
-
-#ifdef VRV_THROTTLING
         // 2 ms limit on tile splits
         if (timer.elapsedTime_m() > 2.0 ) {
            //osg::CVMarkerSeries series("Culling SubTasks");
            //series.write_alert("hit budget, %f", timer.elapsedTime_m());
            break;
         }
-#endif
     }
 }
 
@@ -753,27 +694,14 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     pass->samplers()[SamplerBinding::COLOR]._texture = model->getTexture();
                     pass->samplers()[SamplerBinding::COLOR]._matrix = *model->getMatrix();
 
-                    // Handle an RTT image layer:
-                    if (model->getImageLayer() && model->getImageLayer()->useCreateTexture())
-                    {
-                        // Check the texture's userdata for a Node. If there is one there,
-                        // render it to the texture using the Tile Rasterizer service.
-                        // TODO: consider hanging on to this texture and not applying it to
-                        // the live tile until the RTT is complete. (Prevents unsightly flashing)
-                        GeoNode* rttNode = dynamic_cast<GeoNode*>(model->getTexture()->getUserData());
-
-                        if (rttNode && _context->getTileRasterizer())
-                        {
-                            _context->getTileRasterizer()->push(rttNode->_node.get(), model->getTexture(), rttNode->_extent);
-                        }
-                    }
-
                     // check to see if this data requires an image update traversal.
                     if (_imageUpdatesActive == false)
                     {
-                        for(unsigned i=0; i<model->getTexture()->getNumImages(); ++i)
+                        osg::Texture* texture = model->getTexture();
+                        for(unsigned i=0; i<texture->getNumImages(); ++i)
                         {
-                            if (model->getTexture()->getImage(i)->requiresUpdateCall())
+                            const osg::Image* image = texture->getImage(i);
+                            if (image && image->requiresUpdateCall())
                             {
                                 ADJUST_UPDATE_TRAV_COUNT(this, +1);
                                 _imageUpdatesActive = true;
@@ -806,9 +734,6 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     {
         osg::Texture* tex = model->elevationModel()->getTexture();
 
-        // always keep the elevation image around because we use it for bounding box computation:
-        tex->setUnRefImageDataAfterApply(false);
-
         _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._texture = tex;
         _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
 
@@ -822,13 +747,27 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     if (normals.isActive() && model->normalModel().valid() && model->normalModel()->getTexture())
     {
         osg::Texture* tex = model->normalModel()->getTexture();
-        // keep the normal map around because we might update it later in "ping"
-        tex->setUnRefImageDataAfterApply(false);
+
+        if (_context->options().normalizeEdges() == true)
+        {
+            // keep the normal map around because we might update it later in "ping"
+            tex->setUnRefImageDataAfterApply(false);
+        }
 
         _renderModel._sharedSamplers[SamplerBinding::NORMAL]._texture = tex;
         _renderModel._sharedSamplers[SamplerBinding::NORMAL]._matrix.makeIdentity();
 
         updateNormalMap();
+    }
+
+    // Land Cover:
+    const SamplerBinding& landCover = bindings[SamplerBinding::LANDCOVER];
+    if (landCover.isActive() && model->landCoverModel().valid() && model->landCoverModel()->getTexture())
+    {
+        osg::Texture* tex = model->landCoverModel()->getTexture();
+
+        _renderModel._sharedSamplers[SamplerBinding::LANDCOVER]._texture = tex;
+        _renderModel._sharedSamplers[SamplerBinding::LANDCOVER]._matrix.makeIdentity();
     }
 
     // Other Shared Layers:
@@ -871,7 +810,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         }
     }
 
-    if (newElevationData)
+    if (newElevationData && _context->options().normalizeEdges() == true)
     {
         _context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
     }
@@ -1061,7 +1000,6 @@ TileNode::passInLegalRange(const RenderingPass& pass) const
     return 
         pass.terrainLayer() == 0L ||
         pass.terrainLayer()->isKeyInVisualRange(getKey());
-        //pass.terrainLayer()->isKeyInLegalRange(getKey());
 }
 
 void
@@ -1076,8 +1014,10 @@ TileNode::load(TerrainCuller* culler)
 
     // If progressive mode is enabled, lower LODs get higher priority since
     // we want to load them in order
-    if (_context->getOptions().progressive() == true)
+    if (options().progressive() == true)
+    {
         lodPriority = (float)(numLods - lod);
+    }
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
@@ -1123,6 +1063,8 @@ TileNode::removeSubTiles()
 void
 TileNode::notifyOfArrival(TileNode* that)
 {
+    if (options().normalizeEdges() == true)
+    {
     if (_key.createNeighborKey(1, 0) == that->getKey())
         _eastNeighbor = that;
 
@@ -1130,12 +1072,13 @@ TileNode::notifyOfArrival(TileNode* that)
         _southNeighbor = that;
 
     updateNormalMap();
+    }
 }
 
 void
 TileNode::updateNormalMap()
 {
-    if ( !_stitchNormalMap )
+    if (options().normalizeEdges() == false)
         return;
 
     Sampler& thisNormalMap = _renderModel._sharedSamplers[SamplerBinding::NORMAL];
@@ -1204,4 +1147,10 @@ TileNode::updateNormalMap()
     }
 
     //OE_INFO << LC << _key.str() << " : updated normal map.\n";
+}
+
+const TerrainOptions&
+TileNode::options() const
+{
+    return _context->options();
 }

@@ -3,7 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_normalMapFragment
 #pragma vp_location   fragment_coloring
-#pragma vp_order      0.2
+#pragma vp_order      0.1
 
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
 #pragma import_defines(OE_DEBUG_NORMALS)
@@ -18,6 +18,9 @@ in vec3 vp_Normal;
 in vec3 oe_UpVectorView;
 in vec2 oe_normalMapCoords;
 in vec3 oe_normalMapBinormal;
+
+// global
+mat3 oe_normalMapTBN;
 
 void oe_normalMapFragment(inout vec4 color)
 {
@@ -34,7 +37,8 @@ void oe_normalMapFragment(inout vec4 color)
 #endif
 
     vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));
-    vp_Normal = normalize( mat3(tangent, oe_normalMapBinormal, oe_UpVectorView) * normal );
+    oe_normalMapTBN = mat3(tangent, oe_normalMapBinormal, oe_UpVectorView);
+    vp_Normal = normalize( oe_normalMapTBN*normal );
 
     // visualize curvature quantized:
     //color.rgba = vec4(0.0,0,1);

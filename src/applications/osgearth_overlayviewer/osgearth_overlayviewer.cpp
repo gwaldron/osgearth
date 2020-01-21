@@ -31,15 +31,16 @@
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
 #include <osgEarth/CascadeDrapingDecorator>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/ViewFitter>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/ViewFitter>
+#include <osgEarth/NodeUtils>
 
 #define LC "[viewer] "
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 
 namespace ui = osgEarth::Util::Controls;
 
@@ -47,6 +48,27 @@ namespace ui = osgEarth::Util::Controls;
 
 namespace
 {
+
+    CascadeDrapingDecorator* getCDD(osg::Node* node)
+    {
+        return osgEarth::Util::findTopMostNodeOfType< CascadeDrapingDecorator>(node);
+    }
+
+    osg::Node* getDrapingDump(osg::Node* node)
+    {
+        OverlayDecorator* od = osgEarth::Util::findTopMostNodeOfType<OverlayDecorator>(node);
+        if (od) return od->getDump();
+        CascadeDrapingDecorator* cdd = osgEarth::Util::findTopMostNodeOfType<CascadeDrapingDecorator>(node);
+        if (cdd) return cdd->getDump();
+        return 0L;
+    }
+
+    void requestDrapingDump(osg::Node* node)
+    {
+        OverlayDecorator* od = osgEarth::Util::findTopMostNodeOfType<OverlayDecorator>(node);
+        if (od) return od->requestDump();
+    }
+
     struct App
     {
         MapNode* _mapNode;
@@ -59,13 +81,13 @@ namespace
 
         void toggleFitting()
         {
-            CascadeDrapingDecorator* cdd = _mapNode->getCascadeDrapingDecorator();
+            CascadeDrapingDecorator* cdd = getCDD(_mapNode);
             if (cdd) cdd->setUseProjectionFitting(_fitting->getValue());
         }
 
         void setMinNearFarRatio()
         {
-            CascadeDrapingDecorator* cdd = _mapNode->getCascadeDrapingDecorator();
+            CascadeDrapingDecorator* cdd = getCDD(_mapNode);
             if (cdd) cdd->setMinimumNearFarRatio(_minNearFarRatio->getValue());
         }
 
@@ -96,7 +118,7 @@ namespace
 
     ui::Control* makeUI(App& app)
     {
-        bool usingCascade = app._mapNode->getCascadeDrapingDecorator() != 0L;
+        bool usingCascade = getCDD(app._mapNode) != 0L;
 
         ui::Grid* grid = new ui::Grid();
         int r = 0;
@@ -134,10 +156,10 @@ namespace
         {
             if ( ea.getEventType() == ea.FRAME )
             {
-                _app._dumpNode = _app._mapNode->getDrapingDump();
+                _app._dumpNode = getDrapingDump(_app._mapNode);
                 if ( !_app._dumpNode.valid() )
                 {
-                    _app._mapNode->getOverlayDecorator()->requestDump();
+                    requestDrapingDump(_app._mapNode);
                     aa.requestRedraw();
                 }
                 else

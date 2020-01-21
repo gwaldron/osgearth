@@ -22,16 +22,14 @@
 #include "BuildContext"
 #include "Parapet"
 
-#include <osgEarthFeatures/Session>
-#include <osgEarthFeatures/AltitudeFilter>
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/ResourceLibrary>
-#include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/Session>
+#include <osgEarth/AltitudeFilter>
+#include <osgEarth/Geometry>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/StyleSheet>
 
 using namespace osgEarth;
 using namespace osgEarth::Buildings;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[BuildingFactory] "
 

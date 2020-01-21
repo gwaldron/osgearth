@@ -20,7 +20,7 @@
 
 #include <osgEarth/Metrics>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[TileNodeRegistry] "
@@ -69,7 +69,6 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
 
                 for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
                 {
-                    i->second.tile->setMapRevision( _maprev );
                     if ( setToDirty )
                     {
                         i->second.tile->setDirty( true );
@@ -86,7 +85,8 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
 void
 TileNodeRegistry::setDirty(const GeoExtent& extent,
                            unsigned         minLevel,
-                           unsigned         maxLevel)
+                           unsigned         maxLevel,
+                           const std::set<UID>& layers)
 {
     Threading::ScopedWriteLock exclusive( _tilesMutex );
     
@@ -94,11 +94,13 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
     for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
     {
         const TileKey& key = i->first;
+
         if (minLevel <= key.getLOD() && 
             maxLevel >= key.getLOD() &&
-            extent.intersects(i->first.getExtent(), checkSRS) )
+            (extent.isInvalid() || extent.intersects(i->first.getExtent(), checkSRS)))
         {
-            i->second.tile->setDirty( true );
+            i->second.tile->refreshLayers(layers);
+            //i->second.tile->setDirty(true);
         }
     }
 }
@@ -107,9 +109,6 @@ void
 TileNodeRegistry::addSafely(TileNode* tile)
 {
     _tiles.insert( tile->getKey(), tile );
-    
-    if ( _revisioningEnabled )
-        tile->setMapRevision( _maprev );
     
     // Start waiting on our neighbors
     if (_notifyNeighbors)
@@ -140,7 +139,7 @@ TileNodeRegistry::addSafely(TileNode* tile)
             << std::endl;
     }
 
-    Metrics::counter("RexStats", "Tiles", _tiles.size());
+    OE_PROFILING_PLOT("Rex Tiles", (float)(_tiles.size()));
 }
 
 void
@@ -159,7 +158,7 @@ TileNodeRegistry::removeSafely(const TileKey& key)
         // remove the tile.
         _tiles.erase( key );
 
-        Metrics::counter("RexStats", "Tiles", _tiles.size());
+        OE_PROFILING_PLOT("Rex Tiles", (float)(_tiles.size()));
     }
 }
 
@@ -314,7 +313,7 @@ TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
         _tiles.clear();
         _notifiers.clear();
 
-        Metrics::counter("RexStats", "Tiles", _tiles.size());
+        OE_PROFILING_PLOT("Rex Tiles", (float)(_tiles.size()));
     }
 
     releaser->push(objects);

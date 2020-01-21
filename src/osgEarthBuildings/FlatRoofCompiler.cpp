@@ -19,8 +19,8 @@
 #include "FlatRoofCompiler"
 #include <osgEarth/Tessellator>
 #include <osgEarth/Random>
-#include <osgEarthFeatures/Session>
-#include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarth/Session>
+#include <osgEarth/MeshConsolidator>
 #include <osgUtil/Tessellator>
 #include <osg/MatrixTransform>
 #include <osg/ComputeBoundsVisitor>
@@ -28,8 +28,6 @@
 #include <osg/LineWidth>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Buildings;
 
 #define LC "[FlatRoofCompiler] "

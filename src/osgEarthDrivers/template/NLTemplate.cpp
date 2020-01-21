@@ -371,7 +371,7 @@ void Loader::setReferrer(const std::string& referrer)
 
 const char * LoaderFile::load( const char *name ) {
 
-    std::string fullPath = osgEarth::getFullPath(_referrer, std::string(name));
+    std::string fullPath = osgEarth::Util::getFullPath(_referrer, std::string(name));
 
     FILE *f = fopen( fullPath.c_str(), "rb" );
     if (!f) {
@@ -412,7 +412,7 @@ void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vec
     Tokenizer *tokenizer = new Tokenizer( loaded );
     files.push_back( tokenizer );
 
-    std::string referrer = osgEarth::getFullPath(loader.getReferrer(), std::string(name));
+    std::string referrer = osgEarth::Util::getFullPath(loader.getReferrer(), std::string(name));
     _referrerStack.push_back( referrer );
     loader.setReferrer( referrer );      
 

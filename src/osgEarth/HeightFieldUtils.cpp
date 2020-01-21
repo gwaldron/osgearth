@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarth/CullingUtils>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 bool
@@ -54,7 +55,7 @@ HeightFieldUtils::validateSamples(float &a, float &b, float &c, float &d)
 }
 
 float
-HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, ElevationInterpolation interpolation)
+HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, RasterInterpolation interpolation)
 {
     float result = 0.0;
     switch (interpolation)
@@ -62,22 +63,18 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
     case INTERP_BILINEAR:
     {
         //OE_INFO << "getHeightAtPixel: (" << c << ", " << r << ")" << std::endl;
-        const GLfloat* heights = (GLfloat*)(hf->getFloatArray()->getDataPointer());
-        const int cols = hf->getNumColumns();
-
-        int rowMin = std::max((int)floor(r), 0);
-        const int rowMax = std::max(std::min((int)ceil(r), (int)(hf->getNumRows() - 1)), 0);
-        int colMin = std::max((int)floor(c), 0);
-        const int colMax = std::max(std::min((int)ceil(c), cols - 1), 0);
+        int rowMin = osg::maximum((int)floor(r), 0);
+        int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(hf->getNumRows() - 1)), 0);
+        int colMin = osg::maximum((int)floor(c), 0);
+        int colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(hf->getNumColumns() - 1)), 0);
 
         if (rowMin > rowMax) rowMin = rowMax;
         if (colMin > colMax) colMin = colMax;
 
-        // Bring in hf->getHeight(colMax, rowMax) calc
-        float urHeight = heights[colMax + rowMax * cols];
-        float llHeight = heights[colMin + rowMin * cols];
-        float ulHeight = heights[colMin + rowMax * cols];
-        float lrHeight = heights[colMax + rowMin * cols];
+        float urHeight = hf->getHeight(colMax, rowMax);
+        float llHeight = hf->getHeight(colMin, rowMin);
+        float ulHeight = hf->getHeight(colMin, rowMax);
+        float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
         if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
@@ -87,23 +84,19 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
         //OE_INFO << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
 
-        const bool colSame = colMax == colMin;
-        const bool rowSame = rowMax == rowMin;
-
         //Check for exact value
-        if (colSame && rowSame)
+        if ((colMax == colMin) && (rowMax == rowMin))
         {
             //OE_NOTICE << "Exact value" << std::endl;
-            // Bring in hf->getHeight(colMax, rowMax) calc
-            result = heights[(int)c + (int)r * cols];
+            result = hf->getHeight((int)c, (int)r);
         }
-        else if (colSame)
+        else if (colMax == colMin)
         {
             //OE_NOTICE << "Vertically" << std::endl;
             //Linear interpolate vertically
             result = ((double)rowMax - r) * llHeight + (r - (double)rowMin) * ulHeight;
         }
-        else if (rowSame)
+        else if (rowMax == rowMin)
         {
             //OE_NOTICE << "Horizontally" << std::endl;
             //Linear interpolate horizontally
@@ -113,13 +106,9 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         {
             //OE_NOTICE << "Bilinear" << std::endl;
             //Bilinear interpolate
-            const double colMaxDiff = (double)colMax - c;
-            const double colMinDiff = c - (double)colMin;
-            const double rowMaxDiff = (double)rowMax - r;
-            const double rowMinDiff = r - (double)rowMin;
-            const double r1 = colMaxDiff * llHeight + colMinDiff * lrHeight;
-            const double r2 = colMaxDiff * ulHeight + colMinDiff * urHeight;
-            result = rowMaxDiff * r1 + rowMinDiff * r2;
+            double r1 = ((double)colMax - c) * (double)llHeight + (c - (double)colMin) * (double)lrHeight;
+            double r2 = ((double)colMax - c) * (double)ulHeight + (c - (double)colMin) * (double)urHeight;
+            result = ((double)rowMax - r) * (double)r1 + (r - (double)rowMin) * (double)r2;
         }
         break;
     }
@@ -251,7 +240,7 @@ bool
 HeightFieldUtils::getInterpolatedHeight(const osg::HeightField* hf, 
                                         unsigned c, unsigned r, 
                                         float& out_height,
-                                        ElevationInterpolation interpolation)
+                                        RasterInterpolation interpolation)
 {
     int count = 0;
     float total = 0.0f;
@@ -281,7 +270,7 @@ HeightFieldUtils::getInterpolatedHeight(const osg::HeightField* hf,
 }
 
 float
-HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, double y, double llx, double lly, double dx, double dy, ElevationInterpolation interpolation)
+HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, double y, double llx, double lly, double dx, double dy, RasterInterpolation interpolation)
 {
     //Determine the pixel to sample
     double px = osg::clampBetween( (x - llx) / dx, 0.0, (double)(hf->getNumColumns()-1) );
@@ -290,7 +279,7 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, doub
 }
 
 osg::Vec3
-HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, double x, double y, double llx, double lly, double dx, double dy, ElevationInterpolation interp)
+HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, double x, double y, double llx, double lly, double dx, double dy, RasterInterpolation interp)
 {
     const osg::HeightField* hf = hood._center.get();
     if (!hf)
@@ -373,7 +362,7 @@ HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, doubl
 float
 HeightFieldUtils::getHeightAtNormalizedLocation(const osg::HeightField* input,
                                                 double nx, double ny,
-                                                ElevationInterpolation interp)
+                                                RasterInterpolation interp)
 {
     double px = osg::clampBetween(nx, 0.0, 1.0) * (double)(input->getNumColumns() - 1);
     double py = osg::clampBetween(ny, 0.0, 1.0) * (double)(input->getNumRows() - 1);
@@ -384,7 +373,7 @@ bool
 HeightFieldUtils::getHeightAtNormalizedLocation(const HeightFieldNeighborhood& hood,
                                                 double nx, double ny,
                                                 float& output,
-                                                ElevationInterpolation interp)
+                                                RasterInterpolation interp)
 {
     osg::HeightField* hf = 0L;
     double nx2, ny2;
@@ -422,7 +411,7 @@ osg::HeightField*
 HeightFieldUtils::createSubSample(const osg::HeightField* input,
                                   const GeoExtent& inputEx, 
                                   const GeoExtent& outputEx,
-                                  osgEarth::ElevationInterpolation interpolation)
+                                  osgEarth::RasterInterpolation interpolation)
 {
     double div = outputEx.width()/inputEx.width();
     if ( div >= 1.0f )
@@ -469,7 +458,7 @@ HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
                                       const GeoExtent&       extent,
                                       int                    newColumns, 
                                       int                    newRows,
-                                      ElevationInterpolation interp)
+                                      RasterInterpolation interp)
 {
     if ( newColumns <= 1 && newRows <= 1 )
         return 0L;
@@ -783,7 +772,6 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
                                   const GeoExtent& extent)
 {   
     ImageUtils::PixelReader readElevation(elevation);
-    //ImageUtils::PixelWriter writeNormal(normalMap);
 
     int sMax = (int)elevation->s()-1;
     int tMax = (int)elevation->t()-1;
@@ -796,6 +784,8 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
     double mPerDegAtEquator = (srs->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
     double dy = srs->isGeographic() ? yInterval * mPerDegAtEquator : yInterval;
 
+    osg::Vec4f sample;
+
     for (int t = 0; t<(int)elevation->t(); ++t)
     {
         double lat = extent.yMin() + yInterval*(double)t;
@@ -803,7 +793,8 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
 
         for(int s=0; s<(int)elevation->s(); ++s)
         {
-            float h = readElevation(s, t).r();
+            readElevation(sample, s, t);
+            float h = sample.r();
 
             osg::Vec3f west ( s > 0 ? -dx : 0, 0, h );
             osg::Vec3f east ( s < sMax ?  dx : 0, 0, h );

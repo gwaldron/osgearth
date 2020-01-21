@@ -23,33 +23,16 @@
 #include "BuildingPager"
 
 #include <osgEarth/Registry>
-#include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarth/FeatureSourceIndexNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Buildings;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 #define LC "[BuildingLayer] "
 
 REGISTER_OSGEARTH_LAYER(buildings, BuildingLayer);
 
 //...................................................................
-
-BuildingLayer::BuildingLayer() :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete)
-{
-    init();
-}
-
-BuildingLayer::BuildingLayer(const BuildingLayerOptions& options) :
-VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    init();
-}
 
 BuildingLayer::~BuildingLayer()
 {
@@ -69,14 +52,10 @@ BuildingLayer::init()
 void
 BuildingLayer::setFeatureSource(FeatureSource* source)
 {
-    if (_featureSource != source)
+    if (_featureSource.getLayer() != source)
     {
-        if (source)
-            OE_INFO << LC << "Setting feature source \"" << source->getName() << "\"\n";
+        _featureSource.setLayer(source);
 
-        _featureSource = source;
-
-        // make sure the source is not in an error state
         if (source && source->getStatus().isError())
         {
             setStatus(source->getStatus());
@@ -93,44 +72,32 @@ BuildingLayer::getNode() const
     return _root.get();
 }
 
-const Status&
-BuildingLayer::open()
+Status
+BuildingLayer::openImplementation()
 {
-    // Attempt to load the feature data source
-    if (options().featureSource().isSet())
-    {
-        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
-        if (fs)
-        {
-            fs->setReadOptions(getReadOptions());
-            fs->open();
-            setFeatureSource(fs);
-        }
-        else
-        {
-            setStatus(Status(Status::ResourceUnavailable, "Cannot access feature source"));
-        }
-    }
-    else
-    {
-        setStatus(Status(Status::ConfigurationError, "Missing required feature source"));
-    }
+    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    if (fsStatus.isError())
+        return fsStatus;
+
+    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    if (ssStatus.isError())
+        return ssStatus;
 
     if (options().buildingCatalog().isSet())
     {
         _catalog = new BuildingCatalog();
         if (_catalog->load(options().buildingCatalog().get(), getReadOptions(), 0L) == false)
         {
-            setStatus(Status(Status::ResourceUnavailable, "Cannot open building catalog"));
+            return Status(Status::ResourceUnavailable, "Cannot open building catalog");
             _catalog = 0L;
         }
     }
     else
     {
-        setStatus(Status(Status::ConfigurationError, "Missing required catalog"));
+        return Status(Status::ConfigurationError, "Missing required catalog");
     }
 
-    return VisibleLayer::open();
+    return VisibleLayer::openImplementation();
 }
 
 void
@@ -139,11 +106,14 @@ BuildingLayer::addedToMap(const Map* map)
     // Hang on to the Map reference
     _map = map;
 
+    _featureSource.connect(map, options().featureSourceLayer());
+    _styleSheet.connect(map, options().styleSheetLayer());
+
     // Set up a feature session with a cache:
     _session = new Session(
         map, 
-        options().styles().get(),
-        _featureSource.get(),
+        _styleSheet.getLayer(),
+        _featureSource.getLayer(),
         getReadOptions() );
     
     // Install a resource cache that we will use for instanced models,
@@ -168,7 +138,8 @@ BuildingLayer::createSceneGraph()
     _map.lock(map);
 
     // assertion:
-    if (!_featureSource.valid() || !_session.valid() || !map.valid())
+    FeatureSource* fs = _featureSource.getLayer();
+    if (!fs || !_session.valid() || !map.valid())
     {
         //if (getStatus().isOK())
         //    setStatus(Status(Status::ServiceUnavailable, "Internal assertion failure, call support"));
@@ -176,10 +147,8 @@ BuildingLayer::createSceneGraph()
     }
     
     // Try to page against the feature profile, otherwise fallback to the map
-    if (_featureSource.valid())
-    {
-         profile = _featureSource->getFeatureProfile()->getProfile();
-    }
+    profile = fs->getFeatureProfile()->getTilingProfile();
+
     if (profile == 0L)
     {
         profile = _map->getProfile();
@@ -188,7 +157,7 @@ BuildingLayer::createSceneGraph()
     BuildingPager* pager = new BuildingPager( profile );
     pager->setElevationPool   ( _map->getElevationPool() );
     pager->setSession         ( _session.get() );
-    pager->setFeatureSource   ( _featureSource.get() );
+    pager->setFeatureSource   ( fs );
     pager->setCatalog         ( _catalog.get() );
     pager->setCompilerSettings( options().compilerSettings().get() );
     pager->setPriorityOffset  ( options().priorityOffset().get() );
@@ -211,7 +180,7 @@ BuildingLayer::createSceneGraph()
     {
         // create a feature index.
         FeatureSourceIndex* index = new FeatureSourceIndex(
-            _featureSource.get(),
+            fs,
             Registry::objectIndex(),
             FeatureSourceIndexOptions() );
 
@@ -249,15 +218,18 @@ BuildingPager* BuildingLayer::pager()
 void
 BuildingLayer::removedFromMap(const Map* map)
 {
-    // nop
+    _featureSource.disconnect(map);
+    _styleSheet.disconnect(map);
 }
 
 const GeoExtent&
 BuildingLayer::getExtent() const
 {
-    if (_featureSource.valid() && _featureSource->getFeatureProfile())
+    const FeatureSource* fs = _featureSource.getLayer();
+
+    if (fs && fs->getFeatureProfile())
     {
-        return _featureSource->getFeatureProfile()->getExtent();
+        return fs->getFeatureProfile()->getExtent();
     }
 
     osg::ref_ptr<const Map> map;

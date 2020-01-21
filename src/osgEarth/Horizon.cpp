@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -387,7 +387,7 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
     else
     {
         // No horizon data... just assume visibility
-        OE_WARN << LC << "No horizon info installed in callback\n";
+        //OE_WARN << LC << "No horizon info installed in callback\n";
         return true;
     }
 }
@@ -426,9 +426,9 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 HorizonNode::HorizonNode()
 {
     const float r = 25.0f;
-    osg::DrawElements* de = new osg::DrawElementsUByte(GL_QUADS);
-    de->addElement(0);
-    de->addElement(1);
+    //osg::DrawElements* de = new osg::DrawElementsUByte(GL_QUADS);
+    //de->addElement(0);
+    //de->addElement(1);
 
     osg::Vec3Array* verts = new osg::Vec3Array();
     for (unsigned x = 0; x<=(unsigned)r; ++x) {
@@ -436,8 +436,8 @@ HorizonNode::HorizonNode()
         verts->push_back(osg::Vec3(-0.5f + float(x) / r,  0.5f, 0.0f));
     }
 
-    de->addElement(verts->size()-1);
-    de->addElement(verts->size()-2);
+    //de->addElement(verts->size()-1);
+    //de->addElement(verts->size()-2);
 
     for (unsigned y=0; y<=(unsigned)r; ++y) {
         verts->push_back(osg::Vec3(-0.5f, -0.5f + float(y)/r, 0.0f));
@@ -452,7 +452,7 @@ HorizonNode::HorizonNode()
     geom->setColorArray(colors);
     geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
     
-    geom->addPrimitiveSet(de);
+    //geom->addPrimitiveSet(de);
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable(geom);

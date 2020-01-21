@@ -1,0 +1,294 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_GDAL_H
+#define OSGEARTH_GDAL_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/URI>
+
+/**
+ * GDAL (Geospatial Data Abstraction Library) Layers
+ */
+class GDALDataset;
+class GDALRasterBand;
+
+
+namespace osgEarth { namespace GDAL
+{
+    /** 
+     * Encapsulates a user-supplied GDALDataset
+     */
+    class OSGEARTH_EXPORT ExternalDataset : public osg::Referenced // NO EXPORT; header only
+    {
+    public:
+        ExternalDataset() : osg::Referenced(), _dataset(NULL), _ownsDataset(true) {};
+        ExternalDataset(GDALDataset* dataset, bool ownsDataset) : osg::Referenced(), _dataset(dataset), _ownsDataset(ownsDataset) {};
+
+    protected:
+        virtual ~ExternalDataset() {};
+
+    public:
+        GDALDataset* dataset() const { return _dataset; };
+        void setDataset(GDALDataset* dataset) { _dataset = dataset; };
+
+        bool ownsDataset() const { return _ownsDataset; };
+        void setOwnsDataset(bool ownsDataset) { _ownsDataset = ownsDataset; };
+
+    private:
+        GDALDataset* _dataset;
+        bool         _ownsDataset;
+    };
+
+    // GDAL-specific options to be incorpoated by the LayerOptions below
+    class OSGEARTH_EXPORT Options
+    {
+    public:
+        Options() { }
+        Options(const ConfigOptions& input);
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, connection);
+        OE_OPTION(unsigned, subDataSet);
+        OE_OPTION(RasterInterpolation, interpolation);
+        OE_OPTION(ProfileOptions, warpProfile);
+
+        void readFrom(const Config& conf);
+        void writeTo(Config& conf) const;
+    };
+
+    /**
+     * Driver for reading raster data using GDAL.
+     * It is rarely necessary to use this object directly; use a
+     * GDALImageLayer or GDALElevationLayer instead.
+     */
+    class OSGEARTH_EXPORT Driver : public osg::Referenced
+    {
+    public:
+        //! Constructs a new driver
+        Driver();
+
+        //! Value to interpet as "no data"
+        void setNoDataValue(float value) { _noDataValue = value; }
+
+        //! Minimum valid data value (anything less is "no data")
+        void setMinValidValue(float value) { _minValidValue = value; }
+
+        //! Maximum valid data value (anything more is "no data")
+        void setMaxValidValue(float value) { _maxValidValue = value; }
+
+        //! Maximum LOD at which to return real data
+        void setMaxDataLevel(unsigned value) { _maxDataLevel = value; }
+
+        //! Express profile to use (instead of gleaning one from the data source)
+        void setOverrideProfile(const Profile* value) { _profile = value; }
+
+        //! Assign an external GDAL dataset to use.
+        void setExternalDataset(ExternalDataset* value);
+
+        //! Opens and initializes the connection to the dataset
+        Status open(
+            const std::string& name,
+            const GDAL::Options& options,
+            unsigned tileSize,
+            DataExtentList& out_dataExtents,
+            const osgDB::Options* readOptions);
+        
+        //! Creates an image if possible
+        osg::Image* createImage(
+            const TileKey& key,
+            unsigned tileSize,
+            bool isCoverage, 
+            ProgressCallback* progress);
+
+        //! Creates a heightfield if possible
+        osg::HeightField* createHeightField(
+            const TileKey& key, 
+            unsigned tileSize,
+            ProgressCallback* progress);
+
+        //! Profile of the underlying data source (or the override profile if set)
+        const Profile* getProfile() { return _profile.get(); }
+
+    private:
+        void pixelToGeo(double, double, double&, double&);
+        void geoToPixel(double, double, double&, double&);
+
+        bool isValidValue_noLock(float, GDALRasterBand*);
+        bool isValidValue(float, GDALRasterBand*);
+        bool intersects(const TileKey&);
+        float getInterpolatedValue(GDALRasterBand* band, double x, double y, bool applyOffset=true);
+
+        optional<float> _noDataValue, _minValidValue, _maxValidValue;
+        optional<unsigned> _maxDataLevel;
+        GDALDataset* _srcDS;
+        GDALDataset* _warpedDS;
+        double _linearUnits;
+        double _geotransform[6];
+        double _invtransform[6];
+        GeoExtent _extents;
+        Bounds _bounds;
+        osg::ref_ptr<const Profile> _profile;
+        GDAL::Options _gdalOptions;
+        const GDAL::Options& gdalOptions() const { return _gdalOptions; }
+        osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
+        std::string _name;
+
+        const std::string& getName() const { return _name; }
+    };
+} }
+
+
+
+namespace osgEarth
+{
+    /**
+     * Image layer connected to a GDAL raster dataset
+     */
+    class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public GDAL::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
+        //typedef GDAL::GDALLayerOptions<ImageLayer::Options> Options;
+
+    public:
+        META_Layer(osgEarth, GDALImageLayer, Options, ImageLayer, GDALImage);
+
+        //! Base URL for TMS requests
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Database connection for GDAL database queries (alternative to URL)
+        void setConnection(const std::string& value);
+        const std::string& getConnection() const;
+
+        //! GDAL sub-dataset index (optional)
+        void setSubDataSet(const unsigned& value);
+        const unsigned& getSubDataSet() const;
+
+        //! Forced profile for reprojection (still need this?)
+        void setWarpProfile(const ProfileOptions& value);
+        const ProfileOptions& getWarpProfile() const;
+
+        //! Interpolation method for resampling (default is bilinear)
+        void setInterpolation(const RasterInterpolation& value);
+        const RasterInterpolation& getInterpolation() const;
+
+        //! User-supplied external dataset
+        void setExternalDataset(GDAL::ExternalDataset* value);
+
+    public: // Layer
+
+        //! Called by the constructor
+        virtual void init();
+        
+        //! Establishes a connection to the TMS repository
+        virtual Status openImplementation();
+
+        //! Closes down any GDAL connections
+        virtual Status closeImplementation();
+
+        //! Gets a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected:
+
+        //! Destructor
+        virtual ~GDALImageLayer() { }
+
+    private:
+        osg::ref_ptr<GDAL::Driver> _driver;
+    };
+
+
+    //! Elevation layer connected to a GDAL facility
+    class OSGEARTH_EXPORT GDALElevationLayer : public ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public GDAL::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
+
+    public:
+        META_Layer(osgEarth, GDALElevationLayer, Options, ElevationLayer, GDALElevation);
+        
+        //! Base URL for TMS requests
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Database connection for GDAL database queries (alternative to URL)
+        void setConnection(const std::string& value);
+        const std::string& getConnection() const;
+
+        //! GDAL sub-dataset index (optional)
+        void setSubDataSet(const unsigned& value);
+        const unsigned& getSubDataSet() const;
+
+        //! Forced profile for reprojection (still need this?)
+        void setWarpProfile(const ProfileOptions& value);
+        const ProfileOptions& getWarpProfile() const;
+
+        //! Interpolation method for resampling (default is bilinear)
+        void setInterpolation(const RasterInterpolation& value);
+        const RasterInterpolation& getInterpolation() const;
+
+        //! User-supplied external dataset
+        void setExternalDataset(GDAL::ExternalDataset* value);
+        GDAL::ExternalDataset* getExtenalDataset() const;
+
+    public: // Layer
+
+        //! Called by the constructor
+        virtual void init();
+        
+        //! Establishes a connection to the repository
+        virtual Status openImplementation();
+
+        //! Closes down any GDAL connections
+        virtual Status closeImplementation();
+
+        //! Gets a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected:
+
+        //! Destructor
+        virtual ~GDALElevationLayer() { }
+
+    private:
+        osg::ref_ptr<GDAL::Driver> _driver;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALElevationLayer::Options);
+
+#endif // OSGEARTH_TMS_H

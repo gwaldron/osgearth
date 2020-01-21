@@ -1,14 +1,12 @@
 <!--
 osgEarth Sample - Image Layer Modulation Blending
 -->
-<map name="readymap.org" type="geocentric">
+<map name="Modulate">
 
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 
-    <image name="Noise" driver="osg" blend="modulate" opacity="0.5">
+    <GDALImage name="Noise" blend="modulate" opacity="0.5">
         <url> ../data/fractal.png </url>
         <profile> global-geodetic </profile>
-    </image>
+    </GDALImage>
 </map>

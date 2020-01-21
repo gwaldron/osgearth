@@ -34,7 +34,6 @@
 namespace osgEarth { namespace Aerodrome
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     /**
      * Aerodrome

@@ -18,7 +18,7 @@
 #include "CompilerSettings"
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace osgEarth::Buildings;
 
 CompilerSettings::CompilerSettings() :

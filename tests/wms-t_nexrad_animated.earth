@@ -8,11 +8,11 @@ Try running this with:
   osgearth_sequencecontrol <file.earth>
 -->
 
-<map name="WMS Radar returns" type="geocentric" version="2">
+<Map name="WMS Radar returns">
 
     <xi:include href="readymap_imagery.xml"/>
     
-    <image name="nexrad45min" driver="wms">
+    <WMSImage name="nexrad45min">
         <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi</url>
         <format>png</format>
         <layers>nexrad-n0r-wmst</layers>
@@ -32,5 +32,5 @@ Try running this with:
         </times>
         <seconds_per_frame>0.25</seconds_per_frame>
         <cache_policy usage="no_cache"/>
-    </image>
-</map>
+    </WMSImage>
+</Map>

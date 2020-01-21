@@ -22,9 +22,9 @@
 #include <osg/Group>
 #include <osg/NodeVisitor>
 
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Session>
-#include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/Feature>
+#include <osgEarth/Session>
+#include <osgEarth/StyleSheet>
 #include <osgEarth/Map>
 
 #include "Common"
@@ -116,15 +116,15 @@ namespace osgEarth { namespace Aerodrome
 
         osg::Vec3d transformAndLocalize(const osg::Vec3d& input, const SpatialReference* inputSRS);
 
-        template <typename T, typename Y> osgEarth::Symbology::Geometry* combineGeometries(T& group);
+        template <typename T, typename Y> osgEarth::Geometry* combineGeometries(T& group);
 
         
-        osg::Node* featureSingleTextureRenderer(osgEarth::Features::Feature* feature, const osgEarth::URI& uri, float length);
-        osg::Node* featureModelRenderer(osgEarth::Features::Feature* feature, const ModelOptionsSet& modelOptions);
+        osg::Node* featureSingleTextureRenderer(osgEarth::Feature* feature, const osgEarth::URI& uri, float length);
+        osg::Node* featureModelRenderer(osgEarth::Feature* feature, const ModelOptionsSet& modelOptions);
 
-        osg::Node* defaultFeatureRenderer(osgEarth::Features::Feature* feature, float height=-1.0f);
-        osg::Node* defaultFeatureRenderer(osgEarth::Features::Feature* feature, const Color& color, float height=-1.0f);
-        osg::Node* defaultFeatureRenderer(osgEarth::Features::Feature* feature, const Style& style, StyleSheet* styleSheet=0L);
+        osg::Node* defaultFeatureRenderer(osgEarth::Feature* feature, float height=-1.0f);
+        osg::Node* defaultFeatureRenderer(osgEarth::Feature* feature, const Color& color, float height=-1.0f);
+        osg::Node* defaultFeatureRenderer(osgEarth::Feature* feature, const Style& style, StyleSheet* styleSheet=0L);
 
         // Set up the renderin and polygon offset for this
         // aerodrome feature (ex. LinearFeatureNode, bin=ORDER_LINEARFEATURE)

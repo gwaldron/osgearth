@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/LineDrawable>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 int         Clamping::AnchorAttrLocation        = osg::Drawable::ATTRIBUTE_6;
 int         Clamping::HeightsAttrLocation       = osg::Drawable::FOG_COORDS;

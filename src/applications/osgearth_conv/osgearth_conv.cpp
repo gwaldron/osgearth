@@ -56,12 +56,9 @@ int usage(char** argv)
 }
 
 
-// TileHandler that copies images from an ImageLayer to a TileSource.
-// This will automatically handle any mosaicing and reprojection that is
-// necessary to translate from one Profile/SRS to another.
-struct ImageLayerToTileSource : public TileHandler
+struct ImageLayerTileCopy : public TileHandler
 {
-    ImageLayerToTileSource(ImageLayer* source, TileSource* dest)
+    ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest)
         : _source(source), _dest(dest)
     {
         //nop
@@ -73,8 +70,10 @@ struct ImageLayerToTileSource : public TileHandler
         GeoImage image = _source->createImage(key);
         if (image.valid())
         {
-            //OE_INFO << "Read " << key.str() << ", image size = " << image.getImage()->s() << std::endl;
-            ok = _dest->storeImage(key, image.getImage(), 0L);
+            Status status = _dest->writeImage(key, image.getImage(), 0L);
+            ok = status.isOK();
+            if (!ok)
+                OE_WARN << key.str() << ": " << status.message() << std::endl;
         }
 
         return ok;
@@ -86,16 +85,13 @@ struct ImageLayerToTileSource : public TileHandler
     }
 
     osg::ref_ptr<ImageLayer> _source;
-    TileSource*              _dest;
+    osg::ref_ptr<ImageLayer> _dest;
 };
 
 
-// TileHandler that copies images from an ElevationLayer to a TileSource.
-// This will automatically handle any mosaicing and reprojection that is
-// necessary to translate from one Profile/SRS to another.
-struct ElevationLayerToTileSource : public TileHandler
+struct ElevationLayerTileCopy : public TileHandler
 {
-    ElevationLayerToTileSource(ElevationLayer* source, TileSource* dest)
+    ElevationLayerTileCopy(ElevationLayer* source, ElevationLayer* dest)
         : _source(source), _dest(dest)
     {
         //nop
@@ -106,7 +102,16 @@ struct ElevationLayerToTileSource : public TileHandler
         bool ok = false;
         GeoHeightField hf = _source->createHeightField(key, 0L);
         if ( hf.valid() )
-            ok = _dest->storeHeightField(key, hf.getHeightField(), 0L);
+        {
+            Status s = _dest->writeHeightField(key, hf.getHeightField(), 0L);
+            ok = s.isOK();
+            if (!ok)
+                OE_WARN << key.str() << ": " << s.message() << std::endl;
+        }
+        else
+        {
+            OE_WARN << key.str() << " : " << hf.getStatus().message() << std::endl;
+        }
         return ok;
     }
 
@@ -116,7 +121,7 @@ struct ElevationLayerToTileSource : public TileHandler
     }
 
     osg::ref_ptr<ElevationLayer> _source;
-    TileSource*                  _dest;
+    osg::ref_ptr<ElevationLayer> _dest;
 };
 
 
@@ -156,9 +161,9 @@ struct ProgressReporter : public osgEarth::ProgressCallback
             << std::fixed
             << std::setprecision(1) << "\r"
             << (int)current << "/" << (int)total
-            << " (" << (100.0f*percentage) << "%, " 
+            << " " << int(100.0f*percentage) << "% complete, " 
             << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
-            << (int)minsToGo << "m" << (int)secsToGo << "s remaining)        "
+            << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
             << std::flush;
 
         if ( percentage >= 100.0f )
@@ -184,9 +189,9 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  * Example: copy a GDAL file to an MBTiles repo:
  *
  *   osgearth_conv
- *      --in driver gdal
+ *      --in driver gdalimage
  *      --in url world.tif
- *      --out driver mbtiles
+ *      --out driver mbtilesimage
  *      --out format image/png
  *      --out filename world.db
  *
@@ -195,20 +200,16 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *
  * Other arguments:
  *
- *      --elevation           : convert as elevation data (instead of image data)
  *      --profile [profile]   : reproject to the target profile, e.g. "wgs84"
  *      --min-level [int]     : min level of detail to copy
  *      --max-level [int]     : max level of detail to copy
- *      --threads [n]         : threads to use (may crash. Careful.)
- *
  *      --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy (*)
  *
  * OSG arguments:
  *
  *      -O <string>           : OSG Options string (plugin options)
  *
- * Of course, the output driver must support writing (by implementing
- * the ReadWriteTileSource interface).
+ * Of course, the output layer must support writing.
  */
 int
 main(int argc, char** argv)
@@ -225,6 +226,7 @@ main(int argc, char** argv)
     Config inConf;
     while( args.read("--in", key, value) )
         inConf.set(key, value);
+    inConf.key() = inConf.value("driver");
 
     osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
 
@@ -235,8 +237,7 @@ main(int argc, char** argv)
         dbo->setOptionString( str );
     }
 
-    TileSourceOptions inOptions(inConf);
-    osg::ref_ptr<TileSource> input = TileSourceFactory::create(inOptions);
+    osg::ref_ptr<TileLayer> input = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(inConf)));
     if ( !input.valid() )
     {
         OE_WARN << LC << "Failed to open input" << std::endl;
@@ -244,13 +245,14 @@ main(int argc, char** argv)
     }
 
     // Assign a custom tile size to the input source, if possible:
-    unsigned tileSize = input->getPixelsPerTile();
+    unsigned tileSize = input->getTileSize();
     if (args.read("--tile-size", tileSize))
     {
-        input->setPixelsPerTile(tileSize);
+        input->setTileSize(tileSize);
     }
 
-    Status inputStatus = input->open( input->MODE_READ, dbo.get() );
+    input->setReadOptions(dbo.get());
+    Status inputStatus = input->open();
     if ( inputStatus.isError() )
     {
         OE_WARN << LC << "Error initializing input: " << inputStatus.message() << std::endl;
@@ -261,13 +263,7 @@ main(int argc, char** argv)
     Config outConf;
     while( args.read("--out", key, value) )
         outConf.set(key, value);
-
-    // heightfields?
-    bool heightFields = args.read("--heightfield") || args.read("--hf") || args.read("--elevation");
-    if ( heightFields )
-        OE_INFO << LC << "Converting heightfield tiles" << std::endl;
-    else
-        OE_INFO << LC << "Converting image tiles" << std::endl;
+    outConf.key() = outConf.value("driver");
 
     // are we changing profiles?
     osg::ref_ptr<const Profile> outputProfile = input->getProfile();
@@ -290,34 +286,36 @@ main(int argc, char** argv)
     outConf.add("profile", profileOptions.getConfig());
 
     // open the output tile source:
-    TileSourceOptions outOptions(outConf);
-    osg::ref_ptr<TileSource> output = TileSourceFactory::create(outOptions);
+    osg::ref_ptr<TileLayer> output = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(outConf)));
     if ( !output.valid() )
     {
-        OE_WARN << LC << "Failed to open output." << std::endl;
+        OE_WARN << LC << "Failed to create output layer" << std::endl;
         return -1;
     }
 
-    // Copy over the data extents to the output datasource.
-    for (DataExtentList::const_iterator itr = input->getDataExtents().begin(); itr != input->getDataExtents().end(); ++itr)
-    {
-        // Convert the data extent to the profile that is actually used by the output tile source
-        DataExtent dataExtent = *itr;
-        GeoExtent ext = dataExtent.transform(outputProfile->getSRS());
-        unsigned int minLevel = 0;
-        unsigned int maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), *dataExtent.maxLevel() );
-        DataExtent outputExtent = DataExtent(ext, minLevel, maxLevel);
-        output->getDataExtents().push_back( outputExtent );
-    }
-
-    Status outputStatus = output->open(
-        TileSource::MODE_WRITE | TileSource::MODE_CREATE,
-        dbo.get() );
-
-    if ( outputStatus.isError() )
+    output->setReadOptions(dbo.get());
+    Status outputStatus = output->openForWriting();
+    if (outputStatus.isError())
     {
         OE_WARN << LC << "Error initializing output: " << outputStatus.message() << std::endl;
         return -1;
+    }
+
+    // Transfomr and copy over the data extents to the output datasource.
+    DataExtentList outputExtents;
+    for (DataExtentList::const_iterator itr = input->getDataExtents().begin(); itr != input->getDataExtents().end(); ++itr)
+    {
+        // Convert the data extent to the profile that is actually used by the output tile source
+        const DataExtent& inputExtent = *itr;
+        GeoExtent outputExtent = outputProfile->clampAndTransformExtent(inputExtent);
+        unsigned int minLevel = 0;
+        unsigned int maxLevel = outputProfile->getEquivalentLOD(input->getProfile(), inputExtent.maxLevel().get());
+        DataExtent result(outputExtent, minLevel, maxLevel);
+        outputExtents.push_back(result);
+    }
+    if (!outputExtents.empty())
+    {
+        output->setDataExtents(outputExtents);
     }
 
     // Dump out some stuff...
@@ -344,38 +342,17 @@ main(int argc, char** argv)
         visitor = new TileVisitor();
     }
 
-    if (heightFields)
+    if (dynamic_cast<ImageLayer*>(input.get()) && dynamic_cast<ImageLayer*>(output.get()))
     {
-        ElevationLayer* layer = new ElevationLayer(ElevationLayerOptions(), input.get());
-        Status layerStatus = layer->open();
-        if (layerStatus.isError())
-        {
-            OE_WARN << "Failed to create input ElevationLayer " << layerStatus.message() << std::endl;
-            return -1;
-        }
-        if ( !layer->getProfile() || !layer->getProfile()->isOK() )
-        {
-            OE_WARN << LC << "Input profile is not valid" << std::endl;
-            return -1;
-        }
-        visitor->setTileHandler( new ElevationLayerToTileSource(layer, output.get()) );
+        visitor->setTileHandler(new ImageLayerTileCopy(
+            dynamic_cast<ImageLayer*>(input.get()),
+            dynamic_cast<ImageLayer*>(output.get())));
     }
-
-    else // image layers
+    else if (dynamic_cast<ElevationLayer*>(input.get()) && dynamic_cast<ElevationLayer*>(output.get()))
     {
-        ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
-        Status layerStatus = layer->open();
-        if (layerStatus.isError())
-        {
-            OE_WARN << "Failed to create input ImageLayer " << layerStatus.message() << std::endl;
-            return -1;
-        }
-        if ( !layer->getProfile() || !layer->getProfile()->isOK() )
-        {
-            OE_WARN << LC << "Input profile is not valid" << std::endl;
-            return -1;
-        }
-        visitor->setTileHandler( new ImageLayerToTileSource(layer, output.get()) );
+        visitor->setTileHandler(new ElevationLayerTileCopy(
+            dynamic_cast<ElevationLayer*>(input.get()),
+            dynamic_cast<ElevationLayer*>(output.get())));
     }
 
     // set the manula extents, if specified:
@@ -438,7 +415,8 @@ main(int argc, char** argv)
     osg::Timer_t t1 = osg::Timer::instance()->tick();
 
     std::cout
-        << "Time = "
+        << std::endl
+        << "Complete. Time = "
         << std::fixed
         << std::setprecision(1)
         << osg::Timer::instance()->delta_s(t0, t1)

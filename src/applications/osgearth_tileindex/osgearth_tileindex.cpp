@@ -29,13 +29,10 @@
 #include <osgDB/FileNameUtils>
 
 #include <osgEarth/Progress>
-#include <osgEarthUtil/TileIndexBuilder>
+#include <osgEarth/TileIndexBuilder>
 
-
-
-using namespace osgDB;
 using namespace osgEarth;
-using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 
 int main(int argc, char** argv)
 {

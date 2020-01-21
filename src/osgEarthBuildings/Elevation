@@ -24,14 +24,14 @@
 #include <osg/BoundingBox>
 #include <osg/Vec3d>
 #include <osg/Texture>
-#include <osgEarthSymbology/Skins>
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Skins>
+#include <osgEarth/Geometry>
 #include <vector>
 #include <list>
 
 namespace osgEarth { namespace Buildings
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     class BuildContext;
 

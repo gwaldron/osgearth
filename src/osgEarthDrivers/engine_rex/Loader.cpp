@@ -33,7 +33,7 @@
 
 #define REPORT_ACTIVITY true
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 
 Loader::Request::Request()
@@ -55,7 +55,7 @@ Loader::Request::addToChangeSet(osg::Node* node)
     }
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * Custom progress callback that checks for both request 
@@ -88,7 +88,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return ProgressCallback::isCanceled();
         }
     };
-} } }
+} }
 
 //...............................................
 
@@ -352,7 +352,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
 
         // process pending merges.
         {
-            METRIC_BEGIN("loader.merge");
+            OE_PROFILING_ZONE_NAMED("loader.merge");
             int count;
             for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
             {
@@ -368,12 +368,11 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
 
                 _mergeQueue.erase( _mergeQueue.begin() );
             }
-            METRIC_END("loader.merge");
         }
 
         // cull finished requests.
         {
-            METRIC_SCOPED("loader.cull");
+            OE_PROFILING_ZONE("loader.cull");
 
             Threading::ScopedMutexLock lock( _requestsMutex );
 
@@ -522,7 +521,7 @@ PagerLoader::invokeAndRelease(UID requestUID)
 
 
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
@@ -578,4 +577,4 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     };
     REGISTER_OSGPLUGIN(osgearth_rex_loader, PagerLoaderAgent);
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX

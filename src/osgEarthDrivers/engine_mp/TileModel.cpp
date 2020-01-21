@@ -62,7 +62,7 @@ bool
 TileModel::ElevationData::getHeight(const osg::Vec3d&      ndc,
                                     const GeoLocator*      ndcLocator,
                                     float&                 output,
-                                    ElevationInterpolation interp ) const
+                                    RasterInterpolation interp ) const
 {
     if ( !_locator.valid() || !ndcLocator )
         return false;
@@ -77,7 +77,7 @@ bool
 TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
                                     const GeoLocator*      ndcLocator,
                                     osg::Vec3&             output,
-                                    ElevationInterpolation interp ) const
+                                    RasterInterpolation interp ) const
 {
     if ( !_locator.valid() || !ndcLocator )
     {

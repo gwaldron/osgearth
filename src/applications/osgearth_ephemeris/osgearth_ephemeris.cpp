@@ -23,19 +23,19 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
 #include <osgEarth/NodeUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Ephemeris>
-#include <osgEarthUtil/Sky>
-#include <osgEarthUtil/LatLongFormatter>
-#include <osgEarthUtil/Controls>
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Ephemeris>
+#include <osgEarth/Sky>
+#include <osgEarth/LatLongFormatter>
+#include <osgEarth/Controls>
+#include <osgEarth/PlaceNode>
+#include <osgDB/ReadFile>
 
 #define LC "[osgearth_ephemeris] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 namespace ui = osgEarth::Util::Controls;
 

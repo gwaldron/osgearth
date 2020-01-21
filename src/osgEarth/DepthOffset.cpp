@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -165,7 +165,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         osg::StateSet* s = _graph->getStateSet();
         s->removeUniform( _paramsUniform.get() );
         
-        shaders.unload( VirtualProgram::get(s), shaders.DepthOffsetVertex );
+        shaders.unload( VirtualProgram::get(s), shaders.DepthOffset);
 
         s->removeAttribute(osg::StateAttribute::DEPTH);
     }
@@ -184,7 +184,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         
         VirtualProgram* vp = VirtualProgram::getOrCreate(s);
         vp->setName("DepthOffset");
-        shaders.load(vp, shaders.DepthOffsetVertex);    
+        shaders.load(vp, shaders.DepthOffset);  
 
         // disable depth writes
         s->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false), 1);

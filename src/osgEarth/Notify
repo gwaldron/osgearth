@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -42,11 +42,6 @@ namespace osgEarth
     extern OSGEARTH_EXPORT bool initNotifyLevel();
   
     extern OSGEARTH_EXPORT std::ostream& notify(const osg::NotifySeverity severity);
-
-    /** set stream that a notify level outputs to. */
-    extern OSGEARTH_EXPORT void setNotifyStream(
-       const osg::NotifySeverity severity,
-       std::ostream* stream);
 
     inline std::ostream& notify(void) { return osgEarth::notify(osg::INFO); }
 

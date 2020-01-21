@@ -23,13 +23,13 @@
 #include "Elevation"
 #include "Zoning"
 #include <vector>
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/Tags>
+#include <osgEarth/Geometry>
+#include <osgEarth/Tags>
 #include <osg/Referenced>
 
 namespace osgEarth { namespace Buildings 
 {
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth;
 
     class BuildingVisitor;
     class BuildContext;

@@ -19,33 +19,12 @@
 #include "SelectionInfo"
 #include <osgEarth/TileKey>
 
-#include <osg/CullStack>
-
-#ifndef INT32_MAX
-#define INT32_MAX 2147483647
-#endif
-
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[SelectionInfo] "
 
 const double SelectionInfo::_morphStartRatio = 0.66;
-
-// Reverse-engineers the LOD scale that is active in the cull visitor.
-// Why not just call getLODScale()? Because if someone (mak) overrides
-// CullVisitor::getDistanceToViewPoint(), they can alter the return value in
-// other ways. This function will detect that.
-float SelectionInfo::computeRangeScale(osg::NodeVisitor* nv) const
-{
-   osg::CullStack& cs = *dynamic_cast<osg::CullStack*>(nv);
-   const osg::Vec3 viewLocal = cs.getViewPointLocal();
-   osg::Vec3 viewVector = cs.getLookVectorLocal();
-   viewVector.normalize();
-   osg::Vec3 point = viewLocal + viewVector*_lods[0]._visibilityRange;
-   float distance = nv->getDistanceToViewPoint(point, true);
-   return distance / _lods[0]._visibilityRange;
-}
 
 const SelectionInfo::LOD&
 SelectionInfo::getLOD(unsigned lod) const
@@ -82,7 +61,8 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
     _lods.resize(numLods);
 
-    OE_INFO << LC << "LOD Ranges:\n";
+    std::vector<float> sizes;
+    sizes.resize(numLods);
 
     for (unsigned lod = 0; lod <= maxLod; ++lod)
     {
@@ -94,14 +74,16 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         double range = c.getRadius() * mtrf * 2.0 * (1.0/1.405);
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
-        _lods[lod]._maxValidTY = INT32_MAX;
+        _lods[lod]._maxValidTY = 0xFFFFFFFF;
 
-        //OE_INFO << LC << "  " << lod << " = " << range << std::endl;
+        sizes[lod] = 2.0*c.getRadius()/1.4142;
     }
     
     double metersPerEquatorialDegree = (profile->getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
 
     double prevPos = 0.0;
+
+    OE_INFO << LC << "Terrain tile LODs:" << std::endl;
 
     for (int lod=(int)(numLods-1); lod>=0; --lod)
     {
@@ -136,17 +118,15 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
                 {
                     _lods[lod]._minValidTY = osg::minimum(y+1, (int)(ty-1));
                     _lods[lod]._maxValidTY = (ty-1)-_lods[lod]._minValidTY;
-                    OE_DEBUG << "LOD " << lod 
-                        << " TY=" << ty
-                        << " minAR=" << minAR
-                        << " minTY=" << _lods[lod]._minValidTY
-                        << " maxTY=" << _lods[lod]._maxValidTY
-                        << " (+/-" << lat << " deg)"
-                        << std::endl;
                     break;
                 }
             }
         }
+
+        OE_INFO << LC << "  LOD " << lod 
+            << " RNG=" << _lods[lod]._visibilityRange
+            << " SZ=" << sizes[lod]
+            << std::endl;
     }
 }
 

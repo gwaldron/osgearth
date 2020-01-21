@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -44,7 +44,7 @@
     #define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG     0x8C03
 #endif
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT ImageUtils
     {
@@ -57,38 +57,6 @@ namespace osgEarth
          * help, but just call this method instead to be sure.
          */
         static osg::Image* cloneImage( const osg::Image* image );
-
-        /**
-         * Tweaks an image for consistency. OpenGL allows enums like "GL_RGBA" et.al. to be
-         * used in the internal texture format, when really "GL_RGBA8" is the proper things
-         * to use. This method accounts for that. Some parts of osgEarth (like the texture-
-         * array compositor) rely on the internal texture format being correct.
-         * (http://http.download.nvidia.com/developer/Papers/2005/Fast_Texture_Transfers/Fast_Texture_Transfers.pdf)
-         */
-        static void fixInternalFormat(osg::Image* image);
-
-        /**
-         * Marks an image as containing un-normalized data values.
-         *
-         * Normally the values in an image are "normalized", i.e. scaled so they are in the
-         * range [0..1]. This is normal for color values. But when the image is being used
-         * for coverage data (a value lookup table) it is desireable to store the raw 
-         * values instead.
-         */
-        static void markAsUnNormalized(osg::Image* image, bool value);
-
-        /** Inverse of above. */
-        static void markAsNormalized(osg::Image* image, bool value) { markAsUnNormalized(image, !value); }
-
-        /**
-         * Whether the image has been marked as containing un-normalized values.
-         */
-        static bool isUnNormalized(const osg::Image* image);
-
-        /**
-         * Whether the image has been marked as containing normalized values.
-         */
-        static bool isNormalized(const osg::Image* image) { return !isUnNormalized(image); }
 
         /**
          * Copys a portion of one image into another.
@@ -347,7 +315,7 @@ namespace osgEarth
          */
         static void activateMipMaps(osg::Texture* texture);
 
-        static void activateMipMaps(osg::Image* texture);
+        static void activateMipMaps(osg::Image* image);
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.
@@ -376,6 +344,9 @@ namespace osgEarth
             /** Sets an image to read. */
             void setImage(const osg::Image* image);
 
+            //! Whether to denormalize data upon reading or to leave it as-is
+            void setDenormalize(bool value) { _normalized = value; }
+
             /** Whether to use bilinear interpolation when reading with u,v coords (default=true) */
             void setBilinear(bool value) { _bilinear = value; }
 
@@ -387,19 +358,35 @@ namespace osgEarth
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
 
-            /** Reads a color from the image */
-            osg::Vec4 operator()(int s, int t, int r=0, int m=0) const {
-                return (*_reader)(this, s, t, r, m);
+            inline int s() const { return _image->s(); }
+            inline int t() const { return _image->t(); }
+
+            //! Returns a color from an image at pixel (s,t,r,m)
+            osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
+                osg::Vec4f temp;
+                (*_reader)(this, temp, s, t, r, m);
+                return temp;
             }
 
-            /** Reads a color from the image */
-            osg::Vec4 operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
-                return (*_reader)(this, s, t, r, m);
+            void operator()(osg::Vec4f& output, int s, int t, int r=0, int m=0) const {
+                (*_reader)(this, output, s, t, r, m);
+            }
+
+            //! Returns a color from an image at pixel (s,t,r,m)
+            osg::Vec4f operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
+                osg::Vec4f temp;
+                (*_reader)(this, temp, s, t, r, m);
+                return temp;
+            }
+            void operator()(osg::Vec4f& output, unsigned s, unsigned t, int r=0, int m=0) const {
+                (*_reader)(this, output, s, t, r, m);
             }
 
             /** Reads a color from the image by unit coords [0..1] */
-            osg::Vec4 operator()(float u, float v, int r=0, int m=0) const;
-            osg::Vec4 operator()(double u, double v, int r=0, int m=0) const;
+            osg::Vec4f operator()(float u, float v, int r=0, int m=0) const;
+            void operator()(osg::Vec4f& output, float u, float v, int r=0, int m=0) const;
+            osg::Vec4f operator()(double u, double v, int r=0, int m=0) const;
+            void operator()(osg::Vec4f& output, double u, double v, int t=0, int m=0) const;
 
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
@@ -408,7 +395,8 @@ namespace osgEarth
                     _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m) ;
             }
 
-            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r, int m);
+            typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
+
             ReaderFunc _reader;
             const osg::Image* _image;
             unsigned _colMult;
@@ -429,6 +417,9 @@ namespace osgEarth
              * before writing.
              */
             PixelWriter(osg::Image* image);
+
+            //! Whether data should be normalized to [0..1] or left as-is
+            void setNormalize(bool value) { _normalized = value; }
 
             /** Whether PixelWriter can write to an image with the given format/datatype combo. */
             static bool supports( GLenum pixelFormat, GLenum dataType );
@@ -551,6 +542,6 @@ namespace osgEarth
         virtual void apply(osg::Node& node);
         virtual void apply(osg::StateSet& stateSet);
     };
-}
+} }
 
 #endif //OSGEARTH_IMAGEUTILS_H

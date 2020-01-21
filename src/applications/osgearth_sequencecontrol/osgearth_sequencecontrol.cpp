@@ -24,8 +24,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/TimeControl>
 #include <osgEarth/ImageLayer>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 
 namespace ui = osgEarth::Util::Controls;
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,59 +20,12 @@
 #ifndef OSGEARTH_ELEVATION_TERRAIN_LAYER_H
 #define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
 
-#include <osgEarth/TerrainLayer>
+#include <osgEarth/TileLayer>
 #include <osg/MixinVector>
 
 namespace osgEarth
 {
-    /**
-     * Initialization and serialization options for an elevation layer.
-     */
-    class OSGEARTH_EXPORT ElevationLayerOptions : public TerrainLayerOptions
-    {
-    public:
-        /** Constructs new elevation layer options. */
-        ElevationLayerOptions();
-        
-        /** Deserializes new elevation layer options. */
-        ElevationLayerOptions(const ConfigOptions& options);
-
-        // Constructs new options with a layer name
-        ElevationLayerOptions(const std::string& name);
-
-        /** Constructs new elevation layer options, given the underlying driver options. */
-        ElevationLayerOptions(const std::string& name, const TileSourceOptions& driverOptions);
-
-        /** dtor */
-        virtual ~ElevationLayerOptions() { }
-
-    public:
-
-        optional<bool>& offset() { return _offset; }
-        const optional<bool>& offset() const { return _offset; }
-
-        /** Policy for dealing with NO_DATA values in elevation */
-        optional<ElevationNoDataPolicy>& noDataPolicy() { return _noDataPolicy; }
-        const optional<ElevationNoDataPolicy>& noDataPolicy() const { return _noDataPolicy; }
-
-    public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
-        
-    private:
-        void fromConfig( const Config& conf );
-        void setDefaults();
-
-        optional<bool>                  _offset;
-        optional<ElevationNoDataPolicy> _noDataPolicy;
-    };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationLayerOptions);
-    
-
-namespace osgEarth
-{
-    struct ElevationLayerCallback : public TerrainLayerCallback
+    struct ElevationLayerCallback : public TileLayerCallback
     {
         //EMPTY
         typedef void (ElevationLayerCallback::*MethodPtr)(class ElevationLayer*);
@@ -81,41 +34,38 @@ namespace osgEarth
     /**
      * A map terrain layer containing elevation grid heightfields.
      */
-    class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
+    class OSGEARTH_EXPORT ElevationLayer : public TileLayer
     {
     public:
-        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions, elevation);
+        class OSGEARTH_EXPORT Options : public TileLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, TileLayer::Options);
+            OE_OPTION(std::string, verticalDatum);
+            OE_OPTION(bool, offset);
+            OE_OPTION(ElevationNoDataPolicy, noDataPolicy);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
 
-        /**
-         * Constructs a blank Elevation Layer;
-         * Use options() to set up before calling open or adding to a Map.
-         */
-        ElevationLayer();
+    public:
+        META_Layer_Abstract(osgEarth, ElevationLayer, Options, TileLayer);
+        
+        //! Vertical data identifier (options)
+        void setVerticalDatum(const std::string& value);
+        const std::string& getVerticalDatum() const;
 
-        /**
-         * Constructs a new elevation layer with the specified options. It expects
-         * the layer options to contain a reference to the neccesary driver options.
-         */
-        ElevationLayer( const ElevationLayerOptions& options );
+        //! Whether this layer contains offsets instead of absolute elevation heights
+        void setOffset(const bool& value);
+        const bool& getOffset() const;
 
-        /**
-         * Constructs a new elevation layer with the specific name and driver options.
-         * The layer will load its driver by using the tilesource options.
-         */
-        ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions );
+        //! Poly for handling "no-data" elevation values
+        void setNoDataPolicy(const ElevationNoDataPolicy& value);
+        const ElevationNoDataPolicy& getNoDataPolicy() const;
 
-        /**
-         * Constructs a new elevation layer with the specified layer options and with a custom
-         * TileSource instance created by the user.
-         *
-         * Note: the ElevationLayerOptions contains a driver() member for configuring a 
-         * TileSource. But in this constructor, you are passing in an existing TileSource,
-         * and thus the driver() member in ElevationLayerOptions will not be used.
-         */
-        ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
-
-        /** dtor */
-        virtual ~ElevationLayer() { }
+        //! Override from VisibleLayer
+        virtual void setVisible(bool value);
+        virtual void setEnabled(bool value);
 
     public: // methods
         
@@ -139,51 +89,48 @@ namespace osgEarth
         GeoHeightField createHeightField(const TileKey& key, ProgressCallback* progress);
 
         /**
+         * Writes a height field for the specified key, if writing is
+         * supported and the layer was opened with openForWriting.
+         */
+        Status writeHeightField(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
+
+        /**
          * Whether this layer contains offsets instead of absolute heights
          */
         bool isOffset() const;
-
-    public: // override
-
-        virtual void setVisible(bool value);
-        virtual void setEnabled(bool value);
 
     protected: // Layer
 
         virtual void init();
 
-    protected:
+    protected: // ElevationLayer
 
-        // ctor called by a subclass that owns the options structure
-        ElevationLayer(ElevationLayerOptions* optionsPtr);
+        //! Override aspects of the layer Profile as needed
+        virtual void applyProfileOverrides();
 
-        //! Subclass can override this by calling setTileSourceExpected(false).
-        //! You can create your own normal map, but usually ElevationLayer
-        //! will do this for you. Only do it if you really need to create
-        //! one by hand (for example, if you are compositing elevaition layers).
-        virtual void createImplementation(
-            const TileKey& key,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            osg::ref_ptr<NormalMap>& out_normalMap,
-            ProgressCallback* progress);
+        //! Subclass overrides this to generate image data for the key.
+        //! The key will always be in the same profile as the layer.
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey&, ProgressCallback* progress) const
+            { return GeoHeightField::INVALID; }
+
+        //! Subalss can override this to enable writing heightfields.
+        virtual Status writeHeightFieldImplementation(
+            const TileKey& key, 
+            const osg::HeightField* hf,
+            ProgressCallback* progress) const;
+        
+        virtual ~ElevationLayer() { }
         
     private:
-
-        mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
-
-        TileSource::HeightFieldOperation* getOrCreatePreCacheOp();
-        Threading::Mutex _mutex;
+        mutable Threading::Mutex _mutex;
         
-        // creates a geoHF directly from the tile source
-        osg::HeightField* createHeightFieldFromTileSource( 
-            const TileKey&    key, 
-            ProgressCallback* progress);
-
         void assembleHeightField(
             const TileKey& key,
             osg::ref_ptr<osg::HeightField>& out_hf,
             osg::ref_ptr<NormalMap>& out_normalMap,
-            ProgressCallback* progress);
+            ProgressCallback* progress) const;
+
+        void normalizeNoDataValues(osg::HeightField* hf) const;
     };
 
 
@@ -202,7 +149,7 @@ namespace osgEarth
             NormalMap*             normalMap,
             const TileKey&         key,
             const Profile*         haeProfile,
-            ElevationInterpolation interpolation,
+            RasterInterpolation interpolation,
             ProgressCallback*      progress ) const;
 
     public:
@@ -214,5 +161,7 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationLayer::Options);
 
 #endif // OSGEARTH_ELEVATION_TERRAIN_LAYER_H

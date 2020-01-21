@@ -19,7 +19,7 @@
 #include "BuildingSymbol"
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace osgEarth::Buildings;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(building, BuildingSymbol);

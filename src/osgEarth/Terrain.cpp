@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -61,10 +61,9 @@ void Terrain::OnTileAddedOperation::operator()(osg::Object*)
 
 //---------------------------------------------------------------------------
 
-Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, const TerrainOptions& terrainOptions ) :
+Terrain::Terrain(osg::Node* graph, const Profile* mapProfile) :
 _graph         ( graph ),
-_profile       ( mapProfile ),
-_terrainOptions( terrainOptions )
+_profile       ( mapProfile )
 {
     _updateQueue = new osg::OperationQueue();
 }

@@ -18,7 +18,7 @@
  */
 
 #include "SimpleSkyOptions"
-#include <osgEarthUtil/Sky>
+#include <osgEarth/Sky>
 #include <osgEarth/MapNode>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/MatrixTransform>

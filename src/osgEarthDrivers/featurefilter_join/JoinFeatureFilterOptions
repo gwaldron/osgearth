@@ -20,12 +20,11 @@
 #define OSGEARTH_DRIVER_JOIN_FEATUREFILTER_OPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/FeatureSource>
 
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     class JoinFeatureFilterOptions : public ConfigOptions // NO EXPORT; header only
     {
@@ -37,14 +36,17 @@ namespace osgEarth { namespace Drivers
         }
 
         /** Features to load and use as boundary geometries */
-        optional<FeatureSourceOptions>& features() { return _features; }
-        const optional<FeatureSourceOptions>& features() const { return _features; }
+        optional<std::string>& featureSourceLayer() { return _layerName; }
+        const optional<std::string>& featureSourceLayer() const { return _layerName; }
+
+        optional<FeatureSource::Options>& featureSource() { return _features; }
+        const optional<FeatureSource::Options>& featureSource() const { return _features; }
 
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "join";
-            conf.set( "features", _features );
+            LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
             return conf;
         }
 
@@ -56,10 +58,11 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.get( "features", _features );
+            LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
         }
 
-        optional<FeatureSourceOptions> _features;
+        optional<std::string>            _layerName;
+        optional<FeatureSource::Options> _features;
     };
 
 } } // namespace osgEarth::Drivers

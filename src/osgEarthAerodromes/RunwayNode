@@ -23,13 +23,12 @@
 
 #include "Common"
 #include "AerodromeFeatureNode"
-#include <osgEarthFeatures/Feature>
+#include <osgEarth/Feature>
 
 namespace osgEarth { namespace Aerodrome
 {
     using namespace osgEarth;
     using namespace osgEarth::Aerodrome;
-    using namespace osgEarth::Features;
 
     /**
      * Runway

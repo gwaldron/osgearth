@@ -23,7 +23,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/NodeUtils>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 
 //........................................................................
@@ -91,11 +91,11 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
     {        
         if ( _parentKeys.size() > _threshold )
         {
-            ScopedMetric m("Unloader expire");
+            OE_PROFILING_ZONE_NAMED("Unloader expire");
 
             unsigned unloaded=0, notFound=0, notDormant=0;
             Threading::ScopedMutexLock lock( _mutex );
-            for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
+            for(UnorderedSet<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
             {
                 osg::ref_ptr<TileNode> parentNode;
                 if ( _tiles->get(*parentKey, parentNode) )

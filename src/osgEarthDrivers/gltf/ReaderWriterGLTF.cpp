@@ -24,7 +24,14 @@
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-// #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
+#define TINYGLTF_NO_EXTERNAL_IMAGE
+#define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
+
+#ifdef OSGEARTH_HAVE_DRACO
+#define TINYGLTF_ENABLE_DRACO
+#endif
+//#define TINYGLTF_USE_RAPIDJSON
+
 #include "tiny_gltf.h"
 using namespace tinygltf;
 
@@ -42,6 +49,9 @@ using namespace osgEarth;
 
 class GLTFReaderWriter : public osgDB::ReaderWriter
 {
+private:
+    mutable GLTFReader::TextureCache _cache;
+
 public:
     GLTFReaderWriter()
     {
@@ -52,12 +62,12 @@ public:
 
     virtual const char* className() const { return "glTF plugin"; }
 
-    virtual ReadResult readObject(const std::string& location, const osgDB::Options* options) const
+    ReadResult readObject(const std::string& location, const osgDB::Options* options) const
     {
         return readNode(location, options);
     }
 
-    virtual ReadResult readNode(const std::string& location, const osgDB::Options* options) const
+    ReadResult readNode(const std::string& location, const osgDB::Options* options) const
     {
         std::string ext = osgDB::getFileExtension(location);
         if (!acceptsExtension(ext))
@@ -66,19 +76,53 @@ public:
         if (ext == "gltf")
         {
             GLTFReader reader;
+            reader.setTextureCache(&_cache);
             tinygltf::Model model;
             return reader.read(location, false, options);
         }
         else if (ext == "glb")
         {
             GLTFReader reader;
+            reader.setTextureCache(&_cache);
             tinygltf::Model model;
             return reader.read(location, true, options);
         }
         else if (ext == "b3dm")
         {
+            std::string data = URI(location).getString(options);
             B3DMReader reader;
-            return reader.read(location, options);
+            reader.setTextureCache(&_cache);
+            return reader.read(location, data, options);
+        }
+        else return ReadResult::FILE_NOT_HANDLED;
+    }
+
+    //! Read from a stream:
+    ReadResult readNode(std::istream& inputStream, const osgDB::Options* options) const
+    {
+        // load entire stream into a buffer
+        std::istreambuf_iterator<char> eof;
+        std::string buffer(std::istreambuf_iterator<char>(inputStream), eof);
+
+        // Find referrer in the options
+        URIContext context(options);
+
+        // Determine format by peeking the magic header:
+        std::string magic(buffer, 0, 4);
+
+        if (magic == "glTF")
+        {
+            // non-functional -- fix - TODO
+            GLTFReader reader;
+            reader.setTextureCache(&_cache);
+            tinygltf::Model model;
+            return reader.read(context.referrer(), true, options); // binary=yes
+        }
+        else if (magic == "b3dm")
+        {
+            B3DMReader reader;
+            reader.setTextureCache(&_cache);
+            return reader.read(context.referrer(), buffer, options);
         }
         else return ReadResult::FILE_NOT_HANDLED;
     }

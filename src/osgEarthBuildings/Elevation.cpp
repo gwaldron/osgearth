@@ -22,7 +22,7 @@
 #define LC "[Elevation] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace osgEarth::Buildings;
 
 Elevation::Elevation() :

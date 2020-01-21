@@ -28,6 +28,7 @@
 #endif
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //VRV_PATCH
 #define GL_ANY_SAMPLES_PASSED             0x8C2F
@@ -113,8 +114,8 @@ osg::Camera()
     osg::GraphicsContext* gc = osg::GraphicsContext::createGraphicsContext(traits);
     setGraphicsContext(gc);
 #endif
-    setDrawBuffer(GL_FRONT);
-    setReadBuffer(GL_FRONT);
+    //setDrawBuffer(GL_FRONT);
+    //setReadBuffer(GL_FRONT);
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->setName("TileRasterizer");
@@ -258,19 +259,13 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
             addChild(job._node.get());
 
             // If this job has a readback image, push the job to the next queue
-            // where it will be picked up for readback.
-            if (job._image.valid())
-            {
-                _readbackJobs.push(job);
-            }
+            // where it will be picked up for readback. Yes - even jobs that write
+            // directly to a texture require a readback job to clean up the
+            // scene graph.          
+            _readbackJobs.push(job);
 
             // Remove the texture from the queue.
             _pendingJobs.pop();
-            //OE_INFO << LC
-            //    << "P=" << _pendingJobs.size()
-            //    << ", R=" << _readbackJobs.size()
-            //    << ", F=" << _finishedJobs.size()
-            //    << std::endl;
         }
     }
 
@@ -297,19 +292,19 @@ TileRasterizer::preDraw(osg::RenderInfo& ri) const
             if (job._image.valid())
             {
                 job._image.get()->_ri = &ri;
-            }
 
-            // allocate a query on demand for this GC:
-            osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(),true);
-            GLuint& query = _samplesQuery[ri.getContextID()];
-            if (query == INT_MAX)
-            {
-                ext->glGenQueries(1, &query);
-            }
+                // allocate a query on demand for this GC:
+                osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(),true);
+                GLuint& query = _samplesQuery[ri.getContextID()];
+                if (query == INT_MAX)
+                {
+                    ext->glGenQueries(1, &query);
+                }
 
-            // initiate a query for samples passing the fragment shader
-            // to see whether we drew anything.
-            ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, query);
+                // initiate a query for samples passing the fragment shader
+                // to see whether we drew anything.
+                ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, query);
+            }
         }
     }
 }
@@ -325,12 +320,15 @@ TileRasterizer::postDraw(osg::RenderInfo& ri) const
         {
             Job& job = _readbackJobs.front();
 
-            // get the results of the query and store the
-            // # of fragments generated in the job.
-            osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
-            GLuint query = _samplesQuery[ri.getContextID()];
-            ext->glEndQuery(GL_ANY_SAMPLES_PASSED);
-            ext->glGetQueryObjectuiv(query, GL_QUERY_RESULT, &job._fragmentsWritten);
+            if (job._image.valid())
+            {
+                // get the results of the query and store the
+                // # of fragments generated in the job.
+                osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+                GLuint query = _samplesQuery[ri.getContextID()];
+                ext->glEndQuery(GL_ANY_SAMPLES_PASSED);
+                ext->glGetQueryObjectuiv(query, GL_QUERY_RESULT, &job._fragmentsWritten);
+            }
 
             _finishedJobs.push(job);
             _readbackJobs.pop();

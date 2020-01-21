@@ -23,12 +23,12 @@
 #include "Building"
 
 #include <osgEarth/Progress>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Session>
+#include <osgEarth/Feature>
+#include <osgEarth/Session>
 
 namespace osgEarth { namespace Buildings 
 {
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
 
     class BuildContext;
     class Roof;

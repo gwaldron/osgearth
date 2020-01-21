@@ -13,26 +13,26 @@ display. The options are:
 
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
+<map name="Inline feature geometry demo">
 
-    <options>
-        <lighting>false</lighting>
-    </options>
-
-    <image name="world" driver="gdal">
+    <GDALImage name="world">
         <url>../data/world.tif</url>
-    </image>
+    </GDALImage>
+    
+    <OGRFeatures name="geometry1">
+        <geometry>
+            POLYGON((-120 30, -120 50, -70 50, -70 30))
+        </geometry>
+    </OGRFeatures>
+    
+    <OGRFeatures name="geometry2">
+        <geometry>
+            POLYGON((-68 30, -68 50, -20 50, -20 30))
+        </geometry>
+    </OGRFeatures>
 
-
-    <feature_model name="great_circle">
-        <features driver="ogr">
-            <geometry>
-                POLYGON((-120 30, -120 50, -70 50, -70 30))
-            </geometry>
-        </features>
-
+    <FeatureModel name="Great Circle" features="geometry1">
         <geo_interpolation>great_circle</geo_interpolation>
-
         <styles>
             <style type="text/css">
                 default {
@@ -44,17 +44,10 @@ display. The options are:
                 }                    
             </style>
         </styles>        
-    </feature_model>
+    </FeatureModel>
 
-    <feature_model name="rhumb_line">
-        <features driver="ogr">
-            <geometry>
-                POLYGON((-68 30, -68 50, -20 50, -20 30))
-            </geometry>
-        </features>
-
+    <FeatureModel name="Rhumb Line" features="geometry2">
         <geo_interpolation>rhumb_line</geo_interpolation>
-
         <styles>
             <style type="text/css">
                 default {
@@ -66,6 +59,6 @@ display. The options are:
                 }                    
             </style>
         </styles>        
-    </feature_model>
+    </FeatureModel>
 
 </map>

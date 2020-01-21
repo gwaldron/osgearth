@@ -28,9 +28,9 @@
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
-#include <osgEarthFeatures/Session>
-#include <osgEarthSymbology/ResourceCache>
-#include <osgEarthSymbology/MeshFlattener>
+#include <osgEarth/Session>
+#include <osgEarth/ResourceCache>
+#include <osgEarth/MeshFlattener>
 #include <osgDB/WriteFile>
 #include <set>
 
@@ -539,12 +539,12 @@ namespace
                     osg::Group* instanceGroup = group->getChild(i)->asGroup();
                     
                     if (_settings->maxVertsPerCluster().isSet())
-                        osgEarth::Symbology::MeshFlattener::run(instanceGroup, _settings->maxVertsPerCluster().get());
+                        osgEarth::MeshFlattener::run(instanceGroup, _settings->maxVertsPerCluster().get());
                     else
-                        osgEarth::Symbology::MeshFlattener::run(instanceGroup);                        
+                        osgEarth::MeshFlattener::run(instanceGroup);                        
                 }
 #else
-                osgEarth::Symbology::MeshFlattener::run(group);
+                osgEarth::MeshFlattener::run(group);
 #endif
 
                 // Generate shaders afterwards.

@@ -25,7 +25,6 @@
 #include "Unloader"
 #include "TileNode"
 #include "TileNodeRegistry"
-#include "RexTerrainEngineOptions"
 #include "RenderBindings"
 #include "TileDrawable"
 
@@ -44,7 +43,7 @@ namespace osgEarth {
     class TerrainEngine;
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class SelectionInfo;
 
@@ -60,7 +59,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             TileRasterizer*                     rasterizer,
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
-            const RexTerrainEngineOptions&      options,
+            const TerrainOptions&               options,
             const SelectionInfo&                selectionInfo);
         
         Loader* getLoader() const { return _loader; }
@@ -80,7 +79,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
-        const RexTerrainEngineOptions& getOptions() const { return _options; }
+        const TerrainOptions& options() const { return _options; }
 
         ProgressCallback* progress() const { return _progress.get(); }
 
@@ -110,7 +109,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::observer_ptr<const Map>          _map;
         int                                   _mainThreadId;
         TileNodeRegistry*                     _liveTiles;
-        const RexTerrainEngineOptions&        _options;
+        const TerrainOptions&                 _options;
         const RenderBindings&                 _renderBindings;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
@@ -124,6 +123,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::Drivers::RexTerrainEngine
 
 #endif // OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY

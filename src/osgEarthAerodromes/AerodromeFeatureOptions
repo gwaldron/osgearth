@@ -22,13 +22,11 @@
 #include <osg/Group>
 
 #include "Common"
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/FeatureSource>
 
 namespace osgEarth { namespace Aerodrome
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
-
 
     class FeatureSelectorOptions : public ConfigOptions
     {
@@ -193,8 +191,8 @@ namespace osgEarth { namespace Aerodrome
         optional<std::string>& icaoAttr() { return _icaoAttr; }
         const optional<std::string>& icaoAttr() const { return _icaoAttr; }    
 
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        optional<FeatureSource::Options>& featureSource() { return _featureSource; }
+        const optional<FeatureSource::Options>& featureSource() const { return _featureSource; }
 
         optional<TextureOptions>& textureOptions() { return _textureOptions; }
         const optional<TextureOptions>& textureOptions() const { return _textureOptions; }
@@ -216,11 +214,12 @@ namespace osgEarth { namespace Aerodrome
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.set( "icao_attr", _icaoAttr );
-            conf.set( "features", _featureOptions );
             conf.set( "texture", _textureOptions );
 
             for(ModelOptionsSet::const_iterator i = _modelOptions.begin(); i != _modelOptions.end(); ++i)
                 conf.add("model", i->getConfig());
+
+            LayerReference<FeatureSource>::set(conf, _featureSource);
 
             return conf;
         }
@@ -233,20 +232,21 @@ namespace osgEarth { namespace Aerodrome
 
         void fromConfig( const Config& conf ) {
             conf.get( "icao_attr", _icaoAttr );
-            conf.get( "features", _featureOptions );
             conf.get( "texture", _textureOptions );
             
             ConfigSet models = conf.children("model");
             for (ConfigSet::const_iterator i = models.begin(); i != models.end(); i++)
                 _modelOptions.push_back(ModelOptions(*i));
+
+            LayerReference<FeatureSource>::get(conf, _featureSource);
         }
 
     private:
      
         optional<std::string> _icaoAttr;
-        optional<FeatureSourceOptions> _featureOptions;
         optional<TextureOptions> _textureOptions;
         ModelOptionsSet _modelOptions;
+        optional<FeatureSource::Options> _featureSource;
     };
 
     typedef std::list<class AerodromeFeatureOptions> AerodromeOptionsSet;

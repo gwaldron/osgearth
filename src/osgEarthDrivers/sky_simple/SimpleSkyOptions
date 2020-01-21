@@ -19,13 +19,12 @@
 #ifndef OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS
 #define OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS 1
 
-#include <osgEarthUtil/Sky>
+#include <osgEarth/Sky>
 #include <osgEarth/URI>
 
 namespace osgEarth { namespace SimpleSky
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util;
 
     /**
      * Options for creating a simple sky.

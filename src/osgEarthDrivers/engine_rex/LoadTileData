@@ -27,16 +27,24 @@
 #include "TileRenderModel"
 #include <osgEarth/Progress>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class LoadTileData : public Loader::Request
     {
     public:
         LoadTileData(TileNode* tilenode, EngineContext* factory);
 
-        CreateTileModelFilter& filter() { return _filter; }
-
+        //! Whether to allow the request to cancel midstream. Default is true
         void setEnableCancelation(bool value) { _enableCancel = value; }
+
+        //! Sets the set of layers to load. Empty set = all layers
+        void setLayerFilter(const std::set<UID>& layers);
+
+        //! Add layer to filter
+        void addLayerToFilter(const UID& uid);
+
+        //! Clears the set of layers to load. Empty set = all layers
+        void clearLayerFilter();
 
     public: // Loader::Request
 
@@ -50,11 +58,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::StateSet* createStateSet() const;
 
     protected:
+        Threading::Mutex _mutex;
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
         osg::observer_ptr<EngineContext> _context;
         osg::ref_ptr<TerrainTileModel> _dataModel;
-        TileRenderModel _renderModel;
         CreateTileModelFilter _filter;
         osg::observer_ptr< const Map > _map;
         bool _enableCancel;
@@ -62,6 +70,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual ~LoadTileData() { }
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_REX_LOAD_TILE_DATA

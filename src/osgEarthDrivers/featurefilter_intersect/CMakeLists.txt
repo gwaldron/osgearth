@@ -6,7 +6,6 @@ SET(TARGET_H
     IntersectFeatureFilterOptions
 )
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology)
 SETUP_PLUGIN(osgearth_featurefilter_intersect)
 
 # to install public driver includes:

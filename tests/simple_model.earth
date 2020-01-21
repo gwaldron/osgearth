@@ -1,21 +1,18 @@
 <!-- 
 osgEarth Sample - Simple Model Driver
-Demonstates how to place a model at a location using the simple model driver.  If you do not specify a location the model is loaded as is to the scene graph so
+Demonstates how to place a model at a location using a model layer.
+If you do not specify a location the model is loaded as is to the scene graph so
 needs to be absolutely positioned.
 -->
 
-<map version="2">
+<Map name="Demo: simple model layer">
+
+    <Model name="Cow in the Hudson">
+        <url>cow.osg.(0,0,3.14).trans.100.scale</url>
+        <location lat="40.717" long="-74.018"/>
+    </Model>
     
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
     
-    <model name="model" driver="simple">
-      <url>../data/red_flag.osg.100,100,100.scale</url>
-      <location>-74.018 40.717 10</location>	  
-    </model>
-    
-    <viewpoints>
-        <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
-    </viewpoints>
-</map>
+</Map>

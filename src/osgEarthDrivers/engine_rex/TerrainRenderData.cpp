@@ -19,9 +19,9 @@
 #include "TerrainRenderData"
 #include "TileNode"
 #include "SurfaceNode"
-#include <osgEarth/ClampableNode>
+#include <osgEarth/CameraUtils>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[TerrainRenderData] "
@@ -56,7 +56,7 @@ TerrainRenderData::setup(const Map* map,
     
     // Is this a depth camera? Because if it is, we don't need any color layers.
     const osg::Camera* cam = cv->getCurrentCamera();
-    bool isDepthCamera = ClampableNode::isDepthCamera(cam);
+    bool isDepthCamera = CameraUtils::isDepthCamera(cam);
 
     // Make a drawable for each rendering pass (i.e. each render-able map layer).
     LayerVector layers;
@@ -147,6 +147,7 @@ TerrainRenderData::addLayerDrawable(const Layer* layer)
         drawable->_layer = layer;
         drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
         drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
+        drawable->_patchLayer = dynamic_cast<const PatchLayer*>(layer);
         drawable->setStateSet(layer->getStateSet());
         drawable->_renderType = layer->getRenderType();
     }

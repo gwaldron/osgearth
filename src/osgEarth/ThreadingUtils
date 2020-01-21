@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,9 @@
 #include <OpenThreads/Condition>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/Thread>
+#include <osg/OperationThread>
+#include <osgUtil/IncrementalCompileOperation>
+#include <osgDB/Options>
 #include <osg/ref_ptr>
 #include <set>
 #include <map>
@@ -56,6 +59,8 @@ namespace osgEarth { namespace Threading
      * Typical usage: Thread A creates Thread B to run asynchronous code. Thread A
      * then calls wait(), which blocks Thread A. When Thread B is finished, it calls
      * set(). Thread A then wakes up and continues execution.
+     *
+     * NOTE: ALL waiting threads will wake up when the Event is cleared.
      */
     class OSGEARTH_EXPORT Event 
     {
@@ -125,6 +130,51 @@ namespace osgEarth { namespace Threading
         OpenThreads::Mutex _m;
         OpenThreads::Condition _cond;
         int _set, _num;
+    };
+
+    /**
+     * KeyedMutex is a per-value mutex; really just a map of key/mutex pairs.
+     */
+    template<typename T>
+    class OSGEARTH_EXPORT KeyedMutex
+    {
+    protected:
+        mutable OpenThreads::Mutex _m;
+        typedef std::pair<Mutex*, int> Entry;
+        typedef std::map<T, Entry> Table;
+        Table _t;
+
+    public:
+        int lock(const T& key) {
+            _m.lock();
+            bool exists = _t.find(key) != _t.end();
+            Entry& e = _t[key];
+            if (!exists) {
+                e.first = new Mutex();
+                e.second = 1;
+            }
+            else {
+                e.second++;
+            }
+            _m.unlock();
+            return e.first->lock();
+        }
+
+        int unlock(const T& key) {
+            _m.lock();
+            typename Table::iterator i = _t.find(key);
+            if (i != _t.end()) {
+                Entry& e = i->second;
+                e.first->unlock();
+                e.second--;
+                if (e.second == 0) {
+                    delete e.first;
+                    _t.erase(i);
+                }
+            }
+            _m.unlock();
+            return 0;
+        }
     };
 
     /**
@@ -288,6 +338,31 @@ namespace osgEarth { namespace Threading
     typedef OpenThreads::ScopedReadLock  ScopedReadLock;
 
 #endif
+
+
+    /**
+     * A ThreadPool that contains a work queue and it's threads that process the queue
+     */
+    class OSGEARTH_EXPORT ThreadPool : public osg::Referenced
+    {
+    public:
+        ThreadPool(unsigned int numThreads = 2);
+
+        ~ThreadPool();
+
+        osg::OperationQueue* getQueue() const;
+
+    private:
+        void startThreads();
+        void stopThreads();
+
+        osg::ref_ptr< osg::OperationQueue > _queue;
+        std::vector< osg::ref_ptr< osg::OperationsThread > > _threads;
+        unsigned int _numThreads;
+    };
+
+
+    //extern OSGEARTH_EXPORT Future<osg::Node> readNodeAsync(const URI& uri, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options);
 
 } } // namepsace osgEarth::Threading
 

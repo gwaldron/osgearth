@@ -22,12 +22,13 @@
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
 #include <iostream>
+
+#include <osgEarth/Metrics>
 
 #define LC "[viewer] "
 
@@ -80,12 +81,10 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-        Metrics::run(viewer);
+        return Metrics::run(viewer);
     }
     else
     {
         return usage(argv[0]);
     }
-
-    return 0;
 }

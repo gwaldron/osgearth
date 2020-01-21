@@ -22,7 +22,7 @@
 
 #define LC "[Building] "
 
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace osgEarth::Buildings;
 
 Building::Building() :

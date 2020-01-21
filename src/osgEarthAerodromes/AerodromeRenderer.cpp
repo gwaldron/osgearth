@@ -47,19 +47,18 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/Registry>
 #include <osgEarth/Tessellator>
-#include <osgEarthFeatures/BuildGeometryFilter>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/GeometryCompiler>
-#include <osgEarthFeatures/TransformFilter>
-#include <osgEarthFeatures/FilterContext>
-#include <osgEarthSymbology/MeshConsolidator>
-#include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/BuildGeometryFilter>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/GeometryCompiler>
+#include <osgEarth/TransformFilter>
+#include <osgEarth/FilterContext>
+#include <osgEarth/MeshConsolidator>
+#include <osgEarth/StyleSheet>
 
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Util;
 using namespace osgEarth::Aerodrome;
 
 #define LC "[AerodromeRenderer] "
@@ -138,7 +137,7 @@ AerodromeRenderer::apply(AerodromeNode& node)
 void
 AerodromeRenderer::apply(LightBeaconNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::Node* geom;
 
@@ -156,7 +155,7 @@ AerodromeRenderer::apply(LightBeaconNode& node)
 void
 AerodromeRenderer::apply(LightIndicatorNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::Node* geom;
 
@@ -174,7 +173,7 @@ AerodromeRenderer::apply(LightIndicatorNode& node)
 void
 AerodromeRenderer::apply(LinearFeatureNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = osg::clone( node.getFeature(), osg::CopyOp::DEEP_COPY_ALL );
+    osg::ref_ptr<osgEarth::Feature> feature = osg::clone( node.getFeature(), osg::CopyOp::DEEP_COPY_ALL );
 
     osg::ref_ptr<osg::Node> geom;
 
@@ -238,7 +237,7 @@ AerodromeRenderer::apply(LinearFeatureNode& node)
 void
 AerodromeRenderer::apply(PavementNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::ref_ptr<osg::Node> geom;
 
@@ -265,15 +264,15 @@ AerodromeRenderer::apply(PavementNode& node)
 void
 AerodromeRenderer::apply(RunwayNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::ref_ptr<osg::Node> geom;
 
     osg::ref_ptr<osg::Vec3dArray> geomPoints = feature->getGeometry()->createVec3dArray();
-    if (geomPoints.valid() && geomPoints->size() == 4)
+    if (geomPoints.valid() && geomPoints->size() >= 4)
     {
         std::vector<osg::Vec3d> featurePoints;
-        for (int i=0; i < geomPoints->size(); i++)
+        for (int i=0; i < 4; ++i) //geomPoints->size(); i++)
         {
             featurePoints.push_back(osg::Vec3d((*geomPoints)[i].x(), (*geomPoints)[i].y(), _elevation));
         }
@@ -390,7 +389,7 @@ void
 AerodromeRenderer::apply(RunwayThresholdNode& node)
 {
     // We don't necessarily want to runway thresholds (metadata)
-    //osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    //osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
     //osg::Node* geom = defaultFeatureRenderer(feature.get(), Color::White);
     //if (geom)
     //    node.addChild(geom);
@@ -400,7 +399,7 @@ void
 AerodromeRenderer::apply(StartupLocationNode& node)
 {
     // We don't necessarily want to render statup locations (metadata)
-    //osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    //osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
     //osg::Node* geom = defaultFeatureRenderer(feature.get(), Color::White);
     //if (geom)
     //    node.addChild(geom);
@@ -415,15 +414,15 @@ AerodromeRenderer::apply(StopwayNode& node)
       return;
    }
    
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::ref_ptr<osg::Node> geom;
 
     osg::ref_ptr<osg::Vec3dArray> geomPoints = feature->getGeometry()->createVec3dArray();
-    if (geomPoints.valid() && geomPoints->size() == 4)
+    if (geomPoints.valid() && geomPoints->size() >= 4)
     {
         std::vector<osg::Vec3d> featurePoints;
-        for (int i=0; i < geomPoints->size(); i++)
+        for (int i=0; i < 4; ++i) //geomPoints->size(); i++)
         {
             featurePoints.push_back(osg::Vec3d((*geomPoints)[i].x(), (*geomPoints)[i].y(), _elevation));
         }
@@ -571,7 +570,7 @@ AerodromeRenderer::apply(StopwayNode& node)
 void
 AerodromeRenderer::apply(TaxiwayNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::ref_ptr<osg::Node> geom;
 
@@ -598,7 +597,7 @@ AerodromeRenderer::apply(TaxiwayNode& node)
 void
 AerodromeRenderer::apply(TaxiwaySignNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::Node* geom;
 
@@ -617,7 +616,7 @@ AerodromeRenderer::apply(TaxiwaySignNode& node)
 void
 AerodromeRenderer::apply(TerminalNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::Node* geom;
     
@@ -697,7 +696,7 @@ AerodromeRenderer::apply(TerminalNode& node)
 void
 AerodromeRenderer::apply(WindsockNode& node)
 {
-    osg::ref_ptr<osgEarth::Features::Feature> feature = node.getFeature();
+    osg::ref_ptr<osgEarth::Feature> feature = node.getFeature();
 
     osg::Node* geom;
 
@@ -845,7 +844,7 @@ AerodromeRenderer::apply(osg::Group& node)
 }
 
 template <typename T, typename Y>
-osgEarth::Symbology::Geometry* AerodromeRenderer::combineGeometries(T& group)
+osgEarth::Geometry* AerodromeRenderer::combineGeometries(T& group)
 {
     osg::ref_ptr<Geometry> combGeom = 0L;
     for (int c=0; c < group.getNumChildren(); c++)
@@ -853,7 +852,7 @@ osgEarth::Symbology::Geometry* AerodromeRenderer::combineGeometries(T& group)
         Y* childNode = dynamic_cast<Y*>(group.getChild(c));
         if (childNode)
         {
-            osg::ref_ptr<osgEarth::Features::Feature> feature = childNode->getFeature();
+            osg::ref_ptr<osgEarth::Feature> feature = childNode->getFeature();
             Polygon* featurePoly = dynamic_cast<Polygon*>(feature->getGeometry());
             if (featurePoly)
             {
@@ -880,7 +879,7 @@ osgEarth::Symbology::Geometry* AerodromeRenderer::combineGeometries(T& group)
 }
 
 osg::Node*
-AerodromeRenderer::featureSingleTextureRenderer(osgEarth::Features::Feature* feature, const osgEarth::URI& uri, float length)
+AerodromeRenderer::featureSingleTextureRenderer(osgEarth::Feature* feature, const osgEarth::URI& uri, float length)
 {
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 
@@ -1014,7 +1013,7 @@ AerodromeRenderer::featureSingleTextureRenderer(osgEarth::Features::Feature* fea
 }
 
 osg::Node*
-AerodromeRenderer::featureModelRenderer(osgEarth::Features::Feature* feature, const ModelOptionsSet& modelOptions)
+AerodromeRenderer::featureModelRenderer(osgEarth::Feature* feature, const ModelOptionsSet& modelOptions)
 {
     Style style;
 
@@ -1046,7 +1045,7 @@ AerodromeRenderer::featureModelRenderer(osgEarth::Features::Feature* feature, co
 }
 
 osg::Node*
-AerodromeRenderer::defaultFeatureRenderer(osgEarth::Features::Feature* feature, float height)
+AerodromeRenderer::defaultFeatureRenderer(osgEarth::Feature* feature, float height)
 {
     //random color
     float r = (float)rand() / (float)RAND_MAX;
@@ -1057,15 +1056,15 @@ AerodromeRenderer::defaultFeatureRenderer(osgEarth::Features::Feature* feature, 
 }
 
 osg::Node*
-AerodromeRenderer::defaultFeatureRenderer(osgEarth::Features::Feature* feature, const Color& color, float height)
+AerodromeRenderer::defaultFeatureRenderer(osgEarth::Feature* feature, const Color& color, float height)
 {
     Style style;
 
-    if (feature->getGeometry()->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON)
+    if (feature->getGeometry()->getType() == osgEarth::Geometry::TYPE_POLYGON)
     {
         style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
     }
-    else if (feature->getGeometry()->getType() == osgEarth::Symbology::Geometry::TYPE_POINTSET)
+    else if (feature->getGeometry()->getType() == osgEarth::Geometry::TYPE_POINTSET)
     {
         style.getOrCreate<PointSymbol>()->fill()->color() = color;
         style.getOrCreate<PointSymbol>()->size() = 2.0f;
@@ -1089,7 +1088,7 @@ AerodromeRenderer::defaultFeatureRenderer(osgEarth::Features::Feature* feature, 
 }
 
 osg::Node*
-AerodromeRenderer::defaultFeatureRenderer(osgEarth::Features::Feature* feature, const Style& style, StyleSheet* styleSheet)
+AerodromeRenderer::defaultFeatureRenderer(osgEarth::Feature* feature, const Style& style, StyleSheet* styleSheet)
 {
     if (feature)
     {

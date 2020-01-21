@@ -24,7 +24,7 @@
 
 #include <osg/ConcurrencyViewerMacros>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[LoadTileData] "
@@ -39,6 +39,28 @@ _enableCancel(true)
     setName(tilenode->getKey().str());
     _map = context->getMap();
     _engine = context->getEngine();
+}
+
+void
+LoadTileData::setLayerFilter(const std::set<UID>& layers)
+{
+    ScopedMutexLock lock(_mutex);
+    _filter.clear();
+    _filter.layers() = layers;
+}
+
+void
+LoadTileData::addLayerToFilter(const UID& layer)
+{
+    ScopedMutexLock lock(_mutex);
+    _filter.layers().insert(layer);
+}
+
+void
+LoadTileData::clearLayerFilter()
+{
+    ScopedMutexLock lock(_mutex);
+    _filter.clear();
 }
 
 // invoke runs in the background pager thread.
@@ -57,11 +79,17 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (!_map.lock(map))
         return;
 
+    CreateTileModelFilter filter;
+    {
+        ScopedMutexLock lock(_mutex);
+        filter = _filter;
+    }
+
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
         tilenode->getKey(),
-        _filter,
+        filter,
         _enableCancel? progress : 0L);
 
     // if the operation was canceled, set the request to idle and delete the tile model.
@@ -70,6 +98,15 @@ LoadTileData::invoke(ProgressCallback* progress)
         _dataModel = 0L;
         setState(Request::IDLE);
     }
+
+    // In the terrain engine, we have to keep our elevation rasters in 
+    // memory since we use them to build intersection graphs.
+    if (_dataModel.valid() && _dataModel->getElevationTexture())
+    {
+        _dataModel->getElevationTexture()->setUnRefImageDataAfterApply(false);
+    }
+
+    clearLayerFilter();
 }
 
 

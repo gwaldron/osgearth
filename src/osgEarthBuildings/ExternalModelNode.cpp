@@ -3,8 +3,6 @@
 #include "ExternalModelNode"
 using namespace osgEarth;
 using namespace osgEarth::Buildings;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 
 ExternalModelNode::ExternalModelNode(const ExternalModelNode& rhs, const osg::CopyOp& copyop)

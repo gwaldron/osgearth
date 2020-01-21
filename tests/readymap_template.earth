@@ -6,7 +6,7 @@ Shows how to use the new template pseudoloader to run an earth file through a te
 Run with osgearth_viewer readymap_template.earth.template to invoke the psuedoloader.
 
 -->
-<map name="readymap.org" type="geocentric">
+<map name="Demo: earth file templates">
     
     <!-- Include imagery -->
     {% include readymap_imagery.xml %}

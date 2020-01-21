@@ -1,0 +1,81 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H
+#define OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/Geometry>
+
+using namespace osgEarth;
+
+namespace osgText {
+    class Font;
+}
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Image layer displaying TileKey information
+     */
+    class OSGEARTH_EXPORT DebugImageLayer : public ImageLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(std::string, colorCode);
+            OE_OPTION(bool, invertY);
+            virtual Config getConfig() const;
+            static Config getMetadata();
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, DebugImageLayer, Options, ImageLayer, DebugImage);        
+
+    public: // Layer
+
+        //! Called by constructors
+        virtual void init();
+        
+        //! Establishes a connection to the WMS service
+        virtual Status openImplementation();
+
+        //! Gets a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected:
+
+        //! Destructor
+        virtual ~DebugImageLayer() { }
+
+        osg::ref_ptr<osgEarth::Geometry> _geom;
+        osg::ref_ptr<osgText::Font> _font;
+        osg::Vec4f _color;
+    };
+
+} }
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::DebugImageLayer::Options);
+
+
+#endif // OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H

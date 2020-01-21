@@ -22,7 +22,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[EngineContext] "
@@ -40,7 +40,7 @@ EngineContext::EngineContext(const Map*                     map,
                              TileRasterizer*                tileRasterizer,
                              TileNodeRegistry*              liveTiles,
                              const RenderBindings&          renderBindings,
-                             const RexTerrainEngineOptions& options,
+                             const TerrainOptions&          options,
                              const SelectionInfo&           selectionInfo) :
 _map           ( map ),
 _terrainEngine ( terrainEngine ),
@@ -55,7 +55,7 @@ _selectionInfo ( selectionInfo ),
 _tick(0),
 _tilesLastCull(0)
 {
-    _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
+    _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
     _mainThreadId = Threading::getCurrentThreadId();
     _bboxCB = new ModifyBoundingBoxCallback(this);
 }
@@ -191,5 +191,5 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
 bool
 EngineContext::maxLiveTilesExceeded() const
 {
-    return _liveTiles->size() > _options.expirationThreshold().get();
+    return _liveTiles->size() > getUnloader()->getThreshold();
 }

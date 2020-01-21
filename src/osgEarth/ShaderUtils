@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,7 +29,7 @@
 #include <osgDB/Options>
 #include <map>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * ShaderPolicy encodes general behavior when deciding how to
@@ -147,6 +147,6 @@ namespace osgEarth
         void install(osg::StateSet* ss, float minAlpha) const;
         void uninstall(osg::StateSet* ss) const;
     };
-}
+} }
 
 #endif // OSGEARTH_SHADER_UTILS_H

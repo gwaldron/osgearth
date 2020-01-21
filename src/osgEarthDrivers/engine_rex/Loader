@@ -32,11 +32,12 @@
 #include <osgDB/Options>
 #include <set>
 
-namespace osgEarth {
+namespace osgEarth
+{
     class TerrainEngineNode;
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * Interface for a utility to satisty Tile loading requests.
@@ -238,7 +239,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         mutable Threading::Mutex     _requestsMutex;
     };
 
-} } }
+} }
 
 
 #endif // OSGEARTH_REX_LOADER

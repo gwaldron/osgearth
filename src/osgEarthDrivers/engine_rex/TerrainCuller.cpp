@@ -21,10 +21,11 @@
 #include "SurfaceNode"
 #include "SelectionInfo"
 #include <osgEarth/TraversalData>
+#include <osgEarth/VisibleLayer>
 
 #define LC "[TerrainCuller] "
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 
 TerrainCuller::TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context) :
@@ -89,6 +90,8 @@ DrawTileCommand*
 TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const RenderingPass* pass, TileNode* tileNode)
 {
     SurfaceNode* surface = tileNode->getSurfaceNode();
+    if ( !surface )
+        return 0L;
 
     const RenderBindings& bindings = _context->getRenderBindings();
 
@@ -222,7 +225,7 @@ TerrainCuller::apply(TileNode& node)
     // knows to blend it with the terrain geometry color.
     _firstDrawCommandForTile = 0L;
         
-    if (!_terrain.patchLayers().empty())
+    if (!_terrain.patchLayers().empty() && node.getSurfaceNode())
     {
         // todo: check for patch/virtual
         const RenderBindings& bindings = _context->getRenderBindings();
@@ -289,6 +292,8 @@ TerrainCuller::apply(SurfaceNode& node)
 {
     TileRenderModel& renderModel = _currentTileNode->renderModel();
 
+    float range = _cv->getDistanceToViewPoint(node.getBound().center(), true) - node.getBound().radius();
+
     // push the surface matrix:
     osg::RefMatrix* matrix = createOrReuseMatrix(*getModelViewMatrix());
     node.computeLocalToWorldMatrix(*matrix,this);
@@ -310,6 +315,13 @@ TerrainCuller::apply(SurfaceNode& node)
         for (unsigned p = 0; p < renderModel._passes.size(); ++p)
         {
             const RenderingPass& pass = renderModel._passes[p];
+
+            // is the tile in visible range?
+            if (pass.visibleLayer() && pass.visibleLayer()->getMaxVisibleRange() < range)
+                continue;
+
+            //TODO: see if we can skip adding a draw command for 1-pixel images
+            // or other "placeholder" textures
             DrawTileCommand* cmd = addDrawCommand(pass.sourceUID(), &renderModel, &pass, _currentTileNode);
             if (cmd)
             {

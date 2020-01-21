@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -57,6 +57,7 @@
 #define PROMOTE_EQUIVALENT_DRAWABLE_VP_TO_GEODE 1
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 
@@ -68,7 +69,7 @@ using namespace osgEarth;
 #   define LOWP           "lowp "
 #   define HIGHP          "highp "
 #else
-#   define GLSL_PRECISION ""
+#   define GLSL_PRECISION
 #   define MEDIUMP        ""
 #   define LOWP           ""
 #   define HIGHP          ""
@@ -87,7 +88,6 @@ using namespace osgEarth;
 #define VERTEX_VIEW_FUNCTION  "oe_sg_vert_view"
 #define FRAGMENT_FUNCTION     "oe_sg_frag"
 
-#define ALPHA_NAME     "osg_alpha_threshold"
 // other stuff
 #define INDENT "    "
 
@@ -412,12 +412,10 @@ ShaderGenerator::run(osg::Node*         graph,
 
         // perform GL state sharing
         optimizeStateSharing( graph, cache );
-// VANTAGE CHANGE, just use standard materials which we've upgraded to support UBOS
-#if 0
+
         // generate uniforms and uniform callbacks for lighting and material elements.
         GenerateGL3LightingUniforms generateUniforms;
         graph->accept(generateUniforms);
-#endif
 
         osg::StateSet* stateset = cloneOrCreateStateSet(graph);
 
@@ -430,6 +428,19 @@ ShaderGenerator::run(osg::Node*         graph,
             vp->setName( vpName );
         }
     }
+}
+
+osg::ref_ptr<osg::StateSet>
+ShaderGenerator::run(osg::StateSet* ss)
+{
+    if (!ss)
+        return NULL;
+
+    _state->pushStateSet(ss);
+    osg::ref_ptr<osg::StateSet> replacement;
+    processGeometry(ss, replacement);
+    _state->popStateSet();
+    return replacement;
 }
 
 void
@@ -789,8 +800,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 #else
     Shaders shaders;
-    shaders.load(vp.get(), shaders.TextVertex);
-    shaders.load(vp.get(), shaders.TextFragment);
+    shaders.load(vp.get(), shaders.Text);
     #if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
         replacement->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
     #endif
@@ -837,13 +847,8 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     // give the VP a name if it needs one.
     if ( vp->getName().empty() )
     {
-       if (_name.length()){
         vp->setName( _name );
     }
-       else{
-          vp->setName("composite_vp");
-       }
-     }
 
     // Check whether the lighting state has changed and install a mode uniform.
     // TODO: fix this
@@ -946,22 +951,10 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
         {
             std::string fragSource = Stringify()
                 << "#version " << version << "\n" GLSL_PRECISION "\n"
-                << fragHeadSource << ";\n"
-                << "layout(std140) uniform " ALPHA_NAME "_block"
-                "{\n"
-                "   vec4 " ALPHA_NAME";\n"
-                "};\n"
-                "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n"
-                <<
-                fragBodySource
-                <<
-                "   float alpha = clamp(color.a,0.0,1.0);\n"
-                "   if ((( alpha < " ALPHA_NAME ".x && alpha  > " ALPHA_NAME ".y && alpha != " ALPHA_NAME ".z ) ||"
-                "     color.z == " ALPHA_NAME ".w)) \n"
-                "   { \n"
-                "     discard;\n"
-                "   }\n"
-                "}\n";
+                << fragHeadSource
+                << "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n"
+                << fragBodySource
+                << "}\n";
 
             vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f);
         }

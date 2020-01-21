@@ -22,7 +22,7 @@
 #define LC "[Parapet] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 using namespace osgEarth::Buildings;
 
 Parapet::Parapet() :

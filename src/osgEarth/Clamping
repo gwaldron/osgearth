@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -30,7 +30,7 @@
 #include <osg/ObserverNodePath>
 #include <osg/Camera>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Support for GPU Clamping.
@@ -146,6 +146,6 @@ namespace osgEarth
     private:
         PerObjectFastMap<const osg::Camera*, ClampingCullSet> _sets;
     };
-}
+} }
 
 #endif // OSGEARTH_CLAMPING_H

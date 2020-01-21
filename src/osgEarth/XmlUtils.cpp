@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,8 +23,12 @@
 
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
-static std::string EMPTY_VALUE = "";
+namespace
+{
+    static std::string EMPTY_VALUE = "";
+}
 
 XmlNode::XmlNode()
 {
@@ -242,7 +246,7 @@ XmlElement::getConfig(const std::string& referrer) const
         URIContext uriContext(referrer);
         URI uri(href, uriContext);
         std::string fullURI = uri.full();
-        OE_INFO << "Loading href from " << fullURI << std::endl;
+        OE_DEBUG << "Loading href from " << fullURI << std::endl;
 
         osg::ref_ptr< XmlDocument > doc = XmlDocument::load(fullURI);
         if (doc && doc->getChildren().size() > 0)
@@ -476,45 +480,47 @@ XmlDocument::getConfig() const
     return conf;
 }
 
-static void
-storeNode( const XmlNode* node, TiXmlNode* parent)
+namespace
 {
-    if (node->isElement())
+    void storeNode(const XmlNode* node, TiXmlNode* parent)
     {
-        XmlElement* e = (XmlElement*)node;
-        TiXmlElement* element = new TiXmlElement( e->getName().c_str() );
-        //Write out all the attributes
-        for( XmlAttributes::iterator a = e->getAttrs().begin(); a != e->getAttrs().end(); a++ )
+        if (node->isElement())
         {
-            element->SetAttribute(a->first.c_str(), a->second.c_str() );            
-        }
+            XmlElement* e = (XmlElement*)node;
+            TiXmlElement* element = new TiXmlElement(e->getName().c_str());
+            //Write out all the attributes
+            for (XmlAttributes::iterator a = e->getAttrs().begin(); a != e->getAttrs().end(); a++)
+            {
+                element->SetAttribute(a->first.c_str(), a->second.c_str());
+            }
 
-        //Write out all the child nodes
-        for( XmlNodeList::iterator i = e->getChildren().begin(); i != e->getChildren().end(); i++ )
+            //Write out all the child nodes
+            for (XmlNodeList::iterator i = e->getChildren().begin(); i != e->getChildren().end(); i++)
+            {
+                storeNode(i->get(), element);
+            }
+            parent->LinkEndChild(element);
+        }
+        else if (node->isText())
         {
-            storeNode( i->get(), element );
+            XmlText* t = (XmlText*)node;
+            std::string value = t->getValue();
+
+            std::string encodedValue;
+            TiXmlBase::EncodeString(value, &encodedValue);
+            bool needCDATA = !encodedValue.empty() && encodedValue != value;
+
+            TiXmlText* tNode = new TiXmlText(value.c_str());
+            if (needCDATA)
+            {
+                // XML should be normalized to LF (no CRLF)
+                value = osgEarth::replaceIn(value, "\r\n", "\n");
+                tNode->SetValue(value.c_str());
+                tNode->SetCDATA(true);
+            }
+
+            parent->LinkEndChild(tNode);
         }
-        parent->LinkEndChild( element );
-    }
-    else if (node->isText())
-    {
-        XmlText* t = (XmlText*)node;
-        std::string value = t->getValue();
-
-        std::string encodedValue;
-		TiXmlBase::EncodeString(value, &encodedValue);
-        bool needCDATA = !encodedValue.empty() && encodedValue != value;
-
-        TiXmlText* tNode = new TiXmlText(value.c_str());
-        if (needCDATA)
-        {
-            // XML should be normalized to LF (no CRLF)
-            value = osgEarth::replaceIn(value, "\r\n", "\n");
-            tNode->SetValue(value.c_str());
-            tNode->SetCDATA(true);
-        }
-
-        parent->LinkEndChild(tNode);
     }
 }
 

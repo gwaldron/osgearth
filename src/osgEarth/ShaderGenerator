@@ -101,6 +101,8 @@ namespace osgEarth
          */
         void run(osg::Node* graph, const std::string& name, StateSetCache* cache);
 
+        //! Run the shader generator on a single state set.
+        osg::ref_ptr<osg::StateSet> run(osg::StateSet* stateSet);
 
     public: // statics
 
@@ -249,7 +251,7 @@ namespace osgEarth
 
     
     /** Proxy interface for a ShaderGenerator - used by the registry. */
-    class ShaderGeneratorProxy //header only
+    class OSGEARTH_EXPORT ShaderGeneratorProxy //header only
     {
     public:
         void run(osg::Node* graph, const std::string& name, StateSetCache* cache) {
@@ -273,6 +275,6 @@ namespace osgEarth
         osg::ref_ptr<ShaderGenerator> _instance;
     };
 
-} // namespace osgEarth
+}
 
 #endif // OSGEARTH_SHADER_GENERATOR_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,8 @@
 */
 #include <osgEarth/SceneGraphCallback>
 
-using namespace osgEarth;
+using namespace osgEarth; 
+using namespace osgEarth::Util;
 
 //...................................................................
 
@@ -71,6 +72,7 @@ SceneGraphCallbacks::firePreMergeNode(osg::Node* node)
 void
 SceneGraphCallbacks::firePostMergeNode(osg::Node* node)
 {
+    Threading::ScopedMutexLock lock(_mutex); // prob not necessary but good measure
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
@@ -80,6 +82,7 @@ SceneGraphCallbacks::firePostMergeNode(osg::Node* node)
 void
 SceneGraphCallbacks::fireRemoveNode(osg::Node* node)
 {
+    Threading::ScopedMutexLock lock(_mutex); // prob not necessary but good measure
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)

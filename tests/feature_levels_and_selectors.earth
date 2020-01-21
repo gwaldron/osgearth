@@ -3,14 +3,19 @@ osgEarth Sample
 Shows how to use Levels and Selectors together when rendering feature data.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
+<Map name="Demo: Feature levels and selectors">
 
     <xi:include href="readymap_imagery.xml"/>
     
-    <feature_model name="boundaries">
-        <features name="world" driver="ogr">
-            <url>../data/world.shp</url>
-        </features>
+    <OGRFeatures name="boundary-data">
+        <url>../data/world.shp</url>
+    </OGRFeatures>
+    
+    <OGRFeatures name="city-data">
+        <url>../data/cities.gpkg</url>
+    </OGRFeatures>
+    
+    <FeatureModel name="Boundaries" features="boundary-data">
         <styles>
             <style type="text/css">
                 world {
@@ -21,20 +26,15 @@ Shows how to use Levels and Selectors together when rendering feature data.
                 }            
             </style>
         </styles>        
-    </feature_model>    
+    </FeatureModel>    
     
-    <feature_model name="cities">
-
-        <features name="cities" driver="ogr">
-            <url>../data/cities.gpkg</url>
-        </features>
-        
+    <FeatureModel name="Cities" features="city-data">        
         <layout>
             <level name="far"    style="large"  max_range="1e10"/>
             <level name="medium" style="medium" max_range="3000000"/>
             <level name="close"  style="small"  max_range="200000"/>
         </layout>
-
+        
         <styles>
             <selector name="large" class="label-large">
                 <query>
@@ -74,12 +74,11 @@ Shows how to use Levels and Selectors together when rendering feature data.
                     text-size:      16.0;
                 }     
             </style>
-        </styles>
-        
-    </feature_model>
+        </styles>        
+    </FeatureModel>
     
     <screen_space_layout>
         <sort_by_priority>true</sort_by_priority>
     </screen_space_layout>
   
-</map>
+</Map>

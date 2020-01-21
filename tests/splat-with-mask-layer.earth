@@ -3,32 +3,14 @@
 |  The mask layer prevents the trees from drawing wherever there is geometry.
 -->
 
-<map>
-    <options>
-        <terrain driver="rex"/>
-    </options>
-
+<Map>
     <libraries>osgEarthSplat</libraries>
 
     <xi:include href="../data/land_cover_dictionary.xml"/>
+    <xi:include href="esa_land_cover.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
 
-    <land_cover name="LandCover" max_data_level="15">
-        <cache_policy usage="no_cache"/>
-        <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <profile>global-geodetic</profile>
-                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-                <warp>0.05</warp>
-            </coverage>
-        </coverages>
-    </land_cover>
-
-    <elevation name="readymap_elevation" driver="tms" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-
-    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
+    <SplatImage name="Splat Imagery" land_cover_layer="LandCover">
         <zones>
             <zone name="default">
                 <surface>
@@ -36,9 +18,9 @@
                 </surface>
             </zone>
         </zones>
-    </splat_imagery>
+    </SplatImage>
 
-    <splat_groundcover name="Trees" land_cover_layer="LandCover">
+    <GroundCover name="Trees" land_cover_layer="LandCover">
         <lod>13</lod>
         <cast_shadows>true</cast_shadows>
         <mask_layer>Boston Streets</mask_layer>
@@ -58,14 +40,13 @@
                 </groundcover>
             </zone>
         </zones>
-    </splat_groundcover>
+    </GroundCover>
 
     <!-- Setting shared="true" lets us use this as our mask layer -->
-    <image name="Boston Streets" driver="agglite" shared="true" min_level="10" max_data_level="17">
-        <warp>0</warp>
-        <features driver="ogr" build_spatial_index="true">
+    <FeatureImage name="Boston Streets" shared="true" min_level="10" max_data_level="17">
+        <OGRFeatures build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
-        </features>
+        </OGRFeatures>
         <styles>
             <style type="text/css">
                 default {
@@ -75,7 +56,7 @@
             </style>
         </styles>
         <cache_policy usage="no_cache"/>
-    </image>
+    </FeatureImage>
 
     <viewpoints>
         <viewpoint name="Tree-Covered Boston">
@@ -89,4 +70,4 @@
         </viewpoint>
     </viewpoints>
 
-</map>
+</Map>

@@ -423,7 +423,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         _children = new osg::Group;
         for (unsigned int i = 0; i < _tile->children().size(); ++i)
         {
-            _children->addChild(new ThreeDTileNode(_tileset, _tile->children()[i], false, _options.get()));
+            _children->addChild(new ThreeDTileNode(_tileset, _tile->children()[i].get(), false, _options.get()));
         }
 
         if (_children->getNumChildren() == 0)
@@ -501,7 +501,7 @@ namespace
                     osg::ref_ptr<Tileset> tileset = Tileset::create(rr.getString(), _uri.full());
                     if (tileset)
                     {
-                        tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset, _options.get());
+                        tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
                     }
                 }
                 _promise.resolve(tilesetNode.get());
@@ -530,7 +530,7 @@ namespace
         {
             if (threadPool.valid())
             {
-                threadPool->getQueue()->add(operation);
+                threadPool->getQueue()->add(operation.get());
             }
             else
             {

@@ -774,7 +774,7 @@ URI::readNodeAsync(const osgDB::Options* dbOptions,
     {
         if (threadPool.valid())
         {
-            threadPool->getQueue()->add(operation);
+            threadPool->getQueue()->add(operation.get());
         }
         else
         {

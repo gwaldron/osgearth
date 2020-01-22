@@ -51,7 +51,7 @@ namespace
 void
 OgrUtils::populate( OGRGeometryH geomHandle, Geometry* target, int numPoints )
 {
-    for (unsigned int v = 0; v < numPoints; ++v)
+    for (int v = 0; v < numPoints; ++v)
     {
         double x=0, y=0, z=0;
         OGR_G_GetPoint( geomHandle, v, &x, &y, &z );

@@ -497,7 +497,7 @@ public:
                 getOrCreateAccessor(normals, pset, primitive, "NORMAL");
 
                 getOrCreateAccessor(colors, pset, primitive, "COLOR_0");
-                getOrCreateAccessor(texCoords, pset, primitive, "TEXCOORD_0");
+                getOrCreateAccessor(texCoords.get(), pset, primitive, "TEXCOORD_0");
             }
 
             if (pushedStateSet)

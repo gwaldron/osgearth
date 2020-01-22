@@ -108,12 +108,12 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        tile->draw(ri, *_drawState, layerData);
+        tile->draw(ri, *_drawState, layerData.get());
     }
 
     if (_patchLayer && _patchLayer->getDrawCallback())
     {
-        _patchLayer->getDrawCallback()->postDraw(ri, layerData);
+        _patchLayer->getDrawCallback()->postDraw(ri, layerData.get());
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes

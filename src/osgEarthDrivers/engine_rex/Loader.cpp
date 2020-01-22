@@ -505,7 +505,7 @@ PagerLoader::invokeAndRelease(UID requestUID)
         if ( REPORT_ACTIVITY )
             Registry::instance()->startActivity( request->getName() );
 
-        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request);
+        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request.get());
         request->invoke(prog.get());
     }
 

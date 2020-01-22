@@ -167,7 +167,10 @@ namespace
         {
             osg::ref_ptr<TerrainTileModel> dataModel;
             if (_dataModel.lock(dataModel))
+            {
+                OE_DEBUG << "MCA: compiling " << dataModel->getKey().str() << std::endl;
                 dataModel->compileGLObjects(state);
+            }
         }
 
         // no need to override release or resize since this is a temporary object

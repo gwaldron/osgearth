@@ -97,22 +97,28 @@ KML_Geometry::parseCoords( xml_node<>* node, KMLContext& cx )
     xml_node<>* coords = node->first_node("coordinates", 0, false);
     if ( coords )
     {
-        StringVector tuples;
-        StringTokenizer( coords->value(), tuples, " \n", "", false, true );
-        for( StringVector::const_iterator s=tuples.begin(); s != tuples.end(); ++s )
+        xml_node<>* coord = coords->first_node();
+        while (coord)
         {
-            StringVector parts;
-            StringTokenizer( *s, parts, ",", "", false, true );
-            if ( parts.size() >= 2 )
+            StringVector tuples;
+            StringTokenizer(coord->value(), tuples, " \n", "", false, true);
+            for (StringVector::const_iterator s = tuples.begin(); s != tuples.end(); ++s)
             {
-                osg::Vec3d point;
-                point.x() = as<double>( parts[0], 0.0 );
-                point.y() = as<double>( parts[1], 0.0 );
-                if ( parts.size() >= 3 ) {
-                    point.z() = as<double>( parts[2], 0.0 );
+                StringVector parts;
+                StringTokenizer(*s, parts, ",", "", false, true);
+                if (parts.size() >= 2)
+                {
+                    osg::Vec3d point;
+                    point.x() = as<double>(parts[0], 0.0);
+                    point.y() = as<double>(parts[1], 0.0);
+                    if (parts.size() >= 3) {
+                        point.z() = as<double>(parts[2], 0.0);
+                    }
+                    _geom->push_back(point);
                 }
-                _geom->push_back(point);
             }
+            coords->remove_first_node();
+            coord = coords->first_node();
         }
     }
 }

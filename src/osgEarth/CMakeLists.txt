@@ -177,6 +177,7 @@ SET(LIB_PUBLIC_HEADERS
     PointDrawable
     PrimitiveIntersector
     Profile
+    Profiler
     Progress
     Random
     Registry
@@ -532,6 +533,7 @@ set(TARGET_SRC
     PointDrawable.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
+    Profiler.cpp
     Progress.cpp
     Random.cpp
     Registry.cpp

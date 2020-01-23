@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Profiler>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
@@ -1443,8 +1444,10 @@ HTTPClient::doGet(const HTTPRequest&    request,
                   const osgDB::Options* options,
                   ProgressCallback*     progress) const
 {
-    OE_PROFILING_ZONE;
-    OE_PROFILING_ZONE_TEXT(Stringify() << "url " << request.getURL());
+    OE_PROFILING_ZONE;   
+    OE_SCOPED_ZONE("HTTPClient::doGet");
+    OE_PROFILING_ZONE_TEXT(Stringify() << "url " << request.getURL());    
+    Profiler::zoneText(Stringify() << "url " << request.getURL());
 
     unsigned long handle = NetworkMonitor::begin(request.getURL(), "pending");
 

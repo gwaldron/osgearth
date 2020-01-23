@@ -1,0 +1,92 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2018 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Notify>
+#include <list>
+
+namespace osgEarth
+{
+    struct OSGEARTH_EXPORT Zone
+    {
+        Zone(const std::string& name);
+
+        void complete();
+
+        double duration() const;
+
+        std::string _name;
+        double _startTime;
+        double _endTime;
+        bool _isComplete;
+        Zone* _parent;
+        std::list<std::string> _zoneText;
+        std::list<Zone> _children;
+    };
+
+    typedef std::list< Zone > ZoneList;
+
+    /**
+    * A list of zones per thread
+    */
+    struct OSGEARTH_EXPORT ThreadZones
+    {
+        ThreadZones();
+
+        void begin(const std::string& name);
+
+        void end();
+
+        unsigned int _threadId;
+        ZoneList _zones;
+        Zone* _currentZone;
+    };
+
+    struct OSGEARTH_EXPORT Profiler
+    {
+        static void begin(const std::string& name);
+        static void zoneText(const std::string& text);
+        static void end();
+
+        static void getZones(std::map< unsigned int, ThreadZones >& zones);
+
+        Threading::Mutex _mutex;
+        std::map< unsigned int, ThreadZones > _threadZones;
+    };    
+
+    class ScopedZone
+    {
+    public:
+        ScopedZone(const std::string& name)
+        {
+            Profiler::begin(name);
+        }
+
+        ~ScopedZone()
+        {
+            Profiler::end();
+        }
+    };
+
+#define OE_SCOPED_ZONE(name)  ScopedZone __oe_scoped_zone(name);
+}

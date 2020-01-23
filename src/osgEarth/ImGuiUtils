@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_UTILS_H
+#define OSGEARTH_IMGUI_UTILS_H 1
+
+#include "GL/glew.h"
+#include "imgui.h"
+
+#include <osg/OperationThread>
+#include <osg/GraphicsContext>
+#include <osg/Notify>
+#include <osgEarth/MapNode>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/ImageLayer>
+
+class GlewInitOperation : public osg::Operation
+{
+public:
+    GlewInitOperation()
+        : osg::Operation("GlewInitCallback", false)
+    {
+    }
+
+    void operator()(osg::Object* object) override
+    {
+        osg::GraphicsContext* context = dynamic_cast<osg::GraphicsContext*>(object);
+        if (!context)
+            return;
+
+        if (glewInit() != GLEW_OK)
+        {
+            OSG_FATAL << "glewInit() failed" << std::endl;
+        }
+    }
+};
+
+class LayersGUI
+{
+public:
+    LayersGUI()
+    {
+    }
+
+    void draw(osgEarth::MapNode* mapNode)
+    {
+        osgEarth::VisibleLayerVector layers;
+        mapNode->getMap()->getLayers(layers);
+
+        ImGui::Begin("Layers");
+        for (int i = layers.size() - 1; i >= 0; --i)
+        {
+            osgEarth::Layer* layer = layers[i].get();
+            ImGui::PushID(layer);
+            osgEarth::VisibleLayer *visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
+            if (visibleLayer)
+            {
+                bool visible = visibleLayer->getVisible();
+                ImGui::Checkbox(layer->getName().c_str(), &visible);
+                visibleLayer->setVisible(visible);
+            }
+            else
+            {
+                ImGui::Text(layer->getName().c_str());
+            }
+
+            ImGui::SameLine();
+            if (i > 0)
+            {
+                if (ImGui::ArrowButton("down", ImGuiDir_Down))
+                {
+                    mapNode->getMap()->moveLayer(layer, i - 1);
+                }
+            }
+            if (i < layers.size() - 1)
+            {
+                ImGui::SameLine();
+                if (ImGui::ArrowButton("up", ImGuiDir_Up))
+                {
+                    mapNode->getMap()->moveLayer(layer, i + 1);
+                }
+            }
+
+            osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(visibleLayer);
+            if (imageLayer)
+            {
+                float opacity = imageLayer->getOpacity();
+                ImGui::PushID(i);
+                ImGui::SliderFloat("", &opacity, 0.0f, 1.0f);
+                imageLayer->setOpacity(opacity);
+                ImGui::PopID();
+            }
+            ImGui::PopID();
+        }
+        ImGui::End();
+    }
+};
+
+
+
+#endif

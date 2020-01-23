@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ImageLayer>
+#include <osgEarth/Profiler>
 #include <osgEarth/ImageMosaic>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Registry>
@@ -319,6 +320,8 @@ ImageLayer::createImage(const TileKey&    key,
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(Stringify() << "Layer " << getName());
     OE_PROFILING_ZONE_TEXT(Stringify() << "Key " << key.str());
+
+    OE_SCOPED_ZONE("ImageLayer::createImage");
 
     std::stringstream buf;
     buf << getName() << "::createImage(" << key.getLevelOfDetail() << "/" << key.getTileX() << "/" << key.getTileY() << ")";

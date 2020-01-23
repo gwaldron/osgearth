@@ -157,6 +157,11 @@ AttributeValue::getBool( bool defaultValue ) const
     return defaultValue;
 }
 
+const std::vector<double>& AttributeValue::getDoubleArrayValue() const
+{
+    return second.doubleArrayValue;
+}
+
 //----------------------------------------------------------------------------
 
 Feature::Feature( FeatureID fid ) :
@@ -283,6 +288,24 @@ Feature::set( const std::string& name, bool value )
 }
 
 void
+Feature::set( const std::string& name, const std::vector<double>& value )
+{
+    AttributeValue& a = _attrs[name];
+    a.first = ATTRTYPE_DOUBLEARRAY;
+    a.second.doubleArrayValue = value;
+    a.second.set = true;
+}
+
+void
+Feature::setSwap( const std::string& name, std::vector<double>& value )
+{
+    AttributeValue& a = _attrs[name];
+    a.first = ATTRTYPE_DOUBLEARRAY;
+    a.second.doubleArrayValue.swap(value);
+    a.second.set = true;
+}
+
+void
 Feature::setNull( const std::string& name)
 {
     AttributeValue& a = _attrs[name];    
@@ -325,6 +348,13 @@ Feature::getInt( const std::string& name, int defaultValue ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getInt(defaultValue) : defaultValue;
+}
+
+const std::vector<double>*
+Feature::getDoubleArray( const std::string& name ) const
+{
+    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    return i != _attrs.end()? &i->second.getDoubleArrayValue() : nullptr;
 }
 
 bool

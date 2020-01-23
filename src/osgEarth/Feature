@@ -29,6 +29,7 @@
 #include <osg/Shape>
 #include <map>
 #include <list>
+#include <vector>
 
 namespace osgEarth
 {
@@ -89,6 +90,7 @@ namespace osgEarth
         double      doubleValue;
         int         intValue;
         bool        boolValue;
+        std::vector<double> doubleArrayValue;
 
         //Whether the value is set.  A value of false means the value is effectively NULL
         bool        set;
@@ -100,7 +102,8 @@ namespace osgEarth
         ATTRTYPE_STRING,
         ATTRTYPE_INT,
         ATTRTYPE_DOUBLE,
-        ATTRTYPE_BOOL
+        ATTRTYPE_BOOL,
+        ATTRTYPE_DOUBLEARRAY
     };
 
     struct OSGEARTH_EXPORT AttributeValue : public std::pair<AttributeType,AttributeValueUnion>
@@ -108,7 +111,8 @@ namespace osgEarth
         std::string getString() const;
         double getDouble( double defaultValue =0.0 ) const;
         int getInt( int defaultValue =0 ) const;
-        bool getBool( bool defaultValue =false ) const;              
+        bool getBool( bool defaultValue =false ) const;
+        const std::vector<double>& getDoubleArrayValue() const;
     };
     
     typedef std::map<std::string, AttributeValue, CIStringComp> AttributeTable;
@@ -196,6 +200,8 @@ namespace osgEarth
         void set( const std::string& name, double value );
         void set( const std::string& name, int value );
         void set( const std::string& name, bool value );
+        void set( const std::string& name, const std::vector<double>& value );
+        void setSwap( const std::string& name, std::vector<double>& value );
         void set( const std::string& name, const AttributeValue& value);
 
         /** Sets the attribute to NULL */         
@@ -208,6 +214,7 @@ namespace osgEarth
         double getDouble( const std::string& name, double defaultValue =0.0 ) const;
         int getInt( const std::string& name, int defaultValue =0 ) const;
         bool getBool( const std::string& name, bool defaultValue =false ) const;
+        const std::vector<double>* getDoubleArray( const std::string& name ) const;
 
         /**
          * Gets whether the attribute is set, meaning it is non-NULL

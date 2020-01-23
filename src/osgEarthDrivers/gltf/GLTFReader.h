@@ -397,25 +397,25 @@ public:
 
                 if (it->first.compare("POSITION") == 0)
                 {
-                    geom->setVertexArray(arrays[it->second]);
+                    geom->setVertexArray(arrays[it->second].get());
                 }
                 else if (it->first.compare("NORMAL") == 0)
                 {
-                    geom->setNormalArray(arrays[it->second]);
+                    geom->setNormalArray(arrays[it->second].get());
                 }
                 else if (it->first.compare("TEXCOORD_0") == 0)
                 {
-                    geom->setTexCoordArray(0, arrays[it->second]);
+                    geom->setTexCoordArray(0, arrays[it->second].get());
                 }
                 else if (it->first.compare("TEXCOORD_1") == 0)
                 {
-                    geom->setTexCoordArray(1, arrays[it->second]);
+                    geom->setTexCoordArray(1, arrays[it->second].get());
                 }
                 else if (it->first.compare("COLOR_0") == 0)
                 {
                     // TODO:  Multipy by the baseColorFactor here?
                     OE_DEBUG << "Setting color array " << arrays[it->second].get() << std::endl;
-                    geom->setColorArray(arrays[it->second]);
+                    geom->setColorArray(arrays[it->second].get());
                 }
                 else
                 {

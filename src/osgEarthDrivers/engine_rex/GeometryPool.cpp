@@ -676,22 +676,40 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
 {
     osg::Drawable::resizeGLObjectBuffers(maxSize);
 
-    osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
-    if (vbo) vbo->resizeGLObjectBuffers(maxSize);
+    if (_vertexArray.valid()) _vertexArray->resizeGLObjectBuffers(maxSize);
+    if (_normalArray.valid()) _normalArray->resizeGLObjectBuffers(maxSize);
+    if (_colorArray.valid()) _colorArray->resizeGLObjectBuffers(maxSize);
+    if (_texcoordArray.valid()) _texcoordArray->resizeGLObjectBuffers(maxSize);
+    if (_neighborArray.valid()) _neighborArray->resizeGLObjectBuffers(maxSize);
+    if (_neighborNormalArray.valid()) _neighborNormalArray->resizeGLObjectBuffers(maxSize);
+    if (_drawElements.valid()) _drawElements->resizeGLObjectBuffers(maxSize);
+    if (_maskElements.valid()) _maskElements->resizeGLObjectBuffers(maxSize);
 
-    osg::BufferObject* ebo = _drawElements->getElementBufferObject();
-    if (ebo) ebo->resizeGLObjectBuffers(maxSize);
+    //osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
+    //if (vbo) vbo->resizeGLObjectBuffers(maxSize);
+
+    //osg::BufferObject* ebo = _drawElements->getElementBufferObject();
+    //if (ebo) ebo->resizeGLObjectBuffers(maxSize);
 }
 
 void SharedGeometry::releaseGLObjects(osg::State* state) const
 {
     osg::Drawable::releaseGLObjects(state);
 
-    osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
-    if (vbo) vbo->releaseGLObjects(state);
+    if (_vertexArray.valid()) _vertexArray->releaseGLObjects(state);
+    if (_normalArray.valid()) _normalArray->releaseGLObjects(state);
+    if (_colorArray.valid()) _colorArray->releaseGLObjects(state);
+    if (_texcoordArray.valid()) _texcoordArray->releaseGLObjects(state);
+    if (_neighborArray.valid()) _neighborArray->releaseGLObjects(state);
+    if (_neighborNormalArray.valid()) _neighborNormalArray->releaseGLObjects(state);
+    if (_drawElements.valid()) _drawElements->releaseGLObjects(state);
+    if (_maskElements.valid()) _maskElements->releaseGLObjects(state);
 
-    osg::BufferObject* ebo = _drawElements->getElementBufferObject();
-    if (ebo) ebo->releaseGLObjects(state);
+    //osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
+    //if (vbo) vbo->releaseGLObjects(state);
+
+    //osg::BufferObject* ebo = _drawElements->getElementBufferObject();
+    //if (ebo) ebo->releaseGLObjects(state);
 }
 
 // called from DrawTileCommand

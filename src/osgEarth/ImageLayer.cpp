@@ -203,6 +203,19 @@ OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
 OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureUniformName, shareTexUniformName);
 OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureMatrixUniformName, shareTexMatUniformName);
 
+ImageLayer*
+ImageLayer::create(const ConfigOptions& options)
+{
+    osg::ref_ptr<Layer> layer = Layer::create(options);
+    ImageLayer* result = dynamic_cast<ImageLayer*>(layer.get());
+    if (result)
+    {
+        layer.release();
+        return result;
+    }
+    return 0L;
+}
+
 Status
 ImageLayer::openImplementation()
 {

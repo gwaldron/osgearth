@@ -375,12 +375,25 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         configureView( *view );
     }
 
-#ifdef OSG_GL3_AVAILABLE
+    // vsync on/off?
+    optional<bool> vsync;
+    if (args.read("--vsync"))
+        vsync = true;
+    else if (args.read("--novsync"))
+        vsync = false;
+
     if (viewer)
     {
-        viewer->setRealizeOperation(new GL3RealizeOperation());
-    }
+#ifdef OSG_GL3_AVAILABLE
+        GL3RealizeOperation* rop = new GL3RealizeOperation();
+#else
+        CustomRealizeOperation* rop = new GL3RealizeOperation();
 #endif
+        if (vsync.isSet())
+            rop->setSyncToVBlank(vsync.get());
+
+        viewer->setRealizeOperation(rop);
+    }
 
     return root;
 }

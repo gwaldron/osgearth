@@ -206,6 +206,8 @@ GroundCoverLayer::init()
 #endif
 
     _debug = (::getenv("OSGEARTH_GROUNDCOVER_DEBUG") != NULL);
+
+    installDefaultOpacityShader();
 }
 
 Status
@@ -362,7 +364,7 @@ namespace
 
             for(int j=0; j<biome->getObjects().size(); ++j)
             {
-                const GroundCoverObject* object = biome->getObjects()[j];
+				const GroundCoverObject* object = biome->getObjects()[j].get();
 
                 if (object->getType() == GroundCoverObject::TYPE_BILLBOARD)
                 {

@@ -462,7 +462,7 @@ TFSFeatureSource::createURL(const Query& query)
         const FeatureProfile* fp = getFeatureProfile();
         if (fp && fp->isTiled())
         {
-            if (fp->getFirstLevel() > level || fp->getMaxLevel() < level)
+            if (fp->getFirstLevel() > (int)level || fp->getMaxLevel() < (int)level)
             {
                 return "";
             }

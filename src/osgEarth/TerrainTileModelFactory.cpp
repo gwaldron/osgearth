@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/LandCoverLayer>
 
+#include <osgEarth/Metrics>
 #include <osg/ConcurrencyViewerMacros>
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
@@ -51,6 +52,7 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
                                          ProgressCallback*                progress)
 {
    osg::CVMarkerSeries series("PagingThread");
+    OE_PROFILING_ZONE;
    osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::createTileModel");
 
    // Make a new model:
@@ -85,6 +87,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                                         ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_image_layers);
+    OE_PROFILING_ZONE;
 
     osg::CVMarkerSeries series("SubloadParentTask");
     osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::addColorLayers");

@@ -20,6 +20,8 @@
 #include "SurfaceNode"
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Terrain>
+#include <osgEarth/Metrics>
+
 #include <osg/NodeVisitor>
 
 #include <osg/ConcurrencyViewerMacros>
@@ -124,6 +126,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
     if (!_map.lock(map))
         return;
 
+    OE_PROFILING_ZONE;
     // ensure we got an actual datamodel:
     if (_dataModel.valid())
     {

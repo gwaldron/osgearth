@@ -441,7 +441,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         out_normalMap.get(),
         key,
         map->getProfileNoVDatum(), // convertToHAE,
-        INTERP_BILINEAR,
+        interpolation,
         progress );
 
 #ifdef TREAT_ALL_ZEROS_AS_MISSING_TILE

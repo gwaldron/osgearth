@@ -450,7 +450,7 @@ CalloutManager::drawImplementation(osg::RenderInfo& ri) const
     osg::Matrix ortho;
     ortho.makeOrtho(vp->x(), vp->x() + vp->width() - 1, vp->y(), vp->y() + vp->height() - 1, -1000, 1000);
     osg::ref_ptr<osg::RefMatrix> proj = new osg::RefMatrix(ortho);
-    ri.getState()->applyProjectionMatrix(proj);
+    ri.getState()->applyProjectionMatrix(proj.get());
 
 #ifdef USE_RTREE
     bool appliedFirstState = false;
@@ -496,7 +496,7 @@ CalloutManager::drawImplementation(osg::RenderInfo& ri) const
                 glDepthMask(GL_FALSE);
                 appliedFirstState = true;
             }
-            ri.getState()->applyModelViewMatrix(rec->_matrix);
+            ri.getState()->applyModelViewMatrix(rec->_matrix.get());
             rec->_node->draw(ri);
         }
     }

@@ -441,7 +441,7 @@ public:
 
           OE_DEBUG << "Took " << numFrames << " to load data for " << key.str() << std::endl;
 
-          _viewer->getCamera()->setFinalDrawCallback(_windowCaptureCallback);
+          _viewer->getCamera()->setFinalDrawCallback(_windowCaptureCallback.get());
           _viewer->frame();
           _viewer->frame();
           _viewer->getCamera()->setFinalDrawCallback( 0 );
@@ -609,7 +609,7 @@ main(int argc, char** argv)
         // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
     osg::ref_ptr< osg::Node> node = osgDB::readNodeFiles( arguments );
-    osg::ref_ptr< MapNode > mapNode = MapNode::findMapNode( node );
+    osg::ref_ptr< MapNode > mapNode = MapNode::findMapNode( node.get());
 
     if (mapNode.valid())
     {

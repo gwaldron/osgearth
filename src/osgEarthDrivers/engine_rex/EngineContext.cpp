@@ -185,7 +185,7 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
         getUnloader()->unloadChildren( tilesWithChildrenToUnload );
     }
 
-    //Registry::instance()->startActivity("REX live tiles", Stringify()<<_liveTiles->size());
+    Registry::instance()->startActivity("REX live tiles", Stringify()<<_liveTiles->size());
 }
 
 bool

@@ -1043,7 +1043,7 @@ MGRSGraticule::rebuild()
                     TextSymbolizer sqidSymbolizer( textSym.get() );
 
                     sqidText = new osgEarth::Text(sqid);
-                    sqidSymbolizer.apply(sqidText);
+                    sqidSymbolizer.apply(sqidText.get());
 #ifdef USE_SCREEN_COORDS
                     sqidText->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
 #else
@@ -1095,7 +1095,7 @@ MGRSGraticule::rebuild()
 
                     TextSymbolizer symbolizer( textSym.get() );
                     gzdText = new osgEarth::Text(gzd);
-                    symbolizer.apply(gzdText);
+                    symbolizer.apply(gzdText.get());
 
 #ifdef USE_SCREEN_COORDS
                     gzdText->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);

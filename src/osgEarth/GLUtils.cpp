@@ -24,6 +24,7 @@
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
+#include <osgViewer/GraphicsWindow>
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
@@ -177,6 +178,24 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
     }
 }
 
+void
+CustomRealizeOperation::setSyncToVBlank(bool value)
+{
+    _vsync = value;
+}
+
+void
+CustomRealizeOperation::operator()(osg::Object* object)
+{
+    if (_vsync.isSet())
+    {
+        osgViewer::GraphicsWindow* win = dynamic_cast<osgViewer::GraphicsWindow*>(object);
+        if (win)
+        {
+            win->setSyncToVBlank(_vsync.get());
+        }
+    }
+}
 
 void
 GL3RealizeOperation::operator()(osg::Object* object)
@@ -204,4 +223,6 @@ GL3RealizeOperation::operator()(osg::Object* object)
         state->setModeValidity(GL_LINE_SMOOTH, false);
 #endif
     }
+
+    CustomRealizeOperation::operator()(object);
 }

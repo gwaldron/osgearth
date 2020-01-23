@@ -20,39 +20,7 @@
 #ifndef OSGEARTH_METRICS_H
 #define OSGEARTH_METRICS_H 1
 
-#ifdef OSGEARTH_PROFILING
- 
-#define TRACY_ENABLE
-#define TRACY_ON_DEMAND
-#include <Tracy.hpp>
-
-#define OE_PROFILING_ZONE ZoneScoped
-#define OE_PROFILING_ZONE_NAMED(functionName) ZoneScopedN(functionName)
-#define OE_PROFILING_ZONE_TEXT(text) _zoneSetText(___tracy_scoped_zone, text)
-#define OE_PROFILING_PLOT(name, value) TracyPlot(name, value)
-#define OE_PROFILING_FRAME_MARK FrameMark
-
-inline void _zoneSetText(tracy::ScopedZone& zone, const char* text) {
-    zone.Text(text, strlen(text));
-}
-inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
-    zone.Text(text.c_str(), text.size());
-}
-#else
-#define OE_PROFILING_ZONE
-#define OE_PROFILING_ZONE_NAMED(functionName)
-#define OE_PROFILING_ZONE_TEXT(text)
-#define OE_PROFILING_PLOT(name, value)
-#define OE_PROFILING_FRAME_MARK
-#endif
-
-
 #include <osgEarth/Common>
-#include <osgEarth/Config>
-#include <iostream>
-#include <osgDB/fstream>
-
-
 
 // forward
 namespace osgViewer {
@@ -69,8 +37,46 @@ namespace osgEarth {
              * Convenience function to run the OSG frame loop with metrics.
              */
             static int run(osgViewer::Viewer& viewer);
+
+            /*
+            * Whether metrics collection is enabled.
+            */
+            static bool enabled();
+
+            /**
+             * Toggle on metrics collection
+             */
+            static void setEnabled(bool enabled);
         };
     }
 }
+
+#ifdef OSGEARTH_PROFILING
+
+#define TRACY_ENABLE
+#define TRACY_ON_DEMAND
+#include <Tracy.hpp>
+
+#define OE_PROFILING_ZONE ZoneNamed( ___tracy_scoped_zone, osgEarth::Util::Metrics::enabled() )
+#define OE_PROFILING_ZONE_NAMED(functionName) ZoneNamedN(___tracy_scoped_zone, functionName, osgEarth::Util::Metrics::enabled())
+#define OE_PROFILING_ZONE_COLOR(color) ZoneScopedC(___tracy_scoped_zone, color, osgEarth::Util::Metrics::enabled())
+#define OE_PROFILING_ZONE_TEXT(text) _zoneSetText(___tracy_scoped_zone, text)
+#define OE_PROFILING_PLOT(name, value) if (osgEarth::Util::Metrics::enabled()) {TracyPlot(name, value);}
+#define OE_PROFILING_FRAME_MARK if (osgEarth::Util::Metrics::enabled()) {FrameMark;}
+
+inline void _zoneSetText(tracy::ScopedZone& zone, const char* text) {
+    zone.Text(text, strlen(text));
+}
+inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
+    zone.Text(text.c_str(), text.size());
+}
+#else
+#define OE_PROFILING_ZONE
+#define OE_PROFILING_ZONE_NAMED(functionName)
+#define OE_PROFILING_ZONE_COLOR(color)
+#define OE_PROFILING_ZONE_TEXT(text)
+#define OE_PROFILING_PLOT(name, value)
+#define OE_PROFILING_FRAME_MARK
+#endif
 
 #endif

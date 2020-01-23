@@ -42,6 +42,7 @@ namespace osgEarth
             return _layer.get();
         }
 
+        //! open the layer pointed to in the reference and return a status code
         Status open(const optional<TypedOptions>& embeddedOptions, const osgDB::Options* readOptions)
         {
             if (embeddedOptions.isSet())
@@ -62,6 +63,7 @@ namespace osgEarth
             return Status::OK();
         }
 
+        //! Find a layer in the map and set this reference to point at it 
         bool connect(const Map* map, const optional<std::string>& externalLayerName)
         {
             if (!getLayer())
@@ -73,11 +75,13 @@ namespace osgEarth
             return getLayer();
         }
 
+        //! Clear the reference
         void disconnect(const Map* map =NULL)
         {
             setLayer(NULL);
         }
 
+        //! Get the layer ref from either a name or embedded option
         static void get(const Config& conf, const std::string& tag, optional<std::string>& layerName, optional<TypedOptions>& embeddedOptions)
         {
             conf.get(tag, layerName);
@@ -95,6 +99,7 @@ namespace osgEarth
             }
         }
 
+        //! Set the layer ref options in the config
         static void set(Config& conf, const std::string& tag, const optional<std::string>& layerName, const optional<TypedOptions>& embeddedOptions)
         {
             conf.set(tag, layerName);
@@ -102,6 +107,7 @@ namespace osgEarth
                 conf.set(embeddedOptions->getConfig());
         }
 
+        //! Get the first embedded options of the template type
         static void get(const Config& conf, optional<TypedOptions>& embeddedOptions)
         {
             for (ConfigSet::const_iterator i = conf.children().begin();
@@ -117,6 +123,22 @@ namespace osgEarth
             }
         }
 
+        //! Get all the embedded options of the template type
+        static void get(const Config& conf, std::vector<TypedOptions>& embeddedOptions)
+        {
+            for (ConfigSet::const_iterator i = conf.children().begin();
+                i != conf.children().end();
+                ++i)
+            {
+                osg::ref_ptr<Layer> layer = Layer::create(*i);
+                if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                {
+                    embeddedOptions.push_back(TypedOptions(*i));
+                }
+            }
+        }
+
+        //! Store the embedded options in the config
         static void set(Config& conf, const optional<TypedOptions>& embeddedOptions)
         {
             if (embeddedOptions.isSet())

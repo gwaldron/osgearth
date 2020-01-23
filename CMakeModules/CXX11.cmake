@@ -44,10 +44,9 @@ macro(check_for_cxx11_compiler _VAR)
 
     if (BUILD_USE_CXX11)
         
-        if(MSVC AND NOT ${MSVC_VERSION} VERSION_LESS 1900)
+        if(MSVC AND ${MSVC_VERSION} GREATER_EQUAL 1900) # VS2015 (14.0)
         
-            # Windows
-            set(CMAKE_CXX_STANDARD 11)
+            # Windows MSVC 14.0+
             set(${_VAR} 1) 
 
         elseif(CMAKE_COMPILER_IS_GNUCXX)
@@ -59,8 +58,7 @@ macro(check_for_cxx11_compiler _VAR)
             check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
             
             if(COMPILER_SUPPORTS_CXX11)
-			
-                set(CMAKE_CXX_STANDARD 11)
+
                 set(${_VAR} 1)
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
                 
@@ -82,7 +80,6 @@ macro(check_for_cxx11_compiler _VAR)
         elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
         
             # Clang/Apple
-            set(CMAKE_CXX_STANDARD 11)
             set(${_VAR} 1)
             
         endif()
@@ -91,6 +88,7 @@ macro(check_for_cxx11_compiler _VAR)
     
     if (${_VAR})
         message(STATUS "Building with C++11 support")
+        set(CMAKE_CXX_STANDARD 11)
     else()
         message(STATUS "Building without C++11 support")
     endif()

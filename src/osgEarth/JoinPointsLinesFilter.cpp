@@ -46,9 +46,38 @@ using namespace osgEarth;
    linestring at the point.
  */
 
+osg::Vec2d quantize(const osg::Vec2d& v)
+{
+    osg::Vec2d out;
+    out.x() = (int)v.x();
+    out.y() = (int)v.y();
+    return out;
+}
+
 double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
                                 FilterContext& context)
 {
+#if 1
+    osg::Vec2d in, out;
+    if (previous.x() != DBL_MAX)
+    {
+        in = point - osg::Vec2d(previous.x(), previous.y());
+        in.normalize();
+    }
+    if (next.x() != DBL_MAX)
+    {
+        out = osg::Vec2d(next.x(), next.y()) - point;
+        out.normalize();
+    }
+    osg::Vec2d direction = in + out;
+    direction.normalize();
+    double heading = std::atan2(-direction.x(), direction.y());
+    if (heading < -osg::PI_2) heading += osg::PI;
+    if (heading >= osg::PI_2) heading -= osg::PI;
+    return osg::RadiansToDegrees(heading);
+
+#else
+
     const SpatialReference* targetSRS = nullptr;
     if (context.getSession()->isMapGeocentric())
     {
@@ -97,7 +126,10 @@ double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previ
 
     osg::Vec2d direction = in + out;
     double heading = std::atan2(-direction.x(), direction.y());
+    if (heading < -osg::PI_2) heading += osg::PI;
+    if (heading >= osg::PI_2) heading -= osg::PI;
     return osg::RadiansToDegrees(heading);
+#endif
 }
 
 Status JoinPointsLinesFilter::initialize(const osgDB::Options* readOptions)
@@ -144,8 +176,8 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
             // Are there multiple points? Does it matter?
             for (osg::Vec3d& pt : *geom)
             {
-                osg::Vec2d key(pt.x(), pt.y());
-                pointMap[key] = PointEntry(feature);
+                osg::Vec2d key = quantize(osg::Vec2d(pt.x(), pt.y()));
+                pointMap[key] = PointEntry(feature.get());
             }
         }
     }
@@ -157,7 +189,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
         const int size = geom->size();
         for (int i = 0; i < size; ++i)
         {
-            osg::Vec2d key((*geom)[i].x(), (*geom)[i].y());
+            osg::Vec2d key = quantize(osg::Vec2d((*geom)[i].x(), (*geom)[i].y()));
             auto ptItr = pointMap.find(key);
             if (ptItr != pointMap.end())
             {

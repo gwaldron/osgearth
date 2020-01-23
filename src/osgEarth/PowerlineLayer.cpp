@@ -159,6 +159,28 @@ namespace
             return itr->second.pointFeature.get();
         }
     }
+
+    double calculateHeading(Geometry* geom, int index)
+    {
+        osg::Vec3d& point = (*geom)[index];
+        osg::Vec3d in, out;
+        if (index > 0)
+        {
+            in = point - (*geom)[index - 1];
+            in.normalize();
+        }
+        if (index < geom->size()-1)
+        {
+            out = (*geom)[index + 1] - point;
+            out.normalize();
+        }
+        osg::Vec3d direction = in + out;
+        direction.normalize();
+        double heading = std::atan2(-direction.x(), direction.y());
+        if (heading < -osg::PI_2) heading += osg::PI;
+        if (heading >= osg::PI_2) heading -= osg::PI;
+        return osg::RadiansToDegrees(heading);
+    }
 }
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
@@ -185,7 +207,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
         Geometry* geom = feature->getGeometry();
         for (osg::Vec3d& pt : *geom)
         {
-            getPoint(pointMap, pt) = PointEntry(feature);
+            getPoint(pointMap, pt) = PointEntry(feature.get());
         }
     }
 
@@ -211,7 +233,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
             for (int i = 0; i < geom->size(); ++i)
             {
                 osg::Vec3d geodeticPt((*geom)[i].x(), (*geom)[i].y(), elevations[i]);
-                ECEF::transformAndGetRotationMatrix(geodeticPt, featureSRS, worldPts[i],
+                ECEF::transformAndGetRotationMatrix(geodeticPt, featureSRS.get(), worldPts[i],
                                                     targetSRS, orientations[i]);
             }
             // New feature for the cable
@@ -230,13 +252,17 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     {
                         heading = itr->second.pointFeature->getDouble("heading", 0.0);
                     }
+                    else
+                    {
+                        heading = calculateHeading(geom, i);
+                    }
                     osg::Matrixd headingMat;
                     headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
                     osg::Vec3d worldAttach = _attachments[cable] * headingMat * orientations[i] + worldPts[i];
                     osg::Vec3d wgs84; // intermediate point
                     osg::Vec3d mapAttach;
                     featureSRS->getGeographicSRS()->transformFromWorld(worldAttach, wgs84);
-                    featureSRS->getGeographicSRS()->transform(wgs84, featureSRS, mapAttach);
+                    featureSRS->getGeographicSRS()->transform(wgs84, featureSRS.get(), mapAttach);
                     newGeom->push_back(mapAttach);
                 }
                 newFeature->setGeometry(newGeom);
@@ -279,9 +305,15 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     Style lineStyle;
     osg::ref_ptr<LineSymbol> lineSymbol = lineStyle.getOrCreateSymbol<LineSymbol>();
 
+#if 0
     PolygonizeLinesFilter polyLineFilter(lineStyle);
     osg::Node* cables = polyLineFilter.push(cableFeatures, localCX);
     results->addChild(cables);
+#endif
+    GeometryCompiler compiler;
+    osg::Node* cables = compiler.compile(cableFeatures, lineStyle, localCX);
+    results->addChild(cables);
+
     node = results;
     return true;
 }

@@ -484,11 +484,13 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         {
            osg::CVMarkerSeries objectCreation("SubloadTask");
            {
+              OE_PROFILING_ZONE_NAMED("TerrainTileModelFactory - save HF");
               osg::CVSpan creationSpan(objectCreation, 4, "oe::save HF");
               cacheBin->write(hfCacheKey, out_hf.get(), 0L);
            }
            {
-              ImageUtils::activateMipMaps(out_normalMap);
+               OE_PROFILING_ZONE_NAMED("TerrainTileModelFactory - save Normal Map");
+               ImageUtils::activateMipMaps(out_normalMap);
               osg::CVSpan creationSpan(objectCreation, 4, "oe::save normal map");
               cacheBin->write(normalCacheKey, out_normalMap.get(), 0L);
            }

@@ -79,8 +79,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         return;
 
     OE_PROFILING_ZONE;
-    osg::CVMarkerSeries series("Culling SubTasks");
-    osg::CVSpan UpdateTick(series, 4, "TileNode::create");
 
     _context = context;
 

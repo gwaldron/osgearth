@@ -149,6 +149,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageUtils
     IntersectionPicker
     IOTypes
+    JoinPointsLinesFilter
     JsonUtils
     LandCover
     LandCoverLayer
@@ -187,6 +188,7 @@ SET(LIB_PUBLIC_HEADERS
     Picker
     PluginLoader
     PointDrawable
+    PowerlineLayer
     PrimitiveIntersector
     Profile
     Progress
@@ -514,6 +516,7 @@ set(TARGET_SRC
     ImageUtils.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
+    JoinPointsLinesFilter.cpp
     JsonUtils.cpp
     LandCover.cpp
     LandCoverLayer.cpp
@@ -545,6 +548,7 @@ set(TARGET_SRC
     PatchLayer.cpp
     PhongLightingEffect.cpp
     PointDrawable.cpp
+    PowerlineLayer.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Progress.cpp

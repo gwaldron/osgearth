@@ -36,10 +36,7 @@ using namespace osgEarth::Util;
 osg::Texture*
 NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
-   osg::CVMarkerSeries objectCreation("Main Thread");
-   osg::CVSpan span(objectCreation, 3, "NoiseTextureFactory");
     OE_PROFILING_ZONE;
-
     chans = osg::clampBetween(chans, 1u, 4u);
 
     GLenum type = chans >= 2u ? GL_RGBA : GL_RED;

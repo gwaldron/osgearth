@@ -38,7 +38,8 @@ _maxSizeX(rhs._maxSizeX),
 _maxSizeY(rhs._maxSizeY),
 _scaleX( rhs._scaleX ),
 _scaleY( rhs._scaleY ),
-_scaleZ( rhs._scaleZ )
+_scaleZ( rhs._scaleZ ),
+_orientationFromFeature( rhs._orientationFromFeature )
 {
     // nop
 }
@@ -55,7 +56,8 @@ _maxSizeX ( FLT_MAX ),
 _maxSizeY ( FLT_MAX ),
 _scaleX    ( NumericExpression(1.0) ),
 _scaleY    ( NumericExpression(1.0) ),
-_scaleZ    ( NumericExpression(1.0) )
+_scaleZ    ( NumericExpression(1.0) ),
+_orientationFromFeature ( false )
 {
     mergeConfig( conf );
 }
@@ -82,6 +84,8 @@ ModelSymbol::getConfig() const
     conf.set( "scale_y", _scaleY );
     conf.set( "scale_z", _scaleZ );
 
+    conf.set( "orientation_from_feature", _orientationFromFeature);
+
     conf.setNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
 }
@@ -105,6 +109,8 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.get( "scale_x", _scaleX );
     conf.get( "scale_y", _scaleY );
     conf.get( "scale_z", _scaleZ );
+
+    conf.get( "orientation_from_feature", _orientationFromFeature );
 
     _node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
 }
@@ -163,7 +169,11 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<ModelSymbol>()->scaleZ() = NumericExpression(c.value());
     }
     else if ( match(c.key(), "model-heading") ) {
-        style.getOrCreate<ModelSymbol>()->heading() = NumericExpression(c.value());
+        if ( match(c.value(), "from_feature") ) {
+            style.getOrCreate<ModelSymbol>()->orientationFromFeature() = true;
+        } else {
+            style.getOrCreate<ModelSymbol>()->heading() = NumericExpression(c.value());
+        }
     }
     else if ( match(c.key(), "model-script") ) {
         style.getOrCreate<ModelSymbol>()->script() = StringExpression(c.value());

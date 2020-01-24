@@ -21,6 +21,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/LandCoverLayer>
+#include <osgEarth/Metrics>
 
 #include <osgEarth/Metrics>
 #include <osg/ConcurrencyViewerMacros>
@@ -51,11 +52,8 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
                                          const TerrainEngineRequirements* requirements,
                                          ProgressCallback*                progress)
 {
-   osg::CVMarkerSeries series("PagingThread");
     OE_PROFILING_ZONE;
-   osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::createTileModel");
-
-   // Make a new model:
+    // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,
         map->getDataModelRevision() );
@@ -86,6 +84,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                                         const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
     OE_START_TIMER(fetch_image_layers);
     OE_PROFILING_ZONE;
 
@@ -339,7 +338,9 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
-   // gather the combined revision (additive is fine)
+    OE_PROFILING_ZONE;
+
+    // gather the combined revision (additive is fine)
     int combinedLayerRevision = 0;
     for(ElevationLayerVector::const_iterator i = layers.begin();
         i != layers.end();

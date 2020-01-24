@@ -41,6 +41,8 @@
 #include <osg/NodeVisitor>
 #include <osg/Billboard>
 
+#include <vector>
+
 #define LC "[SubstituteModelFilter] "
 
 #ifndef GL_CLIP_DISTANCE0
@@ -65,6 +67,32 @@ namespace
             traverse(node, nv);
         }
     };
+
+    void transpose3x3(const osg::Matrixd& in, osg::Matrixd& out)
+    {
+#if OSG_VERSION_LESS_THAN(3,6,0)
+        if (&in == &out)
+        {
+            osg::Matrixd temp(out);
+            transpose3x3(in, temp);
+            out = temp;
+        }
+        else
+        {
+            out(0, 0) = in(0, 0);
+            out(0, 1) = in(1, 0);
+            out(0, 2) = in(2, 0);
+            out(1, 0) = in(0, 1);
+            out(1, 1) = in(1, 1);
+            out(1, 2) = in(2, 1);
+            out(2, 0) = in(0, 2);
+            out(2, 1) = in(1, 2);
+            out(2, 2) = in(2, 2);
+        }
+#else
+        out.transpose3x3(in);
+#endif
+    }
 }
 
 //------------------------------------------------------------------------
@@ -120,6 +148,102 @@ SubstituteModelFilter::findResource(const URI&            uri,
     }
 
     return output.valid();
+}
+
+namespace
+{
+// Extract values from an array (e.g. a row of a matrix) into a Vec3d
+
+osg::Vec3d getVec3d(double* val)
+{
+    return osg::Vec3d(val[0], val[1], val[2]);
+}
+
+void calculateGeometryHeading(Feature* input, FilterContext& context)
+{
+    if (input->hasAttr("node-headings"))
+        return;
+    std::vector<double> headings;
+    const SpatialReference* targetSRS = 0L;
+    if (context.getSession()->isMapGeocentric())
+    {
+        targetSRS = context.getSession()->getMapSRS();
+    }
+    else
+    {
+        targetSRS = context.profile()->getSRS()->getGeocentricSRS();
+    }
+    GeometryIterator gi( input->getGeometry(), false );
+    while( gi.hasMore() )
+    {
+        Geometry* geom = gi.next();
+        if (geom->getType() != Geometry::TYPE_LINESTRING)
+            break;
+        std::vector<osg::Vec3d> worldPts(geom->size());
+        std::vector<osg::Matrixd> orientations(geom->size());
+        for(unsigned i = 0; i < geom->size(); ++i)
+        {
+            ECEF::transformAndGetRotationMatrix((*geom)[i], context.profile()->getSRS(), worldPts[i],
+                                                targetSRS, orientations[i]);
+        }
+
+        for(unsigned i = 0; i < geom->size(); ++i)
+        {
+            // XXX
+            osg::Matrixd toLocal(orientations[i]);
+            transpose3x3(toLocal, toLocal);
+            osg::Vec3d backWorld, forwardWorld, back, forward;
+            // Project vectors into and out of point into the local
+            // tangent plane
+            if (i > 0)
+            {
+                backWorld = worldPts[i - 1] - worldPts[i];
+                back = backWorld * toLocal;
+                back.z() = 0.0;
+                back.normalize();
+            }
+            if (i < geom->size())
+            {
+                forwardWorld = worldPts[i + 1] - worldPts[i];
+                forward = forwardWorld * toLocal;
+                forward.z() = 0.0;
+                forward.normalize();
+            }
+            // The half vector points "half way" between the in and
+            // out vectors. If they are parallel, then it will have 0
+            // length.
+            double heading;
+            if (i > 0 && i < geom->size())
+            {
+                osg::Vec3d half = back + forward;
+                double halfLen = half.normalize();
+
+                if (osg::equivalent(halfLen, 0.0))
+                {
+                    heading = std::atan2(-forward[0], forward[1]);
+                }
+                else
+                {
+                    // Heading we want is rotated 90 degrees from half vector
+                    heading = std::atan2(-half[1], -half[0]);
+                }
+            }
+            else if (i == 0)
+            {
+                heading = std::atan2(-forward[0], forward[1]);
+            }
+            else
+            {
+                heading = std::atan2(forward[0], -forward[1]);
+            }
+            headings.push_back(osg::RadiansToDegrees(heading));
+        }
+    }
+    if (!headings.empty())
+    {
+        input->setSwap("node-headings", headings);
+    }
+}
 }
 
 bool
@@ -196,13 +320,19 @@ SubstituteModelFilter::process(const FeatureList&           features,
             input->eval(scriptExpr, &context);
         }
 
-        // evaluate the instance URI expression:
-        const std::string& st = input->eval(uriEx, &context);
-        URI& instanceURI = uriCache[st];
-        if (instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
+        // calculate the orientation of each element of the feature
+		// geometry, if needed.
+        if ( modelSymbol && modelSymbol->orientationFromFeature().get() )
         {
-            instanceURI = URI(st, uriEx.uriContext());
+            calculateGeometryHeading(input, context);
         }
+		// evaluate the instance URI expression:
+		const std::string& st = input->eval(uriEx, &context);
+		URI& instanceURI = uriCache[st];
+		if(instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
+		{
+			instanceURI = URI( st, uriEx.uriContext() );
+		}
 
         // find the corresponding marker in the cache
         osg::ref_ptr<InstanceResource> instance;
@@ -238,17 +368,33 @@ SubstituteModelFilter::process(const FeatureList&           features,
         if (scaleVec.y() == 0.0) scaleVec.y() = 1.0;
         if (scaleVec.z() == 0.0) scaleVec.z() = 1.0;
 
-        scaleMatrix = osg::Matrix::scale(scaleVec);
-
-        osg::Matrixd rotationMatrix;
-        if (modelSymbol && modelSymbol->heading().isSet())
+        scaleMatrix = osg::Matrix::scale( scaleVec );
+        
+        osg::Matrixd headingRotation;
+        const std::vector<double>* headingArray = 0L;
+        if ( modelSymbol )
         {
-            float heading = input->eval(headingEx, &context);
-            rotationMatrix.makeRotate(osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1)));
+            if ( modelSymbol->orientationFromFeature().get() )
+            {
+                if (input->hasAttr("node-headings"))
+                {
+                    headingArray = input->getDoubleArray("node-headings");
+                }
+                else if (input->hasAttr("heading"))
+                {
+                    float heading = input->getDouble("heading");
+                    headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+                }
+            }
+            else if ( modelSymbol->heading().isSet() )
+            {
+                float heading = input->eval(headingEx, &context);
+                headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+            }
         }
 
-        // how that we have a marker source, create a node for it
-        std::pair<URI, float> key(instanceURI, iconSymbol ? scale : 1.0f); //use 1.0 for models, since we don't want unique models based on scaling
+        // now that we have a marker source, create a node for it
+        std::pair<URI,float> key( instanceURI, iconSymbol? scale : 1.0f ); //use 1.0 for models, since we don't want unique models based on scaling
 
         // cache nodes per instance.
         osg::ref_ptr<osg::Node> model;
@@ -287,8 +433,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         if ((_filterUsage == FILTER_USAGE_NORMAL && model.valid()) || (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED))
         {
-            GeometryIterator gi(input->getGeometry(), false);
-            while (gi.hasMore())
+            GeometryIterator gi( input->getGeometry(), false );
+            int pointIdx = 0;
+            while( gi.hasMore() )
             {
                 Geometry* geom = gi.next();
 
@@ -333,10 +480,10 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
                     scaleMatrix = osg::Matrix::scale(scaleVec);
 
-                    if (modelSymbol && modelSymbol->heading().isSet())
+                    if ( modelSymbol && headingArray && geom->getType() == Geometry::TYPE_LINESTRING)
                     {
-                        float heading = input->eval(headingEx, &context);
-                        rotationMatrix.makeRotate(osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1)));
+                        headingRotation.makeRotate(osg::Quat(osg::DegreesToRadians((*headingArray)[pointIdx++]),
+                                                             osg::Vec3(0,0,1)));
                     }
 
                     osg::Vec3d point = (*geom)[i];

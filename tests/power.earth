@@ -1,0 +1,57 @@
+<map name="power tower test">
+  <FeatureModel name="towers">
+    <features>power-lines</features>
+    <styles>
+      <style type="text/css">
+        default {
+        model:             "../data/streetlight.osgb";
+        model-scale: 10;
+        altitude-clamping: terrain;
+        model-heading: from_feature;
+        }
+      </style>
+    </styles>
+  </FeatureModel>
+
+      <FeatureModel name="feature verts">
+        <features>power-lines</features>
+        <styles>
+            <style type="text/css">
+                default {
+                    point-fill: #00ffff;
+                    point-size: 12;
+                    stroke: #ffff00;
+                    stroke-width: 2px;
+                    render-depth-test: false;
+                    render-order: 1;
+                }
+            </style>
+        </styles>
+    </FeatureModel>
+
+  <TFSFeatures name="power-lines">
+    <url>http://readymap.org/osm/</url>
+    <min_level>14</min_level>
+    <max_level>14</max_level>
+    <profile>spherical-mercator</profile>
+    <format>pbf</format>
+    <filters>
+      <script language="javascript">
+        <![CDATA[ (feature.properties.power === "line"); ]]>
+      </script>
+    </filters>
+  </TFSFeatures>
+  <viewpoints>
+    <viewpoint name="Le Haillan">
+      <heading>0</heading>
+      <pitch>-89.0007</pitch>
+      <range>3664.39m</range>
+      <long>-0.6506</long>
+      <lat>44.8695</lat>
+
+    </viewpoint>
+  </viewpoints>
+
+  <xi:include href="readymap_imagery.xml"/>
+  <xi:include href="readymap_elevation.xml"/>
+</map>

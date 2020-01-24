@@ -46,10 +46,12 @@ macro(check_for_cxx11_compiler _VAR)
     if (BUILD_USE_CXX11)
         
         if(MSVC) 
+    
+            message(STATUS "MSVC checking for C++11; compiler version=${CMAKE_CXX_COMPILER_VERSION}/${MSVC_VERSION}")
         
             # Windows / MSVC++
             if (${MSVC_VERSION} GREATER_EQUAL 1900) # VS2015 (14.0)
-                set(${_VAR} 1) 
+                set(${_VAR} 1)
             else()
                 set(NO_CXX11_REASON "using MSVC ${MSVC_VERSION} but 1900+ is required")
             endif()
@@ -79,6 +81,7 @@ macro(check_for_cxx11_compiler _VAR)
                 if(COMPILER_SUPPORTS_CXX0X)
                     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
                 endif()
+                set(NO_CXX11_REASON "compiler does not support it")
                 
             endif()
         

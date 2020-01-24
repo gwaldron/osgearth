@@ -26,6 +26,18 @@ using namespace osgEarth::Util;
 
 #define LC "[Metrics] "
 
+static bool s_metricsEnabled = true;
+
+bool Metrics::enabled()
+{
+    return s_metricsEnabled;
+}
+
+void Metrics::setEnabled(bool enabled)
+{
+    s_metricsEnabled = enabled;
+}
+
 int Metrics::run(osgViewer::Viewer& viewer)
 {
     if (!viewer.isRealized())
@@ -65,6 +77,7 @@ int Metrics::run(osgViewer::Viewer& viewer)
             OE_PROFILING_PLOT("PrivateBytes", (float)(Memory::getProcessPrivateUsage() / 1048576));
             OE_PROFILING_PLOT("PeakPrivateBytes", (float)(Memory::getProcessPeakPrivateUsage() / 1048576));                                                                                                 
         }
+
         OE_PROFILING_FRAME_MARK;
     }
     return 0;

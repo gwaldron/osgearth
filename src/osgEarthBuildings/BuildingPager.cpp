@@ -22,6 +22,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Query>
 #include <osgEarth/StyleSheet>
+#include <osgEarth/Metrics>
 #include <osgUtil/Optimizer>
 #include <osgUtil/Statistics>
 #include <osg/Version>
@@ -237,6 +238,7 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
     if ( progress )
         progress->collectStats() = _profile;
 
+    OE_PROFILING_ZONE;
     OE_START_TIMER(total);
     unsigned numFeatures = 0;
     

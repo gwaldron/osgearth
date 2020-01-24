@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/LandCoverLayer>
 
+#include <osgEarth/Metrics>
 #include <osg/ConcurrencyViewerMacros>
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
@@ -51,6 +52,7 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
                                          ProgressCallback*                progress)
 {
    osg::CVMarkerSeries series("PagingThread");
+    OE_PROFILING_ZONE;
    osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::createTileModel");
 
    // Make a new model:
@@ -85,6 +87,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                                         ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_image_layers);
+    OE_PROFILING_ZONE;
 
     osg::CVMarkerSeries series("SubloadParentTask");
     osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::addColorLayers");
@@ -481,11 +484,13 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         {
            osg::CVMarkerSeries objectCreation("SubloadTask");
            {
+              OE_PROFILING_ZONE_NAMED("TerrainTileModelFactory - save HF");
               osg::CVSpan creationSpan(objectCreation, 4, "oe::save HF");
               cacheBin->write(hfCacheKey, out_hf.get(), 0L);
            }
            {
-              ImageUtils::activateMipMaps(out_normalMap);
+               OE_PROFILING_ZONE_NAMED("TerrainTileModelFactory - save Normal Map");
+               ImageUtils::activateMipMaps(out_normalMap);
               osg::CVSpan creationSpan(objectCreation, 4, "oe::save normal map");
               cacheBin->write(normalCacheKey, out_normalMap.get(), 0L);
            }

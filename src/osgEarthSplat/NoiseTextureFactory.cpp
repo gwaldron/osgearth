@@ -22,6 +22,7 @@
 #include <osgEarth/Random>
 #include <osgEarth/SimplexNoise>
 #include <osgEarth/Registry>
+#include <osgEarth/Metrics>
 #include <osg/Texture2D>
 #include <osg/ConcurrencyViewerMacros>
 
@@ -37,6 +38,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
    osg::CVMarkerSeries objectCreation("Main Thread");
    osg::CVSpan span(objectCreation, 3, "NoiseTextureFactory");
+    OE_PROFILING_ZONE;
 
     chans = osg::clampBetween(chans, 1u, 4u);
 

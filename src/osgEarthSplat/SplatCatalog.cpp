@@ -22,8 +22,11 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/URI>
+#include <osgEarth/Metrics>
+
 #include <osg/Texture2DArray>
 #include <osg/ConcurrencyViewerMacros>
+
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
@@ -254,6 +257,7 @@ bool
 SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
                                     SplatTextureDef&      out)
 {
+   OE_PROFILING_ZONE;
 
    osg::CVMarkerSeries objectCreation("Main Thread");
    osg::CVSpan span(objectCreation, 3, "createSplatTextureDef");

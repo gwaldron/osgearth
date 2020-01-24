@@ -31,6 +31,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Metrics>
 
 #include <osg/ConcurrencyViewerMacros>
 using namespace osgEarth::REX;
@@ -77,6 +78,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     if (!context)
         return;
 
+    OE_PROFILING_ZONE;
     osg::CVMarkerSeries series("Culling SubTasks");
     osg::CVSpan UpdateTick(series, 4, "TileNode::create");
 

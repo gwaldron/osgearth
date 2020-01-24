@@ -34,13 +34,15 @@ macro(check_for_cxx11_compiler _VAR)
     
     set(${_VAR})
 
+    option(BUILD_USE_CXX11 "Build osgearth with c++ support" ON)
+
     # Default: use C++11 if the compiler supports it, unless it is
     # GCC < 5 in which default to OFF.
     if (CMAKE_COMPILER_IS_GNUCXX AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
-        option(BUILD_USE_CXX11 OFF)
+        set(BUILD_USE_CXX11 OFF)
         set(NO_CXX11_REASON "using GCC ${CMAKE_CXX_COMPILER_VERSION} so you must set BUILD_USE_CXX11=ON to force C++11")
     else()
-        option(BUILD_USE_CXX11 ON)
+        set(BUILD_USE_CXX11 ON)
     endif()
 
     if (BUILD_USE_CXX11)

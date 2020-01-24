@@ -35,19 +35,24 @@ macro(check_for_cxx11_compiler _VAR)
     set(${_VAR})
 
     # Default: use C++11 if the compiler supports it, unless it is
-	# GCC < 5 in which default to OFF.
-	if (CMAKE_COMPILER_IS_GNUCXX AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
-	    option(BUILD_USE_CXX11 OFF)
-	else()
-		option(BUILD_USE_CXX11 ON)
-	endif()
+    # GCC < 5 in which default to OFF.
+    if (CMAKE_COMPILER_IS_GNUCXX AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
+        option(BUILD_USE_CXX11 OFF)
+        set(NO_CXX11_REASON "using GCC ${CMAKE_CXX_COMPILER_VERSION} so you must set BUILD_USE_CXX11=ON to force C++11")
+    else()
+        option(BUILD_USE_CXX11 ON)
+    endif()
 
     if (BUILD_USE_CXX11)
         
-        if(MSVC AND ${MSVC_VERSION} GREATER_EQUAL 1900) # VS2015 (14.0)
+        if(MSVC) 
         
-            # Windows MSVC 14.0+
-            set(${_VAR} 1) 
+            # Windows / MSVC++
+            if (${MSVC_VERSION} GREATER_EQUAL 1900) # VS2015 (14.0)
+                set(${_VAR} 1) 
+            else()
+                set(NO_CXX11_REASON "using MSVC ${MSVC_VERSION} but 1900+ is required")
+            endif()
 
         elseif(CMAKE_COMPILER_IS_GNUCXX)
 
@@ -67,21 +72,31 @@ macro(check_for_cxx11_compiler _VAR)
                 if(NOT BUILD_ENABLE_GCC_CXX11_ABI)
                     add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
                 endif()
-				
+                
             else()
-			
+            
                 check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
                 if(COMPILER_SUPPORTS_CXX0X)
                     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
                 endif()
-				
+                
             endif()
         
-        elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
-        
-            # Clang/Apple
-            set(${_VAR} 1)
+        elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+
+            # Clang / Apple
+            if (NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
+                set(${_VAR} 1)
+            else()
+                set(NO_CXX11_REASON "using clang ${CMAKE_CXX_COMPILER_VERSION} but 3.4+ is required")
+            endif()
             
+        endif()
+        
+    else()
+        
+        if (NOT ${NO_CXX_REASON})
+            set(NO_CXX11_REASON "the BUILD_USE_CXX11 option was set to OFF")
         endif()
         
     endif()
@@ -90,7 +105,7 @@ macro(check_for_cxx11_compiler _VAR)
         message(STATUS "Building with C++11 support")
         set(CMAKE_CXX_STANDARD 11)
     else()
-        message(STATUS "Building without C++11 support")
+        message(STATUS "Building without C++11 support because ${NO_CXX11_REASON}")
     endif()
     
 endmacro()

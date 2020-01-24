@@ -495,11 +495,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
                         ECEF::transformAndGetRotationMatrix(point, context.profile()->getSRS(), point, targetSRS, rotation);
-                        mat = scaleMatrix * rotationMatrix * rotation * osg::Matrixd::translate(point); // * _world2local;
+                        mat = scaleMatrix * headingRotation * rotation * osg::Matrixd::translate(point); // * _world2local;
                     }
                     else
                     {
-                        mat = scaleMatrix * rotationMatrix *  osg::Matrixd::translate(point); //* _world2local;
+                        mat = scaleMatrix * headingRotation * osg::Matrixd::translate(point); //* _world2local;
                     }
 
                     if (_filterUsage == FILTER_USAGE_NORMAL)

@@ -114,7 +114,8 @@ void PowerlineLayer::Options::mergeConfig(const Config& conf)
 class PowerlineFeatureNodeFactory : public GeomFeatureNodeFactory
 {
 public:
-    PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options);
+    PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles);
+
     bool createOrUpdateNode(FeatureCursor* cursor, const Style& style,
                             const FilterContext& context,
                             osg::ref_ptr<osg::Node>& node);
@@ -125,12 +126,14 @@ private:
     FeatureSource::Options _lineSource;
     Vec3dVector _attachments;
     std::string _modelName;
+    osg::ref_ptr<StyleSheet> _styles;
 };
 
-PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options)
+PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
     : GeomFeatureNodeFactory(options),
       _lineSourceLayer(options.lineSourceLayer().get()),
-      _lineSource(options.lineSource().get())
+      _lineSource(options.lineSource().get()),
+      _styles(styles)
 {
     if (options.towerModels().empty())
         return;
@@ -144,7 +147,7 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
 FeatureNodeFactory*
 PowerlineLayer::createFeatureNodeFactoryImplementation() const
 {
-    return new PowerlineFeatureNodeFactory(options());
+    return new PowerlineFeatureNodeFactory(options(), getStyleSheet());
 }
 
 namespace
@@ -301,18 +304,31 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
             pointSet.push_back(feature);
         }
     }
+
+    Style towerStyle = style;
+    if (_styles->getStyle("towers"))
+        towerStyle = *_styles->getStyle("towers");
+
+    Style cableStyle;
+    if (_styles->getStyle("cables"))
+        cableStyle = *_styles->getStyle("cables");
+    else
+    {
+        // defaults
+        osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
+        lineSymbol->stroke()->color() = Color("#6f6f6f");
+        lineSymbol->stroke()->width() = 1.5f;
+        lineSymbol->tessellationSize() = Distance(0.25, Units::KILOMETERS);
+        lineSymbol->useGLLines() = true;
+    }
+    
+
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     osg::ref_ptr<osg::Node> pointsNode;
-    GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), style, localCX, pointsNode);
+    GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode);
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());
     FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX);
-
-    Style lineStyle;
-    osg::ref_ptr<LineSymbol> lineSymbol = lineStyle.getOrCreateSymbol<LineSymbol>();
-    lineSymbol->stroke()->color() = Color("#afafaf");
-    lineSymbol->stroke()->width() = 2.0f;
-    lineSymbol->tessellationSize() = Distance(0.25, Units::KILOMETERS);
 
 #if 0
     PolygonizeLinesFilter polyLineFilter(lineStyle);
@@ -320,7 +336,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     results->addChild(cables);
 #endif
     GeometryCompiler compiler;
-    osg::Node* cables = compiler.compile(cableFeatures, lineStyle, localCX);
+    osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
     results->addChild(cables);
 
     node = results;

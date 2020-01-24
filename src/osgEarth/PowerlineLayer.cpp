@@ -208,8 +208,9 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     {
         Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
-        for (osg::Vec3d& pt : *geom)
+        for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
         {
+            const osg::Vec3d& pt = *i;
             getPoint(pointMap, pt) = PointEntry(feature);
         }
     }

@@ -22,6 +22,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/URI>
+#include <osgEarth/Metrics>
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
@@ -254,6 +255,7 @@ bool
 SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
                                     SplatTextureDef&      out)
 {
+    OE_PROFILING_ZONE;
     // Reset all texture indices to default
     for(SplatClassMap::iterator i = _classes.begin(); i != _classes.end(); ++i)
     {

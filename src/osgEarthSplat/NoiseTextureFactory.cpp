@@ -22,6 +22,7 @@
 #include <osgEarth/Random>
 #include <osgEarth/SimplexNoise>
 #include <osgEarth/Registry>
+#include <osgEarth/Metrics>
 #include <osg/Texture2D>
 
 using namespace osgEarth;
@@ -34,6 +35,7 @@ using namespace osgEarth::Util;
 osg::Texture*
 NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
+    OE_PROFILING_ZONE;
     chans = osg::clampBetween(chans, 1u, 4u);
 
     GLenum type = chans >= 2u ? GL_RGBA : GL_RED;

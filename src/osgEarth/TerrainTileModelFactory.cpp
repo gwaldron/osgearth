@@ -21,6 +21,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/LandCoverLayer>
+#include <osgEarth/Metrics>
 
 #include <osg/Texture2D>
 
@@ -48,6 +49,7 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
                                          const TerrainEngineRequirements* requirements,
                                          ProgressCallback*                progress)
 {
+    OE_PROFILING_ZONE;
     // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,
@@ -79,6 +81,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                                         const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
     OE_START_TIMER(fetch_image_layers);
 
     int order = 0;
@@ -322,6 +325,8 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
                                                 osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
+    OE_PROFILING_ZONE;
+
     // gather the combined revision (additive is fine)
     int combinedLayerRevision = 0;
     for(ElevationLayerVector::const_iterator i = layers.begin();

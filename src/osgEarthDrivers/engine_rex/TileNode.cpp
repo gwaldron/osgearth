@@ -31,6 +31,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth::REX;
 using namespace osgEarth;
@@ -74,6 +75,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 {
     if (!context)
         return;
+
+    OE_PROFILING_ZONE;
 
     _context = context;
 

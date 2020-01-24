@@ -55,7 +55,7 @@ namespace osgEarth
     public:
         META_Layer(osgEarth, PowerlineLayer, Options, FeatureModelLayer, PowerlineModel);
     protected:
-        FeatureNodeFactory* createFeatureNodeFactoryImplementation() const override;
+        virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const; // override;
     };
 }
 #endif // OSGEARTH_FEATURES_POWERLINE_LAYER

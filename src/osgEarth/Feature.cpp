@@ -354,7 +354,7 @@ const std::vector<double>*
 Feature::getDoubleArray( const std::string& name ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
-    return i != _attrs.end()? &i->second.getDoubleArrayValue() : nullptr;
+    return i != _attrs.end()? &i->second.getDoubleArrayValue() : 0L;
 }
 
 bool

@@ -175,8 +175,9 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
         if (geom->getType() == Geometry::TYPE_POINTSET)
         {
             // Are there multiple points? Does it matter?
-            for (osg::Vec3d& pt : *geom)
+            for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
             {
+                const osg::Vec3d& pt = *i;
                 osg::Vec2d key = quantize(osg::Vec2d(pt.x(), pt.y()));
                 pointMap[key] = PointEntry(feature);
             }

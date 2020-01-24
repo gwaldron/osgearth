@@ -72,8 +72,8 @@ double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previ
     osg::Vec2d direction = in + out;
     direction.normalize();
     double heading = std::atan2(-direction.x(), direction.y());
-    if (heading < -osg::PI_2) heading += osg::PI;
-    if (heading >= osg::PI_2) heading -= osg::PI;
+    while (heading < -osg::PI_2) heading += osg::PI;
+    while (heading >= osg::PI_2) heading -= osg::PI;
     return osg::RadiansToDegrees(heading);
 
 #else

@@ -304,6 +304,9 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
 
     Style lineStyle;
     osg::ref_ptr<LineSymbol> lineSymbol = lineStyle.getOrCreateSymbol<LineSymbol>();
+    lineSymbol->stroke()->color() = Color("#afafaf");
+    lineSymbol->stroke()->width() = 2.0f;
+    lineSymbol->tessellationSize() = Distance(0.25, Units::KILOMETERS);
 
 #if 0
     PolygonizeLinesFilter polyLineFilter(lineStyle);

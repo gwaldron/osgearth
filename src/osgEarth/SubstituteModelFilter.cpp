@@ -64,6 +64,32 @@ namespace
             traverse(node, nv);
         }
     };
+
+    void transpose3x3(const osg::Matrixd& in, osg::Matrixd& out)
+    {
+#if OSG_VERSION_LESS_THAN(3,6,0)
+        if (&in == &out)
+        {
+            osg::Matrixd temp(out);
+            transpose3x3(in, temp);
+            out = temp;
+        }
+        else
+        {
+            out(0, 0) = in(0, 0);
+            out(0, 1) = in(1, 0);
+            out(0, 2) = in(2, 0);
+            out(1, 0) = in(0, 1);
+            out(1, 1) = in(1, 1);
+            out(1, 2) = in(2, 1);
+            out(2, 0) = in(0, 2);
+            out(2, 1) = in(1, 2);
+            out(2, 2) = in(2, 2);
+        }
+#else
+        out.transpose3x3(in);
+#endif
+    }
 }
 
 //------------------------------------------------------------------------
@@ -134,7 +160,7 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
     if (input->hasAttr("node-headings"))
         return;
     std::vector<double> headings;
-    const SpatialReference* targetSRS = nullptr;
+    const SpatialReference* targetSRS = 0L;
     if (context.getSession()->isMapGeocentric())
     {
         targetSRS = context.getSession()->getMapSRS();
@@ -161,7 +187,7 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
         {
             // XXX
             osg::Matrixd toLocal(orientations[i]);
-            toLocal.transpose3x3(toLocal);
+            transpose3x3(toLocal, toLocal);
             osg::Vec3d backWorld, forwardWorld, back, forward;
             // Project vectors into and out of point into the local
             // tangent plane
@@ -318,7 +344,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         scaleMatrix = osg::Matrix::scale( scaleVec );
         
         osg::Matrixd headingRotation;
-        const std::vector<double>* headingArray = nullptr;
+        const std::vector<double>* headingArray = 0L;
         if ( modelSymbol )
         {
             if ( modelSymbol->orientationFromFeature().get() )

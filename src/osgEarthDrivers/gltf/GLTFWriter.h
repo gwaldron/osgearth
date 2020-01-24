@@ -312,17 +312,18 @@ public:
 
                     _textures.push_back(osgTexture);
 
-                 
+                                     
                     // Flip the image before writing
                     osg::ref_ptr< osg::Image > flipped = new osg::Image(*osgImage.get());
                     flipped->flipVertical();
 
                     std::string filename;
 
+                    std::string ext = "png";// osgDB::getFileExtension(osgImage->getFileName());
+
                     // If the image has a filename try to hash it so we only write out one copy of it.  
                     if (!osgImage->getFileName().empty())
                     {
-                        std::string ext = "png";// osgDB::getFileExtension(osgImage->getFileName());
                         filename = Stringify() << std::hex << ::Strings::hashString(osgImage->getFileName()) << "." << ext;                        
 
                         if (!osgDB::fileExists(filename))
@@ -331,13 +332,13 @@ public:
                         }                        
                     }
                     else
-                    {
+                    {                      
                         // Otherwise just find a filename that doesn't exist
                         int fileNameInc = 0;
                         do
                         {
                             std::stringstream ss;
-                            ss << fileNameInc << ".png";
+                            ss << fileNameInc << "." << ext;
                             filename = ss.str();
                             fileNameInc++;
                         } while (osgDB::fileExists(filename));
@@ -354,11 +355,29 @@ public:
 
                     // Add the sampler
                     Sampler sampler;
+                    osg::Texture::WrapMode wrapS = osgTexture->getWrap(osg::Texture::WRAP_S);
+                    osg::Texture::WrapMode wrapT = osgTexture->getWrap(osg::Texture::WRAP_T);
+                    osg::Texture::WrapMode wrapR = osgTexture->getWrap(osg::Texture::WRAP_R);
+
+                    // Validate the clamp mode to be compatible with webgl
+                    if (wrapS == osg::Texture::CLAMP)
+                    {                     
+                        wrapS = osg::Texture::CLAMP_TO_EDGE;
+                    }
+                    if (wrapT == osg::Texture::CLAMP)
+                    {                     
+                        wrapT = osg::Texture::CLAMP_TO_EDGE;
+                    }
+                    if (wrapR == osg::Texture::CLAMP)
+                    {                     
+                        wrapR = osg::Texture::CLAMP_TO_EDGE;
+                    }                    
+                    sampler.wrapS = wrapS;
+                    sampler.wrapT = wrapT;
+                    sampler.wrapR = wrapR;
                     sampler.minFilter = osgTexture->getFilter(osg::Texture::MIN_FILTER);
                     sampler.magFilter = osgTexture->getFilter(osg::Texture::MAG_FILTER);
-                    sampler.wrapS = osgTexture->getWrap(osg::Texture::WRAP_S);
-                    sampler.wrapT = osgTexture->getWrap(osg::Texture::WRAP_T);
-                    sampler.wrapR = osgTexture->getWrap(osg::Texture::WRAP_R);
+
                     _model.samplers.push_back(sampler);
 
                     // Add the texture

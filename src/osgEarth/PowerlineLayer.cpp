@@ -85,9 +85,9 @@ void PowerlineLayer::Options::fromConfig(const Config& conf)
     layout.cropFeatures() = true;
     _layout = layout;
     ConfigSet models = conf.children("tower_model");
-    for (auto& modelConf : models)
+    for(ConfigSet::const_iterator i = models.begin(); i != models.end(); ++i)
     {
-        towerModels().push_back(ModelOptions(modelConf));
+        towerModels().push_back(ModelOptions(*i));
     }
 }
 
@@ -96,9 +96,11 @@ PowerlineLayer::Options::getConfig() const
 {
     Config conf = FeatureModelLayer::Options::getConfig();
     LayerReference<FeatureSource>::set(conf, "line_features", _lineSourceLayer, _lineSource);
-    for (auto& modelOption : towerModels())
+    for (std::vector<ModelOptions>::const_iterator i = towerModels().begin();
+        i != towerModels().end();
+        ++i)
     {
-        conf.add("tower_model", modelOption.getConfig());
+        conf.add("tower_model", i->getConfig());
     }
     return conf;
 }
@@ -149,10 +151,10 @@ namespace
 {
     Feature* getPointFeature(PointMap& pointMap, const osg::Vec3d& key)
     {
-        auto itr = findPoint(pointMap, key);
+        PointMap::iterator itr = findPoint(pointMap, key);
         if (itr == pointMap.end())
         {
-            return nullptr;
+            return 0L;
         }
         else
         {
@@ -184,7 +186,7 @@ namespace
 }
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
-                                                           FeatureList& towerFeatures, const FilterContext& cx)
+    FeatureList& towerFeatures, const FilterContext& cx)
 
 {
     FeatureList result;
@@ -202,16 +204,17 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     ElevationQuery eq(map.get());
 
     PointMap pointMap;
-    for (auto& feature : towerFeatures)
+    for (FeatureList::iterator i = towerFeatures.begin(); i != towerFeatures.end(); ++i)
     {
+        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
         for (osg::Vec3d& pt : *geom)
         {
-            getPoint(pointMap, pt) = PointEntry(feature.get());
+            getPoint(pointMap, pt) = PointEntry(feature);
         }
     }
 
-    const SpatialReference* targetSRS = nullptr;
+    const SpatialReference* targetSRS = 0L;
     if (cx.getSession()->isMapGeocentric())
     {
         targetSRS = cx.getSession()->getMapSRS();
@@ -220,9 +223,10 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     {
         targetSRS = featureSRS->getGeocentricSRS();
     }
-        
-    for (auto& feature : powerFeatures)
+
+    for (FeatureList::iterator i = powerFeatures.begin(); i != powerFeatures.end(); ++i)
     {
+        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_LINESTRING)
         {
@@ -247,7 +251,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                 for (int i = 0; i < size; ++i)
                 {
                     double heading = 0.0;
-                    auto itr = findPoint(pointMap, (*geom)[i]);
+                    PointMap::iterator itr = findPoint(pointMap, (*geom)[i]);
                     if (itr != pointMap.end())
                     {
                         heading = itr->second.pointFeature->getDouble("heading", 0.0);
@@ -287,8 +291,9 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     // Render towers and lines (cables) seperately
     // Could write another filter for this?
     FeatureList pointSet;
-    for (auto& feature : workingSet)
+    for(FeatureList::iterator i = workingSet.begin(); i != workingSet.end(); ++i)
     {
+        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_POINTSET)
         {

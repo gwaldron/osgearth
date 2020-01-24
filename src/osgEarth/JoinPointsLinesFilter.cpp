@@ -78,7 +78,7 @@ double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previ
 
 #else
 
-    const SpatialReference* targetSRS = nullptr;
+    const SpatialReference* targetSRS = 0L;
     if (context.getSession()->isMapGeocentric())
     {
         targetSRS = context.getSession()->getMapSRS();
@@ -153,7 +153,7 @@ void JoinPointsLinesFilter::getLineFeatures(const GeoExtent& extent, FeatureList
     query.bounds() = localExtent.bounds();
     if (localExtent.intersects( fs->getFeatureProfile()->getExtent()))
     {
-        osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor( query, nullptr );
+        osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor( query, 0L);
         while (cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();
@@ -168,8 +168,9 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
 {
     PointMap pointMap;
         
-    for (auto& feature : input)
+    for(FeatureList::iterator i = input.begin(); i != input.end(); ++i)
     {
+        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_POINTSET)
         {
@@ -177,12 +178,13 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
             for (osg::Vec3d& pt : *geom)
             {
                 osg::Vec2d key = quantize(osg::Vec2d(pt.x(), pt.y()));
-                pointMap[key] = PointEntry(feature.get());
+                pointMap[key] = PointEntry(feature);
             }
         }
     }
-    for (auto& feature : input)
+    for (FeatureList::iterator i = input.begin(); i != input.end(); ++i)
     {
+        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
         if (geom->getType() != Geometry::TYPE_LINESTRING)
             continue;
@@ -190,7 +192,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
         for (int i = 0; i < size; ++i)
         {
             osg::Vec2d key = quantize(osg::Vec2d((*geom)[i].x(), (*geom)[i].y()));
-            auto ptItr = pointMap.find(key);
+            PointMap::iterator ptItr = pointMap.find(key);
             if (ptItr != pointMap.end())
             {
                 PointEntry &point = ptItr->second;
@@ -207,22 +209,24 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
             }
         }
     }
-    for (auto& kv : pointMap)
-    {
-        PointEntry& entry = kv.second;
+    for(PointMap::iterator i = pointMap.begin(); i != pointMap.end(); ++i)
+    {        
+        PointEntry& entry = i->second;
         Feature* pointFeature = entry.pointFeature.get();
-        for (auto& lineFeature : entry.lineFeatures)
+        for(FeatureList::iterator i = entry.lineFeatures.begin(); i != entry.lineFeatures.end(); ++i)
         {
+            Feature* lineFeature = i->get();
             const AttributeTable& attrTable = lineFeature->getAttrs();
-            for (const auto& attrEntry : attrTable)
+            for(AttributeTable::const_iterator j = attrTable.begin(); j != attrTable.end(); ++j)
             {
+                const AttributeTable::value_type& attrEntry = *j;
                 if (attrEntry.first[0] != '@' && !pointFeature->hasAttr(attrEntry.first))
                 {
                     pointFeature->set(attrEntry.first, attrEntry.second);
                 }
             }
         }
-        pointFeature->set("heading", calculateGeometryHeading(kv.first, entry.previous, entry.next,
+        pointFeature->set("heading", calculateGeometryHeading(i->first, entry.previous, entry.next,
                                                               context));
     }
 

@@ -88,7 +88,7 @@ namespace osgEarth { namespace Util
         PointEntry(Feature* feature)
             : pointFeature(feature), previous(DBL_MAX, DBL_MAX, DBL_MAX), next(DBL_MAX, DBL_MAX, DBL_MAX)
             {}
-        PointEntry() : PointEntry(nullptr) {}
+        PointEntry() : PointEntry(0L) {}
         osg::ref_ptr<Feature> pointFeature;
         FeatureList lineFeatures;
         osg::Vec3d previous;

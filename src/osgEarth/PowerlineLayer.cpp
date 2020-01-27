@@ -310,8 +310,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         towerStyle = *_styles->getStyle("towers");
 
     Style cableStyle;
-    if (_styles->getStyle("cables"))
-        cableStyle = *_styles->getStyle("cables");
+    if (_styles->getStyle("cables", false))
+        cableStyle = *_styles->getStyle("cables", false);
     else
     {
         // defaults
@@ -338,7 +338,6 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     GeometryCompiler compiler;
     osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
     results->addChild(cables);
-
     node = results;
     return true;
 }

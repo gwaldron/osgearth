@@ -10,7 +10,7 @@
         </tower_model>
         <styles>
             <style type="text/css">
-                default {
+                towers {
                     model: "../data/Transmission_Tower.osgb";
                     altitude-clamping: terrain;
                     model-heading: from_feature;

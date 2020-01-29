@@ -321,18 +321,30 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
 {
     OE_PROFILING_ZONE;
 
-    // If the layer is already in an error state, bail out
     if (getStatus().isError())
     {
         return GeoHeightField::INVALID;
     }
 
     // If the layer is disabled, bail out
-    if ( getEnabled() == false )
+    if (getEnabled() == false)
     {
         return GeoHeightField::INVALID;
     }
 
+    // prevents 2 threads from creating the same object at the same time
+    _sentry.lock(key);
+
+    GeoHeightField result = createHeightFieldInKeyProfile(key, progress);
+
+    _sentry.unlock(key);
+
+    return result;
+}
+
+GeoHeightField
+ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallback* progress)
+{
     GeoHeightField result;
     osg::ref_ptr<osg::HeightField> hf;
 

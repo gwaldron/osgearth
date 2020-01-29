@@ -108,6 +108,9 @@ namespace osgEarth
         //! Override aspects of the layer Profile as needed
         virtual void applyProfileOverrides();
 
+        //! Entry point for createHeightField
+        GeoHeightField createHeightFieldInKeyProfile(const TileKey& key, ProgressCallback* progress);
+
         //! Subclass overrides this to generate image data for the key.
         //! The key will always be in the same profile as the layer.
         virtual GeoHeightField createHeightFieldImplementation(const TileKey&, ProgressCallback* progress) const

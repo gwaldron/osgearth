@@ -346,7 +346,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     }
 
     // No data, but want more levels? Fractal refinement starts here.
-    if (getMaxDataLevel() > key.getLOD())
+    if (options().maxDataLevel().isSet() && getMaxDataLevel() > key.getLOD())
     {
         return createFractalEnhancedImage(key, progress);
     }

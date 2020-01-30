@@ -23,10 +23,7 @@
 #include <osgEarth/LandCoverLayer>
 #include <osgEarth/Metrics>
 
-#include <osgEarth/Metrics>
-#include <osg/ConcurrencyViewerMacros>
 #include <osg/Texture2D>
-#include <osg/Texture2DArray>
 
 #define LC "[TerrainTileModelFactory] "
 
@@ -86,10 +83,6 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
 {
     OE_PROFILING_ZONE;
     OE_START_TIMER(fetch_image_layers);
-    OE_PROFILING_ZONE;
-
-    osg::CVMarkerSeries series("SubloadParentTask");
-    osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::addColorLayers");
 
     int order = 0;
 
@@ -127,16 +120,12 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                 {
                     GeoImage geoImage = imageLayer->createImage( key, progress );
            
-                    if (geoImage.valid())
+                    if ( geoImage.valid() )
                     {
-                       if (imageLayer->isCoverage()) {
+                        if ( imageLayer->isCoverage() )
                             tex = createCoverageTexture(geoImage.getImage());
-                          tex->setName(key.str() + ":coverage");
-                       }
-                       else {
-                          tex = createImageTexture(geoImage.getImage(), imageLayer);
-                          tex->setName(key.str() + ":image");
-                       }
+                        else
+                            tex = createImageTexture(geoImage.getImage(), imageLayer);
                     }
                 }
             }
@@ -305,7 +294,6 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         {
             // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createElevationTexture( hfImage );
-            texture->setName(key.str() + ":elevation");
             layerModel->setTexture( texture );
             model->elevationModel() = layerModel.get();
         }
@@ -313,11 +301,10 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         if (normalMap.valid())
         {
             TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setName(key.str() + ":normal_map" );
+            layerModel->setName( "oe_normal_map" );
 
             // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createNormalTexture(normalMap.get(), *_options.compressNormalMaps());
-            texture->setName(key.str() + ":normal_map");
             layerModel->setTexture( texture );
             model->normalModel() = layerModel;
         }
@@ -349,57 +336,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         // need layer UID too? gw
         combinedLayerRevision += i->get()->getRevision();
     }
-  
-
-   // VRV_PATCH
-   CacheBin* cacheBin = 0;
-   std::string hfCacheKey;
-   std::string normalCacheKey;
-   // GNP previously we did this at the map level using frame.getMapOptions().name().get() 
-   // but that had the downside of not sharing data between maps and being less editable at run time.
-   // for now just restrict the caching to single layer maps
-   if (layers.size() == 1 && layers[0]->getEnabled() == true)
-   {
-      hfCacheKey = "elevationGPU/" + key.str();
-      normalCacheKey = "normalGPU/" + key.str();
-      osg::ref_ptr< osg::HeightField > cachedHF;
-      osg::ref_ptr< NormalMap > cachedNormalMap;
-      if (map && map->getCache())
-      {
-         cacheBin = map->getCache()->addBin(layers[0]->getCacheID());
-      }
-
-      if (cacheBin)
-      {
-         //osg::CVMarkerSeries objectCreation("osgETiming");
-         {
-            //osg::CVSpan creationSpan(objectCreation, 4, "load HF");
-            ReadResult rr = cacheBin->readObject(hfCacheKey, 0);
-            if (rr.succeeded())
-            {
-               cachedHF = rr.get<osg::HeightField>();
-            }
-         }
-
-         {
-            //osg::CVSpan creationSpan(objectCreation, 4, "load image");
-            ReadResult rr = cacheBin->readImage(normalCacheKey, 0);
-            if (rr.succeeded())
-            {
-               cachedNormalMap = new NormalMap(*rr.get<osg::Image>());
-            }
-         }
-      }
-
-      if (cachedHF.valid() && cachedNormalMap.valid())
-      {
-         out_hf = cachedHF.get();
-         out_normalMap = cachedNormalMap.get();
-         return true;
-      }
-   }
-   //VRV_PATCH:end
-
+    
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
@@ -449,7 +386,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         progress );
 
 #ifdef TREAT_ALL_ZEROS_AS_MISSING_TILE
-    // check for a real tile with all zeros and treat it the same as non-existent data.
+    // check for a real tile with all zeros and treat it the same as non-existant data.
     if ( populated )
     {
         bool isEmpty = true;
@@ -470,7 +407,6 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
 
     if ( populated )
     {
-        //VRV_PATCH
         // cache it.
         if (_heightFieldCacheEnabled )
         {
@@ -480,25 +416,6 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
 
             _heightFieldCache.insert( cachekey, newValue );
         }
-
-        if (cacheBin &&  (layers.size() == 1))
-        {
-           osg::CVMarkerSeries objectCreation("SubloadTask");
-           {
-              OE_PROFILING_ZONE_NAMED("TerrainTileModelFactory - save HF");
-              osg::CVSpan creationSpan(objectCreation, 4, "oe::save HF");
-              cacheBin->write(hfCacheKey, out_hf.get(), 0L);
-           }
-           {
-               OE_PROFILING_ZONE_NAMED("TerrainTileModelFactory - save Normal Map");
-               ImageUtils::activateMipMaps(out_normalMap);
-              osg::CVSpan creationSpan(objectCreation, 4, "oe::save normal map");
-              cacheBin->write(normalCacheKey, out_normalMap.get(), 0L);
-           }
-        }
-        //VRV_PATCH:end
-
-		  
     }
 
     return populated;
@@ -539,27 +456,7 @@ osg::Texture*
 TerrainTileModelFactory::createImageTexture(osg::Image*       image,
                                             const ImageLayer* layer) const
 {
-   osg::Texture* tex = 0;
-   if (image->r() == 1)
-   {
-      tex = new osg::Texture2D(image);
-   }
-   else if (image->r() > 1)
-   {
-      std::vector< osg::ref_ptr<osg::Image> > images;
-      ImageUtils::flattenImage(image, images);
-
-      osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
-
-      tex2dArray->setTextureDepth(images.size());
-      tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
-      tex2dArray->setSourceFormat(images[0]->getPixelFormat());
-      for (int i = 0; i < (int)images.size(); ++i)
-         tex2dArray->setImage(i, images[i].get());
-
-      tex = tex2dArray;
-
-   }
+    osg::Texture2D* tex = new osg::Texture2D( image );
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
@@ -655,7 +552,5 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setMaxAnisotropy(1.0f);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
-    ImageUtils::activateMipMaps(tex);
     return tex;
 }

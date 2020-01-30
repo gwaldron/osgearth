@@ -154,7 +154,7 @@ namespace
      */
     struct ToggleLDB : public osgGA::GUIEventHandler
     {
-        ToggleLDB(char key) : _key(key), _installed(false) { }
+        ToggleLDB(char key) : _key(key), _installed(false), _nfratio(0.0f) { }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         {

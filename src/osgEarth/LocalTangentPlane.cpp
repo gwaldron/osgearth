@@ -84,7 +84,7 @@ TangentPlaneSpatialReference::postTransform(std::vector<osg::Vec3d>& points) con
 }
 
 bool
-TangentPlaneSpatialReference::_isEquivalentTo( const SpatialReference* srs ) const
+TangentPlaneSpatialReference::_isEquivalentTo( const SpatialReference* srs, bool considerVDatum ) const
 {
     return 
         srs->isLTP() && 

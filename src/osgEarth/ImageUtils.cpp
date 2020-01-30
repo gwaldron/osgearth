@@ -759,7 +759,7 @@ ImageUtils::createSharpenedImage( const osg::Image* input )
                     *(int*)input->data(s-1,t  ,r), *(int*)input->data(s,t  ,r), *(int*)input->data(s+1,t  ,r),
                     *(int*)input->data(s-1,t+1,r), *(int*)input->data(s,t+1,r), *(int*)input->data(s+1,t+1,r) };
 
-                int shifts[4] = { 0, 8, 16, 32 };
+                int shifts[4] = { 0, 8, 16, 24 };
 
                 for( int c=0; c<4; c++ ) // components
                 {

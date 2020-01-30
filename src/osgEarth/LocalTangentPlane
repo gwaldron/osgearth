@@ -51,7 +51,7 @@ namespace osgEarth
 
         void _init();
         
-        bool _isEquivalentTo( const SpatialReference* srs ) const;
+        bool _isEquivalentTo( const SpatialReference* srs, bool considerVDatum =true ) const;
 
     private:
 

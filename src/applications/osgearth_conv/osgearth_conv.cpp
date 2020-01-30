@@ -128,7 +128,7 @@ struct ElevationLayerTileCopy : public TileHandler
 // Custom progress reporter
 struct ProgressReporter : public osgEarth::ProgressCallback
 {
-    ProgressReporter() : _first(true) { }
+    ProgressReporter() : _first(true), _start(0) { }
 
     bool reportProgress(double             current,
                         double             total,

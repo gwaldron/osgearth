@@ -54,6 +54,9 @@ namespace osgEarth { namespace Util
     {
     public:
         AsyncNode()
+           : _lastTimeWeMet(0.0)
+           , _minValue(0.0f)
+           , _maxValue(0.0f)
         {
             _needy = true;
             _id = ++_idgen;

@@ -65,7 +65,7 @@ namespace osgEarth
             const TileKey* _key;
             float _range;
             GeometryArrayProvider* _geom;
-            DrawContext() : _range(0.0f), _geom(NULL) { }
+            DrawContext() : _range(0.0f), _geom(NULL), _key(NULL) { }
         };
 
         /**

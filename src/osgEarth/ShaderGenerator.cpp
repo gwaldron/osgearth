@@ -412,11 +412,14 @@ ShaderGenerator::run(osg::Node*         graph,
 
         // perform GL state sharing
         optimizeStateSharing( graph, cache );
-
+        //VRV_PATCH
+        // VANTAGE CHANGE, just use standard materials which we've upgraded to support UBOS
+#if 0
         // generate uniforms and uniform callbacks for lighting and material elements.
         GenerateGL3LightingUniforms generateUniforms;
         graph->accept(generateUniforms);
-
+#endif
+        //End VRV_PATCH
         osg::StateSet* stateset = cloneOrCreateStateSet(graph);
 
         // install a blank VP at the top as the default.

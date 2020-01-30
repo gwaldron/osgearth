@@ -445,7 +445,7 @@ namespace osgEarth
 
     private:
         Geometry* _next;
-        std::stack<Geometry*> _stack;
+        std::stack<Geometry*, std::vector<Geometry*> > _stack;
         bool _traverseMulti;
         bool _traversePolyHoles;
 

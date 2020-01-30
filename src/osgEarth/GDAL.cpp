@@ -447,7 +447,11 @@ _warpedDS(NULL),
 _maxDataLevel(30),
 _linearUnits(1.0)
 {
-    //nop
+    for (int i = 0; i < 6; ++i)
+    {
+       _geotransform[i] = 0.0;
+       _invtransform[i] = 0.0;
+    }
 }
 
 void

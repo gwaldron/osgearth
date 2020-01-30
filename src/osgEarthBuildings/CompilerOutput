@@ -179,8 +179,6 @@ namespace osgEarth { namespace Buildings
 
         TileKey _key;
         std::string _name;
-
-        Threading::Mutex* _globalMutex;
         
         mutable Threading::Mutex _cacheAccessMutex;
 

@@ -431,6 +431,7 @@ namespace
         GeomGrid(double size)
         {
             _size = size;
+            _parent = NULL;
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
             setRange(1600);
             setAdditive(false);
@@ -675,6 +676,7 @@ namespace
         {
             setName(name);
             _bs = bs;
+            _parent = NULL;
             setAdditive(false);
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
             setRange(3200);
@@ -909,6 +911,7 @@ namespace
         {
             setName(name);     
             _bs = bs;
+            _parent = NULL;
             _additive = false;    
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
             setRange(880);

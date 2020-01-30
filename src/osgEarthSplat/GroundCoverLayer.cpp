@@ -618,6 +618,8 @@ GroundCoverLayer::Renderer::DrawState::DrawState()
     _URUL = -1;
     _LLNormalUL = -1;
     _URNormalUL = -1;
+    _tilesDrawnThisFrame = 0;
+    _numInstances1D = 0;
 }
 
 void

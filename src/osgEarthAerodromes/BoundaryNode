@@ -37,7 +37,7 @@ namespace osgEarth { namespace Aerodrome
     {
     public:
         BoundaryNode(const BoundaryFeatureOptions& options, const std::string& icao, double elevation, const osgEarth::Bounds Bounds, FeatureSource* featureSource, FeatureID fid) : AerodromeFeatureNode(options, icao, featureSource, fid), _elevation(elevation), _hasElevation(true), _boundaryOptions(options) { }
-        BoundaryNode(const BoundaryFeatureOptions& options, const std::string& icao, Feature* feature=0L) : AerodromeFeatureNode(options, icao, feature), _boundaryOptions(options), _hasElevation(false) { }
+        BoundaryNode(const BoundaryFeatureOptions& options, const std::string& icao, Feature* feature=0L) : AerodromeFeatureNode(options, icao, feature), _boundaryOptions(options), _hasElevation(false), _elevation(0.0) { }
 
         virtual ~BoundaryNode() { }
         

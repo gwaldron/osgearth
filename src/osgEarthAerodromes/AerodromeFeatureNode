@@ -36,7 +36,7 @@ namespace osgEarth { namespace Aerodrome
     {
     public:
         AerodromeFeatureNode(const AerodromeFeatureOptions& options, const std::string& icao, FeatureSource* featureSource, FeatureID fid) : _options(options), _source(featureSource), _icao(icao), _fid(fid) { }
-        AerodromeFeatureNode(const AerodromeFeatureOptions& options, const std::string& icao, Feature* feature=0L) : _options(options), _icao(icao), _feature(feature) { }
+        AerodromeFeatureNode(const AerodromeFeatureOptions& options, const std::string& icao, Feature* feature=0L) : _options(options), _icao(icao), _feature(feature), _fid(0) { }
 
         virtual ~AerodromeFeatureNode() { }
 

@@ -72,7 +72,7 @@ namespace osgEarth { namespace Util
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        bool _isGeocentric, _isCube;
+        bool _isGeocentric;
         RasterInterpolation _elevationInterpolation;
     };
 } }

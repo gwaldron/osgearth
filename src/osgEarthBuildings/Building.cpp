@@ -32,7 +32,8 @@ _minHeight ( 0.0f ),
 _maxHeight ( FLT_MAX ),
 _minArea   ( 0.0f ),
 _maxArea   ( FLT_MAX ),
-_instanced ( false )
+_instanced ( false ),
+_uid(0)
 {
     //nop
 }

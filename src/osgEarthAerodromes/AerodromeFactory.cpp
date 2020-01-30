@@ -132,7 +132,7 @@ struct osgEarthAerodromeModelPseudoLoader : public osgDB::ReaderWriter
         supportsExtension( "osgearth_pseudo_amf", "Aerodrome model pseudo-loader" );
     }
 
-    const char* className()
+    const char* className() const
     { // override
         return "osgEarth Aerodrome Model Pseudo-Loader";
     }

@@ -494,6 +494,8 @@ namespace
             _instanceGroups = 0;
             _geodes = 0;
             _useDrawInstanced = false;
+            _progress = NULL;
+            _settings = NULL;
         }
 
         void apply(osg::Node& node)

@@ -60,7 +60,7 @@ LandCoverLayer::Options::getConfig() const
         Config mappingConf("land_cover_mappings");
         conf.add(mappingConf);
         for(LandCoverValueMappingVector::const_iterator i = _mappings.begin();
-            i != mappings().end();
+            i != _mappings.end();
             ++i)
         {
             LandCoverValueMapping* mapping = i->get();

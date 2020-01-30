@@ -46,6 +46,7 @@ DrapeableNode::DrapeableNode(const DrapeableNode& rhs, const osg::CopyOp& copy) 
 osg::Group(rhs, copy)
 {
     _drapingEnabled = rhs._drapingEnabled;
+    _updateRequested = rhs._updateRequested;
 }
 
 void

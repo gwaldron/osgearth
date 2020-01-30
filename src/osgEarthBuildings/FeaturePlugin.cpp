@@ -47,7 +47,7 @@ namespace osgEarth { namespace Buildings
             this->supportsExtension( PLUGIN_EXTENTION, "osgEarthBuildings Feature Plugin" );
         }
 
-        const char* className()
+        const char* className() const
         {
             return "osgEarthBuildings Feature Plugin";
         }

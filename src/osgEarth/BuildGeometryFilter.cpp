@@ -32,7 +32,6 @@
 #include <osgEarth/LineDrawable>
 #include <osgEarth/PointDrawable>
 #include <osgEarth/StateSetCache>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/Registry>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -98,8 +97,7 @@ _maxAngle_deg ( 180.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
 _maxPolyTilingAngle_deg( 45.0f ),
 _optimizeVertexOrdering( false ),
-_maximumCreaseAngle( 0.0f ),
-_shaderPolicy(SHADERPOLICY_GENERATE)
+_maximumCreaseAngle( 0.0f )
 {
     //nop
 }

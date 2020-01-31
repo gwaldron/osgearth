@@ -67,7 +67,7 @@ _mergeGeometry         ( true ),
 _clustering            ( false ),
 _instancing            ( true ),
 _ignoreAlt             ( false ),
-_shaderPolicy          ( SHADERPOLICY_GENERATE ),
+_shaderPolicy          ( SHADERPOLICY_INHERIT ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
 _optimize              ( false ),
@@ -248,6 +248,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sharedCX.extent() = sharedCX.profile()->getExtent();
     }
 
+    // Shader policy to use if the caller didn't set one.
+    // This will change depending on the symbology...
+    ShaderPolicy defaultShaderPolicy = SHADERPOLICY_INHERIT;
+
     // ref_ptr's to hold defaults in case we need them.
     osg::ref_ptr<PointSymbol>   defaultPoint;
     osg::ref_ptr<LineSymbol>    defaultLine;
@@ -340,6 +344,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // instance substitution (replaces marker)
     if ( model )
     {
+        // for model sub we will generate shaders by default.
+        defaultShaderPolicy = SHADERPOLICY_GENERATE;
+
         const InstanceSymbol* instance = (const InstanceSymbol*)model;
 
         // use a separate filter context since we'll be munging the data
@@ -399,6 +406,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // extruded geometry
     if ( extrusion )
     {
+        // Extruded geometry will work with the default shaders:
+        defaultShaderPolicy = SHADERPOLICY_INHERIT;
+
         if ( altRequired )
         {
             AltitudeFilter clamp;
@@ -435,6 +445,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // simple geometry
     else if ( point || line || polygon )
     {
+        // Extruded geometry will work with the default shaders, or will
+        // add its own shaders as necessary
+        defaultShaderPolicy = SHADERPOLICY_INHERIT;
+
         if ( altRequired )
         {
             AltitudeFilter clamp;
@@ -448,7 +462,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
-        filter.shaderPolicy()   = *_options.shaderPolicy();
         filter.useOSGTessellator() = *_options.useOSGTessellator();
 
         if (_options.maxPolygonTilingAngle().isSet())
@@ -473,6 +486,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if ( text || icon )
     {
+        // text will install its own shader:
+        defaultShaderPolicy = SHADERPOLICY_INHERIT;
+
         // Only clamp annotation types when the technique is 
         // explicity set to MAP. Otherwise, the annotation subsystem
         // will automatically use SCENE clamping.
@@ -500,14 +516,18 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if (Registry::capabilities().supportsGLSL())
     {
-        if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
+        ShaderPolicy shaderPolicy =
+            _options.shaderPolicy().isSet() ? _options.shaderPolicy().get() :
+            defaultShaderPolicy;
+
+        if (shaderPolicy == SHADERPOLICY_GENERATE)
         {
             // no ss cache because we will optimize later.
             Registry::shaderGenerator().run( 
                 resultGroup.get(),
                 "GeometryCompiler shadergen" );
         }
-        else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+        else if (shaderPolicy == SHADERPOLICY_DISABLE )
         {
             resultGroup->getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Program(),

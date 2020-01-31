@@ -96,10 +96,6 @@ namespace osgEarth
 
     public:
 
-        //! Map that this MapNode is rendering.
-        //! You can only set the map before the mapnode is open.
-        void setMap(Map* map);
-
         //! Map this node is rendering.
         Map* getMap();
         const Map* getMap() const;
@@ -203,8 +199,7 @@ namespace osgEarth
         //! Serializes the MapNode into a Config object
         Config getConfig() const;
 
-        //! Opens the map (installs a terrain engine and initializes all
-        //! the layers)
+        //! Opens the map (installs a terrain engine and initializes all the layers)
         bool open();
 
     public: // osg::Object
@@ -230,9 +225,8 @@ namespace osgEarth
 
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
-        Config             _externalConf;
-        osg::Group*        _maskLayerNode;
         unsigned           _lastNumBlacklistedFilenames;
+        Config             _externalConf;
         TerrainEngineNode* _terrainEngine;
         osg::Group*        _terrainGroup;
         ResourceReleaser*  _resourceReleaser;
@@ -241,7 +235,6 @@ namespace osgEarth
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 
-        Revisioned _mapRevisionMonitor;
         bool _isOpen;
 
     public: // MapCallback proxy

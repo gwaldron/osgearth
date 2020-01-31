@@ -276,7 +276,6 @@ MapNode::init()
     _terrainEngine = 0L;
     _terrainGroup = 0L;
     _layerNodes = 0L;
-    _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
     _isOpen = false;
 
@@ -293,6 +292,8 @@ MapNode::init()
     // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
     _layerNodes = new StickyGroup();
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
+    // This shader will support basic, zero- or one-texture rendering for all layer node groups by default.
+    ShaderUtils::installDefaultShader(_layerNodes->getOrCreateStateSet());
     this->addChild( _layerNodes );
 }
 
@@ -481,6 +482,12 @@ MapNode::setEnableLighting(const bool& value)
     GLUtils::setLighting(
         getOrCreateStateSet(),
         options().enableLighting().value() ? 1 : 0);
+}
+
+const bool&
+MapNode::getEnableLighting() const
+{
+    return options().enableLighting().get();
 }
 
 Config

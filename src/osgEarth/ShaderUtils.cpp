@@ -22,6 +22,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/GLSLChunker>
+#include <osg/Texture2D>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -576,4 +577,44 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
             vp->removeShader("oe_discardalpha_frag");
         }
     }
+}
+
+
+namespace
+{
+    const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        "#pragma import_defines(OE_DISABLE_DEFAULT_SHADER)\n"
+        "#ifndef OE_DISABLE_DEFAULT_SHADER\n"
+        "out vec2 oe_default_coords;\n"
+        "#endif\n"
+        "void oe_default_vs(inout vec4 vertex) { \n"
+        "  #ifndef OE_DISABLE_DEFAULT_SHADER\n"
+        "    oe_default_coords = gl_MultiTexCoord0.st;\n"
+        "  #endif\n"
+        "}\n";
+
+    const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        "#pragma import_defines(OE_DISABLE_DEFAULT_SHADER)\n"
+        "#ifndef OE_DISABLE_DEFAULT_SHADER\n"
+        "uniform sampler2D oe_default_tex;\n"
+        "in vec2 oe_default_coords;\n"
+        "#endif\n"
+        "void oe_default_fs(inout vec4 color) { \n"
+        "  #ifndef OE_DISABLE_DEFAULT_SHADER\n"
+        "    vec4 texel = texture(oe_default_tex, oe_default_coords);\n"
+        "    color.rgb = mix(color.rgb, texel.rgb, texel.a);\n"
+        "  #endif\n"
+        "}\n";
+}
+
+void
+ShaderUtils::installDefaultShader(osg::StateSet* ss)
+{
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->setFunction("oe_default_vs", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0);
+    vp->setFunction("oe_default_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0);
+    ss->addUniform(new osg::Uniform("oe_default_tex", 0));
+    ss->setTextureAttribute(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), 1);
 }

@@ -167,6 +167,10 @@ Text::createStateSet()
 #endif
     defineList[OE_LIGHTING_DEFINE] = osg::StateSet::DefinePair("", osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
 
+    // We do not want the default OE texturing shader active;
+    // it screws with the text color!
+    defineList["OE_DISABLE_DEFAULT_SHADER"] = osg::StateSet::DefinePair("1", osg::StateAttribute::ON);
+
     // The remaining of this method is exclusive so we don't corrupt the
     // stateset cache when creating text objects from multiple threads. -gw
     static Threading::Mutex mutex;

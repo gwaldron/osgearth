@@ -276,7 +276,6 @@ MapNode::init()
     _terrainEngine = 0L;
     _terrainGroup = 0L;
     _layerNodes = 0L;
-    _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
     _isOpen = false;
 
@@ -481,6 +480,12 @@ MapNode::setEnableLighting(const bool& value)
     GLUtils::setLighting(
         getOrCreateStateSet(),
         options().enableLighting().value() ? 1 : 0);
+}
+
+const bool&
+MapNode::getEnableLighting() const
+{
+    return options().enableLighting().get();
 }
 
 Config

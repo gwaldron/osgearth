@@ -25,6 +25,7 @@
 #include <osgEarth/GeoPositionNode>
 #include <osgEarth/URI>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/ShaderUtils>
 #include <osgDB/ReaderWriter>
 
 namespace osgEarth
@@ -55,10 +56,11 @@ namespace osgEarth
          */
         const Style& getStyle() const { return _style; }
 
-
-    public: // LocalizedNode
-        
-    //    virtual void setScale( const osg::Vec3f& scale );
+        //! Whether to generate shaders on the model and its children
+        //! Default = GENERATE. Set to INHERIT to use the default one-texture
+        //! shader for better performance.
+        void setShaderPolicy(const ShaderPolicy& value) { _shaderPolicy = value; }
+        const ShaderPolicy& getShaderPolicy() const { return _shaderPolicy.get(); }
 
     public:
 
@@ -76,6 +78,7 @@ namespace osgEarth
 
         Style _style;
         osg::ref_ptr<const osgDB::Options> _readOptions;
+        optional<ShaderPolicy> _shaderPolicy;
 
         void compileModel();
 

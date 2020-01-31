@@ -100,12 +100,6 @@ namespace osgEarth { namespace Util
         optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
         const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
 
-        /**
-         * Shader policy to use when appropriate
-         */
-        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
-        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
-
     protected:
         Style                      _style;
 

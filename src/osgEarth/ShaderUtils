@@ -29,7 +29,7 @@
 #include <osgDB/Options>
 #include <map>
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
     /**
      * ShaderPolicy encodes general behavior when deciding how to
@@ -41,6 +41,16 @@ namespace osgEarth { namespace Util
         SHADERPOLICY_GENERATE,
         SHADERPOLICY_INHERIT
     };
+}
+
+namespace osgEarth { namespace Util
+{
+    struct OSGEARTH_EXPORT ShaderUtils
+    {
+        // Installs a default, one-texture shader on a stateset
+        // for basic rendering.
+        static void installDefaultShader(osg::StateSet*);
+    };
 
     /**
      * Preprocesses GLES shader source to include our osg_LightProducts and osg_LightSourceParameters
@@ -50,8 +60,6 @@ namespace osgEarth { namespace Util
     {
     public:
         static void run(osg::Shader* shader);
-
-        //static void applySupportForNoFFP(osg::Shader* shader);
     };
 
     /**

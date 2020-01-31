@@ -731,39 +731,11 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
     }
 }
 
-namespace {
-    const char* vs =
-        "#version " GLSL_VERSION_STR "\n"
-        "out vec2 tdt_coords;\n"
-        "void tdt_vs(inout vec4 vertex) { \n"
-        "    tdt_coords = gl_MultiTexCoord0.st;\n"
-        "}\n";
-
-    const char* fs =
-        "#version " GLSL_VERSION_STR "\n"
-        "uniform sampler2D tdt_tex;\n"
-        "in vec2 tdt_coords;\n"
-        "void tdt_fs(inout vec4 color) { \n"
-        "    color = texture(tdt_tex, tdt_coords);\n"
-        "}\n";
-}
-
 ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :
     _tileset(tileset),
     _options(options),
     _maximumScreenSpaceError(15.0f)
 {
-    // TODO:  This should run on the content, not on the root tileset.
-    // Generate shaders that will render with a texture:
-    osg::StateSet* ss = getOrCreateStateSet();
-
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->setFunction("tdt_vs", vs, ShaderComp::LOCATION_VERTEX_MODEL);
-    vp->setFunction("tdt_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
-
-    ss->setTextureAttributeAndModes(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), osg::StateAttribute::ON);
-    ss->addUniform(new osg::Uniform("tdt_tex", 0));
-
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
 }
 

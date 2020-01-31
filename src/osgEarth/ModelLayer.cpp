@@ -202,6 +202,7 @@ OE_LAYER_PROPERTY_IMPL(ModelLayer, bool, Paged, paged);
 OE_LAYER_PROPERTY_IMPL(ModelLayer, GeoPoint, Location, location);
 OE_LAYER_PROPERTY_IMPL(ModelLayer, osg::Vec3, Orientation, orientation);
 OE_LAYER_PROPERTY_IMPL(ModelLayer, unsigned, MaskMinLevel, maskMinLevel);
+OE_LAYER_PROPERTY_IMPL(ModelLayer, ShaderPolicy, ShaderPolicy, shaderPolicy);
 
 ModelLayer::~ModelLayer()
 {

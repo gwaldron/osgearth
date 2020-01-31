@@ -766,7 +766,7 @@ namespace osgEarth { namespace Util
         // Get the keyboard and mouse usage of this manipulator.
         virtual void getUsage(osg::ApplicationUsage& usage) const;
 
-        virtual void computeHomePosition();
+        virtual void computeHomePosition(const osg::Camera *camera = NULL, bool useBoundingBox = false);
 
         // react to a tile-added event from the Terrain
         virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);

@@ -589,7 +589,15 @@ _last_event             ( EVENT_MOUSE_DOUBLE_CLICK ),
 _time_s_last_event      ( 0.0 ),
 _frameCount             ( 0 ),
 _settings               ( new Settings(*rhs.getSettings()) ),
-_findNodeTraversalMask  ( rhs._findNodeTraversalMask )
+_findNodeTraversalMask  ( rhs._findNodeTraversalMask ),
+_time_s_now             ( rhs._time_s_now ),
+_centerHeight           ( rhs._centerHeight),
+_time_last_frame        ( 0.0 ),
+_continuous_dx          ( rhs._continuous_dx ),
+_continuous_dy          ( rhs._continuous_dy ),
+_last_continuous_action_time ( rhs._last_continuous_action_time ),
+_single_axis_x          (rhs._single_axis_x),
+_single_axis_y          (rhs._single_axis_y)
 {
     reinitialize();
 }
@@ -1459,7 +1467,7 @@ EarthManipulator::home(const osgGA::GUIEventAdapter& ,osgGA::GUIActionAdapter& u
 }
 
 void
-EarthManipulator::computeHomePosition()
+EarthManipulator::computeHomePosition(const osg::Camera *camera, bool useBoundingBox)
 {
     if( getNode() )
     {

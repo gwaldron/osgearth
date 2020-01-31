@@ -144,7 +144,7 @@ struct osgEarthAerodromeModelPseudoLoader : public osgDB::ReaderWriter
 
         UID uid;
         char icao[11];
-        sscanf( uri.c_str(), "%u.%10[^'.'].%*s", &uid, icao );
+        sscanf( uri.c_str(), "%d.%10[^'.'].%*s", &uid, icao );
 
         osg::ref_ptr<AerodromeFactory> factory = getFactory(uid);
         if ( factory.valid() )

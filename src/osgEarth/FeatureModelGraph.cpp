@@ -189,8 +189,8 @@ namespace
                 return ReadResult::FILE_NOT_HANDLED;
 
             //UID uid;
-            unsigned lod, x, y;
-            sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
+            unsigned int lod, x, y;
+            sscanf( uri.c_str(), "%u_%u_%u.%*s", &lod, &x, &y );
 
             osg::ref_ptr<FeatureModelGraph> graph;
             if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
@@ -244,7 +244,9 @@ namespace
 //---------------------------------------------------------------------------
 
 FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
-_options(options)
+_options(options),
+_featureExtentClamped(false), 
+_useTiledSource(false)
 {
     //NOP
 }

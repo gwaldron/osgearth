@@ -37,7 +37,9 @@ _finished          (false),
 _geoInterpolation  (GEOINTERP_GREAT_CIRCLE),
 _mouseButton       (osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
 _isPath            (false),
-_intersectionMask  (0xffffffff)
+_intersectionMask  (0xffffffff),
+_mouseDownX        (0.0f),
+_mouseDownY        (0.0f)
 {
     _root = new osg::Group();
     setMapNode( mapNode );

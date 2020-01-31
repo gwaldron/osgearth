@@ -138,7 +138,14 @@ namespace osgEarth
         AnnotationNode(const Config& conf, const osgDB::Options* options);
 
         // hidden copy ctor
-        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
+        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) 
+         : osg::Group(rhs, op)
+         , _dynamic(rhs._dynamic)
+         , _depthAdj(rhs._depthAdj)
+         , _priority(rhs._priority)
+         , _mapNodeRequired(rhs._mapNodeRequired)
+         , _altCallback(rhs._altCallback)
+        { }
 
         // override to prevent render-order symbology from taking effect.
         virtual bool supportsRenderBinDetails() const { return true; }

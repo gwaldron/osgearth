@@ -188,7 +188,6 @@ namespace osgEarth { namespace Util
         GeoExtent                        _usableMapExtent;
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
-        bool                             _dirty;
         std::vector<const FeatureLevel*> _lodmap;
         OpenThreads::ReentrantMutex      _redrawMutex;
         optional<float> _minRange;

@@ -781,7 +781,7 @@ namespace tinygltf {
 
     class Model {
     public:
-        Model() {}
+        Model() : defaultScene(0) {}
         ~Model() {}
         bool operator==(const Model &) const;
 

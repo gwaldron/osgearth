@@ -115,6 +115,9 @@ void
 XYZFeatureSource::init()
 {
     FeatureSource::init();
+
+    _rotateStart = 0.0;
+    _rotateEnd = 0.0;
 }
 
 

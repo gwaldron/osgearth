@@ -221,6 +221,7 @@ public:
             const tinygltf::Primitive &primitive = mesh.primitives[i];
             if (primitive.indices < 0)
             {
+                // Hmm, should delete group here
                 return 0;
             }
 

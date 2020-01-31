@@ -155,7 +155,7 @@ namespace
                 const RexTerrainEngineNode* engine = dynamic_cast<const RexTerrainEngineNode*>(
                     osg::getUserObject(dboptions, "osgEarth.RexTerrainEngineNode"));
 
-                sscanf(filename.c_str(), "%u", &requestUID);
+                sscanf(filename.c_str(), "%d", &requestUID);
 
                 if ( engine )
                 {

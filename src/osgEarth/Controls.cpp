@@ -1024,7 +1024,8 @@ LabelControl(text)
 ImageControl::ImageControl( osg::Image* image ) :
 _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
-_opacity      ( 1.0f )
+_opacity      ( 1.0f ),
+_geom         ( NULL )
 {
     setStateSet(getImageStateSet());
     setImage( image );
@@ -1033,7 +1034,8 @@ _opacity      ( 1.0f )
 ImageControl::ImageControl( osg::Texture* texture ) :
 _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
-_opacity      ( 1.0f )
+_opacity      ( 1.0f ),
+_geom         ( NULL )
 {
     setStateSet(getImageStateSet());
     setTexture( texture );

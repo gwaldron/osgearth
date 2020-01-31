@@ -68,7 +68,8 @@ osg::Drawable( ),
 _key         ( key ),
 _geom        ( geometry ),
 _tileSize    ( tileSize ),
-_bboxRadius  ( 1.0 )
+_bboxRadius  ( 1.0 ),
+_bboxCB      ( NULL )
 {   
     // a mesh to materialize the heightfield for functors
     _mesh = new osg::Vec3f[ tileSize*tileSize ];

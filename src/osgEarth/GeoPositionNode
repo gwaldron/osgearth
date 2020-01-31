@@ -127,7 +127,12 @@ namespace osgEarth
         GeoPositionNode(const Config& conf, const osgDB::Options*);
 
         // required by META_Node, but this object is not cloneable
-        GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
+        GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) 
+         : _geoxform(rhs._geoxform)
+         , _paxform(rhs._paxform)
+         , _occlusionCullingRequested(rhs._occlusionCullingRequested)
+         , _horizonCullingRequested(rhs._horizonCullingRequested)
+        { }
     };
 
 }

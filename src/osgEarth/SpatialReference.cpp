@@ -248,7 +248,7 @@ SpatialReference::create(const Key& key)
         srs = createCube();
     }
 
-    else if (key.horizLower.find( "+" ) == 0 )
+    else if (key.horizLower.find( '+' ) == 0 )
     {
         srs = createFromPROJ4( key.horiz, key.horiz );
     }
@@ -400,7 +400,15 @@ _initialized   ( false ),
 _handle        ( handle ),
 _owns_handle   ( ownsHandle ),
 _is_ltp        ( false ),
-_is_geocentric ( false )
+_is_geocentric ( false ),
+_is_geographic ( false ),
+_is_mercator   ( false ),
+_is_spherical_mercator ( false ),
+_is_north_polar  ( false ),
+_is_south_polar  ( false ),
+_is_cube         ( false ),
+_is_contiguous   ( false ),
+_is_user_defined ( false )
 {
     //nop
 }

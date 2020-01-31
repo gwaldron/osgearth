@@ -246,7 +246,13 @@ namespace
         META_Object(osgEarth, LocalStats);
         LocalStats() : osg::Object(), _gzdNode(0), _gzdText(0), _sqidText(0), _geomCell(0), _geomGrid(0) { }
         unsigned _gzdNode, _gzdText, _sqidText, _geomCell, _geomGrid;
-        LocalStats(const LocalStats& rhs, const osg::CopyOp&) { }
+        LocalStats(const LocalStats& rhs, const osg::CopyOp&)
+         : _gzdNode(rhs._gzdNode)
+         , _gzdText(rhs._gzdText)
+         , _sqidText(rhs._sqidText)
+         , _geomCell(rhs._geomCell)
+         , _geomGrid(rhs._geomGrid)
+        { }
     };
 
     struct LocalRoot : public osg::Group
@@ -555,7 +561,10 @@ namespace
     
 
 
-    GeomCell::GeomCell(double size) : _size(size)
+    GeomCell::GeomCell(double size) 
+       : _size(size)
+       , _hasChild(false)
+       , _parent(NULL)
     {
         setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
         setRange(880);
@@ -618,6 +627,7 @@ namespace
         Style _style;
 
         SQID100kmCell(const std::string& name)
+           : _parent(NULL)
         {
             setName(name);
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
@@ -735,6 +745,7 @@ namespace
         const MGRSGraticule* _parent;
 
         GZDGeom(const std::string& name)
+           : _parent(NULL)
         {
             setName(name);     
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);

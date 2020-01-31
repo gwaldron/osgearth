@@ -105,7 +105,7 @@ ModelNode::compileModel()
 
             if ( node.valid() )
             {
-                if (_shaderPolicy == ShaderPolicy::SHADERPOLICY_GENERATE)
+                if (_shaderPolicy == SHADERPOLICY_GENERATE)
                 {
                     // generate shader code for the loaded model:
                     Registry::shaderGenerator().run(

@@ -33,6 +33,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Metrics>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -1732,4 +1733,21 @@ FeatureModelGraph::redraw()
     }
 
     addChild( node );
+}
+
+void
+FeatureModelGraph::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        OE_PROFILING_ZONE;
+        if (!_ownerName.empty())
+            OE_PROFILING_ZONE_TEXT(_ownerName);
+
+        osg::Group::traverse(nv);
+    }
+    else
+    {
+        osg::Group::traverse(nv);
+    }
 }

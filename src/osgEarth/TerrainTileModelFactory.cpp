@@ -23,7 +23,10 @@
 #include <osgEarth/LandCoverLayer>
 #include <osgEarth/Metrics>
 
+#include <osgEarth/Metrics>
+#include <osg/ConcurrencyViewerMacros>
 #include <osg/Texture2D>
+#include <osg/Texture2DArray>
 
 #define LC "[TerrainTileModelFactory] "
 
@@ -84,6 +87,9 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
     OE_PROFILING_ZONE;
     OE_START_TIMER(fetch_image_layers);
 
+    osg::CVMarkerSeries series("SubloadParentTask");
+    osg::CVSpan UpdateTick(series, 3, "TerrainTileModelFactory::addColorLayers");
+
     int order = 0;
 
     LayerVector layers;
@@ -120,12 +126,16 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                 {
                     GeoImage geoImage = imageLayer->createImage( key, progress );
            
-                    if ( geoImage.valid() )
+                    if (geoImage.valid())
                     {
-                        if ( imageLayer->isCoverage() )
+                       if (imageLayer->isCoverage()) {
                             tex = createCoverageTexture(geoImage.getImage());
-                        else
-                            tex = createImageTexture(geoImage.getImage(), imageLayer);
+                          tex->setName(key.str() + ":coverage");
+                       }
+                       else {
+                          tex = createImageTexture(geoImage.getImage(), imageLayer);
+                          tex->setName(key.str() + ":image");
+                       }
                     }
                 }
             }
@@ -294,6 +304,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         {
             // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createElevationTexture( hfImage );
+            texture->setName(key.str() + ":elevation");
             layerModel->setTexture( texture );
             model->elevationModel() = layerModel.get();
         }
@@ -301,10 +312,11 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         if (normalMap.valid())
         {
             TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setName( "oe_normal_map" );
+            layerModel->setName(key.str() + ":normal_map" );
 
             // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createNormalTexture(normalMap.get(), *_options.compressNormalMaps());
+            texture->setName(key.str() + ":normal_map");
             layerModel->setTexture( texture );
             model->normalModel() = layerModel;
         }
@@ -336,7 +348,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         // need layer UID too? gw
         combinedLayerRevision += i->get()->getRevision();
     }
-    
+  
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
@@ -386,7 +398,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
         progress );
 
 #ifdef TREAT_ALL_ZEROS_AS_MISSING_TILE
-    // check for a real tile with all zeros and treat it the same as non-existant data.
+    // check for a real tile with all zeros and treat it the same as non-existent data.
     if ( populated )
     {
         bool isEmpty = true;
@@ -406,7 +418,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
 #endif
 
     if ( populated )
-    {
+    {   
         // cache it.
         if (_heightFieldCacheEnabled )
         {
@@ -456,7 +468,27 @@ osg::Texture*
 TerrainTileModelFactory::createImageTexture(osg::Image*       image,
                                             const ImageLayer* layer) const
 {
-    osg::Texture2D* tex = new osg::Texture2D( image );
+   osg::Texture* tex = 0;
+   if (image->r() == 1)
+   {
+      tex = new osg::Texture2D(image);
+   }
+   else if (image->r() > 1)
+   {
+      std::vector< osg::ref_ptr<osg::Image> > images;
+      ImageUtils::flattenImage(image, images);
+
+      osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
+
+      tex2dArray->setTextureDepth(images.size());
+      tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
+      tex2dArray->setSourceFormat(images[0]->getPixelFormat());
+      for (int i = 0; i < (int)images.size(); ++i)
+         tex2dArray->setImage(i, images[i].get());
+
+      tex = tex2dArray;
+
+   }
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
@@ -552,5 +584,7 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setMaxAnisotropy(1.0f);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
+    ImageUtils::activateMipMaps(tex);
     return tex;
 }

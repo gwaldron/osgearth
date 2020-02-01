@@ -293,7 +293,9 @@ MapNode::init()
     _layerNodes = new StickyGroup();
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
     // This shader will support basic, zero- or one-texture rendering for all layer node groups by default.
-    ShaderUtils::installDefaultShader(_layerNodes->getOrCreateStateSet());
+    // GW: taking this back out, because it doesn't work with texture array atlas ... :(
+    //ShaderUtils::installDefaultShader(_layerNodes->getOrCreateStateSet());
+
     this->addChild( _layerNodes );
 }
 

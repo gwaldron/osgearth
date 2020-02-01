@@ -79,7 +79,7 @@ namespace osgEarth { namespace SimpleSky
             double declination;
             double magnitude;
             
-            StarData() { }
+            StarData() : right_ascension(0.0), declination(0.0), magnitude(0.0) { }
             StarData( std::stringstream &ss );
         };
 

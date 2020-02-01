@@ -65,7 +65,7 @@ AnnotationNode::construct()
 {
     _dynamic = false;
     _depthAdj = false;
-    _priority = false;
+    _priority = 0.0f;
 
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
 

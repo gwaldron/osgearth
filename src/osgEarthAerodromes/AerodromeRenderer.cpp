@@ -86,7 +86,8 @@ using namespace osgEarth::Aerodrome;
 
 AerodromeRenderer::AerodromeRenderer()
   : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-    _baseRenderBinNum(1)
+    _baseRenderBinNum(1),
+    _elevation(0.0)
 {
  setUseReverseZBuffer(false);
 }

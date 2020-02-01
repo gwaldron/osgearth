@@ -119,7 +119,15 @@ namespace osgEarth
 
     private:
 
-        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
+        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) 
+         : GeoPositionNode(rhs, op)
+         , _geode(rhs._geode)
+         , _imageDrawable(rhs._imageDrawable)
+         , _bboxDrawable(rhs._bboxDrawable)
+         , _textDrawable(rhs._textDrawable)
+         , _labelRotationRad(rhs._labelRotationRad)
+         , _followFixedCourse(rhs._followFixedCourse)
+        { }
 
     private:
         static osg::observer_ptr<osg::StateSet> s_geodeStateSet;

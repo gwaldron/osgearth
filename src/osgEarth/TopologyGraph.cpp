@@ -208,6 +208,9 @@ TopologyGraph::dumpBoundary(const IndexVector& boundary, const std::string& file
 }
 
 TopologyBuilder::TopologyBuilder()
+   : _graph(NULL)
+   , _drawable(NULL)
+   , _verts(NULL)
 {
     //nop
 }

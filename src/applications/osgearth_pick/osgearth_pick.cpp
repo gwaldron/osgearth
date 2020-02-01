@@ -50,7 +50,10 @@ namespace ui = osgEarth::Util::Controls;
 //! Application-wide data.
 struct App
 {
-    App(osg::ArgumentParser& args) : viewer(args), mainView(NULL), rttView(NULL), mapNode(NULL), picker(NULL) { }
+    App(osg::ArgumentParser& args) : viewer(args), mainView(NULL), 
+       rttView(NULL), mapNode(NULL), picker(NULL), fidLabel(NULL), 
+       nameLabel(NULL), highlightUniform(NULL) 
+    { }
 
     osgViewer::CompositeViewer viewer;
     osgViewer::View* mainView;

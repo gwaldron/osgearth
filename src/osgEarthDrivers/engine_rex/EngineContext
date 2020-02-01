@@ -55,7 +55,6 @@ namespace osgEarth { namespace REX
             TerrainEngineNode*                  engine,
             GeometryPool*                       geometryPool,
             Loader*                             loader,
-            Unloader*                           unloader,
             TileRasterizer*                     rasterizer,
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
@@ -63,8 +62,6 @@ namespace osgEarth { namespace REX
             const SelectionInfo&                selectionInfo);
         
         Loader* getLoader() const { return _loader; }
-
-        Unloader* getUnloader() const { return _unloader; }
 
         const RenderBindings& getRenderBindings() const { return _renderBindings; }
 
@@ -89,7 +86,7 @@ namespace osgEarth { namespace REX
 
         double getElapsedCullTime() const;
 
-        bool maxLiveTilesExceeded() const;
+        //bool maxLiveTilesExceeded() const;
 
         double getExpirationRange2() const { return _expirationRange2; }
 
@@ -113,7 +110,6 @@ namespace osgEarth { namespace REX
         const RenderBindings&                 _renderBindings;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
-        Unloader*                             _unloader;
         TileRasterizer*                       _tileRasterizer;
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;

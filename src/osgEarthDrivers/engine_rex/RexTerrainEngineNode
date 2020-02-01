@@ -114,6 +114,9 @@ namespace osgEarth { namespace REX
 
     private:
 
+        void update_traverse(osg::NodeVisitor& nv);
+        void cull_traverse(osg::NodeVisitor& nv);
+
         //! Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
 

@@ -86,7 +86,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
     OE_PROFILING_ZONE;
     char buf[64];
-    sprintf(buf, "%s (%d tiles)", _layer ? _layer->getName().c_str() : "unknown layer", _tiles.size());
+    sprintf(buf, "%s (%d tiles)", _layer ? _layer->getName().c_str() : "unknown layer", (int)_tiles.size());
     OE_PROFILING_ZONE_TEXT(buf);
     //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
 
@@ -95,11 +95,11 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     ds.refresh(ri, _drawState->_bindings);
 
-    std::string buf("oe_draw_layer::");
-    buf += getName();
-    ds._ext->glPushDebugGroup(GL_DEBUG_SOURCE_THIRD_PARTY, 1, -1, buf.c_str());
+    std::string buf2("oe_draw_layer::");
+    buf2 += getName();
+    ds._ext->glPushDebugGroup(GL_DEBUG_SOURCE_THIRD_PARTY, 1, -1, buf2.c_str());
     osg::CVMarkerSeries objectCreation("Main Thread");
-    osg::CVSpan creationSpan(objectCreation, 4, buf.c_str());
+    osg::CVSpan creationSpan(objectCreation, 4, buf2.c_str());
 
     if (ds._layerUidUL >= 0)
     {

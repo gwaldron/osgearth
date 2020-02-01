@@ -31,6 +31,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/Metrics>
 
 #include <osg/Version>
 #include <osg/BlendFunc>
@@ -46,8 +47,6 @@ using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define DEFAULT_MAX_LOD 19u
-
-//#define PROFILE
 
 //------------------------------------------------------------------------
 
@@ -296,6 +295,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     _liveTiles = new TileNodeRegistry("live");
     _liveTiles->setMapRevision(map->getDataModelRevision());
     _liveTiles->setNotifyNeighbors(options().normalizeEdges() == true);
+    _liveTiles->setFirstLOD(options().firstLOD().get());
 
     // A resource releaser that will call releaseGLObjects() on expired objects.
     _releaser = new ResourceReleaser();
@@ -334,8 +334,10 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // Make a tile unloader
     _unloader = new UnloaderGroup( _liveTiles.get() );
-    _unloader->setThreshold(expirationThreshold);
-    _unloader->setReleaser(_releaser.get());
+    _unloader->setCacheSize(expirationThreshold);
+    _unloader->setMaxAge(options().minExpiryTime().get());
+    _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
+    //_unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
 
     // Tile rasterizer in case we need one
@@ -364,7 +366,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         this, // engine
         _geometryPool.get(),
         _loader.get(),
-        _unloader.get(),
         _rasterizer,
         _liveTiles.get(),
         _renderBindings,
@@ -570,6 +571,7 @@ RexTerrainEngineNode::dirtyTerrain()
 
         // Next, build the surface geometry for the node.
         tileNode->create( keys[i], 0L, _engineContext.get() );
+        tileNode->setDoNotExpire(true);
 
         // Add it to the scene graph
         _terrain->addChild( tileNode );
@@ -594,10 +596,10 @@ namespace
 {
     // debugging
     struct CheckForOrphans : public TileNodeRegistry::ConstOperation {
-        void operator()( const TileNodeRegistry::TileNodeMap& tiles ) const {
+        void operator()( const TileNodeRegistry::TileTable& tiles ) const {
             unsigned count = 0;
-            for(TileNodeRegistry::TileNodeMap::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
-                if ( i->second.tile->referenceCount() == 1 ) {
+            for(TileNodeRegistry::TileTable::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
+                if ( i->second._tile->referenceCount() == 1 ) {
                     count++;
                 }
             }
@@ -629,133 +631,78 @@ RexTerrainEngineNode::cacheAllLayerExtentsInMapSRS()
         cacheLayerExtentInMapSRS(i->get());
     }
 }
-
 void
-RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
+RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    OE_PROFILING_ZONE;
+
+    // Inform the registry of the current frame so that Tiles have access
+    // to the information.
+    //if (_liveTiles.valid() && nv.getFrameStamp())
+    //{
+    //    _liveTiles->setTraversalFrame(nv.getFrameStamp()->getFrameNumber());
+    //}
+
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+
+    // Initialize a new culler
+    TerrainCuller culler(cv, this->getEngineContext());
+
+    // Prepare the culler with the set of renderable layers:
+    culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
+
+    // Assemble the terrain drawables:
+    _terrain->accept(culler);
+
+    // If we're using geometry pooling, optimize the drawable for shared state
+    // by sorting the draw commands.
+    // TODO: benchmark this further to see whether it's worthwhile
+    unsigned totalTiles = 0L;
+    if (getEngineContext()->getGeometryPool()->isEnabled())
     {
-        if (_renderModelUpdateRequired)
-        {
-            UpdateRenderModels visitor(getMap(), _renderBindings);
-            _terrain->accept(visitor);
-            _renderModelUpdateRequired = false;
-        }
-
-        // Called once on the first update pass to ensure that all existing
-        // layers have their extents cached properly
-        if (_cachedLayerExtentsComputeRequired)
-        {
-            cacheAllLayerExtentsInMapSRS();
-            _cachedLayerExtentsComputeRequired = false;
-            ADJUST_UPDATE_TRAV_COUNT(this, -1);
-        }
-
-        TerrainEngineNode::traverse( nv );
+        totalTiles = culler._terrain.sortDrawCommands();
     }
 
-    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    // The common stateset for the terrain group:
+    cv->pushStateSet(_terrain->getOrCreateStateSet());
+
+    // Push all the layers to draw on to the cull visitor in the order in which
+    // they appear in the map.
+    LayerDrawable* lastLayer = 0L;
+    unsigned order = 0;
+    bool surfaceStateSetPushed = false;
+    bool imageLayerStateSetPushed = false;
+    int layersDrawn = 0;
+
+    osg::State::StateSetStack stateSetStack;
+
+    for (LayerDrawableList::iterator i = culler._terrain.layers().begin();
+        i != culler._terrain.layers().end();
+        ++i)
     {
-        // Inform the registry of the current frame so that Tiles have access
-        // to the information.
-        if ( _liveTiles.valid() && nv.getFrameStamp() )
+        // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
+        if (!i->get()->_tiles.empty())
         {
-            _liveTiles->setTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
-        }
+            lastLayer = i->get();
 
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
-
-        // Marks the start of the cull pass
-        getEngineContext()->startCull( cv );
-
-        // Initialize a new culler
-        TerrainCuller culler(cv, this->getEngineContext());
-
-        // Prepare the culler with the set of renderable layers:
-        culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
-
-#ifdef PROFILE
-        static std::vector<double> times;
-        static double times_total = 0.0;
-        osg::Timer_t s1 = osg::Timer::instance()->tick();
-#endif
-
-        // Assemble the terrain drawables:
-        _terrain->accept(culler);
-
-        // If we're using geometry pooling, optimize the drawable for shared state
-        // by sorting the draw commands.
-        // TODO: benchmark this further to see whether it's worthwhile
-        unsigned totalTiles = 0L;
-        if (getEngineContext()->getGeometryPool()->isEnabled())
-        {
-            totalTiles = culler._terrain.sortDrawCommands();
-        }
-
-#ifdef PROFILE
-        osg::Timer_t s2 = osg::Timer::instance()->tick();
-        double delta = osg::Timer::instance()->delta_m(s1, s2);
-        times_total += delta;
-        times.push_back(delta);
-        if (times.size() == 60)
-        {
-            Registry::instance()->startActivity("CULL(ms)", Stringify()<<(times_total/times.size()));
-            Registry::instance()->startActivity("Tiles:", Stringify()<<totalTiles);
-            times.clear();
-            times_total = 0;
-        }
-#endif
-
-        // The common stateset for the terrain group:
-        cv->pushStateSet(_terrain->getOrCreateStateSet());
-
-        // Push all the layers to draw on to the cull visitor in the order in which
-        // they appear in the map.
-        LayerDrawable* lastLayer = 0L;
-        unsigned order = 0;
-        bool surfaceStateSetPushed = false;
-        bool imageLayerStateSetPushed = false;
-        int layersDrawn = 0;
-
-        osg::State::StateSetStack stateSetStack;
-
-        for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
-            i != culler._terrain.layers().end();
-            ++i)
-        {
-            // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
-            if (!i->get()->_tiles.empty())
+            // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
+            // default surface state set or the image layer state set.
+            if (lastLayer->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
             {
-                lastLayer = i->get();
-
-                // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
-                // default surface state set or the image layer state set.
-                if (lastLayer->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
+                if (!surfaceStateSetPushed)
                 {
-                    if (!surfaceStateSetPushed)
-                    {
-                        cv->pushStateSet(_surfaceStateSet.get());
-                        surfaceStateSetPushed = true;
-                    }
-
-                    if (lastLayer->_imageLayer || lastLayer->_layer == NULL)
-                    {
-                        if (!imageLayerStateSetPushed)
-                        {
-                            cv->pushStateSet(_imageLayerStateSet.get());
-                            imageLayerStateSetPushed = true;
-                        }
-                    }
-                    else
-                    {
-                        if (imageLayerStateSetPushed)
-                        {
-                            cv->popStateSet();
-                            imageLayerStateSetPushed = false;
-                        }
-                    }
+                    cv->pushStateSet(_surfaceStateSet.get());
+                    surfaceStateSetPushed = true;
                 }
 
+                if (lastLayer->_imageLayer || lastLayer->_layer == NULL)
+                {
+                    if (!imageLayerStateSetPushed)
+                    {
+                        cv->pushStateSet(_imageLayerStateSet.get());
+                        imageLayerStateSetPushed = true;
+                    }
+                }
                 else
                 {
                     if (imageLayerStateSetPushed)
@@ -763,78 +710,121 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                         cv->popStateSet();
                         imageLayerStateSetPushed = false;
                     }
-                    if (surfaceStateSetPushed)
-                    {
-                        cv->popStateSet();
-                        surfaceStateSetPushed = false;
-                    }
                 }
-
-                //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
-                //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
-
-                if (lastLayer->_layer)
-                {
-                    lastLayer->_layer->apply(lastLayer, cv);                    
-                }
-                else
-                {
-                    lastLayer->accept(*cv);
-                }
-
-                ++layersDrawn;
             }
 
+            else
+            {
+                if (imageLayerStateSetPushed)
+                {
+                    cv->popStateSet();
+                    imageLayerStateSetPushed = false;
+                }
+                if (surfaceStateSetPushed)
+                {
+                    cv->popStateSet();
+                    surfaceStateSetPushed = false;
+                }
+            }
+
+            //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
             //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
+
+            if (lastLayer->_layer)
+            {
+                lastLayer->_layer->apply(lastLayer, cv);
+            }
+            else
+            {
+                lastLayer->accept(*cv);
+            }
+
+            ++layersDrawn;
         }
 
-        // Uncomment this to see how many layers were drawn
-        //Registry::instance()->startActivity("Layers", Stringify()<<layersDrawn);
+        //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
+    }
 
-        // The last layer to render must clear up the OSG state,
-        // otherwise it will be corrupt and can lead to crashing.
-        if (lastLayer)
-        {
-            lastLayer->_clearOsgState = true;
-        }
+    // Uncomment this to see how many layers were drawn
+    //Registry::instance()->startActivity("Layers", Stringify()<<layersDrawn);
 
-        if (imageLayerStateSetPushed)
-        {
-            cv->popStateSet();
-            imageLayerStateSetPushed = false;
-        }
+    // The last layer to render must clear up the OSG state,
+    // otherwise it will be corrupt and can lead to crashing.
+    if (lastLayer)
+    {
+        lastLayer->_clearOsgState = true;
+    }
 
-        if (surfaceStateSetPushed)
-        {
-            cv->popStateSet();
-            surfaceStateSetPushed = false;
-        }
-
-        // pop the common terrain state set
+    if (imageLayerStateSetPushed)
+    {
         cv->popStateSet();
+        imageLayerStateSetPushed = false;
+    }
 
-        // marks the end of the cull pass
-        this->getEngineContext()->endCull( cv );
+    if (surfaceStateSetPushed)
+    {
+        cv->popStateSet();
+        surfaceStateSetPushed = false;
+    }
 
-        // If the culler found any orphaned data, we need to update the render model
-        // during the next update cycle.
-        if (culler._orphanedPassesDetected > 0u)
-        {
-            _renderModelUpdateRequired = true;
-            OE_INFO << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
-        }
+    // pop the common terrain state set
+    cv->popStateSet();
 
-        // we don't call this b/c we don't want _terrain
-        //TerrainEngineNode::traverse(nv);
+    // If the culler found any orphaned data, we need to update the render model
+    // during the next update cycle.
+    if (culler._orphanedPassesDetected > 0u)
+    {
+        _renderModelUpdateRequired = true;
+        OE_INFO << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
+    }
 
-        // traverse all the other children (geometry pool, loader/unloader, etc.)
-        _geometryPool->accept(nv);
-        _loader->accept(nv);
-        _unloader->accept(nv);
-        _releaser->accept(nv);
+    // we don't call this b/c we don't want _terrain
+    //TerrainEngineNode::traverse(nv);
 
-        if (_rasterizer)
-            _rasterizer->accept(nv);
+    // traverse all the other children (geometry pool, loader/unloader, etc.)
+    _geometryPool->accept(nv);
+    _loader->accept(nv);
+    _unloader->accept(nv);
+    _releaser->accept(nv);
+
+    if (_rasterizer)
+        _rasterizer->accept(nv);
+}
+
+void
+RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
+{
+    OE_PROFILING_ZONE;
+
+    if (_renderModelUpdateRequired)
+    {
+        UpdateRenderModels visitor(getMap(), _renderBindings);
+        _terrain->accept(visitor);
+        _renderModelUpdateRequired = false;
+    }
+
+    // Called once on the first update pass to ensure that all existing
+    // layers have their extents cached properly
+    if (_cachedLayerExtentsComputeRequired)
+    {
+        cacheAllLayerExtentsInMapSRS();
+        _cachedLayerExtentsComputeRequired = false;
+        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+    }
+}
+
+void
+RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        update_traverse(nv);
+        TerrainEngineNode::traverse( nv );
+    }
+
+    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        cull_traverse(nv);
     }
 
     else

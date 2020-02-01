@@ -54,7 +54,7 @@ namespace osgEarth {
 #ifdef OSGEARTH_PROFILING
 
 #define TRACY_ENABLE
-#define TRACY_ON_DEMAND
+//#define TRACY_ON_DEMAND
 #define TRACY_DELAYED_INIT 
 #include <Tracy.hpp>
 

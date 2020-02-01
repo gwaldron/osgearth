@@ -56,17 +56,17 @@ int Metrics::run(osgViewer::Viewer& viewer)
         }
 
         {
-            OE_PROFILING_ZONE_NAMED("event");
+            OE_PROFILING_ZONE_NAMED("eventTraversal");
             viewer.eventTraversal();
         }
 
         {
-            OE_PROFILING_ZONE_NAMED("update");
+            OE_PROFILING_ZONE_NAMED("updateTraversal");
             viewer.updateTraversal();
         }
 
         {
-            OE_PROFILING_ZONE_NAMED("render");
+            OE_PROFILING_ZONE_NAMED("renderingTraversals");
             viewer.renderingTraversals();
         }
 

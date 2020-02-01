@@ -87,17 +87,16 @@ namespace osgEarth { namespace Util
             const osgDB::Options* readOptions);
 
         /**
-         * Mark the feature graph dirty and in need of regeneration 
-         */
-        void dirty();
-
-        /**
          * Access to the features levels
          */
         const std::vector<const FeatureLevel*>& getLevels() const { return _lodmap; };
 
         //! Set the name of the object that owns this graph (for debugging)
         void setOwnerName(const std::string& name);
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv);
 
     protected:
 

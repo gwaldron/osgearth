@@ -19,6 +19,11 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgGA/StateSetManipulator>
+#include <osgDB/ReadFile>
+
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapModelChange>
@@ -31,10 +36,7 @@
 #include <osgEarth/LabelNode>
 #include <osgEarth/AnnotationLayer>
 #include <osgEarth/TerrainEngineNode>
-#include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
-#include <osgGA/StateSetManipulator>
-#include <osgDB/ReadFile>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -215,7 +217,7 @@ main( int argc, char** argv )
 
     viewer.addEventHandler(new DumpLabel(s_mapNode.get(), 'L'));
 
-    viewer.run();
+    return Metrics::run(viewer);
 }
 
 //------------------------------------------------------------------------

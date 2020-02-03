@@ -19,6 +19,7 @@
 #include <osgEarth/AltitudeFilter>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/GeoData>
+#include <osgEarth/Metrics>
 
 #define LC "[AltitudeFilter] "
 
@@ -46,6 +47,8 @@ AltitudeFilter::setPropertiesFromStyle( const Style& style )
 FilterContext
 AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 {
+    OE_PROFILING_ZONE;
+
     bool clampToMap = 
         _altitude.valid()                                          && 
         _altitude->clamping()  != AltitudeSymbol::CLAMP_NONE       &&
@@ -64,6 +67,8 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 void
 AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
 {
+    OE_PROFILING_ZONE;
+
     NumericExpression scaleExpr;
     if ( _altitude.valid() && _altitude->verticalScale().isSet() )
         scaleExpr = *_altitude->verticalScale();

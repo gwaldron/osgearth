@@ -54,9 +54,11 @@ namespace osgEarth {
 #ifdef OSGEARTH_PROFILING
 
 #define TRACY_ENABLE
-//#define TRACY_ON_DEMAND
+// VRV PATCH - BEGIN
+#define TRACY_ON_DEMAND
+// VRV PATCH - END
 #define TRACY_DELAYED_INIT 
-#include <Tracy.hpp>
+#include <TracyClient/Tracy.hpp>
 
 #define OE_PROFILING_ZONE ZoneNamed( ___tracy_scoped_zone, osgEarth::Util::Metrics::enabled() )
 #define OE_PROFILING_ZONE_NAMED(functionName) ZoneNamedN(___tracy_scoped_zone, functionName, osgEarth::Util::Metrics::enabled())

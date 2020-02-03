@@ -687,6 +687,9 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
                         const std::string& uri,
                         const osgDB::Options* readOptions)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(_ownerName);
+
     OE_TEST << LC << "load " << lod << "_" << tileX << "_" << tileY << std::endl;
 
     osg::Group* result = 0L;

@@ -1040,6 +1040,10 @@ void
 TileNode::removeSubTiles()
 {
     _childrenReady = false;
+    for(int i=0; i<getNumChildren(); ++i)
+    {
+        getChild(i)->releaseGLObjects(NULL);
+    }
     this->removeChildren(0, this->getNumChildren());
 }
 

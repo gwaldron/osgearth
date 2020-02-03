@@ -328,8 +328,8 @@ ImageLayer::createImage(const TileKey&    key,
                         ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
-    OE_PROFILING_ZONE_TEXT(Stringify() << "Layer " << getName());
-    OE_PROFILING_ZONE_TEXT(Stringify() << "Key " << key.str());
+    OE_PROFILING_ZONE_TEXT(getName());
+    OE_PROFILING_ZONE_TEXT(key.str());
 
     if (getStatus().isError())
     {

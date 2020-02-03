@@ -322,6 +322,8 @@ GeoHeightField
 ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(getName());
+    OE_PROFILING_ZONE_TEXT(key.str());
 
     if (getStatus().isError())
     {

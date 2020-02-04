@@ -42,7 +42,10 @@ namespace osgEarth
 {
     struct StreamObject
     {
-        StreamObject(std::ostream* stream) : _stream(stream) { }
+        StreamObject(std::ostream* stream) : _stream(stream) 
+        { 
+           _stream->rdbuf()->pubsetbuf(_buffer, CURL_MAX_WRITE_SIZE);
+        }
 
         void write(const char* ptr, size_t realsize)
         {
@@ -62,6 +65,9 @@ namespace osgEarth
         std::ostream* _stream;
         Headers _headers;
         std::string     _resultMimeType;
+        // max write looks like 16384 so allocate
+        // that size for the write buffer
+        char _buffer[CURL_MAX_WRITE_SIZE];
     };
 
     static size_t
@@ -385,7 +391,6 @@ HTTPResponse::getHeadersAsConfig() const
 #define QUOTE(X) QUOTE_(X)
 #define USER_AGENT "osgearth" QUOTE(OSGEARTH_MAJOR_VERSION) "." QUOTE(OSGEARTH_MINOR_VERSION)
 
-
 namespace
 {
     // TODO: consider moving this stuff into the osgEarth::Registry;
@@ -433,6 +438,8 @@ namespace
             curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
             curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
             curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
+            // Disable libcurl's default Expect: 100-continue http header
+            curl_easy_setopt( _curl_handle, CURLOPT_HTTPHEADER, NULL);
 
             // Enable automatic CURL decompression of known types. An empty string will automatically add all supported encoding types that are built into curl.
             // Note that you must have curl built against zlib to support gzip or deflate encoding.

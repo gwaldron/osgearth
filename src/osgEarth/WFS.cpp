@@ -260,7 +260,7 @@ WFSFeatureSource::openImplementation()
     }
 
     // read the WFS capabilities:
-    _capabilities = WFS::CapabilitiesReader::read(capUrl, _readOptions.get());
+    _capabilities = WFS::CapabilitiesReader::read(capUrl, getReadOptions());
     if (!_capabilities.valid())
     {
         return Status(Status::ResourceUnavailable, Stringify() << "Failed to read WFS GetCapabilities from \"" << capUrl << "\"");
@@ -513,7 +513,7 @@ WFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
     URI uri(url, options().url()->context());
 
     // read the data:
-    ReadResult r = uri.readString(_readOptions.get(), progress);
+    ReadResult r = uri.readString(getReadOptions(), progress);
 
     const std::string& buffer = r.getString();
     const Config&      meta = r.metadata();

@@ -582,7 +582,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         if (env.valid())
         {
             elevation = env->getElevation(center.x(), center.y());
-            OE_INFO << LC << "GBIWC LOD=" << lod << ", elevation=" << elevation << std::endl;
+            OE_DEBUG << LC << "GBIWC LOD=" << lod << ", elevation=" << elevation << std::endl;
         }
 
         // Check for NO_DATA_VALUE and use zero instead.

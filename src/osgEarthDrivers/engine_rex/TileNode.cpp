@@ -549,7 +549,10 @@ TileNode::traverse(osg::NodeVisitor& nv)
         _lastTraversalFrame.exchange(culler->getFrameStamp()->getFrameNumber());
         _lastTraversalTime = culler->getFrameStamp()->getReferenceTime();
 
-        _context->liveTiles()->update(this, culler->getFrameStamp());
+        if (!_empty)
+        {
+            _context->liveTiles()->update(this, culler->getFrameStamp());
+        }
 
         if (_empty == false)
         {        

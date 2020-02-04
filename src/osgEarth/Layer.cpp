@@ -140,35 +140,8 @@ Layer::setReadOptions(const osgDB::Options* readOptions)
 
     _readOptions = Registry::cloneOrCreateOptions(readOptions);
 
-    // Create some local cache settings for this layer:
-    CacheSettings* oldSettings = CacheSettings::get(readOptions);
-    _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
-
-    // bring in the new policy for this layer if there is one:
-    _cacheSettings->integrateCachePolicy(options().cachePolicy());
-
-    // if caching is a go, install a bin.
-    if (_cacheSettings->isCacheEnabled())
-    {
-        std::string binID = getCacheID();
-
-        // make our cacheing bin!
-        CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
-        if (bin)
-        {
-            OE_INFO << LC << "Cache bin is [" << binID << "]\n";
-            _cacheSettings->setCacheBin( bin );
-        }
-        else
-        {
-            // failed to create the bin, so fall back on no cache mode.
-            OE_WARN << LC << "Failed to open a cache bin [" << binID << "], disabling caching\n";
-            _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
-        }
-    }
-
-    // Store it for further propagation!
-    _cacheSettings->store(_readOptions.get());
+    // store the referrer for relative-path resolution
+    URIContext(options().referrer()).store(_readOptions.get());
 
     //Store the proxy settings in the options structure.
     if (options().proxySettings().isSet())
@@ -187,22 +160,45 @@ void
 Layer::setCacheID(const std::string& value)
 {
     options().cacheId() = value;
+    _runtimeCacheId = value;
 }
 
 std::string
 Layer::getCacheID() const
 {
-    std::string binID;
-    if (options().cacheId().isSet() && !options().cacheId()->empty())
+    // create the unique cache ID for the cache bin.
+    if (_runtimeCacheId.empty() == false)
     {
-        binID = options().cacheId().get();
+        return _runtimeCacheId;
+    }
+    else if (options().cacheId().isSet() && !options().cacheId()->empty())
+    {
+        // user expliticy set a cacheId in the terrain layer options.
+        // this appears to be a NOP; review for removal -gw
+        return options().cacheId().get();
     }
     else
     {
-        Config conf = getConfig();
-        binID = hashToString(conf.toJSON(false));
+        // system will generate a cacheId from the layer configuration.
+        Config hashConf = options().getConfig();
+
+        // remove non-data properties.
+        hashConf.remove("name");
+        hashConf.remove("enabled");
+        hashConf.remove("cacheid");
+        hashConf.remove("cache_only");
+        hashConf.remove("cache_enabled");
+        hashConf.remove("cache_policy");
+        hashConf.remove("visible");
+        hashConf.remove("l2_cache_size");
+
+        unsigned hash = osgEarth::hashString(hashConf.toJSON());
+        std::stringstream buf;
+        buf << std::hex << std::setw(8) << std::setfill('0') << hash;
+        const char hyphen = '-';
+        if (getName().empty() == false) buf << "-" << toLegalFileName(getName(), false, &hyphen);
+        return buf.str();
     }
-    return binID;
 }
 
 Config
@@ -308,12 +304,48 @@ Layer::open(const osgDB::Options* readOptions)
 Status
 Layer::openImplementation()
 {
-    return Status::NoError;
+    // Create some local cache settings for this layer.
+    // There might be a CacheSettings object in the readoptions that
+    // came from the map. If so, copy it.
+    CacheSettings* oldSettings = CacheSettings::get(_readOptions.get());
+    _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
+
+    // If the layer hints are set, integrate that cache policy next.
+    _cacheSettings->integrateCachePolicy(layerHints().cachePolicy());
+
+    // bring in the new policy for this layer if there is one:
+    _cacheSettings->integrateCachePolicy(options().cachePolicy());
+
+    // if caching is a go, install a bin.
+    if (_cacheSettings->isCacheEnabled())
+    {
+        _runtimeCacheId = getCacheID();
+
+        // make our cacheing bin!
+        CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeCacheId);
+        if (bin)
+        {
+            OE_INFO << LC << "Cache bin is [" << _runtimeCacheId << "]\n";
+            _cacheSettings->setCacheBin(bin);
+        }
+        else
+        {
+            // failed to create the bin, so fall back on no cache mode.
+            OE_WARN << LC << "Failed to open a cache bin [" << _runtimeCacheId << "], disabling caching\n";
+            _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
+        }
+    }
+
+    // Store it for further propagation!
+    _cacheSettings->store(_readOptions.get());
+
+    return Status::OK();
 }
 
 Status
 Layer::closeImplementation()
 {
+    _cacheSettings = NULL;
     return Status::NoError;
 }
 
@@ -501,17 +533,13 @@ std::string
 Layer::getAttribution() const
 {
     // Get the attribution from the layer if it's set.
-    if (_options->attribution().isSet())
-    {
-        return *_options->attribution();
-    }
-    return "";
+    return options().attribution().get();
 }
 
 void
 Layer::setAttribution(const std::string& attribution)
 {
-    _options->attribution() = attribution;
+    options().attribution() = attribution;
 }
 
 void

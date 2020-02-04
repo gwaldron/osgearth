@@ -375,7 +375,8 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         {
             ElevationPool::Tile* tile = tile_ref->get();
 
-            if (tile->_bounds.contains(p.x(), p.y()))
+            //if (tile->_bounds.contains(p.x(), p.y()))
+            if (tile->_hf.getExtent().contains(p.x(), p.y()))
             {
                 foundTile = true;
 

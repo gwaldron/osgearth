@@ -150,7 +150,7 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
 const std::string osgEarth::Util::EMPTY_STRING;
 
 std::string
-osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs)
+osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs, const char* replacementChar)
 {
     // See: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
     // We omit '-' so we can use it for the HEX identifier.
@@ -170,7 +170,12 @@ osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs)
         if (legal.find(c) != std::string::npos)
             buf << c;
         else
-            buf << "-" << std::hex << static_cast<unsigned>(c) << "-";
+        {
+            if (replacementChar)
+                buf << (char)(*replacementChar);
+            else
+                buf << "-" << std::hex << static_cast<unsigned>(c) << "-";
+        }
     }
 
     std::string result;

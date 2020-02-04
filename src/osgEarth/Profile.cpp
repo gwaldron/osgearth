@@ -847,3 +847,35 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
     }
     return destLOD;
 }
+
+unsigned
+Profile::getLOD(double height) const
+{
+    int currLOD = 0;
+    int destLOD = currLOD;
+
+    double delta = DBL_MAX;
+
+    // Find the LOD that most closely matches the target height in this profile.
+    while (true)
+    {
+        double prevDelta = delta;
+
+        double w, h;
+        getTileDimensions(currLOD, w, h);
+
+        delta = osg::absolute(h - height);
+        if (delta < prevDelta)
+        {
+            // We're getting closer so keep going
+            destLOD = currLOD;
+        }
+        else
+        {
+            // We are further away from the previous lod so stop.
+            break;
+        }
+        currLOD++;
+    }
+    return destLOD;
+}

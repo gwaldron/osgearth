@@ -120,7 +120,7 @@ FeatureSource::openImplementation()
                 _filters = new FeatureFilterChain();
 
             _filters->push_back( filter );
-            Status s = filter->initialize(_readOptions.get());
+            Status s = filter->initialize(getReadOptions());
             if (s.isError())
             {
                 OE_WARN << LC << "Filter problem: " << filter->getName() << " : " << s.message() << std::endl;

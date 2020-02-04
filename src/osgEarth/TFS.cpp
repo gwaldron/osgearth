@@ -204,7 +204,7 @@ TFSFeatureSource::openImplementation()
     FeatureProfile* fp = 0L;
 
     // Try to read the TFS metadata:
-    _layerValid = TFS::ReaderWriter::read(options().url().get(), _readOptions.get(), _layer);
+    _layerValid = TFS::ReaderWriter::read(options().url().get(), getReadOptions(), _layer);
 
     if (_layerValid)
     {
@@ -269,7 +269,7 @@ TFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
     URI uri(url, options().url()->context());
 
     // read the data:
-    ReadResult r = uri.readString(_readOptions.get(), progress);
+    ReadResult r = uri.readString(getReadOptions(), progress);
 
     const std::string& buffer = r.getString();
     const Config&      meta = r.metadata();

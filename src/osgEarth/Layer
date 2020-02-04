@@ -386,13 +386,16 @@ namespace osgEarth
         Hints _hints;
         bool _isOpen;
         OpenThreads::Atomic _revision;
+        std::string _runtimeCacheId;
+        osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<CacheSettings> _cacheSettings;
+        std::vector<osg::ref_ptr<LayerShader> > _shaders;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
         CallbackVector _callbacks;
-        osg::ref_ptr<osgDB::Options> _readOptions;
-        osg::ref_ptr<CacheSettings> _cacheSettings;
-        std::vector<osg::ref_ptr<LayerShader> > _shaders;
+
+        osgDB::Options* getMutableReadOptions() { return _readOptions.get(); }
 
         void bumpRevision();
 
@@ -404,6 +407,10 @@ namespace osgEarth
         Layer::Options& options() { return *_options; }
         const Layer::Options& options() const { return *_options; }
         virtual const char* getConfigKey() const { return "layer" ; }
+
+        //! internal cache information
+        CacheSettings* getCacheSettings() { return _cacheSettings.get(); }
+        const CacheSettings* getCacheSettings() const { return _cacheSettings.get(); }
 
     private:
         Layer::Options * _options;

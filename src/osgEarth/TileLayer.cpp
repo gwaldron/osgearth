@@ -288,60 +288,7 @@ TileLayer::openImplementation()
         if (parent.isError())
             return parent;
 
-        // create the unique cache ID for the cache bin.
-        if (options().cacheId().isSet() && !options().cacheId()->empty())
-        {
-            // user expliticy set a cacheId in the terrain layer options.
-            // this appears to be a NOP; review for removal -gw
-            _runtimeCacheId = options().cacheId().get();
-        }
-        else
-        {
-            // system will generate a cacheId from the layer configuration.
-            Config hashConf = options().getConfig();
-
-            // remove non-data properties.
-            hashConf.remove("name");
-            hashConf.remove("enabled");
-            hashConf.remove("cacheid");
-            hashConf.remove("cache_only");
-            hashConf.remove("cache_enabled");
-            hashConf.remove("cache_policy");
-            hashConf.remove("visible");
-            hashConf.remove("l2_cache_size");
-
-            OE_DEBUG << "hashConfFinal = " << hashConf.toJSON(true) << std::endl;
-
-            unsigned hash = osgEarth::hashString(hashConf.toJSON());
-            _runtimeCacheId = Stringify() << std::hex << std::setw(8) << std::setfill('0') << hash;
-        }
-
-        // Now that we know the cache ID, establish the cache settings for this Layer.
-        // Start by cloning whatever CacheSettings were inherited in the read options
-        // (typically from the Map).
-        CacheSettings* oldSettings = CacheSettings::get(_readOptions.get());
-        _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
-
-        // Store for further propagation!
-        _cacheSettings->store(_readOptions.get());
-
-        // If the layer hints are set, integrate that cache policy next.
-        _cacheSettings->integrateCachePolicy(layerHints().cachePolicy());
-
-        // Integrate a cache policy from this Layer's options:
-        _cacheSettings->integrateCachePolicy(options().cachePolicy());
-
-        // Finally, open and activate a caching bin for this layer if it
-        // hasn't already been created.
-        if (_cacheSettings->isCacheEnabled() && _cacheSettings->getCacheBin() == 0L)
-        {
-            CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeCacheId);
-            if (bin)
-            {
-                _cacheSettings->setCacheBin(bin);
-                OE_INFO << LC << "Cache bin is [" << bin->getID() << "]\n";
-            }
-        }
+        _cacheBinMetadata.clear();
     }
 
     return getStatus();
@@ -365,7 +312,6 @@ TileLayer::closeImplementation()
     setProfile(0L);
     _openCalled = false;
     setStatus(Status());
-    _cacheSettings = new CacheSettings();
     return Layer::closeImplementation();
 }
 
@@ -373,12 +319,6 @@ void
 TileLayer::establishCacheSettings()
 {
     //nop
-}
-
-CacheSettings*
-TileLayer::getCacheSettings() const
-{
-    return _cacheSettings.get();
 }
 
 const Profile*
@@ -399,7 +339,7 @@ TileLayer::setProfile(const Profile* profile)
 
         OE_INFO << LC
             << (getProfile()? getProfile()->toString() : "[no profile]") << " "
-            << (_cacheSettings.valid()? _cacheSettings->toString() : "[no cache settings]")
+            << (getCacheSettings()? getCacheSettings()->toString() : "[no cache settings]")
             << std::endl;
     }
 }
@@ -411,12 +351,6 @@ TileLayer::isDynamic() const
         return true;
     else
         return false;
-}
-
-std::string
-TileLayer::getAttribution() const
-{
-    return options().attribution().get();
 }
 
 std::string
@@ -456,10 +390,8 @@ TileLayer::getCacheBin(const Profile* profile)
     CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(metaKey);
     if (i == _cacheBinMetadata.end())
     {
-        //std::string cacheId = _runtimeOptions->cacheId().get();
-
         // read the metadata record from the cache bin:
-        ReadResult rr = bin->readString(metaKey, _readOptions.get());
+        ReadResult rr = bin->readString(metaKey, getReadOptions());
 
         osg::ref_ptr<CacheBinMetadata> meta;
         bool metadataOK = false;
@@ -510,7 +442,7 @@ TileLayer::getCacheBin(const Profile* profile)
                 // store it in the cache bin.
                 std::string data = meta->getConfig().toJSON(false);
                 osg::ref_ptr<StringObject> temp = new StringObject(data);
-                bin->write(metaKey, temp.get(), _readOptions.get());
+                bin->write(metaKey, temp.get(), getReadOptions());
 
                 bin->setMetadata(meta.get());
             }
@@ -688,27 +620,6 @@ TileLayer::isCached(const TileKey& key) const
         return false;
 
     return bin->getRecordStatus( key.str() ) == CacheBin::STATUS_OK;
-}
-
-void
-TileLayer::setReadOptions(const osgDB::Options* readOptions)
-{
-    // clone the options, or create it not set
-    _readOptions = Registry::cloneOrCreateOptions(readOptions);
-    //VisibleLayer::setReadOptions(readOptions);
-
-    // store the referrer for relative-path resolution
-    URIContext( options().referrer() ).store( _readOptions.get() );
-
-    Threading::ScopedMutexLock lock(_mutex);
-    _cacheSettings = new CacheSettings();
-    _cacheBinMetadata.clear();
-}
-
-std::string
-TileLayer::getCacheID() const
-{
-    return _runtimeCacheId;
 }
 
 const DataExtentList&

@@ -132,7 +132,7 @@ XYZFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
     OE_DEBUG << LC << uri.full() << std::endl;
 
     // read the data:
-    ReadResult r = uri.readString(_readOptions.get(), progress);
+    ReadResult r = uri.readString(getReadOptions(), progress);
 
     const std::string& buffer = r.getString();
     const Config&      meta = r.metadata();

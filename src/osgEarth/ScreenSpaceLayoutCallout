@@ -191,6 +191,7 @@ namespace osgEarth { namespace Internal
         const osg::Vec3d zero(0,0,0);
 
         osg::Drawable* drawable = leaf->_drawable.get();
+
         std::pair<Elements::iterator,bool> result = local._elements.insert(std::make_pair(drawable,prototype));
         Element& element = result.first->second;
 
@@ -201,14 +202,20 @@ namespace osgEarth { namespace Internal
         element._frame = local._frame;
         element._leaf = leaf;
 
+        osg::Vec3d offset;
+        const ScreenSpaceLayoutData* layoutData = dynamic_cast<const ScreenSpaceLayoutData*>(drawable->getUserData());
+        if (layoutData)
+        {
+            offset = osg::Vec3d(layoutData->getPixelOffset().x(), layoutData->getPixelOffset().y(), 0.0);
+        }
+
         if (element._drawable == NULL)
         {
             element._drawable = drawable;
             element._text = dynamic_cast<osgEarth::Text*>(drawable);
             element._drawable->setDataVariance(osg::Object::DYNAMIC);
             element._declutter = true;
-
-            const ScreenSpaceLayoutData* layoutData = dynamic_cast<const ScreenSpaceLayoutData*>(drawable->getUserData());
+            
             if (layoutData)
             {
                 // FLT_MAX priority => don't declutter this element.
@@ -284,7 +291,7 @@ namespace osgEarth { namespace Internal
         }
         else
         {
-            leaf->_modelview->makeTranslate(element._anchor);
+            leaf->_modelview->makeTranslate(element._anchor + offset);
         }
     }
 

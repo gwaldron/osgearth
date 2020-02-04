@@ -77,12 +77,12 @@ TileSourceImageLayer::openImplementation()
         const optional<std::string>& osgOptions = _tileSource->getOptions().osgOptionString();
         if ( osgOptions.isSet() && !osgOptions->empty() )
         {
-            std::string s = _readOptions->getOptionString();
+            std::string s = getReadOptions()->getOptionString();
             if ( !s.empty() )
                 s = Stringify() << osgOptions.get() << " " << s;
             else
                 s = osgOptions.get();
-            _readOptions->setOptionString( s );
+            getMutableReadOptions()->setOptionString( s );
         }
 
         // If we're setting any custom options, do so now before opening:
@@ -115,16 +115,9 @@ TileSourceImageLayer::openImplementation()
             if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && _tileSource->getLastModifiedTime() > 0)
             {
                 // The "effective" policy overrides the runtime policy, but it does not get serialized.
-                getCacheSettings()->cachePolicy()->mergeAndOverride( cp );
+                //getCacheSettings()->cachePolicy()->mergeAndOverride( cp );
                 getCacheSettings()->cachePolicy()->minTime() = _tileSource->getLastModifiedTime();
                 OE_INFO << LC << "driver says min valid timestamp = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
-            }
-
-            CacheBin* bin = getCacheSettings()->getCache()->addBin(getCacheID());
-            if (bin)
-            {
-                getCacheSettings()->setCacheBin(bin);
-                OE_INFO << LC << "Cache bin is [" << bin->getID() << "]\n";
             }
         }
 
@@ -132,7 +125,7 @@ TileSourceImageLayer::openImplementation()
         tileSourceStatus = _tileSource->getStatus();
         if (!tileSourceStatus.isOK())
         {
-            tileSourceStatus = _tileSource->open(TileSource::MODE_READ, _readOptions.get());
+            tileSourceStatus = _tileSource->open(TileSource::MODE_READ, getReadOptions());
         }
 
         if (tileSourceStatus.isError())

@@ -196,7 +196,7 @@ Layer::getCacheID() const
         std::stringstream buf;
         buf << std::hex << std::setw(8) << std::setfill('0') << hash;
         const char hyphen = '-';
-        if (getName().empty() == false) buf << "-" << toLegalFileName(getName(), false, &hyphen);
+        if (getName().empty() == false) buf << hyphen << toLegalFileName(getName(), false, &hyphen);
         return buf.str();
     }
 }

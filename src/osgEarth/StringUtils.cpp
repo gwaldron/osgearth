@@ -154,8 +154,8 @@ osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs, con
 {
     // See: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
     // We omit '-' so we can use it for the HEX identifier.
-    static const std::string legalWithoutSubdirs("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz0123456789_.");
-    static const std::string legalWithDirs      ("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz0123456789_./");
+    static const std::string legalWithoutSubdirs("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.");
+    static const std::string legalWithDirs      ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_./");
 
     
     std::size_t pos = input.find("://");
@@ -168,7 +168,9 @@ osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs, con
     {
         std::string::const_reference c = input[pos];
         if (legal.find(c) != std::string::npos)
+        {
             buf << c;
+        }
         else
         {
             if (replacementChar)

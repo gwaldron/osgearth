@@ -191,10 +191,6 @@ CompositeImageLayer::openImplementation()
     {
         ImageLayer* layer = i->get();
 
-        // Must disable cacheing for the component layers; otherwise they
-        // will inherit the same cache bin as the parent and that's bad.
-        layer->setCachePolicy(CachePolicy::NO_CACHE);
-
         layer->setReadOptions(getReadOptions());
 
         Status status = layer->open();
@@ -574,10 +570,6 @@ CompositeElevationLayer::openImplementation()
     {
         ElevationLayer* layer = i->get();
 
-        // Must disable cacheing for the component layers; otherwise they
-        // will inherit the same cache bin as the parent and that's bad.
-        layer->setCachePolicy(CachePolicy::NO_CACHE);
-
         layer->setReadOptions(getReadOptions());
 
         Status status = layer->open();
@@ -828,10 +820,6 @@ CompositeLandCoverLayer::openImplementation()
     for(LandCoverLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
     {
         LandCoverLayer* layer = i->get();
-
-        // Must disable cacheing for the component layers; otherwise they
-        // will inherit the same cache bin as the parent and that's bad.
-        layer->setCachePolicy(CachePolicy::NO_CACHE);
 
         layer->setReadOptions(getReadOptions());
 

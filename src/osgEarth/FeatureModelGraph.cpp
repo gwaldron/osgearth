@@ -575,12 +575,14 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     if (_session.valid())
     {
         // TODO: Use an appropriate resolution for this extents width
-        unsigned lod = 23u;
+        //unsigned lod = 23u;
+        unsigned lod = map->getProfile()->getLOD(workingExtent.height());
         osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
         float elevation = NO_DATA_VALUE;
         if (env.valid())
         {
             elevation = env->getElevation(center.x(), center.y());
+            OE_INFO << LC << "GBIWC LOD=" << lod << ", elevation=" << elevation << std::endl;
         }
 
         // Check for NO_DATA_VALUE and use zero instead.
@@ -687,6 +689,9 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
                         const std::string& uri,
                         const osgDB::Options* readOptions)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(_ownerName);
+
     OE_TEST << LC << "load " << lod << "_" << tileX << "_" << tileY << std::endl;
 
     osg::Group* result = 0L;

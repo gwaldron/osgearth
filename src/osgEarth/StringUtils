@@ -125,7 +125,7 @@ namespace osgEarth { namespace Util
     extern OSGEARTH_EXPORT std::string vec4fToHtmlColor( const osg::Vec4f& c );
 
     /** Makes a valid filename out of a string */
-    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input, bool allowSubdir=false );
+    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input, bool allowSubdir=false, const char* replacementChar=NULL);
 
     /** Generates a hashed integer for a string (poor man's MD5) */
     extern OSGEARTH_EXPORT unsigned hashString( const std::string& input );

@@ -35,6 +35,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Utils>
+#include <osgEarth/Metrics>
 
 #include <osg/MatrixTransform>
 #include <osg/Timer>
@@ -221,6 +222,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                           const Style&          style,
                           const FilterContext&  context)
 {
+    OE_PROFILING_ZONE;
+
 #ifdef PROFILING
     osg::Timer_t p_start = osg::Timer::instance()->tick();
     unsigned p_features = workingSet.size();

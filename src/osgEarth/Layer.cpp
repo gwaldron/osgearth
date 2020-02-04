@@ -193,7 +193,11 @@ Layer::getCacheID() const
         hashConf.remove("l2_cache_size");
 
         unsigned hash = osgEarth::hashString(hashConf.toJSON());
-        return Stringify() << std::hex << std::setw(8) << std::setfill('0') << hash;
+        std::stringstream buf;
+        buf << std::hex << std::setw(8) << std::setfill('0') << hash;
+        const char hyphen = '-';
+        if (getName().empty() == false) buf << "-" << toLegalFileName(getName(), false, &hyphen);
+        return buf.str();
     }
 }
 

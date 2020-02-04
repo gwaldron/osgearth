@@ -548,13 +548,25 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
 {
     if (!_content.valid() && !_requestedContent && hasContent())
     {
-        if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
+        // if there's an ICO, install it:
+        osg::ref_ptr<osgDB::Options> localOptions;
+        if (ico)
         {
-            _contentFuture = readTilesetAsync(_tileset, _tile->content()->uri().get(), _options.get());
+            localOptions = Registry::instance()->cloneOrCreateOptions(_options.get());
+            OptionsData<osgUtil::IncrementalCompileOperation>::set(localOptions.get(), "osg::ico", ico);
         }
         else
         {
-            _contentFuture = _tile->content()->uri()->readNodeAsync(_options.get(), NULL, ico);
+            localOptions = _options.get();
+        }
+
+        if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
+        {
+            _contentFuture = readTilesetAsync(_tileset, _tile->content()->uri().get(), localOptions.get());
+        }
+        else
+        {
+            _contentFuture = _tile->content()->uri()->readNodeAsync(localOptions.get(), NULL);
         }
         _requestedContent = true;
     }
@@ -641,7 +653,6 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
         bool areChildrenReady = true;
         if (_children.valid())
         {
-#if 1
             for (unsigned int i = 0; i < _children->getNumChildren(); i++)
             {
                 osg::ref_ptr< ThreeDTileNode > childTile = dynamic_cast<ThreeDTileNode*>(_children->getChild(i));
@@ -657,7 +668,6 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
                     }
                 }
             }
-#endif
         }
         else
         {

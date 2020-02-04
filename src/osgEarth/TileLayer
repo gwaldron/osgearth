@@ -114,9 +114,6 @@ namespace osgEarth
 
     public: // Layer
 
-        //! Cache ID for this layer
-        virtual std::string getCacheID() const;
-
         //! Open the layer for writing (calls open)
         const Status& openForWriting();
 
@@ -140,9 +137,6 @@ namespace osgEarth
          */
         virtual bool isDynamic() const;
 
-        /** Attribution to be displayed by the application */
-        virtual std::string getAttribution() const;
-
         /**
          * Whether the data for the specified tile key is in the cache.
          */
@@ -152,11 +146,6 @@ namespace osgEarth
          * Disable this layer, setting an error status.
          */
         void disable(const std::string& msg);
-
-        /**
-         * Sets the I/O options to use. This data may include cache information.
-         */
-        void setReadOptions(const osgDB::Options* readOptions);
 
 
     public: // Data availability methods
@@ -246,15 +235,8 @@ namespace osgEarth
             DataExtentList           _dataExtents;
         };
 
-        /**
-         * Access to information about the cache
-         */
+        //! Access to information about the cache
         CacheBinMetadata* getCacheBinMetadata(const Profile* profile);
-
-        /**
-         * Cache Settings for this layer - guaranteed to return an object
-         */
-        CacheSettings* getCacheSettings() const;
 
         //! Sets up a small data cache if necessary.
         void setUpL2Cache(unsigned minSize =0u);
@@ -313,7 +295,7 @@ namespace osgEarth
 
         mutable Threading::Mutex _mutex;
 
-        mutable osg::ref_ptr<CacheSettings> _cacheSettings;
+        //mutable osg::ref_ptr<CacheSettings> _cacheSettings;
 
         // methods accesible by Map:
         friend class Map;

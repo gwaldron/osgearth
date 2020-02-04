@@ -240,7 +240,7 @@ ModelLayer::openImplementation()
         {
             _modelSource->setName( this->getName() );
 
-            const Status& modelStatus = _modelSource->open( _readOptions.get() );
+            const Status& modelStatus = _modelSource->open(getReadOptions());
             if (modelStatus.isOK())
             {
                 // the mask, if there is one:
@@ -251,7 +251,7 @@ ModelLayer::openImplementation()
                     _maskSource = MaskSourceFactory::create( options().mask().get() );
                     if ( _maskSource.valid() )
                     {
-                        const Status& maskStatus = _maskSource->open(_readOptions.get());
+                        const Status& maskStatus = _maskSource->open(getReadOptions());
                         if (maskStatus.isError())
                         {
                             return maskStatus;

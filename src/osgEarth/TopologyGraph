@@ -126,7 +126,10 @@ namespace osgEarth { namespace Util
 
     protected:
         // no copy ctor
-        TopologyGraph(const TopologyGraph& rhs, const osg::CopyOp& copy) { }
+        TopologyGraph(const TopologyGraph& rhs, const osg::CopyOp& copy)
+         : _totalVerts(rhs._totalVerts)
+         , _maxGraphID(rhs._maxGraphID)
+        { }
 
         virtual ~TopologyGraph() { }
 

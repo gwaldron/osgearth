@@ -161,7 +161,7 @@ namespace
 {
     // Fake attribute that compiles everything in the TerrainTileModel
     // when the ICO is active.
-    struct ModelCompilingAttribute : public osg::Texture2D
+    struct TileICO : public osg::Texture2D
     {
         osg::observer_ptr<TerrainTileModel> _dataModel;
         
@@ -171,6 +171,8 @@ namespace
             osg::ref_ptr<TerrainTileModel> dataModel;
             if (_dataModel.lock(dataModel))
             {
+                OE_PROFILING_ZONE;
+                OE_PROFILING_ZONE_TEXT(_dataModel->getKey().str());
                 OE_DEBUG << "MCA: compiling " << dataModel->getKey().str() << std::endl;
                 dataModel->compileGLObjects(state);
             }
@@ -179,10 +181,10 @@ namespace
         // no need to override release or resize since this is a temporary object
         // that exists only to service the ICO.
 
-        META_StateAttribute(osgEarth, ModelCompilingAttribute, osg::StateAttribute::TEXTURE);
+        META_StateAttribute(osgEarth, TileICO, osg::StateAttribute::TEXTURE);
         int compare(const StateAttribute& sa) const { return 0; }
-        ModelCompilingAttribute() { }
-        ModelCompilingAttribute(const ModelCompilingAttribute& rhs, const osg::CopyOp& copy) { }
+        TileICO() { }
+        TileICO(const TileICO& rhs, const osg::CopyOp& copy) { }
     };
 }
 
@@ -205,7 +207,7 @@ LoadTileData::createStateSet() const
         // This stateset contains a "fake" attribute that the ICO will
         // try to GL-compile, thereby GL-compiling everything in the TerrainTileModel.
         out = new osg::StateSet();
-        ModelCompilingAttribute* mca = new ModelCompilingAttribute();
+        TileICO* mca = new TileICO();
         mca->_dataModel = _dataModel.get();
         out->setTextureAttribute(0, mca, 1);
     }

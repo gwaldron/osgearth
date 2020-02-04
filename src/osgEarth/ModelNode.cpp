@@ -55,7 +55,8 @@ _readOptions( readOptions )
 void
 ModelNode::construct()
 {
-    // nop
+    // By default, generate shaders on loaded models.
+    _shaderPolicy.init(SHADERPOLICY_GENERATE);
 }
 
 void
@@ -104,13 +105,19 @@ ModelNode::compileModel()
 
             if ( node.valid() )
             {
-                if ( Registry::capabilities().supportsGLSL() )
+                if (_shaderPolicy == SHADERPOLICY_GENERATE)
                 {
                     // generate shader code for the loaded model:
                     Registry::shaderGenerator().run(
                         node.get(),
                         "osgEarth.ModelNode",
-                        Registry::stateSetCache() );
+                        Registry::stateSetCache());
+                }
+                else if (_shaderPolicy == SHADERPOLICY_DISABLE)
+                {
+                    node->getOrCreateStateSet()->setAttributeAndModes(
+                        new osg::Program(),
+                        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
                 }
 
                 // install clamping/draping if necessary
@@ -196,8 +203,9 @@ _readOptions(readOptions)
     if ( !uri.empty() )
         _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
-    //init();
-    //setPosition(getPosition());
+    conf.get("shader_policy", "disable", _shaderPolicy, SHADERPOLICY_DISABLE);
+    conf.get("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
+    conf.get("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
 
     compileModel();
 }
@@ -210,6 +218,10 @@ ModelNode::getConfig() const
 
     if ( !_style.empty() )
         conf.set( "style", _style );
+
+    conf.set("shader_policy", "disable", _shaderPolicy, SHADERPOLICY_DISABLE);
+    conf.set("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
+    conf.set("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
 
     return conf;
 }

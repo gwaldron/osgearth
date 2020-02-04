@@ -33,6 +33,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Metrics>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -189,8 +190,8 @@ namespace
                 return ReadResult::FILE_NOT_HANDLED;
 
             //UID uid;
-            unsigned lod, x, y;
-            sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
+            unsigned int lod, x, y;
+            sscanf( uri.c_str(), "%u_%u_%u.%*s", &lod, &x, &y );
 
             osg::ref_ptr<FeatureModelGraph> graph;
             if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
@@ -244,7 +245,9 @@ namespace
 //---------------------------------------------------------------------------
 
 FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
-_options(options)
+_options(options),
+_featureExtentClamped(false), 
+_useTiledSource(false)
 {
     //NOP
 }
@@ -1730,4 +1733,21 @@ FeatureModelGraph::redraw()
     }
 
     addChild( node );
+}
+
+void
+FeatureModelGraph::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        OE_PROFILING_ZONE;
+        if (!_ownerName.empty())
+            OE_PROFILING_ZONE_TEXT(_ownerName);
+
+        osg::Group::traverse(nv);
+    }
+    else
+    {
+        osg::Group::traverse(nv);
+    }
 }

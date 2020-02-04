@@ -60,7 +60,7 @@ LandCoverLayer::Options::getConfig() const
         Config mappingConf("land_cover_mappings");
         conf.add(mappingConf);
         for(LandCoverValueMappingVector::const_iterator i = _mappings.begin();
-            i != mappings().end();
+            i != _mappings.end();
             ++i)
         {
             LandCoverValueMapping* mapping = i->get();
@@ -346,7 +346,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     }
 
     // No data, but want more levels? Fractal refinement starts here.
-    if (getMaxDataLevel() > key.getLOD())
+    if (options().maxDataLevel().isSet() && getMaxDataLevel() > key.getLOD())
     {
         return createFractalEnhancedImage(key, progress);
     }

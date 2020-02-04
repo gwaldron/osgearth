@@ -52,6 +52,7 @@ namespace osgEarth
         OE_OPTION(unsigned, minExpiryFrames);
         OE_OPTION(double, minExpiryTime);
         OE_OPTION(float, minExpiryRange);
+        OE_OPTION(unsigned, maxTilesToUnloadPerFrame);
         OE_OPTION(unsigned, expirationThreshold);
         OE_OPTION(bool, castShadows);
         OE_OPTION(osg::LOD::RangeMode, rangeMode);
@@ -165,6 +166,10 @@ namespace osgEarth
         //! is eligible to expire
         void setMinExpiryRange(const float& value);
         const float& getMinExpiryRange() const;
+
+        //! Maximum number of terrain tiles to unload/expire each frame.
+        void setMaxTilesToUnloadPerFrame(const unsigned& value);
+        const unsigned& getMaxTilesToUnloadPerFrame() const;
 
         //! Minimum number of terrain elements to keep in memory before expiring usused data
         void setExpirationThreshold(const unsigned& value);

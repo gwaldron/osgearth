@@ -51,14 +51,15 @@ void TileIndexBuilder::build(const std::string& indexFilename, const SpatialRefe
     osg::ref_ptr< TileIndex > index = TileIndex::create( indexFilename, srs );
 
     _indexFilename = indexFilename;
-    std::string indexDir = getFilePath( _indexFilename );    
+    std::string indexDir = getFilePath( _indexFilename );
     
     unsigned int total = _expandedFilenames.size();
 
     for (unsigned int i = 0; i < _expandedFilenames.size(); i++)
     {   
-        std::string filename = _expandedFilenames[ i ];        
+        std::string filename = _expandedFilenames[ i ];
 
+        // Who deletes this?
         GDALImageLayer* layer = new GDALImageLayer();
         layer->setURL(filename);
 

@@ -72,6 +72,7 @@ struct App
 
         _minLevel = 11u;
         _maxDataLevel = 18u; // must be >= other land cover layers!
+        _size = 0.0f;
 
         _landCover = new osg::Image();
         _landCover->allocateImage(_image->s(), _image->t(), 1, GL_RED, GL_FLOAT);

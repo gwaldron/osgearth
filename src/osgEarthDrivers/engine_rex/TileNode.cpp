@@ -65,9 +65,16 @@ _childrenReady( false ),
 _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
 _empty(false),              // an "empty" node exists but has no geometry or children.,
-_imageUpdatesActive(false)
+_imageUpdatesActive(false),
+_doNotExpire(false)
 {
     //nop
+}
+
+void
+TileNode::setDoNotExpire(bool value)
+{
+    _doNotExpire = value;
 }
 
 void
@@ -245,11 +252,12 @@ bool
 TileNode::isDormant(const osg::FrameStamp* fs) const
 {
     const unsigned minMinExpiryFrames = 3u;
+    osg::Timer_t now = osg::Timer::instance()->tick();
 
     bool dormant = 
            fs &&
            fs->getFrameNumber() - _lastTraversalFrame > osg::maximum(options().minExpiryFrames().get(), minMinExpiryFrames) &&
-           fs->getReferenceTime() - _lastTraversalTime > options().minExpiryTime().get();
+           now - _lastTraversalTime > options().minExpiryTime().get();
     return dormant;
 }
 
@@ -507,10 +515,6 @@ TileNode::accept_cull(TerrainCuller* culler)
     
     if (culler)
     {
-        // update the timestamp so this tile doesn't become dormant.
-        _lastTraversalFrame.exchange( culler->getFrameStamp()->getFrameNumber() );
-        _lastTraversalTime = culler->getFrameStamp()->getReferenceTime();
-
         if ( !culler->isCulled(*this) )
         {
             visible = cull( culler );
@@ -539,10 +543,16 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Cull only:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
+
+        // update the timestamp so this tile doesn't become dormant.
+        _lastTraversalFrame.exchange(culler->getFrameStamp()->getFrameNumber());
+        _lastTraversalTime = culler->getFrameStamp()->getReferenceTime();
+
+        _context->liveTiles()->update(this, culler->getFrameStamp());
+
         if (_empty == false)
-        {
-            TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
-        
+        {        
             if (culler->_isSpy)
             {
                 accept_cull_spy( culler );
@@ -619,10 +629,15 @@ TileNode::createChildren(EngineContext* context)
     // Create the four child nodes.
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {
+        TileKey childkey = getKey().createChildKey(quadrant);
+
+        // Note! There's a chance that the TileNode we want to create here
+        // already exists in the registry as an orphan. We should probably 
+        // check that out and try to re-attach it...?
         TileNode* node = new TileNode();
 
         // Build the surface geometry:
-        node->create( getKey().createChildKey(quadrant), this, context );
+        node->create(childkey, this, context );
 
         // Add to the scene graph.
         addChild( node );
@@ -1025,6 +1040,10 @@ void
 TileNode::removeSubTiles()
 {
     _childrenReady = false;
+    for(int i=0; i<getNumChildren(); ++i)
+    {
+        getChild(i)->releaseGLObjects(NULL);
+    }
     this->removeChildren(0, this->getNumChildren());
 }
 

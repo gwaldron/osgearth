@@ -110,6 +110,10 @@ namespace osgEarth
         void setLightingEnabled( bool value );
         bool isLightingEnabled() const;
 
+        //! Whether to generate shaders or use the default shaders
+        void setShaderPolicy(const ShaderPolicy& value);
+        const ShaderPolicy& getShaderPolicy() const;
+
     public:
         
         //! Boundary geometry for the mask (if one exists)

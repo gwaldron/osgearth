@@ -10,15 +10,20 @@
         </tower_model>
         <styles>
             <style type="text/css">
-                default {
+                towers {
                     model: "../data/Transmission_Tower.osgb";
                     altitude-clamping: terrain;
                     model-heading: from_feature;
                 }
+                cables {
+                    point-fill: #ff0000;
+                    point-size: 10;
+                    stroke: #ffffff;
+                    stroke-width: 1.5;
+                }
             </style>
         </styles>
         <lighting>true</lighting>
-        <layout crop_features="false"/>
     </PowerlineModel>
 
     <TFSFeatures name="power-towers">

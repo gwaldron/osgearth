@@ -483,9 +483,11 @@ namespace tinygltf {
         Value extras;
 
         Sampler()
-            : wrapS(TINYGLTF_TEXTURE_WRAP_REPEAT),
-            wrapT(TINYGLTF_TEXTURE_WRAP_REPEAT),
-            wrapR(TINYGLTF_TEXTURE_WRAP_REPEAT) {}
+           : minFilter(TINYGLTF_TEXTURE_FILTER_LINEAR),
+             magFilter(TINYGLTF_TEXTURE_FILTER_LINEAR),
+             wrapS(TINYGLTF_TEXTURE_WRAP_REPEAT),
+             wrapT(TINYGLTF_TEXTURE_WRAP_REPEAT),
+             wrapR(TINYGLTF_TEXTURE_WRAP_REPEAT) {}
         bool operator==(const Sampler &) const;
     };
 
@@ -683,6 +685,7 @@ namespace tinygltf {
         Primitive() {
             material = -1;
             indices = -1;
+            mode = TINYGLTF_MODE_POINTS;
         }
         bool operator==(const Primitive &) const;
     };
@@ -778,7 +781,7 @@ namespace tinygltf {
 
     class Model {
     public:
-        Model() {}
+        Model() : defaultScene(0) {}
         ~Model() {}
         bool operator==(const Model &) const;
 

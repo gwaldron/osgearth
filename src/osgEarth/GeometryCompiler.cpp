@@ -75,7 +75,7 @@ _optimize              ( false ),
 _optimizeVertexOrdering( true ),
 _validate              ( false ),
 _maxPolyTilingAngle    ( 45.0f ),
-_useOSGTessellator     (false)
+_useOSGTessellator     ( false )
 {
     //nop
 }
@@ -433,7 +433,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
-        filter.shaderPolicy()   = *_options.shaderPolicy();
         filter.useOSGTessellator() = *_options.useOSGTessellator();
 
         if (_options.maxPolygonTilingAngle().isSet())
@@ -485,14 +484,16 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if (Registry::capabilities().supportsGLSL())
     {
-        if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
+        ShaderPolicy shaderPolicy = _options.shaderPolicy().get();
+
+        if (shaderPolicy == SHADERPOLICY_GENERATE)
         {
             // no ss cache because we will optimize later.
             Registry::shaderGenerator().run( 
                 resultGroup.get(),
                 "GeometryCompiler shadergen" );
         }
-        else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+        else if (shaderPolicy == SHADERPOLICY_DISABLE )
         {
             resultGroup->getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Program(),

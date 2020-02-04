@@ -151,8 +151,13 @@ namespace osgEarth
 
         FeatureIndexBuilder* _index;
 
-        FeatureNode() { }
-        FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
+        FeatureNode() : _attachPoint(NULL), _needsRebuild(true), _clampDirty(false), _index(NULL) { }
+        FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) 
+         : _attachPoint(rhs._attachPoint)
+         , _needsRebuild(rhs._needsRebuild)
+         , _clampDirty(rhs._clampDirty)
+         , _index(rhs._index)
+        { }
 
         void clamp(osg::Node* graph, const Terrain* terrain);
 

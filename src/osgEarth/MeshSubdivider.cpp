@@ -120,7 +120,7 @@ namespace
 
     struct Triangle
     {
-        Triangle() { }
+        Triangle() : _i0(0), _i1(0), _i2(0) { }
         Triangle(GLuint i0, GLuint i1, GLuint i2) : 
         _i0(i0), _i1(i1), _i2(i2){}                 
         GLuint _i0, _i1, _i2;
@@ -251,7 +251,7 @@ namespace
 
     struct Edge
     {
-        Edge() { }
+        Edge() : _i0(0), _i1(0) { }
         Edge( GLuint i0, GLuint i1 ) : _i0(i0), _i1(i1) { }
         GLuint _i0, _i1;
         bool operator < (const Edge& rhs) const {
@@ -318,7 +318,7 @@ namespace
 
     struct Line
     {
-        Line() { }
+        Line() : _i0(0), _i1(0) { }
         Line(GLuint i0, GLuint i1) : _i0(i0), _i1(i1) { }
         GLuint _i0, _i1;
     };

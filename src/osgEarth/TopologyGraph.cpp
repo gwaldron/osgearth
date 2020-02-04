@@ -31,7 +31,8 @@ using namespace osgEarth::Util;
 
 
 TopologyGraph::TopologyGraph() :
-_maxGraphID(0u)
+_maxGraphID(0u),
+_totalVerts(0)
 {
     //nop
 }
@@ -207,6 +208,9 @@ TopologyGraph::dumpBoundary(const IndexVector& boundary, const std::string& file
 }
 
 TopologyBuilder::TopologyBuilder()
+   : _graph(NULL)
+   , _drawable(NULL)
+   , _verts(NULL)
 {
     //nop
 }
@@ -290,8 +294,8 @@ TopologyBuilder::assignAndPropagate(TopologyGraph::Index& vertex, unsigned graph
             endPoint != endPoints.end();
             ++endPoint)
         {
-            TopologyGraph::Index vertex = *endPoint;
-            assignAndPropagate(vertex, graphID);
+            TopologyGraph::Index endPtVertex = *endPoint;
+            assignAndPropagate(endPtVertex, graphID);
         }
     }
 }

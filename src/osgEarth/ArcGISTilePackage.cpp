@@ -141,7 +141,7 @@ osg::Image* BundleReader::readImage(const TileKey& key)
 
 osg::Image* BundleReader::readImage(unsigned int index)
 {
-    if (index < 0 || index > _index.size()) return 0;
+    if (index < 0 || index >= _index.size()) return 0;
 
     _in.seekg(_index[index], std::ios::beg);
     std::vector<char> sizeBuffer;

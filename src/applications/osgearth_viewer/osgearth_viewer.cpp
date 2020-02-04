@@ -51,6 +51,8 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
+    Metrics::setEnabled(false);
+
     // help?
     if ( arguments.read("--help") )
         return usage(argv[0]);

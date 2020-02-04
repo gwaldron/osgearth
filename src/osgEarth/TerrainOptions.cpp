@@ -46,6 +46,7 @@ TerrainOptions::getConfig() const
     conf.set( "bin_number", _renderBinNumber );
     conf.set( "min_expiry_time", _minExpiryTime);
     conf.set( "min_expiry_frames", _minExpiryFrames);
+    conf.set( "max_tiles_to_unload_per_frame", _maxTilesToUnloadPerFrame);
     conf.set( "cast_shadows", _castShadows);
     conf.set( "tile_pixel_size", _tilePixelSize);
     conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
@@ -88,6 +89,7 @@ TerrainOptions::fromConfig(const Config& conf)
     minExpiryFrames().init(0);
     minExpiryTime().init(0.0);
     minExpiryRange().init(0.0f);
+    maxTilesToUnloadPerFrame().init(10u);
     heightFieldSkirtRatio().init(0.0f);
     color().init(osg::Vec4f(1,1,1,1));
     expirationThreshold().init(300u);
@@ -116,6 +118,7 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "bin_number", _renderBinNumber );
     conf.get( "min_expiry_time", _minExpiryTime);
     conf.get( "min_expiry_frames", _minExpiryFrames);
+    conf.get( "max_tiles_to_unload_per_frame", _maxTilesToUnloadPerFrame);
     conf.get( "cast_shadows", _castShadows);
     conf.get( "tile_pixel_size", _tilePixelSize);
     conf.get( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
@@ -161,6 +164,7 @@ OE_PROPERTY_IMPL(TerrainOptionsAPI, float, TilePixelSize, tilePixelSize);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MinExpiryFrames, minExpiryFrames);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, double, MinExpiryTime, minExpiryTime);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, MinExpiryRange, minExpiryRange);
+OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MaxTilesToUnloadPerFrame, maxTilesToUnloadPerFrame);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, ExpirationThreshold, expirationThreshold);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, HeightFieldSkirtRatio, heightFieldSkirtRatio);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, Color, Color, color);

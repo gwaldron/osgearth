@@ -82,8 +82,8 @@ namespace
             if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
                 return ReadResult::FILE_NOT_HANDLED;
 
-            unsigned lod, x, y;
-            sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
+            unsigned int lod, x, y;
+            sscanf( uri.c_str(), "%u_%u_%u.%*s", &lod, &x, &y );
 
             osg::ref_ptr<SimplePager> pager;
             if (!OptionsData<SimplePager>::lock(options, "osgEarth.SimplePager", pager))

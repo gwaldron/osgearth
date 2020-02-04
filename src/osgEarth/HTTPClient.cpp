@@ -418,7 +418,7 @@ namespace
     class CURLImplementation : public HTTPClient::Implementation
     {
     public:
-        CURLImplementation() : _curl_handle(0) { }
+        CURLImplementation() : _curl_handle(0), _previousHttpAuthentication(0) { }
 
         void initialize()
         {

@@ -246,6 +246,8 @@ namespace osgEarth { namespace Util
         {
         public:
             virtual Implementation* create() const = 0;
+
+            virtual ~ImplementationFactory() {};
         };
 
         //! Install an implementation factory. Do this before anything else

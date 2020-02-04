@@ -415,7 +415,6 @@ namespace
             else if (driver == "bing") c.key() = "BingElevation";
             else if (driver == "tms") c.key() = "TMSElevation";
             else if (driver == "xyz") c.key() = "XYZElevation";
-            else if (driver == "mbtiles") c.key() = "MBTilesElevation";
             else if (driver == "tilecache") c.key() = "TileCacheElevation";
             else if (driver == "flatten_elevation") c.key() = "FlattenElevation";
             else if (driver == "fractal_elevation") c.key() = "FractalElevation";

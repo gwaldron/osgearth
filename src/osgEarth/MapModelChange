@@ -46,7 +46,7 @@ namespace osgEarth
             UNSPECIFIED
         };
 
-        MapModelChange() : _action(UNSPECIFIED) { }
+        MapModelChange() : _action(UNSPECIFIED), _firstIndex(0), _secondIndex(0) { }
 
         MapModelChange( ActionType action, Revision mapModeRev, Layer* layer =0L, int firstIndex =-1, int secondIndex =-1 )
             : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }

@@ -83,6 +83,9 @@ void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
     OE_PROFILING_ZONE;
+    char buf[64];
+    sprintf(buf, "%s (%d tiles)", _layer ? _layer->getName().c_str() : "unknown layer", _tiles.size());
+    OE_PROFILING_ZONE_TEXT(buf);
     //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
 
     // Get this context's state values:

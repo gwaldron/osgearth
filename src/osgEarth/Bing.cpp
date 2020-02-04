@@ -125,7 +125,7 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (_debugDirect)
     {
         ++_apiCount;
-        image = URI(getDirectURI(key)).getImage(_readOptions.get(), progress);
+        image = URI(getDirectURI(key)).getImage(getReadOptions(), progress);
     }
 
     else
@@ -169,7 +169,7 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
                 OE_DEBUG << LC << "API calls = " << c << std::endl;
 
             // fetch it:
-            ReadResult metadataResult = URI(request).readString(_readOptions.get(), progress);
+            ReadResult metadataResult = URI(request).readString(getReadOptions(), progress);
             if (metadataResult.failed())
             {
                 // check for a REST error:
@@ -349,7 +349,7 @@ BingElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
         << "&key=" << _key;
 
     // fetch it:
-    ReadResult result = URI(request).readString(_readOptions.get(), progress);
+    ReadResult result = URI(request).readString(getReadOptions(), progress);
     if (result.failed())
     {
         // check for a REST error:

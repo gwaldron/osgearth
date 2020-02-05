@@ -128,6 +128,26 @@ GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 //........................................................................
 
+namespace
+{
+    struct GroundCoverSA : public osg::StateAttribute
+    {
+        META_StateAttribute(osgEarth, GroundCoverSA, (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210));
+        osg::ref_ptr<GroundCover> _gc;
+        GroundCoverSA() { }
+        GroundCoverSA(const GroundCoverSA& sa, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY) : osg::StateAttribute(sa, copyop), _gc(sa._gc.get()) { }
+        GroundCoverSA(GroundCover* gc) : _gc(gc) { }
+        virtual int compare(const StateAttribute& sa) const { return 0; }
+        static const GroundCoverSA* extract(const osg::State* state) {
+            osg::State::AttributeMap::const_iterator i = state->getAttributeMap().find(
+                std::make_pair((osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210), 0));
+            if (i == state->getAttributeMap().end()) return NULL;
+            if (i->second.attributeVec.empty()) return NULL;
+            return dynamic_cast<const GroundCoverSA*>(i->second.attributeVec.front().first);
+        }
+    };
+}
+
 void
 GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) const
 {
@@ -161,7 +181,7 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
                 OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
             }
             else
-            {            
+            {
                 cv->pushStateSet(zoneStateSet);
                 traverse(node, nv);
                 cv->popStateSet();
@@ -286,8 +306,8 @@ GroundCoverLayer::addedToMap(const Map* map)
 
     _zonesConfigured = true;
 
-    // calculate the instance count based on the density and LOD.
-    if (_renderer.valid() && _zones.size() > 0 && _zones[0]->getGroundCover())
+    // calculate the tile width based on the LOD:
+    if (_renderer.valid() && _zones.size() > 0)
     {
         unsigned lod = getLOD();
         unsigned tx, ty;
@@ -295,23 +315,9 @@ GroundCoverLayer::addedToMap(const Map* map)
         GeoExtent e = TileKey(lod, tx/2, ty/2, map->getProfile()).getExtent();
         GeoCircle c = e.computeBoundingGeoCircle();
         double width_m = 2.0 * c.getRadius() / 1.4142;
+        _renderer->_settings._tileWidth = width_m;
 
-        if (_zones[0]->getGroundCover()->options().spacing().isSet())
-        {
-            float spacing_m = _zones[0]->getGroundCover()->options().spacing().get();
-            _renderer->_settings._vboTileSize = width_m / spacing_m;
-        }
-        else if (_zones[0]->getGroundCover()->options().density().isSet())
-        {
-            float density_sqkm = _zones[0]->getGroundCover()->options().density().get();
-            _renderer->_settings._vboTileSize = 0.001 * width_m * sqrt(density_sqkm);
-        }
-        else
-        {
-            _renderer->_settings._vboTileSize = 128;
-        }
-
-        OE_INFO << LC << "Instances across = " << _renderer->_settings._vboTileSize << std::endl;
+        //OE_INFO << LC << "Instances across = " << _renderer->_settings._vboTileSize << std::endl;
     }
 
     buildStateSets();
@@ -518,6 +524,8 @@ GroundCoverLayer::buildStateSets()
                 {
                     maxRange = groundCover->getMaxDistance();
                 }
+
+                zoneStateSet->setAttribute(new GroundCoverSA(groundCover));
             }
             else
             {
@@ -623,21 +631,43 @@ GroundCoverLayer::Renderer::DrawState::DrawState()
 }
 
 void
-GroundCoverLayer::Renderer::DrawState::reset(Settings* settings)
+GroundCoverLayer::Renderer::DrawState::reset(const osg::State* state, Settings* settings)
 {
     _tilesDrawnThisFrame = 0;
     _LLAppliedValue.set(FLT_MAX, FLT_MAX, FLT_MAX);
     _URAppliedValue.set(FLT_MAX, FLT_MAX, FLT_MAX);
 
-    if (!_geom.valid())
+    // Check for initialization in this zone:
+    const GroundCoverSA* sa = GroundCoverSA::extract(state);
+    osg::ref_ptr<osg::Geometry>& geom = _geom[sa];
+
+    if (!geom.valid())
     {
-        const unsigned numInstances = settings->_vboTileSize * settings->_vboTileSize;
+        const GroundCover* groundCover = sa->_gc.get();
+        unsigned vboTileSize;
+
+        if (groundCover->options().spacing().isSet())
+        {
+            float spacing_m = groundCover->options().spacing().get();
+            vboTileSize = settings->_tileWidth / spacing_m;
+        }
+        else if (groundCover->options().density().isSet())
+        {
+            float density_sqkm = groundCover->options().density().get();
+            vboTileSize = 0.001 * settings->_tileWidth * sqrt(density_sqkm);
+        }
+        else
+        {
+            vboTileSize = 128;
+        }
+
+        unsigned numInstances = vboTileSize * vboTileSize;
         const unsigned vertsPerInstance = 8;
         const unsigned indiciesPerInstance = 12;
 
-        _geom = new osg::Geometry();
-        _geom->setDataVariance(osg::Object::STATIC);
-        _geom->setUseVertexBufferObjects(true);
+        geom = new osg::Geometry();
+        geom->setDataVariance(osg::Object::STATIC);
+        geom->setUseVertexBufferObjects(true);
 
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
 
@@ -679,16 +709,16 @@ GroundCoverLayer::Renderer::DrawState::reset(Settings* settings)
             }
         }
 
-        _geom->addPrimitiveSet(new osg::DrawElementsUInt(GL_TRIANGLES, totalIndicies, indices.data(), 0));
+        geom->addPrimitiveSet(new osg::DrawElementsUInt(GL_TRIANGLES, totalIndicies, indices.data(), 0));
 
         // Do we need this at all?
         unsigned int numverts = numInstances * vertsPerInstance;
         osg::Vec3Array* coords = new osg::Vec3Array(numverts);
-        _geom->setVertexArray(coords);
+        geom->setVertexArray(coords);
 
 #endif // USE_INSTANCING_IN_VERTEX_SHADER
 
-        _numInstances1D = settings->_vboTileSize;
+        _numInstances1D = vboTileSize;
     }
 }
 
@@ -701,7 +731,7 @@ GroundCoverLayer::Renderer::Renderer()
 
     _drawStateBuffer.resize(64u);
 
-    _settings._vboTileSize = 128;
+    _settings._tileWidth = 0.0;
     _settings._grass = false;
 }
 
@@ -710,7 +740,7 @@ GroundCoverLayer::Renderer::preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Refer
 {
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
 
-    ds.reset(&_settings);
+    ds.reset(ri.getState(), &_settings);
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
     // Need to unbind any VAO since we'll be doing straight GL calls
@@ -780,8 +810,11 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
         ds._URAppliedValue = UR;
     }
 
+    const GroundCoverSA* sa = GroundCoverSA::extract(ri.getState());
+    osg::ref_ptr<osg::Geometry>& geom = ds._geom[sa];
+
     // draw the instanced billboard geometry:
-    ds._geom->draw(ri);
+    geom->draw(ri);
 
     ++ds._tilesDrawnThisFrame;
 }
@@ -800,6 +833,20 @@ void
 GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 {
     _drawStateBuffer.resize(osg::maximum(maxSize, _drawStateBuffer.size()));
+
+    for (unsigned i = 0; i < _drawStateBuffer.size(); ++i)
+    {
+        const DrawState& ds = _drawStateBuffer[i];
+        for (DrawState::GeomPerGroundCover::const_iterator j = ds._geom.begin();
+            j != ds._geom.end();
+            ++j)
+        {
+            if (j->second.valid())
+            {
+                j->second->resizeGLObjectBuffers(maxSize);
+            }
+        }
+    }
 }
 
 void
@@ -807,8 +854,16 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
 {
     for(unsigned i=0; i<_drawStateBuffer.size(); ++i)
     {
-        if (_drawStateBuffer[i]._geom.valid())
-            _drawStateBuffer[i]._geom->releaseGLObjects(state);
+        const DrawState& ds = _drawStateBuffer[i];
+        for(DrawState::GeomPerGroundCover::const_iterator j = ds._geom.begin();
+            j != ds._geom.end();
+            ++j)
+        {
+            if (j->second.valid())
+            {
+                j->second->releaseGLObjects(state);
+            }
+        }
     }
 }
 

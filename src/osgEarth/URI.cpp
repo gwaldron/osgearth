@@ -22,6 +22,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Utils>
+#include <osgEarth/Metrics>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
@@ -58,39 +59,52 @@ namespace
         }
     }
     
-    class LoadNodeOperation : public osg::Operation
+    class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
-        LoadNodeOperation(const URI& uri, const osgDB::Options* options, osgUtil::IncrementalCompileOperation* ico, Promise<osg::Node> promise) :
+        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
             _uri(uri),
             _promise(promise),
-            _ico(ico),
             _options(options)
         {
         }
 
         void operator()(osg::Object*)
         {
+            OE_PROFILING_ZONE_NAMED("loadAsyncNode");
+            OE_PROFILING_ZONE_TEXT(_uri.full());
+
             if (!_promise.isAbandoned())
             {
                 // Read the node
                 osgEarth::ReadResult result = _uri.readNode(_options.get());
 
-                // If we have an ICO, wait for it to be compiled
-                if (result.succeeded() && _ico.valid())
+                if (result.succeeded())
                 {
-                    osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> compileSet =
-                        new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
+                    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = 
+                        OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
 
-                    _ico->add(compileSet.get());
-
-                    // spin wait
-                    while (
-                        !_promise.isAbandoned() &&          // user hasn't gone away?
-                        !compileSet->compiled() &&          // compilation not finished?
-                        compileSet->referenceCount() > 1)   // compiler disappeared?
+                    // If we have an ICO, wait for it to be compiled
+                    if (ico.valid())
                     {
-                        OpenThreads::Thread::microSleep(1000);
+                        OE_PROFILING_ZONE_NAMED("ICO compile");
+
+                        _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
+                        _compileSet->_compileCompletedCallback = this;
+                        ico->add(_compileSet.get());
+
+                        // block until the compile completes, checking once and a while for
+                        // an abandoned operation (to avoid deadlock)
+                        while(!_block.wait(10)) // 10ms
+                        {
+                            if (_promise.isAbandoned())
+                            {
+                                _compileSet->_compileCompletedCallback = NULL;
+                                ico->remove(_compileSet.get());
+                                break;
+                            }
+                        }
+
                     }
                 }
 
@@ -98,9 +112,17 @@ namespace
             }
         }
 
+        bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
+        {
+            // release the wait.
+            _block.set();
+            return true;
+        }
+
         Promise<osg::Node> _promise;
-        osg::ref_ptr< osgUtil::IncrementalCompileOperation > _ico;
-        osg::ref_ptr< const osgDB::Options > _options;
+        osg::ref_ptr<const osgDB::Options> _options;
+        osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
+        Threading::Event _block;
         URI _uri;
     };
 }
@@ -757,8 +779,7 @@ URI::readString(const osgDB::Options* dbOptions,
 
 Future<osg::Node>
 URI::readNodeAsync(const osgDB::Options* dbOptions,
-                   ProgressCallback*     progress,
-                   osgUtil::IncrementalCompileOperation* ico) const
+                   ProgressCallback* progress) const
 {
     osg::ref_ptr<ThreadPool> threadPool;
     if (dbOptions)
@@ -768,7 +789,7 @@ URI::readNodeAsync(const osgDB::Options* dbOptions,
 
     Promise<osg::Node> promise;
 
-    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, ico, promise);
+    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, promise);
 
     if (operation.valid())
     {

@@ -242,8 +242,7 @@ namespace osgEarth
 
         Future<osg::Node> readNodeAsync(
             const osgDB::Options* dbOptions   =0L,
-            ProgressCallback*     progress    =0L,
-            osgUtil::IncrementalCompileOperation* ico =NULL) const;
+            ProgressCallback*     progress    =0L) const;
 
     public: // get methods call the read* methods, then just return the raw data.
 

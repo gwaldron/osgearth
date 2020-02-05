@@ -144,7 +144,8 @@ namespace osgEarth { namespace Splat
 
             struct Settings
             {
-                unsigned _vboTileSize;
+                double _tileWidth;
+                //unsigned _vboTileSize;
                 bool _grass;
             };
 
@@ -153,9 +154,11 @@ namespace osgEarth { namespace Splat
             {
                 DrawState();
 
-                void reset(Settings*);
+                void reset(const osg::State*, Settings*);
 
-                osg::ref_ptr<osg::Geometry> _geom;
+                // Geometry differs by zone/groundcover settings
+                typedef UnorderedMap<const void*, osg::ref_ptr<osg::Geometry> > GeomPerGroundCover;
+                GeomPerGroundCover _geom;
 
                 osg::ref_ptr<osg::ElementBufferObject> _ebo;
 

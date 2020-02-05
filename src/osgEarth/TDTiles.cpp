@@ -795,13 +795,30 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :
     _tileset(tileset),
     _options(options),
-    _maximumScreenSpaceError(15.0f)
+    _maximumScreenSpaceError(15.0f),
+    _maxTiles(50)
 {
+    const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
+    if (c)
+    {        
+        setMaxTiles((unsigned)atoi(c));
+    }
+
     _tracker.push_back(0);
     // Pointer to last element
     _sentryItr = --_tracker.end();
 
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
+}
+
+unsigned int ThreeDTilesetNode::getMaxTiles() const
+{
+    return _maxTiles;
+}
+
+void ThreeDTilesetNode::setMaxTiles(unsigned int maxTiles)
+{
+    _maxTiles = maxTiles;
 }
 
 float ThreeDTilesetNode::getMaximumScreenSpaceError() const
@@ -850,15 +867,13 @@ void ThreeDTilesetNode::endCull()
 
     ScopedMutexLock lock(_mutex);
     
-    // Max number of tiles to keep in memory
-    unsigned int maxTiles = 50;    
     // Max time in ms to allocate to erasing tiles
     float maxTime = 1.0f;
 
     ThreeDTileNode::TileTracker::iterator itr = _tracker.begin();
 
     unsigned int numErased = 0;
-    while (_tracker.size() > maxTiles&& itr != _sentryItr)
+    while (_tracker.size() > _maxTiles && itr != _sentryItr)
     {
         osg::ref_ptr< ThreeDTileNode > tile = dynamic_cast<ThreeDTileNode*>(itr->get());
         if (tile.valid())

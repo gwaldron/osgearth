@@ -215,6 +215,12 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         void traverse(osg::NodeVisitor& nv);
 
+        /**
+         * Gets/sets the maximum number of tiles to keep in memory before expiring them.
+         */
+        unsigned int getMaxTiles() const;
+        void setMaxTiles(unsigned int maxTiles);
+
     private:
         void startCull();
         void endCull();
@@ -226,6 +232,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         mutable Threading::Mutex _mutex;
         ThreeDTileNode::TileTracker _tracker;
         ThreeDTileNode::TileTracker::iterator _sentryItr;
+
+        unsigned int _maxTiles;
     };
 
 } } }

@@ -32,6 +32,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 #include <osg/CoordinateSystemNode>
+#include <osgUtil/IncrementalCompileOperation>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -403,6 +404,12 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _options(options),
     _trackerItrValid(false)
 {
+    OE_PROFILING_ZONE;
+    if (_tile->content().isSet())
+    {
+        OE_PROFILING_ZONE_TEXT(_tile->content()->uri()->full().c_str());
+    }
+
     // If this tile has content, store a URI Context to that relative-path external file
     // references (textures) will resolve correctly.
     if (_tile->content().isSet())
@@ -420,6 +427,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     if (_immediateLoad && _tile->content().isSet())
     {
         _content = _tile->content()->uri()->getNode(_options.get());
+        OE_PROFILING_ZONE_TEXT("Immediate load");
     }
 
     if (_tile->children().size() > 0)
@@ -454,6 +462,11 @@ bool ThreeDTileNode::hasContent()
     return _tile->content().isSet() && _tile->content()->uri().isSet();
 }
 
+osg::Node* ThreeDTileNode::getContent()
+{
+    return _content.get();
+}
+
 bool ThreeDTileNode::isContentReady()
 {
     resolveContent();
@@ -472,7 +485,7 @@ void ThreeDTileNode::resolveContent()
 
 namespace
 {
-    class LoadTilesetOperation : public osg::Operation
+    class LoadTilesetOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
         LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
@@ -486,7 +499,8 @@ namespace
         void operator()(osg::Object*)
         {
             if (!_promise.isAbandoned())
-            {
+            {   
+                osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
                 osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
                 osg::ref_ptr<ThreeDTilesetNode> parentTileset;
                 _parentTileset.lock(parentTileset);
@@ -506,15 +520,49 @@ namespace
                     if (tileset)
                     {
                         tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
+
+                        if (tilesetNode.valid() && ico.valid())
+                        {
+                            OE_PROFILING_ZONE_NAMED("ICO compile");
+
+                            osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
+                            if (contentNode)
+                            {
+                                _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(contentNode);
+                                _compileSet->_compileCompletedCallback = this;
+                                ico->add(_compileSet.get());
+
+                                // block until the compile completes, checking once and a while for
+                                // an abandoned operation (to avoid deadlock)
+                                while (!_block.wait(10)) // 10ms
+                                {
+                                    if (_promise.isAbandoned())
+                                    {
+                                        _compileSet->_compileCompletedCallback = NULL;
+                                        ico->remove(_compileSet.get());
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 _promise.resolve(tilesetNode.get());
             }
         }
 
+        bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
+        {
+            // release the wait.
+            _block.set();
+            return true;
+        }
+
         osgEarth::Threading::Promise<osg::Node> _promise;
         osg::ref_ptr< osgDB::Options > _options;
         osg::observer_ptr<ThreeDTilesetNode> _parentTileset;
+        osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
+        Threading::Event _block;
         URI _uri;
     };
 
@@ -741,7 +789,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
                 _content->accept(nv);
             }
         }
-    }
+    }    
 }
 
 ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :

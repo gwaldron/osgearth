@@ -150,6 +150,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         bool hasContent();
 
+        osg::Node* getContent();
+
         bool isContentReady();
 
         void resolveContent();

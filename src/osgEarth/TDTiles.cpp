@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TDTiles>
 #include <osgEarth/Utils>
+#include <osgEArth/Metrics>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
 #include <osgEarth/OGRFeatureSource>
@@ -37,6 +38,8 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Contrib::ThreeDTiles;
 
 #define LC "[3DTiles] "
+
+#define SENTRY_VALUE NULL
 
 //........................................................................
 
@@ -397,7 +400,8 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _immediateLoad(immediateLoad),
     _firstVisit(true),
     _contentUnloaded(false),
-    _options(options)
+    _options(options),
+    _trackerItrValid(false)
 {
     // If this tile has content, store a URI Context to that relative-path external file
     // references (textures) will resolve correctly.
@@ -674,7 +678,6 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             areChildrenReady = false;
         }
 
-
         if (areChildrenReady && error > _tileset->getMaximumScreenSpaceError() && _children.valid() && _children->getNumChildren() > 0)
         {
             if (_content.valid() && _tile->refine().isSetTo(REFINE_ADD))
@@ -746,6 +749,10 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     _options(options),
     _maximumScreenSpaceError(15.0f)
 {
+    _tracker.push_back(0);
+    // Pointer to last element
+    _sentryItr = --_tracker.end();
+
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
 }
 
@@ -761,17 +768,25 @@ void ThreeDTilesetNode::setMaximumScreenSpaceError(float maximumScreenSpaceError
 
 osg::BoundingSphere ThreeDTilesetNode::computeBound() const
 {
-    return _tileset->root()->boundingVolume()->asBoundingSphere();
+    return _tileset->root()->boundingVolume()->asBoundingSphere();    
 }
 
 void ThreeDTilesetNode::touchTile(osg::Node* node)
 {
-    NodeSet::iterator itr = _deadTiles.find(node);
-    if (itr != _deadTiles.end())
+    ScopedMutexLock lock(_mutex);
+
+    osg::ref_ptr< ThreeDTileNode > t = dynamic_cast<ThreeDTileNode*>(node);
+    if (t.valid())
     {
-        _deadTiles.erase(itr);
+        if (t->_trackerItrValid)
+        {
+            _tracker.erase(t->_trackerItr);
+        }
+
+        _tracker.push_back(t.get());
+        t->_trackerItrValid = true;    
+        t->_trackerItr = --_tracker.end();
     }
-    _liveTiles.insert(node);
 }
 
 void ThreeDTilesetNode::startCull()
@@ -780,19 +795,45 @@ void ThreeDTilesetNode::startCull()
 
 void ThreeDTilesetNode::endCull()
 {
-    // We can erase all of the tiles that are in the dead set
-    for (NodeSet::iterator itr = _deadTiles.begin(); itr != _deadTiles.end(); ++itr)
+    OE_PROFILING_ZONE;
+
+    osg::Timer_t startTime = osg::Timer::instance()->tick();
+    osg::Timer_t endTime;
+
+    ScopedMutexLock lock(_mutex);
+    
+    // Max number of tiles to keep in memory
+    unsigned int maxTiles = 50;    
+    // Max time in ms to allocate to erasing tiles
+    float maxTime = 1.0f;
+
+    ThreeDTileNode::TileTracker::iterator itr = _tracker.begin();
+
+    unsigned int numErased = 0;
+    while (_tracker.size() > maxTiles&& itr != _sentryItr)
     {
         osg::ref_ptr< ThreeDTileNode > tile = dynamic_cast<ThreeDTileNode*>(itr->get());
         if (tile.valid())
         {
             tile->unloadContent();
+            tile->_trackerItrValid = false;
+            itr = _tracker.erase(itr);
+            ++numErased;
+        }        
+
+        endTime = osg::Timer::instance()->tick();
+        if (osg::Timer::instance()->delta_m(startTime, endTime) > maxTime)
+        {
+            break;
         }
     }
-    _deadTiles.clear();
 
-    _liveTiles.swap(_deadTiles);
-    _liveTiles.clear();
+    // Erase the sentry and stick it at the end of the list
+    _tracker.erase(_sentryItr);
+    _tracker.push_back(0);    
+    _sentryItr = --_tracker.end();    
+
+    endTime = osg::Timer::instance()->tick();
 }
 
 void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)

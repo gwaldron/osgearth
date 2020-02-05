@@ -121,36 +121,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         static Tileset* create(const std::string& tilesetJSON, const URIContext& uc);
     };
 
-    /**
-    * Node representing a 3D-Tiles Tileet.
-    */
-    class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::MatrixTransform
-    {
-    public:
-        ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options);
-
-        osg::BoundingSphere computeBound() const;
-
-        float getMaximumScreenSpaceError() const;
-        void setMaximumScreenSpaceError(float maximumScreenSpaceError);
-
-        void touchTile(osg::Node* node);
-
-        void traverse(osg::NodeVisitor& nv);
-
-    private:
-        void startCull();
-        void endCull();
-
-        osg::ref_ptr<Tileset> _tileset;
-        osg::ref_ptr<osgDB::Options> _options;
-        float _maximumScreenSpaceError;
-
-        typedef std::set< osg::ref_ptr< osg::Node > > NodeSet;
-
-        NodeSet _liveTiles;
-        NodeSet _deadTiles;
-    };
+    class ThreeDTilesetNode;
 
     /**
      * Node that renders a 3D-Tiles content record
@@ -166,7 +137,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         ThreeDTilesetNode* _tilesetNode;
         osg::ref_ptr< Tileset > _tileset;
         osg::ref_ptr< osgDB::Options > _options;
-    };
+    };    
 
     /**
      * Node that renders a 3D-Tiles Tile
@@ -197,6 +168,12 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         const Tile* getTile() const { return _tile.get(); }
 
+
+        typedef std::list< osg::ref_ptr < ThreeDTileNode > > TileTracker;
+
+        TileTracker::iterator _trackerItr;
+        bool _trackerItrValid;
+
     private:
         osg::ref_ptr< Tile > _tile;
 
@@ -218,6 +195,37 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         osg::ref_ptr< osgDB::Options > _options;
     };
+
+    /**
+    * Node representing a 3D-Tiles Tileet.
+    */
+    class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::MatrixTransform
+    {
+    public:
+        ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options);
+
+        osg::BoundingSphere computeBound() const;
+
+        float getMaximumScreenSpaceError() const;
+        void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
+        void touchTile(osg::Node* node);
+
+        void traverse(osg::NodeVisitor& nv);
+
+    private:
+        void startCull();
+        void endCull();
+
+        osg::ref_ptr<Tileset> _tileset;
+        osg::ref_ptr<osgDB::Options> _options;
+        float _maximumScreenSpaceError;
+
+        mutable Threading::Mutex _mutex;
+        ThreeDTileNode::TileTracker _tracker;
+        ThreeDTileNode::TileTracker::iterator _sentryItr;
+    };
+
 } } }
 
 

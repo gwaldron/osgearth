@@ -1,0 +1,60 @@
+<!--
+osgEarth Sample
+This shows how to label point features with an attribute.
+-->
+
+<map name="Feature Geometry Demo" type="geocentric" version="2">
+            
+    <image name="World Imagery" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <feature_source name="city-data" driver="ogr">
+        <url>../data/munich_air.shp</url>
+    </feature_source>
+    
+    <feature_model name="cities" feature_source="city-data">        
+        <feature_indexing enabled="false"/>
+        <styles>
+            <style type="text/css">              
+                cities {
+                    icon:           "../data/downarrow.png";
+                    icon-placement: centroid;
+                    icon-declutter: true;
+                    icon-align:     center-bottom;
+                    text-content:   [name];
+                    text-encoding:  utf-8;
+                    text-align:     center-bottom;
+                    text-halo:      #1f1f1f;
+                    text-size:      18;
+                    bar-width:      500;
+                    bar-0-value:    [no2_18q2];
+                    bar-0-max-value: 80;
+                    bar-0-min-value: 0;
+                    bar-0-max-color: #ff0000;
+                    bar-0-min-color: #1f0000;
+                    bar-0-value-scale: 10;
+                    bar-1-value:    [no2_18q3];
+                    bar-1-max-value: 80;
+                    bar-1-min-value: 0;
+                    bar-1-max-color: #00ff00;
+                    bar-1-min-color: #001f00;
+                    bar-1-value-scale: 10;
+                }
+            </style>
+        </styles>
+    </feature_model>
+    
+    <screen_space_layout>
+        <out_animation_time>  0.0  </out_animation_time>
+        <in_animation_time>   0.25 </in_animation_time>
+        <min_animation_scale> 0.45 </min_animation_scale>
+        <min_animation_alpha> 0.0  </min_animation_alpha>
+        <sort_by_priority>    true </sort_by_priority>
+    </screen_space_layout>
+
+    <viewpoints>
+        <viewpoint name="Munich Overview" heading="24.261" height="510" lat="48.133333" long="11.566667" pitch="-21.6" range="33450"/>
+    </viewpoints>
+
+</map>

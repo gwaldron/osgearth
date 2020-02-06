@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/BarSymbol>
 #include <osgText/Text>
 
 #define LC "[BuildTextFilter] "
@@ -41,10 +42,11 @@ BuildTextFilter::push( FeatureList& input, FilterContext& context )
 
     const TextSymbol* text = _style.get<TextSymbol>();
     const IconSymbol* icon = _style.get<IconSymbol>();
+    const BarSymbol* bar = _style.get<BarSymbol>();
 
-    if ( !text && !icon )
+    if ( !text && !icon && !bar)
     {
-        OE_WARN << LC << "Insufficient symbology (no TextSymbol/IconSymbol)" << std::endl;
+        OE_WARN << LC << "Insufficient symbology (no TextSymbol/IconSymbol/BarSymbol)" << std::endl;
         return 0L;
     }
 

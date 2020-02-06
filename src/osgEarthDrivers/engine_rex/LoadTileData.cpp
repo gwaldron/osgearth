@@ -135,10 +135,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
                 const RenderBindings& bindings = context->getRenderBindings();
 
                 // Merge the new data into the tile.
-                tilenode->merge(_dataModel.get(), bindings);
-
-                // Mark as complete. TODO: per-data requests will do something different.
-                tilenode->setDirty( false );
+                tilenode->merge(_dataModel.get(), bindings, this);
 
                 OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
             }

@@ -60,6 +60,8 @@ struct App
     osg::ref_ptr<DecalLandCoverLayer> _landCoverLayer;
     osg::ref_ptr<osg::Image> _image;
     osg::ref_ptr<osg::Image> _landCover;
+    std::stack<std::string> _undoStack;
+    unsigned _idGenerator;
 
     App()
     {
@@ -70,6 +72,7 @@ struct App
             return;
         }
 
+        _idGenerator = 0u;
         _minLevel = 11u;
         _maxDataLevel = 18u; // must be >= other land cover layers!
         _size = 0.0f;
@@ -107,20 +110,23 @@ struct App
         CachePolicy policy;
         //policy.usage() = CachePolicy::USAGE_READ_WRITE;
         //policy.maxAge() = 10.0;
-        
+
         _imageLayer = new DecalImageLayer();
+        _imageLayer->setName("Image Decals");
         _imageLayer->setMinLevel(_minLevel);
         _imageLayer->setMaxDataLevel(_maxDataLevel);
         _imageLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_imageLayer.get());
 
         _elevLayer = new DecalElevationLayer();
+        _elevLayer->setName("Elevation Decals");
         _elevLayer->setMinLevel(_minLevel);
         _elevLayer->setMaxDataLevel(_maxDataLevel);
         _elevLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_elevLayer.get());
 
         _landCoverLayer = new DecalLandCoverLayer();
+        _landCoverLayer->setName("LandCover Decals");
         _landCoverLayer->setMinLevel(_minLevel);
         _landCoverLayer->setMaxDataLevel(_maxDataLevel); // must be the same as other land cover layer(s)!
         _landCoverLayer->setCachePolicy(policy);
@@ -129,10 +135,36 @@ struct App
 
     void addDecal(const GeoExtent& extent)
     {
-        _imageLayer->addDecal(extent, _image.get());
-        _elevLayer->addDecal(extent, _image.get(), -_size/20.0f); //-35.0f);
-        _landCoverLayer->addDecal(extent, _landCover.get());
+        // ID for the new decal(s). ID's need to be unique in a single decal layer,
+        // but the three different TYPES of layers can share the same ID
+        std::string id = Stringify() << _idGenerator++;
+        _undoStack.push(id);
+
+        _imageLayer->addDecal(id, extent, _image.get());
+        _elevLayer->addDecal(id, extent, _image.get(), -_size/20.0f);
+        _landCoverLayer->addDecal(id, extent, _landCover.get());
+
+        // Tell the terrain engine to regenerate the effected area.
         _mapNode->getTerrainEngine()->invalidateRegion(extent, _minLevel, _maxDataLevel);
+    }
+
+    void undoLastDecal()
+    {
+        if (_undoStack.empty() == false)
+        {
+            std::string id = _undoStack.top();
+            _undoStack.pop();
+
+            GeoExtent extent = _imageLayer->getDecalExtent(id);
+            if (extent.isValid())
+            {
+                _imageLayer->removeDecal(id);
+                _elevLayer->removeDecal(id);
+                _landCoverLayer->removeDecal(id);
+
+                _mapNode->getTerrainEngine()->invalidateRegion(extent); //, _minLevel, _maxDataLevel);
+            }
+        }
     }
 };
 
@@ -170,6 +202,14 @@ struct ClickToDecal : public osgGA::GUIEventHandler
 
             return true;
         }
+
+        else if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'u')
+        {
+            _app.undoLastDecal();
+
+            return true;
+        }
+
         return false;
     }
 };
@@ -202,7 +242,7 @@ main(int argc, char** argv)
 
         app.init(MapNode::get(node));
         viewer.addEventHandler(new ClickToDecal(app));
-        OE_NOTICE << LC << "Press 'd' to drop the bomb." << std::endl;
+        OE_WARN << LC << "Press 'd' to drop the bomb ... press 'u' to undo" << std::endl;
 
         return viewer.run();
     }

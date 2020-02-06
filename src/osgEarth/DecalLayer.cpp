@@ -73,8 +73,8 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
     {
         Threading::ScopedMutexLock lock(_mutex);
 
-        for(std::vector<Decal>::const_iterator i = _decals.begin();
-            i != _decals.end();
+        for(std::list<Decal>::const_iterator i = _decalList.begin();
+            i != _decalList.end();
             ++i)
         {
             const Decal& decal = *i;
@@ -147,20 +147,54 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
 }
 
 void
-DecalImageLayer::addDecal(const GeoExtent& extent, const osg::Image* image)
+DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image)
 {
+    // make sure there are no dupes
+    removeDecal(id);
+
     // safe lock
     {
         Threading::ScopedMutexLock lock(_mutex);
 
-        _decals.resize(_decals.size()+1);
-        Decal& decal = _decals.back();
+        _decalList.push_back(Decal());
+        Decal& decal = _decalList.back();
         decal._extent = extent;
         decal._image = image;
+
+        std::list<Decal>::iterator i = _decalList.end();
+        _decalIndex[id] = --i;
 
         // data changed so up the revsion.
         bumpRevision();
     }
+}
+
+void
+DecalImageLayer::removeDecal(const std::string& id)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+    {
+        _decalList.erase(i->second);
+        _decalIndex.erase(i);
+
+        // data changed so up the revsion.
+        bumpRevision();
+    }
+}
+
+const GeoExtent&
+DecalImageLayer::getDecalExtent(const std::string& id) const
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    DecalIndex::const_iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+    {
+        return i->second->_extent;
+    }
+    return GeoExtent::INVALID;
 }
 
 //........................................................................
@@ -214,8 +248,8 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
     {
         Threading::ScopedMutexLock lock(_mutex);
 
-        for(std::vector<Decal>::const_iterator i = _decals.begin();
-            i != _decals.end();
+        for(std::list<Decal>::const_iterator i = _decalList.begin();
+            i != _decalList.end();
             ++i)
         {
             const Decal& decal = *i;
@@ -283,7 +317,7 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
 }
 
 void
-DecalElevationLayer::addDecal(const GeoExtent& extent, const osg::Image* image, float scale)
+DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float scale)
 {
     if (!extent.isValid() || !image)
         return;
@@ -304,17 +338,51 @@ DecalElevationLayer::addDecal(const GeoExtent& extent, const osg::Image* image, 
         }
     }
 
+    // no dupes
+    removeDecal(id);
+
     // safe lock
     {
         Threading::ScopedMutexLock lock(_mutex);
 
-        _decals.resize(_decals.size()+1);
-        Decal& decal = _decals.back();
+        _decalList.push_back(Decal());
+        Decal& decal = _decalList.back();
         decal._heightfield = GeoHeightField(hf, extent);
-    }
 
-    // data changed so up the revsion.
-    bumpRevision();
+        std::list<Decal>::iterator i = _decalList.end();
+        _decalIndex[id] = --i;
+
+        // data changed so up the revsion.
+        bumpRevision();
+    }
+}
+
+void
+DecalElevationLayer::removeDecal(const std::string& id)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+    {
+        _decalList.erase(i->second);
+        _decalIndex.erase(i);
+
+        // data changed so up the revsion.
+        bumpRevision();
+    }
+}
+
+const GeoExtent&
+DecalElevationLayer::getDecalExtent(const std::string& id) const
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    DecalIndex::const_iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+    {
+        return i->second->_heightfield.getExtent();
+    }
+    return GeoExtent::INVALID;
 }
 
 //........................................................................
@@ -380,8 +448,8 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
     {
         Threading::ScopedMutexLock lock(_mutex);
 
-        for(std::vector<Decal>::const_iterator i = _decals.begin();
-            i != _decals.end();
+        for(std::list<Decal>::const_iterator i = _decalList.begin();
+            i != _decalList.end();
             ++i)
         {
             const Decal& decal = *i;
@@ -457,18 +525,49 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
 }
 
 void
-DecalLandCoverLayer::addDecal(const GeoExtent& extent, const osg::Image* image)
+DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image)
 {
-    // safe lock
+    removeDecal(id);
     {
         Threading::ScopedMutexLock lock(_mutex);
 
-        _decals.resize(_decals.size()+1);
-        Decal& decal = _decals.back();
-        decal._image = image;
+        _decalList.push_back(Decal());
+        Decal& decal = _decalList.back();
         decal._extent = extent;
+        decal._image = image;
+
+        std::list<Decal>::iterator i = _decalList.end();
+        _decalIndex[id] = --i;
 
         // data changed so up the revsion.
         bumpRevision();
     }
+}
+
+void
+DecalLandCoverLayer::removeDecal(const std::string& id)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+    {
+        _decalList.erase(i->second);
+        _decalIndex.erase(i);
+
+        // data changed so up the revsion.
+        bumpRevision();
+    }
+}
+
+const GeoExtent&
+DecalLandCoverLayer::getDecalExtent(const std::string& id) const
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    DecalIndex::const_iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+    {
+        return i->second->_extent;
+    }
+    return GeoExtent::INVALID;
 }

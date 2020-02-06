@@ -6,7 +6,7 @@
 
 SET(TRACY_DIR "" CACHE PATH "Root directory of Tracy distribution")
 
-FIND_PATH(TRACY_INCLUDE_DIR Tracy.hpp
+FIND_PATH(TRACY_INCLUDE_DIR TracyClient/Tracy.hpp
   PATHS
     ${TRACY_DIR}
     $ENV{TRACY_DIR}
@@ -14,7 +14,7 @@ FIND_PATH(TRACY_INCLUDE_DIR Tracy.hpp
 )
 
 FIND_LIBRARY(TRACY_LIBRARY
-  NAMES tracy TracyClient
+  NAMES tracy tracy-release TracyClient
   PATHS  
     ${TRACY_DIR}/lib
     $ENV{TRACY_DIR}

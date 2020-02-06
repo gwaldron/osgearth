@@ -18,7 +18,7 @@
  */
 #include <osgEarth/TDTiles>
 #include <osgEarth/Utils>
-#include <osgEArth/Metrics>
+#include <osgEarth/Metrics>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
 #include <osgEarth/OGRFeatureSource>

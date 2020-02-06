@@ -1229,6 +1229,7 @@ GDAL::Driver::createImage(const TileKey& key,
             src_row < target_height;
             src_row++, dst_row++)
         {
+            unsigned int flippedRow = target_height - dst_row - 1;
             for (int src_col = 0, dst_col = tile_offset_left;
                 src_col < target_width;
                 ++src_col, ++dst_col)
@@ -1237,9 +1238,9 @@ GDAL::Driver::createImage(const TileKey& key,
                 unsigned char g = green[src_col + src_row * target_width];
                 unsigned char b = blue[src_col + src_row * target_width];
                 unsigned char a = alpha[src_col + src_row * target_width];
-                *(image->data(dst_col, dst_row) + 0) = r;
-                *(image->data(dst_col, dst_row) + 1) = g;
-                *(image->data(dst_col, dst_row) + 2) = b;
+                *(image->data(dst_col, flippedRow) + 0) = r;
+                *(image->data(dst_col, flippedRow) + 1) = g;
+                *(image->data(dst_col, flippedRow) + 2) = b;
                 if (!isValidValue(r, bandRed) ||
                     !isValidValue(g, bandGreen) ||
                     !isValidValue(b, bandBlue) ||
@@ -1247,11 +1248,9 @@ GDAL::Driver::createImage(const TileKey& key,
                 {
                     a = 0.0f;
                 }
-                *(image->data(dst_col, dst_row) + 3) = a;
+                *(image->data(dst_col, flippedRow) + 3) = a;
             }
         }
-
-        image->flipVertical();
 
         delete[]red;
         delete[]green;
@@ -1321,6 +1320,7 @@ GDAL::Driver::createImage(const TileKey& key,
                 // copy from data to image.
                 for (int src_row = 0, dst_row = tile_offset_top; src_row < target_height; src_row++, dst_row++)
                 {
+                    unsigned int flippedRow = target_height - dst_row - 1;
                     for (int src_col = 0, dst_col = tile_offset_left; src_col < target_width; ++src_col, ++dst_col)
                     {
                         unsigned char* ptr = &data[(src_col + src_row*target_width)*gdalSampleSize];
@@ -1335,12 +1335,9 @@ GDAL::Driver::createImage(const TileKey& key,
                             value = NO_DATA_VALUE;
 
                         temp.r() = value;
-                        write(temp, dst_col, dst_row);
+                        write(temp, dst_col, flippedRow);
                     }
                 }
-
-                // TODO: can we replace this by writing rows in reverse order? -gw
-                image->flipVertical();
             }
             else // err != CE_None
             {
@@ -1375,25 +1372,24 @@ GDAL::Driver::createImage(const TileKey& key,
                 src_row < target_height;
                 src_row++, dst_row++)
             {
+                unsigned int flippedRow = target_height - dst_row - 1;
                 for (int src_col = 0, dst_col = tile_offset_left;
                     src_col < target_width;
                     ++src_col, ++dst_col)
                 {
                     unsigned char g = gray[src_col + src_row * target_width];
                     unsigned char a = alpha[src_col + src_row * target_width];
-                    *(image->data(dst_col, dst_row) + 0) = g;
-                    *(image->data(dst_col, dst_row) + 1) = g;
-                    *(image->data(dst_col, dst_row) + 2) = g;
+                    *(image->data(dst_col, flippedRow) + 0) = g;
+                    *(image->data(dst_col, flippedRow) + 1) = g;
+                    *(image->data(dst_col, flippedRow) + 2) = g;
                     if (!isValidValue(g, bandGray) ||
                         (bandAlpha && !isValidValue(a, bandAlpha)))
                     {
                         a = 0.0f;
                     }
-                    *(image->data(dst_col, dst_row) + 3) = a;
+                    *(image->data(dst_col, flippedRow) + 3) = a;
                 }
             }
-
-            image->flipVertical();
 
             delete[]gray;
             delete[]alpha;
@@ -1436,6 +1432,7 @@ GDAL::Driver::createImage(const TileKey& key,
             src_row < target_height;
             src_row++, dst_row++)
         {
+            unsigned int flippedRow = target_height - dst_row - 1;
             for (int src_col = 0, dst_col = tile_offset_left;
                 src_col < target_width;
                 ++src_col, ++dst_col)
@@ -1458,7 +1455,7 @@ GDAL::Driver::createImage(const TileKey& key,
                         pixel.r() = NO_DATA_VALUE;
                     }
 
-                    write(pixel, dst_col, dst_row);
+                    write(pixel, dst_col, flippedRow);
                 }
                 else
                 {
@@ -1472,15 +1469,13 @@ GDAL::Driver::createImage(const TileKey& key,
                         color.a() = 0.0f;
                     }
 
-                    *(image->data(dst_col, dst_row) + 0) = color.r();
-                    *(image->data(dst_col, dst_row) + 1) = color.g();
-                    *(image->data(dst_col, dst_row) + 2) = color.b();
-                    *(image->data(dst_col, dst_row) + 3) = color.a();
+                    *(image->data(dst_col, flippedRow) + 0) = color.r();
+                    *(image->data(dst_col, flippedRow) + 1) = color.g();
+                    *(image->data(dst_col, flippedRow) + 2) = color.b();
+                    *(image->data(dst_col, flippedRow) + 3) = color.a();
                 }
             }
         }
-
-        image->flipVertical();
 
         delete[] palette;
 

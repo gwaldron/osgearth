@@ -734,16 +734,19 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     std::map<ElevationLayer*, LayerAnalysis> layerAnalysis;
 #endif
 
+    int i;
+
     // Track the number of layers that would return fallback data.
+    // if ALL layers would provide fallback data, we can exit early
+    // and return nothing.
     unsigned numFallbackLayers = 0;
 
     // Check them in reverse order since the highest priority is last.
-    for (int i = size()-1; i>=0; --i)
-    //for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
+    for (i = size()-1; i>=0; --i)
     {
-        ElevationLayer* layer = (*this)[i].get(); //i->get();
+        ElevationLayer* layer = (*this)[i].get();
 
-        if ( layer->getEnabled() && layer->getVisible() )
+        if ( layer->getEnabled() && layer->getVisible() ) // redundant for elevation layers..
         {
             // calculate the resolution-mapped key (adjusted for tile resolution differential).            
             TileKey mappedKey = keyToUse.mapResolution(
@@ -753,11 +756,21 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
             bool useLayer = true;
             TileKey bestKey( mappedKey );
 
-            // Check whether the non-mapped key is valid according to the user's min/max level settings:
-            if ( !layer->isKeyInLegalRange(key) )
+            // Check whether the non-mapped key is valid according to the user's minLevel setting.
+            // We wll ignore the maxDataLevel setting, because we account for that by getting
+            // the "best available" key later. We must keep these layers around in case we need
+            // to fill in empty spots.
+            if (key.getLOD() < layer->getMinLevel())
             {
                 useLayer = false;
             }
+
+            // GW - this was wrong because it would exclude layers with a maxDataLevel set
+            // below the requested LOD ... when in fact we need around for fallback.
+            //if ( !layer->isKeyInLegalRange(key) )
+            //{
+            //    useLayer = false;
+            //}
                 
             // Find the "best available" mapped key from the tile source:
             else 

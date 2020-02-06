@@ -30,7 +30,8 @@
 #ifdef OSGEARTH_HAVE_DRACO
 #define TINYGLTF_ENABLE_DRACO
 #endif
-//#define TINYGLTF_USE_RAPIDJSON
+#define TINYGLTF_USE_RAPIDJSON
+#define TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR
 
 #include "tiny_gltf.h"
 using namespace tinygltf;

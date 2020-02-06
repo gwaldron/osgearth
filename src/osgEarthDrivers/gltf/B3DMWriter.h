@@ -64,7 +64,7 @@ public:
 
         tinygltf::TinyGLTF gltfOut;
         std::ostringstream gltfBuf;
-        gltfOut.WriteGltfSceneToBinaryStream(&model, location, gltfBuf, true, true);
+        gltfOut.WriteGltfSceneToStream(&model, gltfBuf, true, true);
         std::string gltfData = gltfBuf.str();
         int gltfDataPadding = 4 - (gltfData.length() % 4);
         if (gltfDataPadding == 4) gltfDataPadding = 0;

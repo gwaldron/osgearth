@@ -82,7 +82,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             osg::ref_ptr< ThreadPool > threadPool = OptionsData<ThreadPool>::get(readOptions.get(), "threadpool");
             if (!threadPool.valid())
             {
-                unsigned int numThreads = 8;
+                unsigned int numThreads = 2;
                 threadPool = new ThreadPool(numThreads);
                 OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", threadPool.get());
             }
@@ -667,20 +667,8 @@ void ThreeDTileNode::updateTracking()
 }
 
 void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
-{
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
-    {
-        if (_content.valid())
-        {
-            _content->accept(nv);
-        }
-
-        if (_children.valid())
-        {
-            _children->accept(nv);
-        }
-    }
-    else if (nv.getVisitorType() == nv.CULL_VISITOR)
+{    
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
 #if OSG_VERSION_LESS_THAN(3,6,0)
         osgUtil::CullVisitor *cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
@@ -749,7 +737,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             }
         }
     }
-    else if (nv.getVisitorType() == nv.INTERSECTION_VISITOR)
+    else if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
     {
         resolveContent();
         bool areChildrenReady = true;
@@ -792,7 +780,20 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
                 _content->accept(nv);
             }
         }
-    }    
+    }
+    else if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+    {
+        if (_content.valid())
+        {
+            _content->accept(nv);
+        }
+
+        if (_children.valid())
+        {
+            _children->accept(nv);
+        }
+    }
+    
 }
 
 ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :

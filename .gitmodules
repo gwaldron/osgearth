@@ -1,0 +1,6 @@
+[submodule "src/osgEarthDrivers/gltf/tinygltf"]
+	path = src/third_party/tinygltf
+	url = https://github.com/pelicanmapping/tinygltf.git
+[submodule "src/osgEarthDrivers/gltf/rapidjson"]
+	path = src/third_party/rapidjson
+	url = https://github.com/Tencent/rapidjson.git

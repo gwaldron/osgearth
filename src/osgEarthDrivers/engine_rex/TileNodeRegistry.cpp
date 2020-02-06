@@ -79,7 +79,7 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
                 {
                     if ( setToDirty )
                     {
-                        i->second._tile->setDirty( true );
+                        i->second._tile->refreshLayers();
                     }
                 }
             }

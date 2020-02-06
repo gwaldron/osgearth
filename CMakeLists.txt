@@ -76,6 +76,9 @@ check_for_cxx11_compiler(CXX11_AVAILABLE)
 set(OSGEARTH_BUILDTIME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/build_include")
 include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 
+# Third-party sources included in osgEarth
+SET(OE_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
+
 # Platform-specific stuff
 INCLUDE(oe_ios)
 INCLUDE(oe_osx)

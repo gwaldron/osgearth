@@ -30,6 +30,7 @@
 
 #include <OpenThreads/Atomic>
 #include <vector>
+#include <queue>
 
 namespace osg {
     class CullStack;
@@ -66,11 +67,14 @@ namespace osgEarth { namespace REX
         const TileKey& getKey() const { return _key; }
 
         /** Tells this tile that it needs to request data (when set to true) */
-        void setDirty(bool value);
+        //void setDirty(bool value);
 
         /** Indicates that this tile should never be unloaded. */
         void setDoNotExpire(bool value);
         bool getDoNotExpire() const { return _doNotExpire; }
+
+        /** Tells this tile to load all its layers. */
+        void refreshLayers();
 
         /** Tells this tile that is need to request data for the specified layers. */
         void refreshLayers(const std::set<UID>& layers);
@@ -108,7 +112,7 @@ namespace osgEarth { namespace REX
         void loadChildren();
 
         /** Merge new Tile model data into this tile's rendering data model. */
-        void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings);
+        void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings, LoadTileData* originator);
 
         /** Access the rendering model for this tile */
         TileRenderModel& renderModel() { return _renderModel; }
@@ -120,8 +124,6 @@ namespace osgEarth { namespace REX
         void loadSync();
 
         void refreshSharedSamplers(const RenderBindings& bindings);
-
-        bool isDirty() const { return _dirty; }
         
     public: // osg::Node
 
@@ -136,20 +138,24 @@ namespace osgEarth { namespace REX
     protected:
         TileKey                            _key;
         osg::ref_ptr<SurfaceNode>          _surface;
-        osg::ref_ptr<LoadTileData>         _loadRequest;
         osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
-        bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
         double                             _lastTraversalTime;
         bool                               _childrenReady;
         mutable osg::Vec4f                 _tileKeyValue;
         osg::Vec2f                         _morphConstants;
         TileRenderModel                    _renderModel;
-        bool                               _empty; //??
+        bool                               _empty;
         bool                               _imageUpdatesActive;
         TileKey                            _subdivideTestKey;
         bool _doNotExpire;
+
+        typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
+        Lockable<LoadQueue> _loadQueue;
+        unsigned _loadsInQueue;
+
+        bool dirty() const { return _loadsInQueue>0; }
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;
@@ -179,6 +185,11 @@ namespace osgEarth { namespace REX
 
         /** Ensure that inherited data from the parent node is up to date. */
         void refreshInheritedData(TileNode* parent, const RenderBindings& bindings);
+
+        //! Call this to notify the tile that the rendering pass corresponding to the
+        //! indicated sourceUID was deleted by an ancestor, and that if this tile is
+        //! inheriting data from that pass, it should delete itself as well.
+        void notifyOfDeletedPass(UID sourceUID);
 
         const TerrainOptions& options() const;
     };

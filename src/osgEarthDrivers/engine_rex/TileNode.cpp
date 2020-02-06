@@ -62,7 +62,7 @@ namespace
 }
 
 TileNode::TileNode() : 
-_dirty        ( false ),
+_loadsInQueue(0u),
 _childrenReady( false ),
 _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
@@ -133,9 +133,9 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _surface = new SurfaceNode(key, surfaceDrawable);
     
     // create a data load request for this new tile:
-    _loadRequest = new LoadTileData( this, context );
-    _loadRequest->setName( _key.str() );
-    _loadRequest->setTileKey( _key );
+    //_loadRequest = new LoadTileData( this, context );
+    //_loadRequest->setName( _key.str() );
+    //_loadRequest->setTileKey( _key );
 
     // Encode the tile key in a uniform
     unsigned tw, th;
@@ -226,7 +226,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     dirtyBound();
 
     // signal the tile to start loading data:
-    setDirty( true );
+    refreshLayers();
 
     // register me.
     context->liveTiles()->add( this );
@@ -291,19 +291,43 @@ TileNode::getElevationMatrix() const
 }
 
 void
-TileNode::setDirty(bool value)
+TileNode::refreshLayers()
 {
-    _loadRequest->clearLayerFilter();
-    _dirty = value;
+    LoadTileData* r = new LoadTileData(this, _context.get());
+    r->setName(_key.str());
+    r->setTileKey(_key);
+
+    _loadQueue.lock();
+    _loadQueue.push(r);
+    _loadsInQueue = _loadQueue.size();
+    _loadQueue.unlock();
 }
 
 void
 TileNode::refreshLayers(const std::set<UID>& layers)
 {
-    for(std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
-        _loadRequest->addLayerToFilter(*i);
+    LoadTileData* r = new LoadTileData(this, _context.get());
+    r->setName(_key.str());
+    r->setTileKey(_key);
+    for (std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        r->addLayerToFilter(*i);
 
-    _dirty = true;
+    _loadQueue.lock();
+    _loadQueue.push(r);
+    _loadsInQueue = _loadQueue.size();
+    _loadQueue.unlock();
+
+    // Scan our render passes for matches in the layer filter
+    // and mark each one as dirty. Dirty layers that are not
+    // updated during a merge will be deleted.
+    for(int i = 0; i<_renderModel._passes.size(); ++i)
+    {
+        RenderingPass& pass = _renderModel._passes[i];
+        if (layers.empty() || layers.count(pass.sourceUID()) > 0)
+        {
+            pass.incrementDirtyCount();
+        }
+    }
 }
 
 void
@@ -432,7 +456,7 @@ TileNode::cull(TerrainCuller* culler)
     if (options().progressive() == true)
     {
         TileNode* parent = getParentTile();
-        if ( parent && parent->isDirty() )
+        if ( parent && parent->dirty() )
         {
             canLoadData = false;
         }
@@ -522,7 +546,7 @@ TileNode::cull(TerrainCuller* culler)
     }
 
     // If this tile is marked dirty, try loading data.
-    if ( _dirty && canLoadData )
+    if ( dirty() && canLoadData )
     {
         load( culler );
     }
@@ -679,7 +703,7 @@ TileNode::createChildren(EngineContext* context)
 }
 
 void
-TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
+TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, LoadTileData* originator)
 {
     bool newElevationData = false;
 
@@ -712,6 +736,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     pass->samplers()[SamplerBinding::COLOR]._texture = model->getTexture();
                     pass->samplers()[SamplerBinding::COLOR]._matrix = *model->getMatrix();
 
+                    pass->decrementDirtyCount();
+
                     // check to see if this data requires an image update traversal.
                     if (_imageUpdatesActive == false)
                     {
@@ -741,6 +767,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                         pass = &_renderModel.addPass();
                         pass->setLayer(model->getLayer());
                     }
+                    pass->decrementDirtyCount();
                 }
             }
         }
@@ -812,11 +839,28 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         }
     }
 
-    // Patch Layers
+    // Patch Layers - NOP for now
+#if 0
     for (unsigned i = 0; i < model->patchLayers().size(); ++i)
     {
         TerrainTilePatchLayerModel* layerModel = model->patchLayers()[i].get();
     }
+#endif
+
+    // Now scan for dirty color passes and remove them.
+    // This will happen when refreshLayers is called, and there is a
+    // rendering pass that doesn't receive any new data.
+    std::vector<UID> deletedPasses;
+    for (int p = 0; p < _renderModel._passes.size(); ++p)
+    {
+        const RenderingPass& pass = _renderModel._passes[p];
+        if (pass.isDirty())
+        {
+            deletedPasses.push_back(pass.sourceUID());
+            _renderModel._passes.erase(_renderModel._passes.begin() + p);
+            --p;
+        }
+    }    
 
     if (_childrenReady)
     {
@@ -824,7 +868,14 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         {
             TileNode* child = getSubTile(i);
             if (child)
+            {
                 child->refreshInheritedData(this, bindings);
+
+                for(int j=0; j<deletedPasses.size(); ++j)
+                {
+                    child->notifyOfDeletedPass(deletedPasses[j]);
+                }
+            }
         }
     }
 
@@ -832,6 +883,15 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     {
         _context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
     }
+
+    // Remove the load request that spawned this merge.
+    // The only time the request will NOT be in the queue is if it was
+    // loadSync() was called.
+    _loadQueue.lock();
+    if (_loadQueue.empty() == false)
+        _loadQueue.pop();
+    _loadsInQueue = _loadQueue.size();
+    _loadQueue.unlock();
 }
 
 void TileNode::loadChildren()
@@ -1012,12 +1072,42 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     }
 }
 
+void
+TileNode::notifyOfDeletedPass(UID sourceUID)
+{
+    for(int p=0; p<_renderModel._passes.size(); ++p)
+    {
+        RenderingPass& pass = _renderModel._passes[p];
+        if (pass.sourceUID() == sourceUID)
+        {
+            const Sampler& sampler = pass.samplers()[SamplerBinding::COLOR];
+            if (!sampler._matrix.isIdentity())
+            {
+                _renderModel._passes.erase(_renderModel._passes.begin() + p);
+                --p;
+            }
+        }
+    }
+
+    if (_childrenReady)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            TileNode* child = getSubTile(i);
+            if (child)
+            {
+                child->notifyOfDeletedPass(sourceUID);
+            }
+        }
+    }
+}
+
 bool
 TileNode::passInLegalRange(const RenderingPass& pass) const
 {
     return 
-        pass.terrainLayer() == 0L ||
-        pass.terrainLayer()->isKeyInVisualRange(getKey());
+        pass.tileLayer() == 0L ||
+        pass.tileLayer()->isKeyInVisualRange(getKey());
 }
 
 void
@@ -1047,7 +1137,13 @@ TileNode::load(TerrainCuller* culler)
     float priority = lodPriority + distPriority;
 
     // Submit to the loader.
-    _context->getLoader()->load( _loadRequest.get(), priority, *culler );
+    _mutex.lock(); // lock the load queue
+    if (_loadQueue.empty() == false)
+    {
+        LoadTileData* r = _loadQueue.front().get();
+        _context->getLoader()->load(r, priority, *culler );
+    }
+    _mutex.unlock(); // unlock the load queue
 }
 
 void

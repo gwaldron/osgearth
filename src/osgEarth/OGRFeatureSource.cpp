@@ -82,45 +82,6 @@ namespace osgEarth { namespace OGR
         }
         return true;
     }
-
-    class OGRFeatureCursor : public FeatureCursor
-    {
-    public:
-        OGRFeatureCursor(
-            OGRLayerH                 dsHandle,
-            OGRLayerH                 layerHandle,
-            const FeatureSource*       source,
-            const FeatureProfile*     profile,
-            const Query&   query,
-            const FeatureFilterChain* filters,
-            ProgressCallback*         progress);
-
-    public: // FeatureCursor
-
-        bool hasMore() const;
-        Feature* nextFeature();
-
-    protected:
-        virtual ~OGRFeatureCursor();
-
-    private:
-        OGRDataSourceH                      _dsHandle;
-        OGRLayerH                           _layerHandle;
-        OGRLayerH                           _resultSetHandle;
-        OGRGeometryH                        _spatialFilter;
-        Query                               _query;
-        unsigned                            _chunkSize;
-        OGRFeatureH                         _nextHandleToQueue;
-        osg::ref_ptr<const FeatureSource>    _source;
-        osg::ref_ptr<const FeatureProfile>  _profile;
-        std::queue< osg::ref_ptr<Feature> > _queue;
-        osg::ref_ptr<Feature>               _lastFeatureReturned;
-        osg::ref_ptr<const FeatureFilterChain> _filters;
-        bool                                _resultSetEndReached;
-
-    private:
-        void readChunk();
-    };
 } }
 
 //........................................................................
@@ -240,6 +201,27 @@ _filters          ( filters )
     readChunk();
 }
 
+OGR::OGRFeatureCursor::OGRFeatureCursor(OGRLayerH resultSetHandle, const FeatureProfile* profile) :
+    FeatureCursor(NULL),
+    _resultSetHandle(resultSetHandle),
+    _profile(profile),
+    _dsHandle(NULL),
+    _layerHandle(NULL),
+    _spatialFilter(0L),
+    _chunkSize(500),
+    _nextHandleToQueue(0L),
+    _resultSetEndReached(false)
+{
+    OGR_SCOPED_LOCK;
+
+    if (_resultSetHandle)
+    {
+        OGR_L_ResetReading(_resultSetHandle);
+    }
+
+    readChunk();
+}
+
 OGR::OGRFeatureCursor::~OGRFeatureCursor()
 {
     OGR_SCOPED_LOCK;
@@ -247,7 +229,7 @@ OGR::OGRFeatureCursor::~OGRFeatureCursor()
     if ( _nextHandleToQueue )
         OGR_F_Destroy( _nextHandleToQueue );
 
-    if ( _resultSetHandle != _layerHandle )
+    if ( _dsHandle && _resultSetHandle != _layerHandle )
         OGR_DS_ReleaseResultSet( _dsHandle, _resultSetHandle );
 
     if ( _spatialFilter )
@@ -312,7 +294,7 @@ OGR::OGRFeatureCursor::readChunk()
 
                 if (feature.valid())
                 {
-                    if (!_source->isBlacklisted(feature->getFID()))
+                    if (_source == NULL || !_source->isBlacklisted(feature->getFID()))
                     {
                         if (validateGeometry( feature->getGeometry() ))
                         {

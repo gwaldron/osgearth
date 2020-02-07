@@ -20,6 +20,7 @@
 #define OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER
 
 #include <osgEarth/FeatureSource>
+#include <queue>
 
 namespace osgEarth
 {
@@ -146,9 +147,59 @@ namespace osgEarth
         bool _writable;
         FeatureSchema _schema;
         Geometry::Type _geometryType;
-
-        void ctor();
     };
+
+    namespace OGR
+    {
+        //! Internal class - do not use directly
+        class OGRFeatureCursor : public FeatureCursor
+        {
+        public:
+            //! Create a feature cursor that can query data from a layer.
+            OGRFeatureCursor(
+                void*                     dsHandle,
+                void*                     layerHandle,
+                const FeatureSource*      source,
+                const FeatureProfile*     profile,
+                const Query&              query,
+                const FeatureFilterChain* filters,
+                ProgressCallback*         progress);
+
+            //! Create a feature cursor that will just iterate over
+            //! the results in a prepopulated result set.
+            OGRFeatureCursor(
+                void* resultSet,
+                const FeatureProfile* featureProfile);
+
+        public: // FeatureCursor
+
+            bool hasMore() const;
+            Feature* nextFeature();
+
+        protected:
+            virtual ~OGRFeatureCursor();
+
+        private:
+            void* _dsHandle;
+            void* _layerHandle;
+            void* _resultSetHandle;
+            void* _spatialFilter;
+            Query _query;
+            unsigned _chunkSize;
+            void* _nextHandleToQueue;
+            osg::ref_ptr<const FeatureSource> _source;
+            osg::ref_ptr<const FeatureProfile> _profile;
+            std::queue< osg::ref_ptr<Feature> > _queue;
+            osg::ref_ptr<Feature> _lastFeatureReturned;
+            osg::ref_ptr<const FeatureFilterChain> _filters;
+            bool _resultSetEndReached;
+
+        private:
+            void readChunk();
+        };
+    }
+
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::OGRFeatureSource::Options);

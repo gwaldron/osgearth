@@ -784,7 +784,7 @@ URI::readNodeAsync(const osgDB::Options* dbOptions,
     osg::ref_ptr<ThreadPool> threadPool;
     if (dbOptions)
     {
-        threadPool = OptionsData<ThreadPool>::get(dbOptions, "threadpool");
+        threadPool = ThreadPool::get(dbOptions);
     }
 
     Promise<osg::Node> promise;

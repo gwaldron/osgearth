@@ -79,12 +79,12 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
             // Clone the read options and if there isn't a ThreadPool create one.
             osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
-            osg::ref_ptr< ThreadPool > threadPool = OptionsData<ThreadPool>::get(readOptions.get(), "threadpool");
+            osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
             if (!threadPool.valid())
             {
                 unsigned int numThreads = 2;
                 threadPool = new ThreadPool(numThreads);
-                OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", threadPool.get());
+                threadPool->put(readOptions.get());
             }
 
             osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, readOptions.get());
@@ -571,7 +571,7 @@ namespace
         osg::ref_ptr<ThreadPool> threadPool;
         if (options)
         {
-            threadPool = OptionsData<ThreadPool>::get(options, "threadpool");
+            threadPool = ThreadPool::get(options);
         }
 
         Threading::Promise<osg::Node> promise;

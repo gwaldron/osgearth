@@ -50,7 +50,6 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_elevation)
     ADD_SUBDIRECTORY(osgearth_features)
     ADD_SUBDIRECTORY(osgearth_featurefilter)
-    ADD_SUBDIRECTORY(osgearth_geocode)
     ADD_SUBDIRECTORY(osgearth_geodetic_graticule)
     ADD_SUBDIRECTORY(osgearth_los)
     ADD_SUBDIRECTORY(osgearth_terrainprofile)
@@ -102,6 +101,10 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     IF(TRITON_FOUND)
         ADD_SUBDIRECTORY(osgearth_triton)
     ENDIF(TRITON_FOUND)
+    
+    IF (OSGEARTH_ENABLE_GEOCODER)    
+        ADD_SUBDIRECTORY(osgearth_geocode)
+    ENDIF()
 
 ENDIF(BUILD_OSGEARTH_EXAMPLES)
 

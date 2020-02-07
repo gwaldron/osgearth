@@ -130,7 +130,6 @@ SET(LIB_PUBLIC_HEADERS
     FadeEffect
     FileUtils
     GDAL
-    Geocoder
     GeoCommon
     GeoData
     Geoid
@@ -497,7 +496,6 @@ set(TARGET_SRC
     FadeEffect.cpp
     FileUtils.cpp
     GDAL.cpp
-    Geocoder.cpp
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp
@@ -773,6 +771,11 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
     ${PROTO_VECTOR_TILE_CPP}
   )
 ENDIF()
+
+if(OSGEARTH_BUILD_GEOCODER)
+    set(TARGET_SRC ${TARGET_SRC} Geocoder.cpp)
+    set(TARGET_H   ${TARGET_H}   Geocoder)
+endif()
 
 
 ADD_LIBRARY(

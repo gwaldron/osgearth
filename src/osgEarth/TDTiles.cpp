@@ -532,14 +532,21 @@ namespace
                                 _compileSet->_compileCompletedCallback = this;
                                 ico->add(_compileSet.get());
 
-                                // block until the compile completes, checking once and a while for
-                                // an abandoned operation (to avoid deadlock)
-                                while (!_block.wait(10)) // 10ms
+                                for (unsigned int i = 0; i < 20; i++)
                                 {
-                                    if (_promise.isAbandoned())
+                                    // block until the compile completes, checking once and a while for
+                                    // an abandoned operation (to avoid deadlock)
+                                    if (!_block.wait(10)) // 10ms
                                     {
-                                        _compileSet->_compileCompletedCallback = NULL;
-                                        ico->remove(_compileSet.get());
+                                        if (_promise.isAbandoned())
+                                        {
+                                            _compileSet->_compileCompletedCallback = NULL;
+                                            ico->remove(_compileSet.get());
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
                                         break;
                                     }
                                 }

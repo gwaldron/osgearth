@@ -242,7 +242,7 @@ main(int argc, char** argv)
 
         app.init(MapNode::get(node));
         viewer.addEventHandler(new ClickToDecal(app));
-        OE_WARN << LC << "Press 'd' to drop the bomb ... press 'u' to undo" << std::endl;
+        OE_WARN << LC << "\n\n-- Zoom in close ...\n-- Press 'd' to drop the bomb\n-- Press 'u' to undo\n" << std::endl;
 
         return viewer.run();
     }

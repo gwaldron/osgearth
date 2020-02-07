@@ -35,19 +35,24 @@ namespace osgEarth { namespace REX
     using namespace osgEarth::Util;
 
     /**
-     * A single texture and its matrix. This corresponds to a 
-     * single SamplerBinding (above).
+     * A single texture and its matrix.
+     * This corresponds to a single SamplerBinding. If the texture matrix 
+     * is non-identity, that means the sampler inherits the texturs from
+     * another sampler higher up in the scene graph.
      */
     struct Sampler
     {
         osg::ref_ptr<osg::Texture> _texture;
         osg::Matrixf _matrix;
+        inline bool ownsTexture() const { return _texture.valid() && _matrix.isIdentity(); }
+        inline bool inheritsTexture() const { return !_texture.valid() || !_matrix.isIdentity(); }
     };
     typedef AutoArray<Sampler> Samplers;
 
     /**
+     * A single rendering pass for color data.
      * Samplers (one per RenderBinding) specific to one rendering pass of a tile.
-     * Typically this is just the color and color parent samplers.
+     * These are just the color and color parent samplers.
      */
     struct RenderingPass
     {
@@ -60,14 +65,26 @@ namespace osgEarth { namespace REX
             _dirtyCount(0u)
             { }
         
+        // UID of the layer corresponding to this rendering pass
         UID sourceUID() const { return _sourceUID; }
+
+        // the COLOR and COLOR_PARENT (optional) samplers for this rendering pass
         Samplers& samplers() { return _samplers; }
         const Samplers& samplers() const  { return _samplers; }
+
         const Layer* layer() const { return _layer.get(); }
         const VisibleLayer* visibleLayer() const { return _visibleLayer; }
         const TileLayer* tileLayer() const { return _tileLayer; }
+
+        // whether the color sampler in this rendering pass are native
+        // or inherited from another tile
+        bool ownsTexture() const { return _samplers[SamplerBinding::COLOR].ownsTexture(); }
+        bool inheritsTexture() const { return !ownsTexture(); }
+
+        // dirty count is used to figure out when a rendering pass gets orphaned
+        // and needs to be removed
         void incrementDirtyCount() { ++_dirtyCount; }
-        void decrementDirtyCount() { if (_dirtyCount > 0 ) --_dirtyCount; }
+        void decrementDirtyCount() { if (_dirtyCount > 0) --_dirtyCount; }
         bool isDirty() const { return _dirtyCount > 0; }
 
         void releaseGLObjects(osg::State* state) const

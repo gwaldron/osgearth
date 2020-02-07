@@ -293,14 +293,8 @@ TileNode::getElevationMatrix() const
 void
 TileNode::refreshLayers()
 {
-    LoadTileData* r = new LoadTileData(this, _context.get());
-    r->setName(_key.str());
-    r->setTileKey(_key);
-
-    _loadQueue.lock();
-    _loadQueue.push(r);
-    _loadsInQueue = _loadQueue.size();
-    _loadQueue.unlock();
+    static std::set<UID> emptySet;
+    refreshLayers(emptySet);
 }
 
 void
@@ -309,6 +303,8 @@ TileNode::refreshLayers(const std::set<UID>& layers)
     LoadTileData* r = new LoadTileData(this, _context.get());
     r->setName(_key.str());
     r->setTileKey(_key);
+
+    // if the set is empty, the load job will refresh ALL data
     for (std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
         r->addLayerToFilter(*i);
 
@@ -317,15 +313,19 @@ TileNode::refreshLayers(const std::set<UID>& layers)
     _loadsInQueue = _loadQueue.size();
     _loadQueue.unlock();
 
-    // Scan our render passes for matches in the layer filter
-    // and mark each one as dirty. Dirty layers that are not
+    // Scan our render passes for layers included in the layer filter.
+    // If we find a match, AND if the layer's color sampler if owned
+    // (and not inherited), mark it as dirty. Dirty layers that are not
     // updated during a merge will be deleted.
     for(int i = 0; i<_renderModel._passes.size(); ++i)
     {
         RenderingPass& pass = _renderModel._passes[i];
         if (layers.empty() || layers.count(pass.sourceUID()) > 0)
         {
-            pass.incrementDirtyCount();
+            if (pass.ownsTexture())
+            {
+                pass.incrementDirtyCount();
+            }
         }
     }
 }
@@ -628,7 +628,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
                 for (unsigned s = 0; s < samplers.size(); ++s)
                 {
                     Sampler& sampler = samplers[s];
-                    if (sampler._texture.valid() && sampler._matrix.isIdentity())
+
+                    if (sampler.ownsTexture())
                     {
                         for(unsigned i = 0; i < sampler._texture->getNumImages(); ++i)
                         {
@@ -707,6 +708,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
 {
     bool newElevationData = false;
 
+    // First deal with the rendering passes (for color data):
     const SamplerBinding& color = bindings[SamplerBinding::COLOR];
     if (color.isActive())
     {
@@ -736,6 +738,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
                     pass->samplers()[SamplerBinding::COLOR]._texture = model->getTexture();
                     pass->samplers()[SamplerBinding::COLOR]._matrix = *model->getMatrix();
 
+                    // we updated a layer that was requested in the task, so it make a note of that:
                     pass->decrementDirtyCount();
 
                     // check to see if this data requires an image update traversal.
@@ -767,6 +770,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
                         pass = &_renderModel.addPass();
                         pass->setLayer(model->getLayer());
                     }
+
+                    // we updated a layer that was requested in the task, so it make a note of that:
                     pass->decrementDirtyCount();
                 }
             }
@@ -795,7 +800,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
 
         if (_context->options().normalizeEdges() == true)
         {
-            // keep the normal map around because we might update it later in "ping"
+            // keep the normal map around because we might update it later
             tex->setUnRefImageDataAfterApply(false);
         }
 
@@ -824,8 +829,10 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
             // locate the shared binding corresponding to this layer:
             UID uid = layerModel->getImageLayer()->getUID();
             unsigned bindingIndex = INT_MAX;
-            for(unsigned i=SamplerBinding::SHARED; i<bindings.size() && bindingIndex==INT_MAX; ++i) {
-                if (bindings[i].isActive() && bindings[i].sourceUID().isSetTo(uid)) {
+            for(unsigned i=SamplerBinding::SHARED; i<bindings.size() && bindingIndex==INT_MAX; ++i)
+            {
+                if (bindings[i].isActive() && bindings[i].sourceUID().isSetTo(uid))
+                {
                     bindingIndex = i;
                 }                   
             }
@@ -848,8 +855,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
 #endif
 
     // Now scan for dirty color passes and remove them.
-    // This will happen when refreshLayers is called, and there is a
-    // rendering pass that doesn't receive any new data.
+    // This will happen when refreshLayers is called for a layer, but the layer
+    // does not receive any new data in the merge.
     std::vector<UID> deletedPasses;
     for (int p = 0; p < _renderModel._passes.size(); ++p)
     {
@@ -862,6 +869,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
         }
     }    
 
+    // Propagate changes we made down to this tile's children.
     if (_childrenReady)
     {
         for (int i = 0; i < 4; ++i)
@@ -998,7 +1006,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 
                 // all other samplers just need to inherit from their parent 
                 // and scale/bias their texture matrix.
-                else if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
+                else if (mySampler.inheritsTexture())
                 {
                     mySampler = parentPass.samplers()[s];
                     mySampler._matrix.preMult(scaleBias[quadrant]);
@@ -1030,7 +1038,8 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     for (unsigned s = 0; s<mySharedSamplers.size(); ++s)
     {        
         Sampler& mySampler = mySharedSamplers[s];
-        if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
+
+        if (mySampler.inheritsTexture())
         {
             mySampler = parentSharedSamplers[s];
             mySampler._matrix.preMult(scaleBias[quadrant]);
@@ -1080,13 +1089,19 @@ TileNode::notifyOfDeletedPass(UID sourceUID)
         RenderingPass& pass = _renderModel._passes[p];
         if (pass.sourceUID() == sourceUID)
         {
-            const Sampler& sampler = pass.samplers()[SamplerBinding::COLOR];
-            if (!sampler._matrix.isIdentity())
+            if (pass.inheritsTexture()) // always true?
             {
                 _renderModel._passes.erase(_renderModel._passes.begin() + p);
                 --p;
             }
         }
+        //    const Sampler& sampler = pass.samplers()[SamplerBinding::COLOR];
+        //    if (!sampler._matrix.isIdentity())
+        //    {
+        //        _renderModel._passes.erase(_renderModel._passes.begin() + p);
+        //        --p;
+        //    }
+        //}
     }
 
     if (_childrenReady)
@@ -1200,7 +1215,7 @@ TileNode::updateNormalMap()
         return;
 
     Sampler& thisNormalMap = _renderModel._sharedSamplers[SamplerBinding::NORMAL];
-    if (!thisNormalMap._texture.valid() || !thisNormalMap._matrix.isIdentity() || !thisNormalMap._texture->getImage(0))
+    if (thisNormalMap.inheritsTexture() || !thisNormalMap._texture->getImage(0))
         return;
 
     if (!_eastNeighbor.valid() || !_southNeighbor.valid())
@@ -1210,7 +1225,7 @@ TileNode::updateNormalMap()
     if (_eastNeighbor.lock(east))
     {
         const Sampler& thatNormalMap = east->_renderModel._sharedSamplers[SamplerBinding::NORMAL];
-        if (!thatNormalMap._texture.valid() || !thatNormalMap._matrix.isIdentity() || !thatNormalMap._texture->getImage(0))
+        if (thatNormalMap.inheritsTexture() || !thatNormalMap._texture->getImage(0))
             return;
 
         osg::Image* thisImage = thisNormalMap._texture->getImage(0);
@@ -1240,7 +1255,7 @@ TileNode::updateNormalMap()
     if (_southNeighbor.lock(south))
     {
         const Sampler& thatNormalMap = south->_renderModel._sharedSamplers[SamplerBinding::NORMAL];
-        if (!thatNormalMap._texture.valid() || !thatNormalMap._matrix.isIdentity() || !thatNormalMap._texture->getImage(0))
+        if (thatNormalMap.inheritsTexture() || !thatNormalMap._texture->getImage(0))
             return;
 
         osg::Image* thisImage = thisNormalMap._texture->getImage(0);

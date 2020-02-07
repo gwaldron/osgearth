@@ -675,12 +675,12 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;
-        osgViewer::ViewerBase* viewerBase = dynamic_cast<osgViewer::ViewerBase*>(cv->getCurrentCamera()->getView());
-        if (viewerBase)
+        osgViewer::View* osgView = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
+        if (osgView)
         {
-            ico = viewerBase->getIncrementalCompileOperation();
+            ico = osgView->getDatabasePager()->getIncrementalCompileOperation();
         }
-
+        
         // This allows nodes to reload themselves
         requestContent(ico);
         resolveContent();

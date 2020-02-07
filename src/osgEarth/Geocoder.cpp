@@ -20,9 +20,11 @@
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/Metrics>
 #include <osgEarth/Utils>
+#include <osgEarth/Containers>
 #include "ogr_geocoding.h"
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 namespace
 {
@@ -53,19 +55,53 @@ namespace
     public: // GeocoderImplementation
         osgEarth::Status search(const std::string& input, osg::ref_ptr<FeatureCursor>& output);
 
+        void setOption(const std::string& key, const std::string& value);
+
     private:
         OGRGeocodingSessionH _session;
+        UnorderedMap<std::string,std::string> _options;
+        void reset();
     };
 
-    OGRGeocodeImplementation::OGRGeocodeImplementation()
+    OGRGeocodeImplementation::OGRGeocodeImplementation() :
+        _session(NULL)
     {
-        _session = OGRGeocodeCreateSession(NULL);
+        reset();
     }
 
     OGRGeocodeImplementation::~OGRGeocodeImplementation()
     {
         if (_session)
             OGRGeocodeDestroySession(_session);
+    }
+
+    void OGRGeocodeImplementation::reset()
+    {
+        if (_session)
+            OGRGeocodeDestroySession(_session);
+
+        if (_options.empty() == false)
+        {
+            char** str = new char*[_options.size()+1];
+            int c = 0;
+            for(UnorderedMap<std::string, std::string>::const_iterator i = _options.begin(); i != _options.end(); ++i)
+                str[c++] = (char*)i->second.c_str();
+            str[c] = 0L;
+
+            _session = OGRGeocodeCreateSession(str);
+
+            delete [] str;
+        }
+        else
+        {
+            _session = OGRGeocodeCreateSession(NULL);
+        }
+    }
+
+    void OGRGeocodeImplementation::setOption(const std::string& name, const std::string& value)
+    {
+        _options[name] = value;
+        reset();
     }
 
     Status OGRGeocodeImplementation::search(const std::string& input,  osg::ref_ptr<FeatureCursor>& output)
@@ -86,7 +122,7 @@ namespace
         return Status::OK();
     }
 
-
+    // Operation that runs a geocode search in a thread pool
     struct GeocodeAsyncOperation : public osg::Operation
     {
         std::string _input;
@@ -104,7 +140,6 @@ namespace
         void operator()(osg::Object*)
         {
             OE_PROFILING_ZONE_NAMED("Geocode");
-
             if (!_promise.isAbandoned())
             {
                 osg::ref_ptr<FeatureCursor> cursor;
@@ -118,6 +153,13 @@ namespace
 Geocoder::Geocoder()
 {
     setImplementation( new OGRGeocodeImplementation() );
+}
+
+void
+Geocoder::setOption(const std::string& key, const std::string& value)
+{
+    if (_impl)
+        _impl->setOption(key, value);
 }
 
 Geocoder::Results

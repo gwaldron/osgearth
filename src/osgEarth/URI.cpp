@@ -93,14 +93,20 @@ namespace
                         _compileSet->_compileCompletedCallback = this;
                         ico->add(_compileSet.get());
 
+                        unsigned int numTries = 0;
                         // block until the compile completes, checking once and a while for
                         // an abandoned operation (to avoid deadlock)
-                        while(!_block.wait(10)) // 10ms
+                        while (!_block.wait(10)) // 10ms
                         {
                             if (_promise.isAbandoned())
                             {
                                 _compileSet->_compileCompletedCallback = NULL;
                                 ico->remove(_compileSet.get());
+                                break;
+                            }
+                            ++numTries;
+                            if (numTries == 200)
+                            {
                                 break;
                             }
                         }

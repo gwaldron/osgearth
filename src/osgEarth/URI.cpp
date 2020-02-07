@@ -93,26 +93,24 @@ namespace
                         _compileSet->_compileCompletedCallback = this;
                         ico->add(_compileSet.get());
 
-                        // block until the compile completes or we've tried too many times
-                        // checking once and a while for an abandoned operation (to avoid deadlock)
-                        // If we don't just give up after awhile it can cause hangs on exit if
-                        // the viewer exits before this compileset can be processed.
-                        for (unsigned int i = 0; i < 20; i++)
+                        unsigned int numTries = 0;
+                        // block until the compile completes, checking once and a while for
+                        // an abandoned operation (to avoid deadlock)
+                        while (!_block.wait(10)) // 10ms
                         {
-                            if (!_block.wait(10)) // 10ms
+                            if (_promise.isAbandoned())
                             {
-                                if (_promise.isAbandoned())
-                                {
-                                    _compileSet->_compileCompletedCallback = NULL;
-                                    ico->remove(_compileSet.get());
-                                    break;
-                                }
+                                _compileSet->_compileCompletedCallback = NULL;
+                                ico->remove(_compileSet.get());
+                                break;
                             }
-                            else
+                            ++numTries;
+                            if (numTries == 200)
                             {
                                 break;
                             }
                         }
+
                     }
                 }
 

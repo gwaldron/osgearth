@@ -532,6 +532,7 @@ namespace
                                 _compileSet->_compileCompletedCallback = this;
                                 ico->add(_compileSet.get());
 
+                                unsigned int numTries = 0;
                                 // block until the compile completes, checking once and a while for
                                 // an abandoned operation (to avoid deadlock)
                                 while (!_block.wait(10)) // 10ms
@@ -540,6 +541,11 @@ namespace
                                     {
                                         _compileSet->_compileCompletedCallback = NULL;
                                         ico->remove(_compileSet.get());
+                                        break;
+                                    }
+                                    ++numTries;
+                                    if (numTries == 200)
+                                    {
                                         break;
                                     }
                                 }
@@ -675,12 +681,12 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;
-        osgViewer::ViewerBase* viewerBase = dynamic_cast<osgViewer::ViewerBase*>(cv->getCurrentCamera()->getView());
-        if (viewerBase)
+        osgViewer::View* osgView = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
+        if (osgView)
         {
-            ico = viewerBase->getIncrementalCompileOperation();
+            ico = osgView->getDatabasePager()->getIncrementalCompileOperation();
         }
-
+        
         // This allows nodes to reload themselves
         requestContent(ico);
         resolveContent();

@@ -772,9 +772,9 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   )
 ENDIF()
 
-if(OSGEARTH_BUILD_GEOCODER)
+if(OSGEARTH_ENABLE_GEOCODER)
     set(TARGET_SRC ${TARGET_SRC} Geocoder.cpp)
-    set(TARGET_H   ${TARGET_H}   Geocoder)
+    set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS} Geocoder)
 endif()
 
 

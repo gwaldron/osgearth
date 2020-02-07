@@ -180,11 +180,11 @@ namespace
     const char* opacityModulateFS =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "#define OE_MODULATION_EXPOSURE 2.35 \n"
+        "const float OE_MODULATION_EXPOSURE = 2.35; \n"
         "in float oe_layer_opacity; \n"
         "void oe_VisibleLayer_setOpacity(inout vec4 color) \n"
         "{ \n"
-        "    vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * float( OE_MODULATION_EXPOSURE )/oe_layer_opacity : vec3(1); \n"
+        "    vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * OE_MODULATION_EXPOSURE/oe_layer_opacity : vec3(1); \n"
         "    color.rgb = mix(vec3(1), rgbHi, oe_layer_opacity); \n"
         "    color.a = 1.0; \n"
         "    oe_layer_opacity = 1.0; \n"

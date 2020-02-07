@@ -362,7 +362,20 @@ namespace osgEarth { namespace Threading
     };
 
 
-    //extern OSGEARTH_EXPORT Future<osg::Node> readNodeAsync(const URI& uri, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options);
+    /**
+     * Simple convenience construct to make another type "lockable"
+     * as long as it has a default constructor
+     */
+    template<typename T>
+    struct Lockable : public T {
+        mutable Mutex _lockable_mutex;
+        inline void lock() const {
+            _lockable_mutex.lock();
+        }
+        inline void unlock() const {
+            _lockable_mutex.unlock();
+        }
+    };
 
 } } // namepsace osgEarth::Threading
 

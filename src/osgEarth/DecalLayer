@@ -49,7 +49,13 @@ namespace osgEarth { namespace Contrib
         META_Layer(osgEarth, DecalImageLayer, Options, osgEarth::ImageLayer, DecalImage);
 
         //! Adds a decal to the layer.
-        void addDecal(const GeoExtent& extent, const osg::Image* image);
+        void addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image);
+
+        //! Removes a decal with the specified ID that was returned from addDecal.
+        void removeDecal(const std::string& id);
+
+        //! Extent covered by the decal with the given ID.
+        const GeoExtent& getDecalExtent(const std::string& id) const;
 
     public: // ImageLayer
 
@@ -68,7 +74,9 @@ namespace osgEarth { namespace Contrib
             GeoExtent _extent;
             osg::ref_ptr<const osg::Image> _image;
         };
-        std::vector<Decal> _decals;
+        std::list<Decal> _decalList;
+        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        DecalIndex _decalIndex;
 
         // controls access to data
         mutable Threading::Mutex _mutex;
@@ -94,7 +102,13 @@ namespace osgEarth { namespace Contrib
         //! Adds a heightfield "decal" to the terrain. Each pixel in image contains a height value
         //! that is multiplied by "scale" before being applied to the terrain.
         //! Overlapping decals will result in the sum of overlapping height values.
-        void addDecal(const GeoExtent& extent, const osg::Image* image, float scale);
+        void addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float scale);
+
+        //! Removes a decal with the specified ID that was returned from addDecal.
+        void removeDecal(const std::string& id);
+
+        //! Extent covered by the decal with the given ID.
+        const GeoExtent& getDecalExtent(const std::string& id) const;
 
     public: // ElevationLayer
 
@@ -115,7 +129,9 @@ namespace osgEarth { namespace Contrib
         struct Decal {
             GeoHeightField _heightfield;
         };
-        std::vector<Decal> _decals;
+        std::list<Decal> _decalList;
+        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        DecalIndex _decalIndex;
 
         mutable Threading::Mutex _mutex;
     };
@@ -135,8 +151,14 @@ namespace osgEarth { namespace Contrib
     public:
         META_Layer(osgEarth, DecalLandCoverLayer, Options, osgEarth::LandCoverLayer, DecalLandCover);
 
-        //! Adds a decal to the layer.
-        void addDecal(const GeoExtent& extent, const osg::Image* image);
+        //! Adds a land cover decal to the layer.
+        void addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image);
+
+        //! Removes a decal with the specified ID that was returned from addDecal.
+        void removeDecal(const std::string& id);
+
+        //! Extent covered by the decal with the given ID.
+        const GeoExtent& getDecalExtent(const std::string& id) const;
 
     public: // ImageLayer
 
@@ -160,7 +182,9 @@ namespace osgEarth { namespace Contrib
             osg::ref_ptr<const osg::Image> _image;
             GeoExtent _extent;
         };
-        std::vector<Decal> _decals;
+        std::list<Decal> _decalList;
+        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        DecalIndex _decalIndex;
 
         // controls access to_decals
         mutable Threading::Mutex _mutex;

@@ -82,7 +82,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             osg::ref_ptr< ThreadPool > threadPool = OptionsData<ThreadPool>::get(readOptions.get(), "threadpool");
             if (!threadPool.valid())
             {
-                unsigned int numThreads = 8;
+                unsigned int numThreads = 2;
                 threadPool = new ThreadPool(numThreads);
                 OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", threadPool.get());
             }
@@ -532,14 +532,21 @@ namespace
                                 _compileSet->_compileCompletedCallback = this;
                                 ico->add(_compileSet.get());
 
-                                // block until the compile completes, checking once and a while for
-                                // an abandoned operation (to avoid deadlock)
-                                while (!_block.wait(10)) // 10ms
+                                for (unsigned int i = 0; i < 20; i++)
                                 {
-                                    if (_promise.isAbandoned())
+                                    // block until the compile completes, checking once and a while for
+                                    // an abandoned operation (to avoid deadlock)
+                                    if (!_block.wait(10)) // 10ms
                                     {
-                                        _compileSet->_compileCompletedCallback = NULL;
-                                        ico->remove(_compileSet.get());
+                                        if (_promise.isAbandoned())
+                                        {
+                                            _compileSet->_compileCompletedCallback = NULL;
+                                            ico->remove(_compileSet.get());
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
                                         break;
                                     }
                                 }
@@ -667,20 +674,8 @@ void ThreeDTileNode::updateTracking()
 }
 
 void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
-{
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
-    {
-        if (_content.valid())
-        {
-            _content->accept(nv);
-        }
-
-        if (_children.valid())
-        {
-            _children->accept(nv);
-        }
-    }
-    else if (nv.getVisitorType() == nv.CULL_VISITOR)
+{    
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
 #if OSG_VERSION_LESS_THAN(3,6,0)
         osgUtil::CullVisitor *cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
@@ -690,12 +685,12 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;
-        osgViewer::ViewerBase* viewerBase = dynamic_cast<osgViewer::ViewerBase*>(cv->getCurrentCamera()->getView());
-        if (viewerBase)
+        osgViewer::View* osgView = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
+        if (osgView)
         {
-            ico = viewerBase->getIncrementalCompileOperation();
+            ico = osgView->getDatabasePager()->getIncrementalCompileOperation();
         }
-
+        
         // This allows nodes to reload themselves
         requestContent(ico);
         resolveContent();
@@ -749,7 +744,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             }
         }
     }
-    else if (nv.getVisitorType() == nv.INTERSECTION_VISITOR)
+    else if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
     {
         resolveContent();
         bool areChildrenReady = true;
@@ -792,7 +787,20 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
                 _content->accept(nv);
             }
         }
-    }    
+    }
+    else if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+    {
+        if (_content.valid())
+        {
+            _content->accept(nv);
+        }
+
+        if (_children.valid())
+        {
+            _children->accept(nv);
+        }
+    }
+    
 }
 
 ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :

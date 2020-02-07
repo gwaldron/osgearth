@@ -130,7 +130,8 @@ namespace
             // todo. Might be better to use a Revision here though.
             if (_reload)
             {
-                tileNode.setDirty(true);
+                tileNode.refreshLayers();
+                //tileNode.setDirty(true);
             }
 
             else if (!_layersToLoad.empty())

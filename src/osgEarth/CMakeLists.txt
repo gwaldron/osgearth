@@ -130,6 +130,7 @@ SET(LIB_PUBLIC_HEADERS
     FadeEffect
     FileUtils
     GDAL
+    Geocoder
     GeoCommon
     GeoData
     Geoid
@@ -496,6 +497,7 @@ set(TARGET_SRC
     FadeEffect.cpp
     FileUtils.cpp
     GDAL.cpp
+    Geocoder.cpp
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp

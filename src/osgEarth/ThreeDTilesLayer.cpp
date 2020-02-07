@@ -94,12 +94,12 @@ ThreeDTilesLayer::openImplementation()
 
     // Clone the read options and if there isn't a ThreadPool create one.
     osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
-    osg::ref_ptr< ThreadPool > threadPool = OptionsData<ThreadPool>::get(readOptions.get(), "threadpool");
+    osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
     if (!threadPool.valid())
     {
         unsigned int numThreads = 8;
         _threadPool = new ThreadPool(numThreads);
-        OptionsData<ThreadPool>::set(readOptions.get(), "threadpool", _threadPool.get());
+        _threadPool->put(readOptions.get());
     }
 
     _tilesetNode = new ThreeDTilesetNode(tileset, readOptions.get());

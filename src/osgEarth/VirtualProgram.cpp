@@ -106,17 +106,6 @@ ProgramRepo::~ProgramRepo()
     releaseGLObjects(NULL);
 }
 
-void
-ProgramRepo::lock() const
-{
-    _m.lock();
-}
-
-void ProgramRepo::unlock() const
-{
-    _m.unlock();
-}
-
 osg::ref_ptr<osg::Program>
 ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, UID user)
 {

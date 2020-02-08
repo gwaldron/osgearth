@@ -181,9 +181,9 @@ _maxVertsPerDrawable(USHRT_MAX)
 Registry::~Registry()
 {
     OE_DEBUG << LC << "Registry shutting down...\n";
-    _srsMutex.lock();
+    _srsCache.lock();
     _srsCache.clear();
-    _srsMutex.unlock();
+    _srsCache.unlock();
     _global_geodetic_profile = 0L;
     _spherical_mercator_profile = 0L;
     _cube_profile = 0L;
@@ -239,9 +239,9 @@ Registry::release()
     }
 
     // SpatialReference cache
-    _srsMutex.lock();
+    _srsCache.lock();
     _srsCache.clear();
-    _srsMutex.unlock();
+    _srsCache.unlock();
 
     // Shared object index
     if (_objectIndex.valid())
@@ -317,28 +317,21 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
-SpatialReference*
+osg::ref_ptr<SpatialReference>
 Registry::getOrCreateSRS(const SpatialReference::Key& key)
 {
-    Threading::ScopedMutexLock exclusiveLock(_srsMutex);
-    
-    SpatialReference* srs;
+    _srsCache.lock();
 
-    SRSCache::iterator i = _srsCache.find(key);
-    if (i != _srsCache.end())
-    {
-        srs = i->second.get();
-    }
-    else
+    osg::ref_ptr<SpatialReference>& srs = _srsCache[key];
+    if (!srs.valid())
     {
         srs = SpatialReference::create(key);
-        if (srs)
-        {
-            _srsCache[key] = srs;
-        }
     }
+    osg::ref_ptr<SpatialReference> result = srs.get();
 
-    return srs;
+    _srsCache.unlock();
+
+    return result;
 }
 
 void

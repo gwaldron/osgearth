@@ -216,7 +216,7 @@ namespace osgEarth
         typedef std::vector<PolyShader*> ProgramKey;
 
 
-        class /*internal*/ ProgramRepo : public osg::Referenced
+        class /*internal*/ ProgramRepo : public Threading::Lockable<osg::Referenced>
         {
         public:
 
@@ -230,13 +230,6 @@ namespace osgEarth
             };
 
             typedef std::map<ProgramKey, osg::ref_ptr<Entry> > ProgramMap;
-
-            //! Exclusive lock on the repo - enclose any calls to this object
-            //! with a lock/unlock pair
-            void lock() const;
-
-            //! unlock the repo
-            void unlock() const;
 
             //! Search for a program matching the key and return it, adding the user
             //! to its users list and updating the frame number.
@@ -259,7 +252,6 @@ namespace osgEarth
 
         private:
             mutable ProgramMap _db;
-            mutable Threading::Mutex _m;
         };
     }
 }

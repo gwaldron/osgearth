@@ -273,6 +273,30 @@ namespace osgEarth { namespace Threading
     private:
         Future<T> _future;
     };
+
+    /**
+     * Convenience base class for representing a Result object that may be
+     * synchronous or asynchronous, depending on which constructor you use.
+     */
+    template<typename T>
+    class FutureResult
+    {
+    public:
+        bool isReady() const { return _future.isAvailable() || _future.isAbandoned(); }
+
+    protected:
+        //! Asynchronous constructor
+        FutureResult(Future<T> f) : _future(f) { }
+
+        //! Immediate synchronous resolve constructor
+        FutureResult(T* data) {
+            Promise<T> p;
+            _future = p.getFuture();
+            p.resolve(data);
+        }
+
+        Future<T> _future;
+    };
     
 #ifdef USE_CUSTOM_READ_WRITE_LOCK
 
@@ -351,6 +375,10 @@ namespace osgEarth { namespace Threading
         ~ThreadPool();
 
         osg::OperationQueue* getQueue() const;
+
+        //! Store/retrieve thread pool stored in an options structure
+        void put(osgDB::Options*);
+        static osg::ref_ptr<ThreadPool> get(const osgDB::Options*);
 
     private:
         void startThreads();

@@ -267,81 +267,19 @@ void ThreadPool::stopThreads()
     }
 }
 
-#if 0
-namespace {
-    class LoadNodeOperation : public osg::Operation
-    {
-    public:
-        LoadNodeOperation(const URI& uri, osgDB::Options* options, osgUtil::IncrementalCompileOperation* ico, osgEarth::Threading::Promise<osg::Node> promise) :
-            _uri(uri),
-            _promise(promise),
-            _ico(ico),
-            _options(options)
-        {
-        }
-
-        void operator()(osg::Object*)
-        {
-            if (!_promise.isAbandoned())
-            {
-                // Read the node
-                osgEarth::ReadResult result = _uri.readNode(_options.get());
-                //osg::ref_ptr< osg::Node > result = osgDB::readNodeFile(_url, _options.get());
-
-                // If we have an ICO, wait for it to be compiled
-                if (result.succeeded() && _ico.valid())
-                {
-                    osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> compileSet =
-                        new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
-
-                    _ico->add(compileSet.get());
-
-                    // spin wait
-                    while (
-                        !_promise.isAbandoned() &&          // user hasn't gone away?
-                        !compileSet->compiled() &&          // compilation not finished?
-                        compileSet->referenceCount() > 1)   // compiler disappeared?
-                    {
-                        OpenThreads::Thread::microSleep(1000);
-                    }
-                }
-
-                _promise.resolve(result.getNode());
-            }
-        }
-
-        osgEarth::Threading::Promise<osg::Node> _promise;
-        osg::ref_ptr< osgUtil::IncrementalCompileOperation > _ico;
-        osg::ref_ptr< osgDB::Options > _options;
-        URI _uri;
-    };
-}
-
-Future<osg::Node> osgEarth::Threading::readNodeAsync(const URI& uri, osgUtil::IncrementalCompileOperation* ico, osgDB::Options* options)
+void
+ThreadPool::put(osgDB::Options* options)
 {
-    osg::ref_ptr<ThreadPool> threadPool;
     if (options)
     {
-        threadPool = OptionsData<ThreadPool>::get(options, "threadpool");
+        OptionsData<ThreadPool>::set(options, "osgEarth::ThreadPool", this);
     }
-
-    Promise<osg::Node> promise;
-
-    osg::ref_ptr< osg::Operation > operation = new LoadNodeOperation(uri, options, ico, promise);
-
-    if (operation.valid())
-    {
-        if (threadPool.valid())
-        {
-            threadPool->getQueue()->add(operation);
-        }
-        else
-        {
-            OE_WARN << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
-            operation->operator()(0);
-        }
-    }
-
-    return promise.getFuture();
 }
-#endif
+
+osg::ref_ptr<ThreadPool>
+ThreadPool::get(const osgDB::Options* options)
+{
+    if (!options) return NULL;
+    return OptionsData<ThreadPool>::get(options, "osgEarth::ThreadPool");
+}
+

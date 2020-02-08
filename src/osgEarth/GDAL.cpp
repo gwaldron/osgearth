@@ -1229,7 +1229,7 @@ GDAL::Driver::createImage(const TileKey& key,
             src_row < target_height;
             src_row++, dst_row++)
         {
-            unsigned int flippedRow = target_height - dst_row - 1;
+            unsigned int flippedRow = tileSize - dst_row - 1;
             for (int src_col = 0, dst_col = tile_offset_left;
                 src_col < target_width;
                 ++src_col, ++dst_col)
@@ -1320,7 +1320,7 @@ GDAL::Driver::createImage(const TileKey& key,
                 // copy from data to image.
                 for (int src_row = 0, dst_row = tile_offset_top; src_row < target_height; src_row++, dst_row++)
                 {
-                    unsigned int flippedRow = target_height - dst_row - 1;
+                    unsigned int flippedRow = tileSize - dst_row - 1;
                     for (int src_col = 0, dst_col = tile_offset_left; src_col < target_width; ++src_col, ++dst_col)
                     {
                         unsigned char* ptr = &data[(src_col + src_row*target_width)*gdalSampleSize];
@@ -1372,7 +1372,7 @@ GDAL::Driver::createImage(const TileKey& key,
                 src_row < target_height;
                 src_row++, dst_row++)
             {
-                unsigned int flippedRow = target_height - dst_row - 1;
+                unsigned int flippedRow = tileSize - dst_row - 1;
                 for (int src_col = 0, dst_col = tile_offset_left;
                     src_col < target_width;
                     ++src_col, ++dst_col)
@@ -1432,7 +1432,7 @@ GDAL::Driver::createImage(const TileKey& key,
             src_row < target_height;
             src_row++, dst_row++)
         {
-            unsigned int flippedRow = target_height - dst_row - 1;
+            unsigned int flippedRow = tileSize - dst_row - 1;
             for (int src_col = 0, dst_col = tile_offset_left;
                 src_col < target_width;
                 ++src_col, ++dst_col)

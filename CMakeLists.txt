@@ -123,7 +123,8 @@ IF(TRACY_FOUND AND ENABLE_PROFILING)
 ENDIF(TRACY_FOUND AND ENABLE_PROFILING)
 
 # the OGR geocoder is not always available so persent an option
-OPTION(OSGEARTH_ENABLE_GEOCODER "Enable the OGR-based geocoder" ON)
+# VRV_PATCH -- default to OFF instead of ON :/
+OPTION(OSGEARTH_ENABLE_GEOCODER "Enable the OGR-based geocoder" OFF)
 
 FIND_PACKAGE(Triton QUIET)
 FIND_PACKAGE(SilverLining QUIET)

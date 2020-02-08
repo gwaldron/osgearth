@@ -100,6 +100,10 @@ namespace osgEarth { namespace Splat
         virtual void resizeGLObjectBuffers(unsigned maxSize);
         virtual void releaseGLObjects(osg::State* state) const;
 
+        //! Gets the patch geom associated with a groundcover definition.
+        //! This is not the actual rendered geometry, just the shader patch
+        osg::Geometry* createPatchGeometry(const GroundCover*) const;
+
     protected:
         virtual ~GroundCoverLayer() { }
 

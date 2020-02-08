@@ -263,14 +263,30 @@ OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, 
     OGRGeometryH shape_handle = OGR_G_CreateGeometry( shape_type );
     if ( shape_handle )
     {
-        ConstGeometryIterator itr(geometry, true);
-        while (itr.hasMore())
+        // POINTSET requires special handling
+        if (shape_type==wkbMultiPoint && 
+            part_type==wkbPoint &&
+            geometry->getType()==Geometry::TYPE_POINTSET)
         {
-            const Geometry* geom = itr.next();
-            OGRGeometryH part_handle = encodePart( geom, part_type );
-            if ( part_handle )
+            for (int v = geometry->size() - 1; v >= 0; v--)
             {
-                OGR_G_AddGeometryDirectly( shape_handle, part_handle );
+                osg::Vec3d p = (*geometry)[v];
+                OGRGeometryH part_handle = OGR_G_CreateGeometry(part_type);
+                OGR_G_AddPoint(part_handle, p.x(), p.y(), p.z());
+                OGR_G_AddGeometryDirectly(shape_handle, part_handle);
+            }
+        }
+        else
+        {
+            ConstGeometryIterator itr(geometry, true);
+            while (itr.hasMore())
+            {
+                const Geometry* geom = itr.next();
+                OGRGeometryH part_handle = encodePart( geom, part_type );
+                if ( part_handle )
+                {
+                    OGR_G_AddGeometryDirectly( shape_handle, part_handle );
+                }
             }
         }
     }

@@ -277,6 +277,10 @@ namespace osgEarth { namespace Splat
 
         void releaseGLObjects(osg::State* state) const;
 
+        //! Finds the biome representing this land cover class,
+        //! or NULL if there isn't one
+        const GroundCoverBiome* getBiome(const LandCoverClass*) const;
+
     protected:
         virtual ~GroundCover() { }
 

@@ -60,7 +60,7 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
-        unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
+        unsigned border = (requirements && requirements->elevationBorderRequired()) ? 1u : 0u;
 
         addElevation( model.get(), map, key, filter, border, progress );
     }

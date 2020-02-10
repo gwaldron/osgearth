@@ -1245,7 +1245,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                     }
                 }
 
-                if ( createOrUpdateNode(cursor.get(), *feature->style(), context, readOptions, node))
+                if ( createOrUpdateNode(cursor.get(), *feature->style(), context, readOptions, node, baseQuery))
                 {
                     if ( node.valid() )
                     {
@@ -1342,9 +1342,10 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
                                       const Style&             style,
                                       FilterContext&           context,
                                       const osgDB::Options*    readOptions,
-                                      osg::ref_ptr<osg::Node>& output)
+                                      osg::ref_ptr<osg::Node>& output,
+                                      const Query&             query)
 {
-    bool ok = _factory->createOrUpdateNode(cursor, style, context, output);
+    bool ok = _factory->createOrUpdateNode(cursor, style, context, output, query);
     return ok;
 }
 
@@ -1476,7 +1477,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         // the feature.)
         if ( !combinedStyle.empty() )
         {
-            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context, readOptions);
+            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context, readOptions, query);
             if ( styleGroup )
                 parent->addChild( styleGroup );
         }
@@ -1488,7 +1489,8 @@ osg::Group*
 FeatureModelGraph::createStyleGroup(const Style&          style, 
                                     FeatureList&          workingSet, 
                                     const FilterContext&  contextPrototype,
-                                    const osgDB::Options* readOptions)
+                                    const osgDB::Options* readOptions,
+                                    const Query&          query)
 {
     OE_TEST << LC << "createStyleGroup " << style.getName() << std::endl;
 
@@ -1530,7 +1532,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         osg::ref_ptr<osg::Node> node;
         osg::ref_ptr<FeatureCursor> newCursor = new FeatureListCursor(workingSet);
 
-        if ( createOrUpdateNode( newCursor.get(), style, context, readOptions, node ) )
+        if ( createOrUpdateNode( newCursor.get(), style, context, readOptions, node, query ) )
         {
             if ( !styleGroup )
                 styleGroup = getOrCreateStyleGroupFromFactory( style );
@@ -1579,7 +1581,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         if ( progress && progress->isCanceled())
             return NULL;
 
-        styleGroup = createStyleGroup(style, workingSet, context, readOptions);
+        styleGroup = createStyleGroup(style, workingSet, context, readOptions, query);
     }
 
 

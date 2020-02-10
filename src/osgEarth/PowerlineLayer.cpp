@@ -24,6 +24,7 @@
 #include <osgEarth/PolygonizeLines>
 #include <osgEarth/ECEF>
 #include <osgEarth/GeometryUtils>
+#include <osgEarth/Network>
 
 #include <algorithm>
 #include <iterator>
@@ -118,10 +119,11 @@ public:
 
     bool createOrUpdateNode(FeatureCursor* cursor, const Style& style,
                             const FilterContext& context,
-                            osg::ref_ptr<osg::Node>& node);
+                            osg::ref_ptr<osg::Node>& node,
+                            const Query& query);
 private:
     FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
-                                  const FilterContext& cx);
+                                  const FilterContext& cx, const Query& query);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
     Vec3dVector _attachments;
@@ -152,6 +154,35 @@ PowerlineLayer::createFeatureNodeFactoryImplementation() const
 
 namespace
 {
+    // Network fun
+
+    struct NetworkEdge
+    {
+        NetworkEdge() {}
+        NetworkEdge(osg::ref_ptr<Feature> feature_)
+            : feature(feature_)
+            {}
+        osg::ref_ptr<Feature> feature;
+    };
+    
+    typedef osg::Vec3d NetworkNode;
+
+    NetworkNode getNode(const NetworkEdge& edge, int i)
+    {
+        const Geometry* geom = edge.feature->getGeometry();
+        const std::vector<osg::Vec3d>& points = geom->asVector();
+        if (i == 0)
+        {
+            return points.front();
+        }
+        else
+        {
+            return points.back();
+        }
+    }
+
+    typedef Network<NetworkEdge, NetworkNode> PowerNetwork;
+    
     Feature* getPointFeature(PointMap& pointMap, const osg::Vec3d& key)
     {
         PointMap::iterator itr = findPoint(pointMap, key);
@@ -165,18 +196,17 @@ namespace
         }
     }
 
-    double calculateHeading(Geometry* geom, int index)
+    double calculateHeading(osg::Vec3d& point, osg::Vec3d* previous, osg::Vec3d* next)
     {
-        osg::Vec3d& point = (*geom)[index];
         osg::Vec3d in, out;
-        if (index > 0)
+        if (previous)
         {
-            in = point - (*geom)[index - 1];
+            in = point - *previous;
             in.normalize();
         }
-        if (index < geom->size()-1)
+        if (next)
         {
-            out = (*geom)[index + 1] - point;
+            out = *next - point;
             out.normalize();
         }
         osg::Vec3d direction = in + out;
@@ -185,11 +215,62 @@ namespace
         if (heading < -osg::PI_2) heading += osg::PI;
         if (heading >= osg::PI_2) heading -= osg::PI;
         return osg::RadiansToDegrees(heading);
+
+    }
+
+    double calculateHeading(Geometry* geom, int index)
+    {
+        osg::Vec3d& point = (*geom)[index];
+        osg::Vec3d* previous = 0L;
+        osg::Vec3d* next = 0L;
+        if (index > 0)
+        {
+            previous = &(*geom)[index - 1];
+        }
+        if (index < geom->size() - 1)
+        {
+            next = &(*geom)[index + 1];
+        }
+        return calculateHeading(point, previous, next);
+    }
+
+    FeatureList findNeighborLineFeatures(const FilterContext& context, const Query& query)
+    {
+        const Session* session = context.getSession();
+        FeatureList result;
+
+        if (!query.tileKey().isSet())
+            return result;
+        for (int i =-1; i <= 1; ++i)
+        {
+            for (int j = -1; j <=1; ++j)
+            {
+                if (!(i == 0 & j == 0))
+                {
+                    TileKey neighborKey = query.tileKey().get().createNeighborKey(i, j);
+                    Query newQuery(query);
+                    newQuery.bounds().unset();
+                    newQuery.tileKey() = neighborKey;
+                    FeatureCursor* cursor = session->getFeatureSource()->createFeatureCursor(newQuery, 0L);
+                    while (cursor->hasMore())
+                    {
+                        Feature* feature = cursor->nextFeature();
+                        Geometry* geom = feature->getGeometry();
+                        if (geom->getType() == Geometry::TYPE_LINESTRING)
+                        {
+                            result.push_back(feature);
+                        }
+                    }
+                }
+            }
+        }
+        return result;
     }
 }
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
-    FeatureList& towerFeatures, const FilterContext& cx)
+                                                           FeatureList& towerFeatures, const FilterContext& cx,
+                                                           const Query& query)
 
 {
     FeatureList result;
@@ -206,6 +287,26 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq(map.get());
 
+    PowerNetwork linesNetwork;
+    std::vector<NetworkEdge> lineEdges;
+    
+    for (FeatureList::iterator i = powerFeatures.begin(); i != powerFeatures.end(); ++i)
+    {
+        if ((*i)->getGeometry()->getType() == Geometry::TYPE_LINESTRING)
+        {
+            linesNetwork.pushEdge(NetworkEdge(*i));
+        }
+    }
+    // An iterator would be cleaner, but could be invalidated when we
+    // add the features from the neighbor tiles
+    const int numLocalLines = linesNetwork.networkEdges.size();
+    FeatureList neighbors = findNeighborLineFeatures(cx, query);
+    for (FeatureList::iterator i = neighbors.begin(); i != neighbors.end(); ++i)
+    {
+        linesNetwork.networkEdges.push_back(NetworkEdge(*i));
+    }
+    linesNetwork.buildNetwork();
+    // Old code
     PointMap pointMap;
     for (FeatureList::iterator i = towerFeatures.begin(); i != towerFeatures.end(); ++i)
     {
@@ -283,7 +384,8 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
 
 bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, const Style& style,
                                                      const FilterContext& context,
-                                                     osg::ref_ptr<osg::Node>& node)
+                                                     osg::ref_ptr<osg::Node>& node,
+                                                     const Query& query)
 {
     FilterContext sharedCX = context;
     FeatureList workingSet; 
@@ -310,8 +412,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         towerStyle = *_styles->getStyle("towers");
 
     Style cableStyle;
-    if (_styles->getStyle("cables"))
-        cableStyle = *_styles->getStyle("cables");
+    if (_styles->getStyle("cables", false))
+        cableStyle = *_styles->getStyle("cables", false);
     else
     {
         // defaults
@@ -325,20 +427,13 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
 
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     osg::ref_ptr<osg::Node> pointsNode;
-    GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode);
+    GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode, query);
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());
-    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX);
-
-#if 0
-    PolygonizeLinesFilter polyLineFilter(lineStyle);
-    osg::Node* cables = polyLineFilter.push(cableFeatures, localCX);
-    results->addChild(cables);
-#endif
+    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query);
     GeometryCompiler compiler;
     osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
     results->addChild(cables);
-
     node = results;
     return true;
 }

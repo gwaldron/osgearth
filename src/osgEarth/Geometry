@@ -63,6 +63,7 @@ namespace osgEarth
     public:
         enum Type {
             TYPE_UNKNOWN,
+            TYPE_POINT,
             TYPE_POINTSET,
             TYPE_LINESTRING,
             TYPE_RING,
@@ -78,6 +79,7 @@ namespace osgEarth
 
         static std::string toString( Type t ) {
             return 
+                t == TYPE_POINT ?      "Point" :
                 t == TYPE_POINTSET ?   "PointSet" :
                 t == TYPE_LINESTRING ? "LineString" :
                 t == TYPE_RING ?       "Ring" :
@@ -266,6 +268,25 @@ namespace osgEarth
 
     public:
         virtual Type getType() const { return Geometry::TYPE_POINTSET; }
+    };
+
+    /**
+     * A single point.
+     */
+    class OSGEARTH_EXPORT Point : public PointSet
+    {
+    public:
+        Point(int capacity = 0) : PointSet(capacity) { }
+        Point(const Vec3dVector* toCopy) : PointSet(toCopy) { }
+        Point(const Point& rhs);
+
+        /** dtor */
+        virtual ~Point();
+
+        void set(const osg::Vec3d& value);
+
+    public:
+        virtual Type getType() const { return Geometry::TYPE_POINT; }
     };
 
     /**

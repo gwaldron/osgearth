@@ -57,6 +57,10 @@ double fract(double x)
     return fmod(x, 1.0);
 }
 
+void sample(osg::Vec4f& output, ImageUtils::PixelReader& texture, const osg::Matrixf& matrix, float u, float v)
+{
+    return texture(output, u*matrix(0,0)+matrix(3,0), v*matrix(1,1)+matrix(3,1));
+}
 
 int
 main(int argc, char** argv)
@@ -88,14 +92,17 @@ main(int argc, char** argv)
         return usage(argv[0], "GroundCover layer not found in map");
 
     LandCoverLayer* lclayer = map->getLayer<LandCoverLayer>();
-    //if (!lclayer)
-    //    return usage(argv[0], "No LandCoverLayer found in the map");
+    if (!lclayer)
+        std::cout << "** Note: no LandCover layer found in the map" << std::endl;
 
     LandCoverDictionary* lcdict = map->getLayer<LandCoverDictionary>();
     if (lclayer && !lcdict)
         return usage(argv[0], "No LandCoverDictionary found in the map");
 
-    ImageLayer* masklayer = gclayer->getMaskLayer(); // could be null...?
+    ImageLayer* masklayer = gclayer->getMaskLayer(); // could be null.
+
+    // any elevation layer will do
+    ElevationLayer* elevlayer = map->getLayer<ElevationLayer>();
 
     // open layers
     if (lclayer && lclayer->open().isError())
@@ -111,10 +118,11 @@ main(int argc, char** argv)
     osg::ref_ptr<FeatureProfile> outProfile = new FeatureProfile(extent);
     FeatureSchema outSchema;
     outSchema["tilekey"] = ATTRTYPE_STRING;
+    outSchema["elevation"] = ATTRTYPE_DOUBLE;
     osg::ref_ptr<OGRFeatureSource> outfs = new OGRFeatureSource();
     outfs->setOGRDriver("ESRI Shapefile");
     outfs->setURL(outfile);
-    if (outfs->create(outProfile.get(), outSchema, Geometry::TYPE_POINTSET, NULL).isError())
+    if (outfs->create(outProfile.get(), outSchema, Geometry::TYPE_POINT, NULL).isError())
         return usage(argv[0], outfs->getStatus().toString());
 
     // create noise texture
@@ -124,7 +132,7 @@ main(int argc, char** argv)
     const int NOISE_RANDOM = 1;
     const int NOISE_RANDOM_2 = 2;
     const int NOISE_CLUMPY = 3;
-    ImageUtils::PixelReader readNoise(noiseTexture->getImage(0));
+    ImageUtils::PixelReader noiseSampler(noiseTexture->getImage(0));
 
     // find all intersecting tile keys
     std::vector<TileKey> keys;
@@ -134,15 +142,14 @@ main(int argc, char** argv)
 
     // set up the factory
     CreateTileModelFilter layerFilter;
-    if (lclayer)
-        layerFilter.layers().insert(lclayer->getUID());
-    if (masklayer)
-        layerFilter.layers().insert(masklayer->getUID());
-    layerFilter.layers().insert(gclayer->getUID());
+    if (lclayer) layerFilter.layers().insert(lclayer->getUID());
+    if (masklayer)layerFilter.layers().insert(masklayer->getUID());
+    if (elevlayer) layerFilter.layers().insert(elevlayer->getUID());
+    if (gclayer) layerFilter.layers().insert(gclayer->getUID());
     TerrainTileModelFactory factory(const_cast<const MapNode*>(mapNode.get())->options().terrain().get());
 
     int count = 0;
-    osg::Vec4f landCover, mask;
+    osg::Vec4f landCover, mask, elev;
 
     for(std::vector<TileKey>::const_iterator i = keys.begin();
         i != keys.end();
@@ -152,7 +159,7 @@ main(int argc, char** argv)
         std::cout << "\r" << count << "/" << keys.size() << std::flush;
 
         const TileKey& key = *i;
-        osg::ref_ptr<TerrainTileModel> model = factory.createTileModel(map, key, layerFilter, NULL, NULL);
+        osg::ref_ptr<TerrainTileModel> model = factory.createStandaloneTileModel(map, key, layerFilter, NULL, NULL);
         if (model.valid())
         {
             // for now, default to zone 0
@@ -171,7 +178,7 @@ main(int argc, char** argv)
                         osg::RefMatrixf* r = model->getMatrix(masklayer->getUID());
                         if (r) maskMat = *r;
                     }
-                    ImageUtils::PixelReader readMask(maskTex? maskTex->getImage(0) : NULL);
+                    ImageUtils::PixelReader maskSampler(maskTex? maskTex->getImage(0) : NULL);
 
                     // landcover texture/matrix:
                     osg::Texture* lcTex = NULL;
@@ -187,8 +194,19 @@ main(int argc, char** argv)
                         osg::RefMatrixf* r = model->getLandCoverTextureMatrix();
                         if (r) lcMat = *r;
                     }
-                    ImageUtils::PixelReader readLandCover(lcTex ? lcTex->getImage(0) : NULL);
+                    ImageUtils::PixelReader lcSampler(lcTex ? lcTex->getImage(0) : NULL);
 
+                    // elevation
+                    osg::Texture* elevTex = NULL;
+                    osg::Matrix elevMat;
+                    if (model->elevationModel().valid())
+                    {
+                        elevTex = model->getElevationTexture();
+                        osg::RefMatrixf* r = model->getElevationTextureMatrix();
+                        if (r) elevMat = *r;
+                    }
+                    ImageUtils::PixelReader elevSampler(elevTex ? elevTex->getImage(0) : NULL);
+                    elevSampler.setBilinear(true);
 
                     osg::Vec2f numInstances(128, 128); // TODO: fetch this.
                     unsigned numS = (unsigned)numInstances.x();
@@ -196,8 +214,6 @@ main(int argc, char** argv)
 
                     osg::Vec2f offset, halfSpacing, tilec, shift;
                     osg::Vec4f noise(1,1,1,1);
-
-                    PointSet* points = new PointSet();
 
                     for(unsigned t=0; t< numT; ++t)
                     {
@@ -217,9 +233,9 @@ main(int argc, char** argv)
                                 halfSpacing.x() + offset.x()/numInstances.x(),
                                 halfSpacing.y() + offset.y()/numInstances.y());
 
-                            double u = (double)s / (double)(numS-1);
-                            double v = (double)t / (double)(numT-1);
-                            readNoise(noise, u, v);
+                            float u = (float)s / (float)(numS-1);
+                            float v = (float)t / (float)(numT-1);
+                            noiseSampler(noise, u, v);
 
                             shift.set(
                                 fract(noise[NOISE_RANDOM]*5.5)*2.0-1.0,
@@ -237,9 +253,7 @@ main(int argc, char** argv)
                             // check the land cover
                             if (lcTex)
                             {
-                                double u_lc = lcMat(0, 0)*u + lcMat(3, 0);
-                                double v_lc = lcMat(1, 1)*v + lcMat(3, 1);
-                                readLandCover(landCover, u_lc, v_lc);
+                                sample(landCover, lcSampler, lcMat, tilec.x(), tilec.y());
                                 const LandCoverClass* lcclass = lcdict->getClassByValue((int)landCover.r());
                                 if (lcclass == NULL)
                                     continue;
@@ -251,27 +265,33 @@ main(int argc, char** argv)
                             // check the mask
                             if (maskTex)
                             {
-                                double u_mask = maskMat(0,0)*u + maskMat(3,0);
-                                double v_mask = maskMat(1,1)*v + maskMat(3,1);
-                                readMask(mask, u_mask, v_mask);
+                                sample(mask, maskSampler, maskMat, tilec.x(), tilec.y());
                                 if (mask.r() > 0.0)
                                     continue;
                             }
 
+                            // clamp
+                            float z = 0.0;
+                            if (elevTex)
+                            {
+                                sample(elev, elevSampler, elevMat, tilec.x(), tilec.y());
+                                if (elev.r() != NO_DATA_VALUE)
+                                    z = elev.r();
+                            }
+
                             // keeper
+                            Point* points = new Point();
+
                             points->push_back(osg::Vec3d(
                                 key.getExtent().xMin() + tilec.x()*key.getExtent().width(),
                                 key.getExtent().yMin() + tilec.y()*key.getExtent().height(),
-                                0.0));                     
-                        }
-                    }
+                                0.0));
 
-                    // write a multipoint feature for the tile
-                    if (points->size() > 0)
-                    {
-                        osg::ref_ptr<Feature> feature = new Feature(points, key.getExtent().getSRS());
-                        feature->set("tilekey", key.str());
-                        outfs->insertFeature(feature.get());
+                            osg::ref_ptr<Feature> feature = new Feature(points, key.getExtent().getSRS());
+                            feature->set("tilekey", key.str());
+                            feature->set("elevation", z);
+                            outfs->insertFeature(feature.get());
+                        }
                     }
                 }
             }

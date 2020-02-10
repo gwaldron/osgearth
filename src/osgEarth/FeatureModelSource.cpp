@@ -183,9 +183,7 @@ bool GeomFeatureNodeFactory::createOrUpdateNode(
     FeatureCursor*            features,
     const Style&              style,
     const FilterContext&      context,
-    osg::ref_ptr<osg::Node>&  node,
-    const Query&              query
-)
+    osg::ref_ptr<osg::Node>&  node )
 {
     GeometryCompiler compiler( _options );
     node = compiler.compile( features, style, context );

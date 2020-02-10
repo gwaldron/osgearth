@@ -295,6 +295,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                 defaultLine = new LineSymbol();
                 line = defaultLine.get();
                 break;
+            case Geometry::TYPE_POINT:
             case Geometry::TYPE_POINTSET:
                 defaultPoint = new PointSymbol();
                 point = defaultPoint.get();

@@ -87,6 +87,17 @@ namespace osgEarth
             const TerrainEngineRequirements* requirements,
             ProgressCallback*                progress);
 
+        //! Same as createTileModel, except that this method will create "fallback"
+        //! data for each layer that doesn't have real data at the TileKey's LOD.
+        //! The texture matrix will each layer will provide a scale and bias for
+        //! sampling the corresponding texture.
+        virtual TerrainTileModel* createStandaloneTileModel(
+            const Map*                       map,
+            const TileKey&                   key,
+            const CreateTileModelFilter&     filter,
+            const TerrainEngineRequirements* requirements,
+            ProgressCallback*                progress);
+
     protected:
 
         virtual void addColorLayers(
@@ -95,7 +106,22 @@ namespace osgEarth
             const TerrainEngineRequirements* reqs,
             const TileKey&                   key,
             const CreateTileModelFilter&     filter,
-            ProgressCallback*                progress);
+            ProgressCallback*                progress,
+            bool                             standalone);
+
+        virtual TerrainTileImageLayerModel* addImageLayer(
+            TerrainTileModel* model,
+            ImageLayer* layer,
+            const TileKey& key,
+            const TerrainEngineRequirements* reqs,
+            ProgressCallback* progress);
+
+        virtual void addStandaloneImageLayer(
+            TerrainTileModel* model,
+            ImageLayer* layer,
+            const TileKey& key,
+            const TerrainEngineRequirements* reqs,
+            ProgressCallback* progress);
 
         virtual void addElevation(
             TerrainTileModel*            model,
@@ -105,7 +131,22 @@ namespace osgEarth
             unsigned                     border,
             ProgressCallback*            progress);
 
-        virtual void addLandCover(
+        virtual void addStandaloneElevation(
+            TerrainTileModel*            model,
+            const Map*                   map,
+            const TileKey&               key,
+            const CreateTileModelFilter& filter,
+            unsigned                     border,
+            ProgressCallback*            progress);
+
+        virtual TerrainTileLandCoverModel* addLandCover(
+            TerrainTileModel*            model,
+            const Map*                   map,
+            const TileKey&               key,
+            const CreateTileModelFilter& filter,
+            ProgressCallback*            progress);
+
+        virtual void addStandaloneLandCover(
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
@@ -117,7 +158,8 @@ namespace osgEarth
             const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
-            ProgressCallback*            progress);
+            ProgressCallback*            progress,
+            bool                         fallback);
 
     protected:
 

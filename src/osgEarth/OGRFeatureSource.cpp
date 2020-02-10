@@ -642,13 +642,17 @@ OGRFeatureSource::openImplementation()
             wkbType == wkbPoint ||
             wkbType == wkbPoint25D)
         {
+            _geometryType = Geometry::TYPE_POINT;
+        }
+        else if (
+            wkbType == wkbMultiPoint ||
+            wkbType == wkbMultiPoint25D)
+        {
             _geometryType = Geometry::TYPE_POINTSET;
         }
         else if (
             wkbType == wkbGeometryCollection ||
             wkbType == wkbGeometryCollection25D ||
-            wkbType == wkbMultiPoint ||
-            wkbType == wkbMultiPoint25D ||
             wkbType == wkbMultiLineString ||
             wkbType == wkbMultiLineString25D ||
             wkbType == wkbMultiPolygon ||
@@ -734,8 +738,6 @@ OGRFeatureSource::create(const FeatureProfile* profile,
     }
 
     OGRwkbGeometryType ogrGeomType = OgrUtils::getOGRGeometryType(geometryType);
-    if (ogrGeomType == wkbPoint)
-        ogrGeomType = wkbMultiPoint;
 
     OGRSpatialReferenceH ogrSRS = profile->getSRS()->getHandle();
 

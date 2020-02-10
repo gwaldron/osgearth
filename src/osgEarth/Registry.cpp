@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2018 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
@@ -181,9 +181,9 @@ _maxVertsPerDrawable(USHRT_MAX)
 Registry::~Registry()
 {
     OE_DEBUG << LC << "Registry shutting down...\n";
-    _srsMutex.lock();
+    _srsCache.lock();
     _srsCache.clear();
-    _srsMutex.unlock();
+    _srsCache.unlock();
     _global_geodetic_profile = 0L;
     _spherical_mercator_profile = 0L;
     _cube_profile = 0L;
@@ -239,9 +239,9 @@ Registry::release()
     }
 
     // SpatialReference cache
-    _srsMutex.lock();
+    _srsCache.lock();
     _srsCache.clear();
-    _srsMutex.unlock();
+    _srsCache.unlock();
 
     // Shared object index
     if (_objectIndex.valid())
@@ -317,28 +317,21 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
-SpatialReference*
+osg::ref_ptr<SpatialReference>
 Registry::getOrCreateSRS(const SpatialReference::Key& key)
 {
-    Threading::ScopedMutexLock exclusiveLock(_srsMutex);
+    _srsCache.lock();
 
-    SpatialReference* srs;
-
-    SRSCache::iterator i = _srsCache.find(key);
-    if (i != _srsCache.end())
-    {
-        srs = i->second.get();
-    }
-    else
+    osg::ref_ptr<SpatialReference>& srs = _srsCache[key];
+    if (!srs.valid())
     {
         srs = SpatialReference::create(key);
-        if (srs)
-        {
-            _srsCache[key] = srs;
-        }
     }
+    osg::ref_ptr<SpatialReference> result = srs.get();
 
-    return srs;
+    _srsCache.unlock();
+
+    return result;
 }
 
 void

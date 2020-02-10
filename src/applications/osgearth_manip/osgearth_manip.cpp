@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -93,9 +93,7 @@ namespace
             "a :",                 "toggle viewpoint arcing",
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
-            "L :",                 "toggle log depth buffer",
-            "z :",                 "toggle zoom to mouse pointer",
-            "arrows :",            "adjust tether offset",
+            "L :",                 "toggle log depth buffer"
             "z :",                 "toggle zoom to mouse pointer"
             "arrows :",            "adjust tether offset",
         };

@@ -395,6 +395,29 @@ GroundCover::createShader() const
     return shader;
 }
 
+const GroundCoverBiome*
+GroundCover::getBiome(const LandCoverClass* lcClass) const
+{
+    for (int biomeIndex = 0; biomeIndex < getBiomes().size(); ++biomeIndex)
+    {
+        const GroundCoverBiome* biome = getBiomes()[biomeIndex].get();
+        if (!biome->getClasses().empty())
+        {
+            StringVector classes;
+            StringTokenizer(biome->getClasses(), classes, " ", "\"", false);
+
+            for (int i = 0; i < classes.size(); ++i)
+            {
+                if (classes[i] == lcClass->getName())
+                {
+                    return biome;
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
 osg::Shader*
 GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCoverLayer* layer) const
 {

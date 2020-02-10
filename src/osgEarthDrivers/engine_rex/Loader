@@ -184,6 +184,9 @@ namespace osgEarth { namespace REX
         /** Set the priority scale for an LOD. */
         void setLODPriorityScale(unsigned lod, float scale);
 
+        //! Set the priority scale for all LODs */
+        void setOverallPriorityScale(float scale);
+
     public: // Loader
 
         /** Asks the loader to begin or continue loading something.

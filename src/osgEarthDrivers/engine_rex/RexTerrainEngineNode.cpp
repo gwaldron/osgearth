@@ -311,15 +311,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     PagerLoader* loader = new PagerLoader( this );
     loader->setNumLODs(options().maxLOD().getOrUse(DEFAULT_MAX_LOD));
     loader->setMergesPerFrame(options().mergesPerFrame().get() );
-
-#if 0
-    for (std::vector<TerrainOptions::LODOptions>::const_iterator i = _terrainOptions.lods().begin(); i != _terrainOptions.lods().end(); ++i) {
-        if (i->_lod.isSet()) {
-            loader->setLODPriorityScale(i->_lod.get(), i->_priorityScale.getOrUse(1.0f));
-            loader->setLODPriorityOffset(i->_lod.get(), i->_priorityOffset.getOrUse(0.0f));
-        }
-    }
-#endif
+    loader->setOverallPriorityScale(options().priorityScale().get());
 
     _loader = loader;
     this->addChild( _loader.get() );

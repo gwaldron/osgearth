@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -96,7 +96,7 @@ namespace
                     output = f->createMultiPolygon( children );
                 else if ( compType == Geometry::TYPE_LINESTRING )
                     output = f->createMultiLineString( children );
-                else if ( compType == Geometry::TYPE_POINTSET )
+                else if ( compType == Geometry::TYPE_POINT || compType == Geometry::TYPE_POINTSET )
                     output = f->createMultiPoint( children );
                 else
                     output = f->createGeometryCollection( children );
@@ -116,6 +116,7 @@ namespace
                     break;
                 case Geometry::TYPE_MULTI: break;
 
+                case Geometry::TYPE_POINT:
                 case Geometry::TYPE_POINTSET:
                     seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
                     if ( seq ) output = f->createPoint( seq );
@@ -275,9 +276,9 @@ GEOSContext::exportGeometry(const geom::Geometry* input)
     if ( dynamic_cast<const geom::Point*>( input ) )
     {
         const geom::Point* point = dynamic_cast< const geom::Point* >(input);
-        PointSet* part = new PointSet();
+        Point* part = new Point();
         const geom::Coordinate* c = point->getCoordinate();
-        part->push_back(osg::Vec3d(c->x, c->y, c->z));
+        part->set(osg::Vec3d(c->x, c->y, c->z));
         return part;
     }
     else if ( dynamic_cast<const geom::MultiPoint*>( input ) )

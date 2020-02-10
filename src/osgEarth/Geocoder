@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -32,7 +32,7 @@ namespace osgEarth
     {
     public:
         //! Base class for custom geocoder implementations
-        class Implementation : public osg::Referenced
+        class OSGEARTH_EXPORT Implementation : public osg::Referenced
         {
         public:
             virtual Status search(const std::string& input, osg::ref_ptr<FeatureCursor>& output) = 0;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -61,6 +61,7 @@ TerrainOptions::getConfig() const
     conf.set( "morph_terrain", morphTerrain() );
     conf.set( "morph_imagery", morphImagery() );
     conf.set( "merges_per_frame", mergesPerFrame() );
+    conf.set( "priority_scale", priorityScale() );
 
     return conf;
 }
@@ -99,6 +100,7 @@ TerrainOptions::fromConfig(const Config& conf)
     morphTerrain().init(true);
     morphImagery().init(true);
     mergesPerFrame().init(20u);
+    priorityScale().init(1.0f);
 
     conf.get( "tile_size", _tileSize );
     conf.get( "vertical_scale", _verticalScale );
@@ -133,6 +135,7 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "morph_terrain", morphTerrain() );
     conf.get( "morph_imagery", morphImagery() );
     conf.get( "merges_per_frame", mergesPerFrame() );
+    conf.get( "priority_scale", priorityScale());
 }
 
 //...................................................................
@@ -174,6 +177,7 @@ OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, NormalizeEdges, normalizeEdges);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, MorphTerrain, morphTerrain);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, MorphImagery, morphImagery);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MergesPerFrame, mergesPerFrame);
+OE_PROPERTY_IMPL(TerrainOptionsAPI, float, PriorityScale, priorityScale);
 
 void
 TerrainOptionsAPI::setDriver(const std::string& value)

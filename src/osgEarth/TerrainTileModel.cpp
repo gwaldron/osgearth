@@ -108,3 +108,21 @@ TerrainTileModel::compileGLObjects(osg::State& state) const
     if (getLandCoverTexture())
         getLandCoverTexture()->compileGLObjects(state);
 }
+
+osg::Texture*
+TerrainTileModel::getTexture(UID layerUID) const
+{
+    for(unsigned i=0; i<colorLayers().size(); ++i)
+        if (colorLayers()[i]->getLayer()->getUID() == layerUID)
+            return colorLayers()[i]->getTexture();
+    return NULL;
+}
+
+osg::RefMatrixf* 
+TerrainTileModel::getMatrix(UID layerUID) const
+{
+    for (unsigned i = 0; i < colorLayers().size(); ++i)
+        if (colorLayers()[i]->getLayer()->getUID() == layerUID)
+            return colorLayers()[i]->getMatrix();
+    return NULL;
+}

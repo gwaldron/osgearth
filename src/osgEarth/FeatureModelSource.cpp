@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -42,7 +42,7 @@ using namespace osgEarth;
 FeatureModelOptions::FeatureModelOptions(const ConfigOptions& co) :
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
-_clusterCulling    ( true ),
+_clusterCulling    ( false ),
 _backfaceCulling   ( true ),
 _alphaBlending     ( true ),
 _sessionWideResourceCache( true ),

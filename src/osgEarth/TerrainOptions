@@ -65,6 +65,7 @@ namespace osgEarth
         OE_OPTION(bool, morphTerrain);
         OE_OPTION(bool, morphImagery);
         OE_OPTION(unsigned, mergesPerFrame);
+        OE_OPTION(float, priorityScale);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -225,6 +226,12 @@ namespace osgEarth
         //! Maximum number of tile data merges permitted per frame. 0 = infinity.
         void setMergesPerFrame(const unsigned& value);
         const unsigned& getMergesPerFrame() const;
+
+        //! Scale factor for background loading priority of terrain tiles.
+        //! Default = 1.0. Make it higher to prioritize terrain loading over
+        //! other modules.
+        void setPriorityScale(const float& value);
+        const float& getPriorityScale() const;
 
     public: // Legacy support
 

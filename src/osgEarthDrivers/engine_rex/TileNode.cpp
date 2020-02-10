@@ -450,25 +450,33 @@ TileNode::cull(TerrainCuller* culler)
 
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
-    
-    // Don't load data in progressive mode until the parent is up to date
-    if (options().progressive() == true)
-    {
-        TileNode* parent = getParentTile();
-        if ( parent && parent->dirty() )
-        {
-            canLoadData = false;
-        }
-    }
-    
+
     // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
     // because we want only the tiles loaded by the true viewpoint.
     const osg::Camera* cam = culler->getCamera();
-    if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
+    if (cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT)
     {
         canCreateChildren = false;
-        canLoadData       = false;
+        canLoadData = false;
     }
+    
+    else
+    {
+        // Don't load data OR geometry in progressive mode until the parent is up to date
+        if (options().progressive() == true)
+        {
+            TileNode* parent = getParentTile();
+            if (parent && parent->dirty())
+            {
+                canLoadData = false;
+
+                // comment this out if you want to load the geometry, but not the data --
+                // this will allow the terrain to always show the higest tessellation level
+                // even as the data is still loading ..
+                canCreateChildren = false;
+            }
+        }
+    }    
 
     if (childrenInRange)
     {

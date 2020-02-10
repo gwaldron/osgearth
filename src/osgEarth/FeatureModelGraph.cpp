@@ -1489,15 +1489,9 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         // the feature.)
         if (!combinedStyle.empty())
         {
-<<<<<<< HEAD
-            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context, readOptions, query);
+            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context, readOptions);
             if (styleGroup)
                 parent->addChild(styleGroup);
-=======
-            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context, readOptions);
-            if ( styleGroup )
-                parent->addChild( styleGroup );
->>>>>>> parent of da6948c35... WIP Network
         }
     }
 }

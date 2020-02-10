@@ -154,7 +154,7 @@ namespace
     }
 }
 
-
+#if 0
 /**
  * A pseudo-loader for paged feature tiles.
  */
@@ -192,7 +192,84 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         return ReadResult(node);
     }
 };
+#else
 
+namespace
+{
+    /**
+     * A pseudo-loader for paged feature tiles.
+     */
+    struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
+    {
+        osgEarthFeatureModelPseudoLoader()
+        {
+            supportsExtension("osgearth_pseudo_fmg", "Feature model pseudo-loader");
+        }
+
+        const char* className() const
+        { // override
+            return "osgEarth Feature Model Pseudo-Loader";
+        }
+
+        ReadResult readNode(const std::string& uri, const osgDB::Options* readOptions) const
+        {
+            if (!acceptsExtension(osgDB::getLowerCaseFileExtension(uri)))
+                return ReadResult::FILE_NOT_HANDLED;
+
+            //UID uid;
+            unsigned lod, x, y;
+            sscanf(uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y);
+
+            osg::ref_ptr<FeatureModelGraph> graph;
+            if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
+            {
+                OE_WARN << "Internal error - no FeatureModelGraph object in OptionsData\n";
+                return ReadResult::ERROR_IN_READING_FILE;
+            }
+
+            Registry::instance()->startActivity(uri);
+            osg::Node* node = graph->load(lod, x, y, uri, readOptions);
+            Registry::instance()->endActivity(uri);
+            add(graph->getOwnerName(), node);
+            return ReadResult(node);
+        }
+
+        mutable Threading::Mutex _mutex;
+        mutable std::set<osg::observer_ptr<osg::Node> > _activeNodes;
+
+        void add(const std::string& name, osg::Node* node) const
+        {
+            _mutex.lock();
+            purgeNoLock();
+            _activeNodes.insert(node);
+            Registry::instance()->startActivity(
+                Stringify() << "Layer [" << name << "] tiles:",
+                Stringify() << _activeNodes.size());
+            _mutex.unlock();
+        }
+
+        void purgeNoLock() const
+        {
+            std::vector< std::set<osg::observer_ptr<osg::Node> >::iterator > toErase;
+            for (std::set<osg::observer_ptr<osg::Node> >::iterator i = _activeNodes.begin();
+                i != _activeNodes.end();
+                ++i)
+            {
+                if (i->valid() == false)
+                {
+                    toErase.push_back(i);
+                }
+            }
+            for (std::vector< std::set<osg::observer_ptr<osg::Node> >::iterator >::iterator j = toErase.begin();
+                j != toErase.end();
+                ++j)
+            {
+                _activeNodes.erase(*j);
+            }
+        }
+    };
+}
+#endif
 REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
 
 
@@ -258,6 +335,12 @@ _pendingUpdate      ( false ),
 _sgCallbacks        (callbacks)
 {
     ctor();
+}
+
+void
+FeatureModelGraph::setOwnerName(const std::string& value)
+{
+    _ownerName = value;
 }
 
 void

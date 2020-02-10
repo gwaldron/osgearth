@@ -84,8 +84,8 @@ add_subdirectory(wms)
 add_subdirectory(xyz)
 
 # Libraries that require C++11 support
-if(CXX11_AVAILABLE)
-    add_subdirectory(gltf)
-else(CXX11_AVAILABLE)
-    message(STATUS "Omitting features that require C++11 support: GLTF")
-endif(CXX11_AVAILABLE)
+#if(CXX11_AVAILABLE)
+#    add_subdirectory(gltf)
+#else(CXX11_AVAILABLE)
+#    message(STATUS "Omitting features that require C++11 support: GLTF")
+#endif(CXX11_AVAILABLE)

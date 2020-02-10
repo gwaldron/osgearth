@@ -32,6 +32,8 @@
 #include <osg/Texture2D>
 #include <osg/Depth>
 #include <osg/Version>
+#include <osgDB/ReadFile>
+#include <osgUtil/Optimizer>
 #include <cstdlib> // getenv
 
 #define LC "[GroundCoverLayer] " << getName() << ": "
@@ -52,9 +54,15 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //#define USE_GEOMETRY_SHADER
 
 // If we're not using the GS, we have the option of using instancing or not.
-// OFF by default since it benchmarks faster on older cards. On newer cards
-// (RTX 2070 e.g.) it's about the same.
-//#define USE_INSTANCING_IN_VERTEX_SHADER
+// OFF benchmarks faster on older cards. On newer cards (RTX 2070 e.g.)
+// it's slightly faster than using a giant DrawElementsUInt.
+#define USE_INSTANCING_IN_VERTEX_SHADER
+
+// Test instanced model substitution.
+// This works, but we need a compute or geometry shader or something to
+// do culling, because everything makes its way tot the fragment shader
+// and we're relying on discards to skip drawing
+//#define TEST_MODEL_INSTANCING
 
 //........................................................................
 
@@ -491,6 +499,7 @@ GroundCoverLayer::buildStateSets()
                 osg::Shader* covTest = groundCover->createPredicateShader(getLandCoverDictionary(), getLandCoverLayer());
                 covTest->setName(covTest->getName() + "_VERTEX");
                 covTest->setType(osg::Shader::VERTEX);
+                vp->setShader(covTest);
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
                 layerShader->setType(osg::Shader::VERTEX);
@@ -503,8 +512,6 @@ GroundCoverLayer::buildStateSets()
 #endif
 
 #endif
-
-                vp->setShader(covTest);
 
                 // whether to support top-down image billboards. We disable it when not in use
                 // for performance reasons.
@@ -602,6 +609,35 @@ namespace
 
         return geode;
     }
+    
+    osg::Geometry* makeShape()
+    {
+        //osg::Geometry* x = dynamic_cast<osg::Geometry*>(osgDB::readNodeFile("../data/tree2.osg"));
+        //osgUtil::Optimizer o;
+        //o.optimize(x, o.VERTEX_PRETRANSFORM | o.VERTEX_POSTTRANSFORM);
+        //return x;
+
+        osg::Geometry* geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
+
+        osg::Vec3Array* v = new osg::Vec3Array();
+        v->reserve(3);
+        v->push_back(osg::Vec3(-4, 0, 8));
+        v->push_back(osg::Vec3(+4, 0, 8)); // bottom
+        v->push_back(osg::Vec3( 0, 0, 0)); // left
+        geom->setVertexArray(v);
+
+        osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL);
+        c->push_back(osg::Vec4(1, .5, .2, 1));
+        geom->setColorArray(c);
+
+        osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+        b->reserve(3);
+        b->push_back(0); b->push_back(1); b->push_back(2);
+        geom->addPrimitiveSet(b);
+
+        return geom;
+    }
 
     void createGeometryForGroundCover(
         const GroundCover* groundcover,
@@ -628,14 +664,21 @@ namespace
         const unsigned vertsPerInstance = 8;
         const unsigned indiciesPerInstance = 12;
 
+#ifdef TEST_MODEL_INSTANCING
+        geom = makeShape();
+        geom->getPrimitiveSet(0)->setNumInstances(numInstances);
+        return;
+#endif
+
         geom = new osg::Geometry();
-        geom->setDataVariance(osg::Object::STATIC);
-        geom->setUseVertexBufferObjects(true);
 
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
 
         static const GLubyte indices[12] = { 0,1,2,1,2,3, 4,5,6,5,6,7 };
-        _geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 12, &indices[0], numInstances));
+        geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 12, &indices[0], numInstances));
+
+        // We don't actually need any verts. Is it OK not to set an array?
+        //geom->setVertexArray(new osg::Vec3Array(8));
 
 #else // big giant drawelements:
 
@@ -680,9 +723,9 @@ namespace
             }
         }
 
-#endif // USE_INSTANCING_IN_VERTEX_SHADER
-
         geom->addPrimitiveSet(de);
+
+#endif // USE_INSTANCING_IN_VERTEX_SHADER
     }
 }
 
@@ -720,6 +763,7 @@ GroundCoverLayer::Renderer::DrawState::DrawState()
     _URUL = -1;
     _LLNormalUL = -1;
     _URNormalUL = -1;
+    _instancedModelUL = -1;
     _tilesDrawnThisFrame = 0;
     _numInstances1D = 0;
 }
@@ -749,6 +793,7 @@ GroundCoverLayer::Renderer::Renderer()
     _numInstancesUName = osg::Uniform::getNameID("oe_GroundCover_numInstances");
     _LLUName = osg::Uniform::getNameID("oe_GroundCover_LL");
     _URUName = osg::Uniform::getNameID("oe_GroundCover_UR");
+    _instancedModelUName = osg::Uniform::getNameID("oe_GroundCover_instancedModel");
 
     _drawStateBuffer.resize(64u);
 
@@ -799,6 +844,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
         ds._numInstancesUL = pcp->getUniformLocation(_numInstancesUName);
         ds._LLUL = pcp->getUniformLocation(_LLUName);
         ds._URUL = pcp->getUniformLocation(_URUName);
+        ds._instancedModelUL = pcp->getUniformLocation(_instancedModelUName);
 
         ds._pcp = pcp;
     }
@@ -809,6 +855,13 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     {
         osg::Vec2f numInstances(ds._numInstances1D, ds._numInstances1D);
         ext->glUniform2fv(ds._numInstancesUL, 1, numInstances.ptr());
+
+#ifdef TEST_MODEL_INSTANCING
+        const int useInstancedModel = 1;
+#else
+        const int useInstancedModel = 0;
+#endif
+        ext->glUniform1i(ds._instancedModelUL, useInstancedModel);
     }
 
     // transmit the extents of this tile to the shader, skipping the glUniform

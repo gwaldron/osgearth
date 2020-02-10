@@ -81,6 +81,10 @@ namespace osgEarth { namespace Features
             ModelSource*                     modelSource,
             SceneGraphCallbacks*             callbacks);
 
+        //! Set the name of the object that owns this graph (for debugging)
+        void setOwnerName(const std::string& name);
+        const std::string& getOwnerName() const { return _ownerName; }
+
         /**
          * Loads and returns a subnode. Used internally for paging.
          */
@@ -232,6 +236,8 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         osg::ref_ptr<osgDB::ObjectCache> _nodeCachingImageCache;
+
+        std::string _ownerName;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);

@@ -94,7 +94,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         double getExpirationRange2() const { return _expirationRange2; }
 
-        ModifyBoundingBoxCallback* getModifyBBoxCallback() const { return _bboxCB; }
+        ModifyBoundingBoxCallback* getModifyBBoxCallback() const { return _bboxCB.get(); }
 
         bool getUseTextureBorder() const { return false; }
 

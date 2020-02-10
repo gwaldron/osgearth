@@ -274,6 +274,8 @@ FeatureModelLayer::create()
                 nodeFactory,
                 getSceneGraphCallbacks());
 
+            fmg->setOwnerName(this->getName());
+
             _root->removeChildren(0, _root->getNumChildren());
             _root->addChild(fmg);
 

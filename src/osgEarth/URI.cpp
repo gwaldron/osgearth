@@ -98,17 +98,14 @@ namespace
                         // an abandoned operation (to avoid deadlock)
                         while (!_block.wait(10)) // 10ms
                         {
-                            if (_promise.isAbandoned())
+                            // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
+                            ++numTries;
+                            if (_promise.isAbandoned() || numTries == 1000)
                             {
                                 _compileSet->_compileCompletedCallback = NULL;
                                 ico->remove(_compileSet.get());
                                 break;
-                            }
-                            ++numTries;
-                            if (numTries == 200)
-                            {
-                                break;
-                            }
+                            }                                                        
                         }
 
                     }

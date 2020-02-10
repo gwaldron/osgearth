@@ -766,6 +766,22 @@ OGRFeatureSource::create(const FeatureProfile* profile,
     return getStatus();
 }
 
+void
+OGRFeatureSource::buildSpatialIndex()
+{
+   if (_dsHandle &&
+       _layerHandle && 
+       OGR_L_TestCapability(_layerHandle, OLCFastSpatialFilter) == 0)
+   {
+       std::stringstream buf;
+       const char* name = OGR_FD_GetName(OGR_L_GetLayerDefn(_layerHandle));
+       buf << "CREATE SPATIAL INDEX ON " << name;
+       std::string bufStr;
+       bufStr = buf.str();
+       OGR_DS_ExecuteSQL(_dsHandle, bufStr.c_str(), 0L, 0L);
+   }
+}
+
 FeatureCursor*
 OGRFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {

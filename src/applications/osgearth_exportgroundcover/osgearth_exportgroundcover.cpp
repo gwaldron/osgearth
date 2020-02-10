@@ -51,10 +51,55 @@ usage(const char* name, const std::string& error)
     return 0;
 }
 
+// biome weighted index LUT
+struct BillboardLUTEntry {
+    float width;
+    float height;
+    float sizeVariation;
+};
+typedef std::vector<BillboardLUTEntry> BillboardLUT;
+typedef UnorderedMap<const GroundCoverBiome*, BillboardLUT> BiomeLUT;
+void buildLUT(const GroundCover* gc, BiomeLUT& lut)
+{
+    for(GroundCoverBiomes::const_iterator b = gc->getBiomes().begin();
+        b != gc->getBiomes().end();
+        ++b)
+    {
+        BillboardLUT& billboards = lut[b->get()];
+
+        for (GroundCoverObjects::const_iterator i = b->get()->getObjects().begin();
+            i != b->get()->getObjects().end();
+            ++i)
+        {
+            const GroundCoverBillboard* bb = static_cast<const GroundCoverBillboard*>(i->get());
+            if (bb)
+            {
+                unsigned weight = 1u;
+                BillboardLUTEntry entry;
+                if (bb->_symbol.valid())
+                {
+                    entry.width = bb->_symbol->width().get();
+                    entry.height = bb->_symbol->height().get();
+                    entry.sizeVariation = bb->_symbol->sizeVariation().get();
+                    weight = bb->_symbol->selectionWeight().get();
+                }
+                for(unsigned w=0; w<weight; ++w)
+                {
+                    billboards.push_back(entry);
+                }               
+            }
+        }
+    }
+}
+
 // GLSL functions :)
 double fract(double x)
 {
     return fmod(x, 1.0);
+}
+double clamp(double x, double m0, double m1)
+{
+    return osg::clampBetween(x, m0, m1);
 }
 
 void sample(osg::Vec4f& output, ImageUtils::PixelReader& texture, const osg::Matrixf& matrix, float u, float v)
@@ -114,11 +159,15 @@ main(int argc, char** argv)
     if (gclayer->open().isError())
         return usage(argv[0], gclayer->getStatus().toString());
 
+    if (elevlayer && elevlayer->open().isError())
+        return usage(argv[0], elevlayer->getStatus().toString());
+
     // create output shapefile
     osg::ref_ptr<FeatureProfile> outProfile = new FeatureProfile(extent);
     FeatureSchema outSchema;
-    outSchema["tilekey"] = ATTRTYPE_STRING;
     outSchema["elevation"] = ATTRTYPE_DOUBLE;
+    outSchema["width"] = ATTRTYPE_DOUBLE;
+    outSchema["height"] = ATTRTYPE_DOUBLE;
     osg::ref_ptr<OGRFeatureSource> outfs = new OGRFeatureSource();
     outfs->setOGRDriver("ESRI Shapefile");
     outfs->setURL(outfile);
@@ -208,6 +257,10 @@ main(int argc, char** argv)
                     ImageUtils::PixelReader elevSampler(elevTex ? elevTex->getImage(0) : NULL);
                     elevSampler.setBilinear(true);
 
+                    BiomeLUT biomeLUT;
+                    buildLUT(groundcover, biomeLUT);
+
+
                     osg::Vec2f numInstances(128, 128); // TODO: fetch this.
                     unsigned numS = (unsigned)numInstances.x();
                     unsigned numT = (unsigned)numInstances.y();
@@ -251,13 +304,15 @@ main(int argc, char** argv)
                                 noise[NOISE_SMOOTH] /= groundcover->getFill();
 
                             // check the land cover
+                            const GroundCoverBiome* biome = NULL;
+                            const LandCoverClass* lcclass = NULL;
                             if (lcTex)
                             {
                                 sample(landCover, lcSampler, lcMat, tilec.x(), tilec.y());
-                                const LandCoverClass* lcclass = lcdict->getClassByValue((int)landCover.r());
+                                lcclass = lcdict->getClassByValue((int)landCover.r());
                                 if (lcclass == NULL)
                                     continue;
-                                const GroundCoverBiome* biome = groundcover->getBiome(lcclass);
+                                biome = groundcover->getBiome(lcclass);
                                 if (!biome)
                                     continue;
                             }
@@ -280,16 +335,29 @@ main(int argc, char** argv)
                             }
 
                             // keeper
-                            Point* points = new Point();
+                            Point* point = new Point();
 
-                            points->push_back(osg::Vec3d(
+                            point->push_back(osg::Vec3d(
                                 key.getExtent().xMin() + tilec.x()*key.getExtent().width(),
                                 key.getExtent().yMin() + tilec.y()*key.getExtent().height(),
                                 0.0));
 
-                            osg::ref_ptr<Feature> feature = new Feature(points, key.getExtent().getSRS());
-                            feature->set("tilekey", key.str());
+                            osg::ref_ptr<Feature> feature = new Feature(point, key.getExtent().getSRS());
                             feature->set("elevation", z);
+
+                            // Resolve the symbol so we can add attributes
+                            if (biome)
+                            {
+                                BillboardLUT& bblut = biomeLUT[biome];
+                                unsigned index = (unsigned)clamp(noise[NOISE_RANDOM],0.0,0.9999999) * (float)(bblut.size());
+                                BillboardLUTEntry& bb = bblut[index];
+                                float sizeScale = bb.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
+                                float width = bb.width + bb.width*sizeScale;
+                                float height = bb.height + bb.height*sizeScale;
+                                feature->set("width", width);
+                                feature->set("height", height);
+                            }
+
                             outfs->insertFeature(feature.get());
                         }
                     }
@@ -297,7 +365,10 @@ main(int argc, char** argv)
             }
         }
     }
-    std::cout << std::endl;
 
+    std::cout << "\rBuilding index.." << std::endl;
+    outfs->buildSpatialIndex();
+
+    std::cout << std::endl;
     outfs->close();
 }

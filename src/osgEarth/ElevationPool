@@ -147,8 +147,8 @@ namespace osgEarth
         // the back of the MRU, the Tile is destroyed and the main observer goes to 
         // NULL and is removed.
         typedef UnorderedMap<TileKey, osg::observer_ptr<Tile> > Tiles;
-        Tiles _tiles;
-        Threading::Mutex  _tilesMutex;
+        Threading::Lockable<Tiles> _tiles;
+        //Threading::Mutex  _tilesMutex;
 
         // Track the number of entries in the MRU manually since std::list::size
         // can be O(n) on some platforms

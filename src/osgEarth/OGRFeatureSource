@@ -123,6 +123,8 @@ namespace osgEarth
                 const Geometry::Type& geometryType,
                 const osgDB::Options* readOptions);
 
+        virtual void buildSpatialIndex();
+
     protected:
 
         virtual ~OGRFeatureSource();

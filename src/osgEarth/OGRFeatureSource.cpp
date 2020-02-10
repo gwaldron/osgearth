@@ -642,13 +642,17 @@ OGRFeatureSource::openImplementation()
             wkbType == wkbPoint ||
             wkbType == wkbPoint25D)
         {
+            _geometryType = Geometry::TYPE_POINT;
+        }
+        else if (
+            wkbType == wkbMultiPoint ||
+            wkbType == wkbMultiPoint25D)
+        {
             _geometryType = Geometry::TYPE_POINTSET;
         }
         else if (
             wkbType == wkbGeometryCollection ||
             wkbType == wkbGeometryCollection25D ||
-            wkbType == wkbMultiPoint ||
-            wkbType == wkbMultiPoint25D ||
             wkbType == wkbMultiLineString ||
             wkbType == wkbMultiLineString25D ||
             wkbType == wkbMultiPolygon ||
@@ -760,6 +764,22 @@ OGRFeatureSource::create(const FeatureProfile* profile,
     _geometryType = geometryType;
 
     return getStatus();
+}
+
+void
+OGRFeatureSource::buildSpatialIndex()
+{
+   if (_dsHandle &&
+       _layerHandle && 
+       OGR_L_TestCapability(_layerHandle, OLCFastSpatialFilter) == 0)
+   {
+       std::stringstream buf;
+       const char* name = OGR_FD_GetName(OGR_L_GetLayerDefn(_layerHandle));
+       buf << "CREATE SPATIAL INDEX ON " << name;
+       std::string bufStr;
+       bufStr = buf.str();
+       OGR_DS_ExecuteSQL(_dsHandle, bufStr.c_str(), 0L, 0L);
+   }
 }
 
 FeatureCursor*
@@ -927,10 +947,11 @@ OGRFeatureSource::insertFeature(Feature* feature)
             OE_WARN << LC << "OGR_F_SetGeometryDirectly failed!" << std::endl;
         }
 
-        if (OGR_L_CreateFeature(_layerHandle, feature_handle) != OGRERR_NONE)
+        OGRErr err = OGR_L_CreateFeature(_layerHandle, feature_handle);
+        if (err != OGRERR_NONE)
         {
             //TODO: handle error better
-            OE_WARN << LC << "OGR_L_CreateFeature failed!" << std::endl;
+            OE_WARN << LC << "OGR_L_CreateFeature failed! err=" << err << "; " << CPLGetLastErrorMsg() << std::endl;
             OGR_F_Destroy(feature_handle);
             return false;
         }

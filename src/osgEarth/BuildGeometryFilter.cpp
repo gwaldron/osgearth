@@ -1357,6 +1357,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                 has_linesymbol = true;
                 break;
 
+            case Geometry::TYPE_POINT:
             case Geometry::TYPE_POINTSET:
                 f->style()->add( new PointSymbol() );
                 has_pointsymbol = true;

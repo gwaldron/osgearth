@@ -197,6 +197,9 @@ namespace osgEarth
          * Checks the blacklist for a feature ID.
          */
         bool isBlacklisted( FeatureID fid ) const; 
+
+        //! Build (or rebuild) a disk-based spatial index.
+        virtual void buildSpatialIndex() { }
         
         //! dirty (??)
         virtual void dirty() { }

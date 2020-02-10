@@ -23,6 +23,6 @@ using namespace osgEarth_kml;
 void
 KML_Point::parseCoords( xml_node<>* node, KMLContext& cx )
 {
-    _geom = new PointSet();
+    _geom = new Point();
     KML_Geometry::parseCoords( node, cx );
 }

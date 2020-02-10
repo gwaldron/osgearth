@@ -42,7 +42,7 @@ using namespace osgEarth;
 FeatureModelOptions::FeatureModelOptions(const ConfigOptions& co) :
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
-_clusterCulling    ( true ),
+_clusterCulling    ( false ),
 _backfaceCulling   ( true ),
 _alphaBlending     ( true ),
 _sessionWideResourceCache( true ),

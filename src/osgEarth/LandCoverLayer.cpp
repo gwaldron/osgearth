@@ -250,6 +250,7 @@ LandCoverLayer::readMetaImage(MetaImage& metaImage, const TileKey& key, int s, i
         }
     }
 
+    output.set(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
     return false;
 }
 
@@ -405,9 +406,10 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
     {
         for (s = 0; s < workspace->s(); s += 2)
         {
-            if (readMetaImage(metaImage, key, s-2, t-2, pixel, progress))
-                writeToWorkspace(pixel, s, t);
-            else if (progress && progress->isCanceled())
+            readMetaImage(metaImage, key, s-2, t-2, pixel, progress);
+            writeToWorkspace(pixel, s, t);
+
+            if (progress && progress->isCanceled())
                 return GeoImage::INVALID;
         }
 

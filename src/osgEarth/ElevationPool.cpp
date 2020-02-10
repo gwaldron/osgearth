@@ -55,7 +55,7 @@ ElevationPool::~ElevationPool()
 void
 ElevationPool::setMap(const Map* map)
 {
-    Threading::ScopedMutexLock lock(_tilesMutex);
+    Threading::ScopedMutexLock lock(_tiles.mutex());
     _map = map;
     clearImpl();
 }
@@ -63,7 +63,7 @@ ElevationPool::setMap(const Map* map)
 void
 ElevationPool::clear()
 {
-    Threading::ScopedMutexLock lock(_tilesMutex);
+    Threading::ScopedMutexLock lock(_tiles.mutex());
     clearImpl();
 }
 
@@ -79,7 +79,7 @@ ElevationPool::stopThreading()
 void
 ElevationPool::setElevationLayers(const ElevationLayerVector& layers)
 {
-    Threading::ScopedMutexLock lock(_tilesMutex);
+    Threading::ScopedMutexLock lock(_tiles.mutex());
     _layers = layers;
     clearImpl();
 }
@@ -87,7 +87,7 @@ ElevationPool::setElevationLayers(const ElevationLayerVector& layers)
 void
 ElevationPool::setTileSize(unsigned value)
 {
-    Threading::ScopedMutexLock lock(_tilesMutex);
+    Threading::ScopedMutexLock lock(_tiles.mutex());
     _tileSize = value;
     clearImpl();
 }
@@ -183,7 +183,7 @@ bool
 ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& out)
 {
     // first see whether the tile is available
-    _tilesMutex.lock();
+    _tiles.lock();
 
     // locate the tile in the local tile cache:
     osg::observer_ptr<Tile>& tile_obs = _tiles[key];
@@ -217,7 +217,7 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
     {
         OE_TEST << "  getTile(" << key.str() << ") -> fetch from map\n";
         tile->_status.exchange(STATUS_IN_PROGRESS);
-        _tilesMutex.unlock();
+        _tiles.unlock();
 
         bool ok = fetchTileFromMap(key, layers, tile.get());
         tile->_status.exchange( ok ? STATUS_AVAILABLE : STATUS_FAIL );
@@ -242,7 +242,7 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
             --_entries;
         }
 
-        _tilesMutex.unlock();
+        _tiles.unlock();
         return true;
     }
 
@@ -250,7 +250,7 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
     else if ( tile->_status == STATUS_FAIL )
     {
         OE_TEST << "  getTile(" << key.str() << ") -> fail\n";
-        _tilesMutex.unlock();
+        _tiles.unlock();
         out = 0L;
         return false;
     }
@@ -260,7 +260,7 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
     else //if ( tile->_status == STATUS_IN_PROGRESS )
     {
         OE_DEBUG << "  getTile(" << key.str() << ") -> in progress...waiting\n";
-        _tilesMutex.unlock();
+        _tiles.unlock();
         out = 0L;
         return true;            // out:NULL => check back later please.
     }

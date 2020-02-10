@@ -86,6 +86,8 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
     
     switch( newType )
     {
+    case TYPE_POINT:
+        return new Point( &this->asVector() );
     case TYPE_POINTSET:
         return new PointSet( &this->asVector() );
     case TYPE_LINESTRING:
@@ -126,6 +128,8 @@ Geometry::create( Type type, const Vec3dVector* toCopy )
 {
     Geometry* output = 0L;
     switch( type ) {
+        case TYPE_POINT:
+            output = new Point( toCopy ); break;
         case TYPE_POINTSET:
             output = new PointSet( toCopy ); break;
         case TYPE_LINESTRING:
@@ -669,6 +673,25 @@ void
 PointSet::close()
 {
     //NOP. Don't close point sets..
+}
+
+//----------------------------------------------------------------------------
+
+Point::Point(const Point& rhs) :
+    PointSet(rhs)
+{
+    //nop
+}
+
+Point::~Point()
+{
+}
+
+void
+Point::set(const osg::Vec3d& value)
+{
+    clear();
+    push_back(value);
 }
 
 //----------------------------------------------------------------------------

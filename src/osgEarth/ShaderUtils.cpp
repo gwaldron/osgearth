@@ -179,6 +179,12 @@ namespace
                 */
                 const std::vector<std::string>& tokens = chunks[i].tokens;
 
+                // Note:
+                // "in"s are ignored for vertex shaders, since their ins are not varyings but
+                // rather input attributes.
+                // BUT, if there is a GS in the mix, and vertex shaders get moved into the GS,
+                // this will fail. Figure this out someday. -gw
+
                 if      ( tokens.size() > 1 && tokens[0] == "out" && type != osg::Shader::FRAGMENT )
                     i = replaceVarying(chunks, i, tokens, 1, "", false), madeChanges = true;
                 else if ( tokens.size() > 1 && tokens[0] == "in" && type != osg::Shader::VERTEX )

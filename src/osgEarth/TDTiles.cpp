@@ -643,21 +643,51 @@ double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
     return error;
 }
 
-void ThreeDTileNode::unloadContent()
+bool ThreeDTileNode::unloadContent()
 {
     if (_content)
     {
         // Don't unload the content of tiles that were loaded immediately.
         if (_immediateLoad)
         {
-            return;
+            return false;
         }
-        //_content->releaseGLObjects(0);
+
+        releaseGLObjects(0);
         _firstVisit = true;
         _content = 0;
         _requestedContent = false;
         _contentFuture = Future<osg::Node>();
         _contentUnloaded = true;
+    }
+    return true;
+}
+
+void ThreeDTileNode::resizeGLObjectBuffers(unsigned int maxSize)
+{
+    osg::MatrixTransform::resizeGLObjectBuffers(maxSize);
+
+    if (_content.valid())
+    {
+        _content->resizeGLObjectBuffers(maxSize);
+    }
+
+    if (_children.valid())
+    {
+        _children->resizeGLObjectBuffers(maxSize);
+    }
+}
+
+void ThreeDTileNode::releaseGLObjects(osg::State* state) const
+{
+    if (_content.valid())
+    {
+        _content->releaseGLObjects(state);
+    }
+
+    if (_children.valid())
+    {
+        _children->releaseGLObjects(state);
     }
 }
 
@@ -872,20 +902,28 @@ void ThreeDTilesetNode::endCull()
     ScopedMutexLock lock(_mutex);
     
     // Max time in ms to allocate to erasing tiles
-    float maxTime = 1.0f;
+    float maxTime = 2.0f;
 
     ThreeDTileNode::TileTracker::iterator itr = _tracker.begin();
 
     unsigned int numErased = 0;
+    unsigned int numSkipped = 0;
     while (_tracker.size() > _maxTiles && itr != _sentryItr)
     {
         osg::ref_ptr< ThreeDTileNode > tile = dynamic_cast<ThreeDTileNode*>(itr->get());
         if (tile.valid())
         {
-            tile->unloadContent();
-            tile->_trackerItrValid = false;
-            itr = _tracker.erase(itr);
-            ++numErased;
+            if (tile->unloadContent())
+            {
+                tile->_trackerItrValid = false;
+                itr = _tracker.erase(itr);
+                ++numErased;
+            }            
+            else
+            {
+                numSkipped++;
+                ++itr;
+            }
         }        
 
         endTime = osg::Timer::instance()->tick();
@@ -894,6 +932,14 @@ void ThreeDTilesetNode::endCull()
             break;
         }
     }
+
+#if 0
+    if (numErased > 0 || numSkipped > 0)
+    {
+        OE_NOTICE << "Erased " << numErased << " and skipped " << numSkipped << " in " << osg::Timer::instance()->delta_m(startTime, endTime) << "ms" << std::endl;
+        OE_NOTICE << "Tiles in memory " << _tracker.size() << " max tiles=" << _maxTiles << std::endl;
+    }        
+#endif
 
     // Erase the sentry and stick it at the end of the list
     _tracker.erase(_sentryItr);

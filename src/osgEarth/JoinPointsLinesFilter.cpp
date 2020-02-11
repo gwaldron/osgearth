@@ -172,7 +172,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
     {
         Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
-        if (geom->getType() == Geometry::TYPE_POINTSET)
+        if (geom->getType() == Geometry::TYPE_POINT || geom->getType() == Geometry::TYPE_POINTSET)
         {
             // Are there multiple points? Does it matter?
             for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2018 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -39,15 +39,9 @@
 class GLTFReader
 {
 public:
-    struct TextureCache
-    {
-        std::map<std::string, osg::ref_ptr<osg::Texture2D> > _map;
-        mutable osgEarth::Threading::Mutex _mutex;
-        void lock() { _mutex.lock(); }
-        void unlock() { _mutex.unlock(); }
-    };
-
-    //typedef osgEarth::LRUCache<std::string, osg::ref_ptr<osg::Texture> > TextureCache;
+    typedef osgEarth::Threading::Lockable<
+        osgEarth::UnorderedMap<std::string, osg::ref_ptr<osg::Texture2D> > 
+    > TextureCache;
 
     static std::string ExpandFilePath(const std::string &filepath, void * userData)
     {
@@ -299,7 +293,7 @@ public:
                             if (!imageEmbedded && _texCache)
                             {
                                 _texCache->lock();
-                                cachedTex = &_texCache->_map[imageURI.full()];
+                                cachedTex = &(*_texCache)[imageURI.full()];
                                 tex = cachedTex->get();
                             }
 

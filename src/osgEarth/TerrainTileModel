@@ -227,6 +227,9 @@ namespace osgEarth
         osg::Texture* getLandCoverTexture() const;
         osg::RefMatrixf* getLandCoverTextureMatrix() const;
 
+        osg::Texture* getTexture(UID layerUID) const;
+        osg::RefMatrixf* getMatrix(UID layerUID) const;
+
     public:
         void compileGLObjects(class osg::State& state) const;
 

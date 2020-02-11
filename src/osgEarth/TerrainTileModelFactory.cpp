@@ -56,21 +56,156 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
         map->getDataModelRevision() );
 
     // assemble all the components:
-    addColorLayers(model.get(), map, requirements, key, filter, progress);
+    addColorLayers(model.get(), map, requirements, key, filter, progress, false);
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
-        unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
+        unsigned border = (requirements && requirements->elevationBorderRequired()) ? 1u : 0u;
 
         addElevation( model.get(), map, key, filter, border, progress );
     }
 
     addLandCover(model.get(), map, key, filter, progress);
 
-    //addPatchLayers(model.get(), map, key, filter, progress);
+    //addPatchLayers(model.get(), map, key, filter, progress, false);
 
     // done.
     return model.release();
+    return model.release();
+}
+
+TerrainTileModel*
+TerrainTileModelFactory::createStandaloneTileModel(const Map*                       map,
+                                                   const TileKey&                   key,
+                                                   const CreateTileModelFilter&     filter,
+                                                   const TerrainEngineRequirements* requirements,
+                                                   ProgressCallback*                progress)
+{
+    OE_PROFILING_ZONE;
+    // Make a new model:
+    osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
+        key,
+        map->getDataModelRevision());
+
+    // assemble all the components:
+    addColorLayers(model.get(), map, requirements, key, filter, progress, true);
+
+    if (requirements == 0L || requirements->elevationTexturesRequired())
+    {
+        unsigned border = (requirements && requirements->elevationBorderRequired()) ? 1u : 0u;
+
+        addStandaloneElevation(model.get(), map, key, filter, border, progress);
+    }
+
+    addStandaloneLandCover(model.get(), map, key, filter, progress);
+
+    //addPatchLayers(model.get(), map, key, filter, progress, true);
+
+    // done.
+    return model.release();
+}
+
+TerrainTileImageLayerModel*
+TerrainTileModelFactory::addImageLayer(TerrainTileModel* model,
+                                       ImageLayer* imageLayer,
+                                       const TileKey& key,
+                                       const TerrainEngineRequirements* reqs,
+                                       ProgressCallback* progress)
+{
+    TerrainTileImageLayerModel* layerModel = NULL;
+    osg::Texture* tex = 0L;
+    TextureWindow window;
+    osg::Matrix scaleBiasMatrix;
+        
+    if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveData(key))
+    {
+        if (imageLayer->useCreateTexture())
+        {
+            window = imageLayer->createTexture(key, progress);
+            tex = window.getTexture();
+            scaleBiasMatrix = window.getMatrix();
+        }
+
+        else
+        {
+            GeoImage geoImage = imageLayer->createImage(key, progress);
+
+            if (geoImage.valid())
+            {
+                if (imageLayer->isCoverage())
+                    tex = createCoverageTexture(geoImage.getImage());
+                else
+                    tex = createImageTexture(geoImage.getImage(), imageLayer);
+            }
+        }
+    }
+
+    // if this is the first LOD, and the engine requires that the first LOD
+    // be populated, make an empty texture if we didn't get one.
+    if (tex == 0L &&
+        _options.firstLOD() == key.getLOD() &&
+        reqs && reqs->fullDataAtFirstLodRequired())
+    {
+        tex = _emptyTexture.get();
+    }
+
+    if (tex)
+    {
+        tex->setName(model->getKey().str());
+
+        layerModel = new TerrainTileImageLayerModel();
+
+        layerModel->setImageLayer(imageLayer);
+
+        layerModel->setTexture(tex);
+        layerModel->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
+
+        model->colorLayers().push_back(layerModel);
+
+        if (imageLayer->isShared())
+        {
+            model->sharedLayers().push_back(layerModel);
+        }
+
+        if (imageLayer->isDynamic())
+        {
+            model->setRequiresUpdateTraverse(true);
+        }
+    }
+
+    return layerModel;
+}
+
+void
+TerrainTileModelFactory::addStandaloneImageLayer(
+    TerrainTileModel* model,
+    ImageLayer* imageLayer,
+    const TileKey& key,
+    const TerrainEngineRequirements* reqs,
+    ProgressCallback* progress)
+{
+    TerrainTileImageLayerModel* layerModel = NULL;
+    TileKey keyToUse = key;
+    osg::Matrixf scaleBiasMatrix;
+    while (keyToUse.valid() && !layerModel)
+    {
+        layerModel = addImageLayer(model, imageLayer, keyToUse, reqs, progress);
+        if (!layerModel)
+        {
+            TileKey parentKey = keyToUse.createParentKey();
+            if (parentKey.valid())
+            {
+                osg::Matrixf sb;
+                keyToUse.getExtent().createScaleBias(parentKey.getExtent(), sb);
+                scaleBiasMatrix.preMult(sb);
+            }
+            keyToUse = parentKey;
+        }
+    }
+    if (layerModel)
+    {
+        layerModel->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
+    }
 }
 
 void
@@ -79,7 +214,8 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                                         const TerrainEngineRequirements* reqs,
                                         const TileKey&    key,
                                         const CreateTileModelFilter& filter,
-                                        ProgressCallback* progress)
+                                        ProgressCallback* progress,
+                                        bool standalone)
 {
     OE_PROFILING_ZONE;
     OE_START_TIMER(fetch_image_layers);
@@ -105,65 +241,15 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
         if (imageLayer)
         {
-            TextureWindow window;
-            osg::Texture* tex = 0L;
-
-            if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveData(key))
+            if (standalone)
             {
-                if (imageLayer->useCreateTexture())
-                {
-                    window = imageLayer->createTexture( key, progress );
-                    tex = window.getTexture();
-                }
-
-                else
-                {
-                    GeoImage geoImage = imageLayer->createImage( key, progress );
-           
-                    if ( geoImage.valid() )
-                    {
-                        if ( imageLayer->isCoverage() )
-                            tex = createCoverageTexture(geoImage.getImage());
-                        else
-                            tex = createImageTexture(geoImage.getImage(), imageLayer);
-                    }
-                }
+                addStandaloneImageLayer(model, imageLayer, key, reqs, progress);
             }
-        
-            // if this is the first LOD, and the engine requires that the first LOD
-            // be populated, make an empty texture if we didn't get one.
-            if (tex == 0L &&
-                _options.firstLOD() == key.getLOD() &&
-                reqs && reqs->fullDataAtFirstLodRequired())
+            else
             {
-                tex = _emptyTexture.get();
-            }
-         
-            if (tex)
-            {
-                tex->setName(model->getKey().str());
-
-                TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-
-                layerModel->setImageLayer(imageLayer);
-
-                layerModel->setTexture(tex);
-                layerModel->setMatrix(new osg::RefMatrixf(window.getMatrix()));
-
-                model->colorLayers().push_back(layerModel);
-
-                if (imageLayer->isShared())
-                {
-                    model->sharedLayers().push_back(layerModel);
-                }
-
-                if (imageLayer->isDynamic())
-                {
-                    model->setRequiresUpdateTraverse(true);
-                }
+                addImageLayer(model, imageLayer, key, reqs, progress);
             }
         }
-
         else // non-image kind of TILE layer:
         {
             TerrainTileColorLayerModel* colorModel = new TerrainTileColorLayerModel();
@@ -182,7 +268,8 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
                                         const Map* map,
                                         const TileKey&    key,
                                         const CreateTileModelFilter& filter,
-                                        ProgressCallback* progress)
+                                        ProgressCallback* progress,
+                                        bool fallback)
 {
     OE_START_TIMER(fetch_patch_layers);
 
@@ -224,7 +311,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const TileKey&               key,
                                       const CreateTileModelFilter& filter,
                                       unsigned                     border,
-                                      ProgressCallback*            progress)
+                                      ProgressCallback*            progress )
 {
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
@@ -422,12 +509,40 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
 }
 
 void
+TerrainTileModelFactory::addStandaloneElevation(
+    TerrainTileModel*            model,
+    const Map*                   map,
+    const TileKey&               key,
+    const CreateTileModelFilter& filter,
+    unsigned                     border,
+    ProgressCallback*            progress)
+{
+    TileKey keyToUse = key;
+    while (keyToUse.valid() && model->elevationModel().valid() == false)
+    {
+        addElevation(model, map, keyToUse, filter, border, progress);
+        if (model->elevationModel() == NULL)
+        {
+            keyToUse = keyToUse.createParentKey();
+        }
+    }
+    if (model->elevationModel().valid())
+    {
+        osg::Matrixf scaleBiasMatrix;
+        key.getExtent().createScaleBias(keyToUse.getExtent(), scaleBiasMatrix);
+        model->elevationModel()->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
+    }
+}
+
+TerrainTileLandCoverModel*
 TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
                                       const Map*                   map,
                                       const TileKey&               key,
                                       const CreateTileModelFilter& filter,
                                       ProgressCallback*            progress)
 {
+    TerrainTileLandCoverModel* landCoverModel = NULL;
+
     LandCoverLayerVector layers;
     map->getLayers(layers);
 
@@ -444,11 +559,45 @@ TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
     {
         tex->setName(model->getKey().str());
 
-        TerrainTileLandCoverModel* landCoverModel = new TerrainTileLandCoverModel();
+        landCoverModel = new TerrainTileLandCoverModel();
 
         landCoverModel->setTexture(tex.get());
 
         model->landCoverModel() = landCoverModel;
+    }
+
+    return landCoverModel;
+}
+
+void
+TerrainTileModelFactory::addStandaloneLandCover(
+    TerrainTileModel*            model,
+    const Map*                   map,
+    const TileKey&               key,
+    const CreateTileModelFilter& filter,
+    ProgressCallback*            progress)
+{
+    TerrainTileLandCoverModel* layerModel = NULL;
+    TileKey keyToUse = key;
+    osg::Matrixf scaleBiasMatrix;
+    while (keyToUse.valid() && !layerModel)
+    {
+        layerModel = addLandCover(model, map, keyToUse, filter, progress);
+        if (!layerModel)
+        {
+            TileKey parentKey = keyToUse.createParentKey();
+            if (parentKey.valid())
+            {
+                osg::Matrixf sb;
+                keyToUse.getExtent().createScaleBias(parentKey.getExtent(), sb);
+                scaleBiasMatrix.preMult(sb);
+            }
+            keyToUse = parentKey;
+        }
+    }
+    if (layerModel)
+    {
+        layerModel->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
     }
 }
 

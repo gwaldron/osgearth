@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -104,17 +104,6 @@ namespace
 ProgramRepo::~ProgramRepo()
 {
     releaseGLObjects(NULL);
-}
-
-void
-ProgramRepo::lock() const
-{
-    _m.lock();
-}
-
-void ProgramRepo::unlock() const
-{
-    _m.unlock();
 }
 
 osg::ref_ptr<osg::Program>

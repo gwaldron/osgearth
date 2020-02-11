@@ -267,6 +267,15 @@ PagerLoader::setLODPriorityOffset(unsigned lod, float offset)
         _priorityOffsets[lod] = offset;
 }
 
+void
+PagerLoader::setOverallPriorityScale(float value)
+{
+    for(int i=0; i<64; ++i)
+    {
+        _priorityScales[i] = value;
+    }
+}
+
 bool
 PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -178,6 +178,12 @@ namespace
                 StringTokenizer(chunks[i].text, tokens, " \t\n", "", false, true);
                 */
                 const std::vector<std::string>& tokens = chunks[i].tokens;
+
+                // Note:
+                // "in"s are ignored for vertex shaders, since their ins are not varyings but
+                // rather input attributes.
+                // BUT, if there is a GS in the mix, and vertex shaders get moved into the GS,
+                // this will fail. Figure this out someday. -gw
 
                 if      ( tokens.size() > 1 && tokens[0] == "out" && type != osg::Shader::FRAGMENT )
                     i = replaceVarying(chunks, i, tokens, 1, "", false), madeChanges = true;

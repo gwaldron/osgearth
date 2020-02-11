@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -184,7 +184,8 @@ SpatialReference::createFromUserInput( const std::string& input, const std::stri
 SpatialReference*
 SpatialReference::create( const std::string& horiz, const std::string& vert )
 {
-    return Registry::instance()->getOrCreateSRS( Key(horiz, vert) );
+    osg::ref_ptr<SpatialReference> srs = Registry::instance()->getOrCreateSRS( Key(horiz, vert) );
+    return srs.release();
 }
 
 SpatialReference*

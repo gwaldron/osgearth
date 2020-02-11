@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -295,6 +295,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                 defaultLine = new LineSymbol();
                 line = defaultLine.get();
                 break;
+            case Geometry::TYPE_POINT:
             case Geometry::TYPE_POINTSET:
                 defaultPoint = new PointSymbol();
                 point = defaultPoint.get();

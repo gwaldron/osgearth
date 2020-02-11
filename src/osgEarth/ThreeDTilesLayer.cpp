@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -97,7 +97,7 @@ ThreeDTilesLayer::openImplementation()
     osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
     if (!threadPool.valid())
     {
-        unsigned int numThreads = 8;
+        unsigned int numThreads = 2;
         _threadPool = new ThreadPool(numThreads);
         _threadPool->put(readOptions.get());
     }

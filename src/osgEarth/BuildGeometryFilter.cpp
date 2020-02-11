@@ -1,6 +1,6 @@
 /* -*_maxPolyTilingAngle_deg-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -1357,6 +1357,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                 has_linesymbol = true;
                 break;
 
+            case Geometry::TYPE_POINT:
             case Geometry::TYPE_POINTSET:
                 f->style()->add( new PointSymbol() );
                 has_pointsymbol = true;

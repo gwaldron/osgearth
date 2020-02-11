@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -396,13 +396,17 @@ namespace osgEarth { namespace Threading
      */
     template<typename T>
     struct Lockable : public T {
-        mutable Mutex _lockable_mutex;
         inline void lock() const {
             _lockable_mutex.lock();
         }
         inline void unlock() const {
             _lockable_mutex.unlock();
         }
+        inline Mutex& mutex() const {
+            return _lockable_mutex;
+        }
+    private:
+        mutable Mutex _lockable_mutex;
     };
 
 } } // namepsace osgEarth::Threading

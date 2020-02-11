@@ -453,11 +453,16 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                     maskSet->isMasked( (*texCoords)[i00] ) ||
                     maskSet->isMasked( (*texCoords)[i11] )
                 );
-
+                // If the three vertices are on the patch boundary, then don't make a
+                // triangle. It would overlap geometry between the patch boundary and the
+                // mask and possibly the masked area too.
+                bool onPatchBoundary = maskSet
+                    && maskSet->isPatchBoundary((*texCoords)[i00])
+                    && maskSet->isPatchBoundary((*texCoords)[i11]);
                 if ( !discard )
                 {
                     discard = maskSet && maskSet->isMasked( (*texCoords)[i01] );
-                    if ( !discard )
+                    if ( !(discard || (onPatchBoundary && maskSet->isPatchBoundary( (*texCoords)[i01] ))) )
                     {
                         primSet->addElement(i01);
                         primSet->addElement(i00);
@@ -465,7 +470,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                     }
             
                     discard = maskSet && maskSet->isMasked( (*texCoords)[i10] );
-                    if ( !discard )
+                    if ( !(discard || (onPatchBoundary && maskSet->isPatchBoundary( (*texCoords)[i10] ))) )
                     {
                         primSet->addElement(i00);
                         primSet->addElement(i10);

@@ -59,25 +59,20 @@ namespace
                 if (len2d > maxLen)
                 {
                     double numNewPoints = ::floor(len2d/maxLen);
-                    double interval = len2d/(numNewPoints+1.0);
-                    for (double d=interval; d<len2d; d+=interval)
+                    double frac = 1.0 / (numNewPoints + 1.0);
+                    for (double fj = 1.0; fj <= numNewPoints; ++fj)
                     {
-                        double t = d/len2d;
-                            
+                        double t = fj * frac;
                         osg::Vec3d newPoint(
                             seg.first.x() + vec2d.x()*t,
                             seg.first.y() + vec2d.y()*t,
                             seg.first.z() + vec3d.z()*t);
-
-                        if (newGeom.empty() || newPoint != newGeom.back())
-                        {
-                            newGeom.push_back(newPoint);
-                        }
-
+                        newGeom.push_back(newPoint);
                     }
                 }
             }
-
+            // This part is a closed loop, so the last point is
+            // already in newGeom as the first point.
             if (newGeom.empty() == false)
             {
                 part->swap(newGeom);

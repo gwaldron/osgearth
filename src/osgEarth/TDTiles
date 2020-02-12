@@ -170,10 +170,13 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         void traverse(osg::NodeVisitor& nv);
 
-        void unloadContent();
+        bool unloadContent();
 
         const Tile* getTile() const { return _tile.get(); }
 
+        virtual void resizeGLObjectBuffers(unsigned int maxSize);
+
+        virtual void releaseGLObjects(osg::State* state) const;
 
         typedef std::list< osg::ref_ptr < ThreeDTileNode > > TileTracker;
 

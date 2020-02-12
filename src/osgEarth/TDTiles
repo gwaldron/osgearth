@@ -222,6 +222,12 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         void traverse(osg::NodeVisitor& nv);
 
+        const Tileset* getTileset() const { return _tileset.get(); }
+
+        const osgDB::Options* getOptions() const { return _options.get(); }
+
+
+
         /**
          * Gets/sets the maximum number of tiles to keep in memory before expiring them.
          */

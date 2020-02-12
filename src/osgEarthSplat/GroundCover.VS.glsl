@@ -126,7 +126,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 #ifdef OE_GROUNDCOVER_USE_INSTANCING
         instanceID = gl_InstanceID;
 #else
-        instanceID = oe_vertexID / 8;
+        instanceID = gl_VertexID / 8;
 #endif
     }
 

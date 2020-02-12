@@ -180,6 +180,11 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         bool _trackerItrValid;
 
     private:
+
+        void createDebugBounds();
+
+        void computeBoundingVolume();
+
         osg::ref_ptr< Tile > _tile;
 
         osg::ref_ptr< osg::Node > _content;
@@ -188,8 +193,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::ref_ptr< osg::Node > _boundsDebug;
         ThreeDTilesetNode* _tileset;
 
-        osg::BoundingBoxd _boundingBox;
-
         Threading::Future<osg::Node> _contentFuture;
         bool _requestedContent;
         bool _contentUnloaded;
@@ -197,6 +200,9 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         bool _immediateLoad;
 
         bool _firstVisit;
+
+        osg::BoundingBox _boundingBox;
+        osg::Matrixd _boundingBoxLocalToWorld;
 
         osg::ref_ptr< osgDB::Options > _options;
     };

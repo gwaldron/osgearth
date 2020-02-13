@@ -114,6 +114,7 @@ namespace osgEarth { namespace REX
         unsigned _tileSize;
         MaskRecordVector _maskRecords;
         osg::Vec3d _ndcMin, _ndcMax;
+        double _tileLength;     // _tileSize - 1 "length" in verts
     };
 
 } } // namespace osgEarth::REX

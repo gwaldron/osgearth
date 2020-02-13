@@ -23,6 +23,8 @@
 #include <osgEarth/Common>
 #include <osg/Quat>
 #include <osg/Vec3>
+#include <osg/BoundingBox>
+#include <osg/Array>
 
 namespace osgEarth
 {
@@ -180,6 +182,8 @@ namespace osgEarth
     }
 #endif
 
-};
+    // Utility functions for arrays of points treated as a 2d polygon
+    OSGEARTH_EXPORT osg::BoundingBoxd polygonBBox2d(const osg::Vec3dArray& points);
+}
 
 #endif

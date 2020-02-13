@@ -41,6 +41,7 @@ ADD_SUBDIRECTORY(osgearth_conv)
 ADD_SUBDIRECTORY(osgearth_3pv)
 ADD_SUBDIRECTORY(osgearth_featureinfo)
 ADD_SUBDIRECTORY(osgearth_exportgroundcover)
+ADD_SUBDIRECTORY(osgearth_imgui)
 
 IF(BUILD_OSGEARTH_EXAMPLES)
     SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")

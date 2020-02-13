@@ -23,6 +23,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Geometry>
+#include <osgEarth/Math>
 #include <osgUtil/DelaunayTriangulator>
 
 #define LC "[MaskGenerator] "
@@ -92,58 +93,11 @@ namespace
             else return lhs[1] < rhs[1];
         }
     };
-
-    //! Removes all duplicate points in a vertex array.
-    void removeDupes(osg::Vec3Array* verts)
-    {
-        unsigned finalSize = verts->size();
-        std::set<osg::Vec3, less_2d> unique;
-        for (unsigned i = 0; i<finalSize; ++i)
-        {
-            if (unique.find( (*verts)[i] ) == unique.end())
-            {
-                unique.insert((*verts)[i]);
-            }
-            else
-            {
-                (*verts)[i] = verts->back();
-                --finalSize;
-            }
-        }
-
-        if (finalSize != verts->size())
-        {
-            verts->resize(finalSize);
-        }
-    }
-
-    //! Removes verts from the vec array that appear in the unique set.
-    void removeDupes(osg::Vec3Array* verts, const std::set<osg::Vec3, less_2d>& unique)
-    {
-        unsigned finalSize = verts->size();
-        
-        for (unsigned i = 0; i<finalSize; ++i)
-        {
-            if (unique.find( (*verts)[i] ) != unique.end())
-            {
-                (*verts)[i] = verts->back();
-                --finalSize;
-            }
-        }
-
-        if (finalSize != verts->size())
-        {
-            verts->resize(finalSize);
-            //OE_INFO << LC << "Removed " << verts->size() - finalSize << " duplicates.\n";
-        }
-    }
 }
 
-
-
-
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map) :
-_key( key ), _tileSize(tileSize)
+    _key( key ), _tileSize(tileSize), _ndcMin(DBL_MAX, DBL_MAX, DBL_MAX), _ndcMax(-DBL_MAX, -DBL_MAX, -DBL_MAX),
+    _tileLength(static_cast<double>(tileSize) - 1.0)
 {
     MaskLayerVector maskLayers;
     map->getLayers(maskLayers);
@@ -181,55 +135,27 @@ MaskGenerator::setupMaskRecord(osg::Vec3dArray* boundary)
     if ( boundary )
     {
         // Calculate the axis-aligned bounding box of the boundary polygon:
-        osg::Vec3d min, max;
-        min = max = boundary->front();
-
-        for (osg::Vec3dArray::iterator it = boundary->begin(); it != boundary->end(); ++it)
-        {
-            if (it->x() < min.x())
-            min.x() = it->x();
-
-            if (it->y() < min.y())
-            min.y() = it->y();
-
-            if (it->x() > max.x())
-            max.x() = it->x();
-
-            if (it->y() > max.y())
-            max.y() = it->y();
-        }
+        osg::BoundingBoxd bbox = polygonBBox2d(*boundary);
 
         // convert that bounding box to "unit" space (0..1 across the tile)
         osg::Vec3d min_ndc, max_ndc;
-        geoLocator.mapToUnit(min, min_ndc);
-        geoLocator.mapToUnit(max, max_ndc);
+        geoLocator.mapToUnit(bbox._min, min_ndc);
+        geoLocator.mapToUnit(bbox._max, max_ndc);
 
         // true if boundary overlaps tile in X dimension:
-        bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
-                        (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
-                        (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
+        bool x_match = min_ndc.x() < 1.0 && max_ndc.x() >= 0.0;
 
         // true if boundary overlaps tile in Y dimension:
-        bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
-                        (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
-                        (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
+        bool y_match = min_ndc.y() < 1.0 && max_ndc.y() >= 0.0;
 
         if (x_match && y_match)
         {
             // yes, boundary overlaps tile, so expand the global NDC bounding
             // box to include the new mask:
-            if (_maskRecords.size() == 0)
-            {
-                _ndcMin = min_ndc;
-                _ndcMax = max_ndc;
-            }
-            else
-            {
-                if (min_ndc.x() < _ndcMin.x()) _ndcMin.x() = min_ndc.x();
-                if (min_ndc.y() < _ndcMin.y()) _ndcMin.y() = min_ndc.y();
-                if (max_ndc.x() > _ndcMax.x()) _ndcMax.x() = max_ndc.x();
-                if (max_ndc.y() > _ndcMax.y()) _ndcMax.y() = max_ndc.y();
-            }
+            _ndcMin.x() = std::min(_ndcMin.x(), min_ndc.x());
+            _ndcMin.y() = std::min(_ndcMin.y(), min_ndc.y());
+            _ndcMax.x() = std::max(_ndcMax.x(), max_ndc.x());
+            _ndcMax.y() = std::max(_ndcMax.y(), max_ndc.y());
 
             // and add this mask to the list.
             _maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, 0L) );
@@ -263,48 +189,30 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
 
     // Calculate the combined axis-aligned NDC bounding box for all masks:
     // (gw: didn't we already do this in setupMaskRecord?)
-    double minndcx = _maskRecords[0]._ndcMin.x();
-    double minndcy = _maskRecords[0]._ndcMin.y();
-    double maxndcx = _maskRecords[0]._ndcMax.x();
-    double maxndcy = _maskRecords[0]._ndcMax.y();
-    for (int mrs = 1; mrs < _maskRecords.size(); ++mrs)
-    {
-        if ( _maskRecords[mrs]._ndcMin.x()< minndcx)
-        {
-            minndcx = _maskRecords[mrs]._ndcMin.x();
-        }
-        if ( _maskRecords[mrs]._ndcMin.y()< minndcy)
-        {
-            minndcy = _maskRecords[mrs]._ndcMin.y();
-        }
-        if ( _maskRecords[mrs]._ndcMax.x()> maxndcx)
-        {
-            maxndcx = _maskRecords[mrs]._ndcMax.x();
-        }
-        if ( _maskRecords[mrs]._ndcMax.y()> maxndcy)
-        {
-            maxndcy = _maskRecords[mrs]._ndcMax.y();
-        }			
-    }
+    const double minndcx = _ndcMin.x();
+    const double minndcy = _ndcMin.y();
+    const double maxndcx = _ndcMax.x();
+    const double maxndcy = _ndcMax.y();
 
     // Figure out the indices representing the area we need to "cut out"
     // of the tile to accommadate the mask:
-    int min_i = (int)floor(minndcx * (double)(_tileSize-1));
+    int min_i = (int)floor(minndcx * _tileLength);
     if (min_i < 0) min_i = 0;
     if (min_i >= (int)_tileSize) min_i = _tileSize - 1;
 
-    int min_j = (int)floor(minndcy * (double)(_tileSize-1));
+    int min_j = (int)floor(minndcy * _tileLength);
     if (min_j < 0) min_j = 0;
     if (min_j >= (int)_tileSize) min_j = _tileSize - 1;
 
-    int max_i = (int)ceil(maxndcx * (double)(_tileSize-1));
+    int max_i = (int)ceil(maxndcx * _tileLength);
     if (max_i < 0) max_i = 0;
     if (max_i >= (int)_tileSize) max_i = _tileSize - 1;
 
-    int max_j = (int)ceil(maxndcy * (double)(_tileSize-1));
+    int max_j = (int)ceil(maxndcy * _tileLength);
     if (max_j < 0) max_j = 0;
     if (max_j >= (int)_tileSize) max_j = _tileSize - 1;
 
+    // XXX This isn't right.
     if (min_i < 0 || max_i < 0 || min_j < 0 || max_j < 0)
     {
         return R_BOUNDARY_DOES_NOT_INTERSECT_TILE;
@@ -325,13 +233,13 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
     for (int i = 0; i < num_i; i++)
     {
         {
-            osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)min_j)/(double)(_tileSize-1), 0.0);
+            osg::Vec3d ndc( ((double)(i + min_i))/_tileLength, ((double)min_j)/_tileLength, 0.0);
             (*patchPoly)[i] = ndc;
         }
 
         {
             // bottom:
-            osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)max_j)/(double)(_tileSize-1), 0.0);
+            osg::Vec3d ndc( ((double)(i + min_i))/_tileLength, ((double)max_j)/_tileLength, 0.0);
             (*patchPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
         }
     }
@@ -341,12 +249,12 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
     {
         {
             // right:
-            osg::Vec3d ndc( ((double)max_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
+            osg::Vec3d ndc( ((double)max_i)/_tileLength, ((double)(min_j + j + 1))/_tileLength, 0.0);
             (*patchPoly)[j + num_i] = ndc;
         }
 
         {
-            osg::Vec3d ndc( ((double)min_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
+            osg::Vec3d ndc( ((double)min_i)/_tileLength, ((double)(min_j + j + 1))/_tileLength, 0.0);
             (*patchPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
         }
     }
@@ -357,7 +265,7 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
         for (int i = 0; i < num_i; i++)
         {
             {
-                osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)(j+min_j))/(double)(_tileSize-1), 0.0);
+                osg::Vec3d ndc( ((double)(i + min_i))/_tileLength, ((double)(j+min_j))/_tileLength, 0.0);
                 coordsArray->push_back(ndc) ;
             }						
         }
@@ -688,13 +596,13 @@ MaskGenerator::getMarker(float nx, float ny) const
 
     if (_maskRecords.size() > 0)
     {
-        int min_i = (int)floor(_ndcMin.x() * (double)(_tileSize-1));
-        int min_j = (int)floor(_ndcMin.y() * (double)(_tileSize-1));
-        int max_i = (int)ceil(_ndcMax.x() * (double)(_tileSize-1));
-        int max_j = (int)ceil(_ndcMax.y() * (double)(_tileSize-1));
+        int min_i = (int)floor(_ndcMin.x() * _tileLength);
+        int min_j = (int)floor(_ndcMin.y() * _tileLength);
+        int max_i = (int)ceil(_ndcMax.x() * _tileLength);
+        int max_j = (int)ceil(_ndcMax.y() * _tileLength);
 
-        int i = nx * (double)(_tileSize-1);
-        int j = ny * (double)(_tileSize-1);
+        int i = nx * _tileLength;
+        int j = ny * _tileLength;
 
         if (i > min_i && i < max_i && j > min_j && j < max_j)
         {

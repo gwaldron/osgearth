@@ -18,6 +18,9 @@
  */
 #include <osgEarth/Math>
 
+#include <algorithm>
+#include <float.h>
+
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -284,4 +287,31 @@ Triangle2d::contains(const osg::Vec3d& p) const
     if ( !Line2d(_b, _c).isPointOnLeft(p) ) return false;
     if ( !Line2d(_c, _a).isPointOnLeft(p) ) return false;
     return true;
+}
+
+namespace
+{
+    bool vecLessX(const osg::Vec3d& lhs, const osg::Vec3d& rhs)
+    {
+        return lhs.x() < rhs.x();
+    }
+
+    bool vecLessY(const osg::Vec3d& lhs, const osg::Vec3d& rhs)
+    {
+        return lhs.y() < rhs.y();
+    }
+}
+
+osg::BoundingBoxd
+osgEarth::polygonBBox2d(const osg::Vec3dArray& points)
+{
+    osg::BoundingBoxd result(DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX);
+    for (osg::Vec3dArray::const_iterator itr = points.begin(); itr != points.end(); ++itr)
+    {
+        result.xMin() = std::min(result.xMin(), itr->x());
+        result.xMax() = std::max(result.xMax(), itr->x());
+        result.yMin() = std::min(result.yMin(), itr->y());
+        result.yMax() = std::max(result.yMax(), itr->y());
+    }
+    return result;
 }

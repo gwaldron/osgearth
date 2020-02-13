@@ -523,6 +523,7 @@ set(TARGET_SRC
     LineDrawable.cpp
     Locators.cpp
     LocalTangentPlane.cpp
+    Math.cpp
     Map.cpp
     MapCallback.cpp
     MapInfo.cpp

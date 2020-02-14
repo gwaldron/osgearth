@@ -1169,6 +1169,10 @@ enum SectionCheck {
   REQUIRE_ALL = 0x7f
 };
 
+struct Options {
+    bool skip_imagery = false;
+};
+
 ///
 /// LoadImageDataFunction type. Signature for custom image loading callbacks.
 ///
@@ -1271,7 +1275,8 @@ class TinyGLTF {
   ///
   bool LoadASCIIFromFile(Model *model, std::string *err, std::string *warn,
                          const std::string &filename,
-                         unsigned int check_sections = REQUIRE_VERSION);
+                         unsigned int check_sections = REQUIRE_VERSION,
+                         Options* options = nullptr);
 
   ///
   /// Loads glTF ASCII asset from string(memory).
@@ -1282,7 +1287,8 @@ class TinyGLTF {
   bool LoadASCIIFromString(Model *model, std::string *err, std::string *warn,
                            const char *str, const unsigned int length,
                            const std::string &base_dir,
-                           unsigned int check_sections = REQUIRE_VERSION);
+                           unsigned int check_sections = REQUIRE_VERSION,
+                           Options* options = nullptr);
 
   ///
   /// Loads glTF binary asset from a file.
@@ -1291,7 +1297,8 @@ class TinyGLTF {
   ///
   bool LoadBinaryFromFile(Model *model, std::string *err, std::string *warn,
                           const std::string &filename,
-                          unsigned int check_sections = REQUIRE_VERSION);
+                          unsigned int check_sections = REQUIRE_VERSION,
+                          Options* options = nullptr);
 
   ///
   /// Loads glTF binary asset from memory.
@@ -1303,7 +1310,8 @@ class TinyGLTF {
                             const unsigned char *bytes,
                             const unsigned int length,
                             const std::string &base_dir = "",
-                            unsigned int check_sections = REQUIRE_VERSION);
+                            unsigned int check_sections = REQUIRE_VERSION,
+                            Options* options = nullptr);
 
   ///
   /// Write glTF to stream, buffers and images will be embeded
@@ -1370,7 +1378,7 @@ class TinyGLTF {
   ///
   bool LoadFromString(Model *model, std::string *err, std::string *warn,
                       const char *str, const unsigned int length,
-                      const std::string &base_dir, unsigned int check_sections);
+                      const std::string &base_dir, unsigned int check_sections, Options* options);
 
   const unsigned char *bin_data_ = nullptr;
   size_t bin_size_ = 0;
@@ -5252,7 +5260,8 @@ bool TinyGLTF::LoadFromString(Model *model, std::string *err, std::string *warn,
                               const char *json_str,
                               unsigned int json_str_length,
                               const std::string &base_dir,
-                              unsigned int check_sections) {
+                              unsigned int check_sections,
+                              Options* options) {
   if (json_str_length < 4) {
     if (err) {
       (*err) = "JSON string too short.\n";
@@ -5540,6 +5549,13 @@ bool TinyGLTF::LoadFromString(Model *model, std::string *err, std::string *warn,
   // - Look for missing Mesh attributes
   for (auto &mesh : model->meshes) {
     for (auto &primitive : mesh.primitives) {
+
+      // If we're skipping imagery loading set the primitive's material to -1
+      if (options && options->skip_imagery)
+      {
+          primitive.material = -1;
+      }
+
       if (primitive.indices >
           -1)  // has indices from parsing step, must be Element Array Buffer
       {
@@ -5658,6 +5674,7 @@ bool TinyGLTF::LoadFromString(Model *model, std::string *err, std::string *warn,
   }
 
   // 10. Parse Material
+  if (!options || !options->skip_imagery)
   {
     bool success = ForEachInArray(v, "materials", [&](const json &o) {
       if (!IsObject(o)) {
@@ -5683,6 +5700,7 @@ bool TinyGLTF::LoadFromString(Model *model, std::string *err, std::string *warn,
     }
   }
 
+  if (!options || !options->skip_imagery)
   // 11. Parse Image
   {
     int idx = 0;
@@ -5751,6 +5769,7 @@ bool TinyGLTF::LoadFromString(Model *model, std::string *err, std::string *warn,
   }
 
   // 12. Parse Texture
+  if (!options || !options->skip_imagery)
   {
     bool success = ForEachInArray(v, "textures", [&](const json &o) {
       if (!IsObject(o)) {
@@ -5925,18 +5944,20 @@ bool TinyGLTF::LoadASCIIFromString(Model *model, std::string *err,
                                    std::string *warn, const char *str,
                                    unsigned int length,
                                    const std::string &base_dir,
-                                   unsigned int check_sections) {
+                                   unsigned int check_sections,
+                                   Options* options) {
   is_binary_ = false;
   bin_data_ = nullptr;
   bin_size_ = 0;
 
   return LoadFromString(model, err, warn, str, length, base_dir,
-                        check_sections);
+                        check_sections, options);
 }
 
 bool TinyGLTF::LoadASCIIFromFile(Model *model, std::string *err,
                                  std::string *warn, const std::string &filename,
-                                 unsigned int check_sections) {
+                                 unsigned int check_sections,
+                                 Options* options) {
   std::stringstream ss;
 
   if (fs.ReadWholeFile == nullptr) {
@@ -5982,7 +6003,8 @@ bool TinyGLTF::LoadBinaryFromMemory(Model *model, std::string *err,
                                     const unsigned char *bytes,
                                     unsigned int size,
                                     const std::string &base_dir,
-                                    unsigned int check_sections) {
+                                    unsigned int check_sections,
+                                    Options* options) {
   if (size < 20) {
     if (err) {
       (*err) = "Too short data size for glTF Binary.";
@@ -6039,7 +6061,7 @@ bool TinyGLTF::LoadBinaryFromMemory(Model *model, std::string *err,
 
   bool ret = LoadFromString(model, err, warn,
                             reinterpret_cast<const char *>(&bytes[20]),
-                            model_length, base_dir, check_sections);
+                            model_length, base_dir, check_sections, options);
   if (!ret) {
     return ret;
   }
@@ -6050,7 +6072,8 @@ bool TinyGLTF::LoadBinaryFromMemory(Model *model, std::string *err,
 bool TinyGLTF::LoadBinaryFromFile(Model *model, std::string *err,
                                   std::string *warn,
                                   const std::string &filename,
-                                  unsigned int check_sections) {
+                                  unsigned int check_sections,
+                                  Options* options) {
   std::stringstream ss;
 
   if (fs.ReadWholeFile == nullptr) {
@@ -6078,7 +6101,7 @@ bool TinyGLTF::LoadBinaryFromFile(Model *model, std::string *err,
 
   bool ret = LoadBinaryFromMemory(model, err, warn, &data.at(0),
                                   static_cast<unsigned int>(data.size()),
-                                  basedir, check_sections);
+                                  basedir, check_sections, options);
 
   return ret;
 }

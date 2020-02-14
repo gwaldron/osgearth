@@ -87,6 +87,9 @@ public:
         fs.user_data = (void*)&location;
         loader.SetFsCallbacks(fs);
 
+        tinygltf::Options opt;
+        opt.skip_imagery = readOptions && readOptions->getOptionString().find("gltfSkipImagery") != std::string::npos;
+
         if (osgDB::containsServerAddress(location))
         {
             osgEarth::ReadResult rr = osgEarth::URI(location).readString(readOptions);
@@ -99,22 +102,22 @@ public:
 
             if (isBinary)
             {
-                loader.LoadBinaryFromMemory(&model, &err, &warn, (const unsigned char*)mem.data(), mem.size(), location);
+                loader.LoadBinaryFromMemory(&model, &err, &warn, (const unsigned char*)mem.data(), mem.size(), location, REQUIRE_VERSION, &opt);
             }
             else
             {
-                loader.LoadASCIIFromString(&model, &err, &warn, mem.data(), mem.size(), location);
+                loader.LoadASCIIFromString(&model, &err, &warn, mem.data(), mem.size(), location, REQUIRE_VERSION, &opt);
             }
         }
         else
         {
             if (isBinary)
             {
-                loader.LoadBinaryFromFile(&model, &err, &warn, location);
+                loader.LoadBinaryFromFile(&model, &err, &warn, location, REQUIRE_VERSION, &opt);
             }
             else
             {
-                loader.LoadASCIIFromFile(&model, &err, &warn, location);
+                loader.LoadASCIIFromFile(&model, &err, &warn, location, REQUIRE_VERSION, &opt);
             }
         }
 
@@ -228,7 +231,7 @@ public:
             // The base color factor of the material
             osg::Vec4 baseColorFactor(1.0f, 1.0f, 1.0f, 1.0f);
 
-            if (primitive.material >= 0)
+            if (primitive.material >= 0 && primitive.material < model.materials.size())
             {
                 const tinygltf::Material& material = model.materials[primitive.material];
 

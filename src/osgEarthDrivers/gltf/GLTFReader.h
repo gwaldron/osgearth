@@ -500,13 +500,15 @@ public:
                 }
             }
 
-            // Generate normals automatically if we're not given any in the file itself.
-            if (!geom->getNormalArray())
+            if (!env.readOptions || env.readOptions->getOptionString().find("gltfSkipNormals") == std::string::npos)
             {
-                osgUtil::SmoothingVisitor sv;
-                geom->accept(sv);
+                // Generate normals automatically if we're not given any in the file itself.
+                if (!geom->getNormalArray())
+                {
+                    osgUtil::SmoothingVisitor sv;
+                        geom->accept(sv);
+                }
             }
-
         }
 
         return group;

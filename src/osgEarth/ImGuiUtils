@@ -122,8 +122,22 @@ public:
                 ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
                 threedTiles->setMaximumScreenSpaceError(sse);
                 ImGui::PopID();
+
+                ImGui::PushID("debugVolumes");
+                bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
+                ImGui::Checkbox("Show debug volumes", &showBoundingVolumes);
+                threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
+                ImGui::PopID();
+
+                ImGui::PushID("debugColors");
+                bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
+                ImGui::Checkbox("Show color per tile", &colorPerTile);
+                threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
+                ImGui::PopID();
             }
             ImGui::PopID();
+
+            ImGui::Separator();
         }
         ImGui::End();
     }

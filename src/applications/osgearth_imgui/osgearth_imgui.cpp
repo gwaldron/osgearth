@@ -57,43 +57,8 @@ protected:
     {
         // ImGui code goes here...
         //ImGui::ShowDemoWindow();        
-
         _layers.draw(_mapNode.get());
-
         _search.draw(_earthManip);
-        /*
-
-        ImGui::Begin("Search");
-        //ImGuiInputTextFlags_Readonly
-        if (ImGui::InputText("Search", search, 128, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
-        {
-            Geocoder geocoder;
-            _results = geocoder.search(search, _options.get());
-        }        
-
-        if (_results.isReady())
-        {
-            if (_results.getStatus().isOK())
-            {
-                while (_results.getFeatures()->hasMore())
-                {
-                    Feature* f = _results.getFeatures()->nextFeature();
-                    if (f->getGeometry())
-                    {
-                        GeoExtent extent(f->getSRS(), f->getGeometry()->getBounds());
-                        double maxDim = osg::maximum(extent.width(), extent.height());
-                        double range = ((0.5 * maxDim) / 0.267949849) * 111000.0;
-                        double lon, lat;
-                        extent.getCentroid(lon, lat);
-                        _earthManip->setViewpoint(Viewpoint("", lon, lat, 0, 0, -90, range), 3.0);
-                        break;
-                    }                    
-                }
-            }
-            _results = Geocoder::Results(Status::Code::ServiceUnavailable, 0);
-        }
-        ImGui::End();        
-        */
     }
 
     osg::ref_ptr< MapNode > _mapNode;

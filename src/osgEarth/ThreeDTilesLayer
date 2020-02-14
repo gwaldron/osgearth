@@ -57,6 +57,10 @@ namespace osgEarth { namespace Contrib
         float getMaximumScreenSpaceError() const;
         void setMaximumScreenSpaceError(float maximumScreenSpaceError);
 
+        osgEarth::Contrib::ThreeDTiles::ThreeDTilesetNode* getTilesetNode() {
+            return _tilesetNode.get();
+        }
+
     public: // Layer
 
         //! Open the layer and return its status

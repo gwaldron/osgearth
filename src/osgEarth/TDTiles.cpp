@@ -398,9 +398,13 @@ static VirtualProgram* getOrCreateDebugVirtualProgram()
 {
     char s_debugColoring[] =
         "#version " GLSL_VERSION_STR "\n"
+        "#pragma import_defines(OE_3DTILES_DEBUG)\n"
         "uniform vec4 debugColor;\n"
         "void color( inout vec4 color ) \n"
-        "{ color = mix(debugColor, color, 0.5); \n"
+        "{\n"
+        "#ifdef OE_3DTILES_DEBUG \n"
+        "    color = mix(debugColor, color, 0.5); \n"
+        "#endif\n"
         "} \n";
 
     static osg::ref_ptr< VirtualProgram > s_debugProgram;
@@ -413,6 +417,16 @@ static VirtualProgram* getOrCreateDebugVirtualProgram()
 }
 
 //........................................................................
+
+osg::Vec4
+randomColor()
+{
+    float r = (float)rand() / (float)RAND_MAX;
+    float g = (float)rand() / (float)RAND_MAX;
+    float b = (float)rand() / (float)RAND_MAX;
+    return osg::Vec4(r, g, b, 1.0f);
+}
+
 
 ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool immediateLoad, osgDB::Options* options) :
     _tileset(tileset),
@@ -464,18 +478,13 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         }
     }
 
+    _debugColor = randomColor();
+
+    getOrCreateStateSet()->getOrCreateUniform("debugColor", osg::Uniform::FLOAT_VEC4)->set(_debugColor);
+
     computeBoundingVolume();
 
-    //createDebugBounds();
-}
-
-osg::Vec4
-randomColor()
-{
-    float r = (float)rand() / (float)RAND_MAX;
-    float g = (float)rand() / (float)RAND_MAX;
-    float b = (float)rand() / (float)RAND_MAX;
-    return osg::Vec4(r, g, b, 1.0f);
+    createDebugBounds();
 }
 
 void ThreeDTileNode::computeBoundingVolume()
@@ -526,26 +535,23 @@ void ThreeDTileNode::computeBoundingVolume()
 }
 
 void ThreeDTileNode::createDebugBounds()
-{
-    osg::Vec4 color = randomColor();
-
+{   
     if (_tile->boundingVolume()->sphere().isSet())
     {
         osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(getBound().center(), getBound().radius()));
-        sd->setColor(color);
+        sd->setColor(_debugColor);
         osg::StateSet* stateset = sd->getOrCreateStateSet();
         osg::PolygonMode* polymode = new osg::PolygonMode;
         polymode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
         stateset->setAttributeAndModes(polymode, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
         stateset->setMode(GL_LIGHTING, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF);
         stateset->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
-        sd->setColor(color);
         _boundsDebug = sd;
     }
     else if (_boundingBox.valid())
     {     
         osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Box(_boundingBox.center(), _boundingBox.xMax() - _boundingBox.xMin(), _boundingBox.yMax() - _boundingBox.yMin(), _boundingBox.zMax() - _boundingBox.zMin()));
-        sd->setColor(color);
+        sd->setColor(_debugColor);
         osg::StateSet* stateset = sd->getOrCreateStateSet();
         osg::PolygonMode* polymode = new osg::PolygonMode;
         polymode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
@@ -558,8 +564,6 @@ void ThreeDTileNode::createDebugBounds()
         transform->addChild(sd);
         _boundsDebug = transform;
     }
-
-    getOrCreateStateSet()->getOrCreateUniform("debugColor", osg::Uniform::FLOAT_VEC4)->set(color);    
 }
 
 
@@ -597,10 +601,6 @@ void ThreeDTileNode::resolveContent()
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
         _content = _contentFuture.get();
-        if (_content.valid())
-        {
-            _content->getOrCreateStateSet()->setAttributeAndModes(getOrCreateDebugVirtualProgram(), osg::StateAttribute::ON);
-        }
 
     }
 }
@@ -888,7 +888,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             if (_content.valid() && _tile->refine().isSetTo(REFINE_ADD))
             {
                 _content->accept(nv);
-                if (_boundsDebug.valid())
+                if (_tileset->getShowBoundingVolumes() && _boundsDebug.valid())
                 {
                     _boundsDebug->accept(nv);
                 }
@@ -905,7 +905,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             {
                 _content->accept(nv);
 
-                if (_boundsDebug.valid())
+                if (_tileset->getShowBoundingVolumes() && _boundsDebug.valid())
                 {
                     _boundsDebug->accept(nv);
                 }
@@ -975,7 +975,9 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     _tileset(tileset),
     _options(options),
     _maximumScreenSpaceError(15.0f),
-    _maxTiles(50)
+    _maxTiles(50),
+    _showBoundingVolumes(false),
+    _showColorPerTile(false)
 {
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
     if (c)
@@ -988,6 +990,13 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     _sentryItr = --_tracker.end();
 
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
+
+    _debugVP = getOrCreateDebugVirtualProgram();   
+    getOrCreateStateSet()->setAttribute(_debugVP.get());
+    if (_showColorPerTile)
+    {
+        getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::ON);
+    }    
 }
 
 unsigned int ThreeDTilesetNode::getMaxTiles() const
@@ -1009,6 +1018,39 @@ void ThreeDTilesetNode::setMaximumScreenSpaceError(float maximumScreenSpaceError
 {
     _maximumScreenSpaceError = maximumScreenSpaceError;
 }
+
+bool ThreeDTilesetNode::getShowBoundingVolumes() const
+{
+    return _showBoundingVolumes;
+}
+
+void ThreeDTilesetNode::setShowBoundingVolumes(bool showBoundingVolumes)
+{
+    _showBoundingVolumes = showBoundingVolumes;
+}
+
+bool ThreeDTilesetNode::getColorPerTile() const
+{
+    return _showColorPerTile;
+}
+
+void ThreeDTilesetNode::setColorPerTile(bool colorPerTile)
+{
+    if (_showColorPerTile != colorPerTile)
+    {
+        _showColorPerTile = colorPerTile;
+        if (_showColorPerTile)
+        {
+            getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::ON);
+        }
+        else
+        {
+            getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::OFF);
+        }
+    }
+}
+
+
 
 osg::BoundingSphere ThreeDTilesetNode::computeBound() const
 {

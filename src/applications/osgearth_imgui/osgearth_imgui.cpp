@@ -60,7 +60,7 @@ protected:
 
         _layers.draw(_mapNode.get());
 
-        _search.draw(_earthManip);
+        _search.draw(_earthManip.get());
         /*
 
         ImGui::Begin("Search");

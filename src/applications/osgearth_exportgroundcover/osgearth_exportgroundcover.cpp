@@ -105,7 +105,9 @@ float clamp(float x, float m0, float m1)
 
 void sample(osg::Vec4f& output, ImageUtils::PixelReader& texture, const osg::Matrixf& matrix, float u, float v)
 {
-    return texture(output, u*matrix(0,0)+matrix(3,0), v*matrix(1,1)+matrix(3,1));
+    u = clamp(u*matrix(0, 0) + matrix(3, 0), 0.0f, 1.0f);
+    v = clamp(v*matrix(1, 1) + matrix(3, 1), 0.0f, 1.0f);
+    return texture(output, u, v);
 }
 
 const int NOISE_SMOOTH = 0;
@@ -269,12 +271,7 @@ struct App
                         if (r) elevMat = *r;
                     }
                     ImageUtils::PixelReader elevSampler;
-                    if (elevTex)
-                    {
-                        elevSampler.setImage(elevTex->getImage(0));
-                        elevSampler.setBilinear(true);
-                    }
-                    //elevSampler.setTexture(elevTex);
+                    elevSampler.setTexture(elevTex);
 
                     BiomeLUT biomeLUT;
                     buildLUT(groundcover, biomeLUT);
@@ -353,8 +350,18 @@ struct App
                         if (elevTex)
                         {
                             sample(elev, elevSampler, elevMat, tilec.x(), tilec.y());
+                            //if (fabs(elev.r()) > 30000.0f)
+                            //{
+                            //    OE_WARN << "That's a problem.. elevation value is " << elev.r() << std::endl;
+                            //    osg::Vec4f val;
+                            //    sample(val, elevSampler, elevMat, tilec.x(), tilec.y());
+                            //    OE_WARN << "val.r() = " << val.r() << std::endl;
+                            //    
+                            //}
                             if (elev.r() != NO_DATA_VALUE)
+                            {
                                 z = elev.r();
+                            }
                         }
 
                         // keeper

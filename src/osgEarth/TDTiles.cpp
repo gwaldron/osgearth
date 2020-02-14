@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <osgEarth/Metrics>
 #include <osgEarth/TDTiles>
 #include <osgEarth/Utils>
-#include <osgEarth/Metrics>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
 #include <osgEarth/OGRFeatureSource>
@@ -33,6 +33,8 @@
 #include <osgDB/WriteFile>
 #include <osg/CoordinateSystemNode>
 #include <osgUtil/IncrementalCompileOperation>
+#include <osg/ShapeDrawable>
+#include <osg/PolygonMode>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -392,6 +394,24 @@ Tileset::create(const std::string& json, const URIContext& uc)
     return new Tileset(root, lc);
 }
 
+static VirtualProgram* getOrCreateDebugVirtualProgram()
+{
+    char s_debugColoring[] =
+        "#version " GLSL_VERSION_STR "\n"
+        "uniform vec4 debugColor;\n"
+        "void color( inout vec4 color ) \n"
+        "{ color = mix(debugColor, color, 0.5); \n"
+        "} \n";
+
+    static osg::ref_ptr< VirtualProgram > s_debugProgram;
+    if (!s_debugProgram.valid())
+    {
+        s_debugProgram = new VirtualProgram();
+        s_debugProgram->setFunction("color", s_debugColoring, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+    }
+    return s_debugProgram.get();
+}
+
 //........................................................................
 
 ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool immediateLoad, osgDB::Options* options) :
@@ -443,7 +463,105 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
             _children = 0;
         }
     }
+
+    computeBoundingVolume();
+
+    //createDebugBounds();
 }
+
+osg::Vec4
+randomColor()
+{
+    float r = (float)rand() / (float)RAND_MAX;
+    float g = (float)rand() / (float)RAND_MAX;
+    float b = (float)rand() / (float)RAND_MAX;
+    return osg::Vec4(r, g, b, 1.0f);
+}
+
+void ThreeDTileNode::computeBoundingVolume()
+{
+    if (_tile->boundingVolume()->region().isSet())
+    {
+        const SpatialReference* srs = SpatialReference::get("epsg:4326");
+
+        GeoExtent extent(srs,
+            osg::RadiansToDegrees(_tile->boundingVolume()->region()->xMin()),
+            osg::RadiansToDegrees(_tile->boundingVolume()->region()->yMin()),
+            osg::RadiansToDegrees(_tile->boundingVolume()->region()->xMax()),
+            osg::RadiansToDegrees(_tile->boundingVolume()->region()->yMax()));
+
+        GeoPoint centroid;
+        extent.getCentroid(centroid);
+
+        osg::Matrixd worldToLocal, localToWorld;
+        centroid.createWorldToLocal(worldToLocal);
+        centroid.createLocalToWorld(localToWorld);
+
+        osg::Vec3d world;
+        osg::BoundingBox bb;
+
+        GeoPoint(srs, extent.west(), extent.south(), _tile->boundingVolume()->region()->zMin()).toWorld(world);
+        bb.expandBy(world * worldToLocal);
+        GeoPoint(srs, extent.east(), extent.south(), _tile->boundingVolume()->region()->zMin()).toWorld(world);
+        bb.expandBy(world * worldToLocal);
+        GeoPoint(srs, extent.east(), extent.north(), _tile->boundingVolume()->region()->zMin()).toWorld(world);
+        bb.expandBy(world * worldToLocal);
+        GeoPoint(srs, extent.west(), extent.north(), _tile->boundingVolume()->region()->zMin()).toWorld(world);
+
+        GeoPoint(srs, extent.west(), extent.south(), _tile->boundingVolume()->region()->zMax()).toWorld(world);
+        bb.expandBy(world * worldToLocal);
+        GeoPoint(srs, extent.east(), extent.south(), _tile->boundingVolume()->region()->zMax()).toWorld(world);
+        bb.expandBy(world * worldToLocal);
+        GeoPoint(srs, extent.east(), extent.north(), _tile->boundingVolume()->region()->zMax()).toWorld(world);
+        bb.expandBy(world * worldToLocal);
+        GeoPoint(srs, extent.west(), extent.north(), _tile->boundingVolume()->region()->zMax()).toWorld(world);
+
+        _boundingBoxLocalToWorld = localToWorld;
+        _boundingBox = bb;
+    }
+    else if (_tile->boundingVolume()->box().isSet())
+    {
+        _boundingBox = _tile->boundingVolume()->box().get();
+    }
+}
+
+void ThreeDTileNode::createDebugBounds()
+{
+    osg::Vec4 color = randomColor();
+
+    if (_tile->boundingVolume()->sphere().isSet())
+    {
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(getBound().center(), getBound().radius()));
+        sd->setColor(color);
+        osg::StateSet* stateset = sd->getOrCreateStateSet();
+        osg::PolygonMode* polymode = new osg::PolygonMode;
+        polymode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
+        stateset->setAttributeAndModes(polymode, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
+        stateset->setMode(GL_LIGHTING, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF);
+        stateset->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
+        sd->setColor(color);
+        _boundsDebug = sd;
+    }
+    else if (_boundingBox.valid())
+    {     
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Box(_boundingBox.center(), _boundingBox.xMax() - _boundingBox.xMin(), _boundingBox.yMax() - _boundingBox.yMin(), _boundingBox.zMax() - _boundingBox.zMin()));
+        sd->setColor(color);
+        osg::StateSet* stateset = sd->getOrCreateStateSet();
+        osg::PolygonMode* polymode = new osg::PolygonMode;
+        polymode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
+        stateset->setAttributeAndModes(polymode, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
+        stateset->setMode(GL_LIGHTING, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF);
+        stateset->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
+
+        osg::MatrixTransform* transform = new osg::MatrixTransform;
+        transform->setMatrix(_boundingBoxLocalToWorld);
+        transform->addChild(sd);
+        _boundsDebug = transform;
+    }
+
+    getOrCreateStateSet()->getOrCreateUniform("debugColor", osg::Uniform::FLOAT_VEC4)->set(color);    
+}
+
 
 osg::BoundingSphere ThreeDTileNode::computeBound() const
 {
@@ -479,6 +597,11 @@ void ThreeDTileNode::resolveContent()
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
         _content = _contentFuture.get();
+        if (_content.valid())
+        {
+            _content->getOrCreateStateSet()->setAttributeAndModes(getOrCreateDebugVirtualProgram(), osg::StateAttribute::ON);
+        }
+
     }
 }
 
@@ -703,8 +826,21 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 {    
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        //osgUtil::CullVisitor* cv = nv.asCullVisitor();
         osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+
+        if (_boundingBox.valid())
+        {
+            osg::ref_ptr< osg::RefMatrix > refMatrix = new osg::RefMatrix(*cv->getModelViewMatrix());
+            refMatrix->preMult(_boundingBoxLocalToWorld);
+            cv->pushModelViewMatrix(refMatrix.get(), getReferenceFrame());
+            bool culled = cv->isCulled(_boundingBox);
+            cv->popModelViewMatrix();
+
+            if (culled)
+            {
+                return;
+            }
+        }
 
         // Get the ICO so we can do incremental compiliation
         osgUtil::IncrementalCompileOperation* ico = 0;
@@ -752,6 +888,10 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             if (_content.valid() && _tile->refine().isSetTo(REFINE_ADD))
             {
                 _content->accept(nv);
+                if (_boundsDebug.valid())
+                {
+                    _boundsDebug->accept(nv);
+                }
             }
 
             if (_children.valid())
@@ -764,8 +904,13 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             if (_content.valid())
             {
                 _content->accept(nv);
+
+                if (_boundsDebug.valid())
+                {
+                    _boundsDebug->accept(nv);
+                }
             }
-        }
+        }        
     }
     else if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
     {
@@ -936,9 +1081,9 @@ void ThreeDTilesetNode::endCull()
 #if 0
     if (numErased > 0 || numSkipped > 0)
     {
-        OE_NOTICE << "Erased " << numErased << " and skipped " << numSkipped << " in " << osg::Timer::instance()->delta_m(startTime, endTime) << "ms" << std::endl;
-        OE_NOTICE << "Tiles in memory " << _tracker.size() << " max tiles=" << _maxTiles << std::endl;
+        OE_NOTICE << "Erased " << numErased << " and skipped " << numSkipped << " in " << osg::Timer::instance()->delta_m(startTime, endTime) << "ms" << std::endl;    
     }        
+    OE_NOTICE << "Tiles in memory " << _tracker.size() << " max tiles=" << _maxTiles << std::endl;
 #endif
 
     // Erase the sentry and stick it at the end of the list

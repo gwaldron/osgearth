@@ -25,10 +25,12 @@
 #include <osgEarth/URI>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/GeoData>
+#include <osgEarth/VirtualProgram>
 #include <osg/Group>
 #include <osg/MatrixTransform>
 #include <osgDB/Options>
 #include <osgUtil/CullVisitor>
+
 
 /**
  * 3D Tiles
@@ -205,6 +207,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::Matrixd _boundingBoxLocalToWorld;
 
         osg::ref_ptr< osgDB::Options > _options;
+
+        osg::Vec4 _debugColor;
     };
 
     /**
@@ -236,6 +240,18 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         unsigned int getMaxTiles() const;
         void setMaxTiles(unsigned int maxTiles);
 
+        /**
+         * Turns on/off bounding volume visualization.
+         */
+        bool getShowBoundingVolumes() const;
+        void setShowBoundingVolumes(bool showBoundingVolumes);
+
+        /**
+         * Turns on/off rendering a debug color per tile.
+         */
+        bool getColorPerTile() const;
+        void setColorPerTile(bool colorPerTile);
+
     private:
         void startCull();
         void endCull();
@@ -249,6 +265,11 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         ThreeDTileNode::TileTracker::iterator _sentryItr;
 
         unsigned int _maxTiles;
+
+        bool _showBoundingVolumes;       
+        bool _showColorPerTile;
+
+        osg::ref_ptr< VirtualProgram> _debugVP;
     };
 
 } } }

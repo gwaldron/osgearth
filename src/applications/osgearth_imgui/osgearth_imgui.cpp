@@ -58,7 +58,7 @@ protected:
         // ImGui code goes here...
         //ImGui::ShowDemoWindow();        
         _layers.draw(_mapNode.get());
-        _search.draw(_earthManip);
+        _search.draw(_earthManip.get());
     }
 
     osg::ref_ptr< MapNode > _mapNode;

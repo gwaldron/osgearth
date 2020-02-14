@@ -335,6 +335,9 @@ namespace osgEarth { namespace Util
         class OSGEARTH_EXPORT PixelReader
         {
         public:
+            //! Empty pixel reader. Must call setImage before use.
+            PixelReader();
+
             /**
              * Constructs a pixel reader. "Normalized" means that the values in the source
              * image have been scaled to [0..1] and should be denormalized upon reading.
@@ -344,11 +347,20 @@ namespace osgEarth { namespace Util
             /** Sets an image to read. */
             void setImage(const osg::Image* image);
 
+            //! Sets a texture whose first image to read (along with texture params)
+            void setTexture(const osg::Texture* tex);
+
             //! Whether to denormalize data upon reading or to leave it as-is
             void setDenormalize(bool value) { _normalized = value; }
 
             /** Whether to use bilinear interpolation when reading with u,v coords (default=true) */
             void setBilinear(bool value) { _bilinear = value; }
+
+            //! Whether to sample the image like a texture (GLSL)
+            void setSampleAsTexture(bool value) { _sampleAsTexture = value; }
+
+            //! Whether to sample with texture-wrapping
+            void setSampleAsRepeatingTexture(bool value) { _sampleAsRepeatingTexture = value; }
 
             /** Whether PixelReader supports a given format/datatype combiniation. */
             static bool supports( GLenum pixelFormat, GLenum dataType );
@@ -404,6 +416,8 @@ namespace osgEarth { namespace Util
             unsigned _imageSize;
             bool     _normalized;
             bool     _bilinear;
+            bool     _sampleAsTexture;
+            bool     _sampleAsRepeatingTexture;
         };
         
         /**

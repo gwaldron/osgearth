@@ -109,6 +109,24 @@ float rescale(float d, float v0, float v1)
     return clamp((d-v0)/(v1-v0), 0, 1);
 }
 
+vec2 quantize(vec2 x, vec2 y)
+{
+    return (floor(x / y) * y);
+}
+
+vec4 texture2D_bilinear_mesa(in sampler2D sampler, in vec2 tex_coord)
+{
+    const vec2 tex_size = vec2(256.0);
+    vec2 unit_texel = 1.0 / tex_size;
+    vec2 unnorm_tex_coord = (tex_coord * tex_size) - vec2(0.5);
+    vec2 f = fract(unnorm_tex_coord);
+    vec2 snap_tex_coord = (floor(unnorm_tex_coord) + vec2(0.5)) / tex_size;
+    vec4 s1 = texture2D(sampler, snap_tex_coord);
+    vec4 s2 = texture2D(sampler, snap_tex_coord + vec2(unit_texel.x, 0.));
+    vec4 s3 = texture2D(sampler, snap_tex_coord + vec2(0., unit_texel.y));
+    vec4 s4 = texture2D(sampler, snap_tex_coord + unit_texel);
+    return mix(mix(s1, s2, f.x), mix(s3, s4, f.x), f.y);
+}
 
 // MAIN ENTRY POINT  
 void oe_GroundCover_VS(inout vec4 vertex_view)
@@ -141,7 +159,9 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     // tile coords [0..1]
     vec4 tilec = vec4(halfSpacing + offset / oe_GroundCover_numInstances, 0, 1);
 
-    vec4 noise = texture(oe_GroundCover_noiseTex, tilec.st);
+    vec4 noise = textureLod(oe_GroundCover_noiseTex, tilec.st, 0);
+    //vec4 noise = vec4(0);
+    //vec4 noise = texture2D_bilinear_mesa(oe_GroundCover_noiseTex, tilec.st); // validate
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
@@ -151,7 +171,8 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
 
     // randomly shift each point off center
-    vec2 shift = vec2(fract(noise[NOISE_RANDOM] * 5.5), fract(noise[NOISE_RANDOM_2] * 5.5)) * 2 - 1;
+    vec2 shift = vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2])*2.0-1.0;
+
     tilec.xy += shift * halfSpacing;
 
     // and place it correctly within the tile
@@ -277,6 +298,9 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     float topDownAmount = rescale(d, 0.4, 0.6);
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
+#if 1 // HACKKKKKKKKKKKKKKKK
+    billboardAmount = 1.0;
+#endif
 
     if (which < 4 && billboard.atlasIndexSide >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {

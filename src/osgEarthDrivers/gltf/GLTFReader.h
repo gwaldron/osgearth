@@ -29,9 +29,11 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
+#include <osgUtil/SmoothingVisitor>
 #include <osgEarth/Notify>
 #include <osgEarth/URI>
 #include <osgEarth/Containers>
+
 
 #undef LC
 #define LC "[GLTFWriter] "
@@ -432,7 +434,7 @@ public:
                 }
                 geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
             }
-
+            
             const tinygltf::Accessor &indexAccessor =
                 model.accessors[primitive.indices];
 
@@ -497,6 +499,14 @@ public:
                     geom->addPrimitiveSet(drawElements);
                 }
             }
+
+            // Generate normals automatically if we're not given any in the file itself.
+            if (!geom->getNormalArray())
+            {
+                osgUtil::SmoothingVisitor sv;
+                geom->accept(sv);
+            }
+
         }
 
         return group;

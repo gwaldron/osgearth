@@ -841,6 +841,11 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
     if (pcp != ds._pcp || ds._numInstancesUL < 0)
     {
+        if (pcp == NULL)
+        {
+            //OE_WARN << "[GroundCoverLayer] ILLEGAL STATE - getLastAppliedProgramObject == NULL. Contact support." << std::endl;
+            //return;
+        }
         ds._numInstancesUL = pcp->getUniformLocation(_numInstancesUName);
         ds._LLUL = pcp->getUniformLocation(_LLUName);
         ds._URUL = pcp->getUniformLocation(_URUName);
@@ -870,7 +875,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     const osg::BoundingBox& bbox = tile._geom->getBoundingBox();
 
     const osg::Vec3f& LL = bbox.corner(0);
-    const osg::Vec3f& UR = bbox.corner(7);
+    const osg::Vec3f& UR = bbox.corner(3);
 
     if (LL != ds._LLAppliedValue)
     {

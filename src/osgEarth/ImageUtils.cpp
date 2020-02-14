@@ -1989,24 +1989,50 @@ namespace {
     float fractf(float x) {
         return x >= 0.0 ? (x - floorf(x)) : (x - ceilf(x));
     }
-    float quantizeTo9bitsf(float x) {
-        float frac, tmp = x - (float)(int)(x);
-        float frac256 = (float)(int)(tmp*256.0f + 0.5f);
-        frac = frac256 / 256.0f;
-        return frac;
+    float clamp(double x, double a, double b) {
+        return x<a ? a : x>b ? b : x;
+    }
+    float clampf(float x, float a, float b) {
+        return x<a ? a : x>b ? b : x;
     }
     double quantizeTo9bits(double x) {
         double frac, tmp = x - (double)(int)(x);
         double frac256 = (double)(int)(tmp*256.0 + 0.5);
         frac = frac256 / 256.0;
-        return frac;
+        return clamp(frac, 0.0, 1.0);
+    }
+    float quantizeTo9bitsf(float x) {
+        float frac, tmp = x - (float)(int)(x);
+        float frac256 = (float)(int)(tmp*256.0f + 0.5f);
+        frac = frac256 / 256.0f;
+        return clamp(frac, 0.0f, 1.0f);
     }
 }
 
 void
 ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, int m) const
 {
-    if (_sampleAsTexture)
+    if (!_bilinear)
+    {
+        float x = u * (float)(_image->s()-1);
+        float y = v * (float)(_image->t()-1);
+
+        float x_clamped = floorf(x);
+        float y_clamped = floorf(y);
+
+        float x_frac = fractf(x_clamped);
+        float y_frac = fractf(y_clamped);
+
+        int s = (int)x_clamped;
+        int t = (int)y_clamped;
+
+        if (x_frac > 0.5f || (x_frac ==0.5f && (s%1))) s++;
+        if (y_frac > 0.5f || (y_frac ==0.5f && (t%1))) t++;
+
+        (*_reader)(this, out, s, t, r, m);
+    }
+
+    else if (_sampleAsTexture)
     {
         // port of Mesa sample_2d_linear() in s_texfilter.c
 
@@ -2044,108 +2070,110 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
             t = (int)tf;
         }
 
-        if (_bilinear)
+        float fx = fractf(unnorm_tex_coord_x);
+        float fy = fractf(unnorm_tex_coord_y);
+
+        int splus1, tplus1;
+        if (_sampleAsRepeatingTexture)
         {
-            float fx = fractf(unnorm_tex_coord_x);
-            float fy = fractf(unnorm_tex_coord_y);
-
-            int splus1, tplus1;
-            if (_sampleAsRepeatingTexture)
-            {
-                splus1 = (s + 1 < _image->s()) ? s + 1 : 0;
-                tplus1 = (t + 1 < _image->t()) ? t + 1 : 0;
-            }
-            else
-            {
-                splus1 = s + 1;
-                tplus1 = t + 1;
-            }
-
-            osg::Vec4f p1, p2, p3, p4;
-            (*_reader)(this, p1, s, t, r, m);
-            (*_reader)(this, p2, splus1, t, r, m);
-            (*_reader)(this, p3, s, tplus1, r, m);
-            (*_reader)(this, p4, splus1, tplus1, r, m);
-
-            p1 = p1 * (1.0 - fx) + p2 * fx;
-            p2 = p3 * (1.0 - fx) + p4 * fx;
-            out = p1 * (1.0 - fy) + p2 * fy;
+            splus1 = (s + 1 < _image->s()) ? s + 1 : 0;
+            tplus1 = (t + 1 < _image->t()) ? t + 1 : 0;
         }
         else
         {
-            (*_reader)(this, out, s, t, r, m);
+            splus1 = (s + 1 < _image->s()) ? s + 1 : s;
+            tplus1 = (t + 1 < _image->t()) ? t + 1 : t;
         }
+
+        osg::Vec4f p1, p2, p3, p4;
+        (*_reader)(this, p1, s, t, r, m);
+        (*_reader)(this, p2, splus1, t, r, m);
+        (*_reader)(this, p3, s, tplus1, r, m);
+        (*_reader)(this, p4, splus1, tplus1, r, m);
+
+        p1 = p1 * (1.0 - fx) + p2 * fx;
+        p2 = p3 * (1.0 - fx) + p4 * fx;
+        out = p1 * (1.0 - fy) + p2 * fy;
     }
 
     else // sample as image
     {
-        if (_bilinear)
-        {
 #if 1
-            float sizeS = (float)(_image->s() - 1);
-            float sizeT = (float)(_image->t() - 1);
+        float sizeS = (float)(_image->s() - 1);
+        float sizeT = (float)(_image->t() - 1);
 
-            // u, v => [0..1]
-            float s = u * sizeS;
-            float t = v * sizeT;
+        // u, v => [0..1]
+        float s = u * sizeS;
+        float t = v * sizeT;
 
-            float s0 = osg::maximum(floorf(s), 0.0f);
-            float s1 = osg::minimum(s0 + 1.0f, sizeS);
-            float smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0f;
+        float s0 = osg::maximum(floorf(s), 0.0f);
+        float s1 = osg::minimum(s0 + 1.0f, sizeS);
+        float smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0f;
 
-            float t0 = osg::maximum(floorf(t), 0.0f);
-            float t1 = osg::minimum(t0 + 1.0f, sizeT);
-            float tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0f;
+        float t0 = osg::maximum(floorf(t), 0.0f);
+        float t1 = osg::minimum(t0 + 1.0f, sizeT);
+        float tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0f;
 
-            osg::Vec4f UL, UR, LL, LR;
+        osg::Vec4f UL, UR, LL, LR;
 
-            (*_reader)(this, UL, (int)s0, (int)t0, r, m); // upper left
-            (*_reader)(this, UR, (int)s1, (int)t0, r, m); // upper right
-            (*_reader)(this, LL, (int)s0, (int)t1, r, m); // lower left
-            (*_reader)(this, LR, (int)s1, (int)t1, r, m); // lower right
+        (*_reader)(this, UL, (int)s0, (int)t0, r, m); // upper left
+        (*_reader)(this, UR, (int)s1, (int)t0, r, m); // upper right
+        (*_reader)(this, LL, (int)s0, (int)t1, r, m); // lower left
+        (*_reader)(this, LR, (int)s1, (int)t1, r, m); // lower right
 
-            osg::Vec4f TOP = UL * (1.0f - smix) + UR * smix;
-            osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;
+        osg::Vec4f TOP = UL * (1.0f - smix) + UR * smix;
+        osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;
 
-            out = TOP * (1.0f - tmix) + BOT * tmix;
+        out = TOP * (1.0f - tmix) + BOT * tmix;
 #else
-            float ux = u * (float)_image->s();  // [0..w]
-            float uy = v * (float)_image->t();  // [0..h]
+        float ux = u * (float)_image->s();  // [0..w]
+        float uy = v * (float)_image->t();  // [0..h]
 
-            float fx = fractf(ux); // [0..1]
-            float fy = fractf(uy); // [0..1]
+        float fx = fractf(ux); // [0..1]
+        float fy = fractf(uy); // [0..1]
 
-            int s = (int)ux;
-            int splus1 = s < (_image->s() - 1) ? s + 1 : s;
-            int t = (int)uy;
-            int tplus1 = t < (_image->t() - 1) ? t + 1 : t;
+        int s = (int)ux;
+        int splus1 = s < (_image->s() - 1) ? s + 1 : s;
+        int t = (int)uy;
+        int tplus1 = t < (_image->t() - 1) ? t + 1 : t;
 
-            osg::Vec4f p1, p2, p3, p4;
-            (*_reader)(this, p1, s, t, r, m);
-            (*_reader)(this, p2, splus1, t, r, m);
-            (*_reader)(this, p3, s, tplus1, r, m);
-            (*_reader)(this, p4, splus1, tplus1, r, m);
+        osg::Vec4f p1, p2, p3, p4;
+        (*_reader)(this, p1, s, t, r, m);
+        (*_reader)(this, p2, splus1, t, r, m);
+        (*_reader)(this, p3, s, tplus1, r, m);
+        (*_reader)(this, p4, splus1, tplus1, r, m);
 
-            p1 = p1 * (1.0 - fx) + p2 * fx;
-            p2 = p3 * (1.0 - fx) + p4 * fx;
-            out = p1 * (1.0 - fy) + p2 * fy;
+        p1 = p1 * (1.0 - fx) + p2 * fx;
+        p2 = p3 * (1.0 - fx) + p4 * fx;
+        out = p1 * (1.0 - fy) + p2 * fy;
 #endif
-        }
-        else
-        {
-            (*_reader)(this,
-                out,
-                (int)(u * (float)(_image->s() - 1)),
-                (int)(v * (float)(_image->t() - 1)),
-                r, m);
-        }
     }
 }
 
 void
 ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, int m) const
 {
-    if (_sampleAsTexture)
+    if (!_bilinear)
+    {
+        double x = u * (double)(_image->s() - 1);
+        double y = v * (double)(_image->t() - 1);
+
+        double x_clamped = floor(x);
+        double y_clamped = floor(y);
+
+        double x_frac = fract(x_clamped);
+        double y_frac = fract(y_clamped);
+
+        int s = (int)x_clamped;
+        int t = (int)y_clamped;
+
+        if (x_frac > 0.5 || (x_frac == 0.5 && (s % 1))) s++;
+        if (y_frac > 0.5 || (y_frac == 0.5 && (t % 1))) t++;
+
+        (*_reader)(this, out, s, t, r, m);
+    }
+
+    else if (_sampleAsTexture)
     {
         // port of Mesa sample_2d_linear() in s_texfilter.c
 
@@ -2183,101 +2211,83 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
             t = (int)tf;
         }
 
-        if (_bilinear)
+        double fx = fract(unnorm_tex_coord_x);
+        double fy = fract(unnorm_tex_coord_y);
+
+        int splus1, tplus1;
+        if (_sampleAsRepeatingTexture)
         {
-            double fx = fract(unnorm_tex_coord_x);
-            double fy = fract(unnorm_tex_coord_y);
-
-            int splus1, tplus1;
-            if (_sampleAsRepeatingTexture)
-            {
-                splus1 = (s + 1 < _image->s()) ? s + 1 : 0;
-                tplus1 = (t + 1 < _image->t()) ? t + 1 : 0;
-            }
-            else
-            {
-                splus1 = s + 1;
-                tplus1 = t + 1;
-            }
-
-            osg::Vec4f p1, p2, p3, p4;
-            (*_reader)(this, p1, s, t, r, m);
-            (*_reader)(this, p2, splus1, t, r, m);
-            (*_reader)(this, p3, s, tplus1, r, m);
-            (*_reader)(this, p4, splus1, tplus1, r, m);
-
-            p1 = p1 * (1.0 - fx) + p2 * fx;
-            p2 = p3 * (1.0 - fx) + p4 * fx;
-            out = p1 * (1.0 - fy) + p2 * fy;
+            splus1 = (s + 1 < _image->s()) ? s + 1 : 0;
+            tplus1 = (t + 1 < _image->t()) ? t + 1 : 0;
         }
         else
         {
-            (*_reader)(this, out, s, t, r, m);
+            splus1 = (s + 1 < _image->s()) ? s + 1 : s;
+            tplus1 = (t + 1 < _image->t()) ? t + 1 : t;
         }
+
+        osg::Vec4f p1, p2, p3, p4;
+        (*_reader)(this, p1, s, t, r, m);
+        (*_reader)(this, p2, splus1, t, r, m);
+        (*_reader)(this, p3, s, tplus1, r, m);
+        (*_reader)(this, p4, splus1, tplus1, r, m);
+
+        p1 = p1 * (1.0 - fx) + p2 * fx;
+        p2 = p3 * (1.0 - fx) + p4 * fx;
+        out = p1 * (1.0 - fy) + p2 * fy;
     }
 
     else // sample as image
     {
-        if (_bilinear)
-        {
 #if 1
-            double sizeS = (double)(_image->s() - 1);
-            double sizeT = (double)(_image->t() - 1);
+        double sizeS = (double)(_image->s() - 1);
+        double sizeT = (double)(_image->t() - 1);
 
-            // u, v => [0..1]
-            double s = u * sizeS;
-            double t = v * sizeT;
+        // u, v => [0..1]
+        double s = u * sizeS;
+        double t = v * sizeT;
 
-            double s0 = osg::maximum(floor(s), 0.0);
-            double s1 = osg::minimum(s0 + 1.0, sizeS);
-            double smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0;
+        double s0 = osg::maximum(floor(s), 0.0);
+        double s1 = osg::minimum(s0 + 1.0, sizeS);
+        double smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0;
 
-            double t0 = osg::maximum(floor(t), 0.0);
-            double t1 = osg::minimum(t0 + 1.0, sizeT);
-            double tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0;
+        double t0 = osg::maximum(floor(t), 0.0);
+        double t1 = osg::minimum(t0 + 1.0, sizeT);
+        double tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0;
 
-            osg::Vec4f UL, UR, LL, LR;
+        osg::Vec4f UL, UR, LL, LR;
 
-            (*_reader)(this, UL, (int)s0, (int)t0, r, m); // upper left
-            (*_reader)(this, UR, (int)s1, (int)t0, r, m); // upper right
-            (*_reader)(this, LL, (int)s0, (int)t1, r, m); // lower left
-            (*_reader)(this, LR, (int)s1, (int)t1, r, m); // lower right
+        (*_reader)(this, UL, (int)s0, (int)t0, r, m); // upper left
+        (*_reader)(this, UR, (int)s1, (int)t0, r, m); // upper right
+        (*_reader)(this, LL, (int)s0, (int)t1, r, m); // lower left
+        (*_reader)(this, LR, (int)s1, (int)t1, r, m); // lower right
 
-            osg::Vec4f TOP = UL * (1.0f - smix) + UR * smix;
-            osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;
+        osg::Vec4f TOP = UL * (1.0f - smix) + UR * smix;
+        osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;
 
-            out = TOP * (1.0f - tmix) + BOT * tmix;
+        out = TOP * (1.0f - tmix) + BOT * tmix;
 #else
-            double ux = u * (double)_image->s();  // [0..w]
-            double uy = v * (double)_image->t();  // [0..h]
+        double ux = u * (double)_image->s();  // [0..w]
+        double uy = v * (double)_image->t();  // [0..h]
 
-            double fx = fract(ux); // [0..1]
-            double fy = fract(uy); // [0..1]
+        double fx = fract(ux); // [0..1]
+        double fy = fract(uy); // [0..1]
 
-            int s = (int)ux;
-            int splus1 = s < (_image->s() - 1) ? s + 1 : s;
-            int t = (int)uy;
-            int tplus1 = t < (_image->t() - 1) ? t + 1 : t;
+        int s = (int)ux;
+        int splus1 = s < (_image->s() - 1) ? s + 1 : s;
+        int t = (int)uy;
+        int tplus1 = t < (_image->t() - 1) ? t + 1 : t;
 
-            osg::Vec4f p1, p2, p3, p4;
-            (*_reader)(this, p1, s, t, r, m);
-            (*_reader)(this, p2, splus1, t, r, m);
-            (*_reader)(this, p3, s, tplus1, r, m);
-            (*_reader)(this, p4, splus1, tplus1, r, m);
+        osg::Vec4f p1, p2, p3, p4;
+        (*_reader)(this, p1, s, t, r, m);
+        (*_reader)(this, p2, splus1, t, r, m);
+        (*_reader)(this, p3, s, tplus1, r, m);
+        (*_reader)(this, p4, splus1, tplus1, r, m);
 
-            p1 = p1 * (1.0 - fx) + p2 * fx;
-            p2 = p3 * (1.0 - fx) + p4 * fx;
-            out = p1 * (1.0 - fy) + p2 * fy;
+        p1 = p1 * (1.0 - fx) + p2 * fx;
+        p2 = p3 * (1.0 - fx) + p4 * fx;
+        out = p1 * (1.0 - fy) + p2 * fy;
 #endif
-        }
-        else
-        {
-            (*_reader)(this,
-                out,
-                (int)(u * (double)(_image->s() - 1)),
-                (int)(v * (double)(_image->t() - 1)),
-                r, m);
-        }
     }
 }
 

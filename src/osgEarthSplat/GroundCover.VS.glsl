@@ -298,10 +298,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     float topDownAmount = rescale(d, 0.4, 0.6);
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
-#if 1 // HACKKKKKKKKKKKKKKKK
-    billboardAmount = 1.0;
-#endif
-
     if (which < 4 && billboard.atlasIndexSide >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 

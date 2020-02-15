@@ -181,16 +181,11 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     vertex_view.xyz += pos;
 
-//VRV_PATCH
-    // This is *supposed* to be set in oe_RexEngine_vert_view.
-    // There is a problem in the shader composition system running under VRV
-    oe_UpVectorView = normalize(gl_NormalMatrix * vec3(0,0,1));
-//VRV_PATCH
-
     if (oe_GroundCover_instancedModel == 0)
     {
         vp_Color = vec4(1, 1, 1, 0);
     }
+
     // sample the landcover data
     oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*tilec).st, 0).r;
 

@@ -145,8 +145,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
     bool  autoScale        = minPixelSize > 0.0f;
 
     osg::Geometry* geom  = new osg::Geometry();
-    geom->setUseVertexBufferObjects( true );
-    geom->setUseDisplayList( false );
+    geom->setUseVertexBufferObjects(true);
 
     // Add the input verts to the geometry. This forms the "spine" of the
     // polygonized line. We need the spine so we can affect proper clamping,

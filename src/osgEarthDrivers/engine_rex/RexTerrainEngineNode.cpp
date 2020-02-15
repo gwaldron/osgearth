@@ -870,6 +870,8 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     mt->setMatrix( local2world );
 
     osg::Geometry* geometry = new osg::Geometry;
+    geometry->setUseVertexBufferObjects(true);
+
     osg::Geode* geode = new osg::Geode;
     geode->addDrawable( geometry );
     mt->addChild( geode );

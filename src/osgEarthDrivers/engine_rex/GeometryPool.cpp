@@ -233,8 +233,9 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     // the geometry:
     osg::ref_ptr<SharedGeometry> geom = new SharedGeometry();
+#if OSG_VERSION_LESS_THAN(3,6,0)
     geom->setUseVertexBufferObjects(true);
-    //geom->setUseDisplayList(false);
+#endif
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
@@ -865,7 +866,6 @@ SharedGeometry::makeOsgGeometry()
 {
     osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
-    geom->setUseDisplayList(false);
 
     geom->setVertexArray(getVertexArray());
     geom->setNormalArray(getNormalArray());

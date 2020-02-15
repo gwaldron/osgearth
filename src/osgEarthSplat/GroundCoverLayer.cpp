@@ -671,6 +671,7 @@ namespace
 #endif
 
         geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
 
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
 

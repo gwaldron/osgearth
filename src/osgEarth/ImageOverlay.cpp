@@ -402,8 +402,9 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
     //osg::Geode* geode = new osg::Geode;
     //transform->addChild(geode);
 
-    osg::Geometry* geometry = new osg::Geometry();     
+    osg::Geometry* geometry = new osg::Geometry();
     geometry->setUseVertexBufferObjects(true);
+
     transform->addChild(geometry);
 
     // next, convert to world coords and create the geometry:

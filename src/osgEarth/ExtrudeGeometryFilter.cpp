@@ -1025,6 +1025,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             Geometry* part = iter.next();
 
             osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
+            walls->setUseVertexBufferObjects(true);
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
             osg::ref_ptr<osg::Geometry> baselines = 0L;
@@ -1033,6 +1034,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( part->getType() == Geometry::TYPE_POLYGON )
             {
                 rooflines = new osg::Geometry();
+                rooflines->setUseVertexBufferObjects(true);
 
                 // prep the shapes by making sure all polys are open:
                 static_cast<Polygon*>(part)->open();
@@ -1042,6 +1044,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( _makeStencilVolume )
             {
                 baselines = new osg::Geometry();
+                baselines->setUseVertexBufferObjects(true);
             }
 
             // calculate the extrusion height:

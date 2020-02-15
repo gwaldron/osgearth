@@ -448,6 +448,8 @@ HorizonNode::HorizonNode()
     colors->push_back(osg::Vec4(1,0,0,0.5f));
 
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+
     geom->setVertexArray(verts);
     geom->setColorArray(colors);
     geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));

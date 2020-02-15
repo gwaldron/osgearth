@@ -161,8 +161,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             osg::Vec4f primaryColor = poly->fill()->color();
 
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            osgGeom->setUseVertexBufferObjects(true);
 
             // are we embedding a feature name?
             if ( _featureNameExpr.isSet() )

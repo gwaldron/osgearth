@@ -81,8 +81,7 @@ namespace
     osg::Geometry* newGeometry()
     {
         osg::Geometry* geom = new osg::Geometry();
-        geom->setUseVertexBufferObjects( true );
-        geom->setUseDisplayList( false );
+        geom->setUseVertexBufferObjects(true);
         geom->setDataVariance( osg::Object::DYNAMIC );
         return geom;
     }

@@ -140,6 +140,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     // set up the geoset.
     osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
+
     geom->setStateSet(dstate);
 
     float s = Registry::instance()->getDevicePixelRatio() * scale * image->s();

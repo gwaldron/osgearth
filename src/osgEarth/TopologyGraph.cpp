@@ -200,6 +200,7 @@ TopologyGraph::dumpBoundary(const IndexVector& boundary, const std::string& file
     }
 
     osg::ref_ptr<osg::Geometry> g = new osg::Geometry();
+    g->setUseVertexBufferObjects(true);
     g->setVertexArray(v);
     g->addPrimitiveSet(new osg::DrawArrays(GL_LINE_LOOP, 0, v->size()));
     g->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, v->size()));

@@ -220,7 +220,6 @@ public:
             }
 
             osg::ref_ptr< osg::Geometry > geom = new osg::Geometry;
-            geom->setUseDisplayList(false);
             geom->setUseVertexBufferObjects(true);
 
             group->addChild(geom.get());

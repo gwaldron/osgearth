@@ -201,7 +201,10 @@ public:
         fs.user_data = (void*)&location;
         loader.SetFsCallbacks(fs);
 
-        loader.LoadBinaryFromMemory(&model, &err, &warn, reinterpret_cast<unsigned char*>(&gltfData[0]), sz);
+        tinygltf::Options opt;
+        opt.skip_imagery = readOptions && readOptions->getOptionString().find("gltfSkipImagery") != std::string::npos;        
+
+        loader.LoadBinaryFromMemory(&model, &err, &warn, reinterpret_cast<unsigned char*>(&gltfData[0]), sz, "", REQUIRE_VERSION, &opt);
 
         if (!err.empty())
             OE_WARN << LC << "GLTF ERROR: " << err << std::endl;

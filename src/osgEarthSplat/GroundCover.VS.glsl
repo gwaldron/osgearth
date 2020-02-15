@@ -185,6 +185,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         vp_Normal = vec3(0, 0, 1);
         vp_Color = vec4(1, 1, 1, 0);
     }
+
     // sample the landcover data
     oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*tilec).st, 0).r;
 

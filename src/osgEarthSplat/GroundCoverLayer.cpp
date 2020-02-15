@@ -631,6 +631,10 @@ namespace
         c->push_back(osg::Vec4(1, .5, .2, 1));
         geom->setColorArray(c);
 
+        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+        normals->push_back(osg::Vec3f(0, 0, 1));
+        geom->setNormalArray(normals);
+
         osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
         b->reserve(3);
         b->push_back(0); b->push_back(1); b->push_back(2);
@@ -681,12 +685,20 @@ namespace
         // We don't actually need any verts. Is it OK not to set an array?
         //geom->setVertexArray(new osg::Vec3Array(8));
 
+        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+        normals->push_back(osg::Vec3f(0,0,1));
+        geom->setNormalArray(normals);
+
 #else // big giant drawelements:
 
         // Do we need this at all?
         unsigned int numverts = numInstances * vertsPerInstance;
         osg::Vec3Array* coords = new osg::Vec3Array(numverts);
         geom->setVertexArray(coords);
+
+        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+        normals->push_back(osg::Vec3f(0, 0, 1));
+        geom->setNormalArray(normals);
 
         osg::DrawElements* de =
             numverts > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt(GL_TRIANGLES)

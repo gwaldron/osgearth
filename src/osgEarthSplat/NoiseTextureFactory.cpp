@@ -121,7 +121,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setWrap(tex->WRAP_T, tex->REPEAT);
     tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-    tex->setMaxAnisotropy( 4.0f );
+    tex->setMaxAnisotropy( 1.0f );
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     
     //VRV Patch

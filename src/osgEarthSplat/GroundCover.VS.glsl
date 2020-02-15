@@ -171,7 +171,8 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
 
     // randomly shift each point off center
-    vec2 shift = vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2])*2.0-1.0;
+    //vec2 shift = vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2])*2.0-1.0;
+    vec2 shift = vec2(fract(noise[NOISE_RANDOM]*1.5), fract(noise[NOISE_RANDOM_2]*1.5))*2.0 - 1.0;
 
     tilec.xy += shift * halfSpacing;
 
@@ -180,9 +181,14 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     vertex_view.xyz += pos;
 
+//VRV_PATCH
+    // This is *supposed* to be set in oe_RexEngine_vert_view.
+    // There is a problem in the shader composition system running under VRV
+    oe_UpVectorView = normalize(gl_NormalMatrix * vec3(0,0,1));
+//VRV_PATCH
+
     if (oe_GroundCover_instancedModel == 0)
     {
-        vp_Normal = vec3(0, 0, 1);
         vp_Color = vec4(1, 1, 1, 0);
     }
     // sample the landcover data

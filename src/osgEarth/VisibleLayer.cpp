@@ -132,6 +132,7 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma import_defines(OE_DISABLE_RANGE_OPACITY) \n"
         "uniform vec3 oe_VisibleLayer_ranges; \n"
+        "uniform vec3 oe_Camera; // (vp width, vp height, lodscale)\n"
         "out float oe_layer_opacity; \n"
         
         "void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView) \n"
@@ -141,7 +142,7 @@ namespace
         "    float maxRange = oe_VisibleLayer_ranges[1]; \n"
         "    float attRange = oe_VisibleLayer_ranges[2]; \n"
 
-        "    float range = max(-vertexView.z, 0.0); \n"
+        "    float range = max(-vertexView.z, 0.0) * oe_Camera.z; \n"
 
         "    float maxOpaqueRange = maxRange-attRange; \n"
         "    float minOpaqueRange = minRange+attRange; \n"

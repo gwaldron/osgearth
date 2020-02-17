@@ -44,7 +44,15 @@ uniform float oe_GroundCover_maxDistance;     // distance at which flora disappe
 uniform float oe_GroundCover_contrast;
 uniform float oe_GroundCover_brightness;
 
-uniform vec3 oe_Camera;  // (vp width, vp height, lodscale)
+uniform vec3 oe_Camera; // (vp width, vp height, lodscale)
+
+// VRV: use a custom LOD scale uniform
+#pragma import_defines(VRV_OSG_LOD_SCALE)
+#ifdef VRV_OSG_LOD_SCALE
+uniform float VRV_OSG_LOD_SCALE;
+#else
+#define VRV_OSG_LOD_SCALE oe_Camera.z
+#endif
 
 uniform float osg_FrameTime; // Frame time (seconds) used for wind animation
 uniform mat4 osg_ViewMatrix;
@@ -211,7 +219,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     oe_GroundCover_clamp(vertex_view, oe_UpVectorView, tilec.st);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
-    float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
+    float maxRange = oe_GroundCover_maxDistance / VRV_OSG_LOD_SCALE;
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
     // Distance culling:

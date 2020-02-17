@@ -49,7 +49,15 @@ uniform float actorHeight;
 uniform float actorPlace;
 #endif
 
-uniform vec3 oe_Camera;  // (vp width, vp height, lodscale)
+uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
+
+// VRV: use a custom LOD scale uniform
+#pragma import_defines(VRV_OSG_LOD_SCALE)
+#ifdef VRV_OSG_LOD_SCALE
+uniform float VRV_OSG_LOD_SCALE;
+#else
+#define VRV_OSG_LOD_SCALE oe_Camera.z
+#endif
 
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_GroundCover_texCoord;
@@ -184,7 +192,7 @@ void oe_Grass_VS_MODEL(inout vec4 vertex_model)
     oe_GroundCover_clamp(vertex_model, vp_Normal, oe_layer_tilec.st);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
-    float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
+    float maxRange = oe_GroundCover_maxDistance / VRV_OSG_LOD_SCALE;
     float zv = (gl_ModelViewMatrix*vertex_model).z;
     float nRange = clamp(-zv/maxRange, 0.0, 1.0);
 

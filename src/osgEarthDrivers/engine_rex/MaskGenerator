@@ -82,6 +82,14 @@ namespace osgEarth { namespace REX
             return (VERTEX_MARKER_DISCARD & (int)texCoord.z()) != 0;
         }
 
+        //! whether a texcoord indicates that the corresponding vert
+        //! is on the patch boundary i.e., the vertex is part of the
+        //! tile's grid.
+        bool isPatchBoundary(const osg::Vec3f& texCoord) const
+        {
+            return (VERTEX_MARKER_PATCH & (int)texCoord.z()) != 0;
+        }
+
         //! returns once of the VERTEX_MARKER_* defines for the given NDC location
         float getMarker(float nx, float ny) const;
 

@@ -39,14 +39,12 @@ public:
     void apply(osg::Node& node);
     
     void apply(osg::Transform& transform);
-    
-    void apply(osg::Geode& geode);
+
+    void apply(osg::Drawable& drawable);
     
     inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
     
     inline void popMatrix() { _matrixStack.pop_back(); }
-
-    void applyDrawable(osg::Drawable* drawable);
     
 protected:
     

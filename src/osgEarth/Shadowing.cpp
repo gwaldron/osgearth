@@ -24,6 +24,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CameraUtils>
 #include <osg/CullFace>
 #include <osgShadow/ConvexPolyhedron>
 
@@ -36,22 +37,13 @@ using namespace osgEarth::Util;
 void
 Shadowing::setIsShadowCamera(osg::Camera* camera)
 {
-    if (!camera)
-        return;
-
-    osg::StateSet* ss = camera->getOrCreateStateSet();
-    ss->setDefine("OE_IS_SHADOW_CAMERA");
-    ss->setDefine("OE_IS_DEPTH_CAMERA");
+    CameraUtils::setIsShadowCamera(camera);
 }
 
 bool
 Shadowing::isShadowCamera(const osg::Camera* camera)
 {
-    if (!camera)
-        return false;
-
-    const osg::StateSet* ss = camera->getStateSet();
-    return ss && ss->getDefinePair("OE_IS_SHADOW_CAMERA") != 0L;
+    return CameraUtils::isShadowCamera(camera);
 }
 
 //...................................................................

@@ -68,7 +68,7 @@ TerrainRenderData::setup(const Map* map,
         if (layer->getEnabled())
         {
             bool render =
-                (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE) || // && !isDepthCamera) ||
+                (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE) ||
                 (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_PATCH);
 
             if ( render )

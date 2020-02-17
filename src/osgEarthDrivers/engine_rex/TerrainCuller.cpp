@@ -22,6 +22,7 @@
 #include "SelectionInfo"
 #include <osgEarth/TraversalData>
 #include <osgEarth/VisibleLayer>
+#include <osgEarth/Shadowing>
 
 #define LC "[TerrainCuller] "
 
@@ -48,6 +49,11 @@ _context(context)
     setLODScale(_cv->getLODScale());
     _camera = _cv->getCurrentCamera();
     _isSpy = VisitorData::isSet(*cullVisitor, "osgEarth.Spy");
+
+    // skip surface nodes is this is a shadow camera and shadowing is disabled.
+    _acceptSurfaceNodes =
+        osgEarth::Util::Shadowing::isShadowCamera(_cv->getCurrentCamera()) == false ||
+        context->options().castShadows() == true;
 }
 
 void
@@ -167,7 +173,7 @@ TerrainCuller::apply(osg::Node& node)
     {
         apply(*tileNode);
     }
-    else
+    else if (_acceptSurfaceNodes)
     {
         SurfaceNode* surfaceNode = dynamic_cast<SurfaceNode*>(&node);
         if (surfaceNode)

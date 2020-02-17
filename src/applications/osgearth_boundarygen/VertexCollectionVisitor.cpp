@@ -59,15 +59,9 @@ void VertexCollectionVisitor::apply(osg::Transform& transform)
     popMatrix();
 }
 
-void VertexCollectionVisitor::apply(osg::Geode& geode)
+void VertexCollectionVisitor::apply(osg::Drawable& drawable)
 {
-  for(unsigned int i=0; i<geode.getNumDrawables(); ++i)
-    applyDrawable(geode.getDrawable(i));
-}
-
-void VertexCollectionVisitor::applyDrawable(osg::Drawable* drawable)
-{
-  osg::Geometry* geometry = drawable->asGeometry();
+  osg::Geometry* geometry = drawable.asGeometry();
   if (geometry)
   {
     osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());

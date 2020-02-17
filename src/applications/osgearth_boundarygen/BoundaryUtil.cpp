@@ -66,6 +66,12 @@ osg::Vec3dArray* BoundaryUtil::getBoundary(osg::Node* modelNode, bool geocentric
     modelNode->accept(v);
 
     osg::ref_ptr<osg::Vec3dArray> verts = v.getVertices();
+    if (verts.valid() == false || verts->size() == 0)
+    {
+        OE_WARN << "No verts found in model!" << std::endl;
+        return NULL;
+    }
+
     verts = findHull(*verts);
 
     osg::EllipsoidModel em;

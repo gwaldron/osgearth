@@ -317,8 +317,8 @@ struct App
                             noise[NOISE_SMOOTH] /= groundcover->getFill();
 
                         shift.set(
-                            noise[NOISE_RANDOM]*2.0f - 1.0f,
-                            noise[NOISE_RANDOM_2]*2.0f - 1.0f);
+                            fract(noise[NOISE_RANDOM]*1.5)*2.0f - 1.0f,
+                            fract(noise[NOISE_RANDOM_2]*1.5)*2.0f - 1.0f);
 
                         tilec.x() += shift.x()*halfSpacing.x();
                         tilec.y() += shift.y()*halfSpacing.y();

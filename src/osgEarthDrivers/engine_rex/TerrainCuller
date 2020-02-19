@@ -57,8 +57,7 @@ namespace osgEarth { namespace REX
         bool _isSpy;
         std::vector<PatchLayer*> _patchLayers;
         bool _acceptSurfaceNodes;
-
-        unsigned _numberChildrenCreated;        bool _acceptSurfaceNodes;
+        unsigned _numberChildrenCreated;
 
     public:
         /** A new terrain culler */

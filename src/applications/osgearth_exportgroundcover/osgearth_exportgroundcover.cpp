@@ -273,6 +273,10 @@ struct App
                     ImageUtils::PixelReader elevSampler;
                     elevSampler.setTexture(elevTex);
 
+                    // because in the shader oe_terrain_getElevation adjusts the sampling
+                    // with scale coefficients:
+                    elevSampler.setSampleAsTexture(false);
+
                     BiomeLUT biomeLUT;
                     buildLUT(groundcover, biomeLUT);
 

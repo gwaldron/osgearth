@@ -2007,70 +2007,47 @@ namespace {
         frac = frac256 / 256.0f;
         return clamp(frac, 0.0f, 1.0f);
     }
-}
-
-
-// port of sample_2d_nearest from mesa
-/**
- * Sometimes we treat GLfloats as GLints.  On x86 systems, moving a float
- * as an int (thereby using integer registers instead of FP registers) is
- * a performance win.  Typically, this can be done with ordinary casts.
- * But with gcc's -fstrict-aliasing flag (which defaults to on in gcc 3.0)
- * these casts generate warnings.
- * The following union typedef is used to solve that.
- */
-typedef union { GLfloat f; GLint i; GLuint u; } fi_type;
-
-
-/** Return (as an integer) floor of float */
-static inline int IFLOOR(float f)
-{
-#if defined(USE_X86_ASM) && defined(__GNUC__) && defined(__i386__)
-    /*
-     * IEEE floor for computers that round to nearest or even.
-     * 'f' must be between -4194304 and 4194303.
-     * This floor operation is done by "(iround(f + .5) + iround(f - .5)) >> 1",
-     * but uses some IEEE specific tricks for better speed.
-     * Contributed by Josh Vanderhoof
+    
+    // port of sample_2d_nearest from mesa
+    /**
+     * Sometimes we treat GLfloats as GLints.  On x86 systems, moving a float
+     * as an int (thereby using integer registers instead of FP registers) is
+     * a performance win.  Typically, this can be done with ordinary casts.
+     * But with gcc's -fstrict-aliasing flag (which defaults to on in gcc 3.0)
+     * these casts generate warnings.
+     * The following union typedef is used to solve that.
      */
-    int ai, bi;
-    double af, bf;
-    af = (3 << 22) + 0.5 + (double)f;
-    bf = (3 << 22) + 0.5 - (double)f;
-    /* GCC generates an extra fstp/fld without this. */
-    __asm__("fstps %0" : "=m" (ai) : "t" (af) : "st");
-    __asm__("fstps %0" : "=m" (bi) : "t" (bf) : "st");
-    return (ai - bi) >> 1;
+    typedef union { GLfloat f; GLint i; GLuint u; } fi_type;
+
+    /** Return (as an integer) floor of float */
+    static inline int ifloorf(float f)
+    {
+#if defined(USE_X86_ASM) && defined(__GNUC__) && defined(__i386__)
+        /*
+         * IEEE floor for computers that round to nearest or even.
+         * 'f' must be between -4194304 and 4194303.
+         * This floor operation is done by "(iround(f + .5) + iround(f - .5)) >> 1",
+         * but uses some IEEE specific tricks for better speed.
+         * Contributed by Josh Vanderhoof
+         */
+        int ai, bi;
+        double af, bf;
+        af = (3 << 22) + 0.5 + (double)f;
+        bf = (3 << 22) + 0.5 - (double)f;
+        /* GCC generates an extra fstp/fld without this. */
+        __asm__("fstps %0" : "=m" (ai) : "t" (af) : "st");
+        __asm__("fstps %0" : "=m" (bi) : "t" (bf) : "st");
+        return (ai - bi) >> 1;
 #else
-    int ai, bi;
-    double af, bf;
-    fi_type u;
-    af = (3 << 22) + 0.5 + (double)f;
-    bf = (3 << 22) + 0.5 - (double)f;
-    u.f = (float)af;  ai = u.i;
-    u.f = (float)bf;  bi = u.i;
-    return (ai - bi) >> 1;
+        int ai, bi;
+        double af, bf;
+        fi_type u;
+        af = (3 << 22) + 0.5 + (double)f;
+        bf = (3 << 22) + 0.5 - (double)f;
+        u.f = (float)af;  ai = u.i;
+        u.f = (float)bf;  bi = u.i;
+        return (ai - bi) >> 1;
 #endif
-}
-
-/**/
-
-int nearest_texel_location(int size, float s)
-{
-    // Clamp to edge from mesa in s_texfilter.c
-    const float min = 1.0f / (2.0f * size);
-    const float max = 1.0f - min;
-    if (s < min)
-    {
-        return 0;
-    }
-    else if (s > max)
-    {
-        return size - 1;
-    }
-    else
-    {
-        return IFLOOR(s * size);        
     }
 }
 
@@ -2079,25 +2056,11 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
 {
     if (!_bilinear)
     {
-#if 0
-        float x = u * (float)(_image->s()-1);
-        float y = v * (float)(_image->t()-1);
-
-        float x_clamped = floorf(x);
-        float y_clamped = floorf(y);
-
-        float x_frac = fractf(x_clamped);
-        float y_frac = fractf(y_clamped);
-
-        int s = (int)x_clamped;
-        int t = (int)y_clamped;
-
-        if (x_frac > 0.5f || (x_frac ==0.5f && (s%1))) s++;
-        if (y_frac > 0.5f || (y_frac ==0.5f && (t%1))) t++;
-#else        
-        int s = nearest_texel_location(_image->s(), u);
-        int t = nearest_texel_location(_image->t(), v);
-#endif
+        // NN sample with clamp-to-edge from mesa in s_texfilter.c
+        const float umin = 1.0f / (2.0f * (float)_image->s());
+        const float vmin = 1.0f / (2.0f * (float)_image->t());
+        int s = u<umin? 0 : u>(1.0f-umin)? _image->s()-1 : (int)floorf(u*(float)_image->s());
+        int t = v<vmin? 0 : v>(1.0f-vmin)? _image->t()-1 : (int)floorf(v*(float)_image->t());
         (*_reader)(this, out, s, t, r, m);
     }
 
@@ -2167,7 +2130,6 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
 
     else // sample as image
     {
-#if 1
         float sizeS = (float)(_image->s() - 1);
         float sizeT = (float)(_image->t() - 1);
 
@@ -2194,28 +2156,6 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
         osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;
 
         out = TOP * (1.0f - tmix) + BOT * tmix;
-#else
-        float ux = u * (float)_image->s();  // [0..w]
-        float uy = v * (float)_image->t();  // [0..h]
-
-        float fx = fractf(ux); // [0..1]
-        float fy = fractf(uy); // [0..1]
-
-        int s = (int)ux;
-        int splus1 = s < (_image->s() - 1) ? s + 1 : s;
-        int t = (int)uy;
-        int tplus1 = t < (_image->t() - 1) ? t + 1 : t;
-
-        osg::Vec4f p1, p2, p3, p4;
-        (*_reader)(this, p1, s, t, r, m);
-        (*_reader)(this, p2, splus1, t, r, m);
-        (*_reader)(this, p3, s, tplus1, r, m);
-        (*_reader)(this, p4, splus1, tplus1, r, m);
-
-        p1 = p1 * (1.0 - fx) + p2 * fx;
-        p2 = p3 * (1.0 - fx) + p4 * fx;
-        out = p1 * (1.0 - fy) + p2 * fy;
-#endif
     }
 }
 
@@ -2224,21 +2164,11 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
 {
     if (!_bilinear)
     {
-        double x = u * (double)(_image->s() - 1);
-        double y = v * (double)(_image->t() - 1);
-
-        double x_clamped = floor(x);
-        double y_clamped = floor(y);
-
-        double x_frac = fract(x_clamped);
-        double y_frac = fract(y_clamped);
-
-        int s = (int)x_clamped;
-        int t = (int)y_clamped;
-
-        if (x_frac > 0.5 || (x_frac == 0.5 && (s % 1))) s++;
-        if (y_frac > 0.5 || (y_frac == 0.5 && (t % 1))) t++;
-
+        // NN sample with clamp-to-edge from mesa in s_texfilter.c
+        const double umin = 1.0 / (2.0 * (double)_image->s());
+        const double vmin = 1.0 / (2.0 * (double)_image->t());
+        int s = u<umin ? 0 : u>(1.0 - umin) ? _image->s() - 1 : (int)floorf(u*(double)_image->s());
+        int t = v<vmin ? 0 : v>(1.0 - vmin) ? _image->t() - 1 : (int)floorf(v*(double)_image->t());
         (*_reader)(this, out, s, t, r, m);
     }
 
@@ -2308,7 +2238,6 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
 
     else // sample as image
     {
-#if 1
         double sizeS = (double)(_image->s() - 1);
         double sizeT = (double)(_image->t() - 1);
 
@@ -2335,28 +2264,6 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
         osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;
 
         out = TOP * (1.0f - tmix) + BOT * tmix;
-#else
-        double ux = u * (double)_image->s();  // [0..w]
-        double uy = v * (double)_image->t();  // [0..h]
-
-        double fx = fract(ux); // [0..1]
-        double fy = fract(uy); // [0..1]
-
-        int s = (int)ux;
-        int splus1 = s < (_image->s() - 1) ? s + 1 : s;
-        int t = (int)uy;
-        int tplus1 = t < (_image->t() - 1) ? t + 1 : t;
-
-        osg::Vec4f p1, p2, p3, p4;
-        (*_reader)(this, p1, s, t, r, m);
-        (*_reader)(this, p2, splus1, t, r, m);
-        (*_reader)(this, p3, s, tplus1, r, m);
-        (*_reader)(this, p4, splus1, tplus1, r, m);
-
-        p1 = p1 * (1.0 - fx) + p2 * fx;
-        p2 = p3 * (1.0 - fx) + p4 * fx;
-        out = p1 * (1.0 - fy) + p2 * fy;
-#endif
     }
 }
 

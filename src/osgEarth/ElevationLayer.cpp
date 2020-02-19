@@ -583,12 +583,14 @@ namespace
     {
         const int w = hf->getNumColumns();
         const int h = hf->getNumRows();
+        const GLfloat* heights = (GLfloat*)(hf->getFloatArray()->getDataPointer());
 
         osg::Vec2d res(
             extent.width() / (double)(w-1),
             extent.height() / (double)(h-1));
 
-        const double e = hf->getHeight(s, t);
+        // Bring in hf->getHeight(s, t) calc
+        const double e = heights[s + t * w];
 
         double dx = res.x(), dy = res.y();
 
@@ -603,10 +605,11 @@ namespace
         
         osg::Vec3d west(0, 0, e), east(0, 0, e), south(0, 0, e), north(0, 0, e);
 
-        if (s > 0)     west.set (-dx, 0, hf->getHeight(s-1, t));
-        if (s < w - 1) east.set ( dx, 0, hf->getHeight(s+1, t));
-        if (t > 0)     south.set(0, -dy, hf->getHeight(s, t-1));
-        if (t < h - 1) north.set(0,  dy, hf->getHeight(s, t+1));
+        // Bring in hf->getHeight({s-1, t}, {s+1,t}, {s,t-1},{s,t+1}), 
+        if (s > 0)     west.set (-dx, 0, heights[(s - 1) + t * w]);
+        if (s < w - 1) east.set ( dx, 0, heights[(s + 1) + t * w]);
+        if (t > 0)     south.set(0, -dy, heights[s + (t - 1) * w]);
+        if (t < h - 1) north.set(0,  dy, heights[s + (t + 1) * w]);
 
         const osg::Vec3d normal = (east - west) ^ (north - south);
         return normal;

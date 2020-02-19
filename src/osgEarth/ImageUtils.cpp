@@ -2009,11 +2009,77 @@ namespace {
     }
 }
 
+
+// port of sample_2d_nearest from mesa
+/**
+ * Sometimes we treat GLfloats as GLints.  On x86 systems, moving a float
+ * as an int (thereby using integer registers instead of FP registers) is
+ * a performance win.  Typically, this can be done with ordinary casts.
+ * But with gcc's -fstrict-aliasing flag (which defaults to on in gcc 3.0)
+ * these casts generate warnings.
+ * The following union typedef is used to solve that.
+ */
+typedef union { GLfloat f; GLint i; GLuint u; } fi_type;
+
+
+/** Return (as an integer) floor of float */
+static inline int IFLOOR(float f)
+{
+#if defined(USE_X86_ASM) && defined(__GNUC__) && defined(__i386__)
+    /*
+     * IEEE floor for computers that round to nearest or even.
+     * 'f' must be between -4194304 and 4194303.
+     * This floor operation is done by "(iround(f + .5) + iround(f - .5)) >> 1",
+     * but uses some IEEE specific tricks for better speed.
+     * Contributed by Josh Vanderhoof
+     */
+    int ai, bi;
+    double af, bf;
+    af = (3 << 22) + 0.5 + (double)f;
+    bf = (3 << 22) + 0.5 - (double)f;
+    /* GCC generates an extra fstp/fld without this. */
+    __asm__("fstps %0" : "=m" (ai) : "t" (af) : "st");
+    __asm__("fstps %0" : "=m" (bi) : "t" (bf) : "st");
+    return (ai - bi) >> 1;
+#else
+    int ai, bi;
+    double af, bf;
+    fi_type u;
+    af = (3 << 22) + 0.5 + (double)f;
+    bf = (3 << 22) + 0.5 - (double)f;
+    u.f = (float)af;  ai = u.i;
+    u.f = (float)bf;  bi = u.i;
+    return (ai - bi) >> 1;
+#endif
+}
+
+/**/
+
+int nearest_texel_location(int size, float s)
+{
+    // Clamp to edge from mesa in s_texfilter.c
+    const float min = 1.0f / (2.0f * size);
+    const float max = 1.0f - min;
+    if (s < min)
+    {
+        return 0;
+    }
+    else if (s > max)
+    {
+        return size - 1;
+    }
+    else
+    {
+        return IFLOOR(s * size);        
+    }
+}
+
 void
 ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, int m) const
 {
     if (!_bilinear)
     {
+#if 0
         float x = u * (float)(_image->s()-1);
         float y = v * (float)(_image->t()-1);
 
@@ -2028,7 +2094,10 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
 
         if (x_frac > 0.5f || (x_frac ==0.5f && (s%1))) s++;
         if (y_frac > 0.5f || (y_frac ==0.5f && (t%1))) t++;
-
+#else        
+        int s = nearest_texel_location(_image->s(), u);
+        int t = nearest_texel_location(_image->t(), v);
+#endif
         (*_reader)(this, out, s, t, r, m);
     }
 

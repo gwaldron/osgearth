@@ -600,7 +600,7 @@ void ThreeDTileNode::resolveContent()
     // Resolve the future 
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
-        _content = _contentFuture.get();
+        _content = _contentFuture.release();
 
     }
 }

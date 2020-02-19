@@ -25,6 +25,7 @@
 #include <osgEarth/ShaderMerger>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/Metrics>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -1277,6 +1278,9 @@ VirtualProgram::apply( osg::State& state ) const
     }
 
     osg::ref_ptr<osg::Program> program;
+
+    OE_PROFILING_ZONE_NAMED("vp:apply");
+    OE_PROFILING_ZONE_TEXT(getName());
     
     // Negate osg::State's last-attribute-applied tracking for 
     // VirtualProgram, since it cannot detect a VP that is reached from
@@ -1485,8 +1489,14 @@ VirtualProgram::apply( osg::State& state ) const
 
         if ( useProgram )
         {
+            OE_PROFILING_ZONE_NAMED("use");
+            OE_PROFILING_ZONE_TEXT(program->getName());
+
             if( pcp->needsLink() )
+            {
+                OE_PROFILING_ZONE_NAMED("link");
                 program->compileGLObjects( state );
+            }
 
             if( pcp->isLinked() )
             {

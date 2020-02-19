@@ -76,4 +76,9 @@ namespace osgEarth
 // Library build configuration (like C++11 support)
 #include "osgEarth/BuildConfig.h"
 
+// FINAL keyword for C++11
+#ifdef OSGEARTH_CXX11
+#define OSGEARTH_FINAL final
+#endif
+
 #endif // OSGEARTH_COMMON_H

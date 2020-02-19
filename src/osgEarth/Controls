@@ -311,6 +311,7 @@ namespace osgEarth { namespace Util { namespace Controls
     protected:
         osg::Geode* getGeode() { return _geode; }
         void clearGeode() { _geode->removeDrawables(0, _geode->getNumDrawables()); }
+        osg::ref_ptr<osg::StateSet> getGeomStateSet();
 
     private:
         osgEarth::optional<float> _x, _y, _width, _height;
@@ -328,7 +329,6 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<osg::Geometry> _geom;
 
         static osg::observer_ptr<osg::StateSet> s_geomStateSet;
-        osg::ref_ptr<osg::StateSet> getGeomStateSet();
     };
 
     typedef std::vector< osg::ref_ptr<Control> > ControlVector;

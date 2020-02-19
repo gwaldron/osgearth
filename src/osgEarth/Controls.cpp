@@ -155,7 +155,7 @@ Control::Control( const Alignment& halign, const Alignment& valign, const Gutter
 void
 Control::init()
 {
-    setStateSet(getGeomStateSet());
+//    setStateSet(getGeomStateSet());
 
     _x.init(0);
     _y.init(0);
@@ -195,8 +195,10 @@ Control::getGeomStateSet()
         if (s_geomStateSet.lock(stateSet) == false)
         {
             s_geomStateSet = stateSet = new osg::StateSet();
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet.get());
-            vp->setName("Control::geomStateSet");
+            ShaderUtils::installDefaultShader(stateSet.get());
+
+            // don't let other shaders affect it:
+            VirtualProgram* vp = VirtualProgram::get(stateSet.get());
             vp->setInheritShaders(false);
         }
     }
@@ -619,6 +621,7 @@ Control::draw(const ControlContext& cx)
                 (_activeColor.isSet() && _activeColor->a() > 0.0f && _active))
             {
                 _geom = newGeometry();
+                _geom->setStateSet(getGeomStateSet());
 
                 float rx = _renderPos.x() - padding().left();
                 float ry = _renderPos.y() - padding().top();
@@ -1200,6 +1203,7 @@ ImageControl::draw( const ControlContext& cx )
 
     //TODO: this is not precisely correct..images get deformed slightly..
     osg::Geometry* g = newGeometry();
+    g->setStateSet(getGeomStateSet());
 
     float rx = osg::round( _renderPos.x() );
     float ry = osg::round( _renderPos.y() );
@@ -1355,6 +1359,7 @@ HSliderControl::draw( const ControlContext& cx )
     if ( visible() && parentIsVisible())
     {
         osg::ref_ptr<osg::Geometry> g = newGeometry();
+        g->setStateSet(getGeomStateSet());
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1470,6 +1475,7 @@ CheckBoxControl::draw( const ControlContext& cx )
     if ( visible() && parentIsVisible() )
     {
         osg::Geometry* g = newGeometry();
+        g->setStateSet(getGeomStateSet());
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );

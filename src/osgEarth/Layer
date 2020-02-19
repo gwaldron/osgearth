@@ -103,9 +103,6 @@ namespace osgDB {
     void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
     const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
 
-#ifndef OSGEARTH_CXX11
-#define final
-#endif
 
 namespace osgEarth
 {
@@ -190,13 +187,16 @@ namespace osgEarth
         const osgDB::Options* getReadOptions() const;
 
         //! Open a layer.
-        virtual const Status& open() final;
+        virtual const Status& open() 
+            OSGEARTH_FINAL;
 
         //! Open a layer. Shortcut for calling setReadOptions() followed by open().
-        virtual const Status& open(const osgDB::Options* options) final;
+        virtual const Status& open(const osgDB::Options* options) 
+            OSGEARTH_FINAL;
 
         //! Close this layer.
-        virtual Status close() final;
+        virtual Status close()
+            OSGEARTH_FINAL;
 
         //! Whether the layer is open
         bool isOpen() const;

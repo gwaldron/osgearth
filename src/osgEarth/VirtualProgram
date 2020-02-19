@@ -177,8 +177,14 @@ namespace osgEarth
             /** The shader in its named stage. */
             osg::Shader* getNominalShader() const { return _nominalShader.get(); }
 
+            //! Is this component a fragment or output shader?
+            bool isFragmentStage() const { return _nominalShader->getType() == osg::Shader::FRAGMENT; }
+
             /** Generates the shaders. */
             void prepare();
+
+            //! Unique hash for this object
+            unsigned getHash();
 
             /** Called from the draw context to resize shader buffers as necessary (OSG) */
             virtual void resizeGLObjectBuffers(unsigned maxSize);
@@ -193,9 +199,7 @@ namespace osgEarth
             std::string                  _name;
             std::string                  _source;
             ShaderComp::FunctionLocation _location;
-
-            // Originally specified stage for this shader
-            osg::Shader::Type            _nominalType;
+            optional<unsigned>           _hash;
 
             // The shader built for the nominal program stage (nominalType)
             osg::ref_ptr<osg::Shader>    _nominalShader;
@@ -213,7 +217,9 @@ namespace osgEarth
         };
 
         //typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
-        typedef std::vector<PolyShader*> ProgramKey;
+        //typedef std::vector<PolyShader*> ProgramKey;
+        //typedef std::string ProgramKey;
+        typedef std::vector<unsigned> ProgramKey;
 
 
         class /*internal*/ ProgramRepo : public Threading::Lockable<osg::Referenced>
@@ -274,8 +280,10 @@ namespace osgEarth
      * Though the code has evolved quite a bit, VirtualProgram was originally adapted
      * from the VirtualProgram shader composition work done by Wojciech Lewandowski and
      * found in OSG's osgvirtualprogram example.
+     *
+     * DO NOT DERIVE FROM VirtualProgram! IT WILL NOT WORK.
      */
-    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute
+    class OSGEARTH_EXPORT VirtualProgram OSGEARTH_FINAL : public osg::StateAttribute
     {
     public:
         static const osg::StateAttribute::Type SA_TYPE;
@@ -455,9 +463,10 @@ namespace osgEarth
         };
 
         typedef unsigned                              ShaderID;
+        // vector_map benchmarks much faster than std::map or std::unordered_map in this use case
         typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
-        typedef std::set<std::string>                 ExtensionsSet;
-        typedef std::map< std::string, std::string >  AttribAliasMap;
+        typedef vector_set<std::string>               ExtensionsSet;
+        typedef vector_map<std::string, std::string>  AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias >            AttribAliasVector;
         typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
@@ -565,8 +574,6 @@ namespace osgEarth
             osg::buffered_object<Item> _item;
         };
         mutable AttrStackMemory _vpStackMemory;
-
-        bool hasLocalFunctions() const;
 
         void accumulateFunctions(            
             const osg::State&                state,

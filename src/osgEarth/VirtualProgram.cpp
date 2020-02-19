@@ -25,6 +25,7 @@
 #include <osgEarth/ShaderMerger>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/Metrics>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -62,6 +63,10 @@ using namespace osgEarth::ShaderComp;
 
 // Don't use this until we make it safe (combine with ProgramRepo or something) -gw
 //#define USE_POLYSHADER_CACHE
+
+// Use typeid in lieu of dynamic_cast on inner loops
+// Pro: faster. Con: cannot derive from VirtualProgram.
+#define USE_TYPEID
 
 #define MAKE_SHADER_ID(X) osgEarth::hashString( X )
 
@@ -268,8 +273,6 @@ namespace
             return i != sh->_attributeMap.end() ? &(i->second.attributeVec) : 0L;
         }
     };
-
-    typedef std::map<std::string, std::string> HeaderMap;
 
     // removes leading and trailing whitespace, and replaces all other
     // whitespace with single spaces
@@ -553,9 +556,10 @@ namespace
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program
         // based on its accumlated function set.
+        outputKey.reserve(accumShaderMap.size());
         for( VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
-            outputKey.push_back( i->data()._shader.get() );
+            outputKey.push_back( i->second._shader->getHash() );
         }
 
         // finally, add the mains (AFTER building the key vector .. we don't want or
@@ -565,8 +569,12 @@ namespace
         VirtualProgram::ShaderVector buildVector;
         buildVector.reserve( accumShaderMap.size() + mains.size() );
 
-        for(ProgramKey::iterator i = outputKey.begin(); i != outputKey.end(); ++i)
-            buildVector.push_back( (*i)->getShader(stages) );
+        for (VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i)
+        {
+            buildVector.push_back(i->second._shader->getShader(stages));
+        }
+        //for(ProgramKey::iterator i = outputKey.begin(); i != outputKey.end(); ++i)
+        //    buildVector.push_back( (*i)->getShader(stages) );
 
         buildVector.insert( buildVector.end(), mains.begin(), mains.end() );
 
@@ -878,14 +886,11 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
 
         while( lhsIter != _shaderMap.end() )
         {
-            //int keyCompare = lhsIter->key().compare( rhsIter->key() );
-            //if ( keyCompare != 0 ) return keyCompare;
+            if (lhsIter->first < rhsIter->first) return -1;
+            if (lhsIter->first > rhsIter->first) return +1;
 
-            if ( lhsIter->key() < rhsIter->key() ) return -1;
-            if ( lhsIter->key() > rhsIter->key() ) return  1;
-
-            const ShaderEntry& lhsEntry = lhsIter->data(); //lhsIter->second;
-            const ShaderEntry& rhsEntry = rhsIter->data(); //rhsIter->second;
+            const ShaderEntry& lhsEntry = lhsIter->second;
+            const ShaderEntry& rhsEntry = lhsIter->second;
 
             if ( lhsEntry < rhsEntry ) return -1;
             if ( rhsEntry < lhsEntry ) return  1;
@@ -959,9 +964,9 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
     // Resize shaders in the PolyShader
     for( ShaderMap::iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
     {
-        if (i->data()._shader.valid())
+        if (i->second._shader.valid())
         {
-            i->data()._shader->resizeGLObjectBuffers(maxSize);
+            i->second._shader->resizeGLObjectBuffers(maxSize);
         }
     }
 }
@@ -1005,7 +1010,9 @@ PolyShader*
 VirtualProgram::getPolyShader(const std::string& shaderID) const
 {
     Threading::ScopedMutexLock readonly( _dataModelMutex );
-    const ShaderEntry* entry = _shaderMap.find( MAKE_SHADER_ID(shaderID) );
+    ShaderMap::const_iterator i = _shaderMap.find(MAKE_SHADER_ID(shaderID));
+    const ShaderEntry* entry = i != _shaderMap.end() ? &i->second : NULL;
+    //const ShaderEntry* entry = _shaderMap.find( MAKE_SHADER_ID(shaderID) );
     return entry ? entry->_shader.get() : 0L;
 }
 
@@ -1158,7 +1165,7 @@ bool
 VirtualProgram::addGLSLExtension(const std::string& extension)
 {
    _dataModelMutex.lock();
-   std::pair<std::set<std::string>::const_iterator, bool> insertPair = _globalExtensions.insert(extension);
+   std::pair<ExtensionsSet::const_iterator, bool> insertPair = _globalExtensions.insert(extension);
    _dataModelMutex.unlock();
    return insertPair.second;
 }
@@ -1176,7 +1183,7 @@ bool
 VirtualProgram::removeGLSLExtension(const std::string& extension)
 {
    _dataModelMutex.lock();
-   int erased = _globalExtensions.erase(extension);
+   ExtensionsSet::size_type erased = _globalExtensions.erase(extension);
    _dataModelMutex.unlock();
    return erased > 0;
 }
@@ -1269,14 +1276,20 @@ VirtualProgram::apply( osg::State& state ) const
 
         //if ( state.getLastAppliedProgramObject() != 0L )
         {
-            const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
-            extensions->glUseProgram( 0 );
+            const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,false);
+            if (extensions)
+            {
+                extensions->glUseProgram( 0 );
+            }
             state.setLastAppliedProgramObject(0);
         }
         return;
     }
 
     osg::ref_ptr<osg::Program> program;
+
+    OE_PROFILING_ZONE_NAMED("vp:apply");
+    OE_PROFILING_ZONE_TEXT(getName());
     
     // Negate osg::State's last-attribute-applied tracking for 
     // VirtualProgram, since it cannot detect a VP that is reached from
@@ -1334,9 +1347,9 @@ VirtualProgram::apply( osg::State& state ) const
 
             for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
             {
-                if ( i->data().accept(state) )
+                if ( i->second.accept(state) )
                 {
-                    addToAccumulatedMap( local.accumShaderMap, i->key(), i->data() );
+                    addToAccumulatedMap( local.accumShaderMap, i->first, i->second );
                 }
             }
 
@@ -1352,14 +1365,32 @@ VirtualProgram::apply( osg::State& state ) const
         }
 
         // next, assemble a list of the shaders in the map so we can use it as our
-        // program cache key.
-        // (Note: at present, the "cache key" does not include any information on the vertex
+        // program repo key.
+        // (Note: at present, the KEY does not include any information on the vertex
         // attribute bindings. Technically it should, but in practice this might not be an
         // issue; it is unlikely one would have two identical shader programs with different
         // bindings.)
+        // We're also going to detect the precense of a fragment shader.
+        unsigned numFragShaders = 0u;
         for( ShaderMap::iterator i = local.accumShaderMap.begin(); i != local.accumShaderMap.end(); ++i )
         {
-            local.programKey.push_back( i->data()._shader.get() );
+            PolyShader* ps = i->second._shader.get();
+            local.programKey.push_back(ps->getHash());
+
+            if (ps->isFragmentStage())
+                ++numFragShaders;
+        }
+
+        // If the accumulation contains no fragment stage shaders, the shader program
+        // is incomplete and there will be nothing do to; so don't bother trying to
+        // apply a program. A side-effect of this "early-out" is that you MUST have
+        // a FS in the mix when using VirtualPrograms, or glUseProgram won't be called!
+        // Consider ShaderUtils::installDefaultShader when in doubt.
+
+        // TODO: deprecate setIsAbstract in favor of this?? 
+        if (numFragShaders == 0u)
+        {
+            return;
         }
 
         // current frame number, for shader program expiry.
@@ -1485,8 +1516,14 @@ VirtualProgram::apply( osg::State& state ) const
 
         if ( useProgram )
         {
+            OE_PROFILING_ZONE_NAMED("use");
+            OE_PROFILING_ZONE_TEXT(program->getName());
+
             if( pcp->needsLink() )
+            {
+                OE_PROFILING_ZONE_NAMED("link");
                 program->compileGLObjects( state );
+            }
 
             if( pcp->isLinked() )
             {
@@ -1569,18 +1606,39 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
         {
             // find the closest VP that doesn't inherit:
             unsigned start;
+            const osg::StateAttribute* sa;
             for( start = (int)av->size()-1; start > 0; --start )
             {
-                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[start].first );
-                if ( vp && (vp->_mask & _mask) && vp->_inherit == false )
+                sa = (*av)[start].first;
+#ifdef USE_TYPEID
+                if (typeid(*sa) != typeid(VirtualProgram))
+                    continue;
+                const VirtualProgram* vp = static_cast<const VirtualProgram*>(sa);
+#else
+                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>(sa);
+                if (!vp)
+                    continue;
+#endif
+
+                if ( (vp->_mask & _mask) && vp->_inherit == false )
                     break;
             }
 
             // collect functions from there on down.
             for( unsigned i=start; i<av->size(); ++i )
             {
-                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[i].first );
-                if ( vp && (vp->_mask && _mask) && (vp != this) )
+                sa = (*av)[i].first;
+#ifdef USE_TYPEID
+                if (typeid(*sa) != typeid(VirtualProgram))
+                    continue;
+                const VirtualProgram* vp = static_cast<const VirtualProgram*>(sa);
+#else
+                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>(sa);
+                if (!vp)
+                    continue;
+#endif
+
+                if ( (vp->_mask & _mask) && (vp != this) )
                 {
                     FunctionLocationMap rhs;
                     vp->getFunctions( rhs );
@@ -1661,18 +1719,37 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
     {
         // find the deepest VP that doesn't inherit:
         unsigned start = 0;
+        const osg::StateAttribute* sa;
         for( start = (int)av->size()-1; start > 0; --start )
         {
-            const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[start].first );
-            if ( vp && (vp->_mask & mask) && vp->_inherit == false )
+            sa = (*av)[start].first;
+#ifdef USE_TYPEID
+            if (typeid(*sa) != typeid(VirtualProgram))
+                continue;
+            const VirtualProgram* vp = static_cast<const VirtualProgram*>(sa);
+#else
+            const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>(sa);
+            if (!vp)
+                continue;
+#endif
+            if ( (vp->_mask & mask) && vp->_inherit == false )
                 break;
         }
 
         // collect shaders from there to here:
         for( unsigned i=start; i<av->size(); ++i )
         {
-            const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[i].first );
-            if ( vp && (vp->_mask && mask) )
+            sa = (*av)[i].first;
+#ifdef USE_TYPEID
+            if (typeid(*sa) != typeid(VirtualProgram))
+                continue;
+            const VirtualProgram* vp = static_cast<const VirtualProgram*>(sa);
+#else
+            const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>(sa);
+            if (!vp)
+                continue;
+#endif
+            if ( vp->_mask & mask )
             {
                 if (vp->getAcceptCallbacksVaryPerFrame())
                 {
@@ -1703,9 +1780,9 @@ VirtualProgram::addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap,
 
     for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
     {
-        if ( i->data().accept(state) )
+        if ( i->second.accept(state) )
         {
-            addToAccumulatedMap(accumMap, i->key(), i->data());
+            addToAccumulatedMap(accumMap, i->first, i->second);
         }
     }
 
@@ -1731,7 +1808,7 @@ VirtualProgram::getShaders(const osg::State&                        state,
     // copy to output.
     for(ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
     {
-        output.push_back( i->data()._shader->getNominalShader() );
+        output.push_back( i->second._shader->getNominalShader() );
     }
 
     return output.size();
@@ -1756,7 +1833,7 @@ VirtualProgram::getPolyShaders(const osg::State&                       state,
     // copy to output.
     for(ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
     {
-        output.push_back( i->data()._shader.get() );
+        output.push_back( i->second._shader.get() );
     }
 
     return output.size();
@@ -1787,16 +1864,14 @@ void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerF
 
 PolyShader::PolyShader() :
 _dirty( true ),
-_location( ShaderComp::LOCATION_UNDEFINED ),
-_nominalType(osg::Shader::VERTEX)
+_location( ShaderComp::LOCATION_UNDEFINED )
 {
     //nop
 }
 
 PolyShader::PolyShader(osg::Shader* shader) :
 _location( ShaderComp::LOCATION_UNDEFINED ),
-_nominalShader( shader ),
-_nominalType(osg::Shader::VERTEX)
+_nominalShader( shader )
 {
     _dirty = shader != 0L;
     if ( shader )
@@ -1813,6 +1888,7 @@ PolyShader::setShaderSource(const std::string& source)
 {
     _source = source;
     _dirty = true;
+    _hash.unset();
 }
 
 void
@@ -1820,6 +1896,7 @@ PolyShader::setLocation(ShaderComp::FunctionLocation location)
 {
     _location = location;
     _dirty = true;
+    _hash.unset();
 }
 
 osg::Shader*
@@ -1901,6 +1978,20 @@ PolyShader::prepare()
         }
     }
     _dirty = false;
+}
+
+unsigned
+PolyShader::getHash()
+{
+    if (_hash.isSet() == false)
+    {
+#ifdef OSGEARTH_CXX11
+        _hash = std::hash<std::string>()(_source);
+#else
+        _hash = osgEarth::hashString(_source);
+#endif
+    }
+    return _hash.get();
 }
 
 void PolyShader::resizeGLObjectBuffers(unsigned maxSize)
@@ -2095,7 +2186,8 @@ namespace
                         // todo: min/max range?
 
                         osgEarth::VirtualProgram::ShaderID shaderId = MAKE_SHADER_ID(k->second._name);
-                        const osgEarth::VirtualProgram::ShaderEntry* m = shaders.find(shaderId);
+                        osgEarth::VirtualProgram::ShaderMap::const_iterator miter = shaders.find(shaderId);
+                        const osgEarth::VirtualProgram::ShaderEntry* m = miter != shaders.end()? &miter->second : NULL;
                         if (m)
                         {                    
                             std::vector<std::string> lines;

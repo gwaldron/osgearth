@@ -590,28 +590,18 @@ namespace
 {
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
-        "#pragma import_defines(OE_DISABLE_DEFAULT_SHADER)\n"
-        "#ifndef OE_DISABLE_DEFAULT_SHADER\n"
         "out vec2 oe_default_coords;\n"
-        "#endif\n"
         "void oe_default_vs(inout vec4 vertex) { \n"
-        "  #ifndef OE_DISABLE_DEFAULT_SHADER\n"
         "    oe_default_coords = gl_MultiTexCoord0.st;\n"
-        "  #endif\n"
         "}\n";
 
     const char* fs =
         "#version " GLSL_VERSION_STR "\n"
-        "#pragma import_defines(OE_DISABLE_DEFAULT_SHADER)\n"
-        "#ifndef OE_DISABLE_DEFAULT_SHADER\n"
         "uniform sampler2D oe_default_tex;\n"
         "in vec2 oe_default_coords;\n"
-        "#endif\n"
         "void oe_default_fs(inout vec4 color) { \n"
-        "  #ifndef OE_DISABLE_DEFAULT_SHADER\n"
         "    vec4 texel = texture(oe_default_tex, oe_default_coords);\n"
         "    color.rgb = mix(color.rgb, texel.rgb, texel.a);\n"
-        "  #endif\n"
         "}\n";
 }
 

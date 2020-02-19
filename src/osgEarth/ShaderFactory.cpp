@@ -156,7 +156,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // interface block.
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
-        osg::Shader* shader = s->data()._shader->getNominalShader();
+        osg::Shader* shader = s->second._shader->getNominalShader();
         if ( shader )
         {
             ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying_in", varDefs);

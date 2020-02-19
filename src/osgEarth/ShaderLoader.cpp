@@ -346,6 +346,13 @@ ShaderLoader::load(VirtualProgram*       vp,
             locationSet = false;
         }
 
+        // Named?
+        if (vp->getName().empty())
+        {
+            std::string name = getPragmaValue(source, "vp_name");
+            vp->setName(name);
+        }
+
         // If entry point is set, this is a function; otherwise a simple library.
         std::string entryPoint = getPragmaValue(source, "vp_entryPoint");
 

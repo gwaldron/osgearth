@@ -48,18 +48,15 @@ namespace osgEarth { namespace Util
 #endif
 
     /**
-     * A std::map-like map that uses a vector and a getUID method for keying.
-     * DATA must have a getUID() method.
+     * A std::map-like map that uses a vector.
+     * This benchmarks much faster than std::map or std::unordered_map for small sets.
      */
     template<typename KEY,typename DATA>
     struct vector_map
     {
         struct ENTRY {
-            inline const KEY&  key()  const { return _key; }
-            inline const DATA& data() const { return _data; }
-            inline DATA&       data()       { return _data; }
-            KEY  _key;
-            DATA _data;
+            KEY first;
+            DATA second;
         };
         typedef std::vector<ENTRY> container_t;
 
@@ -70,31 +67,13 @@ namespace osgEarth { namespace Util
 
         inline DATA& operator[](const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
-                    return _container[i]._data;
+                if (_container[i].first == key) {
+                    return _container[i].second;
                 }
             }
             _container.resize(_container.size()+1);
-            _container.back()._key = key;
-            return _container.back()._data;
-        }
-
-        inline DATA* find(const KEY& key) {
-            for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
-                    return &_container[i]._data;
-                }
-            }
-            return 0L;
-        }
-
-        inline const DATA* find(const KEY& key) const {
-            for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
-                    return &_container[i]._data;
-                }
-            }
-            return 0L;
+            _container.back().first = key;
+            return _container.back().second;
         }
 
         inline const_iterator begin() const { return _container.begin(); }
@@ -102,13 +81,22 @@ namespace osgEarth { namespace Util
         inline iterator begin()             { return _container.begin(); }
         inline iterator end()               { return _container.end(); }
 
+        inline const_iterator find(const KEY& key) const {
+            for(unsigned i=0; i<_container.size(); ++i) {
+                if (_container[i].first == key) {
+                    return _container.begin()+i;
+                }
+            }
+            return _container.end();
+        }
+
         inline bool empty() const { return _container.empty(); }
 
         inline void clear() { _container.clear(); }
 
         inline void erase(const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
+                if (_container[i].first == key) {
                     if (i+1 < _container.size()) {
                         _container[i] = _container[_container.size()-1];
                     }
@@ -123,6 +111,68 @@ namespace osgEarth { namespace Util
         template<typename InputIterator>
         void insert(InputIterator a, InputIterator b) {
             for(InputIterator i = a; i != b; ++i) (*this)[i->first] = i->second;
+        }
+    };
+
+    template<typename DATA>
+    struct vector_set
+    {
+        typedef std::vector<DATA> container_t;
+
+        typedef typename container_t::iterator iterator;
+        typedef typename container_t::const_iterator const_iterator;
+        typedef typename container_t::size_type size_type;
+
+        container_t _container;
+
+        inline const_iterator begin() const { return _container.begin(); }
+        inline const_iterator end()   const { return _container.end(); }
+        inline iterator begin() { return _container.begin(); }
+        inline iterator end() { return _container.end(); }
+
+        inline std::pair<vector_set<DATA>::const_iterator, bool> insert(const DATA& data) {
+            const_iterator i = find(data);
+            if (i != end()) {
+                return std::make_pair(i, false);
+            }
+            else {
+                _container.push_back(data);
+                return std::make_pair(_container.end()-1, true);
+            }
+        }
+
+        inline const_iterator find(const DATA& data) const {
+            for (unsigned i = 0; i < _container.size(); ++i) {
+                if (_container[i] == data) {
+                    return _container.begin() + i;
+                }
+            }
+            return _container.end();
+        }
+
+        inline bool empty() const { return _container.empty(); }
+
+        inline void clear() { _container.clear(); }
+
+        inline size_type erase(const DATA& data) {
+            for (unsigned i = 0; i < _container.size(); ++i) {
+                if (_container[i] == data) {
+                    if (i + 1 < _container.size()) {
+                        _container[i] = _container[_container.size() - 1];
+                    }
+                    _container.resize(_container.size() - 1);
+                    return 1;
+                }
+            }
+            return 0;
+        }
+
+        inline int size() const { return _container.size(); }
+
+        template<typename InputIterator>
+        void insert(InputIterator a, InputIterator b) {
+            for (InputIterator i = a; i != b; ++i)
+                insert(*i);
         }
     };
 

@@ -373,8 +373,7 @@ public:
                                 {
                                     (*cachedTex) = tex.get();
                                 }
-
-                                geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), osg::StateAttribute::ON);
+                                geom->getOrCreateStateSet()->setTextureAttribute(0, tex.get());
                             }
 
                             if (cachedTex)

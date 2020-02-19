@@ -56,6 +56,7 @@ namespace osgEarth { namespace REX
         LayerExtentVector* _layerExtents;
         bool _isSpy;
         std::vector<PatchLayer*> _patchLayers;
+        bool _acceptSurfaceNodes;
 
         unsigned _numberChildrenCreated;        bool _acceptSurfaceNodes;
 

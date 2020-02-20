@@ -165,7 +165,9 @@ namespace osgEarth
                 const FeatureProfile*     profile,
                 const Query&              query,
                 const FeatureFilterChain* filters,
-                ProgressCallback*         progress);
+                ProgressCallback*         progress,
+                bool                      rewindPolygons
+                );
 
             //! Create a feature cursor that will just iterate over
             //! the results in a prepopulated result set.
@@ -195,6 +197,7 @@ namespace osgEarth
             osg::ref_ptr<Feature> _lastFeatureReturned;
             osg::ref_ptr<const FeatureFilterChain> _filters;
             bool _resultSetEndReached;
+            bool _rewindPolygons;
 
         private:
             void readChunk();

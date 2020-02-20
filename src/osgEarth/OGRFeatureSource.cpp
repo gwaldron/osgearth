@@ -92,7 +92,9 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(OGRDataSourceH              dsHandle,
                                         const FeatureProfile*       profile,
                                         const Query&                query,
                                         const FeatureFilterChain*   filters,
-                                        ProgressCallback*           progress) :
+                                        ProgressCallback*           progress,
+                                        bool                        rewindPolygons
+                                        ) :
 FeatureCursor     ( progress ),
 _source           ( source ),
 _dsHandle         ( dsHandle ),
@@ -104,7 +106,8 @@ _chunkSize        ( 500 ),
 _nextHandleToQueue( 0L ),
 _resultSetEndReached(false),
 _profile          ( profile ),
-_filters          ( filters )
+_filters          ( filters ),
+_rewindPolygons   (rewindPolygons)
 {
     {
         OGR_SCOPED_LOCK;
@@ -290,7 +293,7 @@ OGR::OGRFeatureCursor::readChunk()
                     OGR_F_SetGeometry(handle, intersection);
                 }
                 */
-                osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get() );
+                osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get(), _rewindPolygons);
 
                 if (feature.valid())
                 {
@@ -828,7 +831,9 @@ OGRFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
                 getFeatureProfile(),
                 newQuery,
                 getFilters(),
-                progress);
+                progress,
+                *_options->rewindPolygons()
+                );
         }
         else
         {
@@ -881,7 +886,7 @@ OGRFeatureSource::getFeature(FeatureID fid)
         OGRFeatureH handle = OGR_L_GetFeature(_layerHandle, fid);
         if (handle)
         {
-            result = OgrUtils::createFeature(handle, getFeatureProfile());
+            result = OgrUtils::createFeature(handle, getFeatureProfile(), *_options->rewindPolygons());
             OGR_F_Destroy(handle);
         }
     }
@@ -982,7 +987,7 @@ OGRFeatureSource::getGeometryType() const
 Geometry*
 OGRFeatureSource::parseGeometry(const Config& geomConf)
 {
-    return GeometryUtils::geometryFromWKT(geomConf.value());
+    return GeometryUtils::geometryFromWKT(geomConf.value(), *_options->rewindPolygons());
 }
 
 // read the WKT geometry from a URL, then parse into a Geometry.

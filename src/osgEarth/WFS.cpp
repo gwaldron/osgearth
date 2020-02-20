@@ -381,7 +381,7 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
         {
             if (feat_handle)
             {
-                osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, getFeatureProfile());
+                osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, getFeatureProfile(), *_options->rewindPolygons());
                 if (f.valid() && !isBlacklisted(f->getFID()))
                 {
                     features.push_back(f.release());

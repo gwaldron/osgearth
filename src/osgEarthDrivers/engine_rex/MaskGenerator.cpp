@@ -96,6 +96,25 @@ namespace
     };
 }
 
+// Use our own high-performance (hah!) tests for point-in-polygon
+
+class FastDelaunayConstraint : public osgUtil::DelaunayConstraint
+{
+public:
+    bool contains(const osg::Vec3 &testpoint) const;
+    bool outside(const osg::Vec3 &testpoint) const;
+};
+
+bool FastDelaunayConstraint::contains(const osg::Vec3 &testpoint) const
+{
+    return pointInPoly2d(testpoint, this, MATCH_TOLERANCE);
+}
+
+bool FastDelaunayConstraint::outside(const osg::Vec3 &testpoint) const
+{
+    return !pointInPoly2d(testpoint, this, MATCH_TOLERANCE);
+}
+
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map) :
     _key( key ), _tileSize(tileSize), _ndcMin(DBL_MAX, DBL_MAX, DBL_MAX), _ndcMax(-DBL_MAX, -DBL_MAX, -DBL_MAX),
     _tileLength(static_cast<double>(tileSize) - 1.0)
@@ -280,7 +299,7 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
 
     std::set<osg::Vec3d, less_2d> boundaryVerts;
 
-    osg::ref_ptr<osgUtil::DelaunayConstraint> dc = new osgUtil::DelaunayConstraint();
+    osg::ref_ptr<FastDelaunayConstraint> dc = new FastDelaunayConstraint();
     osg::Vec3Array* constraintVerts = new osg::Vec3Array();
     dc->setVertexArray(constraintVerts);
 

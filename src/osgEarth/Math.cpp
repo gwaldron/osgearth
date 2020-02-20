@@ -362,3 +362,51 @@ osgEarth::pointInPoly2d(const osg::Vec3d& pt, const Polygon& polyPoints, double 
     return windingNum != 0;
 }
 
+bool
+osgEarth::pointInPoly2d(const osg::Vec3d& pt, const osg::Geometry* polyPoints, float tolerance)
+{
+    const osg::Vec3Array *vertices= dynamic_cast<const osg::Vec3Array*>(polyPoints->getVertexArray());
+    if (!vertices)
+        return false;
+    int windingNum = 0;
+    for (unsigned int ipr=0; ipr< polyPoints->getNumPrimitiveSets(); ipr++)
+    {
+        const osg::PrimitiveSet* prset = polyPoints->getPrimitiveSet(ipr);
+        if (prset->getMode()==osg::PrimitiveSet::LINE_LOOP)
+        {
+            const osg::Vec3 prev=(*vertices)[prset->index(prset->getNumIndices()-1)];
+            for (unsigned int i=0; i<prset->getNumIndices(); i++)
+            {
+                Segment2d seg = ((i == 0) ? Segment2d(prev, (*vertices)[prset->index(0)])
+                                 : Segment2d((*vertices)[prset->index(i - 1)], (*vertices)[prset->index(i)]));
+                if (seg._a.y() == seg._b.y() && fabs(pt.y() - seg._a.y()) <= tolerance)
+                {
+                    if (pt.x() < seg._a.x() || pt.x() < seg._b.x())
+                    {
+                        windingNum++;
+                    }
+                }
+                else if (seg._a.y() <= pt.y())
+                {
+                    if (seg._b.y() > pt.y())
+                    {
+                        double dist = seg.leftDistanceXY(pt);
+                        if (dist > -tolerance)
+                        {
+                            windingNum++;
+                        }
+                    }
+                }
+                else if (seg._b.y() <= pt.y())
+                {
+                    double dist = seg.leftDistanceXY(pt);
+                    if (dist < tolerance)
+                    {
+                        windingNum--;
+                    }
+                }
+            }
+        }
+    }
+    return windingNum != 0;
+}

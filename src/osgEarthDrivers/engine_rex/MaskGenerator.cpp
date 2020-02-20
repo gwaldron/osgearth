@@ -18,6 +18,7 @@
 */
 #include "MaskGenerator"
 
+#include <osgEarth/Array>
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
@@ -163,6 +164,17 @@ MaskGenerator::setupMaskRecord(osg::Vec3dArray* boundary)
     }
 }
 
+void MaskGenerator::patchIndicesFromBounds(const osg::Vec3d& ndcMin, const osg::Vec3d& ndcMax,
+                                           int& minX, int& minY, int& maxX, int& maxY)
+{
+    // Figure out the indices representing the area we need to "cut out"
+    // of the tile to accommadate the mask:
+    minX = static_cast<int>(floor(clamp(ndcMin.x(), 0.0, 1.0) * _tileLength));
+    minY = static_cast<int>(floor(clamp(ndcMin.y(), 0.0, 1.0) * _tileLength));
+    maxX = static_cast<int>(ceil(clamp(ndcMax.x(), 0.0, 1.0) * _tileLength));
+    maxY = static_cast<int>(ceil(clamp(ndcMax.y(), 0.0, 1.0) * _tileLength));
+}
+
 MaskGenerator::Result
 MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCoords, 
                                     osg::Vec3Array* normals, osg::Vec3Array* neighbors,
@@ -226,6 +238,13 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
     int num_i = max_i - min_i + 1;
     int num_j = max_j - min_j + 1;
 
+    // Ndc coordinates can be easily computed from indices into the
+    // patch. So, for the points that come from the patch grid,
+    // calculate their coordinates based on the indices and keep track
+    // of whether or not they should be included in the triangulated
+    // points.
+    Array::Matrix<bool> coordsStorage(num_j, num_i, true);
+    Array::View<bool> coords(coordsStorage, -min_j, -min_i, _tileSize, _tileSize);
     osg::ref_ptr<Polygon> patchPoly = new Polygon();
     patchPoly->resize(num_i * 2 + num_j * 2 - 4);
 
@@ -259,20 +278,6 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
         }
     }
 
-    // create a grid of points making up the inside of the patch polygon.
-    for (int j = 0; j < num_j; j++)
-    {
-        for (int i = 0; i < num_i; i++)
-        {
-            {
-                osg::Vec3d ndc( ((double)(i + min_i))/_tileLength, ((double)(j+min_j))/_tileLength, 0.0);
-                coordsArray->push_back(ndc) ;
-            }						
-        }
-    }
-
-    double patchArea = patchPoly->getSignedArea2D();
-
     std::set<osg::Vec3d, less_2d> boundaryVerts;
 
     osg::ref_ptr<osgUtil::DelaunayConstraint> dc = new osgUtil::DelaunayConstraint();
@@ -283,29 +288,29 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
     for (MaskRecordVector::iterator mr = _maskRecords.begin();mr != _maskRecords.end();mr++)
     {
         //Create local polygon representing mask
-        osg::ref_ptr<Polygon> boundaryPoly = new Polygon();
-        boundaryPoly->reserve(mr->_boundary->size());
+        mr->_boundaryPoly = new Polygon();
+        mr->_boundaryPoly->reserve(mr->_boundary->size());
         for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
         {
             osg::Vec3d local;
             geoLocator.mapToUnit(*it, local);
-            boundaryPoly->push_back(local);
+            mr->_boundaryPoly->push_back(local);
         }
             
         // Resample the masking polygon to closely match the resolution of the 
         // current tile grid, which will result in a better tessellation.
         // Ideally we would do this after cropping, but that is causing some
         // triangulation errors. TODO -gw
-        if (!boundaryPoly->empty())
+        if (!mr->_boundaryPoly->empty())
         {
             const double interval = 1.0 / double(_tileSize-1);
-            resample(boundaryPoly.get(), interval);
+            resample(mr->_boundaryPoly.get(), interval);
         }
 
         // Crop the boundary to the patch polygon (i.e. the bounding box)
         // for case where mask crosses tile edges
         osg::ref_ptr<Geometry> boundaryPolyCroppedToTile;
-        boundaryPoly->crop(patchPoly.get(), boundaryPolyCroppedToTile);
+        mr->_boundaryPoly->crop(patchPoly.get(), boundaryPolyCroppedToTile);
 
         // See the comment for the call to resample above. -gw
         //if (boundaryPolyCroppedToTile.valid() && !boundaryPolyCroppedToTile->empty())
@@ -350,22 +355,16 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
                     zSet += 1;
 
                     // Remove duplicate point from coordsArray to avoid duplicate point warnings
-                    osg::Vec3Array::iterator caIt;
-                    for (caIt = coordsArray->begin(); caIt != coordsArray->end(); ++caIt)
-                    {
-                        if (EQUIVALENT_2D(caIt, it))
-                            break;
-                    }
-                    if (caIt != coordsArray->end())
-                        coordsArray->erase(caIt);
-
+                    int ix = static_cast<int>(round(mit->x() * _tileLength));
+                    int iy = static_cast<int>(round(mit->y() * _tileLength));
+                    coords(iy, ix) = false;
                     break;
                 }
             }
 
             // Search the original uncropped boundary polygon for matching points,
             // and build a set of boundary vertices.
-            for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
+            for (Polygon::iterator mit = mr->_boundaryPoly->begin(); mit != mr->_boundaryPoly->end(); ++mit)
             {
                 if (EQUIVALENT_2D(mit, it))
                 {
@@ -396,10 +395,10 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
                 osg::Vec3d p2 = *it;
                 double closestZ = 0.0;
                 double closestRatio = DBL_MAX;
-                for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
+                for (Polygon::iterator mit = mr->_boundaryPoly->begin(); mit != mr->_boundaryPoly->end(); ++mit)
                 {
                     osg::Vec3d p1 = *mit;
-                    osg::Vec3d p3 = mit == --boundaryPoly->end() ? boundaryPoly->front() : (*(mit + 1));
+                    osg::Vec3d p3 = mit == --mr->_boundaryPoly->end() ? mr->_boundaryPoly->front() : (*(mit + 1));
 
                     //Truncated vales to compensate for accuracy issues
                     double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
@@ -463,6 +462,22 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
 
             count++;
         }
+        // Any grid points that are inside this mask poly should be
+        // eliminated too.
+        int minX, minY, maxX, maxY;
+        patchIndicesFromBounds(mr->_ndcMin, mr->_ndcMax, minX, minY, maxX, maxY);
+        const double scale = 1.0 / _tileLength;
+        for (int j = minY; j <= maxY; ++j)
+        {
+            for (int i = minX; i <= maxX; ++i)
+            {
+                if (coords(j, i))
+                {
+                    osg::Vec3d gridPt(i * scale, j * scale, 0.0);
+                    coords(j, i) = !pointInPoly2d(gridPt, *mr->_boundaryPoly, MATCH_TOLERANCE);
+                }
+            }
+        }
     }
 
     // If we collected no constraints, that means the boundary geometry
@@ -470,6 +485,18 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
     if (constraintVerts->empty())
     {
         return R_BOUNDARY_DOES_NOT_INTERSECT_TILE;
+    }
+    // XXX
+    const double scale = 1.0 / _tileLength;
+    for (int j = min_j; j <= max_j; ++j)
+    {
+        for (int i = min_i; i <= max_i; ++i)
+        {
+            if (coords(j, i))
+            {
+                coordsArray->push_back(osg::Vec3d(i * scale, j * scale, 0.0));
+            }
+        }
     }
 
     // Set up a triangulator with the patch coordinates:
@@ -487,7 +514,7 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
     // Remove any triangles interior to the boundaries.
     // Note: an alternative here would be to flatten them all to a common height -gw
     trig->removeInternalTriangles(dc.get());
-        
+
     // Now build the new geometry.
     const osg::Vec3Array* trigPoints = trig->getInputPointArray();
 

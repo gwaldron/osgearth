@@ -21,17 +21,10 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
-#include <osgEarth/OGRFeatureSource>
-#include <osgEarth/FeatureCursor>
-#include <osgEarth/ResampleFilter>
-#include <osgEarth/FeatureNode>
-#include <osgEarth/StyleSheet>
-#include <osgEarth/LineDrawable>
-#include <osgEarth/LabelNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/WriteFile>
-#include <osg/CoordinateSystemNode>
+#include <osgDB/Registry>
 #include <osgUtil/IncrementalCompileOperation>
 #include <osg/ShapeDrawable>
 #include <osg/PolygonMode>
@@ -992,6 +985,7 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     _showBoundingVolumes(false),
     _showColorPerTile(false)
 {
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
     if (c)
     {        
@@ -1088,11 +1082,7 @@ void ThreeDTilesetNode::touchTile(osg::Node* node)
     }
 }
 
-void ThreeDTilesetNode::startCull()
-{
-}
-
-void ThreeDTilesetNode::endCull()
+void ThreeDTilesetNode::expireTiles()
 {
     OE_PROFILING_ZONE;
 
@@ -1144,23 +1134,16 @@ void ThreeDTilesetNode::endCull()
     // Erase the sentry and stick it at the end of the list
     _tracker.erase(_sentryItr);
     _tracker.push_back(0);    
-    _sentryItr = --_tracker.end();    
-
-    endTime = osg::Timer::instance()->tick();
+    _sentryItr = --_tracker.end();
 }
 
 void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        startCull();
-        osg::MatrixTransform::traverse(nv);
-        endCull();
+        expireTiles();
     }
-    else
-    {
-        osg::MatrixTransform::traverse(nv);
-    }
+    osg::MatrixTransform::traverse(nv);
 }
 
 ThreeDTilesetContentNode::ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNode, Tileset* tileset, osgDB::Options* options) :

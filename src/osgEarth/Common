@@ -79,6 +79,8 @@ namespace osgEarth
 // FINAL keyword for C++11
 #ifdef OSGEARTH_CXX11
 #define OSGEARTH_FINAL final
+#else
+#define OSGEARTH_FINAL
 #endif
 
 #endif // OSGEARTH_COMMON_H

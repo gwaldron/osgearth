@@ -130,7 +130,7 @@ namespace osgEarth { namespace Util
         inline iterator begin() { return _container.begin(); }
         inline iterator end() { return _container.end(); }
 
-        inline std::pair<vector_set<DATA>::const_iterator, bool> insert(const DATA& data) {
+        inline std::pair<typename vector_set<DATA>::const_iterator, bool> insert(const DATA& data) {
             const_iterator i = find(data);
             if (i != end()) {
                 return std::make_pair(i, false);

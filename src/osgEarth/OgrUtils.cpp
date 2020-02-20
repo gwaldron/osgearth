@@ -204,7 +204,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
     case wkbMultiPointZM:
 #endif
         numGeoms = OGR_G_GetGeometryCount(geomHandle);
-        output = new PointSet(numPoints);
+        output = new PointSet();
         for (int n = 0; n < numGeoms; n++)
         {
             OGRGeometryH subGeomRef = OGR_G_GetGeometryRef(geomHandle, n);

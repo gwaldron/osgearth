@@ -427,7 +427,6 @@ randomColor()
     return osg::Vec4(r, g, b, 1.0f);
 }
 
-
 ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool immediateLoad, osgDB::Options* options) :
     _tileset(tileset),
     _tile(tile),
@@ -666,6 +665,7 @@ namespace
                                     {
                                         _compileSet->_compileCompletedCallback = NULL;
                                         ico->remove(_compileSet.get());
+                                        _compileSet = 0;
                                         break;
                                     }
                                 }
@@ -679,6 +679,8 @@ namespace
 
         bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
         {
+            // Clear the _compileSet to avoid keeping a circular reference to the content.
+            _compileSet = 0;
             // release the wait.
             _block.set();
             return true;
@@ -768,15 +770,20 @@ double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
 
 bool ThreeDTileNode::unloadContent()
 {
-    if (_content)
+    if (_content.valid())
     {
-        // Don't unload the content of tiles that were loaded immediately.
+        // Don't unload the content of tiles that were loaded immediately.  This shouldn't be called as they aren't tracked, but just in case.
         if (_immediateLoad)
         {
             return false;
         }
 
-        releaseGLObjects(0);
+        //releaseGLObjects(0);
+        if (_content.valid())
+        {
+            _content->releaseGLObjects();
+            _content = 0;
+        }
         _firstVisit = true;
         _content = 0;
         _requestedContent = false;
@@ -812,11 +819,17 @@ void ThreeDTileNode::releaseGLObjects(osg::State* state) const
     {
         _children->releaseGLObjects(state);
     }
+
+    if (_boundsDebug.valid())
+    {
+        _boundsDebug->releaseGLObjects(state);
+    }
 }
 
 void ThreeDTileNode::updateTracking()
 {
-    if (_content.valid())
+    // Update tracking if this node wasn't immediately loaded.  Tiles that were immediately loaded are expected to be tracked by their parent.
+    if (_content.valid() && !_immediateLoad)
     {
         _tileset->touchTile(this);
     }

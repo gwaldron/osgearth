@@ -26,6 +26,7 @@
 #include <osg/Vec3>
 #include <osg/BoundingBox>
 #include <osg/Array>
+#include <osg/Geometry>
 
 namespace osgEarth
 {
@@ -195,7 +196,8 @@ namespace osgEarth
     OSGEARTH_EXPORT osg::BoundingBoxd polygonBBox2d(const osg::Vec3dArray& points);
     OSGEARTH_EXPORT bool pointInPoly2d(const osg::Vec3d& pt, const Polygon& polyPoints,
                                        double tolerance = 0.0);
-
+    OSGEARTH_EXPORT bool pointInPoly2d(const osg::Vec3d& pt, const osg::Geometry* polyPoints,
+                                       float tolerance = 0.0f);
     template<class T>
     const T& clamp(const T& v, const T& lo, const T& hi)
     {

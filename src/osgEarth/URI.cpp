@@ -104,6 +104,7 @@ namespace
                             {
                                 _compileSet->_compileCompletedCallback = NULL;
                                 ico->remove(_compileSet.get());
+                                _compileSet = 0;
                                 break;
                             }                                                        
                         }
@@ -117,6 +118,8 @@ namespace
 
         bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
         {
+            // Clear the _compileSet to avoid keeping a circular reference to the content.
+            _compileSet = 0;
             // release the wait.
             _block.set();
             return true;

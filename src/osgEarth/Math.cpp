@@ -315,3 +315,50 @@ osgEarth::polygonBBox2d(const osg::Vec3dArray& points)
     }
     return result;
 }
+
+// Winding number test; see http://geomalgorithms.com/a03-_inclusion.html
+bool
+osgEarth::pointInPoly2d(const osg::Vec3d& pt, const Polygon& polyPoints, double tolerance)
+{
+    int windingNum = 0;
+
+    for (osg::Vec3dArray::const_iterator itr = polyPoints.begin(); itr != polyPoints.end(); ++itr)
+    {
+        Segment2d seg = (itr + 1 == polyPoints.end()
+                         ? Segment2d(*itr, polyPoints.front())
+                         : Segment2d(*itr, *(itr + 1)));
+        // if the segment is horizontal, then the "is left" test
+        // isn't meaningful. We count the point as in if it's on or
+        // to the left of the segment.
+
+
+        if (seg._a.y() == seg._b.y() && fabs(pt.y() - seg._a.y()) <= tolerance)
+        {
+            if (pt.x() < seg._a.x() || pt.x() < seg._b.x())
+            {
+                windingNum++;
+            }
+        }
+        else if (seg._a.y() <= pt.y())
+        {
+            if (seg._b.y() > pt.y())
+            {
+                double dist = seg.leftDistanceXY(pt);
+                if (dist > -tolerance)
+                {
+                    windingNum++;
+                }
+            }
+        }
+        else if (seg._b.y() <= pt.y())
+        {
+                double dist = seg.leftDistanceXY(pt);
+                if (dist < tolerance)
+                {
+                    windingNum--;
+                }
+        }
+    }
+    return windingNum != 0;
+}
+

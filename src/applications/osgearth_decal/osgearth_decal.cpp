@@ -29,6 +29,7 @@
 #include <osgEarth/DecalLayer>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Random>
 #include <osgDB/ReadFile>
 #include <iostream>
 
@@ -41,7 +42,7 @@ using namespace osgEarth::Contrib;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -62,11 +63,13 @@ struct App
     osg::ref_ptr<osg::Image> _landCover;
     std::stack<std::string> _undoStack;
     unsigned _idGenerator;
+    unsigned _decalsPerClick;
+    std::vector<const Layer*> _layersToRefresh;
 
     App()
     {
         _image = osgDB::readRefImageFile("../data/burn.png");
-        if ( !_image.valid())
+        if (!_image.valid())
         {
             OE_WARN << "Failed to load decal image!" << std::endl;
             return;
@@ -76,6 +79,7 @@ struct App
         _minLevel = 11u;
         _maxDataLevel = 18u; // must be >= other land cover layers!
         _size = 0.0f;
+        _decalsPerClick = 1u;
 
         _landCover = new osg::Image();
         _landCover->allocateImage(_image->s(), _image->t(), 1, GL_RED, GL_FLOAT);
@@ -88,21 +92,21 @@ struct App
 
         osg::Vec4 value;
 
-        for(unsigned t=0; t<_image->t(); ++t)
+        for (unsigned t = 0; t < _image->t(); ++t)
         {
-            for(unsigned s=0; s<_image->s(); ++s)
+            for (unsigned s = 0; s < _image->s(); ++s)
             {
                 read(value, s, t);
-                float code = value.a() > 0.2? 7.0 : NO_DATA_VALUE;
-                value.set(code,code,code,code);
+                float code = value.a() > 0.2 ? 7.0 : NO_DATA_VALUE;
+                value.set(code, code, code, code);
                 write(value, s, t);
             }
         }
-        
+
     }
 
     void init(MapNode* mapNode)
-    {        
+    {
         _mapNode = mapNode;
 
         // By default, decal layers will NOT cache. Here we are setting up a policy
@@ -117,6 +121,7 @@ struct App
         _imageLayer->setMaxDataLevel(_maxDataLevel);
         _imageLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_imageLayer.get());
+        _layersToRefresh.push_back(_imageLayer.get());
 
         _elevLayer = new DecalElevationLayer();
         _elevLayer->setName("Elevation Decals");
@@ -124,6 +129,7 @@ struct App
         _elevLayer->setMaxDataLevel(_maxDataLevel);
         _elevLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_elevLayer.get());
+        _layersToRefresh.push_back(_elevLayer.get());
 
         _landCoverLayer = new DecalLandCoverLayer();
         _landCoverLayer->setName("LandCover Decals");
@@ -131,6 +137,7 @@ struct App
         _landCoverLayer->setMaxDataLevel(_maxDataLevel); // must be the same as other land cover layer(s)!
         _landCoverLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_landCoverLayer.get());
+        _layersToRefresh.push_back(_landCoverLayer.get());
     }
 
     void addDecal(const GeoExtent& extent)
@@ -141,16 +148,16 @@ struct App
         _undoStack.push(id);
 
         _imageLayer->addDecal(id, extent, _image.get());
-        _elevLayer->addDecal(id, extent, _image.get(), -_size/20.0f);
+        _elevLayer->addDecal(id, extent, _image.get(), -_size / 20.0f);
         _landCoverLayer->addDecal(id, extent, _landCover.get());
 
         // Tell the terrain engine to regenerate the effected area.
-        _mapNode->getTerrainEngine()->invalidateRegion(extent, _minLevel, _maxDataLevel);
+        _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
     }
 
-    void undoLastDecal()
+    void undoLastAdd()
     {
-        if (_undoStack.empty() == false)
+        for(int i=0; !_undoStack.empty() && i<_decalsPerClick; ++i)
         {
             std::string id = _undoStack.top();
             _undoStack.pop();
@@ -162,9 +169,17 @@ struct App
                 _elevLayer->removeDecal(id);
                 _landCoverLayer->removeDecal(id);
 
-                _mapNode->getTerrainEngine()->invalidateRegion(extent); //, _minLevel, _maxDataLevel);
+                _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
             }
         }
+    }
+
+    void reset()
+    {
+        _imageLayer->clearDecals();
+        _elevLayer->clearDecals();
+        _landCoverLayer->clearDecals();
+        _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
     }
 };
 
@@ -172,6 +187,7 @@ struct App
 struct ClickToDecal : public osgGA::GUIEventHandler
 {
     App _app;
+    Random rng;
     ClickToDecal(App& app) : _app(app) { }
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -186,27 +202,42 @@ struct ClickToDecal : public osgGA::GUIEventHandler
 
             double t = aa.asView()->getFrameStamp()->getReferenceTime();
             t = 500.0 + 250.0 * (t - (long)t);
-            
+
             mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
 
-            float d = _app._size * 0.5;
+            for (unsigned i = 0; i < _app._decalsPerClick; ++i)
+            {
+                float d = _app._size * 0.5;
 
-            GeoExtent extent(
-                mapPoint.getSRS(),
-                mapPoint.x()-d,
-                mapPoint.y()-d,
-                mapPoint.x()+d,
-                mapPoint.y()+d);
+                float offsetx = 0.0f, offsety = 0.0f;
+                if (i > 0)
+                {
+                    offsetx = 2.0*(rng.next()-0.5) * _app._size*2.0;
+                    offsety = 2.0*(rng.next()-0.5) * _app._size*2.0;
+                }
 
-            _app.addDecal(extent);
+                GeoExtent extent(
+                    mapPoint.getSRS(),
+                    offsetx + mapPoint.x() - d,
+                    offsety + mapPoint.y() - d,
+                    offsetx + mapPoint.x() + d,
+                    offsety + mapPoint.y() + d);
+
+                _app.addDecal(extent);
+            }
 
             return true;
         }
 
         else if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'u')
         {
-            _app.undoLastDecal();
+            _app.undoLastAdd();
+            return true;
+        }
 
+        else if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'c')
+        {
+            _app.reset();
             return true;
         }
 
@@ -217,32 +248,40 @@ struct ClickToDecal : public osgGA::GUIEventHandler
 int
 main(int argc, char** argv)
 {
-    osg::ArgumentParser arguments(&argc,argv);
+    osg::ArgumentParser arguments(&argc, argv);
 
     // help?
-    if ( arguments.read("--help") )
+    if (arguments.read("--help"))
         return usage(argv[0]);
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
-    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
+    viewer.setCameraManipulator(new EarthManipulator(arguments));
 
     App app;
 
     app._size = 250.0f;
     arguments.read("--size", app._size);
 
+    app._decalsPerClick = 1u;
+    arguments.read("--count", app._decalsPerClick);
+
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if ( node )
+    if (node)
     {
-        viewer.setSceneData( node );
+        viewer.setSceneData(node);
 
         app.init(MapNode::get(node));
         viewer.addEventHandler(new ClickToDecal(app));
-        OE_WARN << LC << "\n\n-- Zoom in close ...\n-- Press 'd' to drop the bomb\n-- Press 'u' to undo\n" << std::endl;
+        OE_WARN << LC << 
+            "\n\n-- Zoom in close ..."
+            "\n-- Press 'd' to drop bombs"
+            "\n-- Press 'u' to undo last drop"
+            "\n-- Press 'c' to start over"
+            << std::endl;
 
         return viewer.run();
     }

@@ -150,6 +150,10 @@ namespace osgEarth { namespace Util
             return _container.end();
         }
 
+        inline bool contains(const DATA& data) const {
+            return find(data) != _container.end();
+        }
+
         inline bool empty() const { return _container.empty(); }
 
         inline void clear() { _container.clear(); }

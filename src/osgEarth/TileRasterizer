@@ -92,6 +92,7 @@ namespace osgEarth
         mutable JobQueue _pendingJobs;  // queue for jobs waiting to render
         mutable JobQueue _readbackJobs; // queue for jobs waiting for rtt/glReadPixels to finish
         mutable JobQueue _finishedJobs; // queue for jobs waiting for the promise to resolve
+        unsigned _frameLastUpdated;
 
         //osg::ref_ptr<osg::Uniform> _distortionU;
         mutable osg::buffered_object<GLuint> _samplesQuery;

@@ -66,15 +66,11 @@ namespace osgEarth { namespace REX
             /** Invoke the operation - not safe to alter the graph */
             virtual void invoke(ProgressCallback*) { }
 
-            /** Apply the results of the invoke operation - runs safely in update stage */
-            virtual void apply(const osg::FrameStamp*) { }
+            /** Apply the results of the invoke operation - runs safely in update stage.
+                If this returns false, the request needs to be rerun. */
+            virtual bool apply(const osg::FrameStamp*) { return true; }
 
-            /** Request apply() should call this to mark a node as "changed" */
-            void addToChangeSet(osg::Node* Node);
-            
-            /** Loader calls this to process and reset the change set */
-            ChangeSet& getChangeSet() { return _nodesChanged; }
-
+            //! Comparison for sorting
             bool operator()(const Request& lhs, const Request& rhs) const {
                 return lhs._uid < rhs._uid;
             }
@@ -212,9 +208,8 @@ namespace osgEarth { namespace REX
 
     protected:
         
-        void processChangeSet(Loader::Request* req);
-
-        typedef std::map<UID, osg::ref_ptr<Loader::Request> > Requests;
+        typedef UnorderedMap<UID, osg::ref_ptr<Loader::Request> > UnsafeRequestMap;
+        typedef Threading::Lockable<UnsafeRequestMap> Requests;
 
         typedef osg::ref_ptr<Loader::Request> RefRequest;
 
@@ -224,22 +219,20 @@ namespace osgEarth { namespace REX
             }
         };
 
-        //typedef std::set<RefRequest, SortRequest> MergeQueue;
         typedef std::multiset<RefRequest, SortRequest> MergeQueue;
 
-        //UID              _engineUID;
         osg::NodePath    _myNodePath;
         Requests         _requests;
         MergeQueue       _mergeQueue;  
         osg::Timer_t     _checkpoint;
         int              _mergesPerFrame;
         unsigned         _frameNumber;
+        unsigned         _frameLastUpdated;
         unsigned         _numLODs;
         float            _priorityScales[64];
         float            _priorityOffsets[64];
 
         osg::ref_ptr<osgDB::Options> _dboptions;
-        mutable Threading::Mutex     _requestsMutex;
     };
 
 } }

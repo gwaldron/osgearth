@@ -57,6 +57,9 @@ namespace osgEarth { namespace Contrib
         //! Extent covered by the decal with the given ID.
         const GeoExtent& getDecalExtent(const std::string& id) const;
 
+        //! Removes all decals
+        void clearDecals();
+
     public: // ImageLayer
 
         //! Creates an image for a tile key
@@ -110,6 +113,9 @@ namespace osgEarth { namespace Contrib
         //! Extent covered by the decal with the given ID.
         const GeoExtent& getDecalExtent(const std::string& id) const;
 
+        //! Removes all decals
+        void clearDecals();
+
     public: // ElevationLayer
 
         //! Creates an image for a tile key
@@ -159,6 +165,9 @@ namespace osgEarth { namespace Contrib
 
         //! Extent covered by the decal with the given ID.
         const GeoExtent& getDecalExtent(const std::string& id) const;
+
+        //! Removes all decals
+        void clearDecals();
 
     public: // ImageLayer
 

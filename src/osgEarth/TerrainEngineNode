@@ -69,16 +69,16 @@ namespace osgEarth
          * Creates a new data model for a terrain tile, calling any registered
          * CreateTileModelCallbacks before returning the new object.
          *
-         * @param frame  Map frame from which to create the new tile model
-         * @param key    Key for which to create the new tile model
-         * @param layers UIDs of layers to fetch data for; NULL => all layers
+         * @param frame    Map frame from which to create the new tile model
+         * @param key      Key for which to create the new tile model
+         * @param manifest UIDs of layers to fetch data for; empty => all layers
          * @param progress Optional progress/stats tracking callback
          */
         virtual TerrainTileModel* createTileModel(
-            const Map*                   map,
-            const TileKey&               key,
-            const CreateTileModelFilter& filter,
-            ProgressCallback*            progress ) =0;
+            const Map* map,
+            const TileKey& key,
+            const CreateTileManifest& manifest,
+            ProgressCallback* progress ) =0;
     };
 
 
@@ -120,32 +120,33 @@ namespace osgEarth
         void removeEffect( TerrainEffect* effect );
 
         //! Marks the terrain tiles intersecting the provied extent as invalid
-        virtual void invalidateRegion(
-            const GeoExtent& extent,
-            unsigned         minLevel,
-            unsigned         maxLevel) { }
-
-        //! Marks the terrain tiles intersecting the provied extent as invalid
-        void invalidateRegion(const GeoExtent& extent)
-        {
-            invalidateRegion(extent, 0u, INT_MAX);
+        void invalidateRegion(const GeoExtent& extent) {
+            invalidateRegion(extent, 0, INT_MAX);
         }
 
-        //! Marks the terrain intersecting the provided extent in the provided Layer as invalid.
-        //! Pass in an invalid extent (GeoExtent::INVALID) to invalidate the entire layer.
-        virtual void invalidateLayerRegion(
-            const Layer* layer,
+        void invalidateRegion(const GeoExtent& extent, unsigned minLevel) {
+            invalidateRegion(extent, minLevel, INT_MAX);
+        }
+
+        virtual void invalidateRegion(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel)
+        {
+            //NOP by default
+        }
+
+        virtual void invalidateRegion(
+            const std::vector<const Layer*> layers,
             const GeoExtent& extent,
             unsigned minLevel,
-            unsigned maxLevel) { }
+            unsigned maxLevel)
+        {
+            //NOP by default
+        }
 
-        //! Marks a geographic portion of a specific layer as invalid for all levels of detail.
-        //! Pass in an invalid extent (GeoExtent::INVALID) to invalidate the entire layer.
-        void invalidateLayerRegion(
-            const Layer* layer,
+        void invalidateRegion(
+            const std::vector<const Layer*> layers,
             const GeoExtent& extent) 
         {
-            invalidateLayerRegion(layer, extent, 0, INT_MAX);
+            invalidateRegion(layers, extent, 0, INT_MAX);
         }
 
         /** Access the stateset used to render the terrain. */
@@ -173,10 +174,10 @@ namespace osgEarth
     public: // TerrainEngine
 
         TerrainTileModel* createTileModel(
-            const Map*                   map,
-            const TileKey&               key,
-            const CreateTileModelFilter& filter,
-            ProgressCallback*            progress);
+            const Map* map,
+            const TileKey& key,
+            const CreateTileManifest& manifest,
+            ProgressCallback* progress );
 
     public:
 

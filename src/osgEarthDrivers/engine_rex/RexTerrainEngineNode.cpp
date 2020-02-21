@@ -71,28 +71,16 @@ namespace
      * TileNode can update its render model and get rid of passes
      * that no longer exist.
      */
-    struct UpdateRenderModels : public osg::NodeVisitor
+    struct PurgeOrphanedLayers : public osg::NodeVisitor
     {
         const Map* _map;
         const RenderBindings& _bindings;
         unsigned _count;
-        bool _reload;
-        std::set<UID> _layersToLoad;
 
-        UpdateRenderModels(const Map* map, RenderBindings& bindings) : _map(map), _bindings(bindings), _count(0u), _reload(false)
+        PurgeOrphanedLayers(const Map* map, RenderBindings& bindings) : _map(map), _bindings(bindings), _count(0u)
         {
             setTraversalMode(TRAVERSE_ALL_CHILDREN);
             setNodeMaskOverride(~0);
-        }
-
-        std::set<UID>& layersToLoad()
-        {
-            return _layersToLoad;
-        }
-
-        void setReloadData(bool value)
-        {
-            _reload = value;
         }
 
         void apply(osg::Node& node)
@@ -108,6 +96,7 @@ namespace
         void apply(TileNode& tileNode)
         {
             TileRenderModel& model = tileNode.renderModel();
+
             for (int p = 0; p < model._passes.size(); ++p)
             {
                 RenderingPass& pass = model._passes[p];
@@ -126,22 +115,8 @@ namespace
             // For shared samplers we need to refresh the list if one of them
             // goes inactive (as is the case when removing a shared layer)
             tileNode.refreshSharedSamplers(_bindings);
-
-            // todo. Might be better to use a Revision here though.
-            if (_reload)
-            {
-                tileNode.refreshLayers();
-                //tileNode.setDirty(true);
-            }
-
-            else if (!_layersToLoad.empty())
-            {
-                tileNode.refreshLayers(_layersToLoad);
-            }
-
         }
     };
-
 }
 
 //------------------------------------------------------------------------
@@ -154,7 +129,8 @@ _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),
 _renderModelUpdateRequired( false ),
 _rasterizer(0L),
-_morphTerrainSupported(true)
+_morphTerrainSupported(true),
+_frameLastUpdated(0u)
 {
     // Necessary for pager object data
     this->setName("osgEarth.RexTerrainEngineNode");
@@ -403,16 +379,24 @@ RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
             extent.transform(this->getMap()->getSRS(), extentLocal);
         }
 
-        std::set<UID> layers;
-        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, layers);
+        // Add the entire map to the manifest :)
+        CreateTileManifest manifest;
+        LayerVector layers;
+        _map->getLayers(layers);
+        for(LayerVector::const_iterator i=layers.begin(); i != layers.end(); ++i)
+        {
+            manifest.insert(i->get());
+        }
+
+        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, manifest);
     }
 }
 
 void
-RexTerrainEngineNode::invalidateLayerRegion(const Layer* layer,
-                                            const GeoExtent& extent,
-                                            unsigned minLevel,
-                                            unsigned maxLevel)
+RexTerrainEngineNode::invalidateRegion(const std::vector<const Layer*> layers,
+                                       const GeoExtent& extent,
+                                       unsigned minLevel,
+                                       unsigned maxLevel)
 {
     if ( _liveTiles.valid() )
     {
@@ -423,13 +407,19 @@ RexTerrainEngineNode::invalidateLayerRegion(const Layer* layer,
             extent.transform(this->getMap()->getSRS(), extentLocal);
         }
 
-        std::set<UID> layers;
-        if (layer)
+        CreateTileManifest manifest;
+
+        for(std::vector<const Layer*>::const_iterator i = layers.begin();
+            i != layers.end();
+            ++i)
         {
-            layers.insert(layer->getUID());
+            if (*i)
+            {
+                manifest.insert(*i);
+            }
         }
 
-        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, layers);
+        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, manifest);
     }
 }
 
@@ -789,20 +779,30 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    if (_renderModelUpdateRequired)
+    bool runUpdate = false;
+    if (nv.getFrameStamp())
     {
-        UpdateRenderModels visitor(getMap(), _renderBindings);
-        _terrain->accept(visitor);
-        _renderModelUpdateRequired = false;
+        runUpdate = (_frameLastUpdated < nv.getFrameStamp()->getFrameNumber());
+        _frameLastUpdated = nv.getFrameStamp()->getFrameNumber();
     }
 
-    // Called once on the first update pass to ensure that all existing
-    // layers have their extents cached properly
-    if (_cachedLayerExtentsComputeRequired)
+    if (runUpdate)
     {
-        cacheAllLayerExtentsInMapSRS();
-        _cachedLayerExtentsComputeRequired = false;
-        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        if (_renderModelUpdateRequired)
+        {
+            PurgeOrphanedLayers visitor(getMap(), _renderBindings);
+            _terrain->accept(visitor);
+            _renderModelUpdateRequired = false;
+        }
+
+        // Called once on the first update pass to ensure that all existing
+        // layers have their extents cached properly
+        if (_cachedLayerExtentsComputeRequired)
+        {
+            cacheAllLayerExtentsInMapSRS();
+            _cachedLayerExtentsComputeRequired = false;
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
     }
 }
 
@@ -1058,16 +1058,19 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
 
         else
         {
-            // non-image tile layer. Keep track of these..
+            // non-image tile layer.
         }
 
         if (_terrain)
         {
             // Update the existing render models, and trigger a data reload.
             // Later we can limit the reload to an update of only the new data.
-            UpdateRenderModels updateModels(getMap(), _renderBindings);
-            updateModels.setReloadData(true);
-            _terrain->accept(updateModels);
+            // TODO: replace with a tnr->invalidateRegion with a manifest containing the new layer
+            //UpdateRenderModels updateModels(getMap(), _renderBindings);
+            //_terrain->accept(updateModels);
+            std::vector<const Layer*> layers;
+            layers.push_back(tileLayer);
+            invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
         }
 
         updateState();
@@ -1100,6 +1103,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
                     binding.unit() = -1;
 
                     // Request an update to reset the shared sampler in the scene graph
+                    // GW: running this anyway below (PurgeOrphanedLayers), so no need..?
                     _renderModelUpdateRequired = true;
                 }
             }
@@ -1114,7 +1118,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         // associated with the layer we just removed. This would happen
         // automatically during cull/update anyway, but it's more efficient
         // to do it all at once.
-        UpdateRenderModels updater(getMap(), _renderBindings);
+        PurgeOrphanedLayers updater(getMap(), _renderBindings);
         _terrain->accept(updater);
     }
 

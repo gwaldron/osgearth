@@ -62,15 +62,15 @@ namespace osgEarth { namespace REX
         //! Forces regeneration of tiles in the given region.
         void invalidateRegion(
             const GeoExtent& extent,
-            unsigned         minLevel,
-            unsigned         maxLevel);
+            unsigned minLevel,
+            unsigned maxLevel);
 
         //! Forces regeneration of tiles in the given region for one layer.
-        void invalidateLayerRegion(
-            const Layer*     layer,
+        void invalidateRegion(
+            const std::vector<const Layer*> layers,
             const GeoExtent& extent,
-            unsigned         minLevel,
-            unsigned         maxLevel);
+            unsigned minLevel,
+            unsigned maxLevel);
 
         //! Get the stateset used to render the terrain surface.
         osg::StateSet* getSurfaceStateSet();
@@ -183,6 +183,8 @@ namespace osgEarth { namespace REX
 
         osg::ref_ptr<osg::StateSet> _surfaceStateSet;
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
+
+        unsigned _frameLastUpdated;
     };
 
 } } // namespace osgEarth::REX

@@ -183,6 +183,8 @@ namespace osgEarth { namespace REX
 
         osg::ref_ptr<osg::StateSet> _surfaceStateSet;
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
+
+        unsigned _frameLastUpdated;
     };
 
 } } // namespace osgEarth::REX

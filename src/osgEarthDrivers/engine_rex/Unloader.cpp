@@ -33,55 +33,72 @@ UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
 _tiles(tiles),
 _cacheSize(0u),
 _maxAge(0.1),
-_maxTilesToUnloadPerFrame(~0)
+_maxTilesToUnloadPerFrame(~0),
+_frameLastUpdated(0u)
 {
-    ADJUST_EVENT_TRAV_COUNT(this, +1);
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    //ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 void
 UnloaderGroup::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
+    //if ( nv.getVisitorType() == nv.EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        OE_PROFILING_ZONE_NAMED("Expire Tiles");
+        bool runUpdate = false;
 
-        osg::Timer_t now = nv.getFrameStamp()->getReferenceTime();
-
-        unsigned count = 0u;
-
-        // Have to enforce both the time delay AND a frame delay since the frames can
-        // stop while the time rolls on (e.g., if you are dragging the window)
-        double olderThanTime = now - _maxAge;
-        unsigned olderThanFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
-
-        // Remove them from the registry:
-        _tiles->collectTheDead(olderThanTime, olderThanFrame, _maxTilesToUnloadPerFrame, _deadpool);
-
-        // Remove them from the scene graph:
-        for(std::vector<osg::observer_ptr<TileNode> >::iterator i = _deadpool.begin();
-            i != _deadpool.end();
-            ++i)
+        unsigned frameNumber = 0u;
+        if (nv.getFrameStamp())
         {
-            // may be NULL since we're removing scene graph objects as we go!
-            osg::ref_ptr<TileNode> tile = i->get();
+            frameNumber = nv.getFrameStamp()->getFrameNumber();
+            runUpdate = (_frameLastUpdated < frameNumber);
+        }
 
-            if (tile.valid() && tile->getNumParents() > 0)
+        if (runUpdate)
+        {
+            _frameLastUpdated = frameNumber;
+
+            OE_PROFILING_ZONE_NAMED("Expire Tiles");
+
+            osg::Timer_t now = nv.getFrameStamp()->getReferenceTime();
+
+            unsigned count = 0u;
+
+            // Have to enforce both the time delay AND a frame delay since the frames can
+            // stop while the time rolls on (e.g., if you are dragging the window)
+            double olderThanTime = now - _maxAge;
+            unsigned olderThanFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
+
+            // Remove them from the registry:
+            _tiles->collectTheDead(olderThanTime, olderThanFrame, _maxTilesToUnloadPerFrame, _deadpool);
+
+            // Remove them from the scene graph:
+            for(std::vector<osg::observer_ptr<TileNode> >::iterator i = _deadpool.begin();
+                i != _deadpool.end();
+                ++i)
             {
-                TileNode* parent = dynamic_cast<TileNode*>(tile->getParent(0));
-                if (parent) // && parent->areSubTilesDormant(nv.getFrameStamp()))
+                // may be NULL since we're removing scene graph objects as we go!
+                osg::ref_ptr<TileNode> tile = i->get();
+
+                if (tile.valid() && tile->getNumParents() > 0)
                 {
-                    parent->removeSubTiles();
-                    ++count;
+                    TileNode* parent = dynamic_cast<TileNode*>(tile->getParent(0));
+                    if (parent) // && parent->areSubTilesDormant(nv.getFrameStamp()))
+                    {
+                        parent->removeSubTiles();
+                        ++count;
+                    }
                 }
             }
-        }
 
-        if (_deadpool.empty() == false)
-        {
-            OE_DEBUG << "Unloaded " << count << " of " << _deadpool.size() << " expired tiles; " << _tiles->size() << " remain active." << std::endl;
-        }
+            if (_deadpool.empty() == false)
+            {
+                OE_DEBUG << "Unloaded " << count << " of " << _deadpool.size() << " expired tiles; " << _tiles->size() << " remain active." << std::endl;
+            }
 
-        _deadpool.clear();
+            _deadpool.clear();
+        }
     }
 
     osg::Group::traverse( nv );

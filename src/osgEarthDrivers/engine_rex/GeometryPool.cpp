@@ -51,6 +51,8 @@ _options ( options ),
 _enabled ( true ),
 _debug   ( false )
 {
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+
     // activate debugging mode
     if ( getenv("OSGEARTH_DEBUG_REX_GEOMETRY_POOL") != 0L )
     {
@@ -519,52 +521,31 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 void
 GeometryPool::setReleaser(ResourceReleaser* releaser)
 {
-    if (_releaser.valid())
-        ADJUST_EVENT_TRAV_COUNT(this, -1);
-
     _releaser = releaser;
-
-    if (_releaser.valid())
-        ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 
 void
 GeometryPool::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.EVENT_VISITOR && _releaser.valid() && _enabled)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR && _enabled)
     {
-        // look for usused pool objects and push them to the resource releaser.
-        ResourceReleaser::ObjectList objects;
+        Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+
+        std::vector<GeometryKey> keys;
+        for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
         {
-            Threading::ScopedMutexLock exclusive( _geometryMapMutex );
-
-            std::vector<GeometryKey> keys;
-
-            for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
+            if (i->second.get()->referenceCount() == 1)
             {
-                if (i->second.get()->referenceCount() == 1)
-                {
-                    keys.push_back(i->first);
-                    objects.push_back(i->second.get());
+                keys.push_back(i->first);
+                i->second->releaseGLObjects(NULL);
                     
-                    OE_DEBUG << "Releasing: " << i->second.get() << std::endl;
-                }
+                OE_DEBUG << "Releasing: " << i->second.get() << std::endl;
             }
-            for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)
-            {
-                if (_geometryMap[*key]->referenceCount() != 2) // one for the map, and one for the local objects list
-                    OE_WARN << LC << "Erasing key geom with refcount <> 2" << std::endl;
-
-                _geometryMap.erase(*key);
-            }
-
-            //OE_INFO << "Released " << keys.size() << ", pool = " << _geometryMap.size() << std::endl;
         }
-
-        if (!objects.empty())
+        for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)
         {
-            _releaser->push(objects);
+            _geometryMap.erase(*key);
         }
     }
 

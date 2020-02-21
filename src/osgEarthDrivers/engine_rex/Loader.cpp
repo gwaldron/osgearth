@@ -213,6 +213,7 @@ PagerLoader::PagerLoader(TerrainEngineNode* engine) :
 _checkpoint    ( (osg::Timer_t)0 ),
 _mergesPerFrame( 0 ),
 _frameNumber   ( 0 ),
+_frameLastUpdated( 0u ),
 _numLODs       ( 20u )
 {
     _myNodePath.push_back( this );
@@ -240,7 +241,8 @@ void
 PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = osg::maximum(value, 0);
-    ADJUST_EVENT_TRAV_COUNT(this, +1);
+    //ADJUST_EVENT_TRAV_COUNT(this, +1);
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
     OE_INFO << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
     
 }
@@ -346,96 +348,107 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
 {
     // only called when _mergesPerFrame > 0
     //TODO: move to update visitor so this doesn't get called as often
-    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
+    //if ( nv.getVisitorType() == nv.EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        if ( nv.getFrameStamp() )
+        bool runUpdate = false;
+
+        unsigned frameNumber = 0u;
+        if (nv.getFrameStamp())
         {
+            frameNumber = nv.getFrameStamp()->getFrameNumber();
+            runUpdate = (_frameLastUpdated < frameNumber);
             setFrameStamp(nv.getFrameStamp());
         }
 
-        // process pending merges.
+        if (runUpdate)
         {
-            OE_PROFILING_ZONE_NAMED("loader.merge");
-            int count;
-            for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
+            _frameLastUpdated = frameNumber;
+
+            // process pending merges.
             {
-                Request* req = _mergeQueue.begin()->get();
-                if ( req && req->_lastTick >= _checkpoint )
+                OE_PROFILING_ZONE_NAMED("loader.merge");
+                int count;
+                for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
                 {
-                    bool applied = req->apply( getFrameStamp() );
+                    Request* req = _mergeQueue.begin()->get();
+                    if ( req && req->_lastTick >= _checkpoint )
+                    {
+                        bool applied = req->apply( getFrameStamp() );
                     
-                    if (applied)
-                    {
-                        req->setState(Request::FINISHED);
+                        if (applied)
+                        {
+                            req->setState(Request::FINISHED);
+                        }
+                        else
+                        {
+                            // if apply() returns false, that means the results were invalid
+                            // for some reason (probably revision mismatch) and the request
+                            // must be requeued.
+                            req->setState(req->IDLE);
+                        }
                     }
-                    else
-                    {
-                        // if apply() returns false, that means the results were invalid
-                        // for some reason (probably revision mismatch) and the request
-                        // must be requeued.
-                        req->setState(req->IDLE);
-                    }
+
+                    _mergeQueue.erase( _mergeQueue.begin() );
                 }
-
-                _mergeQueue.erase( _mergeQueue.begin() );
             }
-        }
 
-        // cull finished requests.
-        {
-            OE_PROFILING_ZONE("loader.purge");
-
-            unsigned fn = 0;
-            if ( nv.getFrameStamp() )
-                fn = nv.getFrameStamp()->getFrameNumber();
-
-            _requests.lock();
-
-            // Purge expired requests.
-            for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
+            // cull finished requests.
             {
-                Request* req = i->second.get();
-                const unsigned frameDiff = fn - req->getLastFrameSubmitted();
+                OE_PROFILING_ZONE("loader.purge");
 
-                // Deal with completed requests:
-                if ( req->isFinished() )
+                unsigned fn = 0;
+                if ( nv.getFrameStamp() )
+                    fn = nv.getFrameStamp()->getFrameNumber();
+
+                _requests.lock();
+
+                // Purge expired requests.
+                for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
                 {
-                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
-                    req->setState( Request::IDLE );
-                    if ( REPORT_ACTIVITY )
-                        Registry::instance()->endActivity( req->getName() );
-                    _requests.erase( i++ );
+                    Request* req = i->second.get();
+                    const unsigned frameDiff = fn - req->getLastFrameSubmitted();
+
+                    // Deal with completed requests:
+                    if ( req->isFinished() )
+                    {
+                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
+                        req->setState( Request::IDLE );
+                        if ( REPORT_ACTIVITY )
+                            Registry::instance()->endActivity( req->getName() );
+                        _requests.erase( i++ );
+                    }
+
+                    // Discard requests that are no longer required:
+                    else if ( !req->isMerging() && frameDiff > 2 )
+                    {
+                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << frameDiff << " frames" << std::endl; 
+                        req->setState( Request::IDLE );
+                        if ( REPORT_ACTIVITY )
+                            Registry::instance()->endActivity( req->getName() );
+                        _requests.erase( i++ );
+                    }
+
+                    // Prevent a request from getting stuck in the merge queue:
+                    else if ( req->isMerging() && frameDiff > 1800 )
+                    {
+                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting " << frameDiff << " frames to merge" << std::endl; 
+                        req->setState( Request::IDLE );
+                        if ( REPORT_ACTIVITY )
+                            Registry::instance()->endActivity( req->getName() );
+                        _requests.erase( i++ );
+                    }
+
+                    else // still valid.
+                    {
+                        ++i;
+                    }
                 }
 
-                // Discard requests that are no longer required:
-                else if ( !req->isMerging() && frameDiff > 2 )
-                {
-                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << frameDiff << " frames" << std::endl; 
-                    req->setState( Request::IDLE );
-                    if ( REPORT_ACTIVITY )
-                        Registry::instance()->endActivity( req->getName() );
-                    _requests.erase( i++ );
-                }
+                _requests.unlock();
 
-                // Prevent a request from getting stuck in the merge queue:
-                else if ( req->isMerging() && frameDiff > 1800 )
-                {
-                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting " << frameDiff << " frames to merge" << std::endl; 
-                    req->setState( Request::IDLE );
-                    if ( REPORT_ACTIVITY )
-                        Registry::instance()->endActivity( req->getName() );
-                    _requests.erase( i++ );
-                }
-
-                else // still valid.
-                {
-                    ++i;
-                }
+                //OE_NOTICE << LC << "PagerLoader: requests=" << _requests.size() << "; mergeQueue=" << _mergeQueue.size() << std::endl;
             }
-
-            _requests.unlock();
-
-            //OE_NOTICE << LC << "PagerLoader: requests=" << _requests.size() << "; mergeQueue=" << _mergeQueue.size() << std::endl;
         }
     }
 

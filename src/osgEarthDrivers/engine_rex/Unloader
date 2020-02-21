@@ -71,6 +71,7 @@ namespace osgEarth { namespace REX
         TileNodeRegistry* _tiles;
         mutable Threading::Mutex _mutex;
         std::vector<osg::observer_ptr<TileNode> > _deadpool;
+        unsigned _frameLastUpdated;
     };
 
 } } // namespace osgEarth::REX

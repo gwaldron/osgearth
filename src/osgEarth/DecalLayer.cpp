@@ -146,27 +146,25 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
     return GeoImage(output.get(), outputExtent);
 }
 
-void
+bool
 DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image)
 {
-    // make sure there are no dupes
-    removeDecal(id);
+    Threading::ScopedMutexLock lock(_mutex);
 
-    // safe lock
-    {
-        Threading::ScopedMutexLock lock(_mutex);
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+        return false;
 
-        _decalList.push_back(Decal());
-        Decal& decal = _decalList.back();
-        decal._extent = extent;
-        decal._image = image;
+    _decalList.push_back(Decal());
+    Decal& decal = _decalList.back();
+    decal._extent = extent;
+    decal._image = image;
 
-        std::list<Decal>::iterator i = _decalList.end();
-        _decalIndex[id] = --i;
+    std::list<Decal>::iterator k = --_decalList.end();
 
-        // data changed so up the revsion.
-        bumpRevision();
-    }
+    // data changed so up the revsion.
+    bumpRevision();
+    return true;
 }
 
 void
@@ -325,11 +323,17 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
     return GeoHeightField(output.get(), outputExtent);
 }
 
-void
+bool
 DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float scale)
 {
     if (!extent.isValid() || !image)
-        return;
+        return false;
+
+    Threading::ScopedMutexLock lock(_mutex);
+
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+        return false;
 
     osg::HeightField* hf = new osg::HeightField();
     hf->allocate(image->s(), image->t());
@@ -347,23 +351,15 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
         }
     }
 
-    // no dupes
-    removeDecal(id);
+    _decalList.push_back(Decal());
+    Decal& decal = _decalList.back();
+    decal._heightfield = GeoHeightField(hf, extent);
 
-    // safe lock
-    {
-        Threading::ScopedMutexLock lock(_mutex);
+    _decalIndex[id] = --_decalList.end();
 
-        _decalList.push_back(Decal());
-        Decal& decal = _decalList.back();
-        decal._heightfield = GeoHeightField(hf, extent);
-
-        std::list<Decal>::iterator i = _decalList.end();
-        _decalIndex[id] = --i;
-
-        // data changed so up the revsion.
-        bumpRevision();
-    }
+    // data changed so up the revsion.
+    bumpRevision();
+    return true;
 }
 
 void
@@ -542,24 +538,25 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
     return GeoImage(output.get(), outputExtent);
 }
 
-void
+bool
 DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image)
 {
-    removeDecal(id);
-    {
-        Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(_mutex);
 
-        _decalList.push_back(Decal());
-        Decal& decal = _decalList.back();
-        decal._extent = extent;
-        decal._image = image;
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+        return false;
 
-        std::list<Decal>::iterator i = _decalList.end();
-        _decalIndex[id] = --i;
+    _decalList.push_back(Decal());
+    Decal& decal = _decalList.back();
+    decal._extent = extent;
+    decal._image = image;
 
-        // data changed so up the revsion.
-        bumpRevision();
-    }
+    _decalIndex[id] = --_decalList.end();
+
+    // data changed so up the revsion.
+    bumpRevision();
+    return true;
 }
 
 void

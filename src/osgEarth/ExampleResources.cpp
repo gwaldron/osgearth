@@ -432,8 +432,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // parse out custom example arguments first:
     bool useCoords     = args.read("--coords");
     bool showActivity  = args.read("--activity");
-    bool useLogDepth   = args.read("--logdepth");
     bool useLogDepth2  = args.read("--logdepth2");
+    bool useLogDepth   = !args.read("--nologdepth") && !useLogDepth2; //args.read("--logdepth");
     bool kmlUI         = args.read("--kmlui");
 
     std::string kmlFile;

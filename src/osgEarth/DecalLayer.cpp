@@ -160,7 +160,7 @@ DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const 
     decal._extent = extent;
     decal._image = image;
 
-    std::list<Decal>::iterator k = --_decalList.end();
+    _decalIndex[id] = --_decalList.end();
 
     // data changed so up the revsion.
     bumpRevision();
@@ -341,9 +341,9 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
     ImageUtils::PixelReader read(image);
 
     osg::Vec4 value;
-    for(unsigned row=0; row<image->t(); ++row)
+    for(unsigned row=0; row<read.t(); ++row)
     {
-        for(unsigned col=0; col<image->s(); ++col)
+        for(unsigned col=0; col<read.s(); ++col)
         {
             read(value, col, row);
             float h = value.a() * scale;

@@ -39,11 +39,21 @@ using namespace osgEarth::REX;
 Loader::Request::Request()
 {
     _uid = osgEarth::Registry::instance()->createUID();
-    _state = IDLE;
-    _loadCount = 0;
-    _priority = 0;
-    _lastFrameSubmitted = 0;
-    _lastTick = 0;
+    setState(IDLE);
+}
+
+void
+Loader::Request::setState(Loader::Request::State value)
+{
+    _state = value;
+
+    if ( _state == IDLE )
+    {
+        _loadCount = 0;
+        _priority = 0;
+        _lastFrameSubmitted = 0;
+        _lastTick = 0;
+    }
 }
 
 namespace osgEarth { namespace REX
@@ -385,7 +395,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                             // if apply() returns false, that means the results were invalid
                             // for some reason (probably revision mismatch) and the request
                             // must be requeued.
-                            req->setState(req->IDLE);
+                            req->setState(Request::IDLE);
                         }
                     }
 
@@ -407,7 +417,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                 for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
                 {
                     Request* req = i->second.get();
-                    const unsigned frameDiff = fn - req->getLastFrameSubmitted();
+                    const int frameDiff = (int)fn - (int)req->getLastFrameSubmitted();
 
                     // Deal with completed requests:
                     if ( req->isFinished() )

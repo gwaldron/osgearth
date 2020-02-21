@@ -29,37 +29,36 @@
 namespace osgEarth
 {
     class ElevationLayerVector;
+    class Map;
 
     /**
-     * Filter you can pass to TerrainTileModelFactory::createTileModel
+     * Set of layers that the TerrainTileModelFactory can use
+     * to determine what data to create for a tile. If the manifest
+     * is empty, that represents that the factory should create 
+     * data for ALL available layers. But if it contains at least
+     * one entry, the creation is limited to those entries.
      */
-    class CreateTileModelFilter
+    class OSGEARTH_EXPORT CreateTileManifest
     {
     public:
-        //! Default constructor
-        CreateTileModelFilter() { }
+        //! Request data for a layer
+        void insert(const Layer* layer);
 
-        //! Copy constructor
-        CreateTileModelFilter(const CreateTileModelFilter& rhs) :
-            _layers(rhs._layers) { }
+        //! Does the manifest exclude this layer?
+        bool excludes(const Layer* layer) const;
 
-        /** List of other layers to accept */
-        std::set<UID>& layers() { return _layers; }
-        const std::set<UID>& layers() const { return _layers; }
+        //! Is the manifest empty (meaning ALL available layers should be loaded)?
+        bool empty() const;
 
-        bool accept(const Layer* layer) const {
-            return empty() || _layers.find(layer->getUID()) != _layers.end();
-        }
+        //! Are the layers in the manifest up to date with the layers in the map?
+        bool inSyncWith(const Map*) const;
 
-        bool empty() const {
-            return _layers.empty();
-        }
+        //! Update all the manifest layers with the latest layer revisions from the map
+        void updateRevisions(const Map*);
 
-        void clear() {
-            _layers.clear();
-        }
-    protected:
-        std::set<UID> _layers;
+    private:
+        typedef vector_map<UID, int> LayerTable;
+        LayerTable _layers;
     };
 
     /**
@@ -74,16 +73,16 @@ namespace osgEarth
         /**
          * Creates a tile model and populates it with data from the map.
          *
-         * @param frame        Map frame from which to read source data
+         * @param map          Map frame from which to read source data
          * @param key          Tile key for which to create the model
-         * @param layers       Set of layer UIDs for which to fetch data; NULL => all layers
+         * @param manifest     Set of layers for which to fetch data (empty => all layers)
          * @param requirements Hints that tell the factory what types of data to add
          * @param progress     Progress tracking callback
          */
         virtual TerrainTileModel* createTileModel(
             const Map*                       map,
             const TileKey&                   key,
-            const CreateTileModelFilter&     filter,
+            const CreateTileManifest&        manifest,
             const TerrainEngineRequirements* requirements,
             ProgressCallback*                progress);
 
@@ -94,7 +93,7 @@ namespace osgEarth
         virtual TerrainTileModel* createStandaloneTileModel(
             const Map*                       map,
             const TileKey&                   key,
-            const CreateTileModelFilter&     filter,
+            const CreateTileManifest&        manifest,
             const TerrainEngineRequirements* requirements,
             ProgressCallback*                progress);
 
@@ -105,7 +104,7 @@ namespace osgEarth
             const Map*                       map,
             const TerrainEngineRequirements* reqs,
             const TileKey&                   key,
-            const CreateTileModelFilter&     filter,
+            const CreateTileManifest&        manifest,
             ProgressCallback*                progress,
             bool                             standalone);
 
@@ -127,7 +126,7 @@ namespace osgEarth
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const CreateTileModelFilter& filter,
+            const CreateTileManifest&    manifest,
             unsigned                     border,
             ProgressCallback*            progress);
 
@@ -135,7 +134,7 @@ namespace osgEarth
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const CreateTileModelFilter& filter,
+            const CreateTileManifest&    manifest,
             unsigned                     border,
             ProgressCallback*            progress);
 
@@ -143,21 +142,21 @@ namespace osgEarth
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const CreateTileModelFilter& filter,
+            const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
         virtual void addStandaloneLandCover(
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const CreateTileModelFilter& filter,
+            const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
         virtual void addPatchLayers(
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const CreateTileModelFilter& filter,
+            const CreateTileManifest&    manifest,
             ProgressCallback*            progress,
             bool                         fallback);
 

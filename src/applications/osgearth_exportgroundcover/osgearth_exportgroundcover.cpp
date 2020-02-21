@@ -128,7 +128,7 @@ struct App
     osg::ref_ptr<OGRFeatureSource> outfs;
     osg::ref_ptr<osg::Texture> noiseTexture;
     ImageUtils::PixelReader sampleNoise;
-    CreateTileModelFilter layerFilter;
+    CreateTileManifest manifest;
     TerrainTileModelFactory* factory;
 
     Threading::Lockable<std::queue<FeatureList*> > outputQueue;
@@ -207,11 +207,13 @@ struct App
         noiseTexture = noise.create(256u, 4u);
         sampleNoise.setTexture(noiseTexture.get());
 
+        // layers we're going to request
+        if (lclayer) manifest.insert(lclayer);
+        if (masklayer) manifest.insert(masklayer);
+        if (elevlayer) manifest.insert(elevlayer);
+        if (gclayer) manifest.insert(gclayer);
+
         // set up the factory
-        if (lclayer) layerFilter.layers().insert(lclayer->getUID());
-        if (masklayer)layerFilter.layers().insert(masklayer->getUID());
-        if (elevlayer) layerFilter.layers().insert(elevlayer->getUID());
-        if (gclayer) layerFilter.layers().insert(gclayer->getUID());
         factory = new TerrainTileModelFactory(const_cast<const MapNode*>(mapNode.get())->options().terrain().get());
 
         return 0;
@@ -220,7 +222,7 @@ struct App
     void exportKey(const TileKey& key)
     {
         osg::Vec4f landCover, mask, elev;
-        osg::ref_ptr<TerrainTileModel> model = factory->createStandaloneTileModel(map, key, layerFilter, NULL, NULL);
+        osg::ref_ptr<TerrainTileModel> model = factory->createStandaloneTileModel(map, key, manifest, NULL, NULL);
         if (model.valid())
         {
             FeatureList* output = new FeatureList();
@@ -241,7 +243,8 @@ struct App
                         osg::RefMatrixf* r = model->getMatrix(masklayer->getUID());
                         if (r) maskMat = *r;
                     }
-                    ImageUtils::PixelReader maskSampler(maskTex ? maskTex->getImage(0) : NULL);
+                    ImageUtils::PixelReader maskSampler;
+                    maskSampler.setTexture(maskTex);
 
                     // landcover texture/matrix:
                     osg::Texture* lcTex = NULL;

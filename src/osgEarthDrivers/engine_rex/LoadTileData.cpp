@@ -39,26 +39,15 @@ _enableCancel(true)
     _engine = context->getEngine();
 }
 
-void
-LoadTileData::setLayerFilter(const std::set<UID>& layers)
+LoadTileData::LoadTileData(const CreateTileManifest& manifest, TileNode* tilenode, EngineContext* context) :
+    _manifest(manifest),
+    _tilenode(tilenode),
+    _context(context),
+    _enableCancel(true)
 {
-    ScopedMutexLock lock(_mutex);
-    _filter.clear();
-    _filter.layers() = layers;
-}
-
-void
-LoadTileData::addLayerToFilter(const UID& layer)
-{
-    ScopedMutexLock lock(_mutex);
-    _filter.layers().insert(layer);
-}
-
-void
-LoadTileData::clearLayerFilter()
-{
-    ScopedMutexLock lock(_mutex);
-    _filter.clear();
+    this->setTileKey(tilenode->getKey());
+    _map = context->getMap();
+    _engine = context->getEngine();
 }
 
 // invoke runs in the background pager thread.
@@ -77,17 +66,11 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (!_map.lock(map))
         return;
 
-    CreateTileModelFilter filter;
-    {
-        ScopedMutexLock lock(_mutex);
-        filter = _filter;
-    }
-
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
         tilenode->getKey(),
-        filter,
+        _manifest,
         _enableCancel? progress : 0L);
 
     // if the operation was canceled, set the request to idle and delete the tile model.
@@ -103,55 +86,56 @@ LoadTileData::invoke(ProgressCallback* progress)
     {
         _dataModel->getElevationTexture()->setUnRefImageDataAfterApply(false);
     }
-
-    clearLayerFilter();
 }
 
 
 // apply() runs in the update traversal and can safely alter the scene graph
-void
+bool
 LoadTileData::apply(const osg::FrameStamp* stamp)
 {
+    // context went out of scope - bail
     osg::ref_ptr<EngineContext> context;
     if (!_context.lock(context))
-        return;
+        return true;
 
+    // map went out of scope - bail
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
-        return;
+        return true;
+
+    // tilenode went out of scope - bail
+    osg::ref_ptr<TileNode> tilenode;
+    if (!_tilenode.lock(tilenode))
+        return true;
+
+    // no data model at all - done
+    if (!_dataModel.valid())
+        return true;
 
     OE_PROFILING_ZONE;
 
-    // ensure we got an actual datamodel:
-    if (_dataModel.valid())
+    // Check the map data revision and scan the manifest and see if any
+    // revisions don't match the revisions in the original manifest.
+    // If there are mismatches, that means the map has changed since we
+    // submitted this request, and the results are now invalid.
+    if (_dataModel->getRevision() != map->getDataModelRevision() ||
+        _manifest.inSyncWith(map.get()) == false)
     {
-        // ensure it's in sync with the map revision (not out of date):
-        if (map.valid() && _dataModel->getRevision() == map->getDataModelRevision())
-        {
-            // ensure the tile node hasn't expired:
-            osg::ref_ptr<TileNode> tilenode;
-            if ( _tilenode.lock(tilenode) )
-            {
-                const RenderBindings& bindings = context->getRenderBindings();
-
-                // Merge the new data into the tile.
-                tilenode->merge(_dataModel.get(), bindings, this);
-
-                OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
-            }
-            else
-            {
-                OE_DEBUG << LC << "LoadTileData failed; TileNode disappeared\n";
-            }
-        }
-        else
-        {
-            OE_INFO << LC << "apply " << _dataModel->getKey().str() << " ignored b/c it is out of date\n";
-        }
-
-        // Delete the model immediately
+        // wipe the data model, update the revisions, and try again.
+        _manifest.updateRevisions(map.get());
         _dataModel = 0L;
+        OE_DEBUG << LC << "Request for tile " << _key.str() << " out of date and will be requeued" << std::endl;
+        return false;
     }
+
+    // Merge the new data into the tile.
+    tilenode->merge(_dataModel.get(), this);
+
+    OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
+
+    // Delete the model immediately
+    _dataModel = 0L;
+    return true;
 }
 
 namespace

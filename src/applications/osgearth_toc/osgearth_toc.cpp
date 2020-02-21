@@ -238,7 +238,9 @@ struct RefreshHandler : public ControlEventHandler
     RefreshHandler(const Layer* layer) : _layer(layer) { }
     void onClick(Control* control)
     {
-        s_mapNode->getTerrainEngine()->invalidateLayerRegion(_layer, GeoExtent::INVALID);
+        std::vector<const Layer*> layers;
+        layers.push_back(_layer);
+        s_mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent::INVALID);
     }
     const Layer* _layer;
 };

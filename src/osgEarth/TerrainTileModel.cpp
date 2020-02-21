@@ -25,7 +25,8 @@ using namespace osgEarth;
 
 //...................................................................
 
-TerrainTileLayerModel::TerrainTileLayerModel()
+TerrainTileLayerModel::TerrainTileLayerModel() :
+    _revision(-1)
 {
 }
 

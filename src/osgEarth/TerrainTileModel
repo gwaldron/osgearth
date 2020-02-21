@@ -51,6 +51,11 @@ namespace osgEarth
         void setMatrix(osg::RefMatrixf* matrix) { _matrix = matrix; }
         osg::RefMatrixf* getMatrix() const { return _matrix.get(); }
 
+        //! Revision of the source of the texture and matrix data 
+        void setRevision(int revision) { _revision = revision; }
+        int getRevision() const { return _revision; }
+
+
     public:
         TerrainTileLayerModel();
 
@@ -60,6 +65,7 @@ namespace osgEarth
         std::string                   _name;
         osg::ref_ptr<osg::Texture>    _texture;
         osg::ref_ptr<osg::RefMatrixf> _matrix;
+        int                           _revision;
     };
     typedef std::vector< osg::ref_ptr<TerrainTileLayerModel> > TerrainTileLayerModelVector;
 

@@ -426,9 +426,10 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _requestedContent(false),
     _immediateLoad(immediateLoad),
     _firstVisit(true),
-    _contentUnloaded(false),
     _options(options),
-    _trackerItrValid(false)
+    _trackerItrValid(false),
+    _lastCulledFrameNumber(0),
+    _lastCulledFrameTime(0.0f)
 {
     OE_PROFILING_ZONE;
     if (_tile->content().isSet())
@@ -763,26 +764,26 @@ double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
 
 bool ThreeDTileNode::unloadContent()
 {
+    // Don't unload the content of tiles that were loaded immediately.  This shouldn't be called as they aren't tracked, but just in case.
+    if (_immediateLoad)
+    {
+        return false;
+    }
+
     if (_content.valid())
     {
-        // Don't unload the content of tiles that were loaded immediately.  This shouldn't be called as they aren't tracked, but just in case.
-        if (_immediateLoad)
-        {
-            return false;
-        }
-
-        //releaseGLObjects(0);
         if (_content.valid())
         {
             _content->releaseGLObjects();
             _content = 0;
-        }
-        _firstVisit = true;
-        _content = 0;
-        _requestedContent = false;
-        _contentFuture = Future<osg::Node>();
-        _contentUnloaded = true;
+        }        
     }
+    
+    _firstVisit = true;
+    _content = 0;
+    _requestedContent = false;
+    _contentFuture = Future<osg::Node>();
+
     return true;
 }
 
@@ -819,12 +820,24 @@ void ThreeDTileNode::releaseGLObjects(osg::State* state) const
     }
 }
 
-void ThreeDTileNode::updateTracking()
+unsigned int ThreeDTileNode::getLastCulledFrameNumber() const
+{
+    return _lastCulledFrameNumber;
+}
+
+float ThreeDTileNode::getLastCulledFrameTime() const
+{
+    return _lastCulledFrameTime;
+}
+
+void ThreeDTileNode::updateTracking(osgUtil::CullVisitor* cv)
 {
     // Update tracking if this node wasn't immediately loaded.  Tiles that were immediately loaded are expected to be tracked by their parent.
-    if (_content.valid() && !_immediateLoad)
+    if (hasContent() && !_immediateLoad)
     {
         _tileset->touchTile(this);
+        _lastCulledFrameNumber = cv->getFrameStamp()->getFrameNumber();
+        _lastCulledFrameTime = cv->getFrameStamp()->getReferenceTime();
     }
 }
 
@@ -867,7 +880,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
         // Compute the SSE
         double error = computeScreenSpaceError(cv);
 
-        updateTracking();
+        updateTracking(cv);
 
         bool areChildrenReady = true;
         if (_children.valid())
@@ -877,7 +890,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
                 osg::ref_ptr< ThreeDTileNode > childTile = dynamic_cast<ThreeDTileNode*>(_children->getChild(i));
                 if (childTile.valid())
                 {
-                    childTile->updateTracking();
+                    childTile->updateTracking(cv);
 
                     // Can we traverse the child?
                     if (childTile->hasContent() && !childTile->isContentReady())
@@ -987,13 +1000,21 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     _maximumScreenSpaceError(15.0f),
     _maxTiles(50),
     _showBoundingVolumes(false),
-    _showColorPerTile(false)
+    _showColorPerTile(false),
+    _maxAge(5.0f),
+    _lastExpiredFrame(0)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
     if (c)
     {        
         setMaxTiles((unsigned)atoi(c));
+    }
+
+    c = ::getenv("OSGEARTH_3DTILES_MAX_AGE");
+    if (c)
+    {
+        setMaxAge((float)atof(c));
     }
 
     _tracker.push_back(0);
@@ -1018,6 +1039,16 @@ unsigned int ThreeDTilesetNode::getMaxTiles() const
 void ThreeDTilesetNode::setMaxTiles(unsigned int maxTiles)
 {
     _maxTiles = maxTiles;
+}
+
+float ThreeDTilesetNode::getMaxAge() const
+{
+    return _maxAge;
+}
+
+void ThreeDTilesetNode::setMaxAge(float maxAge)
+{
+    _maxAge = maxAge;
 }
 
 float ThreeDTilesetNode::getMaximumScreenSpaceError() const
@@ -1068,27 +1099,25 @@ osg::BoundingSphere ThreeDTilesetNode::computeBound() const
     return _tileset->root()->boundingVolume()->asBoundingSphere();    
 }
 
-void ThreeDTilesetNode::touchTile(osg::Node* node)
+void ThreeDTilesetNode::touchTile(ThreeDTileNode* node)
 {
     ScopedMutexLock lock(_mutex);
-
-    osg::ref_ptr< ThreeDTileNode > t = dynamic_cast<ThreeDTileNode*>(node);
-    if (t.valid())
+    if (node->_trackerItrValid)
     {
-        if (t->_trackerItrValid)
-        {
-            _tracker.erase(t->_trackerItr);
-        }
-
-        _tracker.push_back(t.get());
-        t->_trackerItrValid = true;    
-        t->_trackerItr = --_tracker.end();
+        _tracker.erase(node->_trackerItr);
     }
+
+    _tracker.push_back(node);
+    node->_trackerItrValid = true;
+    node->_trackerItr = --_tracker.end();
 }
 
-void ThreeDTilesetNode::expireTiles()
+void ThreeDTilesetNode::expireTiles(const osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
+
+    unsigned int frameNumber = nv.getFrameStamp()->getFrameNumber();
+    float frameTime = nv.getFrameStamp()->getReferenceTime();
 
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     osg::Timer_t endTime;
@@ -1107,7 +1136,9 @@ void ThreeDTilesetNode::expireTiles()
         osg::ref_ptr< ThreeDTileNode > tile = dynamic_cast<ThreeDTileNode*>(itr->get());
         if (tile.valid())
         {
-            if (tile->unloadContent())
+            float age = frameTime - tile->getLastCulledFrameTime();
+            bool canUnload = age >= _maxAge;
+            if (canUnload && tile->unloadContent())
             {
                 tile->_trackerItrValid = false;
                 itr = _tracker.erase(itr);
@@ -1145,7 +1176,13 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        expireTiles();
+        // Check to make sure expireTiles is only called once per frame, even if the UpdateVisitor is sent down multiple times.
+        // This can happen if the node has multiple parents.
+        if (nv.getFrameStamp()->getFrameNumber() > _lastExpiredFrame)
+        {
+            expireTiles(nv);
+            _lastExpiredFrame = nv.getFrameStamp()->getFrameNumber();
+        }
     }
     osg::MatrixTransform::traverse(nv);
 }

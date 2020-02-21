@@ -161,7 +161,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         void resolveContent();
 
-        void updateTracking();
+        void updateTracking(osgUtil::CullVisitor* cv);
 
         void requestContent(osgUtil::IncrementalCompileOperation* ico);
 
@@ -174,6 +174,9 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         bool unloadContent();
 
         const Tile* getTile() const { return _tile.get(); }
+
+        unsigned int getLastCulledFrameNumber() const;
+        float getLastCulledFrameTime() const;
 
         virtual void resizeGLObjectBuffers(unsigned int maxSize);
 
@@ -200,7 +203,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         Threading::Future<osg::Node> _contentFuture;
         bool _requestedContent;
-        bool _contentUnloaded;
 
         bool _immediateLoad;
 
@@ -212,6 +214,9 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::ref_ptr< osgDB::Options > _options;
 
         osg::Vec4 _debugColor;
+
+        unsigned int _lastCulledFrameNumber;
+        float _lastCulledFrameTime;
     };
 
     /**
@@ -227,7 +232,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         float getMaximumScreenSpaceError() const;
         void setMaximumScreenSpaceError(float maximumScreenSpaceError);
 
-        void touchTile(osg::Node* node);
+        void touchTile(ThreeDTileNode* node);
 
         void traverse(osg::NodeVisitor& nv);
 
@@ -244,6 +249,12 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         void setMaxTiles(unsigned int maxTiles);
 
         /**
+         * Gets/sets the max age of tiles before they are considered for expiration.
+         */
+        float getMaxAge() const;
+        void setMaxAge(float maxAge);
+
+        /**
          * Turns on/off bounding volume visualization.
          */
         bool getShowBoundingVolumes() const;
@@ -256,7 +267,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         void setColorPerTile(bool colorPerTile);
 
     private:
-        void expireTiles();
+        void expireTiles(const osg::NodeVisitor& nv);
 
         osg::ref_ptr<Tileset> _tileset;
         osg::ref_ptr<osgDB::Options> _options;
@@ -267,11 +278,14 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         ThreeDTileNode::TileTracker::iterator _sentryItr;
 
         unsigned int _maxTiles;
+        float _maxAge;
 
         bool _showBoundingVolumes;       
         bool _showColorPerTile;
 
         osg::ref_ptr< VirtualProgram> _debugVP;
+
+        unsigned int _lastExpiredFrame;
     };
 
 } } }

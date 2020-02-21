@@ -79,7 +79,7 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
                 {
                     if ( setToDirty )
                     {
-                        i->second._tile->refreshLayers();
+                        i->second._tile->refreshAllLayers();
                     }
                 }
             }
@@ -93,7 +93,7 @@ void
 TileNodeRegistry::setDirty(const GeoExtent& extent,
                            unsigned         minLevel,
                            unsigned         maxLevel,
-                           const std::set<UID>& layers)
+                           const CreateTileManifest& manifest)
 {
     _mutex.lock();
     
@@ -105,7 +105,7 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
             maxLevel >= key.getLOD() &&
             (extent.isInvalid() || extent.intersects(i->first.getExtent())))
         {
-            i->second._tile->refreshLayers(layers);
+            i->second._tile->refreshLayers(manifest);
         }
     }
 

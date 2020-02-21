@@ -226,7 +226,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     dirtyBound();
 
     // signal the tile to start loading data:
-    refreshLayers();
+    refreshAllLayers();
 
     // register me.
     context->liveTiles()->add( this );
@@ -291,44 +291,62 @@ TileNode::getElevationMatrix() const
 }
 
 void
-TileNode::refreshLayers()
+TileNode::refreshAllLayers()
 {
-    static std::set<UID> emptySet;
-    refreshLayers(emptySet);
+    refreshLayers(CreateTileManifest());
 }
 
 void
-TileNode::refreshLayers(const std::set<UID>& layers)
+TileNode::refreshLayers(const CreateTileManifest& manifest)
 {
-    LoadTileData* r = new LoadTileData(this, _context.get());
+    LoadTileData* r = new LoadTileData(manifest, this, _context.get());
     r->setName(_key.str());
     r->setTileKey(_key);
 
     // if the set is empty, the load job will refresh ALL data
-    for (std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
-        r->addLayerToFilter(*i);
+    //for (std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    //    r->addLayerToFilter(*i);
 
     _loadQueue.lock();
     _loadQueue.push(r);
     _loadsInQueue = _loadQueue.size();
     _loadQueue.unlock();
 
-    // Scan our render passes for layers included in the layer filter.
+    // Scan our render passes for layers represented by the manifest.
     // If we find a match, AND if the layer's color sampler if owned
     // (and not inherited), mark it as dirty. Dirty layers that are not
     // updated during a merge will be deleted.
     for(int i = 0; i<_renderModel._passes.size(); ++i)
     {
         RenderingPass& pass = _renderModel._passes[i];
-        if (layers.empty() || layers.count(pass.sourceUID()) > 0)
+        if (pass.ownsTexture() && !manifest.excludes(pass.layer()))
         {
-            if (pass.ownsTexture())
-            {
-                pass.incrementDirtyCount();
-            }
+            pass.incrementDirtyCount();
         }
     }
 }
+
+//void
+//TileNode::refreshStaleLayers()
+//{
+//    // scan the render model and look for any samplers whose revision
+//    // is out of sync with its corresponding source layer. Queue these
+//    // layers for a data refresh.
+//    std::set<UID> uids;
+//    for(int i = 0; i<_renderModel._passes.size(); ++i)
+//    {
+//        RenderingPass& pass = _renderModel._passes[i];
+//        if (pass.layer && pass.isStale())
+//        {
+//            uids.insert(pass.sourceUID());
+//        }
+//    }
+//    for(int i=0; i<_renderModel._sharedSamplers.size(); ++i)
+//    {
+//        const Sampler& sampler = _renderModel._sharedSamplers[i];
+//        
+//    }
+//}
 
 void
 TileNode::releaseGLObjects(osg::State* state) const
@@ -712,9 +730,10 @@ TileNode::createChildren(EngineContext* context)
 }
 
 void
-TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, LoadTileData* originator)
+TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
 {
     bool newElevationData = false;
+    const RenderBindings& bindings = _context->getRenderBindings();
 
     // First deal with the rendering passes (for color data):
     const SamplerBinding& color = bindings[SamplerBinding::COLOR];
@@ -739,12 +758,10 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
                         // Since it just arrived at this LOD, make the parent the same as the color.
                         if (bindings[SamplerBinding::COLOR_PARENT].isActive())
                         {
-                            pass->samplers()[SamplerBinding::COLOR_PARENT]._texture = model->getTexture();
-                            pass->samplers()[SamplerBinding::COLOR_PARENT]._matrix = *model->getMatrix();
+                            pass->setSampler(SamplerBinding::COLOR_PARENT, model->getTexture(), *model->getMatrix(), model->getRevision());
                         }
                     }
-                    pass->samplers()[SamplerBinding::COLOR]._texture = model->getTexture();
-                    pass->samplers()[SamplerBinding::COLOR]._matrix = *model->getMatrix();
+                    pass->setSampler(SamplerBinding::COLOR, model->getTexture(), *model->getMatrix(), model->getRevision());
 
                     // we updated a layer that was requested in the task, so it make a note of that:
                     pass->decrementDirtyCount();
@@ -791,9 +808,9 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
     if (elevation.isActive() && model->elevationModel().valid() && model->elevationModel()->getTexture())
     {
         osg::Texture* tex = model->elevationModel()->getTexture();
+        int revision = model->elevationModel()->getRevision();
 
-        _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._texture = tex;
-        _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
+        _renderModel.setSharedSampler(SamplerBinding::ELEVATION, tex, revision);
 
         setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
 
@@ -805,6 +822,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
     if (normals.isActive() && model->normalModel().valid() && model->normalModel()->getTexture())
     {
         osg::Texture* tex = model->normalModel()->getTexture();
+        int revision = model->normalModel()->getRevision();
 
         if (_context->options().normalizeEdges() == true)
         {
@@ -812,8 +830,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
             tex->setUnRefImageDataAfterApply(false);
         }
 
-        _renderModel._sharedSamplers[SamplerBinding::NORMAL]._texture = tex;
-        _renderModel._sharedSamplers[SamplerBinding::NORMAL]._matrix.makeIdentity();
+        _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
 
         updateNormalMap();
     }
@@ -823,9 +840,9 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
     if (landCover.isActive() && model->landCoverModel().valid() && model->landCoverModel()->getTexture())
     {
         osg::Texture* tex = model->landCoverModel()->getTexture();
-
-        _renderModel._sharedSamplers[SamplerBinding::LANDCOVER]._texture = tex;
-        _renderModel._sharedSamplers[SamplerBinding::LANDCOVER]._matrix.makeIdentity();
+        int revision = model->landCoverModel()->getRevision();
+        
+        _renderModel.setSharedSampler(SamplerBinding::LANDCOVER, tex, revision);
     }
 
     // Other Shared Layers:
@@ -848,8 +865,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
             if (bindingIndex < INT_MAX)
             {
                 osg::Texture* tex = layerModel->getTexture();
-                _renderModel._sharedSamplers[bindingIndex]._texture = tex;
-                _renderModel._sharedSamplers[bindingIndex]._matrix.makeIdentity();
+                int revision = layerModel->getRevision();
+                _renderModel.setSharedSampler(bindingIndex, tex, revision);
             }
         }
     }
@@ -865,13 +882,12 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
     // Now scan for dirty color passes and remove them.
     // This will happen when refreshLayers is called for a layer, but the layer
     // does not receive any new data in the merge.
-    std::vector<UID> deletedPasses;
     for (int p = 0; p < _renderModel._passes.size(); ++p)
     {
         const RenderingPass& pass = _renderModel._passes[p];
         if (pass.isDirty())
         {
-            deletedPasses.push_back(pass.sourceUID());
+            //OE_INFO << "Tile " << _key.str() << " deleting dirty pass " << pass.layer()->getName() << std::endl;
             _renderModel._passes.erase(_renderModel._passes.begin() + p);
             --p;
         }
@@ -886,11 +902,6 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings, L
             if (child)
             {
                 child->refreshInheritedData(this, bindings);
-
-                for(int j=0; j<deletedPasses.size(); ++j)
-                {
-                    child->notifyOfDeletedPass(deletedPasses[j]);
-                }
             }
         }
     }
@@ -1000,13 +1011,13 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                             // and scale/bias the matrix.
                             mySampler._texture = parentSampler._texture.get();
                             mySampler._matrix = newMatrix;
+                            mySampler._revision = parentSampler._revision;
                         }
                         else
                         {
                             // parent has no color texture? Then set our parent-color
                             // equal to our normal color texture.
-                            mySampler._texture = samplers[SamplerBinding::COLOR]._texture.get();
-                            mySampler._matrix = samplers[SamplerBinding::COLOR]._matrix;
+                            mySampler = samplers[SamplerBinding::COLOR];
                         }
                         ++changes;
                     }
@@ -1027,8 +1038,8 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             // Pass exists in the parent node, but not in this node, so add it now.
             if (passInLegalRange(parentPass))
             {
-                myPass = &_renderModel.addPass();
-                *myPass = parentPass;
+                myPass = &_renderModel.copyPass(parentPass);
+                //*myPass = parentPass;
 
                 for (unsigned s = 0; s < myPass->samplers().size(); ++s)
                 {
@@ -1089,42 +1100,6 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     }
 }
 
-void
-TileNode::notifyOfDeletedPass(UID sourceUID)
-{
-    for(int p=0; p<_renderModel._passes.size(); ++p)
-    {
-        RenderingPass& pass = _renderModel._passes[p];
-        if (pass.sourceUID() == sourceUID)
-        {
-            if (pass.inheritsTexture()) // always true?
-            {
-                _renderModel._passes.erase(_renderModel._passes.begin() + p);
-                --p;
-            }
-        }
-        //    const Sampler& sampler = pass.samplers()[SamplerBinding::COLOR];
-        //    if (!sampler._matrix.isIdentity())
-        //    {
-        //        _renderModel._passes.erase(_renderModel._passes.begin() + p);
-        //        --p;
-        //    }
-        //}
-    }
-
-    if (_childrenReady)
-    {
-        for (int i = 0; i < 4; ++i)
-        {
-            TileNode* child = getSubTile(i);
-            if (child)
-            {
-                child->notifyOfDeletedPass(sourceUID);
-            }
-        }
-    }
-}
-
 bool
 TileNode::passInLegalRange(const RenderingPass& pass) const
 {
@@ -1145,10 +1120,10 @@ TileNode::load(TerrainCuller* culler)
 
     // If progressive mode is enabled, lower LODs get higher priority since
     // we want to load them in order
-    if (options().progressive() == true)
-    {
-        lodPriority = (float)(numLods - lod);
-    }
+    //if (options().progressive() == true)
+    //{
+    //    lodPriority = (float)(numLods - lod);
+    //}
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
@@ -1160,13 +1135,13 @@ TileNode::load(TerrainCuller* culler)
     float priority = lodPriority + distPriority;
 
     // Submit to the loader.
-    _mutex.lock(); // lock the load queue
+    _loadQueue.lock(); // lock the load queue
     if (_loadQueue.empty() == false)
     {
         LoadTileData* r = _loadQueue.front().get();
         _context->getLoader()->load(r, priority, *culler );
     }
-    _mutex.unlock(); // unlock the load queue
+    _loadQueue.unlock(); // unlock the load queue
 }
 
 void
@@ -1248,12 +1223,15 @@ TileNode::updateNormalMap()
         // Averaging them would be more accurate, but then we'd have to
         // re-generate each texture multiple times instead of just once.
         // Besides, there's almost no visual difference anyway.
+        osg::Vec4 pixel;
         ImageUtils::PixelReader readThat(thatImage);
         ImageUtils::PixelWriter writeThis(thisImage);
         
         for (int t=0; t<height; ++t)
         {
-            writeThis(readThat(0, t), width-1, t);
+            readThat(pixel, 0, t);
+            writeThis(pixel, width-1, t);
+            //writeThis(readThat(0, t), width-1, t);
         }
 
         thisImage->dirty();
@@ -1278,11 +1256,16 @@ TileNode::updateNormalMap()
         // Averaging them would be more accurate, but then we'd have to
         // re-generate each texture multiple times instead of just once.
         // Besides, there's almost no visual difference anyway.
+        osg::Vec4 pixel;
         ImageUtils::PixelReader readThat(thatImage);
         ImageUtils::PixelWriter writeThis(thisImage);
 
         for (int s=0; s<width; ++s)
-            writeThis(readThat(s, height-1), s, 0);
+        {
+            readThat(pixel, s, height-1);
+            writeThis(pixel, s, 0);
+            //writeThis(readThat(s, height-1), s, 0);
+        }
 
         thisImage->dirty();
     }

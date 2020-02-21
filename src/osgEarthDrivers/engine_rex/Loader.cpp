@@ -46,15 +46,6 @@ Loader::Request::Request()
     _lastTick = 0;
 }
 
-void
-Loader::Request::addToChangeSet(osg::Node* node)
-{
-    if ( node )
-    {
-        _nodesChanged.push_back( node );
-    }
-}
-
 namespace osgEarth { namespace REX
 {
     /**
@@ -115,6 +106,7 @@ SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& n
         //OE_INFO << LC << "Request apply : UID = " << request->getUID() << "\n";
         if (r->isRunning())
         {
+            // no re-queue possible. Testing only.
             request->apply( nv.getFrameStamp() );
         }
 
@@ -309,7 +301,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             // timestamp it
             request->setFrameNumber( fn );
 
-            // incremenet the load count.
+            // increment the load count.
             request->_loadCount++;
 
             // if this is the first load request since idle, we need to remember this request.
@@ -330,10 +322,11 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             _dboptions.get() );
 
         // remember the request:
-        if ( true ) // addToRequestSet // Not sure whether we need to keep doing this in order keep it sorted -- check it out.
+        if ( addToRequestSet ) // Not sure whether we need to keep doing this in order keep it sorted -- check it out.
         {
-            Threading::ScopedMutexLock lock( _requestsMutex );
+            _requests.lock();
             _requests[request->getUID()] = request;
+            _requests.unlock();
         }
 
         return true;
@@ -352,6 +345,7 @@ void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
     // only called when _mergesPerFrame > 0
+    //TODO: move to update visitor so this doesn't get called as often
     if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         if ( nv.getFrameStamp() )
@@ -368,11 +362,19 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                 Request* req = _mergeQueue.begin()->get();
                 if ( req && req->_lastTick >= _checkpoint )
                 {
-                    OE_START_TIMER(req_apply);
-                    req->apply( getFrameStamp() );
-                    double s = OE_STOP_TIMER(req_apply);
-
-                    req->setState(Request::FINISHED);
+                    bool applied = req->apply( getFrameStamp() );
+                    
+                    if (applied)
+                    {
+                        req->setState(Request::FINISHED);
+                    }
+                    else
+                    {
+                        // if apply() returns false, that means the results were invalid
+                        // for some reason (probably revision mismatch) and the request
+                        // must be requeued.
+                        req->setState(req->IDLE);
+                    }
                 }
 
                 _mergeQueue.erase( _mergeQueue.begin() );
@@ -381,13 +383,13 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
 
         // cull finished requests.
         {
-            OE_PROFILING_ZONE("loader.cull");
-
-            Threading::ScopedMutexLock lock( _requestsMutex );
+            OE_PROFILING_ZONE("loader.purge");
 
             unsigned fn = 0;
             if ( nv.getFrameStamp() )
                 fn = nv.getFrameStamp()->getFrameNumber();
+
+            _requests.lock();
 
             // Purge expired requests.
             for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
@@ -430,6 +432,8 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     ++i;
                 }
             }
+
+            _requests.unlock();
 
             //OE_NOTICE << LC << "PagerLoader: requests=" << _requests.size() << "; mergeQueue=" << _mergeQueue.size() << std::endl;
         }
@@ -486,28 +490,31 @@ PagerLoader::addChild(osg::Node* node)
 TileKey
 PagerLoader::getTileKeyForRequest(UID requestUID) const
 {
-    Threading::ScopedMutexLock lock( _requestsMutex );
+    TileKey result;
+
+    _requests.lock();
     Requests::const_iterator i = _requests.find( requestUID );
     if ( i != _requests.end() )
     {
-        return i->second->getTileKey();
+        result = i->second->getTileKey();
     }
+    _requests.unlock();
 
-    return TileKey::INVALID;
+    return result;
 }
 
 Loader::Request*
 PagerLoader::invokeAndRelease(UID requestUID)
 {
     osg::ref_ptr<Request> request;
+
+    _requests.lock();
+    Requests::iterator i = _requests.find( requestUID );
+    if ( i != _requests.end() )
     {
-        Threading::ScopedMutexLock lock( _requestsMutex );
-        Requests::iterator i = _requests.find( requestUID );
-        if ( i != _requests.end() )
-        {
-            request = i->second.get();
-        }
+        request = i->second.get();
     }
+    _requests.unlock();
 
     if ( request.valid() )
     {

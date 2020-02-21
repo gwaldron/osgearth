@@ -35,11 +35,11 @@ namespace osgEarth { namespace Util
     {
         static void populate( OGRGeometryH geomHandle, Geometry* target, int numPoints );
     
-        static Polygon* createPolygon( OGRGeometryH geomHandle );
+        static Polygon* createPolygon( OGRGeometryH geomHandle, bool rewindPolygons = true);
 
         static MultiGeometry* createTIN(OGRGeometryH geomHandle);
        
-        static Geometry* createGeometry( OGRGeometryH geomHandle );
+        static Geometry* createGeometry( OGRGeometryH geomHandle, bool rewindPolygons = true);
 
         static OGRGeometryH encodePart( const Geometry* geometry, OGRwkbGeometryType part_type );
 
@@ -47,7 +47,7 @@ namespace osgEarth { namespace Util
 
         static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
 
-        static Feature* createFeature( OGRFeatureH handle, const FeatureProfile* profile );
+        static Feature* createFeature( OGRFeatureH handle, const FeatureProfile* profile, bool rewindPolygons = true);
     
         static AttributeType getAttributeType( OGRFieldType type );
 
@@ -57,7 +57,7 @@ namespace osgEarth { namespace Util
 
     private:
     
-        static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs );
+        static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs, bool rewindPolygons);
     };
 } }
 

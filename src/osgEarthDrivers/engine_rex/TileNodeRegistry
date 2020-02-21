@@ -25,6 +25,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Containers>
+#include <osgEarth/TerrainTileModelFactory>
 #include <OpenThreads/Atomic>
 #include <osgUtil/RenderBin>
 
@@ -111,7 +112,7 @@ namespace osgEarth { namespace REX
             const GeoExtent& extent, 
             unsigned minLevel, 
             unsigned maxLevel,
-            const std::set<UID>& layers);
+            const CreateTileManifest& manifest);
 
         virtual ~TileNodeRegistry();
 

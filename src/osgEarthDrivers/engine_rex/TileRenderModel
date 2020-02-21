@@ -42,10 +42,25 @@ namespace osgEarth { namespace REX
      */
     struct Sampler
     {
+        Sampler() 
+            : _revision(0u) { }
+
+        Sampler(const Sampler& rhs)
+            : _texture(rhs._texture), _matrix(rhs._matrix), _revision(rhs._revision) { }
+
+        // pointer to the sampler texture data
         osg::ref_ptr<osg::Texture> _texture;
+
+        // scale and bias matrix for accessing the texture - will be non-identity
+        // if the texture is inherited from an ancestor tile
         osg::Matrixf _matrix;
+
+        // revision of the data in this sampler (taken from its source layer)
+        unsigned _revision;
+
         inline bool ownsTexture() const { return _texture.valid() && _matrix.isIdentity(); }
         inline bool inheritsTexture() const { return !_texture.valid() || !_matrix.isIdentity(); }
+        inline unsigned revision() const { return _revision; }
     };
     typedef AutoArray<Sampler> Samplers;
 
@@ -64,6 +79,18 @@ namespace osgEarth { namespace REX
             _tileLayer(0L),
             _dirtyCount(0u)
             { }
+
+        RenderingPass(const RenderingPass& rhs) :
+            _sourceUID(rhs._sourceUID),
+            _samplers(rhs._samplers),
+            _layer(rhs._layer),
+            _visibleLayer(rhs._visibleLayer),
+            _tileLayer(rhs._tileLayer),
+            _dirtyCount(rhs._dirtyCount)
+        {
+            //nop
+        }
+
         
         // UID of the layer corresponding to this rendering pass
         UID sourceUID() const { return _sourceUID; }
@@ -107,7 +134,22 @@ namespace osgEarth { namespace REX
                 _visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
                 _tileLayer = dynamic_cast<const TileLayer*>(layer);
                 _sourceUID = layer->getUID();
+                for (unsigned s = 0; s<_samplers.size(); ++s) {
+                    _samplers[s]._revision = layer->getRevision();
+                }
             }
+        }
+
+        void setSampler(
+            SamplerBinding::Usage binding,
+            osg::Texture* texture,
+            const osg::Matrix& matrix,
+            int sourceRevision)
+        {
+            Sampler& sampler = _samplers[binding];
+            sampler._texture = texture;
+            sampler._matrix = matrix;
+            sampler._revision = sourceRevision;
         }
 
     private:
@@ -154,6 +196,12 @@ namespace osgEarth { namespace REX
             return _passes.back();
         }
 
+        RenderingPass& copyPass(const RenderingPass& rhs)
+        {
+            _passes.push_back(rhs);
+            return _passes.back();
+        }
+
         /** Look up a rendering pass by the corresponding layer ID */
         const RenderingPass* getPass(UID uid) const
         {
@@ -172,6 +220,29 @@ namespace osgEarth { namespace REX
                     return &_passes[i];
             }
             return 0L;
+        }
+
+        void setSharedSampler(
+            unsigned binding,
+            osg::Texture* texture,
+            const osg::Matrix& matrix,
+            int sourceRevision)
+        {
+            Sampler& sampler = _sharedSamplers[binding];
+            sampler._texture = texture;
+            sampler._matrix = matrix;
+            sampler._revision = sourceRevision;
+        }
+
+        void setSharedSampler(
+            unsigned binding,
+            osg::Texture* texture,
+            int sourceRevision)
+        {
+            Sampler& sampler = _sharedSamplers[binding];
+            sampler._texture = texture;
+            sampler._matrix.makeIdentity();
+            sampler._revision = sourceRevision;
         }
 
         /** Deallocate GPU objects associated with this model */

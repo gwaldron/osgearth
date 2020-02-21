@@ -36,6 +36,7 @@ FeatureSource::Options::getConfig() const
     conf.set( "geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE );
     conf.set( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
     conf.set( "fid_attribute", fidAttribute() );
+    conf.set( "rewind_polygons", rewindPolygons());
 
     if ( !_filterOptions.empty() )
     {
@@ -53,11 +54,14 @@ FeatureSource::Options::getConfig() const
 void
 FeatureSource::Options::fromConfig(const Config& conf)
 {
+    _rewindPolygons.init(true);
+
     conf.get( "open_write",   openWrite() );
     conf.get( "profile",      profile() );
     conf.get( "geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE );
     conf.get( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
     conf.get( "fid_attribute", fidAttribute() );
+    conf.get( "rewind_polygons", rewindPolygons());
 
 #if 0
     // For backwards-compatibility (before adding the "filters" block)
@@ -95,6 +99,7 @@ FeatureSource::create(const ConfigOptions& options)
 OE_LAYER_PROPERTY_IMPL(FeatureSource, bool, OpenWrite, openWrite);
 OE_LAYER_PROPERTY_IMPL(FeatureSource, GeoInterpolation, GeoInterpolation, geoInterp);
 OE_LAYER_PROPERTY_IMPL(FeatureSource, std::string, FIDAttribute, fidAttribute);
+OE_LAYER_PROPERTY_IMPL(FeatureSource, bool, RewindPolygons, rewindPolygons);
 
 void
 FeatureSource::init()

@@ -34,6 +34,55 @@ using namespace osgEarth;
 
 //.........................................................................
 
+
+void CreateTileManifest::insert(const Layer* layer)
+{
+    if (layer)
+        _layers[layer->getUID()] = layer->getRevision();
+}
+
+bool CreateTileManifest::excludes(const Layer* layer) const
+{
+    return !empty() && _layers.find(layer->getUID()) == _layers.end();
+}
+
+bool CreateTileManifest::empty() const
+{
+    return _layers.empty();
+}
+
+bool CreateTileManifest::inSyncWith(const Map* map) const
+{
+    for(LayerTable::const_iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        const Layer* layer = map->getLayerByUID(i->first);
+        if (layer == NULL ||
+            layer->getRevision() != i->second)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void CreateTileManifest::updateRevisions(const Map* map)
+{
+    for(LayerTable::iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        const Layer* layer = map->getLayerByUID(i->first);
+        if (layer)
+        {
+            i->second = layer->getRevision();
+        }
+    }
+}
+
+//.........................................................................
+
 TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
 _options         ( options ),
 _heightFieldCache( true, 128 )
@@ -48,7 +97,7 @@ _heightFieldCache( true, 128 )
 TerrainTileModel*
 TerrainTileModelFactory::createTileModel(const Map*                       map,
                                          const TileKey&                   key,
-                                         const CreateTileModelFilter&     filter,
+                                         const CreateTileManifest&        manifest,
                                          const TerrainEngineRequirements* requirements,
                                          ProgressCallback*                progress)
 {
@@ -59,28 +108,27 @@ TerrainTileModelFactory::createTileModel(const Map*                       map,
         map->getDataModelRevision() );
 
     // assemble all the components:
-    addColorLayers(model.get(), map, requirements, key, filter, progress, false);
+    addColorLayers(model.get(), map, requirements, key, manifest, progress, false);
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
         unsigned border = (requirements && requirements->elevationBorderRequired()) ? 1u : 0u;
 
-        addElevation( model.get(), map, key, filter, border, progress );
+        addElevation( model.get(), map, key, manifest, border, progress );
     }
 
-    addLandCover(model.get(), map, key, filter, progress);
+    addLandCover(model.get(), map, key, manifest, progress);
 
     //addPatchLayers(model.get(), map, key, filter, progress, false);
 
     // done.
-    return model.release();
     return model.release();
 }
 
 TerrainTileModel*
 TerrainTileModelFactory::createStandaloneTileModel(const Map*                       map,
                                                    const TileKey&                   key,
-                                                   const CreateTileModelFilter&     filter,
+                                                   const CreateTileManifest&        manifest,
                                                    const TerrainEngineRequirements* requirements,
                                                    ProgressCallback*                progress)
 {
@@ -91,16 +139,16 @@ TerrainTileModelFactory::createStandaloneTileModel(const Map*                   
         map->getDataModelRevision());
 
     // assemble all the components:
-    addColorLayers(model.get(), map, requirements, key, filter, progress, true);
+    addColorLayers(model.get(), map, requirements, key, manifest, progress, true);
 
     if (requirements == 0L || requirements->elevationTexturesRequired())
     {
         unsigned border = (requirements && requirements->elevationBorderRequired()) ? 1u : 0u;
 
-        addStandaloneElevation(model.get(), map, key, filter, border, progress);
+        addStandaloneElevation(model.get(), map, key, manifest, border, progress);
     }
 
-    addStandaloneLandCover(model.get(), map, key, filter, progress);
+    addStandaloneLandCover(model.get(), map, key, manifest, progress);
 
     //addPatchLayers(model.get(), map, key, filter, progress, true);
 
@@ -162,6 +210,7 @@ TerrainTileModelFactory::addImageLayer(TerrainTileModel* model,
 
         layerModel->setTexture(tex);
         layerModel->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
+        layerModel->setRevision(imageLayer->getRevision());
 
         model->colorLayers().push_back(layerModel);
 
@@ -215,8 +264,8 @@ void
 TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                                         const Map* map,
                                         const TerrainEngineRequirements* reqs,
-                                        const TileKey&    key,
-                                        const CreateTileModelFilter& filter,
+                                        const TileKey& key,
+                                        const CreateTileManifest& manifest,
                                         ProgressCallback* progress,
                                         bool standalone)
 {
@@ -241,7 +290,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
         if (!layer->getEnabled())
             continue;
 
-        if (!filter.accept(layer))
+        if (manifest.excludes(layer))
             continue;
 
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
@@ -260,6 +309,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
         {
             TerrainTileColorLayerModel* colorModel = new TerrainTileColorLayerModel();
             colorModel->setLayer(layer);
+            colorModel->setRevision(layer->getRevision());
             model->colorLayers().push_back(colorModel);
         }
     }
@@ -273,7 +323,7 @@ void
 TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
                                         const Map* map,
                                         const TileKey&    key,
-                                        const CreateTileModelFilter& filter,
+                                        const CreateTileManifest& manifest,
                                         ProgressCallback* progress,
                                         bool fallback)
 {
@@ -288,7 +338,7 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
     {
         PatchLayer* layer = i->get();
 
-        if (!filter.accept(layer))
+        if (manifest.excludes(layer))
             continue;
 
         if (!layer->getEnabled())
@@ -301,6 +351,7 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
             {
                 TerrainTilePatchLayerModel* patchModel = new TerrainTilePatchLayerModel();
                 patchModel->setPatchLayer(layer);
+                patchModel->setRevision(layer->getRevision());
                 patchModel->setNode(node.getNode());
             }
         }
@@ -315,30 +366,37 @@ void
 TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const Map*                   map,
                                       const TileKey&               key,
-                                      const CreateTileModelFilter& filter,
+                                      const CreateTileManifest&    manifest,
                                       unsigned                     border,
                                       ProgressCallback*            progress )
 {
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
 
-    bool accepted = true;
+    bool needElevation = true;
     ElevationLayerVector layers;
     map->getLayers(layers);
+    int combinedRevision = 0;
 
-    if (!filter.empty())
+    if (!manifest.empty())
     {
-        accepted = false;
+        needElevation = false;
+
         for(ElevationLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         {
-            if (filter.accept(i->get()))
+            const ElevationLayer* layer = i->get();
+            if (layer->getEnabled())
             {
-                accepted = true;
-                break;
+                if (needElevation == false && !manifest.excludes(layer))
+                {
+                    needElevation = true;
+                }
+
+                combinedRevision += layer->getRevision();
             }
         }
     }
-    if (!accepted)
+    if (!needElevation)
         return;
 
     const osgEarth::RasterInterpolation& interp = map->getElevationInterpolation();
@@ -361,6 +419,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     if (hfOK && mainHF.valid())
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
+        layerModel->setRevision(combinedRevision);
         layerModel->setHeightField( mainHF.get() );
 
         // pre-calculate the min/max heights:
@@ -396,6 +455,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         {
             TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
             layerModel->setName(key.str() + ":normal_map" );
+            layerModel->setRevision(combinedRevision);
 
             // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createNormalTexture(normalMap.get(), *_options.compressNormalMaps());
@@ -521,14 +581,14 @@ TerrainTileModelFactory::addStandaloneElevation(
     TerrainTileModel*            model,
     const Map*                   map,
     const TileKey&               key,
-    const CreateTileModelFilter& filter,
+    const CreateTileManifest&    manifest,
     unsigned                     border,
     ProgressCallback*            progress)
 {
     TileKey keyToUse = key;
     while (keyToUse.valid() && model->elevationModel().valid() == false)
     {
-        addElevation(model, map, keyToUse, filter, border, progress);
+        addElevation(model, map, keyToUse, manifest, border, progress);
         if (model->elevationModel() == NULL)
         {
             keyToUse = keyToUse.createParentKey();
@@ -546,13 +606,41 @@ TerrainTileLandCoverModel*
 TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
                                       const Map*                   map,
                                       const TileKey&               key,
-                                      const CreateTileModelFilter& filter,
+                                      const CreateTileManifest&    manifest,
                                       ProgressCallback*            progress)
 {
     TerrainTileLandCoverModel* landCoverModel = NULL;
 
+    // Note. We only support one land cover layer...
     LandCoverLayerVector layers;
     map->getLayers(layers);
+    int combinedRevision = 0;
+
+    // any land cover layer means using them all:
+    bool needLandCover = true;
+
+    if (!manifest.empty())
+    {
+        needLandCover = false;
+        for(LandCoverLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            const LandCoverLayer* layer = i->get();
+            if (layer->getEnabled())
+            {
+                if (needLandCover == false && !manifest.excludes(layer))
+                {
+                    needLandCover = true;
+                }
+
+                combinedRevision += layer->getRevision();
+            }
+        }
+    }
+
+    if (!needLandCover)
+    {
+        return NULL;
+    }
 
     osg::ref_ptr<osg::Image> coverageImage;
 
@@ -568,6 +656,7 @@ TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
         tex->setName(model->getKey().str());
 
         landCoverModel = new TerrainTileLandCoverModel();
+        landCoverModel->setRevision(layers.front()->getRevision());
 
         landCoverModel->setTexture(tex.get());
 
@@ -582,7 +671,7 @@ TerrainTileModelFactory::addStandaloneLandCover(
     TerrainTileModel*            model,
     const Map*                   map,
     const TileKey&               key,
-    const CreateTileModelFilter& filter,
+    const CreateTileManifest&    manifest,
     ProgressCallback*            progress)
 {
     TerrainTileLandCoverModel* layerModel = NULL;
@@ -590,7 +679,7 @@ TerrainTileModelFactory::addStandaloneLandCover(
     osg::Matrixf scaleBiasMatrix;
     while (keyToUse.valid() && !layerModel)
     {
-        layerModel = addLandCover(model, map, keyToUse, filter, progress);
+        layerModel = addLandCover(model, map, keyToUse, manifest, progress);
         if (!layerModel)
         {
             TileKey parentKey = keyToUse.createParentKey();
@@ -622,6 +711,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
    {
       std::vector< osg::ref_ptr<osg::Image> > images;
       ImageUtils::flattenImage(image, images);
+    tex->setDataVariance(osg::Object::STATIC);
 
       osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
 
@@ -667,6 +757,7 @@ osg::Texture*
 TerrainTileModelFactory::createCoverageTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setDataVariance(osg::Object::STATIC);
 
     tex->setInternalFormat(GL_R16F);
 
@@ -688,6 +779,7 @@ osg::Texture*
 TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setDataVariance(osg::Object::STATIC);
     tex->setInternalFormat(GL_R32F);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
@@ -721,6 +813,7 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     }    
 
     osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setDataVariance(osg::Object::STATIC);
     tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
     tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);

@@ -197,6 +197,15 @@ DecalImageLayer::getDecalExtent(const std::string& id) const
     return GeoExtent::INVALID;
 }
 
+void
+DecalImageLayer::clearDecals()
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    _decalIndex.clear();
+    _decalList.clear();
+    bumpRevision();
+}
+
 //........................................................................
 
 #undef  LC
@@ -385,6 +394,15 @@ DecalElevationLayer::getDecalExtent(const std::string& id) const
     return GeoExtent::INVALID;
 }
 
+void
+DecalElevationLayer::clearDecals()
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    _decalIndex.clear();
+    _decalList.clear();
+    bumpRevision();
+}
+
 //........................................................................
 
 
@@ -570,4 +588,13 @@ DecalLandCoverLayer::getDecalExtent(const std::string& id) const
         return i->second->_extent;
     }
     return GeoExtent::INVALID;
+}
+
+void
+DecalLandCoverLayer::clearDecals()
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    _decalIndex.clear();
+    _decalList.clear();
+    bumpRevision();
 }

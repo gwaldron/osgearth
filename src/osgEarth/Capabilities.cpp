@@ -106,6 +106,14 @@ namespace
             }
         }
 
+        ~MyGraphicsContext()
+        {
+            // Since this context is being thrown away, decrement the maximum number of graphics contexts
+            // The Texture::areAllTextureObjectsLoaded function just looks at the maximum number of graphics contexts setting to determine if it's safe to unref an image after Texture apply and if you don't decrement
+            // the max value it will never be considered safe to unref.
+            osg::DisplaySettings::instance()->setMaxNumberOfGraphicsContexts(osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() -1);
+        }
+
         bool valid() const { return _gc.valid() && _gc->isRealized(); }
 
         osg::ref_ptr<osg::GraphicsContext> _gc;

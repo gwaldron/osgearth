@@ -256,8 +256,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         void setColorPerTile(bool colorPerTile);
 
     private:
-        void startCull();
-        void endCull();
+        void expireTiles();
 
         osg::ref_ptr<Tileset> _tileset;
         osg::ref_ptr<osgDB::Options> _options;

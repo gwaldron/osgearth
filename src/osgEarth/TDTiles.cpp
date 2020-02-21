@@ -997,7 +997,8 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     _maxTiles(50),
     _showBoundingVolumes(false),
     _showColorPerTile(false),
-    _maxAge(5.0f)
+    _maxAge(5.0f),
+    _lastExpiredFrame(0)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
@@ -1171,7 +1172,13 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        expireTiles(nv);
+        // Check to make sure expireTiles is only called once per frame, even if the UpdateVisitor is sent down multiple times.
+        // This can happen if the node has multiple parents.
+        if (nv.getFrameStamp()->getFrameNumber() > _lastExpiredFrame)
+        {
+            expireTiles(nv);
+            _lastExpiredFrame = nv.getFrameStamp()->getFrameNumber();
+        }
     }
     osg::MatrixTransform::traverse(nv);
 }

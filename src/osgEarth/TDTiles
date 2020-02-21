@@ -281,6 +281,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         bool _showColorPerTile;
 
         osg::ref_ptr< VirtualProgram> _debugVP;
+
+        unsigned int _lastExpiredFrame;
     };
 
 } } }

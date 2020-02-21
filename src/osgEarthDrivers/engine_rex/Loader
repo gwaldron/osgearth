@@ -78,7 +78,7 @@ namespace osgEarth { namespace REX
             UID getUID() const { return _uid; }
 
             /** Creates a stateset that holds GL-compilable objects. */
-            virtual osg::StateSet* createStateSet() const =0; // { return 0L; }
+            virtual osg::StateSet* createStateSet() const =0;
 
             void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
             unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
@@ -90,11 +90,7 @@ namespace osgEarth { namespace REX
                 FINISHED
             };
 
-            void setState(State value) {
-                _state = value;
-                if ( _state == IDLE )
-                    _loadCount = 0;
-            }
+            void setState(State value);
 
             bool isIdle() const { return _state == IDLE; }
             bool isRunning() const { return _state == RUNNING; }

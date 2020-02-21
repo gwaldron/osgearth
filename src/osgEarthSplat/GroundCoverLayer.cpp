@@ -679,7 +679,7 @@ namespace
 
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
 
-        static const GLubyte indices[12] = { 0,1,2,1,2,3, 4,5,6,5,6,7 };
+        static const GLubyte indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
         geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 12, &indices[0], numInstances));
 
         // We don't actually need any verts. Is it OK not to set an array?

@@ -42,6 +42,7 @@ namespace osgEarth
             OE_OPTION(ProfileOptions, profile);
             OE_OPTION(GeoInterpolation, geoInterp);
             OE_OPTION(std::string, fidAttribute);
+            OE_OPTION(bool, rewindPolygons);
 
             std::vector<ConfigOptions>& filters() { return _filterOptions; }
             const std::vector<ConfigOptions>& filters() const { return _filterOptions; }
@@ -66,6 +67,10 @@ namespace osgEarth
         //! Set the name of the attribute containing the feature ID
         void setFIDAttribute(const std::string& value);
         const std::string& getFIDAttribute() const;
+
+        //! Sets whether to automatically rewind polygons to have the correct orientation
+        void setRewindPolygons(const bool& value);
+        const bool& getRewindPolygons() const;
 
     public: // Layer
 

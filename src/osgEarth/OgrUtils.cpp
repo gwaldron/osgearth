@@ -93,15 +93,9 @@ OgrUtils::createTIN(OGRGeometryH geomHandle)
 }
 
 Polygon*
-OgrUtils::createPolygon( OGRGeometryH geomHandle )
+OgrUtils::createPolygon( OGRGeometryH geomHandle, bool rewindPolygons)
 {
     Polygon* output = 0L;
-
-#if GDAL_VERSION_AT_LEAST(2,0,0)
-    int is3D = OGR_G_Is3D(geomHandle);
-#else
-    int is3D = OGR_G_GetCoordinateDimension(geomHandle) == 3;
-#endif
 
     int numParts = OGR_G_GetGeometryCount( geomHandle );
     if ( numParts == 0 )
@@ -110,7 +104,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
         output = new Polygon( numPoints );
         populate( geomHandle, output, numPoints );
 
-        if (!is3D)
+        if (rewindPolygons)
         {
             output->open();
             output->rewind(Ring::ORIENTATION_CCW);
@@ -127,7 +121,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
             {
                 output = new Polygon( numPoints );
                 populate( partRef, output, numPoints );
-                if (!is3D)
+                if (rewindPolygons)
                 {
                     output->open();
                     output->rewind(Ring::ORIENTATION_CCW);
@@ -137,7 +131,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
             {
                 Ring* hole = new Ring( numPoints );
                 populate( partRef, hole, numPoints );
-                if (!is3D)
+                if (rewindPolygons)
                 {
                     hole->open();
                     hole->rewind(Ring::ORIENTATION_CW );
@@ -150,7 +144,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle )
 }
 
 Geometry*
-OgrUtils::createGeometry( OGRGeometryH geomHandle )
+OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
 {
     Geometry* output = 0L;
 
@@ -166,7 +160,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
     case wkbPolygonM:
     case wkbPolygonZM:
 #endif
-        output = createPolygon(geomHandle);
+        output = createPolygon(geomHandle, rewindPolygons);
         break;
 
     case wkbLineString:
@@ -246,7 +240,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
             OGRGeometryH subGeomRef = OGR_G_GetGeometryRef( geomHandle, n );
             if ( subGeomRef )
             {
-                Geometry* geom = createGeometry( subGeomRef );
+                Geometry* geom = createGeometry( subGeomRef, rewindPolygons);
                 if ( geom ) multi->getComponents().push_back( geom );
             }
         } 
@@ -502,24 +496,24 @@ OgrUtils::createOgrGeometry(const osgEarth::Geometry* geometry, OGRwkbGeometryTy
 }
 
 Feature*
-OgrUtils::createFeature(OGRFeatureH handle, const FeatureProfile* profile)
+OgrUtils::createFeature(OGRFeatureH handle, const FeatureProfile* profile, bool rewindPolygons)
 {
     Feature* f = 0L;
     if ( profile )
     {
-        f = createFeature( handle, profile->getSRS() );
+        f = createFeature( handle, profile->getSRS(), rewindPolygons);
         if ( f && profile->geoInterp().isSet() )
             f->geoInterp() = profile->geoInterp().get();
     }
     else
     {
-        f = createFeature( handle, (const SpatialReference*)0L );
+        f = createFeature( handle, (const SpatialReference*)0L, rewindPolygons);
     }
     return f;
 }            
 
 Feature*
-OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs )
+OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool rewindPolygons)
 {
     long fid = OGR_F_GetFID( handle );
 
@@ -529,7 +523,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs )
 
     if ( geomRef )
     {
-        geom = OgrUtils::createGeometry( geomRef );
+        geom = OgrUtils::createGeometry( geomRef, rewindPolygons);
     }
 
     Feature* feature = new Feature( geom, srs, Style(), fid );

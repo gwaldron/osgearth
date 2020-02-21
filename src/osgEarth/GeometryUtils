@@ -31,10 +31,10 @@ namespace osgEarth
     namespace GeometryUtils
     {
         extern OSGEARTH_EXPORT std::string geometryToWKT( const Geometry* geometry );
-        extern OSGEARTH_EXPORT Geometry*   geometryFromWKT( const std::string& wkt );
+        extern OSGEARTH_EXPORT Geometry*   geometryFromWKT( const std::string& wkt, bool rewindPolygons = true);
 
         extern OSGEARTH_EXPORT std::string geometryToGeoJSON( const Geometry* geometry );
-        extern OSGEARTH_EXPORT Geometry*   geometryFromGeoJSON( const std::string& geojson );
+        extern OSGEARTH_EXPORT Geometry*   geometryFromGeoJSON( const std::string& geojson, bool rewindPolygons = true);
 
         extern OSGEARTH_EXPORT std::string geometryToKML( const Geometry* geometry );
         extern OSGEARTH_EXPORT std::string geometryToGML( const Geometry* geometry );

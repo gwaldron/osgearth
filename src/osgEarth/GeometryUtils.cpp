@@ -63,13 +63,13 @@ osgEarth::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
 }
 
 Geometry*
-osgEarth::GeometryUtils::geometryFromGeoJSON(const std::string& geojson)
+osgEarth::GeometryUtils::geometryFromGeoJSON(const std::string& geojson, bool rewindPolygons)
 {
     Geometry* result = 0L;
     OGRGeometryH g = OGR_G_CreateGeometryFromJson(geojson.c_str());
     if ( g )
     {
-        result = OgrUtils::createGeometry( g );
+        result = OgrUtils::createGeometry( g, rewindPolygons);
         OGR_G_DestroyGeometry( g );
     }
     return result;
@@ -114,7 +114,7 @@ osgEarth::GeometryUtils::geometryToGML( const Geometry* geometry )
 }
 
 Geometry*
-osgEarth::GeometryUtils::geometryFromWKT( const std::string& wkt )
+osgEarth::GeometryUtils::geometryFromWKT( const std::string& wkt, bool rewindPolygons)
 {       
     OGRwkbGeometryType type = 
         startsWith( wkt, "POINT" ) ? wkbPoint :
@@ -135,7 +135,7 @@ osgEarth::GeometryUtils::geometryFromWKT( const std::string& wkt )
             char* ptr = (char*)wkt.c_str();
             if ( OGRERR_NONE == OGR_G_ImportFromWkt( geom, &ptr ) )
             {
-                output = OgrUtils::createGeometry( geom );
+                output = OgrUtils::createGeometry( geom, rewindPolygons);
                 OGR_G_DestroyGeometry( geom );
             }
             else

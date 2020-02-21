@@ -345,6 +345,7 @@ public:
                                     tex = new osg::Texture2D(img.get());
                                     tex->setUnRefImageDataAfterApply(imageEmbedded);
                                     tex->setResizeNonPowerOfTwoHint(false);
+                                    tex->setDataVariance(osg::Object::STATIC);
 
                                     if (texture.sampler >= 0 && texture.sampler < model.samplers.size())
                                     {

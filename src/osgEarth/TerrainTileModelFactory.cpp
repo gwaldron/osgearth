@@ -695,6 +695,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
                                             const ImageLayer* layer) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setDataVariance(osg::Object::STATIC);
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
@@ -728,6 +729,7 @@ osg::Texture*
 TerrainTileModelFactory::createCoverageTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setDataVariance(osg::Object::STATIC);
 
     tex->setInternalFormat(GL_R16F);
 
@@ -749,6 +751,7 @@ osg::Texture*
 TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setDataVariance(osg::Object::STATIC);
     tex->setInternalFormat(GL_R32F);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
@@ -782,6 +785,7 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     }    
 
     osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setDataVariance(osg::Object::STATIC);
     tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
     tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);

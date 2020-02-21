@@ -227,6 +227,7 @@ namespace osgEarth { namespace REX
         osg::Timer_t     _checkpoint;
         int              _mergesPerFrame;
         unsigned         _frameNumber;
+        unsigned         _frameLastUpdated;
         unsigned         _numLODs;
         float            _priorityScales[64];
         float            _priorityOffsets[64];

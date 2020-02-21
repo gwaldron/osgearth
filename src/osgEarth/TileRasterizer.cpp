@@ -66,10 +66,11 @@ namespace
 }
 
 TileRasterizer::TileRasterizer() :
-osg::Camera()
+osg::Camera(),
+_frameLastUpdated(0u)
 {
     // active an update traversal.
-    ADJUST_EVENT_TRAV_COUNT(this, +1);
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
     setCullingActive(false);
 
     // set up the RTT camera.
@@ -206,8 +207,18 @@ TileRasterizer::accept(osg::NodeVisitor& nv)
 void
 TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.EVENT_VISITOR)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
+        bool runUpdate = false;
+        if (nv.getFrameStamp())
+        {
+            // once per frame please
+            runUpdate = (_frameLastUpdated < nv.getFrameStamp()->getFrameNumber());
+            _frameLastUpdated = nv.getFrameStamp()->getFrameNumber();
+        }
+        if (!runUpdate) 
+            return;
+
         Threading::ScopedMutexLock lock(_mutex);
 
         if (!_finishedJobs.empty())

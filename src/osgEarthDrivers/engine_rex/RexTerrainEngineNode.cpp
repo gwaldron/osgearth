@@ -129,7 +129,8 @@ _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),
 _renderModelUpdateRequired( false ),
 _rasterizer(0L),
-_morphTerrainSupported(true)
+_morphTerrainSupported(true),
+_frameLastUpdated(0u)
 {
     // Necessary for pager object data
     this->setName("osgEarth.RexTerrainEngineNode");
@@ -778,20 +779,30 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    if (_renderModelUpdateRequired)
+    bool runUpdate = false;
+    if (nv.getFrameStamp())
     {
-        PurgeOrphanedLayers visitor(getMap(), _renderBindings);
-        _terrain->accept(visitor);
-        _renderModelUpdateRequired = false;
+        runUpdate = (_frameLastUpdated < nv.getFrameStamp()->getFrameNumber());
+        _frameLastUpdated = nv.getFrameStamp()->getFrameNumber();
     }
 
-    // Called once on the first update pass to ensure that all existing
-    // layers have their extents cached properly
-    if (_cachedLayerExtentsComputeRequired)
+    if (runUpdate)
     {
-        cacheAllLayerExtentsInMapSRS();
-        _cachedLayerExtentsComputeRequired = false;
-        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        if (_renderModelUpdateRequired)
+        {
+            PurgeOrphanedLayers visitor(getMap(), _renderBindings);
+            _terrain->accept(visitor);
+            _renderModelUpdateRequired = false;
+        }
+
+        // Called once on the first update pass to ensure that all existing
+        // layers have their extents cached properly
+        if (_cachedLayerExtentsComputeRequired)
+        {
+            cacheAllLayerExtentsInMapSRS();
+            _cachedLayerExtentsComputeRequired = false;
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
     }
 }
 

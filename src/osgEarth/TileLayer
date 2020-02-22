@@ -188,7 +188,7 @@ namespace osgEarth
         /**
          * Gets an extent that is the union of all the extents in getDataExtents().
          */
-        const GeoExtent& getDataExtentsUnion() const;
+        const DataExtent& getDataExtentsUnion() const;
 
         //! Assign a data extents collection to the layer if applicable.
         //! This method may not be supported, or may only work for a layer that has
@@ -280,7 +280,7 @@ namespace osgEarth
 
     private:
         DataExtentList _dataExtents;
-        mutable GeoExtent _dataExtentsUnion;
+        mutable DataExtent _dataExtentsUnion;
 
         // The cache ID used at runtime. This will either be the cacheId found in
         // the TileLayerOptions, or a dynamic cacheID generated at runtime.
@@ -307,7 +307,7 @@ namespace osgEarth
         /** Closes the layer, deleting its tile source and any other resources. */
         virtual Status closeImplementation();
 
-        Threading::KeyedMutex<TileKey> _sentry;
+        //Threading::KeyedMutex<TileKey> _sentry;
     };
 
     typedef std::vector<osg::ref_ptr<TileLayer> > TileLayerVector;

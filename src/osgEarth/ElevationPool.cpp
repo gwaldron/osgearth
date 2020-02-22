@@ -333,6 +333,21 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
             map->getLayers(e->_layers);
         }
 
+        // Restrict the query resolution to the maximum available elevation data resolution:
+        unsigned maxLOD = 0u;
+        for(ElevationLayerVector::const_iterator i = e->_layers.begin();
+            i != e->_layers.end();
+            ++i)
+        {
+            const ElevationLayer* layer = i->get();
+            if (layer->getDataExtentsUnion().maxLevel().isSet())
+                maxLOD = osg::maximum(maxLOD, layer->getDataExtentsUnion().maxLevel().get());
+        }
+        if (maxLOD > 0u)
+        {
+            e->_lod = maxLOD;
+        }
+
         e->_mapProfile = map->getProfile();
     }
     else
@@ -375,7 +390,8 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         {
             ElevationPool::Tile* tile = tile_ref->get();
 
-            //if (tile->_bounds.contains(p.x(), p.y()))
+            // TODO: not sure this is good enough. What about the case where a hi-res elevation region
+            // abuts a lo-res elevation region?
             if (tile->_hf.getExtent().contains(p.x(), p.y()))
             {
                 foundTile = true;
@@ -425,6 +441,9 @@ float
 ElevationEnvelope::getElevation(double x, double y)
 {
     OE_PROFILING_ZONE;
+    char buf[16]; itoa(_lod, buf, 10);
+    OE_PROFILING_ZONE_TEXT(buf);
+
     float elevation, resolution;
     sample(x, y, elevation, resolution);
     return elevation;

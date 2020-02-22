@@ -40,6 +40,7 @@
 #include <osg/ProxyNode>
 #include <osg/PolygonOffset>
 #include <osg/Depth>
+#include <osg/ShapeDrawable>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <osgDB/WriteFile>
@@ -83,6 +84,18 @@ namespace
             return _canceled;
         }
     };
+
+    osg::Node* createBS(const osg::BoundingSphere& bounds)
+    {
+        osg::MatrixTransform* mt = new osg::MatrixTransform;
+        mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
+        osg::Geode* geode = new osg::Geode;
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), bounds.radius()) );
+        sd->setColor( osg::Vec4(1,0,0,0.3) );
+        geode->addDrawable( sd );
+        mt->addChild(geode);
+        return mt;
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -547,6 +560,8 @@ FeatureModelGraph::setSceneGraphCallbacks(SceneGraphCallbacks* host)
 osg::BoundingSphered
 FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile* tilingProfile) const
 {
+    OE_PROFILING_ZONE;
+
     GeoExtent workingExtent;
 
     if (!extent.isValid())
@@ -582,8 +597,12 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     if (_session.valid())
     {
         // TODO: Use an appropriate resolution for this extents width
-        //unsigned lod = 23u;
+        //unsigned lod = 23u;        
+
+        // This is fine but the ElevationPool is caching tiles at the requested TileKey, not the
+        // actual resolved TileKey. This renders the cache essentially non-functional. FIX TODO
         unsigned lod = map->getProfile()->getLOD(workingExtent.height());
+
         osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
         float elevation = NO_DATA_VALUE;
         if (env.valid())
@@ -1063,6 +1082,9 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     const TileKey* key,
     const osgDB::Options* readOptions)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT((key?key->str().c_str():"no key"));
+
     OE_TEST << LC << "buildTile " << (key ? key->str() : "no key") << std::endl;
 
     osg::ref_ptr<osg::Group> group;
@@ -1161,6 +1183,12 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
 
     if (group->getNumChildren() > 0)
     {
+        // debugging
+        //if (group->getBound().valid())
+        //{
+        //    group->addChild(createBS(group->getBound()));
+        //}
+
         // account for a min-range here. Do not address the max-range here; that happens
         // above when generating paged LOD nodes, etc.
         float minRange = level.minRange().get();

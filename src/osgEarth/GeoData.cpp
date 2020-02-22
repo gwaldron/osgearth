@@ -1579,6 +1579,12 @@ GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrixd& output) const
 
 /***************************************************************************/
 
+DataExtent::DataExtent() :
+    GeoExtent()
+{
+    //NOP
+}
+
 DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel, const std::string &description) :
 GeoExtent(extent)
 {

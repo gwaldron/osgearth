@@ -558,6 +558,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT DataExtent : public GeoExtent
     {
     public:
+        DataExtent();
         DataExtent(const GeoExtent& extent);
         DataExtent(const GeoExtent& extent, const std::string &description);
         DataExtent(const GeoExtent& extent, unsigned minLevel );

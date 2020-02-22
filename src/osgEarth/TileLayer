@@ -307,7 +307,7 @@ namespace osgEarth
         /** Closes the layer, deleting its tile source and any other resources. */
         virtual Status closeImplementation();
 
-        Threading::KeyedMutex<TileKey> _sentry;
+        //Threading::KeyedMutex<TileKey> _sentry;
     };
 
     typedef std::vector<osg::ref_ptr<TileLayer> > TileLayerVector;

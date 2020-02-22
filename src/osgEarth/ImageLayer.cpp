@@ -337,11 +337,11 @@ ImageLayer::createImage(const TileKey&    key,
     }
 
     // prevents 2 threads from creating the same object at the same time
-    _sentry.lock(key);
+    //_sentry.lock(key);
 
     GeoImage result = createImageInKeyProfile( key, progress );
 
-    _sentry.unlock(key);
+    //_sentry.unlock(key);
 
     return result;
 }

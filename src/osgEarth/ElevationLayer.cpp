@@ -173,6 +173,8 @@ ElevationLayer::assembleHeightField(const TileKey& key,
                                     osg::ref_ptr<NormalMap>& out_normalMap,
                                     ProgressCallback* progress) const
 {			
+    OE_PROFILING_ZONE;
+
     // Collect the heightfields for each of the intersecting tiles.
     GeoHeightFieldVector heightFields;
 
@@ -335,11 +337,11 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     }
 
     // prevents 2 threads from creating the same object at the same time
-    _sentry.lock(key);
+    //_sentry.lock(key);
 
     GeoHeightField result = createHeightFieldInKeyProfile(key, progress);
 
-    _sentry.unlock(key);
+    //_sentry.unlock(key);
 
     return result;
 }
@@ -470,6 +472,8 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
             // are still relative to the source's vertical datum. Convert them.
             if (hf.valid() && !key.getExtent().getSRS()->isVertEquivalentTo(getProfile()->getSRS()))
             {
+                OE_PROFILING_ZONE_NAMED("vdatum xform");
+
                 VerticalDatum::transform(
                     getProfile()->getSRS()->getVerticalDatum(),    // from
                     key.getExtent().getSRS()->getVerticalDatum(),  // to
@@ -480,7 +484,10 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
             // Pre-caching operation. If there's a TileSource, it runs the precache
             // operator so we don't need to run it here. This is a temporary construct
             // until we get rid of TileSource
-            normalizeNoDataValues(hf.get());
+            {
+                OE_PROFILING_ZONE_NAMED("nodata normalize");
+                normalizeNoDataValues(hf.get());
+            }
 
             // If we have a cacheable heightfield, and it didn't come from the cache
             // itself, cache it now.
@@ -489,6 +496,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                  !fromCache    &&
                  policy.isCacheWriteable() )
             {
+                OE_PROFILING_ZONE_NAMED("cache write");
                 cacheBin->write(cacheKey, hf.get(), 0L);
             }
 
@@ -704,6 +712,8 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     // heightfield must already exist.
     if ( !hf )
         return false;
+
+    OE_PROFILING_ZONE;
 
     // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
     // the map profile has a vertical datum. This is the usual case when building the 3D

@@ -134,7 +134,9 @@ namespace osgEarth { namespace Threading
 
     /**
      * KeyedMutex is a per-value mutex; really just a map of key/mutex pairs.
+     * *** BROKEN, DON't USE YET ***
      */
+#if 0
     template<typename T>
     class OSGEARTH_EXPORT KeyedMutex
     {
@@ -176,6 +178,7 @@ namespace osgEarth { namespace Threading
             return 0;
         }
     };
+#endif
 
     /**
      * Future is the consumer-side interface to an asynchronous operation.

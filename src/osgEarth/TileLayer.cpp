@@ -656,7 +656,7 @@ TileLayer::dirtyDataExtents()
     _dataExtentsUnion = GeoExtent::INVALID;
 }
 
-const GeoExtent&
+const DataExtent&
 TileLayer::getDataExtentsUnion() const
 {
     const DataExtentList& de = getDataExtents();
@@ -667,12 +667,16 @@ TileLayer::getDataExtentsUnion() const
         {
             if (_dataExtentsUnion.isInvalid() && !de.empty()) // double-check
             {
-                GeoExtent e(de[0]);
+                _dataExtentsUnion = de[0];
                 for (unsigned int i = 1; i < de.size(); i++)
                 {
-                    e.expandToInclude(de[i]);
+                    _dataExtentsUnion.expandToInclude(de[i]);
+                    if (de[i].minLevel().isSet())
+                        _dataExtentsUnion.minLevel() = osg::minimum(_dataExtentsUnion.minLevel().get(), de[i].minLevel().get());
+                    if (de[i].maxLevel().isSet())
+                        _dataExtentsUnion.maxLevel() = osg::maximum(_dataExtentsUnion.maxLevel().get(), de[i].maxLevel().get());
+                    
                 }
-                _dataExtentsUnion = e;
             }
         }
     }

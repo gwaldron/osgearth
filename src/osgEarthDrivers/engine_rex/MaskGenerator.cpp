@@ -518,6 +518,10 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
         }
     }
 
+    if (coordsArray->empty())
+    {
+        return R_BOUNDARY_CONTAINS_ENTIRE_TILE;
+    }
     // Set up a triangulator with the patch coordinates:
     osg::ref_ptr<osgUtil::DelaunayTriangulator> trig = new osgUtil::DelaunayTriangulator();
     trig->setInputPointArray(coordsArray.get());

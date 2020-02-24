@@ -155,8 +155,10 @@ namespace
         }
 
         p->setCenter(bs.center());
-        p->setRadius(std::max((float)bs.radius(), maxRange));
+        // This radius is simply for culling.
+        p->setRadius(bs.radius());
         p->setFileName(0, uri);
+        // The min/max range controls when this tile pages in.
         p->setRange(0, minRange, maxRange);
         p->setPriorityOffset(0, layout.priorityOffset().get());
         p->setPriorityScale(0, layout.priorityScale().get());

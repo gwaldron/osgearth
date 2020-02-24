@@ -441,8 +441,8 @@ float
 ElevationEnvelope::getElevation(double x, double y)
 {
     OE_PROFILING_ZONE;
-    char buf[16]; itoa(_lod, buf, 10);
-    OE_PROFILING_ZONE_TEXT(buf);
+    //char buf[16]; itoa(_lod, buf, 10);
+    //OE_PROFILING_ZONE_TEXT(buf);
 
     float elevation, resolution;
     sample(x, y, elevation, resolution);

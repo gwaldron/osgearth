@@ -199,15 +199,23 @@ CompositeImageLayer::openImplementation()
         {
             OE_INFO << LC << "...opened " << layer->getName() << " OK" << std::endl;
 
-            // If no profile is specified assume they want to use the profile of the first layer in the list.
+            // If no profile is specified assume they want to use the profile of the first layer in the list
             if (!profile.valid())
             {
                 profile = layer->getProfile();
                 if (!profile.valid())
                 {
                     return Status(
-                        Status::ResourceUnavailable, 
-                        Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                        Status::ResourceUnavailable,
+                        Stringify() << "Cannot establish profile for layer " << layer->getName());
+                }
+                else if (profile->getSRS()->getVerticalDatum() != NULL)
+                {
+                    // Remove the VDATUM! Otherwise we will process it twice,
+                    // once in the component layer and again in the composite.
+                    ProfileOptions po = profile->toProfileOptions();
+                    po.vsrsString().unset();
+                    profile = Profile::create(po);
                 }
             }
 
@@ -587,6 +595,14 @@ CompositeElevationLayer::openImplementation()
                     return Status(Status::ResourceUnavailable, 
                         Stringify()<<"Cannot establish profile for layer " << layer->getName());
                 }
+                else if (profile->getSRS()->getVerticalDatum() != NULL)
+                {
+                    // Remove the VDATUM! Otherwise we will process it twice,
+                    // once in the component layer and again in the composite.
+                    ProfileOptions po = profile->toProfileOptions();
+                    po.vsrsString().unset();
+                    profile = Profile::create(po);
+                }
             }
 
             // gather extents                        
@@ -838,6 +854,14 @@ CompositeLandCoverLayer::openImplementation()
                     return Status(
                         Status::ResourceUnavailable, 
                         Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                }
+                else if (profile->getSRS()->getVerticalDatum() != NULL)
+                {
+                    // Remove the VDATUM! Otherwise we will process it twice,
+                    // once in the component layer and again in the composite.
+                    ProfileOptions po = profile->toProfileOptions();
+                    po.vsrsString().unset();
+                    profile = Profile::create(po);
                 }
             }
 

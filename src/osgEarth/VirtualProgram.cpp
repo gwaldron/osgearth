@@ -68,6 +68,9 @@ using namespace osgEarth::ShaderComp;
 // Pro: faster. Con: cannot derive from VirtualProgram.
 #define USE_TYPEID
 
+// Whether to bail when a shader set has no fragment shader components.
+#define USE_NO_FRAG_EARLY_OUT
+
 #define MAKE_SHADER_ID(X) osgEarth::hashString( X )
 
 
@@ -559,7 +562,11 @@ namespace
         outputKey.reserve(accumShaderMap.size());
         for( VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
+#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
             outputKey.push_back( i->second._shader->getHash() );
+#else
+            outputKey.push_back( i->second._shader.get() );
+#endif
         }
 
         // finally, add the mains (AFTER building the key vector .. we don't want or
@@ -890,7 +897,7 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
             if (lhsIter->first > rhsIter->first) return +1;
 
             const ShaderEntry& lhsEntry = lhsIter->second;
-            const ShaderEntry& rhsEntry = lhsIter->second;
+            const ShaderEntry& rhsEntry = rhsIter->second;
 
             if (lhsEntry < rhsEntry) return -1;
             if (rhsEntry < lhsEntry) return  1;
@@ -1374,12 +1381,18 @@ VirtualProgram::apply(osg::State& state) const
         for( ShaderMap::iterator i = local.accumShaderMap.begin(); i != local.accumShaderMap.end(); ++i )
         {
             PolyShader* ps = i->second._shader.get();
+
+#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
             local.programKey.push_back(ps->getHash());
+#else
+            local.programKey.push_back(ps);
+#endif
 
             if (ps->isFragmentStage())
                 ++numFragShaders;
         }
 
+#ifdef USE_NO_FRAG_EARLY_OUT
         // If the accumulation contains no fragment stage shaders, the shader program
         // is incomplete and there will be nothing do to; so don't bother trying to
         // apply a program. A side-effect of this "early-out" is that you MUST have
@@ -1391,6 +1404,7 @@ VirtualProgram::apply(osg::State& state) const
         {
             return;
         }
+#endif
 
         // current frame number, for shader program expiry.
         unsigned frameNumber = state.getFrameStamp() ? state.getFrameStamp()->getFrameNumber() : 0;

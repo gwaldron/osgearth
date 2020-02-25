@@ -51,6 +51,8 @@
 #    define GLSL_DEFAULT_PRECISION_FLOAT ""
 #endif
 
+#define OE_USE_HASH_FOR_PROGRAM_KEY
+
 namespace osgEarth
 {
     /** TODO: refactor into VirtualProgram */
@@ -222,10 +224,11 @@ namespace osgEarth
 
         };
 
-        //typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
-        //typedef std::vector<PolyShader*> ProgramKey;
-        //typedef std::string ProgramKey;
+#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
         typedef std::vector<unsigned> ProgramKey;
+#else
+        typedef std::vector<PolyShader*> ProgramKey;
+#endif
 
 
         class /*internal*/ ProgramRepo : public Threading::Lockable<osg::Referenced>

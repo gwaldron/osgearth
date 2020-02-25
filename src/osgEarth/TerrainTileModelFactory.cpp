@@ -711,7 +711,6 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
    {
       std::vector< osg::ref_ptr<osg::Image> > images;
       ImageUtils::flattenImage(image, images);
-    tex->setDataVariance(osg::Object::STATIC);
 
       osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
 
@@ -725,6 +724,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
    }
 
+    tex->setDataVariance(osg::Object::STATIC);
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint(false);

@@ -35,6 +35,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
 #include <osgEarth/ElevationRanges>
+#include <osgEarth/LineDrawable>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -61,6 +62,12 @@ using namespace osgEarth::Util;
 //#define OE_TEST OE_NOTICE
 
 #define USER_OBJECT_NAME "osgEarth.FeatureModelGraph"
+
+// Whether to install a cull callback on PagedLODs that adds an extra
+// culling step (beyond the normal bounding sphere test) based on a
+// tile extent box compared against the frustum. This provides tighter
+// tile selection when paging, so we don't page in as many unnecessary tiles.
+//#define USE_POLYTOPE_CULLING
 
 namespace
 {
@@ -97,6 +104,107 @@ namespace
         mt->addChild(geode);
         return mt;
     }
+
+
+#ifdef USE_POLYTOPE_CULLING
+
+    // This sort of works. 
+    // Sadly, if you are zoomed in to a high LOD, it can get "stuck" failing on a lower LOD
+    // somewhere up the chain. 
+    struct PolytopeCullCallback : public osg::NodeCallback
+    {
+        PolytopeCullCallback(const GeoExtent& tileExtent, double zMin, double zMax) :
+            _corners(8)
+        {
+            // set up 8 "bbox" corners in world space.
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMin(), tileExtent.yMin(), zMin, ALTMODE_ABSOLUTE).toWorld(_corners[0]);
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMax(), tileExtent.yMin(), zMin, ALTMODE_ABSOLUTE).toWorld(_corners[1]);
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMax(), tileExtent.yMax(), zMin, ALTMODE_ABSOLUTE).toWorld(_corners[2]);
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMin(), tileExtent.yMax(), zMin, ALTMODE_ABSOLUTE).toWorld(_corners[3]);
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMin(), tileExtent.yMin(), zMax, ALTMODE_ABSOLUTE).toWorld(_corners[4]);
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMax(), tileExtent.yMin(), zMax, ALTMODE_ABSOLUTE).toWorld(_corners[5]);
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMax(), tileExtent.yMax(), zMax, ALTMODE_ABSOLUTE).toWorld(_corners[6]);
+            GeoPoint(tileExtent.getSRS(), tileExtent.xMin(), tileExtent.yMax(), zMax, ALTMODE_ABSOLUTE).toWorld(_corners[7]);
+
+            // comment this out when testing is complete
+            createDebugDrawable();
+        }
+
+        inline bool intersects(const osg::Polytope::PlaneList& planes, const std::vector<osg::Vec3d>& points) const
+        {
+            // if there is at least one plane that cannot see any of the points, return false,
+            // indicating that the point set is outside the frustum's view.
+            for(osg::Polytope::PlaneList::const_iterator i = planes.begin();
+                i != planes.end();
+                ++i)
+            {
+                // this test returns -1 if all points are below the plane
+                // (i.e. on the opposite side of the positive normal vector)
+                if ( i->intersect(points) < 0 )
+                    return false;
+            }
+            return true;
+        }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            if (_debugDrawable.valid())
+            {
+                _debugDrawable->accept(*nv);
+            }
+
+            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+
+            // correct, but not necessary unless MapNode is transformed:
+            //osg::Matrix worldToLocal = (*cv->getModelViewMatrix() * cv->getCurrentCamera()->getInverseViewMatrix());
+            //std::vector<osg::Vec3d> corners(8);
+            //for(unsigned i=0; i<8; ++i)
+            //    corners[i] = _corners[i] * worldToLocal;
+
+            const osg::Polytope& frustum = cv->getCurrentCullingSet().getFrustum();
+
+            if (intersects(frustum.getPlaneList(), _corners))
+            {
+                traverse(node, nv);
+            }
+
+            // The frustum above only holds the side planes, not a near or far.
+            // Check against a "near=0" plane so we only accept things in front
+            // of the camera:
+            const osg::Vec3d eye_view(0,0,0);
+            const osg::Vec3d lookVec_view(0,0,-1);
+
+            osg::Matrix invView = cv->getCurrentCamera()->getInverseViewMatrix();
+            osg::Vec3d eye = eye_view * invView;
+            osg::Vec3d look = lookVec_view * invView;
+
+            osg::Plane nearPlane(eye, look);
+            if (nearPlane.intersect(_corners) >= 0)
+            {
+                traverse(node, nv);
+            }
+        }
+
+        void createDebugDrawable()
+        {
+            const int index[24] = {
+                0, 1, 1, 2, 2, 3, 3, 0,
+                4, 5, 5, 6, 6, 7, 7, 4,
+                0, 4, 1, 5, 2, 6, 3, 7 
+            };
+            LineDrawable* d = new LineDrawable(GL_LINES);
+            d->setUseGPU(false);
+            for(int i=0; i<24; ++i)
+                d->pushVertex(_corners[index[i]]);
+            d->setColor(osg::Vec4(1,.5,0,1));
+            d->finish();
+            _debugDrawable = d;
+        }
+
+        std::vector<osg::Vec3d> _corners;
+        osg::ref_ptr<osg::Drawable> _debugDrawable;
+    };
+#endif // USE_POLYTOPE_CULLING
 }
 
 //---------------------------------------------------------------------------
@@ -732,7 +840,8 @@ FeatureModelGraph::setupPaging()
  * Called by the pseudo-loader, this method attempts to load a single tile of features.
  */
 osg::Node*
-FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
+FeatureModelGraph::load(
+    unsigned lod, unsigned tileX, unsigned tileY,
     const std::string& uri,
     const osgDB::Options* readOptions)
 {
@@ -874,9 +983,11 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
     return result;
 }
 
+static int s_count = 0u;
 
 void
-FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
+FeatureModelGraph::buildSubTilePagedLODs(
+    unsigned        parentLOD,
     unsigned        parentTileX,
     unsigned        parentTileY,
     osg::Group*     parent,
@@ -890,7 +1001,8 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
     // Find the next level with data:
     const FeatureLevel* flevel = 0L;
 
-    for (unsigned lod = subtileLOD; lod < _lodmap.size() && !flevel; ++lod)
+    unsigned lod;
+    for (lod = subtileLOD; lod < _lodmap.size() && !flevel; ++lod)
     {
         flevel = _lodmap[lod];
     }
@@ -961,6 +1073,16 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                         _defaultFileLocationCallback.get(),
                         readOptions,
                         this);
+
+#ifdef USE_POLYTOPE_CULLING
+                    // TEST: polytope culler
+                    // Thoughts. How should we set the Z-range? How much does it matter?
+                    GeoExtent tileExtentMap = _session->getMapProfile()->clampAndTransformExtent(subtileFeatureExtent);
+                    PolytopeCullCallback* pcc = new PolytopeCullCallback(tileExtentMap, -1000, 2000);
+                    childNode->addCullCallback(pcc);
+                    s_count++;
+                    Registry::instance()->startActivity("Count", Stringify()<<s_count);
+#endif // USE_POLYTOPE_CULLING
                 }
                 else
                 {

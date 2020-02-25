@@ -96,6 +96,13 @@ ElevationLayer::init()
 {
     TileLayer::init();
 
+    // override with a different default tile size since elevation
+    // tiles need overlapping edges
+    if (!options().tileSize().isSet())
+    {
+        options().tileSize().init(257u);
+    }
+
     // elevation layers do not render directly; rather, a composite of elevation data
     // feeds the terrain engine to permute the mesh.
     setRenderType(RENDERTYPE_NONE);

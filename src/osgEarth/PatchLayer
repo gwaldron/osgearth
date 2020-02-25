@@ -47,7 +47,8 @@ namespace osgEarth
 
         //! Create a node for a given tilekey
         //! (Not yet implemented)
-        virtual GeoNode createNode(const TileKey& key, ProgressCallback* progress =0L) final;
+        virtual GeoNode createNode(const TileKey& key, ProgressCallback* progress =0L) 
+            OSGEARTH_FINAL;
 
         //! API providing access to patch geometry 
         class OSGEARTH_EXPORT GeometryArrayProvider

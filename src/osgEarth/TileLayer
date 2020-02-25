@@ -264,7 +264,6 @@ namespace osgEarth
     protected:
 
         optional<bool> _profileMatchesMapProfile;
-        unsigned _tileSize;
         osg::ref_ptr<MemCache> _memCache;
         bool _openCalled;
         bool _writingRequested;

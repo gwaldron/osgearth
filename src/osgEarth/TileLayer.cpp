@@ -206,12 +206,6 @@ TileLayer::init()
     _writingRequested = false;
     _profileMatchesMapProfile = true;
 
-    // Custom tile size?
-    if (options().tileSize().isSet())
-        _tileSize = options().tileSize().get();
-    else
-        _tileSize = 256;
-
     // If the user asked for a custom profile, install it now
     if (options().profile().isSet())
     {
@@ -412,7 +406,7 @@ TileLayer::getCacheBin(const Profile* profile)
                     // in cacheonly mode, create a profile from the first cache bin accessed
                     // (they SHOULD all be the same...)
                     setProfile( Profile::create(meta->_sourceProfile.get()) );
-                    _tileSize = meta->_sourceTileSize.get();
+                    options().tileSize().init(meta->_sourceTileSize.get());
                 }
 
                 bin->setMetadata(meta.get());

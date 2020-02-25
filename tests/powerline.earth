@@ -1,6 +1,5 @@
 <map name="power tower test">
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
-        <cache_policy usage="none"/>
         <features>power-towers</features>
         <tower_model>
             <model>../data/Transmission_Tower.osgb</model>
@@ -23,7 +22,6 @@
                 }
             </style>
         </styles>
-        <lighting>true</lighting>
     </PowerlineModel>
 
     <TFSFeatures name="power-towers">

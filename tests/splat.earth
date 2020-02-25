@@ -35,7 +35,7 @@
                 <groundcover>
                     <max_distance>7300</max_distance>
                     <spacing>12</spacing>
-                    <fill>0.60</fill>
+                    <fill>1</fill>
                     <brightness>2.0</brightness>
                     <contrast>0.5</contrast>
                     <biomes>
@@ -60,7 +60,7 @@
                 <groundcover>
                     <max_distance>80</max_distance>
                     <spacing>0.25</spacing>
-                    <fill>0.65</fill>
+                    <fill>0.45</fill>
                     <wind>0.10</wind>
                     <biomes>
                         <biome name="Grass" classes="grassland forest">

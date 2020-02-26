@@ -173,7 +173,6 @@ LandCoverLayer::addedToMap(const Map* map)
 
     // Find a land cover dictionary if there is one.
     // There had better be one, or we are not going to get very far!
-    // This is called after createTileSource, so the TileSource should exist at this point.
     // Note. If the land cover dictionary isn't already in the Map...this will fail! (TODO)
     // Consider a LayerReference. (TODO)
     _lcDictionary = map->getLayer<LandCoverDictionary>();
@@ -195,7 +194,7 @@ LandCoverLayer::addedToMap(const Map* map)
     }
     else
     {
-        OE_WARN << LC << "Did not find a LandCoverDictionary and/or Coverage in the Map!\n";
+        OE_WARN << LC << "Did not find a LandCoverDictionary in the Map!" << std::endl;
     }
 }
 

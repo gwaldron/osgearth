@@ -273,7 +273,6 @@ ImageLayer::setAltitude(const Distance& value)
         getOrCreateStateSet()->removeUniform("oe_terrain_altitude");
         stateSet->removeMode(GL_CULL_FACE);
     }
-    fireCallback( &ImageLayerCallback::onAltitudeChanged );
 }
 
 const Distance&
@@ -283,12 +282,23 @@ ImageLayer::getAltitude() const
 }
 
 void
-ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
+ImageLayer::invoke_onCreate(const TileKey& key, GeoImage& data)
 {
-    for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
+    if (_callbacks.empty() == false) // not thread-safe but that's ok
     {
-        ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
-        if (cb) (cb->*method)( this );
+        // Copy the vector to prevent thread lockup
+        Callbacks temp;
+
+        _callbacks.lock();
+        temp = _callbacks;
+        _callbacks.unlock();
+
+        for(Callbacks::const_iterator i = temp.begin();
+            i != temp.end();
+            ++i)
+        {
+            i->get()->onCreate(key, data);
+        }
     }
 }
 
@@ -302,7 +312,6 @@ void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
     options().colorFilters()->push_back( filter );
-    fireCallback( &ImageLayerCallback::onColorFiltersChanged );
 }
 
 void
@@ -313,7 +322,6 @@ ImageLayer::removeColorFilter( ColorFilter* filter )
     if ( i != filters.end() )
     {
         filters.erase( i );
-        fireCallback( &ImageLayerCallback::onColorFiltersChanged );
     }
 }
 
@@ -515,6 +523,12 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     if (progress && progress->isCanceled())
     {
         return GeoImage::INVALID;
+    }
+
+    // invoke user callbacks
+    if (result.valid())
+    {
+        invoke_onCreate(key, result);
     }
 
     // memory cache first:
@@ -843,4 +857,22 @@ ImageLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) con
         }
     }
     TileLayer::modifyTileBoundingBox(key, box);
+}
+
+void
+ImageLayer::addCallback(ImageLayer::Callback* c)
+{
+    _callbacks.lock();
+    _callbacks.push_back(c);
+    _callbacks.unlock();
+}
+
+void
+ImageLayer::removeCallback(ImageLayer::Callback* c)
+{
+    _callbacks.lock();
+    Callbacks::iterator i = std::find(_callbacks.begin(), _callbacks.end(), c);
+    if (i != _callbacks.end())
+        _callbacks.erase(i);
+    _callbacks.unlock();
 }

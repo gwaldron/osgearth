@@ -496,6 +496,12 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                 normalizeNoDataValues(hf.get());
             }
 
+            // Invoke user callbacks
+            if (result.valid())
+            {
+                invoke_onCreate(key, result);
+            }
+
             // If we have a cacheable heightfield, and it didn't come from the cache
             // itself, cache it now.
             if ( hf.valid()    && 
@@ -558,6 +564,45 @@ Status
 ElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
 {
     return Status::ServiceUnavailable;
+}
+
+void
+ElevationLayer::invoke_onCreate(const TileKey& key, GeoHeightField& data)
+{
+    if (_callbacks.empty() == false) // not thread-safe but that's ok
+    {
+        // Copy the vector to prevent thread lockup
+        Callbacks temp;
+
+        _callbacks.lock();
+        temp = _callbacks;
+        _callbacks.unlock();
+
+        for(Callbacks::const_iterator i = temp.begin();
+            i != temp.end();
+            ++i)
+        {
+            i->get()->onCreate(key, data);
+        }
+    }
+}
+
+void
+ElevationLayer::addCallback(ElevationLayer::Callback* c)
+{
+    _callbacks.lock();
+    _callbacks.push_back(c);
+    _callbacks.unlock();
+}
+
+void
+ElevationLayer::removeCallback(ElevationLayer::Callback* c)
+{
+    _callbacks.lock();
+    Callbacks::iterator i = std::find(_callbacks.begin(), _callbacks.end(), c);
+    if (i != _callbacks.end())
+        _callbacks.erase(i);
+    _callbacks.unlock();
 }
 
 

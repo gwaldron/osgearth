@@ -121,6 +121,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationLayer
     ElevationLOD
     ElevationPool
+    ElevationRanges
     ElevationQuery
     EllipsoidIntersector
     Endian
@@ -488,6 +489,7 @@ set(TARGET_SRC
     ElevationLayer.cpp
     ElevationLOD.cpp
     ElevationPool.cpp
+    ElevationRanges.cpp
     ElevationQuery.cpp
     EllipsoidIntersector.cpp
     Extension.cpp

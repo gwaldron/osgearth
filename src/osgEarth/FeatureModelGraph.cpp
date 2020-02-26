@@ -34,6 +34,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/ElevationRanges>
 #include <osgEarth/LineDrawable>
 
 #include <osg/CullFace>
@@ -706,20 +707,32 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
 
     if (_session.valid())
     {
-        // TODO: Use an appropriate resolution for this extents width
-        //unsigned lod = 23u;        
-
         // This is fine but the ElevationPool is caching tiles at the requested TileKey, not the
         // actual resolved TileKey. This renders the cache essentially non-functional. FIX TODO
         unsigned lod = map->getProfile()->getLOD(workingExtent.height());
-
-        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
         float elevation = NO_DATA_VALUE;
+#if 0
+        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);        
         if (env.valid())
         {
             elevation = env->getElevation(center.x(), center.y());
             OE_DEBUG << LC << "GBIWC LOD=" << lod << ", elevation=" << elevation << std::endl;
         }
+#else
+        ElevationLayerVector elevationLayers;
+        _session->getMap()->getLayers<ElevationLayer>(elevationLayers);
+        if (!elevationLayers.empty())
+        {
+            // Get the approximate elevation range if we have elevation data in the map
+            lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
+            GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
+            TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
+            short min, max;
+            ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+            float approxElevation = (max + min) / 2.0f;
+            elevation = approxElevation;
+        }
+#endif
 
         // Check for NO_DATA_VALUE and use zero instead.
         if (elevation != NO_DATA_VALUE)

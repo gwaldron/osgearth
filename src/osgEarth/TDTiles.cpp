@@ -28,6 +28,7 @@
 #include <osgUtil/IncrementalCompileOperation>
 #include <osg/ShapeDrawable>
 #include <osg/PolygonMode>
+#include <osgEarth/LineDrawable>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -500,7 +501,7 @@ void ThreeDTileNode::computeBoundingVolume()
         centroid.createLocalToWorld(localToWorld);
 
         osg::Vec3d world;
-        osg::BoundingBox bb;
+        osg::BoundingBoxd bb;
 
         GeoPoint(srs, extent.west(), extent.south(), _tile->boundingVolume()->region()->zMin()).toWorld(world);
         bb.expandBy(world * worldToLocal);
@@ -542,19 +543,34 @@ void ThreeDTileNode::createDebugBounds()
         _boundsDebug = sd;
     }
     else if (_boundingBox.valid())
-    {     
-        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Box(_boundingBox.center(), _boundingBox.xMax() - _boundingBox.xMin(), _boundingBox.yMax() - _boundingBox.yMin(), _boundingBox.zMax() - _boundingBox.zMin()));
-        sd->setColor(_debugColor);
-        osg::StateSet* stateset = sd->getOrCreateStateSet();
-        osg::PolygonMode* polymode = new osg::PolygonMode;
-        polymode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
-        stateset->setAttributeAndModes(polymode, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
-        stateset->setMode(GL_LIGHTING, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF);
-        stateset->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
+    {
+        const int index[24] = {
+                0, 1, 1, 2, 2, 3, 3, 0,
+                4, 5, 5, 6, 6, 7, 7, 4,
+                0, 4, 1, 5, 2, 6, 3, 7
+        };
+
+        std::vector< osg::Vec3 > corners;
+        LineDrawable* d = new LineDrawable(GL_LINES);
+        d->setUseGPU(false);
+        corners.push_back(osg::Vec3(_boundingBox.xMin(), _boundingBox.yMin(), _boundingBox.zMin()));
+        corners.push_back(osg::Vec3(_boundingBox.xMax(), _boundingBox.yMin(), _boundingBox.zMin()));
+        corners.push_back(osg::Vec3(_boundingBox.xMax(), _boundingBox.yMax(), _boundingBox.zMin()));
+        corners.push_back(osg::Vec3(_boundingBox.xMin(), _boundingBox.yMax(), _boundingBox.zMin()));
+        corners.push_back(osg::Vec3(_boundingBox.xMin(), _boundingBox.yMin(), _boundingBox.zMax()));
+        corners.push_back(osg::Vec3(_boundingBox.xMax(), _boundingBox.yMin(), _boundingBox.zMax()));
+        corners.push_back(osg::Vec3(_boundingBox.xMax(), _boundingBox.yMax(), _boundingBox.zMax()));
+        corners.push_back(osg::Vec3(_boundingBox.xMin(), _boundingBox.yMax(), _boundingBox.zMax()));
+
+        for (int i = 0; i < 24; ++i)
+            d->pushVertex(corners[index[i]]);
+
+        d->setColor(_debugColor);
+        d->finish();
 
         osg::MatrixTransform* transform = new osg::MatrixTransform;
         transform->setMatrix(_boundingBoxLocalToWorld);
-        transform->addChild(sd);
+        transform->addChild(d);
         _boundsDebug = transform;
     }
 }

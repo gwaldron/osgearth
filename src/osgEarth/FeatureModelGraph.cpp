@@ -34,6 +34,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/ElevationRanges>
 #include <osgEarth/LineDrawable>
 
 #include <osg/CullFace>
@@ -706,29 +707,44 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
 
     if (_session.valid())
     {
-        // TODO: Use an appropriate resolution for this extents width
-        //unsigned lod = 23u;        
-
         // This is fine but the ElevationPool is caching tiles at the requested TileKey, not the
         // actual resolved TileKey. This renders the cache essentially non-functional. FIX TODO
         unsigned lod = map->getProfile()->getLOD(workingExtent.height());
-
-        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
+        float minElevation = -100.0f;
+        float maxElevation = 100.0f;
+#if 0
         float elevation = NO_DATA_VALUE;
+        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);        
         if (env.valid())
         {
             elevation = env->getElevation(center.x(), center.y());
             OE_DEBUG << LC << "GBIWC LOD=" << lod << ", elevation=" << elevation << std::endl;
         }
-
-        // Check for NO_DATA_VALUE and use zero instead.
-        if (elevation != NO_DATA_VALUE)
+        if (elevation == NO_DATA_VALUE)
         {
-            center.z() = elevation;
+            elevation = 0.0;
         }
-
-        // expand the bounds a little bit vertically to account for feature data
-        osg::BoundingSphered bs = workingExtent.createWorldBoundingSphere(center.z() - 100.0, center.z() + 100.0);
+        minElevation = elevation - 100.0;
+        maxElevation = elevation + 100.0;
+#else
+        ElevationLayerVector elevationLayers;
+        _session->getMap()->getLayers<ElevationLayer>(elevationLayers);
+        if (!elevationLayers.empty())
+        {
+            // Get the approximate elevation range if we have elevation data in the map
+            lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
+            GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
+            TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
+            short min, max;
+            ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+            // Clamp the min value to avoid extreme underwater values.
+            minElevation = osg::maximum(min, (short)-500);
+            // Add a little bit extra of extra height to account for feature data.
+            maxElevation = max + 100.0f;
+        }
+#endif
+        // Expand the bounding sphere to account for the min/max elevation
+        osg::BoundingSphered bs = workingExtent.createWorldBoundingSphere(minElevation, maxElevation);
 
         // account for a worldwide bound:
         double minRadius = osg::minimum(

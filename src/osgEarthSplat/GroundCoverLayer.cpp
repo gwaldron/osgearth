@@ -488,6 +488,13 @@ GroundCoverLayer::buildStateSets()
                 //vp->setShader(covTest2);
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
+                if (!layerShader.valid())
+                {
+                    setStatus(Status::ConfigurationError, "No GroundCover objects available");
+                    setDrawCallback(NULL);
+                    return;
+                }
+
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader.get());
 #else
@@ -502,6 +509,12 @@ GroundCoverLayer::buildStateSets()
                 vp->setShader(covTest);
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
+                if (!layerShader.valid())
+                {
+                    setStatus(Status::ConfigurationError, "No GroundCover objects available");
+                    setDrawCallback(NULL);
+                    return;
+                }
                 layerShader->setType(osg::Shader::VERTEX);
                 vp->setShader(layerShader.get());
 

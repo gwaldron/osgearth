@@ -359,6 +359,12 @@ GroundCover::createShader() const
         return NULL;
     }
 
+    if (totalNumObjectsInserted == 0)
+    {
+        OE_WARN << LC << "Shader creation failed; no valid groundcover billboards" << std::endl;
+        return NULL;
+    }
+
     biomeBuf
         << "\n);\n";
 

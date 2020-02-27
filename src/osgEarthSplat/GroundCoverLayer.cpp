@@ -857,7 +857,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
         if (pcp == NULL)
         {
             //OE_WARN << "[GroundCoverLayer] ILLEGAL STATE - getLastAppliedProgramObject == NULL. Contact support." << std::endl;
-            //return;
+            return;
         }
         ds._numInstancesUL = pcp->getUniformLocation(_numInstancesUName);
         ds._LLUL = pcp->getUniformLocation(_LLUName);

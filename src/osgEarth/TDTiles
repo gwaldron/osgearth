@@ -69,8 +69,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
     class OSGEARTH_EXPORT BoundingVolume
     {
-        OE_OPTION(osg::BoundingBox, box);
-        OE_OPTION(osg::BoundingBox, region);
+        OE_OPTION(osg::BoundingBoxd, box);
+        OE_OPTION(osg::BoundingBoxd, region);
         OE_OPTION(osg::BoundingSphere, sphere);
 
         BoundingVolume() { }
@@ -208,7 +208,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         bool _firstVisit;
 
-        osg::BoundingBox _boundingBox;
+        osg::BoundingBoxd _boundingBox;
         osg::Matrixd _boundingBoxLocalToWorld;
 
         osg::ref_ptr< osgDB::Options > _options;

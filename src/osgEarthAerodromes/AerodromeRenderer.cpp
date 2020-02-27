@@ -1065,7 +1065,8 @@ AerodromeRenderer::defaultFeatureRenderer(osgEarth::Feature* feature, const Colo
     {
         style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
     }
-    else if (feature->getGeometry()->getType() == osgEarth::Geometry::TYPE_POINTSET)
+    else if (feature->getGeometry()->getType() == osgEarth::Geometry::TYPE_POINT ||
+             feature->getGeometry()->getType() == osgEarth::Geometry::TYPE_POINTSET)
     {
         style.getOrCreate<PointSymbol>()->fill()->color() = color;
         style.getOrCreate<PointSymbol>()->size() = 2.0f;

@@ -329,9 +329,8 @@ namespace osgEarth
 
         mutable bool _overrideCachePolicyInitialized;
 
-        typedef std::set<std::string> StringSet;
-        StringSet _blacklistedFilenames;
-        Threading::ReadWriteMutex _blacklistMutex;
+        typedef UnorderedSet<std::string> StringSet;
+        Threading::Lockable<StringSet> _blacklist;
 
         osg::ref_ptr<ShaderFactory> _shaderLib;
         osg::ref_ptr<ShaderGenerator> _shaderGen;

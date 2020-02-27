@@ -112,7 +112,8 @@ namespace osgEarth
         {
         public:
             Tile() : _status(STATUS_EMPTY), _loadTime(0) { }
-            TileKey             _key;           // key used to request this tile
+            TileKey             _key;        // key used to request this tile
+            TileKey             _actualKey;  // key corresponding to the data (in case of fallback)
             Bounds              _bounds;
             GeoHeightField      _hf;
             OpenThreads::Atomic _status;

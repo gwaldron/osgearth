@@ -488,6 +488,13 @@ GroundCoverLayer::buildStateSets()
                 //vp->setShader(covTest2);
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
+                if (!layerShader.valid())
+                {
+                    setStatus(Status::ConfigurationError, "No GroundCover objects available");
+                    setDrawCallback(NULL);
+                    return;
+                }
+
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader.get());
 #else
@@ -502,6 +509,12 @@ GroundCoverLayer::buildStateSets()
                 vp->setShader(covTest);
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
+                if (!layerShader.valid())
+                {
+                    setStatus(Status::ConfigurationError, "No GroundCover objects available");
+                    setDrawCallback(NULL);
+                    return;
+                }
                 layerShader->setType(osg::Shader::VERTEX);
                 vp->setShader(layerShader.get());
 
@@ -857,7 +870,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
         if (pcp == NULL)
         {
             //OE_WARN << "[GroundCoverLayer] ILLEGAL STATE - getLastAppliedProgramObject == NULL. Contact support." << std::endl;
-            //return;
+            return;
         }
         ds._numInstancesUL = pcp->getUniformLocation(_numInstancesUName);
         ds._LLUL = pcp->getUniformLocation(_LLUName);

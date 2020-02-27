@@ -156,6 +156,8 @@ ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& 
         }
     }
 
+    tile->_actualKey = keyToUse;
+
     return tile->_hf.valid();
 }
 
@@ -383,6 +385,7 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
 
     if (p.transformInPlace(_mapProfile->getSRS()))
     {
+#if 0
         // find the tile containing the point:
         for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
             tile_ref != _tiles.end();
@@ -390,8 +393,6 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         {
             ElevationPool::Tile* tile = tile_ref->get();
 
-            // TODO: not sure this is good enough. What about the case where a hi-res elevation region
-            // abuts a lo-res elevation region?
             if (tile->_hf.getExtent().contains(p.x(), p.y()))
             {
                 foundTile = true;
@@ -405,6 +406,7 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
                 }
             }
         }
+#endif
 
         // If we didn't find a tile containing the point, we need to ask the clamper
         // for the tile so we can add it to the query set.

@@ -151,26 +151,25 @@ ElevationLayer::normalizeNoDataValues(osg::HeightField* hf) const
 }
 
 void
-ElevationLayer::applyProfileOverrides()
+ElevationLayer::applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const
 {
     // Check for a vertical datum override.
     bool changed = false;
-    if ( getProfile() && options().verticalDatum().isSet() )
+    if ( inOutProfile.valid() && options().verticalDatum().isSet() )
     {
         std::string vdatum = options().verticalDatum().get();
-        OE_INFO << LC << "Override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
+        
+        std::string profileVDatumStr = _profile->getSRS()->getVertInitString();
+        if (profileVDatumStr.empty()) profileVDatumStr = "geodetic";
+        OE_INFO << LC << "Override vdatum = " << vdatum << " (was " << profileVDatumStr << ")" << std::endl;
+
         if ( !ciEquals(getProfile()->getSRS()->getVertInitString(), vdatum) )
         {
             ProfileOptions po = getProfile()->toProfileOptions();
             po.vsrsString() = vdatum;
-            setProfile( Profile::create(po) );
+            inOutProfile = Profile::create(po);
             changed = true;
         }
-    }
-
-    if (changed && _profile.valid())
-    {
-        OE_INFO << LC << "Override profile: " << _profile->toString() << std::endl;
     }
 }
 

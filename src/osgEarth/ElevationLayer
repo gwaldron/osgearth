@@ -117,7 +117,7 @@ namespace osgEarth
     protected: // ElevationLayer
 
         //! Override aspects of the layer Profile as needed
-        virtual void applyProfileOverrides();
+        virtual void applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const;
 
         //! Entry point for createHeightField
         GeoHeightField createHeightFieldInKeyProfile(const TileKey& key, ProgressCallback* progress);

@@ -196,10 +196,8 @@ main( int argc, char** argv )
 
     osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, uiRoot);
     s_mapNode = osgEarth::MapNode::get(loaded);
-    if ( !s_mapNode.valid() ) {
-        OE_WARN << "No osgEarth MapNode found in the loaded file(s)." << std::endl;
+    if ( !s_mapNode.valid() )
         return -1;
-    }
 
     // the displayed Map:
     s_activeMap = s_mapNode->getMap();

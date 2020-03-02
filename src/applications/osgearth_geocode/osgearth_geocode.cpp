@@ -54,6 +54,7 @@ main(int argc, char** argv)
     }
 
     Geocoder geocoder;
+    geocoder.setServiceOption("WRITE_CACHE", "FALSE");
     Geocoder::Results results = geocoder.search(argv[1], options.get());
 
     if (async)

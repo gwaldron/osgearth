@@ -55,7 +55,7 @@ namespace
     public: // GeocoderImplementation
         osgEarth::Status search(const std::string& input, osg::ref_ptr<FeatureCursor>& output);
 
-        void setOption(const std::string& key, const std::string& value);
+        void setServiceOption(const std::string& key, const std::string& value);
 
     private:
         OGRGeocodingSessionH _session;
@@ -82,10 +82,15 @@ namespace
 
         if (_options.empty() == false)
         {
+            std::vector<std::string> buffers;
             char** str = new char*[_options.size()+1];
             int c = 0;
             for(UnorderedMap<std::string, std::string>::const_iterator i = _options.begin(); i != _options.end(); ++i)
-                str[c++] = (char*)i->second.c_str();
+            {                
+                buffers.push_back(i->first + "=" + i->second);
+                str[c++] = (char*)(buffers.back().c_str());
+                //str[c++] = (char*)i->second.c_str();
+            }
             str[c] = 0L;
 
             _session = OGRGeocodeCreateSession(str);
@@ -98,7 +103,7 @@ namespace
         }
     }
 
-    void OGRGeocodeImplementation::setOption(const std::string& name, const std::string& value)
+    void OGRGeocodeImplementation::setServiceOption(const std::string& name, const std::string& value)
     {
         _options[name] = value;
         reset();
@@ -156,10 +161,10 @@ Geocoder::Geocoder()
 }
 
 void
-Geocoder::setOption(const std::string& key, const std::string& value)
+Geocoder::setServiceOption(const std::string& key, const std::string& value)
 {
     if (_impl)
-        _impl->setOption(key, value);
+        _impl->setServiceOption(key, value);
 }
 
 Geocoder::Results

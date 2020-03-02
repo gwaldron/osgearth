@@ -156,6 +156,11 @@ public:
       OSG_NOTICE << "read webp image: stream size is zero" << std::endl;
     }
 
+    if (image)
+    {
+        image->flipVertical();
+    }
+
     return image;
   }
 

@@ -32,7 +32,7 @@
 #include <osgEarth/Notify>
 
 #undef LC
-#define LC "[GLTFWriter] "
+#define LC "[GLTFReader] "
 
 class GLTFReader
 {

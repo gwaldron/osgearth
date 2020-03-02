@@ -287,7 +287,6 @@ GroundCoverLayer::setMaskLayer(ImageLayer* layer)
     _maskLayer.setLayer(layer);
     if (layer)
     {
-        OE_INFO << LC << "Mask layer is \"" << layer->getName() << "\"\n";
         buildStateSets();
     }
 }
@@ -306,6 +305,11 @@ GroundCoverLayer::addedToMap(const Map* map)
     _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
     _landCoverLayer.connect(map, options().landCoverLayerName());
     _maskLayer.connect(map, options().maskLayerName());
+
+    if (getMaskLayer())
+    {
+        OE_INFO << LC << "Mask layer is \"" << getMaskLayer()->getName() << "\"" << std::endl;
+    }
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
     {
@@ -930,6 +934,8 @@ GroundCoverLayer::Renderer::postDraw(osg::RenderInfo& ri, osg::Referenced* data)
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
     // Need to unbind our VAO so as not to confuse OSG
     ri.getState()->unbindVertexArrayObject();
+
+    //TODO: review this. I don't see why this should be necessary.
     ri.getState()->setLastAppliedProgramObject(NULL);
 #endif
 }

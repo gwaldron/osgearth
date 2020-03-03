@@ -71,7 +71,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
             unsigned olderThanFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
 
             // Remove them from the registry:
-            _tiles->collectTheDead(olderThanTime, olderThanFrame, _maxTilesToUnloadPerFrame, _deadpool);
+            _tiles->collectDormantTiles(nv, olderThanTime, olderThanFrame, _maxTilesToUnloadPerFrame, _deadpool);
 
             // Remove them from the scene graph:
             for(std::vector<osg::observer_ptr<TileNode> >::iterator i = _deadpool.begin();
@@ -81,9 +81,13 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 // may be NULL since we're removing scene graph objects as we go!
                 osg::ref_ptr<TileNode> tile = i->get();
 
-                if (tile.valid() && tile->getNumParents() > 0)
+                if (tile.valid())
                 {
-                    TileNode* parent = dynamic_cast<TileNode*>(tile->getParent(0));
+                    TileNode* parent = tile->getParentTile();
+
+                    // Check that this tile doesn't have any live quadtree siblings. If it does,
+                    // we don't want to remove them too!
+                    // GW: moved this check to the collectAbandonedTiles function where it belongs
                     if (parent) // && parent->areSubTilesDormant(nv.getFrameStamp()))
                     {
                         parent->removeSubTiles();
@@ -94,7 +98,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             if (_deadpool.empty() == false)
             {
-                OE_DEBUG << "Unloaded " << count << " of " << _deadpool.size() << " expired tiles; " << _tiles->size() << " remain active." << std::endl;
+                OE_DEBUG << "Unloaded " << count << " of " << _deadpool.size() << " dormant tiles; " << _tiles->size() << " remain active." << std::endl;
             }
 
             _deadpool.clear();

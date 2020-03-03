@@ -90,7 +90,7 @@ TerrainOptions::fromConfig(const Config& conf)
     minExpiryFrames().init(0);
     minExpiryTime().init(0.0);
     minExpiryRange().init(0.0f);
-    maxTilesToUnloadPerFrame().init(10u);
+    maxTilesToUnloadPerFrame().init(0u);
     heightFieldSkirtRatio().init(0.0f);
     color().init(osg::Vec4f(1,1,1,1));
     expirationThreshold().init(300u);

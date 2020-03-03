@@ -87,7 +87,8 @@ namespace osgEarth { namespace REX
                 IDLE,
                 RUNNING,
                 MERGING,
-                FINISHED
+                FINISHED,
+                ABANDONED
             };
 
             void setState(State value);

@@ -54,9 +54,6 @@ namespace osgEarth { namespace REX
         void setMaxTilesToUnloadPerFrame(unsigned value) { _maxTilesToUnloadPerFrame = value; }
         unsigned getMaxTilesToUnloadPerFrame() const { return _maxTilesToUnloadPerFrame; }
 
-        /** Service that will release GL objects on unloaded nodes. */
-//        void setReleaser(ResourceReleaser* releaser) { _releaser = releaser; }
-
     public: // Unloader
 
         //void unloadChildren(const std::vector<TileKey>& keys);

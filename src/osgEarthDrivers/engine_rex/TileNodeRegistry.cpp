@@ -303,16 +303,22 @@ TileNodeRegistry::update(TileNode* tile, const osg::FrameStamp* fs)
 }
 
 void
-TileNodeRegistry::collectTheDead(double olderThanTime, unsigned olderThanFrame, unsigned maxTiles, std::vector<osg::observer_ptr<TileNode> >& output)
+TileNodeRegistry::collectDormantTiles(
+    osg::NodeVisitor& nv,
+    double olderThanTime,
+    unsigned olderThanFrame,
+    unsigned maxTiles,
+    std::vector<osg::observer_ptr<TileNode> >& output)
 {
     _mutex.lock();
 
     unsigned count = 0u;
 
+    const osg::FrameStamp* fs = nv.getFrameStamp();
+
     // After cull, all visited tiles are in front of the sentry, and all
     // non-visited tiles are behind it. Start at the sentry position and
     // iterate over the non-visited tiles, checking them for deletion.
-    // We never remove tiles at the first LOD!
     Tracker::iterator i = _sentryptr;
     Tracker::iterator tmp;
     for(++i; i != _tracker.end() && count < maxTiles; ++i)
@@ -323,7 +329,8 @@ TileNodeRegistry::collectTheDead(double olderThanTime, unsigned olderThanFrame, 
 
         if (se->_tile->getDoNotExpire() == false &&
             se->_lastTime < olderThanTime &&
-            se->_lastFrame < olderThanFrame)
+            se->_lastFrame < olderThanFrame &&
+            se->_tile->areSiblingsDormant(fs))
         {
             if (_notifyNeighbors)
             {

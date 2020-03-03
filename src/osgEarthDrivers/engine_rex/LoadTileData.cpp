@@ -77,7 +77,8 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
-        setState(Request::IDLE);
+        //OE_INFO << LC << "Request " << _key.str() << " cancelled" << std::endl;
+        setState(Request::ABANDONED);
     }
 
     // In the terrain engine, we have to keep our elevation rasters in 

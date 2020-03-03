@@ -423,7 +423,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     if ( req->isFinished() )
                     {
                         //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
-                        req->setState( Request::IDLE );
+                        //req->setState( Request::IDLE );
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
@@ -432,8 +432,8 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     // Discard requests that are no longer required:
                     else if ( !req->isMerging() && frameDiff > 2 )
                     {
-                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << frameDiff << " frames" << std::endl; 
-                        req->setState( Request::IDLE );
+                        OE_DEBUG << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be serviced" << std::endl; 
+                        req->setState( Request::ABANDONED );
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
@@ -442,8 +442,8 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     // Prevent a request from getting stuck in the merge queue:
                     else if ( req->isMerging() && frameDiff > 1800 )
                     {
-                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting " << frameDiff << " frames to merge" << std::endl; 
-                        req->setState( Request::IDLE );
+                        OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
+                        req->setState( Request::ABANDONED );
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );

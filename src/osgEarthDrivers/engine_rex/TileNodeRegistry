@@ -129,16 +129,17 @@ namespace osgEarth { namespace REX
         //! Empty the registry, releasing all tiles.
         void releaseAll(ResourceReleaser*);
 
-        //! Collect expired tiles. This is called the UnloaderGroup
-        //! during update/event to remove expired scene graphs.
+        //! Collect dormant tiles. This is called by UnloaderGroup
+        //! during update/event to remove dormant scene graphs.
         //! olderThan: only remove tiles older than this timestamp
         //! maxCount: remove up to this number of tiles
-        //! output: put expired tiles in this collection
-        void collectTheDead(
+        //! output: put dormant tiles in this collection
+        void collectDormantTiles(
+            osg::NodeVisitor& nv,
             double olderThanTime,       // expire if tile is older than this time
             unsigned olderThanFrame,    // expire if tile is older than this frame
             unsigned maxCount,          // maximum number of tiles to collect
-            std::vector<osg::observer_ptr<TileNode> >& output);   // put expired tiles here
+            std::vector<osg::observer_ptr<TileNode> >& output);   // put dormant tiles here
 
     protected:
 

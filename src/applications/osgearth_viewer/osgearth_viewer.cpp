@@ -25,24 +25,55 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <osgEarth/Viewpoint>
-#include <osgEarth/Random>
+#include <osgEarth/ThreadingUtils>
+#include <iostream>
+
+#include <osgEarth/Metrics>
+
+#define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+
+int
+usage(const char* name)
+{
+    OE_NOTICE 
+        << "\nUsage: " << name << " file.earth" << std::endl
+        << MapNodeHelper().usage() << std::endl;
+
+    return 0;
+}
+
 
 int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
+    // help?
+    if ( arguments.read("--help") )
+        return usage(argv[0]);
+
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-    EarthManipulator* em = new EarthManipulator(arguments);
-    viewer.setCameraManipulator(em);
 
-    const SpatialReference* srs = SpatialReference::get("wgs84");
-    Random rng;
+    // Tell the database pager to not modify the unref settings
+    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
+
+    // thread-safe initialization of the OSG wrapper manager. Calling this here
+    // prevents the "unsupported wrapper" messages from OSG
+    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
+
+    // install our default manipulator (do this before calling load)
+    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+
+    // disable the small-feature culling
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    // set a near/far ratio that is smaller than the default. This allows us to get
+    // closer to the ground without near clipping. If you need more, use --logdepth
+    viewer.getCamera()->setNearFarRatio(0.0001);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -50,34 +81,10 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-
-        Viewpoint h;
-        h.setFocalPoint(GeoPoint(srs, -159.534195, 22.0250085, 1000, ALTMODE_ABSOLUTE));
-        h.setRange(63100);
-        h.setHeading(1.76);
-        h.setPitch(-27.45);        
-        em->setViewpoint(h);
-
-        while(viewer.done() == false)
-        {
-            int fn = viewer.getFrameStamp()->getFrameNumber()+1;
-            if (fn % 60 == 0)
-            {
-                double lat = -80 + rng.next()*160.0;
-                double lon = -180 + rng.next()*360.0;
-                double range = pow(10.0, 3.0+rng.next()*3.0);
-                double heading = rng.next()*360.0;
-                double pitch = -10+rng.next()*-79.0;
-
-                Viewpoint v;
-                v.setFocalPoint(GeoPoint(srs, lon, lat, 0.0, ALTMODE_ABSOLUTE));
-                v.setHeading(heading);
-                v.setPitch(pitch);
-                v.setRange(range);
-
-                em->setViewpoint(v, 0.8);
-            }
-            viewer.frame();
-        }
+        return Metrics::run(viewer);
+    }
+    else
+    {
+        return usage(argv[0]);
     }
 }

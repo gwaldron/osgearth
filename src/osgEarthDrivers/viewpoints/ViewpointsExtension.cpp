@@ -61,7 +61,7 @@ namespace
         {
             if ( ea.getEventType() == ea.KEYDOWN )
             {
-                if ( !_viewpoints.empty() && _autoRunDelay > 0.0f )
+                if ( !_viewpoints.empty() && _autoRunDelay <= 0.0f )
                 {
                     int index = (int)ea.getKey() - (int)'1';
                     if ( index >= 0 && index < (int)_viewpoints.size() )

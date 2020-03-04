@@ -497,7 +497,14 @@ public:
                 int currentMaterial = getCurrentMaterial();
                 if (currentMaterial >= 0)
                 {
-                    primitive.material = currentMaterial;
+                    // Cesium may crash if using texture without texCoords
+                    // gltf_validator will report it as errors
+                    // ThreeJS seems to be fine though
+                    // TODO: check if the material actually has any texture in it
+                    // TODO: the material should not be added if not used anywhere
+                    if (texCoords.valid()) {
+                        primitive.material = currentMaterial;
+                    }
                 }
 
                 primitive.mode = pset->getMode();

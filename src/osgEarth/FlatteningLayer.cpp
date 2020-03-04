@@ -707,6 +707,15 @@ FlatteningLayer::init()
     _pool->setTileSize(257u);
 }
 
+Config
+FlatteningLayer::getConfig() const
+{
+    Config c = ElevationLayer::getConfig();
+    if (_featureSource.isSetByUser())
+        c.set(_featureSource.getLayer()->getConfig());
+    return c;
+}
+
 Status
 FlatteningLayer::openImplementation()
 {

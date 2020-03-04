@@ -91,6 +91,15 @@ LandCoverLayer::init()
     _beachCode = -1;
 }
 
+Config
+LandCoverLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    if (_source.isSetByUser())
+        c.set(_source.getLayer()->getConfig());
+    return c;
+}
+
 void
 LandCoverLayer::setSource(ImageLayer* value)
 {

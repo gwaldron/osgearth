@@ -120,6 +120,15 @@ SimpleOceanLayer::init()
     setSeaLevel(0.0f); // option?
 }
 
+Config
+SimpleOceanLayer::getConfig() const
+{
+    Config c = VisibleLayer::getConfig();
+    if (_maskLayer.isSetByUser())
+        c.set(_maskLayer.getLayer()->getConfig());
+    return c;
+}
+
 void
 SimpleOceanLayer::setTerrainResources(TerrainResources* res)
 {

@@ -356,3 +356,15 @@ SplatLayer::releaseGLObjects(osg::State* state) const
     // it here.
     //const_cast<SplatLayer*>(this)->buildStateSets();
 }
+
+
+Config
+SplatLayer::getConfig() const
+{
+    Config c = VisibleLayer::getConfig();
+    if (_landCoverDict.isSetByUser())
+        c.set(_landCoverDict.getLayer()->getConfig());
+    if (_landCoverLayer.isSetByUser())
+        c.set(_landCoverLayer.getLayer()->getConfig());
+    return c;
+}

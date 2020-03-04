@@ -54,6 +54,8 @@ namespace osgEarth
 
         virtual void init();
 
+        virtual Config getConfig() const;
+
     protected: // Layer
 
         // called by the map when this layer is added/removed

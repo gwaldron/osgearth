@@ -99,6 +99,9 @@ namespace osgEarth { namespace Triton
 
         virtual osg::Node* getNode() const;
 
+        //! Serialize
+        virtual Config getConfig() const;
+
     protected: // Layer
 
         virtual void init();

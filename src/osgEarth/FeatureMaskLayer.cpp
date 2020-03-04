@@ -72,6 +72,15 @@ FeatureMaskLayer::openImplementation()
     return Status::NoError;
 }
 
+Config
+FeatureMaskLayer::getConfig() const
+{
+    Config c = MaskLayer::getConfig();
+    if (_featureSource.isSetByUser())
+        c.set(_featureSource.getLayer()->getConfig());
+    return c;
+}
+
 osg::Vec3dArray*
 FeatureMaskLayer::getOrCreateMaskBoundary(float heightScale,
                                           const SpatialReference* srs,

@@ -382,3 +382,12 @@ TritonLayer::addIntersections(TritonIntersections* value)
     TritonLayerNode* node = static_cast<TritonLayerNode*>(_tritonNode.get());
     node->_isect.push_back(value);
 }
+
+osgEarth::Config
+TritonLayer::getConfig() const
+{
+    osgEarth::Config c = osgEarth::VisibleLayer::getConfig();
+    if (_maskLayer.isSetByUser())
+        c.set(_maskLayer.getLayer()->getConfig());
+    return c;
+}

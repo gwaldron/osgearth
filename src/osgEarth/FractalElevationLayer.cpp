@@ -194,6 +194,15 @@ FractalElevationLayer::init()
     }
 }
 
+Config
+FractalElevationLayer::getConfig() const
+{
+    Config c = ElevationLayer::getConfig();
+    if (_dictionary.isSetByUser())
+        c.set(_dictionary.getLayer()->getConfig());
+    return c;
+}
+
 Status
 FractalElevationLayer::openImplementation()
 {

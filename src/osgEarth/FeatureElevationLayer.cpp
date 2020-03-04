@@ -70,6 +70,15 @@ FeatureElevationLayer::init()
     setProfile(Profile::create("global-geodetic"));
 }
 
+Config
+FeatureElevationLayer::getConfig() const
+{
+    Config c = ElevationLayer::getConfig();
+    if (_featureSource.isSetByUser())
+        c.set(_featureSource.getLayer()->getConfig());
+    return c;
+}
+
 Status
 FeatureElevationLayer::openImplementation()
 {

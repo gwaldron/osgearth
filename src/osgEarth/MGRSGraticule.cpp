@@ -346,6 +346,15 @@ MGRSGraticule::init()
 
 }
 
+Config
+MGRSGraticule::getConfig() const
+{
+    Config c = VisibleLayer::getConfig();
+    if (_styleSheet.isSetByUser())
+        c.set(_styleSheet.getLayer()->getConfig());
+    return c;
+}
+
 Status
 MGRSGraticule::openImplementation()
 {

@@ -49,7 +49,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::get(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
 }
 
 Config
@@ -63,7 +63,7 @@ FeatureModelLayer::Options::getConfig() const
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
 
-    LayerReference<FeatureSource>::set(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
 
     return conf;
 }
@@ -111,6 +111,20 @@ void FeatureModelLayer::dirty()
 
     // create the scene graph
     create();
+}
+
+Config
+FeatureModelLayer::getConfig() const
+{
+    Config conf = VisibleLayer::getConfig();
+
+    if (_featureSource.isSetByUser())
+        conf.set(_featureSource.getLayer()->getConfig());
+
+    if (_styleSheet.isSetByUser())
+        conf.set(_styleSheet.getLayer()->getConfig());
+
+    return conf;
 }
 
 void

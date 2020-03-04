@@ -205,3 +205,13 @@ ImageToFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* 
     }
     return 0;
 }
+
+
+Config
+ImageToFeatureSource::getConfig() const
+{
+    Config c = FeatureSource::getConfig();
+    if (_imageLayer.isSetByUser())
+        c.set(_imageLayer.getLayer()->getConfig());
+    return c;
+}

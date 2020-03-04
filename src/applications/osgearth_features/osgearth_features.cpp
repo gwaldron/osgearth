@@ -24,6 +24,7 @@
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgDB/WriteFile>
 
 #include <osgEarth/MapNode>
 #include <osgEarth/GDAL>
@@ -46,6 +47,7 @@ int usage( const std::string& app )
         << "  --clamp               : draw features using shader clamping \n"
         << "  --mem                 : load features from memory \n"
         << "  --labels              : add feature labels \n"
+        << "  --out <earthfile>     : test writing to an earth file \n"
         << "\n"
         << MapNodeHelper().usage()
         << std::endl;
@@ -69,10 +71,13 @@ int main(int argc, char** argv)
     bool useDraping = arguments.read("--drape");
     bool useClamping = arguments.read("--clamp");
 
+    std::string outfile;
+    arguments.read("--out", outfile);
+
     osgViewer::Viewer viewer(arguments);
 
     // Start by creating the map:
-    Map* map = new Map();
+    osg::ref_ptr<Map> map = new Map();
 
     // Start with a basemap imagery layer; we'll be using the GDAL driver
     // to load a local GeoTIFF file:
@@ -83,11 +88,8 @@ int main(int argc, char** argv)
     // Next we add a layer to provide the feature data. 
     OGRFeatureSource* features = new OGRFeatureSource();
     features->setName("vector-data");
-    if ( !useMem )
-    {
-        features->setURL("../data/world.shp");
-    }
-    else
+
+    if (useMem)
     {
         // the --mem options tells us to just make an in-memory geometry:
         Ring* line = new Ring();
@@ -96,6 +98,10 @@ int main(int argc, char** argv)
         line->push_back( osg::Vec3d(-120, 60, 0) );
         line->push_back( osg::Vec3d(-60, 60, 0) );
         features->setGeometry(line);
+    }
+    else
+    {
+        features->setURL("../data/world.shp");
     }
     map->addLayer(features);
 
@@ -146,8 +152,6 @@ int main(int argc, char** argv)
         styleSheet->addStyle(style);
         layer->setStyleSheet(styleSheet);
 
-        //fml.enableLighting() = false;
-
         map->addLayer(layer);
     }   
 
@@ -177,14 +181,33 @@ int main(int argc, char** argv)
         map->addLayer(fml);
     }
 
+    LayerVector layers;
+    map->getLayers(layers);
+    for(LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        Layer* layer = i->get();
+        if (layer->getStatus().isError())
+        {
+            OE_WARN << layer->getName() << " : " << layer->getStatus().toString() << std::endl;
+        }
+    }
+
     // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNode* mapNode = new MapNode(map);
+    MapNode* mapNode = new MapNode(map.get());
 
-    viewer.setSceneData( mapNode );
-    viewer.setCameraManipulator( new EarthManipulator() );
+    if (!outfile.empty())
+    {
+        OE_NOTICE << "Writing to " << outfile << std::endl;
+        osgDB::writeNodeFile(*mapNode, outfile);
+    }
+    else
+    {
+        viewer.setSceneData( mapNode );
+        viewer.setCameraManipulator( new EarthManipulator() );
 
-    // add some stock OSG handlers:
-    MapNodeHelper().configureView(&viewer);
+        // add some stock OSG handlers:
+        MapNodeHelper().configureView(&viewer);
 
-    return viewer.run();
+        return viewer.run();
+    }
 }

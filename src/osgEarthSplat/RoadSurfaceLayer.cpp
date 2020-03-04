@@ -397,3 +397,14 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
     return GeoImage::INVALID;
 }
+
+Config
+RoadSurfaceLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    if (_featureSource.isSetByUser())
+        c.set(_featureSource.getLayer()->getConfig());
+    if (_styleSheet.isSetByUser())
+        c.set(_styleSheet.getLayer()->getConfig());
+    return c;
+}

@@ -32,14 +32,27 @@ namespace osgEarth
     public:
         typedef typename T::Options TypedOptions;
 
+        LayerReference() : _setByUser(false) { }
+
+        //! User can call this to set the layer by hand (instead of finding it
+        //! in the map or in an embedded options structure)
         void setLayer(T* layer) 
         {
             _layer = layer;
+            _setByUser = true;
         }
 
+        //! Contained layer object
         T* getLayer() const 
         {
             return _layer.get();
+        }
+
+        //! Whether the user called setLayer to establish the reference
+        //! (as opposed to finding it in an embedded options or in the map)
+        bool isSetByUser() const 
+        {
+            return _layer.valid () && _setByUser==true;
         }
 
         //! open the layer pointed to in the reference and return a status code
@@ -57,7 +70,7 @@ namespace osgEarth
                     {
                         return fsStatus;
                     }
-                    setLayer(typedLayer.get());
+                    _layer = typedLayer.get();
                 }
             }
             return Status::OK();
@@ -70,7 +83,9 @@ namespace osgEarth
             {
                 T* layer = map->getLayerByName<T>(externalLayerName.get());
                 if (layer)
-                    setLayer(layer);
+                {
+                    _layer = layer;
+                }
             }
             return getLayer();
         }
@@ -78,7 +93,8 @@ namespace osgEarth
         //! Clear the reference
         void disconnect(const Map* map =NULL)
         {
-            setLayer(NULL);
+            _layer = NULL;
+            _setByUser = false;
         }
 
         //! Get the layer ref from either a name or embedded option
@@ -147,6 +163,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr< T > _layer;
+        bool _setByUser;
     };
 }
 

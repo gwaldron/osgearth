@@ -69,6 +69,8 @@ namespace osgEarth
 
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback*) const;
 
+        virtual Config getConfig() const;
+
     protected: // Layer
 
         virtual void init();

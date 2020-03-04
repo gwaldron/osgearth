@@ -123,6 +123,7 @@ _maxVertsPerDrawable(USHRT_MAX)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/dds",                            "dds" );
     // This is not correct, but some versions of readymap can return tif with one f instead of two.
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/tif",                            "tif" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/webp", "webp");
 
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );
@@ -475,32 +476,32 @@ Registry::setDefaultCache(Cache* cache)
 bool
 Registry::isBlacklisted(const std::string& filename)
 {
-    Threading::ScopedReadLock sharedLock(_blacklistMutex);
-    return (_blacklistedFilenames.count(filename)==1);
+    Threading::ScopedMutexLock sharedLock(_blacklist.mutex());
+    return _blacklist.find(filename) != _blacklist.end();
 }
 
 void
 Registry::blacklist(const std::string& filename)
 {
-    {
-        Threading::ScopedWriteLock exclusiveLock(_blacklistMutex);
-        _blacklistedFilenames.insert( filename );
-    }
-    OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
+    _blacklist.lock();
+    _blacklist.insert(filename);
+    OE_DEBUG << "Blacklist size = " << _blacklist.size() << std::endl;
+    _blacklist.unlock();
 }
 
 void
 Registry::clearBlacklist()
 {
-    Threading::ScopedWriteLock exclusiveLock(_blacklistMutex);
-    _blacklistedFilenames.clear();
+    _blacklist.lock();
+    _blacklist.clear();
+    _blacklist.unlock();
 }
 
 unsigned int
 Registry::getNumBlacklistedFilenames()
 {
-    Threading::ScopedReadLock sharedLock(_blacklistMutex);
-    return _blacklistedFilenames.size();
+    Threading::ScopedMutexLock sharedLock(_blacklist.mutex());
+    return _blacklist.size();
 }
 
 bool

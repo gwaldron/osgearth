@@ -73,11 +73,13 @@ LoadTileData::invoke(ProgressCallback* progress)
         _manifest,
         _enableCancel? progress : 0L);
 
-    // if the operation was canceled, set the request to idle and delete the tile model.
+    // if the operation was canceled, set the request to abandoned
+    // so it can potentially rerty later.
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
-        setState(Request::IDLE);
+        //OE_INFO << LC << "Request " << _key.str() << " cancelled" << std::endl;
+        setState(Request::ABANDONED);
     }
 
     // In the terrain engine, we have to keep our elevation rasters in 

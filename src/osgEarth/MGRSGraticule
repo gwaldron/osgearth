@@ -91,6 +91,8 @@ namespace osgEarth { namespace Util
 
         virtual void init();
 
+        virtual Config getConfig() const;
+
     protected:
 
         /** dtor */

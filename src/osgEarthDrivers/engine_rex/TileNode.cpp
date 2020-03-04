@@ -73,6 +73,11 @@ _doNotExpire(false)
     //nop
 }
 
+TileNode::~TileNode()
+{
+    //OE_INFO << LC << "Tile " << _key.str() << " destroyed" << std::endl;
+}
+
 void
 TileNode::setDoNotExpire(bool value)
 {
@@ -137,16 +142,19 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     //_loadRequest->setName( _key.str() );
     //_loadRequest->setTileKey( _key );
 
-    // Encode the tile key in a uniform
+    // Encode the tile key in a uniform. Note! The X and Y components are presented
+    // modulo 2^16 form so they don't overrun single-precision space.
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
+
+    const double m = 65536; //pow(2.0, 16.0);
 
     double x = (double)_key.getTileX();
     double y = (double)(th - _key.getTileY()-1);
 
     _tileKeyValue.set(
-        (float)x,
-        (float)y,
+        (float)fmod(x, m),
+        (float)fmod(y, m),
         (float)_key.getLOD(),
         -1.0f);
 
@@ -260,6 +268,13 @@ TileNode::isDormant(const osg::FrameStamp* fs) const
            fs->getFrameNumber() - _lastTraversalFrame > osg::maximum(options().minExpiryFrames().get(), minMinExpiryFrames) &&
            now - _lastTraversalTime > options().minExpiryTime().get();
     return dormant;
+}
+
+bool
+TileNode::areSiblingsDormant(const osg::FrameStamp* fs) const
+{
+    const TileNode* parent = getParentTile();
+    return parent ? parent->areSubTilesDormant(fs) : true;
 }
 
 void
@@ -467,6 +482,12 @@ TileNode::cull(TerrainCuller* culler)
     // whether it is OK to load data if necessary.
     bool canLoadData = true;
 
+    const TerrainOptions& opt = _context->options();
+    canLoadData =
+        _doNotExpire ||
+        _key.getLOD() == opt.firstLOD().get() ||
+        _key.getLOD() >= opt.minLOD().get();
+
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
 
@@ -623,7 +644,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
 
         if (!_empty)
         {
-            _context->liveTiles()->update(this, culler->getFrameStamp());
+            _context->liveTiles()->update(this, nv);
         }
 
         if (_empty == false)
@@ -1139,7 +1160,7 @@ TileNode::load(TerrainCuller* culler)
     if (_loadQueue.empty() == false)
     {
         LoadTileData* r = _loadQueue.front().get();
-        _context->getLoader()->load(r, priority, *culler );
+        _context->getLoader()->load(r, priority, *culler);
     }
     _loadQueue.unlock(); // unlock the load queue
 }

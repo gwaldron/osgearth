@@ -54,6 +54,15 @@
             <height>532.5380253428593</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
+        <viewpoint name="Kilo">
+            <pitch>-20</pitch>
+            <heading>27.5</heading>
+            <lat>33.320303</lat>
+            <long>-117.325534</long>
+            <height>155</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <range>500</range>
+        </viewpoint>
 
     </viewpoints>
 

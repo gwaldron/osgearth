@@ -77,6 +77,8 @@ namespace osgEarth
 
         virtual void removedFromMap(const Map*);
 
+        virtual Config getConfig() const;
+
     protected:
         
         LayerReference<ImageLayer> _imageLayer;

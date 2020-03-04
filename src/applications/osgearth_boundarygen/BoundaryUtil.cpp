@@ -44,7 +44,7 @@ bool presortCompare (osg::Vec3d i, osg::Vec3d j)
   return i.x() < j.x();
 }
 
-double BoundaryUtil::_tolerance = 0.005;
+double BoundaryUtil::_tolerance = 0.01;
 
 void
 BoundaryUtil::setTolerance(double value)
@@ -400,31 +400,22 @@ namespace
         }
 
         // add the contents of a geode to the topology
-        void apply( osg::Geode& geode )
+        void apply(osg::Drawable& drawable)
         {
-            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            osg::Geometry* geometry = drawable.asGeometry();
+            if (geometry)
             {
-                osg::Drawable* drawable = geode.getDrawable( i );
-                if ( drawable->asGeometry() )
+                osg::Vec3Array* vertexList = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
+                if ( vertexList )
                 {
-                    apply( drawable->asGeometry() );
+                    osg::TriangleIndexFunctor<TopologyBuilder> builder;
+                    builder._topology = &_topology;
+                    builder._vertexList = vertexList;
+                    if ( !_matrixStack.empty() )
+                        builder._local2world = _matrixStack.back();
+                    _topology._totalVerts += vertexList->size();
+                    geometry->accept( builder );
                 }
-            }
-        }
-
-        // add the contents of a Geometry to the topology
-        void apply( osg::Geometry* geometry )
-        {
-            osg::Vec3Array* vertexList = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
-            if ( vertexList )
-            {
-                osg::TriangleIndexFunctor<TopologyBuilder> builder;
-                builder._topology = &_topology;
-                builder._vertexList = vertexList;
-                if ( !_matrixStack.empty() )
-                    builder._local2world = _matrixStack.back();
-                _topology._totalVerts += vertexList->size();
-                geometry->accept( builder );
             }
         }
 
@@ -529,11 +520,6 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     {
         // store this vertex in the result set:
         _result->push_back( *vptr );
-
-        if ( _result->size() == 56 )
-        {
-            int asd=0;
-        }
 
         // pull up the next 2D vertex (XY plane):
         osg::Vec2d vert ( vptr->x(), vptr->y() );

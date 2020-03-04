@@ -45,7 +45,18 @@ public:
             ratio(-1.0),
             primitiveIndex(0) {}
 
-        Intersection(const Intersection &rhs);
+        Intersection(const Intersection &rhs)
+        {
+            ratio = rhs.ratio;
+            nodePath = rhs.nodePath;
+            drawable = rhs.drawable;
+            matrix = rhs.matrix;
+            localIntersectionPoint = rhs.localIntersectionPoint;
+            localIntersectionNormal = rhs.localIntersectionNormal;
+            indexList = rhs.indexList;
+            ratioList = rhs.ratioList;
+            primitiveIndex = rhs.primitiveIndex;
+        }
 
         bool operator < (const Intersection& rhs) const { return ratio < rhs.ratio; }
 
@@ -57,7 +68,7 @@ public:
         osg::ref_ptr<osg::Drawable>     drawable;
         osg::ref_ptr<osg::RefMatrix>    matrix;
         osg::Vec3d                      localIntersectionPoint;
-        osg::Vec3d                       localIntersectionNormal;
+        osg::Vec3d                      localIntersectionNormal;
         IndexList                       indexList;
         RatioList                       ratioList;
         unsigned int                    primitiveIndex;

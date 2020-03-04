@@ -49,7 +49,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::get(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
 }
 
 Config
@@ -63,7 +63,7 @@ FeatureModelLayer::Options::getConfig() const
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
 
-    LayerReference<FeatureSource>::set(conf, "features", _featureSourceLayer, _featureSource);
+    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
 
     return conf;
 }
@@ -111,6 +111,20 @@ void FeatureModelLayer::dirty()
 
     // create the scene graph
     create();
+}
+
+Config
+FeatureModelLayer::getConfig() const
+{
+    Config conf = VisibleLayer::getConfig();
+
+    if (_featureSource.isSetByUser())
+        conf.set(_featureSource.getLayer()->getConfig());
+
+    if (_styleSheet.isSetByUser())
+        conf.set(_styleSheet.getLayer()->getConfig());
+
+    return conf;
 }
 
 void
@@ -205,8 +219,8 @@ FeatureModelLayer::addedToMap(const Map* map)
     OE_TEST << LC << "addedToMap" << std::endl;
     VisibleLayer::addedToMap(map);
 
-    _featureSource.connect(map, options().featureSourceLayer());
-    _styleSheet.connect(map, options().styleSheetLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
+    _styleSheet.findInMap(map, options().styleSheetLayer());
 
     if (getFeatureSource() && getStyleSheet())
     {
@@ -228,8 +242,8 @@ FeatureModelLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
 
-    _featureSource.disconnect();
-    _styleSheet.disconnect();
+    _featureSource.releaseFromMap(map);
+    _styleSheet.releaseFromMap(map);
     
     if (_root.valid())
     {

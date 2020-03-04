@@ -68,6 +68,9 @@ namespace osgEarth { namespace Splat
         virtual void init();
         virtual void setTerrainResources(TerrainResources* res);
 
+        //! Serialize
+        virtual Config getConfig() const;
+
     public:
 
         //! Called when this layer is added to the map

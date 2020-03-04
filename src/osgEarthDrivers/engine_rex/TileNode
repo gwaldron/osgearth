@@ -62,13 +62,11 @@ namespace osgEarth { namespace REX
     public:
         TileNode();
 
+        virtual ~TileNode();
         virtual const char* className() const { return "Rex::TileNode"; }
 
         /** TileKey of the key representing the data in this node. */
         const TileKey& getKey() const { return _key; }
-
-        /** Tells this tile that it needs to request data (when set to true) */
-        //void setDirty(bool value);
 
         /** Indicates that this tile should never be unloaded. */
         void setDoNotExpire(bool value);
@@ -89,6 +87,9 @@ namespace osgEarth { namespace REX
         /** Whether all the subtiles are this tile are dormant (have not been visited recently) */
         bool areSubTilesDormant(const osg::FrameStamp*) const;
 
+        /** Whether all 3 quadtree siblings of this tile are dormant */
+        bool areSiblingsDormant(const osg::FrameStamp*) const;
+
         /** Removed any sub tiles from the scene graph. Please call from a safe thread only (update) */
         void removeSubTiles();
 
@@ -96,7 +97,8 @@ namespace osgEarth { namespace REX
         void notifyOfArrival(TileNode* that);
 
         /** Returns the tile's parent; convenience function */
-        TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
+        TileNode* getParentTile() { return getNumParents()>0?dynamic_cast<TileNode*>(getParent(0)):NULL; }
+        const TileNode* getParentTile() const { return getNumParents()>0?dynamic_cast<const TileNode*>(getParent(0)):NULL; }
 
         /** Returns the SurfaceNode under this node. */
         SurfaceNode* getSurfaceNode() { return _surface.get(); }

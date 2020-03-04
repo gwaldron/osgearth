@@ -33,11 +33,11 @@ UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
 _tiles(tiles),
 _cacheSize(0u),
 _maxAge(0.1),
+_minRange(0.0f),
 _maxTilesToUnloadPerFrame(~0),
 _frameLastUpdated(0u)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
-    //ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 void
@@ -67,11 +67,16 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             // Have to enforce both the time delay AND a frame delay since the frames can
             // stop while the time rolls on (e.g., if you are dragging the window)
-            double olderThanTime = now - _maxAge;
-            unsigned olderThanFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
+            double oldestAllowableTime = now - _maxAge;
+            unsigned oldestAllowableFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
 
             // Remove them from the registry:
-            _tiles->collectTheDead(olderThanTime, olderThanFrame, _maxTilesToUnloadPerFrame, _deadpool);
+            _tiles->collectDormantTiles(
+                nv, 
+                oldestAllowableTime,
+                oldestAllowableFrame,
+                _minRange,
+                _maxTilesToUnloadPerFrame, _deadpool);
 
             // Remove them from the scene graph:
             for(std::vector<osg::observer_ptr<TileNode> >::iterator i = _deadpool.begin();
@@ -81,9 +86,13 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 // may be NULL since we're removing scene graph objects as we go!
                 osg::ref_ptr<TileNode> tile = i->get();
 
-                if (tile.valid() && tile->getNumParents() > 0)
+                if (tile.valid())
                 {
-                    TileNode* parent = dynamic_cast<TileNode*>(tile->getParent(0));
+                    TileNode* parent = tile->getParentTile();
+
+                    // Check that this tile doesn't have any live quadtree siblings. If it does,
+                    // we don't want to remove them too!
+                    // GW: moved this check to the collectAbandonedTiles function where it belongs
                     if (parent) // && parent->areSubTilesDormant(nv.getFrameStamp()))
                     {
                         parent->removeSubTiles();
@@ -94,7 +103,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             if (_deadpool.empty() == false)
             {
-                OE_DEBUG << "Unloaded " << count << " of " << _deadpool.size() << " expired tiles; " << _tiles->size() << " remain active." << std::endl;
+                OE_DEBUG << "Unloaded " << count << " of " << _deadpool.size() << " dormant tiles; " << _tiles->size() << " remain active." << std::endl;
             }
 
             _deadpool.clear();

@@ -329,7 +329,7 @@ TileLayer::setProfile(const Profile* profile)
     if (getProfile())
     {
         // augment the final profile with any overrides:
-        applyProfileOverrides();
+        applyProfileOverrides(_profile);
 
         OE_INFO << LC
             << (getProfile()? getProfile()->toString() : "[no profile]") << " "
@@ -464,7 +464,7 @@ TileLayer::getCacheBin(const Profile* profile)
         }
 
         // If we loaded a profile from the cache metadata, apply the overrides:
-        applyProfileOverrides();
+        applyProfileOverrides(_profile);
 
         if (meta.valid())
         {

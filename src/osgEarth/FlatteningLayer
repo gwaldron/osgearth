@@ -84,6 +84,8 @@ namespace osgEarth { namespace Contrib
         // opens the layer and returns the status
         virtual Status openImplementation();
 
+        virtual Config getConfig() const;
+
     protected: // ElevationLayer
 
         virtual GeoHeightField createHeightFieldImplementation(

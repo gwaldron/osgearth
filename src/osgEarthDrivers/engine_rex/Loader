@@ -87,7 +87,8 @@ namespace osgEarth { namespace REX
                 IDLE,
                 RUNNING,
                 MERGING,
-                FINISHED
+                FINISHED,
+                ABANDONED
             };
 
             void setState(State value);
@@ -101,6 +102,7 @@ namespace osgEarth { namespace REX
             std::string                   _name;
             TileKey                       _key;
             State                         _state;
+            osg::Timer_t                  _stateTick;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
@@ -110,8 +112,6 @@ namespace osgEarth { namespace REX
 
             void lock() { _lock.lock(); }
             void unlock() { _lock.unlock(); }
-
-            ChangeSet                     _nodesChanged;
         };
 
         class Handler : public osg::Referenced

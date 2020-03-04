@@ -53,7 +53,7 @@ VerticalDatum::get( const std::string& initString )
 
     if ( !result )
     {
-        OE_INFO << LC << "Initializing vertical datum: " << initString << std::endl;
+        OE_DEBUG << LC << "Initializing vertical datum: " << initString << std::endl;
         result = VerticalDatumFactory::create( initString );
         if ( result )
             _vdatumCache[s] = result;

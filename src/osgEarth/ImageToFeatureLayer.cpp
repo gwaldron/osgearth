@@ -103,14 +103,14 @@ void
 ImageToFeatureSource::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap" << std::endl;
-    _imageLayer.connect(map, options().imageLayerName());
+    _imageLayer.findInMap(map, options().imageLayerName());
     FeatureSource::addedToMap(map);
 }
 
 void
 ImageToFeatureSource::removedFromMap(const Map* map)
 {
-    _imageLayer.disconnect(map);
+    _imageLayer.releaseFromMap(map);
     FeatureSource::removedFromMap(map);
 }
 
@@ -204,4 +204,14 @@ ImageToFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* 
         }
     }
     return 0;
+}
+
+
+Config
+ImageToFeatureSource::getConfig() const
+{
+    Config c = FeatureSource::getConfig();
+    if (_imageLayer.isSetByUser())
+        c.set(_imageLayer.getLayer()->getConfig());
+    return c;
 }

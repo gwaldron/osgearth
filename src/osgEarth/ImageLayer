@@ -57,15 +57,13 @@ namespace osgEarth
     };
 
 
-    struct ImageLayerCallback : public TileLayerCallback
-    {
-        //virtual void onOpacityChanged(class ImageLayer* layer) { }
-        virtual void onVisibleRangeChanged(class ImageLayer* layer) { }
-        virtual void onColorFiltersChanged(class ImageLayer* layer) { }
-        virtual void onAltitudeChanged(class ImageLayer* layer) { }
+    //struct ImageLayerCallback : public TileLayerCallback
+    //{
+    //    virtual void onColorFiltersChanged(class ImageLayer* layer) { }
+    //    virtual void onAltitudeChanged(class ImageLayer* layer) { }
 
-        typedef void (ImageLayerCallback::*MethodPtr)(class ImageLayer* layer);
-    };
+    //    typedef void (ImageLayerCallback::*MethodPtr)(class ImageLayer* layer);
+    //};
 
 
     /**
@@ -98,6 +96,17 @@ namespace osgEarth
 
     public:
         META_Layer_Abstract(osgEarth, ImageLayer, Options, TileLayer);
+
+        //! Layer callbacks
+        class OSGEARTH_EXPORT Callback : public osg::Referenced
+        {
+        public:
+            //! Called when a new data is created. This callback fires
+            //! before the data is cached, and does NOT fire if the data
+            //! was read from a cache.
+            //! NOTE: This may be invoked from a worker thread. Use caution.
+            virtual void onCreate(const TileKey&, GeoImage&) { }
+        };
 
     public:
 
@@ -168,8 +177,12 @@ namespace osgEarth
          * Applies the texture compression options to a texture.
          */
         void applyTextureCompressionMode(osg::Texture* texture) const;
-       
-        typedef ImageLayerCallback Callback;
+
+        //! Install a user callback
+        void addCallback(Callback* callback);
+
+        //! Remove a user callback
+        void removeCallback(Callback* callback);
 
 
     public: // Texture support
@@ -216,22 +229,20 @@ namespace osgEarth
         // Creates an image that's in the same profile as the provided key.
         GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress);
 
-        // Creates an image from the underlying TileSource whose data matches that of the
-        // key extent.
-        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress) const;
-
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
         GeoImage assembleImage(const TileKey& key, ProgressCallback* progress);
 
         mutable Threading::Mutex _mutex;
-
         osg::ref_ptr<osg::Image> _emptyImage;
         optional<int> _shareImageUnit;
         bool _useCreateTexture;
 
-        virtual void fireCallback(ImageLayerCallback::MethodPtr method);
+        void invoke_onCreate(const TileKey&, GeoImage&);
+
+        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
+        Threading::Lockable<Callbacks> _callbacks;
 
     public:
         // Internal utility class for post-processing image tiles that come from a TileSource

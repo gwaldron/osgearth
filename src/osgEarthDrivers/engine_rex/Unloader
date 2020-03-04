@@ -54,6 +54,10 @@ namespace osgEarth { namespace REX
         void setMaxTilesToUnloadPerFrame(unsigned value) { _maxTilesToUnloadPerFrame = value; }
         unsigned getMaxTilesToUnloadPerFrame() const { return _maxTilesToUnloadPerFrame; }
 
+        //! A Tile must be at least this far from the camera before it can be unloaded:
+        void setMinimumRange(float value) { _minRange = osg::clampAbove(value, 0.0f); }
+        float getMinimumRange() const { return _minRange; }
+
     public: // Unloader
 
         //void unloadChildren(const std::vector<TileKey>& keys);
@@ -64,6 +68,7 @@ namespace osgEarth { namespace REX
     protected:
         unsigned _cacheSize;
         double _maxAge;
+        float _minRange;
         unsigned _maxTilesToUnloadPerFrame;
         TileNodeRegistry* _tiles;
         mutable Threading::Mutex _mutex;

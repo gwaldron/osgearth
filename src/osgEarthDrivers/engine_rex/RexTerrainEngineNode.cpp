@@ -306,6 +306,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     _unloader->setCacheSize(expirationThreshold);
     _unloader->setMaxAge(options().minExpiryTime().get());
     _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
+    _unloader->setMinimumRange(options().minExpiryRange().get());
     //_unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
 

@@ -33,11 +33,11 @@ UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
 _tiles(tiles),
 _cacheSize(0u),
 _maxAge(0.1),
+_minRange(0.0f),
 _maxTilesToUnloadPerFrame(~0),
 _frameLastUpdated(0u)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
-    //ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 void
@@ -67,11 +67,16 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             // Have to enforce both the time delay AND a frame delay since the frames can
             // stop while the time rolls on (e.g., if you are dragging the window)
-            double olderThanTime = now - _maxAge;
-            unsigned olderThanFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
+            double oldestAllowableTime = now - _maxAge;
+            unsigned oldestAllowableFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
 
             // Remove them from the registry:
-            _tiles->collectDormantTiles(nv, olderThanTime, olderThanFrame, _maxTilesToUnloadPerFrame, _deadpool);
+            _tiles->collectDormantTiles(
+                nv, 
+                oldestAllowableTime,
+                oldestAllowableFrame,
+                _minRange,
+                _maxTilesToUnloadPerFrame, _deadpool);
 
             // Remove them from the scene graph:
             for(std::vector<osg::observer_ptr<TileNode> >::iterator i = _deadpool.begin();

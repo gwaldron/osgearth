@@ -42,8 +42,9 @@ namespace osgEarth { namespace REX
         struct TrackerEntry
         {
             TileNode* _tile;
-            double _lastTime;
-            unsigned _lastFrame;
+            double _lastTime;     // last time tile was visited by cull
+            unsigned _lastFrame;  // last frame tile was visited by cull
+            float _lastRange;     // closest distance to tile during last cull
         };
         typedef std::list<TrackerEntry*> Tracker;
 
@@ -121,7 +122,7 @@ namespace osgEarth { namespace REX
 
         //! Update the tile's tracking info. Called by the TileNode itself
         //! during the cull traversal.
-        void update(TileNode* tile, const osg::FrameStamp*);
+        void update(TileNode* tile, osg::NodeVisitor& nv);
 
         //! Number of tiles in the registry.
         unsigned size() const { return _tiles.size(); }
@@ -131,13 +132,11 @@ namespace osgEarth { namespace REX
 
         //! Collect dormant tiles. This is called by UnloaderGroup
         //! during update/event to remove dormant scene graphs.
-        //! olderThan: only remove tiles older than this timestamp
-        //! maxCount: remove up to this number of tiles
-        //! output: put dormant tiles in this collection
         void collectDormantTiles(
             osg::NodeVisitor& nv,
-            double olderThanTime,       // expire if tile is older than this time
-            unsigned olderThanFrame,    // expire if tile is older than this frame
+            double olderThanTime,       // collect only if tile is older than this time
+            unsigned olderThanFrame,    // collect only if tile is older than this frame
+            float fartherThanRange,     // collect only if tile is farther away than this distance (meters)
             unsigned maxCount,          // maximum number of tiles to collect
             std::vector<osg::observer_ptr<TileNode> >& output);   // put dormant tiles here
 

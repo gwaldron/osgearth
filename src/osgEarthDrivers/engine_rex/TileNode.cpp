@@ -619,7 +619,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
 
         if (!_empty)
         {
-            _context->liveTiles()->update(this, culler->getFrameStamp());
+            _context->liveTiles()->update(this, nv);
         }
 
         if (_empty == false)

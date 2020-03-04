@@ -303,8 +303,8 @@ GroundCoverLayer::addedToMap(const Map* map)
     PatchLayer::addedToMap(map);
 
     _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
-    _landCoverLayer.connect(map, options().landCoverLayerName());
-    _maskLayer.connect(map, options().maskLayerName());
+    _landCoverLayer.findInMap(map, options().landCoverLayerName());
+    _maskLayer.findInMap(map, options().maskLayerName());
 
     if (getMaskLayer())
     {

@@ -117,7 +117,7 @@ FeatureMaskLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
     MaskLayer::addedToMap(map);
-    _featureSource.connect(map, options().featureSourceLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
     create();
 }
 
@@ -125,7 +125,7 @@ void
 FeatureMaskLayer::removedFromMap(const Map* map)
 {
     MaskLayer::removedFromMap(map);
-    _featureSource.disconnect(map);
+    _featureSource.releaseFromMap(map);
 }
 
 void

@@ -168,7 +168,7 @@ SplatLayer::addedToMap(const Map* map)
 {
     VisibleLayer::addedToMap(map);
     _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
-    _landCoverLayer.connect(map, options().landCoverLayer().get());
+    _landCoverLayer.findInMap(map, options().landCoverLayer().get());
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
     {

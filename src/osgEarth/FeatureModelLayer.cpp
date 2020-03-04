@@ -219,8 +219,8 @@ FeatureModelLayer::addedToMap(const Map* map)
     OE_TEST << LC << "addedToMap" << std::endl;
     VisibleLayer::addedToMap(map);
 
-    _featureSource.connect(map, options().featureSourceLayer());
-    _styleSheet.connect(map, options().styleSheetLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
+    _styleSheet.findInMap(map, options().styleSheetLayer());
 
     if (getFeatureSource() && getStyleSheet())
     {
@@ -242,8 +242,8 @@ FeatureModelLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
 
-    _featureSource.disconnect();
-    _styleSheet.disconnect();
+    _featureSource.releaseFromMap(map);
+    _styleSheet.releaseFromMap(map);
     
     if (_root.valid())
     {

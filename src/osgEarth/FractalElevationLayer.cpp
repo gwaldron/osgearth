@@ -236,7 +236,7 @@ FractalElevationLayer::removedFromMap(const Map* map)
     ElevationLayer::removedFromMap(map);
 
     _landCoverLayers.clear();
-    _dictionary.disconnect(map);
+    _dictionary.releaseFromMap(map);
 }
 
 GeoHeightField

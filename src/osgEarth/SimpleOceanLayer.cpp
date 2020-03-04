@@ -227,14 +227,14 @@ void
 SimpleOceanLayer::addedToMap(const Map* map)
 {    
     VisibleLayer::addedToMap(map);
-    _maskLayer.connect(map, options().maskLayer());
+    _maskLayer.findInMap(map, options().maskLayer());
 }
 
 void
 SimpleOceanLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
-    _maskLayer.disconnect(map);
+    _maskLayer.releaseFromMap(map);
 }
 
 void

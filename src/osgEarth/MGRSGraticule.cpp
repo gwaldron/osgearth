@@ -373,7 +373,7 @@ void
 MGRSGraticule::addedToMap(const Map* map)
 {
     VisibleLayer::addedToMap(map);
-    _styleSheet.connect(map, options().styleSheetLayer());
+    _styleSheet.findInMap(map, options().styleSheetLayer());
     _map = map;
     rebuild();
 }
@@ -382,7 +382,7 @@ void
 MGRSGraticule::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
-    _styleSheet.disconnect(map);
+    _styleSheet.releaseFromMap(map);
     _map = 0L;
 }
 

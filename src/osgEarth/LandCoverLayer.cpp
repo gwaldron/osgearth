@@ -211,7 +211,7 @@ void
 LandCoverLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _source.disconnect(map);
+    _source.releaseFromMap(map);
 }
 
 bool

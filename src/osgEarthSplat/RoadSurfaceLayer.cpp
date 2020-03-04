@@ -103,16 +103,16 @@ RoadSurfaceLayer::addedToMap(const Map* map)
     _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    _featureSource.connect(map, options().featureSourceLayer());
-    _styleSheet.connect(map, options().styleSheetLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
+    _styleSheet.findInMap(map, options().styleSheetLayer());
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _featureSource.disconnect(map);
-    _styleSheet.disconnect(map);
+    _featureSource.releaseFromMap(map);
+    _styleSheet.releaseFromMap(map);
     _session = 0L;
 }
 

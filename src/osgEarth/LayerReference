@@ -77,7 +77,7 @@ namespace osgEarth
         }
 
         //! Find a layer in the map and set this reference to point at it 
-        bool connect(const Map* map, const optional<std::string>& externalLayerName)
+        bool findInMap(const Map* map, const optional<std::string>& externalLayerName)
         {
             if (!getLayer())
             {
@@ -90,11 +90,17 @@ namespace osgEarth
             return getLayer();
         }
 
-        //! Clear the reference
-        void disconnect(const Map* map =NULL)
+        //! If this reference was set by findInMap, release it.
+        void releaseFromMap(const Map* map)
         {
-            _layer = NULL;
-            _setByUser = false;
+            if (map && _layer.valid())
+            {
+                if (map->getLayerByUID(_layer->getUID()) != NULL)
+                {
+                    _layer = NULL;
+                    _setByUser = false;
+                }
+            }
         }
 
         //! Get the layer ref from either a name or embedded option

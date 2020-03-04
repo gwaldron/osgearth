@@ -129,14 +129,14 @@ void
 FeatureElevationLayer::addedToMap(const Map* map)
 {
     ElevationLayer::addedToMap(map);
-    _featureSource.connect(map, options().featureSourceLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
 }
 
 void
 FeatureElevationLayer::removedFromMap(const Map* map)
 {
     ElevationLayer::removedFromMap(map);
-    _featureSource.disconnect(map);
+    _featureSource.releaseFromMap(map);
 }
 
 GeoHeightField

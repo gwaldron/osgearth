@@ -758,7 +758,7 @@ FlatteningLayer::addedToMap(const Map* map)
     OE_INFO << LC << "Attaching elevation pool to map\n";
     _pool->setMap( map );
 
-    _featureSource.connect(map, options().featureSourceLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
         
     // Collect all elevation layers preceding this one and use them for flattening.
     ElevationLayerVector layers;
@@ -783,7 +783,7 @@ FlatteningLayer::removedFromMap(const Map* map)
 {
     ElevationLayer::removedFromMap(map);
 
-    _featureSource.disconnect(map);
+    _featureSource.releaseFromMap(map);
 }
 
 GeoHeightField

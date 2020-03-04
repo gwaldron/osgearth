@@ -302,8 +302,8 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
 
                 if (intersection.contains(x, y))
                 {
-                    double uu = (y-decalExtent.yMin())/decalExtent.width();
-                    double vv = (x-decalExtent.xMin())/decalExtent.height();
+                    double uu = (x-decalExtent.xMin())/decalExtent.width();
+                    double vv = (y-decalExtent.yMin())/decalExtent.height();
 
                     float h_prev = HeightFieldUtils::getHeightAtNormalizedLocation(output.get(), u, v);
 

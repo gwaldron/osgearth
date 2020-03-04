@@ -73,7 +73,8 @@ LoadTileData::invoke(ProgressCallback* progress)
         _manifest,
         _enableCancel? progress : 0L);
 
-    // if the operation was canceled, set the request to idle and delete the tile model.
+    // if the operation was canceled, set the request to abandoned
+    // so it can potentially rerty later.
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;

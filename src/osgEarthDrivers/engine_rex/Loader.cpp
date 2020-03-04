@@ -46,6 +46,7 @@ void
 Loader::Request::setState(Loader::Request::State value)
 {
     _state = value;
+    _stateTick = osg::Timer::instance()->tick();
 
     if ( _state == IDLE )
     {
@@ -283,6 +284,29 @@ PagerLoader::setOverallPriorityScale(float value)
 bool
 PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
+    // Check for an abandoned request. A request becomes abandoned when
+    // the underlying function is cancelled, or when the tile goes out
+    // of culling scope. An abandoned request can be resusitated but 
+    // there's a waiting period (so as not to pummel the data source).
+    if (request && request->_state == Request::ABANDONED)
+    {
+        // This is OK. Just means that the tile was abandoned, but it was a sibling
+        // of a live child, and now we are back; possibly with a delay.
+        double delta_s = osg::Timer::instance()->delta_s(request->_stateTick, now);
+
+        if (delta_s >= 2.0) // seconds // _context->options().retryDelay().get())
+        {
+            OE_DEBUG << LC << request->_key.str() << " re-using an abandoned request!" << std::endl;
+            request->setState(Request::IDLE);
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     // check that the request is not already completed but unmerged:
     if ( request && !request->isMerging() && !request->isFinished() && nv.getDatabaseRequestHandler() )
     {
@@ -303,7 +327,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             request->setState(Request::RUNNING);
             
             // remember the last tick at which this request was submitted
-            request->_lastTick = osg::Timer::instance()->tick();
+            request->_lastTick = now;
 
             // update the priority, scale and bias it, and then normalize it to [0..1] range.
             unsigned lod = request->getTileKey().getLOD();
@@ -356,9 +380,6 @@ PagerLoader::clear()
 void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
-    // only called when _mergesPerFrame > 0
-    //TODO: move to update visitor so this doesn't get called as often
-    //if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         bool runUpdate = false;

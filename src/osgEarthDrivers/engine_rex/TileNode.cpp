@@ -1126,16 +1126,7 @@ TileNode::load(TerrainCuller* culler)
     if (_loadQueue.empty() == false)
     {
         LoadTileData* r = _loadQueue.front().get();
-
-        if (r->_state == r->ABANDONED)
-        {
-            // This is OK. Just means that the tile was abandoned, but it was a sibling
-            // of a live child, and now we are back.
-            OE_DEBUG << LC << _key.str() << " re-using an abandoned request!" << std::endl;
-            r->setState(r->IDLE);
-        }
-
-        _context->getLoader()->load(r, priority, *culler );
+        _context->getLoader()->load(r, priority, *culler);
     }
     _loadQueue.unlock(); // unlock the load queue
 }

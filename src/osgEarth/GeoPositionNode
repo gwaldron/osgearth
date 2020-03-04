@@ -19,8 +19,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNO_ORTHO_NODE_H
-#define OSGEARTH_ANNO_ORTHO_NODE_H 1
+#ifndef OSGEARTH_ANNO_GEO_POSITION_NODE_H
+#define OSGEARTH_ANNO_GEO_POSITION_NODE_H 1
 
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/GeoTransform>
@@ -137,4 +137,4 @@ namespace osgEarth
 
 }
 
-#endif // OSGEARTH_ANNO_LOCALIZED_NODE_H
+#endif // OSGEARTH_ANNO_GEO_POSITION_NODE_H

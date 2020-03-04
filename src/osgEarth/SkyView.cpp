@@ -106,3 +106,12 @@ SkyViewImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     }
     return GeoImage(image.takeImage(), key.getExtent());
 }
+
+Config
+SkyViewImageLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    if (_imageLayer.isSetByUser())
+        c.set(_imageLayer.getLayer()->getConfig());
+    return c;
+}

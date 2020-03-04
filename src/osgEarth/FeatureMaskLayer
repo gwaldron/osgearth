@@ -67,6 +67,8 @@ namespace osgEarth
 
         virtual Status openImplementation();
 
+        virtual Config getConfig() const;
+
     protected: // Layer
 
         virtual void addedToMap(const Map*);

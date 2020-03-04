@@ -365,14 +365,14 @@ void
 TritonLayer::addedToMap(const osgEarth::Map* map)
 {   
     VisibleLayer::addedToMap(map);
-    _maskLayer.connect(map, options().maskLayerName());
+    _maskLayer.findInMap(map, options().maskLayerName());
 }
 
 void
 TritonLayer::removedFromMap(const osgEarth::Map* map)
 {
     VisibleLayer::removedFromMap(map);
-    _maskLayer.disconnect(map);
+    _maskLayer.releaseFromMap(map);
     setMaskLayer(0L);
 }
 
@@ -381,4 +381,13 @@ TritonLayer::addIntersections(TritonIntersections* value)
 {
     TritonLayerNode* node = static_cast<TritonLayerNode*>(_tritonNode.get());
     node->_isect.push_back(value);
+}
+
+osgEarth::Config
+TritonLayer::getConfig() const
+{
+    osgEarth::Config c = osgEarth::VisibleLayer::getConfig();
+    if (_maskLayer.isSetByUser())
+        c.set(_maskLayer.getLayer()->getConfig());
+    return c;
 }

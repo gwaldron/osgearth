@@ -90,6 +90,9 @@ namespace osgEarth { namespace Splat
         //! Get geometry for a tilekey
         virtual osg::Node* createNodeImplementation(const DrawContext& dc);
 
+        //! Serialize
+        virtual Config getConfig() const;
+
     public:
 
         //! Called when this layer is added to the map

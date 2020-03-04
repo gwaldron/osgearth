@@ -461,7 +461,7 @@ FeatureModelGraph::open()
     osg::ref_ptr<const Map> map = _session->getMap();
     if (!map.valid())
     {
-        return Status(Status::ConfigurationError, "Session does not have a Map set");
+        return Status(Status::AssertionFailure, "Session does not have a Map set; you probably need to use osg::ref_ptr<Map>");
     }
 
     const Profile* mapProfile = map->getProfile();

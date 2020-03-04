@@ -73,9 +73,9 @@ TerrainOptions::fromConfig(const Config& conf)
     verticalScale().init(1.0f);
     verticalOffset().init(0.0f);
     minTileRangeFactor().init(7.0);
-    maxLOD().init(23);
-    minLOD().init(0);
-    firstLOD().init(0);
+    maxLOD().init(19u);
+    minLOD().init(0u);
+    firstLOD().init(0u);
     enableLighting().init(true);
     clusterCulling().init(true);
     enableBlending().init(true);
@@ -90,7 +90,7 @@ TerrainOptions::fromConfig(const Config& conf)
     minExpiryFrames().init(0);
     minExpiryTime().init(0.0);
     minExpiryRange().init(0.0f);
-    maxTilesToUnloadPerFrame().init(10u);
+    maxTilesToUnloadPerFrame().init(~0u);
     heightFieldSkirtRatio().init(0.0f);
     color().init(osg::Vec4f(1,1,1,1));
     expirationThreshold().init(300u);

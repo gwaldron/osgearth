@@ -78,6 +78,7 @@ ImageLayer::Options::fromConfig(const Config& conf)
 
     conf.get("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.get("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
+    conf.get("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
     conf.get("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
@@ -126,7 +127,6 @@ ImageLayer::Options::getConfig() const
 
     conf.set("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.set("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.set("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
     conf.set("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 

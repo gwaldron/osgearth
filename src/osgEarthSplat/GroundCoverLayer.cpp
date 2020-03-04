@@ -303,8 +303,8 @@ GroundCoverLayer::addedToMap(const Map* map)
     PatchLayer::addedToMap(map);
 
     _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
-    _landCoverLayer.connect(map, options().landCoverLayerName());
-    _maskLayer.connect(map, options().maskLayerName());
+    _landCoverLayer.findInMap(map, options().landCoverLayerName());
+    _maskLayer.findInMap(map, options().maskLayerName());
 
     if (getMaskLayer())
     {
@@ -976,5 +976,19 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
             }
         }
     }
+}
+
+
+Config
+GroundCoverLayer::getConfig() const
+{
+    Config c = PatchLayer::getConfig();
+    if (_landCoverDict.isSetByUser())
+        c.set(_landCoverDict.getLayer()->getConfig());
+    if (_landCoverLayer.isSetByUser())
+        c.set(_landCoverLayer.getLayer()->getConfig());
+    if (_maskLayer.isSetByUser())
+        c.set(_maskLayer.getLayer()->getConfig());
+    return c;
 }
 

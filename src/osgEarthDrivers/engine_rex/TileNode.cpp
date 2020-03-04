@@ -478,6 +478,12 @@ TileNode::cull(TerrainCuller* culler)
     // whether it is OK to load data if necessary.
     bool canLoadData = true;
 
+    const TerrainOptions& opt = _context->options();
+    canLoadData =
+        _doNotExpire ||
+        _key.getLOD() == opt.firstLOD().get() ||
+        _key.getLOD() >= opt.minLOD().get();
+
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
 

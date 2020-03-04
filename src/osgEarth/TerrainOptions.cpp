@@ -73,9 +73,9 @@ TerrainOptions::fromConfig(const Config& conf)
     verticalScale().init(1.0f);
     verticalOffset().init(0.0f);
     minTileRangeFactor().init(7.0);
-    maxLOD().init(23);
-    minLOD().init(0);
-    firstLOD().init(0);
+    maxLOD().init(19u);
+    minLOD().init(0u);
+    firstLOD().init(0u);
     enableLighting().init(true);
     clusterCulling().init(true);
     enableBlending().init(true);

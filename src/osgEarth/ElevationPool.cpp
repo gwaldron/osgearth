@@ -147,16 +147,15 @@ ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& 
 
         if (ok)
         {
+            // store the *actual* key (keyToUse) with the heightfield;
+            // may be an ancestor of key in the case of fallback.
             tile->_hf = GeoHeightField( hf.get(), keyToUse.getExtent() );
-            tile->_bounds = keyToUse.getExtent().bounds();
         }
         else
         {
             keyToUse = keyToUse.createParentKey();
         }
     }
-
-    tile->_actualKey = keyToUse;
 
     return tile->_hf.valid();
 }
@@ -385,15 +384,18 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
 
     if (p.transformInPlace(_mapProfile->getSRS()))
     {
-#if 0
-        // find the tile containing the point:
+        // See if we have a cached tile containing the point:
         for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
             tile_ref != _tiles.end();
             ++tile_ref)
         {
             ElevationPool::Tile* tile = tile_ref->get();
 
-            if (tile->_hf.getExtent().contains(p.x(), p.y()))
+            // Important: test against the bounds of the original key that was used
+            // to make the tile request, even if the request fell back on an ancestor
+            // key. We cannot assume that points outside the original request bounds
+            // would result in the same tile.
+            if (tile->_key.getExtent().contains(p.x(), p.y()))
             {
                 foundTile = true;
 
@@ -406,7 +408,6 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
                 }
             }
         }
-#endif
 
         // If we didn't find a tile containing the point, we need to ask the clamper
         // for the tile so we can add it to the query set.

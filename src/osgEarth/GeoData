@@ -719,6 +719,8 @@ namespace osgEarth
 
         void set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature =0.0f);
 
+        void generateCurvatures();
+
         osg::Vec3 getNormal(unsigned s, unsigned t) const;
 
         osg::Vec3 getNormalByUV(double u, double v) const;

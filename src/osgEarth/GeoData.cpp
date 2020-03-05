@@ -2372,6 +2372,41 @@ NormalMap::getNormal(unsigned s, unsigned t) const
         encoding.z()*2.0 - 1.0);
 }
 
+void
+NormalMap::generateCurvatures()
+{
+    osg::Vec4f a, b;
+    osg::Vec3f j, k;
+
+    for(unsigned t=0; t<_read->t(); ++t)
+    {
+        unsigned t_prev = t > 0 ? t - 1 : t;
+        unsigned t_next = t < _read->t() - 1 ? t + 1 : t;
+
+        for(unsigned s=0; s<_read->s(); ++s)
+        {
+            unsigned s_prev = s > 0 ? s - 1 : s;
+            unsigned s_next = s < _read->s() - 1 ? s + 1 : s;
+
+            (*_read)(a, s_prev, t); j.set(a[0]*2-1, a[1]*2-1, a[2]*2-1);
+            (*_read)(b, s_next, t); k.set(b[0]*2-1, b[1]*2-1, b[2]*2-1);
+
+            float d1 = j*k;
+
+            (*_read)(a, s, t_prev); j.set(a[0]*2-1, a[1]*2-1, a[2]*2-1);
+            (*_read)(b, s, t_next); k.set(b[0]*2-1, b[1]*2-1, b[2]*2-1);
+
+            float d2 = j*k;
+
+            float dm = osg::minimum(d1, d2);
+            
+            (*_read)(a, s, t);
+            a.w() = 1.0-(0.5*(dm+1.0));
+            (*_write)(a, s, t);
+        }
+    }
+}
+
 osg::Vec3
 NormalMap::getNormalByUV(double u, double v) const
 {

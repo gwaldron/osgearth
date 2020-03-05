@@ -749,6 +749,8 @@ namespace
                 normalMap->set(s, t, normal, 0.0f);
             }
         }
+
+        normalMap->generateCurvatures();
     }
 }
 

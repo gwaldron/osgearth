@@ -56,6 +56,9 @@ namespace osgEarth
         Color( float r, float g, float b, float a = 1.0f )
             : osg::Vec4f(r, g, b, a) { }
 
+        /** Vector constructor */
+        static Color all(float v) { return Color(v,v,v,v); }
+
         /** RGBA/ABGR constructor */
         Color( unsigned value, Format format =RGBA );
 

@@ -66,6 +66,15 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (!_map.lock(map))
         return;
 
+    // if the operation was canceled, set the request to abandoned
+    // so it can potentially retry later.
+    if (progress && progress->isCanceled())
+    {
+        _dataModel = 0L;
+        setState(Request::ABANDONED);
+        return;
+    }
+
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
@@ -74,12 +83,12 @@ LoadTileData::invoke(ProgressCallback* progress)
         _enableCancel? progress : 0L);
 
     // if the operation was canceled, set the request to abandoned
-    // so it can potentially rerty later.
+    // so it can potentially retry later.
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
-        //OE_INFO << LC << "Request " << _key.str() << " cancelled" << std::endl;
         setState(Request::ABANDONED);
+        return;
     }
 
     // In the terrain engine, we have to keep our elevation rasters in 

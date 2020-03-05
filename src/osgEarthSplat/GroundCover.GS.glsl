@@ -90,6 +90,7 @@ struct oe_GroundCover_Billboard {
 };
 void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
 
+
 // Output colors/normals:
 out vec4 vp_Color;
 out vec3 vp_Normal;

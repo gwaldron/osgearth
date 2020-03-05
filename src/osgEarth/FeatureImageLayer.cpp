@@ -26,6 +26,7 @@
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
+#include <osgEarth/LandCover>
 
 using namespace osgEarth;
 
@@ -343,15 +344,15 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     }
     
     // allocate the image.
-    osg::ref_ptr<osg::Image> image = new osg::Image();
+    osg::ref_ptr<osg::Image> image;
 
     if ( options().coverage() == true )
     {
-        image->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_FLOAT);
-        image->setInternalTextureFormat(GL_R16F);
+        image = LandCover::createImage(getTileSize());
     }
     else
     {
+        image = new osg::Image();
         image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
     }
 

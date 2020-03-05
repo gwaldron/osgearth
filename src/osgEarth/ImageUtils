@@ -443,6 +443,9 @@ namespace osgEarth { namespace Util
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
 
+            //! Initialize to all one value
+            void assign(const osg::Vec4& c);
+
             /** Writes a color to a pixel. */
             void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
                 (*_writer)(this, c, s, t, r, m );

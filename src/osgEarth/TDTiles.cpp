@@ -156,6 +156,7 @@ BoundingVolume::fromJSON(const Json::Value& value)
             osg::Vec3 xvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
             osg::Vec3 yvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
             osg::Vec3 zvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
+
             box()->expandBy(center+xvec);
             box()->expandBy(center-xvec);
             box()->expandBy(center+yvec);
@@ -454,7 +455,13 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
 
     if (_immediateLoad && _tile->content().isSet())
     {
-        _content = _tile->content()->uri()->getNode(_options.get());
+        URIContext context = _tile->content()->uri()->context();
+        if (!_tileset->getAuthorizationHeader().empty())
+        {
+            context.addHeader("authorization", _tileset->getAuthorizationHeader());
+        }
+        URI uri(_tile->content()->uri()->base(), context);
+        _content = uri.getNode(_options.get());
         OE_PROFILING_ZONE_TEXT("Immediate load");
     }
 
@@ -529,7 +536,7 @@ void ThreeDTileNode::computeBoundingVolume()
 }
 
 void ThreeDTileNode::createDebugBounds()
-{   
+{
     if (_tile->boundingVolume()->sphere().isSet())
     {
         osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(getBound().center(), getBound().radius()));
@@ -606,7 +613,7 @@ bool ThreeDTileNode::isContentReady()
 
 void ThreeDTileNode::resolveContent()
 {
-    // Resolve the future 
+    // Resolve the future
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
         _content = _contentFuture.release();
@@ -631,7 +638,7 @@ namespace
         void operator()(osg::Object*)
         {
             if (!_promise.isAbandoned())
-            {   
+            {
                 osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
                 osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
                 osg::ref_ptr<ThreeDTilesetNode> parentTileset;
@@ -750,13 +757,21 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
             localOptions = _options.get();
         }
 
+        URIContext context = _tile->content()->uri()->context();
+        if (!_tileset->getAuthorizationHeader().empty())
+        {
+            context.addHeader("authorization", _tileset->getAuthorizationHeader());
+        }
+
+        URI uri(_tile->content()->uri()->base(), context);
+
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            _contentFuture = readTilesetAsync(_tileset, _tile->content()->uri().get(), localOptions.get());
+            _contentFuture = readTilesetAsync(_tileset, uri, localOptions.get());
         }
         else
         {
-            _contentFuture = _tile->content()->uri()->readNodeAsync(localOptions.get(), NULL);
+            _contentFuture = uri.readNodeAsync(localOptions.get(), NULL);
         }
         _requestedContent = true;
     }
@@ -792,9 +807,9 @@ bool ThreeDTileNode::unloadContent()
         {
             _content->releaseGLObjects();
             _content = 0;
-        }        
+        }
     }
-    
+
     _firstVisit = true;
     _content = 0;
     _requestedContent = false;
@@ -858,7 +873,7 @@ void ThreeDTileNode::updateTracking(osgUtil::CullVisitor* cv)
 }
 
 void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
-{    
+{
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
@@ -884,7 +899,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
         {
             ico = osgView->getDatabasePager()->getIncrementalCompileOperation();
         }
-        
+
         // This allows nodes to reload themselves
         requestContent(ico);
         resolveContent();
@@ -945,7 +960,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
                     _boundsDebug->accept(nv);
                 }
             }
-        }        
+        }
     }
     else if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
     {
@@ -1003,7 +1018,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             _children->accept(nv);
         }
     }
-    
+
 }
 
 ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :
@@ -1019,7 +1034,7 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
     if (c)
-    {        
+    {
         setMaxTiles((unsigned)atoi(c));
     }
 
@@ -1035,12 +1050,12 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
 
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
 
-    _debugVP = getOrCreateDebugVirtualProgram();   
+    _debugVP = getOrCreateDebugVirtualProgram();
     getOrCreateStateSet()->setAttribute(_debugVP.get());
     if (_showColorPerTile)
     {
         getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::ON);
-    }    
+    }
 }
 
 unsigned int ThreeDTilesetNode::getMaxTiles() const
@@ -1108,7 +1123,7 @@ void ThreeDTilesetNode::setColorPerTile(bool colorPerTile)
 
 osg::BoundingSphere ThreeDTilesetNode::computeBound() const
 {
-    return _tileset->root()->boundingVolume()->asBoundingSphere();    
+    return _tileset->root()->boundingVolume()->asBoundingSphere();
 }
 
 void ThreeDTilesetNode::touchTile(ThreeDTileNode* node)
@@ -1135,7 +1150,7 @@ void ThreeDTilesetNode::expireTiles(const osg::NodeVisitor& nv)
     osg::Timer_t endTime;
 
     ScopedMutexLock lock(_mutex);
-    
+
     // Max time in ms to allocate to erasing tiles
     float maxTime = 2.0f;
 
@@ -1155,13 +1170,13 @@ void ThreeDTilesetNode::expireTiles(const osg::NodeVisitor& nv)
                 tile->_trackerItrValid = false;
                 itr = _tracker.erase(itr);
                 ++numErased;
-            }            
+            }
             else
             {
                 numSkipped++;
                 ++itr;
             }
-        }        
+        }
 
         endTime = osg::Timer::instance()->tick();
         if (osg::Timer::instance()->delta_m(startTime, endTime) > maxTime)
@@ -1173,14 +1188,14 @@ void ThreeDTilesetNode::expireTiles(const osg::NodeVisitor& nv)
 #if 0
     if (numErased > 0 || numSkipped > 0)
     {
-        OE_NOTICE << "Erased " << numErased << " and skipped " << numSkipped << " in " << osg::Timer::instance()->delta_m(startTime, endTime) << "ms" << std::endl;    
-    }        
+        OE_NOTICE << "Erased " << numErased << " and skipped " << numSkipped << " in " << osg::Timer::instance()->delta_m(startTime, endTime) << "ms" << std::endl;
+    }
     OE_NOTICE << "Tiles in memory " << _tracker.size() << " max tiles=" << _maxTiles << std::endl;
 #endif
 
     // Erase the sentry and stick it at the end of the list
     _tracker.erase(_sentryItr);
-    _tracker.push_back(0);    
+    _tracker.push_back(0);
     _sentryItr = --_tracker.end();
 }
 

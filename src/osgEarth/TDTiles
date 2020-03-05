@@ -139,7 +139,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         ThreeDTilesetNode* _tilesetNode;
         osg::ref_ptr< Tileset > _tileset;
         osg::ref_ptr< osgDB::Options > _options;
-    };    
+    };
 
     /**
      * Node that renders a 3D-Tiles Tile
@@ -237,6 +237,9 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         const osgDB::Options* getOptions() const { return _options.get(); }
 
+        const std::string& getAuthorizationHeader() const { return _authorizationHeader; }
+        void setAuthorizationHeader(const std::string& authorizationHeader) { _authorizationHeader = authorizationHeader; }
+
 
 
         /**
@@ -277,12 +280,14 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         unsigned int _maxTiles;
         float _maxAge;
 
-        bool _showBoundingVolumes;       
+        bool _showBoundingVolumes;
         bool _showColorPerTile;
 
         osg::ref_ptr< VirtualProgram> _debugVP;
 
         unsigned int _lastExpiredFrame;
+
+        std::string _authorizationHeader;
     };
 
 } } }

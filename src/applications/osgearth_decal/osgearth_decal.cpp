@@ -52,7 +52,6 @@ usage(const char* name)
 struct App
 {
     unsigned _minLevel;
-    unsigned _maxDataLevel;
     float _size;
 
     osg::ref_ptr<MapNode> _mapNode;
@@ -77,67 +76,65 @@ struct App
 
         _idGenerator = 0u;
         _minLevel = 11u;
-        _maxDataLevel = 18u; // must be >= other land cover layers!
         _size = 0.0f;
         _decalsPerClick = 1u;
-
-        _landCover = new osg::Image();
-        _landCover->allocateImage(_image->s(), _image->t(), 1, GL_RED, GL_FLOAT);
-        _landCover->setInternalTextureFormat(GL_R16F);
-
-        ImageUtils::PixelReader read(_image.get());
-
-        ImageUtils::PixelWriter write(_landCover.get());
-        write.setNormalize(false);
-
-        osg::Vec4 value;
-
-        for (unsigned t = 0; t < _image->t(); ++t)
-        {
-            for (unsigned s = 0; s < _image->s(); ++s)
-            {
-                read(value, s, t);
-                float code = value.a() > 0.2 ? 7.0 : NO_DATA_VALUE;
-                value.set(code, code, code, code);
-                write(value, s, t);
-            }
-        }
-
     }
 
     void init(MapNode* mapNode)
     {
         _mapNode = mapNode;
 
-        // By default, decal layers will NOT cache. Here we are setting up a policy
-        // to cache them with a 10-minute expiration.
-        CachePolicy policy;
-        //policy.usage() = CachePolicy::USAGE_READ_WRITE;
-        //policy.maxAge() = 10.0;
+        // Only activate the land cover decal if there's a dictionary in the map:
+        LandCoverDictionary* dic = mapNode->getMap()->getLayer<LandCoverDictionary>();
+        if (dic)
+        {
+            // Synthesize a land cover raster to use as a decal.
+            const LandCoverClass* lc_class = dic->getClassByName("rock");
+            if (lc_class)
+            {
+                // read from the visible image:
+                ImageUtils::PixelReader read(_image.get());
+
+                // write to the landcover raster:
+                _landCover = LandCover::createImage(_image->s(), _image->t());
+                ImageUtils::PixelWriter write(_landCover.get());
+
+                const float lc_code = (float)lc_class->getValue();
+
+                osg::Vec4 value;
+                for (unsigned t = 0; t < read.t(); ++t)
+                {
+                    for (unsigned s = 0; s < read.s(); ++s)
+                    {
+                        read(value, s, t);
+                        float c = value.a() > 0.2 ? lc_code : NO_DATA_VALUE;
+                        value.set(c, c, c, c);
+                        write(value, s, t);
+                    }
+                }
+            }
+        }
 
         _imageLayer = new DecalImageLayer();
         _imageLayer->setName("Image Decals");
         _imageLayer->setMinLevel(_minLevel);
-        _imageLayer->setMaxDataLevel(_maxDataLevel);
-        _imageLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_imageLayer.get());
         _layersToRefresh.push_back(_imageLayer.get());
 
         _elevLayer = new DecalElevationLayer();
         _elevLayer->setName("Elevation Decals");
         _elevLayer->setMinLevel(_minLevel);
-        _elevLayer->setMaxDataLevel(_maxDataLevel);
-        _elevLayer->setCachePolicy(policy);
         mapNode->getMap()->addLayer(_elevLayer.get());
         _layersToRefresh.push_back(_elevLayer.get());
 
-        _landCoverLayer = new DecalLandCoverLayer();
-        _landCoverLayer->setName("LandCover Decals");
-        _landCoverLayer->setMinLevel(_minLevel);
-        _landCoverLayer->setMaxDataLevel(_maxDataLevel); // must be the same as other land cover layer(s)!
-        _landCoverLayer->setCachePolicy(policy);
-        mapNode->getMap()->addLayer(_landCoverLayer.get());
-        _layersToRefresh.push_back(_landCoverLayer.get());
+        if (_landCover.valid())
+        {
+            _landCoverLayer = new DecalLandCoverLayer();
+            _landCoverLayer->setName("LandCover Decals");
+            _landCoverLayer->setMinLevel(_minLevel);
+            mapNode->getMap()->addLayer(_landCoverLayer.get());
+            _layersToRefresh.push_back(_landCoverLayer.get());
+        }
     }
 
     void addDecal(const GeoExtent& extent)
@@ -149,7 +146,9 @@ struct App
 
         _imageLayer->addDecal(id, extent, _image.get());
         _elevLayer->addDecal(id, extent, _image.get(), -_size / 20.0f);
-        _landCoverLayer->addDecal(id, extent, _landCover.get());
+
+        if (_landCoverLayer.valid())
+            _landCoverLayer->addDecal(id, extent, _landCover.get());
 
         // Tell the terrain engine to regenerate the effected area.
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
@@ -167,7 +166,9 @@ struct App
             {
                 _imageLayer->removeDecal(id);
                 _elevLayer->removeDecal(id);
-                _landCoverLayer->removeDecal(id);
+
+                if (_landCoverLayer.valid())
+                    _landCoverLayer->removeDecal(id);
 
                 _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
             }
@@ -178,7 +179,8 @@ struct App
     {
         _imageLayer->clearDecals();
         _elevLayer->clearDecals();
-        _landCoverLayer->clearDecals();
+        if (_landCoverLayer.valid())
+            _landCoverLayer->clearDecals();
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
     }
 };
@@ -256,26 +258,26 @@ main(int argc, char** argv)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
-
-    App app;
-
-    app._size = 250.0f;
-    arguments.read("--size", app._size);
-
-    app._decalsPerClick = 1u;
-    arguments.read("--count", app._decalsPerClick);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
-        viewer.setSceneData(node);
+        App app;
+
+        app._size = 250.0f;
+        arguments.read("--size", app._size);
+
+        app._decalsPerClick = 1u;
+        arguments.read("--count", app._decalsPerClick);
 
         app.init(MapNode::get(node));
+
+        viewer.setSceneData(node);
         viewer.addEventHandler(new ClickToDecal(app));
+
         OE_WARN << LC << 
             "\n\n-- Zoom in close ..."
             "\n-- Press 'd' to drop bombs"

@@ -22,10 +22,20 @@
 #include <osgEarth/Config>
 #include <osgEarth/Layer>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/Color>
 #include <vector>
 
 namespace osgEarth
 {
+    struct OSGEARTH_EXPORT LandCover
+    {
+        //! Creates a new image configured to hold land cover data
+        static osg::Image* createImage(unsigned s, unsigned t =0u);
+
+        //! the internal texture format used for land cover data
+        static GLint getTextureFormat();
+    };
+
     /**
      * A single classification definition of land cover and the coded
      * value that osgEarth uses to represent the class in a coverage raster.

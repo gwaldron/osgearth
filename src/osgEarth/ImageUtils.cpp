@@ -2376,6 +2376,18 @@ ImageUtils::PixelWriter::supports( GLenum pixelFormat, GLenum dataType )
     return getWriter(pixelFormat, dataType) != 0L;
 }
 
+void
+ImageUtils::PixelWriter::assign(const osg::Vec4& c)
+{
+    if (_image->valid())
+    {
+        for(unsigned r=0; r<_image->r(); ++r)
+            for(unsigned t=0; t<_image->s(); ++t)
+                for(unsigned s=0; s<_image->s(); ++s)
+                    (*this)(c, s, t, r);
+    }
+}
+
 TextureAndImageVisitor::TextureAndImageVisitor() :
 osg::NodeVisitor()
 {

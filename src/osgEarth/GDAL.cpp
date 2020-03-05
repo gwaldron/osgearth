@@ -24,6 +24,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/LandCover>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -1262,53 +1263,25 @@ GDAL::Driver::createImage(const TileKey& key,
         if (isCoverage)
         {
             GDALDataType gdalDataType = bandGray->GetRasterDataType();
-            int          gdalSampleSize;
-            GLenum       glDataType;
-            GLint        internalFormat;
 
-            switch (gdalDataType)
-            {
-            case GDT_Byte:
-                glDataType = GL_FLOAT;
-                gdalSampleSize = 1;
-                internalFormat = GL_R16F; // so we can still rep NO_DATA_VALUE?
-                break;
+            int gdalSampleSize = 
+                (gdalDataType == GDT_Byte)? 1:
+                (gdalDataType == GDT_UInt16 || gdalDataType == GDT_Int16)? 2:
+                4;
 
-            case GDT_UInt16:
-            case GDT_Int16:
-                glDataType = GL_FLOAT;
-                gdalSampleSize = 2;
-                internalFormat = GL_R16F;
-                break;
-
-            default:
-                glDataType = GL_FLOAT;
-                gdalSampleSize = 4;
-                internalFormat = GL_R32F;
-            }
-
-            // Create an un-normalized luminance image to hold coverage values.
-            image = new osg::Image();
-            image->allocateImage(tileSize, tileSize, 1, GL_RED, glDataType);
-            image->setInternalTextureFormat(internalFormat);
-            memset(image->data(), 0, image->getImageSizeInBytes());
+            // Create an un-normalized image to hold coverage values.
+            image = LandCover::createImage(tileSize);
 
             ImageUtils::PixelWriter write(image.get());
 
             // initialize all coverage texels to NODATA. -gw
-            osg::Vec4 temp;
-            temp.r() = NO_DATA_VALUE;
-
-            for (int s = 0; s < image->s(); ++s) {
-                for (int t = 0; t < image->t(); ++t) {
-                    write(temp, s, t);
-                }
-            }
+            write.assign(Color::all(NO_DATA_VALUE));
 
             // coverage data; one channel data that is not subject to interpolated values
             unsigned char* data = new unsigned char[target_width * target_height * gdalSampleSize];
             memset(data, 0, target_width * target_height * gdalSampleSize);
 
+            osg::Vec4 temp;
 
             int success;
             float nodata = bandGray->GetNoDataValue(&success);
@@ -1401,25 +1374,19 @@ GDAL::Driver::createImage(const TileKey& key,
         //b/c interpolating palette indexes doesn't make sense.
         unsigned char *palette = new unsigned char[target_width * target_height];
 
-        image = new osg::Image;
+        //image = new osg::Image;
 
         if (isCoverage == true)
         {
-            image->allocateImage(tileSize, tileSize, 1, GL_RED, GL_FLOAT);
-            image->setInternalTextureFormat(GL_R16F);
+            image = LandCover::createImage(tileSize);
 
             // initialize all coverage texels to NODATA. -gw
-            osg::Vec4 temp;
-            temp.r() = NO_DATA_VALUE;
             ImageUtils::PixelWriter write(image.get());
-            for (int s = 0; s < image->s(); ++s) {
-                for (int t = 0; t < image->t(); ++t) {
-                    write(temp, s, t);
-                }
-            }
+            write.assign(Color::all(NO_DATA_VALUE));
         }
         else
         {
+            image = new osg::Image();
             image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
             memset(image->data(), 0, image->getImageSizeInBytes());
         }

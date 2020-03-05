@@ -23,6 +23,26 @@
 
 using namespace osgEarth;
 
+//............................................................................
+
+osg::Image*
+LandCover::createImage(unsigned s, unsigned t)
+{
+    osg::Image* image = new osg::Image();
+    if (t==0) t=s;
+    image->allocateImage(s, t, 1, GL_RED, GL_FLOAT);
+    image->setInternalTextureFormat(getTextureFormat());
+    return image;
+}
+
+GLint
+LandCover::getTextureFormat()
+{
+    return GL_R16F;
+}
+
+//............................................................................
+
 LandCoverClass::LandCoverClass() :
 osg::Object(),
 _value(0)

@@ -341,13 +341,13 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
     ImageUtils::PixelReader read(image);
 
     osg::Vec4 value;
-    for(unsigned row=0; row<read.t(); ++row)
+    for(unsigned t=0; t<read.t(); ++t)
     {
-        for(unsigned col=0; col<read.s(); ++col)
+        for(unsigned s=0; s<read.s(); ++s)
         {
-            read(value, col, row);
+            read(value, s, t);
             float h = value.a() * scale;
-            hf->setHeight(col, row, h);
+            hf->setHeight(s, t, h);
         }
     }
 
@@ -482,17 +482,11 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
     if (decals.empty())
         return GeoImage::INVALID;
 
-    osg::ref_ptr<osg::Image> output = new osg::Image();
-    
-    output->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_FLOAT);
-    output->setInternalTextureFormat(GL_R16F);
+    osg::ref_ptr<osg::Image> output = LandCover::createImage(getTileSize());
     
     // initialize to nodata
-    float* ptr = (float*)output->data();
-    for(unsigned i=0; i<getTileSize()*getTileSize(); ++i)
-        *ptr++ = NO_DATA_VALUE;
-
     ImageUtils::PixelWriter writeOutput(output.get());
+    writeOutput.assign(Color::all(NO_DATA_VALUE));
 
     ImageUtils::PixelReader readOutput(output.get());
     readOutput.setBilinear(false);

@@ -41,7 +41,7 @@ void oe_normalMapFragment(inout vec4 color)
     vp_Normal = normalize( oe_normalMapTBN*normal );
 
     // visualize curvature quantized:
-    //color.rgba = vec4(0.0,0,1);
+    //color.rgba = vec4(0,0,0,1);
     //float curvature = 2.0*encodedNormal.w - 1.0;
     //if (curvature > 0.0) color.r = curvature;
     //if (curvature < 0.0) color.b = -curvature;

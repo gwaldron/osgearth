@@ -30,6 +30,12 @@ Shaders::Shaders()
     ENGINE_GEOM = "RexEngine.gs.glsl";
     _sources[ENGINE_GEOM] = "@RexEngine.gs.glsl@";
 
+    ENGINE_TESS_EVALUATION = "RexEngine.tes.glsl";
+    _sources[ENGINE_TESS_EVALUATION] = "@RexEngine.tes.glsl@";
+
+    ENGINE_TESS_CONTROL = "RexEngine.tcs.glsl";
+    _sources[ENGINE_TESS_CONTROL] = "@RexEngine.tcs.glsl@";
+
     SDK = "RexEngine.SDK.vert.glsl";
     _sources[SDK] = "@RexEngine.SDK.vert.glsl@";
 }

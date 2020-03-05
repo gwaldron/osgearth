@@ -31,6 +31,8 @@ namespace osgEarth { namespace REX
             ENGINE_ELEVATION_MODEL,
             ENGINE_FRAG,
             ENGINE_GEOM,
+            ENGINE_TESS_EVALUATION,
+            ENGINE_TESS_CONTROL,
             NORMAL_MAP_VERT,
             NORMAL_MAP_FRAG,
             MORPHING_VERT,

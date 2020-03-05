@@ -1210,6 +1210,13 @@ RexTerrainEngineNode::updateState()
         package.load(surfaceVP, package.ENGINE_ELEVATION_MODEL);
         //package.load(surfaceVP, package.ENGINE_FRAG);
 
+        if (options().gpuTessellation() == true)
+        {
+            package.load(surfaceVP, package.ENGINE_TESS_EVALUATION);
+            package.load(surfaceVP, package.ENGINE_TESS_CONTROL);
+            package.load(surfaceVP, package.ENGINE_GEOM);
+        }
+
         // Elevation?
         if (this->elevationTexturesRequired())
         {

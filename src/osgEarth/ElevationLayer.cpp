@@ -122,6 +122,9 @@ ElevationLayer::setVisible(bool value)
 void
 ElevationLayer::setEnabled(bool value)
 {
+    if (getEnabled() != value)
+        bumpRevision();
+
     VisibleLayer::setVisible(value);
     VisibleLayer::setEnabled(value);
 }

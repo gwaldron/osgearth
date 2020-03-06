@@ -625,13 +625,13 @@ osg::ref_ptr<osg::Geode> buildSphere(const double radius,
         }
     }
 
-    sphereGeometry->setVertexArray(sphereVertices);
+    sphereGeometry->setVertexArray(sphereVertices.get());
     //sphereGeometry->setTexCoordArray(0, sphereTexCoords);
     sphereColors->push_back(color);
-    sphereGeometry->setColorArray(sphereColors, osg::Array::BIND_OVERALL);
+    sphereGeometry->setColorArray(sphereColors.get(), osg::Array::BIND_OVERALL);
 
     osg::ref_ptr<osg::DrawElementsUInt> faces = new osg::DrawElementsUInt(osg::PrimitiveSet::LINE_LOOP);
-    sphereGeometry->addPrimitiveSet(faces);
+    sphereGeometry->addPrimitiveSet(faces.get());
 
     // Generate quads for each face.
     for (unsigned int r(0); r < rings - 1; ++r) {

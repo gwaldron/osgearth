@@ -1252,8 +1252,6 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 void
 ImageUtils::activateMipMaps(osg::Image* image)
 {
-    return;
-
 #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
     if (image == 0L)
         return;

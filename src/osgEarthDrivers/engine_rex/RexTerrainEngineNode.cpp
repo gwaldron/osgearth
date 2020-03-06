@@ -124,6 +124,7 @@ namespace
 RexTerrainEngineNode::RexTerrainEngineNode() :
 TerrainEngineNode     ( ),
 _terrain              ( 0L ),
+_terrainOptions       ( 0L ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),

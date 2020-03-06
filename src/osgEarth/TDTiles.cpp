@@ -83,7 +83,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
                 threadPool->put(readOptions.get());
             }
 
-            osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, readOptions.get());
+            osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);
             return node.release();
         }
@@ -144,6 +144,7 @@ BoundingVolume::fromJSON(const Json::Value& value)
             sphere()->center().y() = (*i++).asDouble();
             sphere()->center().z() = (*i++).asDouble();
             sphere()->radius()     = (*i++).asDouble();
+
         }
     }
     if (value.isMember("box"))
@@ -151,11 +152,18 @@ BoundingVolume::fromJSON(const Json::Value& value)
         const Json::Value& a = value["box"];
         if (a.isArray() && a.size() == 12)
         {
+            double values[12];
+            unsigned int index = 0;
+            for (Json::ValueConstIterator j = a.begin(); j != a.end(); ++j)
+            {
+                values[index] = (*j).asDouble();
+                index++;
+            }
             Json::Value::const_iterator i = a.begin();
-            osg::Vec3 center((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
-            osg::Vec3 xvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
-            osg::Vec3 yvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
-            osg::Vec3 zvec((*i++).asDouble(), (*i++).asDouble(), (*i++).asDouble());
+            osg::Vec3d center(values[0], values[1], values[2]);
+            osg::Vec3d xvec(values[3], values[4], values[5]);
+            osg::Vec3d yvec(values[6], values[7], values[8]);
+            osg::Vec3d zvec(values[9], values[10], values[11]);
 
             box()->expandBy(center+xvec);
             box()->expandBy(center-xvec);
@@ -344,6 +352,51 @@ Tile::getJSON() const
     return value;
 }
 
+osg::BoundingSphere
+Tile::getBoundingSphere()
+{
+    osg::BoundingSphere bsphere = boundingVolume()->asBoundingSphere();
+
+    // If the bounding volume is a box or a sphere we need to adjust it by the Tile's transform.
+    if (boundingVolume()->box().isSet() || boundingVolume()->sphere().isSet())
+    {
+        // Taken directly from osg::Transform.
+        osg::Matrixd l2w;
+        l2w.preMult(transform().get());
+
+        if (!bsphere.valid()) return bsphere;
+
+        osg::BoundingSphere::vec_type xdash = bsphere._center;
+        xdash.x() += bsphere._radius;
+        xdash = xdash * l2w;
+
+        osg::BoundingSphere::vec_type ydash = bsphere._center;
+        ydash.y() += bsphere._radius;
+        ydash = ydash * l2w;
+
+        osg::BoundingSphere::vec_type zdash = bsphere._center;
+        zdash.z() += bsphere._radius;
+        zdash = zdash * l2w;
+
+        bsphere._center = bsphere._center * l2w;
+
+        xdash -= bsphere._center;
+        osg::BoundingSphere::value_type sqrlen_xdash = xdash.length2();
+
+        ydash -= bsphere._center;
+        osg::BoundingSphere::value_type sqrlen_ydash = ydash.length2();
+
+        zdash -= bsphere._center;
+        osg::BoundingSphere::value_type sqrlen_zdash = zdash.length2();
+
+        bsphere._radius = sqrlen_xdash;
+        if (bsphere._radius < sqrlen_ydash) bsphere._radius = sqrlen_ydash;
+        if (bsphere._radius < sqrlen_zdash) bsphere._radius = sqrlen_zdash;
+        bsphere._radius = (osg::BoundingSphere::value_type)sqrt(bsphere._radius);
+    }
+    return bsphere;
+}
+
 //........................................................................
 
 void
@@ -453,6 +506,8 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         setMatrix(tile->transform().get());
     }
 
+    _localBoundingSphere = tile->boundingVolume()->asBoundingSphere();
+
     if (_immediateLoad && _tile->content().isSet())
     {
         URIContext context = _tile->content()->uri()->context();
@@ -535,19 +590,76 @@ void ThreeDTileNode::computeBoundingVolume()
     }
 }
 
+osg::ref_ptr<osg::Geode> buildSphere(const double radius,
+    const unsigned int rings,
+    const unsigned int sectors,
+    const osg::Vec4& color)
+{
+    osg::ref_ptr<osg::Geode>      sphereGeode = new osg::Geode;
+    osg::ref_ptr<osg::Geometry>   sphereGeometry = new osg::Geometry;
+    osg::ref_ptr<osg::Vec3Array>  sphereVertices = new osg::Vec3Array;
+    osg::ref_ptr<osg::Vec3Array>  sphereNormals = new osg::Vec3Array;
+    osg::ref_ptr<osg::Vec2Array>  sphereTexCoords = new osg::Vec2Array;
+    osg::ref_ptr< osg::Vec4Array > sphereColors = new osg::Vec4Array;
+
+    float const R = 1. / static_cast<float>(rings - 1);
+    float const S = 1. / static_cast<float>(sectors - 1);
+
+    sphereGeode->addDrawable(sphereGeometry);
+
+    // Establish texture coordinates, vertex list, and normals
+    for (unsigned int r(0); r < rings; ++r) {
+        for (unsigned int s(0); s < sectors; ++s) {
+            float const y = sin(-osg::PI_2 + osg::PI * r * R);
+            float const x = cos(2 * osg::PI * s * S) * sin(osg::PI * r * R);
+            float const z = sin(2 * osg::PI * s * S) * sin(osg::PI * r * R);
+
+            //sphereTexCoords->push_back(osg::Vec2(s * R, r * R));
+
+            sphereVertices->push_back(osg::Vec3(x * radius,
+                y * radius,
+                z * radius))
+                ;
+            sphereNormals->push_back(osg::Vec3(x, y, z));
+
+        }
+    }
+
+    sphereGeometry->setVertexArray(sphereVertices);
+    //sphereGeometry->setTexCoordArray(0, sphereTexCoords);
+    sphereColors->push_back(color);
+    sphereGeometry->setColorArray(sphereColors, osg::Array::BIND_OVERALL);
+
+    osg::ref_ptr<osg::DrawElementsUInt> faces = new osg::DrawElementsUInt(osg::PrimitiveSet::LINE_LOOP);
+    sphereGeometry->addPrimitiveSet(faces);
+
+    // Generate quads for each face.
+    for (unsigned int r(0); r < rings - 1; ++r) {
+        for (unsigned int s(0); s < sectors - 1; ++s) {
+            // Corners of quads should be in CCW order.
+            faces->push_back((r + 0) * sectors + (s + 0)); // ll
+            faces->push_back((r + 0) * sectors + (s + 1)); // lr
+            faces->push_back((r + 1) * sectors + (s + 1)); // ur
+
+            faces->push_back((r + 0) * sectors + (s + 0)); // ll
+            faces->push_back((r + 1) * sectors + (s + 1)); // ur
+            faces->push_back((r + 1) * sectors + (s + 0)); // ul
+        }
+    }
+
+
+    return sphereGeode;
+}
+
 void ThreeDTileNode::createDebugBounds()
 {
     if (_tile->boundingVolume()->sphere().isSet())
     {
-        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(getBound().center(), getBound().radius()));
-        sd->setColor(_debugColor);
-        osg::StateSet* stateset = sd->getOrCreateStateSet();
-        osg::PolygonMode* polymode = new osg::PolygonMode;
-        polymode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE);
-        stateset->setAttributeAndModes(polymode, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
-        stateset->setMode(GL_LIGHTING, osg::StateAttribute::OVERRIDE | osg::StateAttribute::OFF);
-        stateset->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
-        _boundsDebug = sd;
+        osg::BoundingSphere bs = _localBoundingSphere;
+        osg::MatrixTransform* mt = new osg::MatrixTransform;
+        mt->setMatrix(osg::Matrixd::translate(bs.center()));
+        mt->addChild(buildSphere(bs.radius(), 20, 20, _debugColor));
+        _boundsDebug = mt;
     }
     else if (_boundingBox.valid())
     {
@@ -585,14 +697,7 @@ void ThreeDTileNode::createDebugBounds()
 
 osg::BoundingSphere ThreeDTileNode::computeBound() const
 {
-    if (_tile->boundingVolume().isSet())
-    {
-        return _tile->boundingVolume()->asBoundingSphere();
-    }
-    else
-    {
-        return osg::Group::computeBound();
-    }
+    return _tile->getBoundingSphere();
 }
 
 bool ThreeDTileNode::hasContent()
@@ -779,7 +884,8 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
 
 double ThreeDTileNode::getDistanceToTile(osgUtil::CullVisitor* cv)
 {
-    return (double)cv->getDistanceToViewPoint(getBound().center(), true) - getBound().radius();
+    osg::BoundingSphere bs = _localBoundingSphere;
+    return (double)cv->getDistanceToViewPoint(bs.center(), true) - bs.radius();
 }
 
 double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
@@ -933,15 +1039,17 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             areChildrenReady = false;
         }
 
+
         if (areChildrenReady && error > _tileset->getMaximumScreenSpaceError() && _children.valid() && _children->getNumChildren() > 0)
         {
             if (_content.valid() && _tile->refine().isSetTo(REFINE_ADD))
             {
                 _content->accept(nv);
-                if (_tileset->getShowBoundingVolumes() && _boundsDebug.valid())
-                {
-                    _boundsDebug->accept(nv);
-                }
+            }
+
+            if (_tileset->getShowBoundingVolumes() && _boundsDebug.valid())
+            {
+                _boundsDebug->accept(nv);
             }
 
             if (_children.valid())
@@ -954,11 +1062,11 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
             if (_content.valid())
             {
                 _content->accept(nv);
+            }
 
-                if (_tileset->getShowBoundingVolumes() && _boundsDebug.valid())
-                {
-                    _boundsDebug->accept(nv);
-                }
+            if (_tileset->getShowBoundingVolumes() && _boundsDebug.valid())
+            {
+                _boundsDebug->accept(nv);
             }
         }
     }
@@ -1021,7 +1129,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
 }
 
-ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) :
+ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, osgDB::Options* options) :
     _tileset(tileset),
     _options(options),
     _maximumScreenSpaceError(15.0f),
@@ -1029,7 +1137,8 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options) 
     _showBoundingVolumes(false),
     _showColorPerTile(false),
     _maxAge(5.0f),
-    _lastExpiredFrame(0)
+    _lastExpiredFrame(0),
+    _authorizationHeader(authorizationHeader)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
@@ -1119,13 +1228,6 @@ void ThreeDTilesetNode::setColorPerTile(bool colorPerTile)
     }
 }
 
-
-
-osg::BoundingSphere ThreeDTilesetNode::computeBound() const
-{
-    return _tileset->root()->boundingVolume()->asBoundingSphere();
-}
-
 void ThreeDTilesetNode::touchTile(ThreeDTileNode* node)
 {
     ScopedMutexLock lock(_mutex);
@@ -1211,7 +1313,8 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
             _lastExpiredFrame = nv.getFrameStamp()->getFrameNumber();
         }
     }
-    osg::MatrixTransform::traverse(nv);
+
+    osg::Group::traverse(nv);
 }
 
 ThreeDTilesetContentNode::ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNode, Tileset* tileset, osgDB::Options* options) :
@@ -1224,9 +1327,4 @@ ThreeDTilesetContentNode::ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNod
     {
         addChild(new ThreeDTileNode(_tilesetNode, tileset->root().get(), true, _options.get()));
     }
-}
-
-osg::BoundingSphere ThreeDTilesetContentNode::computeBound() const
-{
-    return _tileset->root()->boundingVolume()->asBoundingSphere();
 }

@@ -21,10 +21,12 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
+#include <osgEarth/TDTiles>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::CesiumIon;
+using namespace osgEarth::Contrib::ThreeDTiles;
 
 #undef LC
 #define LC "[CesiumIon] "
@@ -247,14 +249,36 @@ CesiumIon3DTilesLayer::openImplementation()
         setURL(URI(driver._resourceUrl, uriContext));
     }
 
-    Status parentStatus = ThreeDTilesLayer::openImplementation();
+    Status parentStatus = VisibleLayer::openImplementation();
     if (parentStatus.isError())
         return parentStatus;
 
-    if (_tilesetNode.valid())
+    ReadResult rr = _options->url()->readString();
+    if (rr.failed())
     {
-        _tilesetNode->setAuthorizationHeader(driver._acceptHeader);
+        return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
     }
+
+    //OE_NOTICE << "Read tileset " << rr.getString() << std::endl;
+
+    Tileset* tileset = Tileset::create(rr.getString(), _options->url()->full());
+    if (!tileset)
+    {
+        return Status(Status::GeneralError, "Bad tileset");
+    }
+
+    // Clone the read options and if there isn't a ThreadPool create one.
+    osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
+    if (!threadPool.valid())
+    {
+        unsigned int numThreads = 2;
+        _threadPool = new ThreadPool(numThreads);
+        _threadPool->put(readOptions.get());
+    }
+
+    _tilesetNode = new ThreeDTilesetNode(tileset, driver._acceptHeader, readOptions.get());
+    _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
 
     return STATUS_OK;
 }

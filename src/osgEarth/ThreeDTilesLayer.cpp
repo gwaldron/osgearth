@@ -102,8 +102,8 @@ ThreeDTilesLayer::openImplementation()
         _threadPool->put(readOptions.get());
     }
 
-    _tilesetNode = new ThreeDTilesetNode(tileset, readOptions.get());
-    _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());    
+    _tilesetNode = new ThreeDTilesetNode(tileset, "", readOptions.get());
+    _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
 
     return STATUS_OK;
 }

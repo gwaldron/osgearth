@@ -109,9 +109,23 @@ namespace
 #undef  LC
 #define LC "[ProgramRepo] "
 
+ProgramRepo::ProgramRepo() :
+    _releaseUnusedPrograms(true)
+{
+    //nop
+}
+
 ProgramRepo::~ProgramRepo()
 {
     releaseGLObjects(NULL);
+}
+
+void
+ProgramRepo::setReleaseUnusedPrograms(bool value)
+{
+    lock();
+    _releaseUnusedPrograms = value;
+    unlock();
 }
 
 osg::ref_ptr<osg::Program>
@@ -149,7 +163,7 @@ ProgramRepo::release(UID user, osg::State* state)
 
             //OE_TEST << LC << "PR REL prog=" << (e->_program.get()) << " user=" << (user) << " total=" << e->_users.size() << std::endl;
 
-            if (e->_users.empty())
+            if (_releaseUnusedPrograms && e->_users.empty())
             {
                 // release the GL memory
                 e->_program->releaseGLObjects(state);

@@ -139,7 +139,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, CesiumIon3DTilesLayer, Options, ThreeDTilesLayer, Model);
+        META_Layer(osgEarth, CesiumIon3DTilesLayer, Options, ThreeDTilesLayer, CesiumIon3DTiles);
 
     public:
         //! Base URL for requests

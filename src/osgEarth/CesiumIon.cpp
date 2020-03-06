@@ -242,18 +242,21 @@ CesiumIon3DTilesLayer::openImplementation()
         profile,
         getReadOptions());
 
+
+
+    URI serverURI;
     if (status.isOK())
     {
         URIContext uriContext;
         uriContext.addHeader("authorization", driver._acceptHeader);
-        setURL(URI(driver._resourceUrl, uriContext));
+        serverURI = URI(driver._resourceUrl, uriContext);
     }
 
     Status parentStatus = VisibleLayer::openImplementation();
     if (parentStatus.isError())
         return parentStatus;
 
-    ReadResult rr = _options->url()->readString();
+    ReadResult rr = serverURI.readString();
     if (rr.failed())
     {
         return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
@@ -261,7 +264,7 @@ CesiumIon3DTilesLayer::openImplementation()
 
     //OE_NOTICE << "Read tileset " << rr.getString() << std::endl;
 
-    Tileset* tileset = Tileset::create(rr.getString(), _options->url()->full());
+    Tileset* tileset = Tileset::create(rr.getString(), serverURI.full());
     if (!tileset)
     {
         return Status(Status::GeneralError, "Bad tileset");
@@ -269,6 +272,7 @@ CesiumIon3DTilesLayer::openImplementation()
 
     // Clone the read options and if there isn't a ThreadPool create one.
     osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+
     osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
     if (!threadPool.valid())
     {

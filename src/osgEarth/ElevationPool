@@ -54,6 +54,7 @@ namespace osgEarth
      * Each Map contains an ElevationPool you can access for queries against
      * that Map.
      *
+     * // usage. Note: Envelope instances are not thread-safe!
      * ElevationEnvelope* envelope = pool->createEnvelope(srs, lod);
      * float z = envelope->getElevation(point);
      */
@@ -78,7 +79,8 @@ namespace osgEarth
         void setTileSize(unsigned size);
         unsigned getTileSize() const { return _tileSize; }
 
-        /** Creates a query envelope to use for elevation queries in a certain area. */
+        /** Creates a query envelope to use for elevation queries in a certain area.
+            Note: the ElevationEnvelope API is not thread-safe */
         ElevationEnvelope* createEnvelope(const SpatialReference* srs, unsigned lod);
 
         //! Queries the elevation at a GeoPoint for a given LOD.
@@ -161,6 +163,9 @@ namespace osgEarth
         // that a ElevationEnvelope uses for a terrain sampling opteration.
         typedef std::set<osg::ref_ptr<Tile>, TileSortHiResToLoRes> QuerySet;
 
+        // Memory of tilekeys that returned other tilekeys from fetchTileFromMap
+        typedef UnorderedMap<TileKey,TileKey> KeyFetchMemory;
+
         // Asynchronous elevation query operation
         struct GetElevationOp : public osg::Operation {
             GetElevationOp(ElevationPool*, const GeoPoint&, unsigned lod);
@@ -179,13 +184,13 @@ namespace osgEarth
     protected:
 
         // safely popluate the tile; called when Tile._status = IN_PROGRESS
-        bool fetchTileFromMap(const TileKey& key, const ElevationLayerVector& layers, Tile* tile);
+        bool fetchTileFromMap(const TileKey& key, const ElevationLayerVector& layers, KeyFetchMemory& memory, Tile* tile) const;
         
         // safely fetch a tile from the central repo, loading from map if necessary
-        bool getTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& output);
+        bool getTile(const TileKey& key, const ElevationLayerVector& layers, KeyFetchMemory& memory, osg::ref_ptr<Tile>& output);
         
         // safely fetch a tile from the central repo, loading from map if necessary
-        bool tryTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& output);
+        bool tryTile(const TileKey& key, const ElevationLayerVector& layers, KeyFetchMemory& memory, osg::ref_ptr<Tile>& output);
 
         // safely remove the oldest item on the MRU
         void popMRU();
@@ -201,16 +206,34 @@ namespace osgEarth
      * Set of terrain tiles corresponding to a geographic extent that the pager
      * uses to clamp a feature set. You cannot create this object directly;
      * instead call ElevationPool::createEnvelope().
+     *
+     * ElevationEnvelope is NOT thread-safe. Use a separate instance from each thread.
+     * The preferred usage pattern is to create an Envelope, use it for multiple
+     * queries, and then discard.
      */
     class OSGEARTH_EXPORT ElevationEnvelope : public osg::Referenced
     {
     public:
+        //! Context object that the caller can use to maintain
+        //! information about a particular object
+        class Context
+        {
+        private:
+            typedef std::list< osg::ref_ptr<ElevationPool::Tile> > TileMRU;
+            TileMRU _tiles;
+            friend class ElevationEnvelope;
+        };
 
         /**
          * Gets a single elevation, or returns NO_DATA_VALUE upon failure.
-         * The Z value is ignored.
          */
         float getElevation(double x, double y);
+
+        //! Gets a single elevation or returns NO_DATA_VALUE upon failure.
+        //! Passing in an "owner" will help the Envelope remember the last
+        //! time you queried an elevation for a particular object, and 
+        //! can speed up
+        float getElevation(double x, double y, Context& context);
 
         /**
          * Gets a single elevation along with the resolution of the data from
@@ -243,22 +266,29 @@ namespace osgEarth
         /**
          * LOD at which this envelope will try to sample the elevation
          */
-        unsigned getLOD() const { return _lod; }
+        unsigned getLOD() const { return _requestedLOD; }
 
     protected:
         ElevationEnvelope();
         virtual ~ElevationEnvelope();
+        void collectDataExtents();
 
         ElevationLayerVector _layers;
         ElevationPool::QuerySet _tiles;
         osg::ref_ptr<const SpatialReference> _inputSRS;
-        unsigned _lod;
+        unsigned _lod, _requestedLOD;
         osg::observer_ptr<ElevationPool> _pool;
         osg::ref_ptr<const Profile> _mapProfile;
         friend class ElevationPool;
+        ElevationPool::KeyFetchMemory _memory;
+        typedef std::vector<int> RevisionVector;
+        RevisionVector _revisions;
+        typedef std::list<DataExtent> SortedDataExtentList;
+        SortedDataExtentList _dataExtentsSortedHiToLoRes;
+        unsigned _queries, _contexthits, _cachehits, _newcontexts, _fails;
 
     private:
-        bool sample(double x, double y, float& out_elevation, float& out_resolution);
+        bool sample(double x, double y, Context* context, float& out_elevation, float& out_resolution);
     };
 
 } // namespace

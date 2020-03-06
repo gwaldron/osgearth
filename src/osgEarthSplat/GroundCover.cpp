@@ -321,12 +321,13 @@ GroundCover::createShader() const
                 for(unsigned w=0; w<weight; ++w)
                 {
                     objectsBuf 
-                        << (numObjectsInsertedInBiome>0?",\n":"")
+                        << (totalNumObjectsInserted>0?",\n":"")
                         << "   oe_GroundCover_Object("
                         << (int)object->getType() << ", "
                         << (int)numBillboards
                         << ")";
                     ++numObjectsInsertedInBiome;
+                    ++totalNumObjectsInserted;
                 }
 
                 ++numBillboards;
@@ -350,8 +351,6 @@ GroundCover::createShader() const
 
         if ( (i+1) < getBiomes().size() )
             biomeBuf << ",\n";
-
-        totalNumObjectsInserted += numObjectsInsertedInBiome;
     }
 
     if (totalNumObjectsInserted == 0)

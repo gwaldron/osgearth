@@ -250,6 +250,10 @@ namespace osgEarth
             //! Release anything used by this user
             void release(UID user, osg::State* state);
 
+            //! Whether to automatically delete a Program after its final user releases it
+            //! Defaults to true
+            void setReleaseUnusedPrograms(bool value);
+
             //! Prune expired data
             void prune(unsigned frameNumber, osg::State* state);
 
@@ -257,10 +261,13 @@ namespace osgEarth
 
             void releaseGLObjects(osg::State* state) const;
 
+            ProgramRepo();
+
             ~ProgramRepo();
 
         private:
             mutable ProgramMap _db;
+            bool _releaseUnusedPrograms;
         };
     }
 }

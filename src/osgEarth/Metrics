@@ -24,7 +24,7 @@
 
 // forward
 namespace osgViewer {
-    class Viewer;
+    class ViewerBase;
 }
 
 namespace osgEarth {
@@ -36,7 +36,9 @@ namespace osgEarth {
             /**
              * Convenience function to run the OSG frame loop with metrics.
              */
-            static int run(osgViewer::Viewer& viewer);
+            static int run(osgViewer::ViewerBase& viewer);
+
+            static void frame();
 
             /*
             * Whether metrics collection is enabled.

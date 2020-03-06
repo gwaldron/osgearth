@@ -19,7 +19,8 @@
 
 
 #include <osgEarth/Metrics>
-#include <osgViewer/Viewer>
+#include <osgViewer/ViewerBase>
+#include <osgViewer/View>
 #include <osgEarth/Memory>
 
 using namespace osgEarth::Util;
@@ -38,7 +39,12 @@ void Metrics::setEnabled(bool enabled)
     s_metricsEnabled = enabled;
 }
 
-int Metrics::run(osgViewer::Viewer& viewer)
+void Metrics::frame()
+{
+    OE_PROFILING_FRAME_MARK;
+}
+
+int Metrics::run(osgViewer::ViewerBase& viewer)
 {
     if (!viewer.isRealized())
     {
@@ -47,6 +53,9 @@ int Metrics::run(osgViewer::Viewer& viewer)
 
     // Report memory and fps every 60 frames.
     unsigned int reportEvery = 60;
+
+    osgViewer::ViewerBase::Views views;
+    viewer.getViews(views);
 
     while (!viewer.done())
     {
@@ -71,14 +80,14 @@ int Metrics::run(osgViewer::Viewer& viewer)
         }
 
         // Report memory and fps periodically. periodically.
-        if (viewer.getFrameStamp()->getFrameNumber() % reportEvery == 0)
+        if (views[0]->getFrameStamp()->getFrameNumber() % reportEvery == 0)
         {         
             OE_PROFILING_PLOT("WorkingSet", (float)(Memory::getProcessPhysicalUsage() / 1048576));
             OE_PROFILING_PLOT("PrivateBytes", (float)(Memory::getProcessPrivateUsage() / 1048576));
             OE_PROFILING_PLOT("PeakPrivateBytes", (float)(Memory::getProcessPeakPrivateUsage() / 1048576));                                                                                                 
         }
 
-        OE_PROFILING_FRAME_MARK;
+        frame();
     }
     return 0;
 }

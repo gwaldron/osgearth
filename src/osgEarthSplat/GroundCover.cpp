@@ -51,15 +51,15 @@ GroundCoverBiomeOptions::getConfig() const
 //........................................................................
 
 GroundCoverOptions::GroundCoverOptions(const ConfigOptions& co) :
-ConfigOptions(co),
-_lod(14),
-_maxDistance(1000.0f),
-_density(1.0f),
-_spacing(25.0f),
-_fill(1.0f),
-_wind(0.0f),
-_brightness(1.0f),
-_contrast(0.5f)
+    ConfigOptions(co),
+    _lod(14),
+    _maxDistance(1000.0f),
+    _density(1.0f),
+    _spacing(25.0f),
+    _fill(1.0f),
+    _wind(0.0f),
+    _brightness(1.0f),
+    _contrast(0.5f)
 {
     fromConfig(_conf);
 }
@@ -112,7 +112,7 @@ GroundCoverOptions::fromConfig(const Config& conf)
 //............................................................................
 
 GroundCover::GroundCover(const GroundCoverOptions& in) :
-_options(in)
+    _options(in)
 {
     //nop
 }
@@ -225,7 +225,7 @@ GroundCover::createShader() const
         "    float sizeVariation; \n"
         "}; \n"
         "const oe_GroundCover_Billboard oe_GroundCover_billboards[%NUM_BILLBOARDS%] = oe_GroundCover_Billboard[%NUM_BILLBOARDS%](\n";
-    
+
     objectsBuf <<
         "struct oe_GroundCover_Object { \n"
         "    int type; // 0=billboard \n"
@@ -248,7 +248,7 @@ GroundCover::createShader() const
         const GroundCoverBiome* biome = getBiomes()[i].get();
 
         float maxWidth = 0.0f, maxHeight = 0.0f;
-        
+
         int firstObjectIndexOfBiome = objectIndex;
 
         // This will be larger than biome->getObjects().size() IF any of the
@@ -257,7 +257,7 @@ GroundCover::createShader() const
 
         for(int j=0; j<biome->getObjects().size(); ++j)
         {
-			const GroundCoverObject* object = biome->getObjects()[j].get();
+            const GroundCoverObject* object = biome->getObjects()[j].get();
 
             if (object->getType() == GroundCoverObject::TYPE_BILLBOARD)
             {
@@ -321,7 +321,7 @@ GroundCover::createShader() const
                 for(unsigned w=0; w<weight; ++w)
                 {
                     objectsBuf 
-                        << (numObjectsInsertedInBiome>0?",\n":"")
+                        << (totalNumObjectsInserted>0?",\n":"")
                         << "   oe_GroundCover_Object("
                         << (int)object->getType() << ", "
                         << (int)numBillboards
@@ -359,12 +359,6 @@ GroundCover::createShader() const
         return NULL;
     }
 
-    if (totalNumObjectsInserted == 0)
-    {
-        OE_WARN << LC << "Shader creation failed; no valid groundcover billboards" << std::endl;
-        return NULL;
-    }
-
     biomeBuf
         << "\n);\n";
 
@@ -383,7 +377,7 @@ GroundCover::createShader() const
         << "void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object output) { \n"
         << "    output = oe_GroundCover_objects[index]; \n"
         << "} \n";
-        
+
     billboardsBuf
         << "void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard output) { \n"
         << "    output = oe_GroundCover_billboards[index]; \n"
@@ -396,7 +390,7 @@ GroundCover::createShader() const
 
     std::string objectsStr = objectsBuf.str();
     replaceIn(objectsStr, "%NUM_OBJECTS%", Stringify() << totalNumObjectsInserted); //getTotalNumObjects());
-    
+
     osg::ref_ptr<ImageLayer> layer;
 
     osg::Shader* shader = new osg::Shader();
@@ -441,7 +435,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     std::stringstream buf;
     buf << "#version " GLSL_VERSION_STR "\n";
 
-        if ( !landCoverDict )
+    if ( !landCoverDict )
     {
         buf << defaultCode;
         OE_WARN << LC << "No land cover dictionary; generating default coverage predicate\n";
@@ -492,7 +486,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
         buf << "    return -1; \n";
         buf << "}\n";
     }
-    
+
     osg::Shader* shader = new osg::Shader();
     shader->setName("oe GroundCover predicate function");
     shader->setShaderSource( buf.str() );
@@ -527,7 +521,7 @@ GroundCover::createTexture() const
     typedef std::vector<osg::Image*> ImageVector;
     ImageSet uniqueImages;
     ImageVector imagesToAdd;
-    
+
 
     for(int b=0; b<getBiomes().size(); ++b)
     {
@@ -545,7 +539,7 @@ GroundCover::createTexture() const
                     imagesToAdd.push_back(bb->_sideImage.get());
                     uniqueImages.insert(bb->_sideImage.get());
                 }
-            
+
                 if (bb->_topImage.valid() && uniqueImages.find(bb->_topImage.get()) == uniqueImages.end())
                 {
                     imagesToAdd.push_back(bb->_topImage.get());
@@ -554,7 +548,7 @@ GroundCover::createTexture() const
             }
         }
     }
-    
+
     for(unsigned i=0; i<imagesToAdd.size(); ++i)
     {
         osg::Image* image = imagesToAdd[i];

@@ -122,7 +122,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setMaxAnisotropy( 1.0f );
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    ImageUtils::activateMipMaps(tex);
+    ImageUtils::generateMipmaps(tex);
 
     return tex;
 }

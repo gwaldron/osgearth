@@ -165,10 +165,10 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
-    if (noise[NOISE_SMOOTH] > oe_GroundCover_fill)
-        return;
-    else
-        noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
+    //if (noise[NOISE_SMOOTH] > oe_GroundCover_fill)
+    //    return;
+    //else
+    //    noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
 
     // randomly shift each point off center
     vec2 shift = vec2(fract(noise[NOISE_RANDOM]*1.5), fract(noise[NOISE_RANDOM_2]*1.5))*2.0-1.0;
@@ -207,6 +207,17 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     }
 #endif
 
+    // look up biome:
+    oe_GroundCover_Biome biome;
+    oe_GroundCover_getBiome(biomeIndex, biome);
+
+    // discard instances based on noise value threshold (coverage). If it passes,
+    // scale the noise value back up to [0..1]
+    if (noise[NOISE_SMOOTH] > biome.fill)
+        return;
+    else
+        noise[NOISE_SMOOTH] /= biome.fill;
+
     // Clamp the center point to the elevation.
     oe_GroundCover_clamp(vertex_view, oe_UpVectorView, tilec.st);
 
@@ -224,11 +235,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         oe_GroundCover_atlasIndex = 1.0;
         return;
     }
-
-
-    // look up biome:
-    oe_GroundCover_Biome biome;
-    oe_GroundCover_getBiome(biomeIndex, biome);
 
     // select a billboard at random
     int objectIndex = biome.firstObjectIndex + int(floor(noise[NOISE_RANDOM] * float(biome.numObjects)));

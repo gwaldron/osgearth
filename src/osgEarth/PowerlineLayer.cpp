@@ -37,6 +37,17 @@ using namespace osgEarth;
 
 REGISTER_OSGEARTH_LAYER(PowerlineModel, PowerlineLayer);
 
+// Render power lines with their towers as models.
+// 
+// This code was originally written to use OSM data served in a tiled
+// data source. In that model, features are provided for the power
+// towers and power lines, then the attributes of both (tower height,
+// line voltage, numbers of lines) are useful, but there's not
+// explicit link between the two kinds of features. On the other hand,
+// power line data could come from an shp file or other GDAL layer in
+// which only the line features are available. To handle this, we
+// generate features for the towers if they aren't available.
+
 void PowerlineLayer::ModelOptions::fromConfig(const Config& conf)
 {
     if (conf.hasChild("attachment_points"))
@@ -81,6 +92,9 @@ PowerlineLayer::Options::Options(const ConfigOptions& options)
 // them.
 void PowerlineLayer::Options::fromConfig(const Config& conf)
 {
+    _point_features.init(true);
+
+    conf.get("point_features", point_features());
     LayerReference<FeatureSource>::get(conf, "line_features", _lineSourceLayer, _lineSource);
     FeatureDisplayLayout layout = _layout.get();
     layout.cropFeatures() = true;
@@ -129,13 +143,15 @@ private:
     Vec3dVector _attachments;
     std::string _modelName;
     osg::ref_ptr<StyleSheet> _styles;
+    bool _point_features;
 };
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
     : GeomFeatureNodeFactory(options),
       _lineSourceLayer(options.lineSourceLayer().get()),
       _lineSource(options.lineSource().get()),
-      _styles(styles)
+      _styles(styles),
+      _point_features(true)
 {
     if (options.towerModels().empty())
         return;
@@ -144,6 +160,7 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
     std::copy(modelOption.attachment_points().begin(), modelOption.attachment_points().end(),
               std::back_inserter(_attachments));
     _modelName = modelOption.uri().get();
+    _point_features = options.point_features().get();
 }
 
 FeatureNodeFactory*
@@ -395,27 +412,10 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     FilterContext sharedCX = context;
     FeatureList workingSet; 
     cursor->fill(workingSet);
-    osgEarth::Util::JoinPointsLinesFilter pointsLinesFilter;
-    pointsLinesFilter.lineSourceLayer() = "lines";
-    pointsLinesFilter.lineSource() = _lineSource;
-    FilterContext localCX = pointsLinesFilter.push(workingSet, sharedCX);
-    // Render towers and lines (cables) seperately
-    // Could write another filter for this?
-    FeatureList pointSet;
-    for(FeatureList::iterator i = workingSet.begin(); i != workingSet.end(); ++i)
-    {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
-        if (geom->getType() == Geometry::TYPE_POINTSET)
-        {
-            pointSet.push_back(feature);
-        }
-    }
 
     Style towerStyle = style;
     if (_styles->getStyle("towers"))
         towerStyle = *_styles->getStyle("towers");
-
     Style cableStyle;
     if (_styles->getStyle("cables", false))
         cableStyle = *_styles->getStyle("cables", false);
@@ -428,7 +428,31 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         lineSymbol->tessellationSize() = Distance(0.25, Units::KILOMETERS);
         lineSymbol->useGLLines() = true;
     }
+    // Render towers and lines (cables) seperately
+    // Features for the tower models. This normally comes from feature
+    // data in a layer, but it can be synthesized using only the line
+    // features.
+    FeatureList pointSet;
+    FilterContext localCX = sharedCX;
     
+    osgEarth::Util::JoinPointsLinesFilter pointsLinesFilter;
+    pointsLinesFilter.lineSourceLayer() = "lines";
+    pointsLinesFilter.lineSource() = _lineSource;
+    if (!_point_features)
+    {
+        pointsLinesFilter.createPointFeatures() = true;
+    }
+    localCX = pointsLinesFilter.push(workingSet, sharedCX);
+    for(FeatureList::iterator i = workingSet.begin(); i != workingSet.end(); ++i)
+    {
+        Feature* feature = i->get();
+        Geometry* geom = feature->getGeometry();
+        if (geom->getType() == Geometry::TYPE_POINTSET
+            || geom->getType() == Geometry::TYPE_POINT)
+        {
+            pointSet.push_back(feature);
+        }
+    }
 
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     osg::ref_ptr<osg::Node> pointsNode;

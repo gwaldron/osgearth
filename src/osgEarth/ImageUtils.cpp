@@ -499,6 +499,8 @@ ImageUtils::generateMipmaps(osg::Image* input)
     }
 #endif
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+
     // first, build the image that will hold all the mipmap levels.
     int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
     int imageSizeBytes = input->getTotalSizeInBytes();
@@ -555,6 +557,9 @@ ImageUtils::generateMipmaps(osg::Image* input)
 
     input->dirty();
     return true;
+#else
+    return false;
+#endif
 }
 
 osg::Image*

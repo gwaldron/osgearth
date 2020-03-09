@@ -748,7 +748,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     layer->applyTextureCompressionMode(tex);
 
-    ImageUtils::activateMipMaps(tex);
+    ImageUtils::generateMipmaps(tex);
     
     return tex;
 }
@@ -822,7 +822,8 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setMaxAnisotropy(1.0f);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
-    ImageUtils::activateMipMaps(tex);
+
+    ImageUtils::generateMipmaps(tex);
+
     return tex;
 }

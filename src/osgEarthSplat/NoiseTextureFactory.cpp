@@ -123,17 +123,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setMaxAnisotropy( 1.0f );
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    
-    //VRV Patch
-    // removed this call since the nvtt mipmapper does not handle GL_LUMINANCE 
-    //activate mipmaps currently does not check for every 1 channel type. Just don't send it 
-    // down if there is only a single channel image.
-    // If a 1 channel texture is sent down that is not properly checked for then it can crash.
-    if(chans != 1)
-    {
-        ImageUtils::activateMipMaps(tex);
-    }
-    //END VRV Patch
+    ImageUtils::generateMipmaps(tex);
 
     return tex;
 }

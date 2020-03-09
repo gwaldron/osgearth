@@ -379,12 +379,16 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         out._texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
         out._texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
         //out._texture->setResizeNonPowerOfTwoHint( false );
-        out._texture->setMaxAnisotropy( 4.0f );
+        //out._texture->setMaxAnisotropy( 4.0f );
 
         for(unsigned i=0; i<imagesInOrder.size(); ++i)
         {
             out._texture->setImage( i, imagesInOrder[i].get() );
         }
+
+        // Let the GPU do it since we only download this at startup
+        //ImageUtils::generateMipmaps(out._texture.get());
+        out._texture->setUseHardwareMipMapGeneration(true);
 
         OE_INFO << LC << "Catalog \"" << this->name().get()
             << "\" texture size = "<< imagesInOrder.size()

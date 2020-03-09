@@ -107,6 +107,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         Tile(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
         void fromJSON(const Json::Value&, LoadContext& uc);
         Json::Value getJSON() const;
+
+        osg::BoundingSphere getBoundingSphere();
     };
 
     class OSGEARTH_EXPORT Tileset : public osg::Referenced
@@ -136,13 +138,11 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     public:
         ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNode, Tileset* tileset, osgDB::Options* options);
 
-        osg::BoundingSphere computeBound() const;
-
     private:
         ThreeDTilesetNode* _tilesetNode;
         osg::ref_ptr< Tileset > _tileset;
         osg::ref_ptr< osgDB::Options > _options;
-    };    
+    };
 
     /**
      * Node that renders a 3D-Tiles Tile
@@ -211,6 +211,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::BoundingBoxd _boundingBox;
         osg::Matrixd _boundingBoxLocalToWorld;
 
+        osg::BoundingSphere _localBoundingSphere;
+
         osg::ref_ptr< osgDB::Options > _options;
 
         osg::Vec4 _debugColor;
@@ -222,12 +224,10 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     /**
     * Node representing a 3D-Tiles Tileet.
     */
-    class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::MatrixTransform
+    class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::Group
     {
     public:
-        ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options);
-
-        osg::BoundingSphere computeBound() const;
+        ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, osgDB::Options* options);
 
         float getMaximumScreenSpaceError() const;
         void setMaximumScreenSpaceError(float maximumScreenSpaceError);
@@ -239,6 +239,9 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         const Tileset* getTileset() const { return _tileset.get(); }
 
         const osgDB::Options* getOptions() const { return _options.get(); }
+
+        const std::string& getAuthorizationHeader() const { return _authorizationHeader; }
+        void setAuthorizationHeader(const std::string& authorizationHeader) { _authorizationHeader = authorizationHeader; }
 
 
 
@@ -280,12 +283,14 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         unsigned int _maxTiles;
         float _maxAge;
 
-        bool _showBoundingVolumes;       
+        bool _showBoundingVolumes;
         bool _showColorPerTile;
 
         osg::ref_ptr< VirtualProgram> _debugVP;
 
         unsigned int _lastExpiredFrame;
+
+        std::string _authorizationHeader;
     };
 
 } } }

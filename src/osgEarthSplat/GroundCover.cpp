@@ -32,6 +32,7 @@ GroundCoverBiomeOptions::fromConfig(const Config& conf)
             _symbols.push_back(s);
         }
     }
+    conf.get("fill", fill());
 }
 
 Config
@@ -45,6 +46,7 @@ GroundCoverBiomeOptions::getConfig() const
             conf.add(symbolConf);
         }
     }
+    conf.set("fill", fill());
     return conf;
 }
 
@@ -342,11 +344,13 @@ GroundCover::createShader() const
         // directions, but that's OK since we are rarely if ever going to GPU-cull
         // a billboard at the top of the viewport. -gw
 
+        float fill = biome->fill().isSet() ? biome->fill().get() : options().fill().get();
+
         biomeBuf << "    oe_GroundCover_Biome("
             << firstObjectIndexOfBiome << ", "
             << numObjectsInsertedInBiome //<< biome->getObjects().size() 
             << ", float(" << options().density().get() << ")"
-            << ", float(" << options().fill().get() << ")"
+            << ", float(" << fill << ")"
             << ", vec2(float(" << maxWidth << "),float(" << maxHeight*2.0f << ")))";
 
         if ( (i+1) < getBiomes().size() )
@@ -583,6 +587,10 @@ GroundCover::createTexture() const
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     tex->setMaxAnisotropy( 4.0 );
 
+    // Let the GPU do it since we only download this at startup
+    //ImageUtils::generateMipmaps(tex);
+    tex->setUseHardwareMipMapGeneration(true);
+
     return tex;
 }
 
@@ -609,6 +617,9 @@ GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo
 
     if ( in.biomeClasses().isSet() )
         setClasses( in.biomeClasses().get() );
+
+    if (in.fill().isSet())
+        fill() = in.fill().get();
 
     for(SymbolVector::const_iterator i = in.symbols().begin(); i != in.symbols().end(); ++i)
     {

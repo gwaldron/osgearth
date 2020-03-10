@@ -245,6 +245,10 @@ namespace osgEarth { namespace Splat
         void setSpacing(float value);
         float getSpacing() const;
 
+        //! Fill percentage
+        void setFill(float value);
+        float getFill() const;
+
         //! Max draw distance
         void setMaxDistance(float distance);
         float getMaxDistance() const;

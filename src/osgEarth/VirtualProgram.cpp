@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2020 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #include <osgEarth/VirtualProgram>
 
 #include <osgEarth/Registry>
@@ -26,6 +26,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
+#include <osgEarth/Cache>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -33,9 +34,12 @@
 #include <osg/Version>
 #include <osg/GL2Extensions>
 #include <osg/GLExtensions>
+#include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
+#include <OpenThreads/Thread>
 #include <fstream>
 #include <sstream>
-#include <OpenThreads/Thread>
+#include <stdlib.h> // getenv
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
@@ -112,7 +116,9 @@ namespace
 ProgramRepo::ProgramRepo() :
     _releaseUnusedPrograms(true)
 {
-    //nop
+    const char* value = ::getenv("OSGEARTH_PROGRAM_BINARY_CACHE_PATH");
+    if (value)
+        setProgramBinaryCacheLocation(value);
 }
 
 ProgramRepo::~ProgramRepo()
@@ -126,6 +132,27 @@ ProgramRepo::setReleaseUnusedPrograms(bool value)
     lock();
     _releaseUnusedPrograms = value;
     unlock();
+}
+
+void
+ProgramRepo::setProgramBinaryCacheLocation(const std::string& folder)
+{
+    lock();
+    if (osgDB::makeDirectory(folder) == true)
+    {
+        _programBinaryCacheFolder = folder;
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to access program binary cache location " << folder << std::endl;
+    }
+    unlock();
+}
+
+bool
+ProgramRepo::isProgramBinaryCachingActive() const
+{
+    return _programBinaryCacheFolder.empty() == false;
 }
 
 osg::ref_ptr<osg::Program>
@@ -148,7 +175,7 @@ ProgramRepo::use(const ProgramKey& key, unsigned frameNumber, UID user)
 void
 ProgramRepo::release(UID user, osg::State* state)
 {
-    if (!user)
+    if (user <= 0 || _releaseUnusedPrograms == false)
         return;
 
     for (ProgramMap::iterator i = _db.begin(); i != _db.end(); )
@@ -163,7 +190,7 @@ ProgramRepo::release(UID user, osg::State* state)
 
             //OE_TEST << LC << "PR REL prog=" << (e->_program.get()) << " user=" << (user) << " total=" << e->_users.size() << std::endl;
 
-            if (_releaseUnusedPrograms && e->_users.empty())
+            if (e->_users.empty())
             {
                 // release the GL memory
                 e->_program->releaseGLObjects(state);
@@ -253,6 +280,127 @@ ProgramRepo::releaseGLObjects(osg::State* state) const
     _db.clear();
 }
 
+void
+ProgramRepo::linkProgram(
+    const ProgramKey& key, 
+    osg::Program* program, 
+    osg::Program::PerContextProgram* pcp, 
+    osg::State& state)
+{
+    OE_PROFILING_ZONE_NAMED("link");
+
+    if (isProgramBinaryCachingActive())
+    {
+        bool readFromCache = false;
+        std::fstream fStream;
+        std::string programCacheName;
+
+        // hash the program metadata
+        std::stringstream programCacheNameStream;
+        programCacheNameStream << program->getName();
+        unsigned int hash = 0;
+        for (int i = 0; i < key.size(); i++)
+        {
+            //same as boost hash_combine
+            hash ^= key[i] + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        }
+        programCacheNameStream << "_" << hash;
+
+#if OSG_VERSION_LESS_THAN(3,7,0)
+        const std::string& defineStr = state.getDefineString(program->getShaderDefines());
+#else
+        const std::string& defineStr = pcp->getDefineString();
+#endif
+        unsigned int defineHash = std::hash<std::string>()(defineStr);
+        programCacheNameStream << "_" << defineHash;
+        programCacheNameStream << ".bin";
+
+        programCacheName = osgDB::concatPaths(
+            _programBinaryCacheFolder, 
+            osgEarth::toLegalFileName(programCacheNameStream.str(), false, "-"));
+
+        //currently set to be able to read and write to the binary file so only need to open file once.
+        fStream.open(programCacheName.c_str(), std::fstream::in | std::fstream::out | std::fstream::app | std::fstream::binary);
+        if (fStream.is_open())
+        {
+            // get length of file:
+            fStream.seekg(0, fStream.end);
+            int length = fStream.tellg();
+            fStream.seekg(0, fStream.beg);
+
+            if (length > 1)
+            {
+                OE_PROFILING_ZONE_NAMED("LoadShaderProgramBinary");
+                OE_PROFILING_ZONE_TEXT(programCacheName);
+                unsigned char* buffer = new unsigned char[length];
+
+                // read data as a block:
+                GLenum format;
+                fStream.read((char*)&format, sizeof(GLenum));
+                fStream.read((char*)buffer, length - sizeof(GLenum));
+
+                osg::Program::ProgramBinary* binary = new osg::Program::ProgramBinary();
+                binary->setFormat(format);
+                binary->assign(length - sizeof(GLenum), buffer);
+                program->setProgramBinary(binary);
+                readFromCache = true;
+                OE_DEBUG << LC << "Read a program binary from the cache (" << programCacheName << ")" << std::endl;
+            }
+            else
+            {
+                OE_PROFILING_ZONE_NAMED("LoadShaderNotFound");
+                OE_PROFILING_ZONE_TEXT(programCacheName);
+            }
+
+            //If there is not a programBinary then we need to add one
+            // This sets an openGL hint so we can grab it later.
+            if (program->getProgramBinary() == NULL)
+            {
+                program->setProgramBinary(new osg::Program::ProgramBinary());
+            }
+        }
+
+        program->compileGLObjects(state);
+
+        if (fStream.is_open())
+        {
+            if (pcp->isLinked())
+            {
+                if (!readFromCache)
+                {
+                    osg::ref_ptr<osg::Program::ProgramBinary> binary = pcp->compileProgramBinary(state);
+                    if (binary && binary->getSize() > 0)
+                    {
+                        OE_PROFILING_ZONE_NAMED("SaveShaderProgramBinary");
+                        GLenum format = binary->getFormat();
+                        fStream.write((char*)&format, sizeof(GLenum));
+                        fStream.write((char*)binary->getData(), binary->getSize());
+                        fStream.close();
+                        OE_DEBUG << LC << "Wrote a shader binary from the cache (" << programCacheName << ")" << std::endl;
+                    }
+                    else
+                    {
+                        //Should we save off something so we know it is a bad shader instead of just deleting the empty cache file?
+                        fStream.close();
+                        OE_WARN << LC << "Failed to compile program binary (" << programCacheName << ")" << std::endl;
+                        remove(programCacheName.c_str());
+                    }
+                }
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to link program binary (" << programCacheName << ")" << std::endl;
+                fStream.close();
+                remove(programCacheName.c_str());
+            }
+        }
+    }
+    else
+    {
+        program->compileGLObjects(state);
+    }
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC
@@ -297,7 +445,7 @@ namespace
     {
         bool inwhite = true;
         std::stringstream buf;
-        for (unsigned i = 0; i<in.length(); ++i)
+        for (unsigned i = 0; i < in.length(); ++i)
         {
             char c = in[i];
             if (::isspace(c))
@@ -463,7 +611,7 @@ namespace
 
             if (s_dumpShaders)
             {
-                for (unsigned i = 0; i<program->getNumShaders(); ++i)
+                for (unsigned i = 0; i < program->getNumShaders(); ++i)
                 {
                     osg::Shader* shader = program->getShader(i);
                     OE_NOTICE << "\n---------MERGED "
@@ -574,12 +722,12 @@ namespace
         // we call is a key vector because it uniquely identifies this shader program
         // based on its accumlated function set.
         outputKey.reserve(accumShaderMap.size());
-        for( VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
+        for (VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i)
         {
 #ifdef OE_USE_HASH_FOR_PROGRAM_KEY
-            outputKey.push_back( i->second._shader->getHash() );
+            outputKey.push_back(i->second._shader->getHash());
 #else
-            outputKey.push_back( i->second._shader.get() );
+            outputKey.push_back(i->second._shader.get());
 #endif
         }
 
@@ -657,7 +805,7 @@ VirtualProgram::AttrStackMemory::recall(const osg::State&                 state,
             if (item.attrStack.size() == rhs.size())
             {
                 bool arraysMatch = true;
-                for (int i = 0; i<item.attrStack.size() && arraysMatch; ++i)
+                for (int i = 0; i < item.attrStack.size() && arraysMatch; ++i)
                 {
                     if (item.attrStack[i] != rhs[i])
                     {
@@ -785,6 +933,12 @@ VirtualProgram::setReleaseUnusedPrograms(bool value)
     Registry::programRepo().setReleaseUnusedPrograms(value);
 }
 
+void
+VirtualProgram::setProgramBinaryCacheLocation(const std::string& folder)
+{
+    Registry::programRepo().setProgramBinaryCacheLocation(folder);
+}
+
 //------------------------------------------------------------------------
 
 VirtualProgram::VirtualProgram(unsigned mask) :
@@ -876,6 +1030,7 @@ VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& cop
 
 VirtualProgram::~VirtualProgram()
 {
+
 #ifdef USE_PROGRAM_REPO
     if (Registry::instance())
     {
@@ -1021,7 +1176,7 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
     }
     else
     {
-        for (unsigned i = 0; i<_lastUsedProgram.size(); ++i)
+        for (unsigned i = 0; i < _lastUsedProgram.size(); ++i)
         {
             const osg::Program* p = _lastUsedProgram[i].get();
             if (p)
@@ -1035,7 +1190,7 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 PolyShader*
 VirtualProgram::getPolyShader(const std::string& shaderID) const
 {
-    Threading::ScopedMutexLock readonly( _dataModelMutex );
+    Threading::ScopedMutexLock readonly(_dataModelMutex);
     ShaderMap::const_iterator i = _shaderMap.find(MAKE_SHADER_ID(shaderID));
     const ShaderEntry* entry = i != _shaderMap.end() ? &i->second : NULL;
     //const ShaderEntry* entry = _shaderMap.find( MAKE_SHADER_ID(shaderID) );
@@ -1190,10 +1345,10 @@ VirtualProgram::setFunction(const std::string&           functionName,
 bool
 VirtualProgram::addGLSLExtension(const std::string& extension)
 {
-   _dataModelMutex.lock();
-   std::pair<ExtensionsSet::const_iterator, bool> insertPair = _globalExtensions.insert(extension);
-   _dataModelMutex.unlock();
-   return insertPair.second;
+    _dataModelMutex.lock();
+    std::pair<ExtensionsSet::const_iterator, bool> insertPair = _globalExtensions.insert(extension);
+    _dataModelMutex.unlock();
+    return insertPair.second;
 }
 
 bool
@@ -1208,10 +1363,10 @@ VirtualProgram::hasGLSLExtension(const std::string& extension) const
 bool
 VirtualProgram::removeGLSLExtension(const std::string& extension)
 {
-   _dataModelMutex.lock();
-   ExtensionsSet::size_type erased = _globalExtensions.erase(extension);
-   _dataModelMutex.unlock();
-   return erased > 0;
+    _dataModelMutex.lock();
+    ExtensionsSet::size_type erased = _globalExtensions.erase(extension);
+    _dataModelMutex.unlock();
+    return erased > 0;
 }
 
 void
@@ -1260,6 +1415,7 @@ VirtualProgram::setInheritShaders(bool value)
         }
 #endif
 
+
         _inheritSet = true;
     }
 }
@@ -1302,10 +1458,10 @@ VirtualProgram::apply(osg::State& state) const
 
         //if ( state.getLastAppliedProgramObject() != 0L )
         {
-            const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,false);
+            const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID, false);
             if (extensions)
             {
-                extensions->glUseProgram( 0 );
+                extensions->glUseProgram(0);
             }
             state.setLastAppliedProgramObject(0);
         }
@@ -1316,7 +1472,7 @@ VirtualProgram::apply(osg::State& state) const
 
     OE_PROFILING_ZONE_NAMED("vp:apply");
     OE_PROFILING_ZONE_TEXT(getName());
-    
+
     // Negate osg::State's last-attribute-applied tracking for 
     // VirtualProgram, since it cannot detect a VP that is reached from
     // different node/attribute paths. We replace this with the 
@@ -1339,7 +1495,7 @@ VirtualProgram::apply(osg::State& state) const
     // we cannot store the program in stack memory -- the accept callback can
     // exclude shaders based on any condition.
     bool acceptCallbacksVary = _acceptCallbacksVaryPerFrame;
-
+    ProgramKey key;
     if (!program.valid())
     {
 #ifdef PREALLOCATE_APPLY_VARS
@@ -1373,9 +1529,9 @@ VirtualProgram::apply(osg::State& state) const
 
             for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
             {
-                if ( i->second.accept(state) )
+                if (i->second.accept(state))
                 {
-                    addToAccumulatedMap( local.accumShaderMap, i->first, i->second );
+                    addToAccumulatedMap(local.accumShaderMap, i->first, i->second);
                 }
             }
 
@@ -1398,7 +1554,7 @@ VirtualProgram::apply(osg::State& state) const
         // bindings.)
         // We're also going to detect the precense of a fragment shader.
         unsigned numFragShaders = 0u;
-        for( ShaderMap::iterator i = local.accumShaderMap.begin(); i != local.accumShaderMap.end(); ++i )
+        for (ShaderMap::iterator i = local.accumShaderMap.begin(); i != local.accumShaderMap.end(); ++i)
         {
             PolyShader* ps = i->second._shader.get();
 
@@ -1495,6 +1651,7 @@ VirtualProgram::apply(osg::State& state) const
 #endif
         }
         Registry::programRepo().unlock();
+        key = local.programKey;
     }
 
     // finally, apply the program attribute.
@@ -1552,10 +1709,9 @@ VirtualProgram::apply(osg::State& state) const
             OE_PROFILING_ZONE_NAMED("use");
             OE_PROFILING_ZONE_TEXT(program->getName());
 
-            if( pcp->needsLink() )
+            if (pcp->needsLink())
             {
-                OE_PROFILING_ZONE_NAMED("link");
-                program->compileGLObjects( state );
+                Registry::programRepo().linkProgram(key, program.get(), pcp, state);
             }
 
             if (pcp->isLinked())
@@ -1577,7 +1733,7 @@ VirtualProgram::apply(osg::State& state) const
         }
 
 #if 0 // test code for detecting race conditions
-        for (int i = 0; i<10000; ++i) {
+        for (int i = 0; i < 10000; ++i) {
             state.setLastAppliedProgramObject(0L);
             program->apply(state);
         }
@@ -1640,7 +1796,7 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
             // find the closest VP that doesn't inherit:
             unsigned start;
             const osg::StateAttribute* sa;
-            for( start = (int)av->size()-1; start > 0; --start )
+            for (start = (int)av->size() - 1; start > 0; --start)
             {
                 sa = (*av)[start].first;
 #ifdef USE_TYPEID
@@ -1653,12 +1809,12 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
                     continue;
 #endif
 
-                if ( (vp->_mask & _mask) && vp->_inherit == false )
+                if ((vp->_mask & _mask) && vp->_inherit == false)
                     break;
             }
 
             // collect functions from there on down.
-            for (unsigned i = start; i<av->size(); ++i)
+            for (unsigned i = start; i < av->size(); ++i)
             {
                 sa = (*av)[i].first;
 #ifdef USE_TYPEID
@@ -1671,7 +1827,7 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
                     continue;
 #endif
 
-                if ( (vp->_mask & _mask) && (vp != this) )
+                if ((vp->_mask & _mask) && (vp != this))
                 {
                     FunctionLocationMap rhs;
                     vp->getFunctions(rhs);
@@ -1753,7 +1909,7 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
         // find the deepest VP that doesn't inherit:
         unsigned start = 0;
         const osg::StateAttribute* sa;
-        for( start = (int)av->size()-1; start > 0; --start )
+        for (start = (int)av->size() - 1; start > 0; --start)
         {
             sa = (*av)[start].first;
 #ifdef USE_TYPEID
@@ -1765,12 +1921,12 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
             if (!vp)
                 continue;
 #endif
-            if ( (vp->_mask & mask) && vp->_inherit == false )
+            if ((vp->_mask & mask) && vp->_inherit == false)
                 break;
         }
 
         // collect shaders from there to here:
-        for (unsigned i = start; i<av->size(); ++i)
+        for (unsigned i = start; i < av->size(); ++i)
         {
             sa = (*av)[i].first;
 #ifdef USE_TYPEID
@@ -1782,7 +1938,7 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
             if (!vp)
                 continue;
 #endif
-            if ( vp->_mask & mask )
+            if (vp->_mask & mask)
             {
                 if (vp->getAcceptCallbacksVaryPerFrame())
                 {
@@ -1813,7 +1969,7 @@ VirtualProgram::addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap,
 
     for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
     {
-        if ( i->second.accept(state) )
+        if (i->second.accept(state))
         {
             addToAccumulatedMap(accumMap, i->first, i->second);
         }
@@ -1841,7 +1997,7 @@ VirtualProgram::getShaders(const osg::State&                        state,
     // copy to output.
     for (ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
     {
-        output.push_back( i->second._shader->getNominalShader() );
+        output.push_back(i->second._shader->getNominalShader());
     }
 
     return output.size();
@@ -1866,7 +2022,7 @@ VirtualProgram::getPolyShaders(const osg::State&                       state,
     // copy to output.
     for (ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
     {
-        output.push_back( i->second._shader.get() );
+        output.push_back(i->second._shader.get());
     }
 
     return output.size();
@@ -1896,15 +2052,15 @@ void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerF
 //.........................................................................
 
 PolyShader::PolyShader() :
-_dirty( true ),
-_location( ShaderComp::LOCATION_UNDEFINED )
+    _dirty(true),
+    _location(ShaderComp::LOCATION_UNDEFINED)
 {
     //nop
 }
 
 PolyShader::PolyShader(osg::Shader* shader) :
-_location( ShaderComp::LOCATION_UNDEFINED ),
-_nominalShader( shader )
+    _location(ShaderComp::LOCATION_UNDEFINED),
+    _nominalShader(shader)
 {
     _dirty = shader != 0L;
     if (shader)

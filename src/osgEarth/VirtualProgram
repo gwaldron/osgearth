@@ -215,6 +215,7 @@ namespace osgEarth
             static Threading::Mutex _cacheMutex;
             typedef std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > PolyShaderCache;
             static PolyShaderCache _polyShaderCache;
+            static void clearShaderCache();
 
         };
 
@@ -254,12 +255,25 @@ namespace osgEarth
             //! Defaults to true
             void setReleaseUnusedPrograms(bool value);
 
+            //! Filesystem location in which to cache precopmiled shader binaries
+            void setProgramBinaryCacheLocation(const std::string& directory);
+
+            bool isProgramBinaryCachingActive() const;
+
             //! Prune expired data
             void prune(unsigned frameNumber, osg::State* state);
 
             void resizeGLObjectBuffers(unsigned maxSize);
 
             void releaseGLObjects(osg::State* state) const;
+
+            //! Link a program, attempting to read/write its binary from the cache
+            //! if one is specified
+            void linkProgram(
+                const ProgramKey&,
+                osg::Program*, 
+                osg::Program::PerContextProgram*,
+                osg::State&);
 
             ProgramRepo();
 
@@ -268,6 +282,7 @@ namespace osgEarth
         private:
             mutable ProgramMap _db;
             bool _releaseUnusedPrograms;
+            std::string _programBinaryCacheFolder;
         };
     }
 }
@@ -323,12 +338,16 @@ namespace osgEarth
         */
         static VirtualProgram* cloneOrCreate(const osg::StateSet* src, osg::StateSet* dest);
 
-
         /**
         * Whether to automatically delete a Program after its final user releases it
         * Defaults to true
         */
         static void setReleaseUnusedPrograms(bool value);
+
+        /**
+        * Folder to used to cache pre-compiled shader binaries
+        */
+        static void setProgramBinaryCacheLocation(const std::string& directory);
 
     public:
         /**

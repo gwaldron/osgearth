@@ -1656,11 +1656,8 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
         {
             heights[i] = NO_DATA_VALUE;
         }
-        GDALRasterBandH band = GDALGetRasterBand(tileDS, 1);
-        GDALRasterIO(band, GF_Read, 0, 0, tileSize, tileSize, heights, tileSize, tileSize, GDT_Float32, 0, 0);
-
-        float minHeight = FLT_MAX;
-        float maxHeight = -FLT_MAX;
+        GDALRasterBand* band = GDALRasterBand::FromHandle(GDALGetRasterBand(tileDS, 1));
+        band->RasterIO(GF_Read, 0, 0, tileSize, tileSize, heights, tileSize, tileSize, GDT_Float32, 0, 0);
 
         hf = new osg::HeightField();
         hf->allocate(tileSize, tileSize);
@@ -1670,14 +1667,11 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
             {
                 unsigned inv_r = tileSize - r - 1;
                 float h = heights[r * tileSize + c];
-                if (h < -20000 || h > 20000)
+                if (!isValidValue_noLock(h, band))
                 {
                     h = NO_DATA_VALUE;
                 }
-
                 hf->setHeight(c, inv_r, h);
-                if (h < minHeight) minHeight = h;
-                if (h > maxHeight) maxHeight = h;
             }
         }
 

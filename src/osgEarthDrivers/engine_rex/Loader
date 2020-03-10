@@ -87,11 +87,15 @@ namespace osgEarth { namespace REX
                 IDLE,
                 RUNNING,
                 MERGING,
-                FINISHED,
-                ABANDONED
+                FINISHED
             };
 
             void setState(State value);
+
+            //! Sets a minimum delay between the last call to setState() and 
+            //! the request being processed. This exists to prevent requests
+            //! from spamming a resource (like the network)
+            void setDelay(double seconds) { _delay_s = seconds; }
 
             bool isIdle() const { return _state == IDLE; }
             bool isRunning() const { return _state == RUNNING; }
@@ -109,6 +113,7 @@ namespace osgEarth { namespace REX
             osg::Timer_t                  _lastTick;
             mutable Threading::Mutex      _lock;
             int                           _loadCount;
+            double                        _delay_s;
 
             void lock() { _lock.lock(); }
             void unlock() { _lock.unlock(); }

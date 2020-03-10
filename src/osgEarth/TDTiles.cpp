@@ -88,7 +88,16 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             return node.release();
         }
     };
-    REGISTER_OSGPLUGIN(3dtiles, ThreeDTilesJSONReaderWriter)
+    REGISTER_OSGPLUGIN(3dtiles, ThreeDTilesJSONReaderWriter);
+
+
+    struct CompressAndMipmapTextures : public TextureAndImageVisitor
+    {
+        void apply(osg::Texture& texture)
+        {
+            ImageUtils::generateMipmaps(&texture);
+        }
+    };
 }}}
 
 //........................................................................
@@ -722,7 +731,6 @@ void ThreeDTileNode::resolveContent()
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
         _content = _contentFuture.release();
-
     }
 }
 
@@ -765,30 +773,36 @@ namespace
                     {
                         tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
 
-                        if (tilesetNode.valid() && ico.valid())
+                        if (tilesetNode.valid())
                         {
-                            OE_PROFILING_ZONE_NAMED("ICO compile");
-
-                            osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
-                            if (contentNode)
+                            CompressAndMipmapTextures visitor;
+                            tilesetNode->accept(visitor);
+                            
+                            if (ico.valid())
                             {
-                                _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(contentNode);
-                                _compileSet->_compileCompletedCallback = this;
-                                ico->add(_compileSet.get());
+                                OE_PROFILING_ZONE_NAMED("ICO compile");
 
-                                unsigned int numTries = 0;
-                                // block until the compile completes, checking once and a while for
-                                // an abandoned operation (to avoid deadlock)
-                                while (!_block.wait(10)) // 10ms
+                                osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
+                                if (contentNode)
                                 {
-                                    // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
-                                    ++numTries;
-                                    if (_promise.isAbandoned() || numTries == 1000)
+                                    _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(contentNode);
+                                    _compileSet->_compileCompletedCallback = this;
+                                    ico->add(_compileSet.get());
+
+                                    unsigned int numTries = 0;
+                                    // block until the compile completes, checking once and a while for
+                                    // an abandoned operation (to avoid deadlock)
+                                    while (!_block.wait(10)) // 10ms
                                     {
-                                        _compileSet->_compileCompletedCallback = NULL;
-                                        ico->remove(_compileSet.get());
-                                        _compileSet = 0;
-                                        break;
+                                        // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
+                                        ++numTries;
+                                        if (_promise.isAbandoned() || numTries == 1000)
+                                        {
+                                            _compileSet->_compileCompletedCallback = NULL;
+                                            ico->remove(_compileSet.get());
+                                            _compileSet = 0;
+                                            break;
+                                        }
                                     }
                                 }
                             }

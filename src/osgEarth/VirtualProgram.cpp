@@ -779,6 +779,12 @@ VirtualProgram::cloneOrCreate(osg::StateSet* stateset)
     return cloneOrCreate(stateset, stateset);
 }
 
+void
+VirtualProgram::setReleaseUnusedPrograms(bool value)
+{
+    Registry::programRepo().setReleaseUnusedPrograms(value);
+}
+
 //------------------------------------------------------------------------
 
 VirtualProgram::VirtualProgram(unsigned mask) :

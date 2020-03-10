@@ -292,6 +292,11 @@ namespace osgEarth { namespace Util
            Setting to 0 (default) is infinite timeout */
         static void setTimeout( long timeout );
 
+        /** Sets the suggested delay (in seconds) before a retry should be attempted
+            in the case of a canceled request */
+        static void setRetryDelay(float value_seconds);
+        static float getRetryDelay();
+        
         /**
            Gets the timeout in seconds to use for HTTP connect requests.*/
         static long getConnectTimeout();

@@ -103,7 +103,7 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
 
         if (minLevel <= key.getLOD() && 
             maxLevel >= key.getLOD() &&
-            (extent.isInvalid() || extent.intersects(i->first.getExtent())))
+            (extent.isInvalid() || extent.intersects(key.getExtent())))
         {
             i->second._tile->refreshLayers(manifest);
         }

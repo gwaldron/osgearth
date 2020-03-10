@@ -323,6 +323,13 @@ namespace osgEarth
         */
         static VirtualProgram* cloneOrCreate(const osg::StateSet* src, osg::StateSet* dest);
 
+
+        /**
+        * Whether to automatically delete a Program after its final user releases it
+        * Defaults to true
+        */
+        static void setReleaseUnusedPrograms(bool value);
+
     public:
         /**
          * Adds a custom shader function to the program.

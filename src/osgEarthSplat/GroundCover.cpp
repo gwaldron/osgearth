@@ -230,7 +230,6 @@ GroundCover::createShader() const
     typedef std::map<osg::Image*, int> ImageSet;
     ImageSet uniqueImages;
 
-    int objectIndex = 0;
     int nextAtlasIndex = 0;
     unsigned totalNumObjectsInserted = 0;
 
@@ -240,7 +239,7 @@ GroundCover::createShader() const
 
         float maxWidth = 0.0f, maxHeight = 0.0f;
         
-        int firstObjectIndexOfBiome = objectIndex;
+        int firstObjectIndexOfBiome = totalNumObjectsInserted;
 
         // This will be larger than biome->getObjects().size() IF any of the
         // objects have a weight greater than 1.
@@ -322,7 +321,6 @@ GroundCover::createShader() const
                 }
 
                 ++numBillboards;
-                ++objectIndex;
             }
         }
 

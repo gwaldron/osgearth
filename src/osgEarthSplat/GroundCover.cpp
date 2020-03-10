@@ -185,6 +185,9 @@ SET_GET_UNIFORM(MaxDistance, maxDistance, "oe_GroundCover_maxDistance")
 void GroundCover::setSpacing(float value) { options().spacing() = value; }
 float GroundCover::getSpacing() const { return options().spacing().get(); }
 
+void GroundCover::setFill(float value) { options().fill() = value; }
+float GroundCover::getFill() const { return options().fill().get(); }
+
 osg::Shader*
 GroundCover::createShader() const
 {

@@ -311,7 +311,12 @@ ProgramRepo::linkProgram(
 #else
         const std::string& defineStr = pcp->getDefineString();
 #endif
+
+#ifdef OSGEARTH_CXX11
         unsigned int defineHash = std::hash<std::string>()(defineStr);
+#else
+        unsigned int defineHash = osgEarth::hashString(defineStr);
+#endif
         programCacheNameStream << "_" << defineHash;
         programCacheNameStream << ".bin";
 

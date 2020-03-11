@@ -83,7 +83,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
                 threadPool->put(readOptions.get());
             }
 
-            osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", readOptions.get());
+            osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", NULL, readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);
             return node.release();
         }
@@ -526,6 +526,11 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         }
         URI uri(_tile->content()->uri()->base(), context);
         _content = uri.getNode(_options.get());
+        if (_content.valid())
+        {
+            _tileset->runPreMergeOperations(_content.get());
+            _tileset->runPostMergeOperations(_content.get());
+        }
         OE_PROFILING_ZONE_TEXT("Immediate load");
     }
 
@@ -731,6 +736,12 @@ void ThreeDTileNode::resolveContent()
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
         _content = _contentFuture.release();
+
+        if (_content.valid())
+        {
+            _tileset->runPreMergeOperations(_content.get());
+            _tileset->runPostMergeOperations(_content.get());
+        }
     }
 }
 
@@ -777,7 +788,7 @@ namespace
                         {
                             CompressAndMipmapTextures visitor;
                             tilesetNode->accept(visitor);
-                            
+
                             if (ico.valid())
                             {
                                 OE_PROFILING_ZONE_NAMED("ICO compile");
@@ -1143,7 +1154,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
 }
 
-ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, osgDB::Options* options) :
+ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, SceneGraphCallbacks* sceneGraphCallbacks, osgDB::Options* options) :
     _tileset(tileset),
     _options(options),
     _maximumScreenSpaceError(15.0f),
@@ -1152,7 +1163,8 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& author
     _showColorPerTile(false),
     _maxAge(5.0f),
     _lastExpiredFrame(0),
-    _authorizationHeader(authorizationHeader)
+    _authorizationHeader(authorizationHeader),
+    _sgCallbacks(sceneGraphCallbacks)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
@@ -1239,6 +1251,34 @@ void ThreeDTilesetNode::setColorPerTile(bool colorPerTile)
         {
             getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::OFF);
         }
+    }
+}
+
+SceneGraphCallbacks* ThreeDTilesetNode::getSceneGraphCallbacks(SceneGraphCallbacks* callbacks)
+{
+    return _sgCallbacks.get();
+}
+
+void ThreeDTilesetNode::setSceneGraphCallbacks(SceneGraphCallbacks* callbacks)
+{
+    _sgCallbacks = callbacks;
+}
+
+void
+ThreeDTilesetNode::runPreMergeOperations(osg::Node* node)
+{
+    if (_sgCallbacks.valid())
+    {
+        _sgCallbacks->firePreMergeNode(node);
+    }
+}
+
+void
+ThreeDTilesetNode::runPostMergeOperations(osg::Node* node)
+{
+    if (_sgCallbacks.valid())
+    {
+        _sgCallbacks->firePostMergeNode(node);
     }
 }
 

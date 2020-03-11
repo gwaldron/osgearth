@@ -281,7 +281,7 @@ CesiumIon3DTilesLayer::openImplementation()
         _threadPool->put(readOptions.get());
     }
 
-    _tilesetNode = new ThreeDTilesetNode(tileset, driver._acceptHeader, readOptions.get());
+    _tilesetNode = new ThreeDTilesetNode(tileset, driver._acceptHeader, getSceneGraphCallbacks(), readOptions.get());
     _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
 
     return STATUS_OK;

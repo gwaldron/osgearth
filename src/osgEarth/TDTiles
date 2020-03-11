@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/SceneGraphCallback>
 #include <osgEarth/URI>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/GeoData>
@@ -224,10 +225,11 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::Group
     {
     public:
-        ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, osgDB::Options* options);
+        ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, SceneGraphCallbacks* sceneGraphCallbacks, osgDB::Options* options);
 
         float getMaximumScreenSpaceError() const;
         void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
 
         void touchTile(ThreeDTileNode* node);
 
@@ -240,7 +242,14 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         const std::string& getAuthorizationHeader() const { return _authorizationHeader; }
         void setAuthorizationHeader(const std::string& authorizationHeader) { _authorizationHeader = authorizationHeader; }
 
+        //! Get the scene graph callback host
+        SceneGraphCallbacks* getSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
 
+        //! Set the scene graph callback host
+        void setSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
+
+        void runPreMergeOperations(osg::Node* node);
+        void runPostMergeOperations(osg::Node* node);
 
         /**
          * Gets/sets the maximum number of tiles to keep in memory before expiring them.
@@ -288,6 +297,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         unsigned int _lastExpiredFrame;
 
         std::string _authorizationHeader;
+
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
     };
 
 } } }

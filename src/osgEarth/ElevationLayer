@@ -61,8 +61,9 @@ namespace osgEarth
         const std::string& getVerticalDatum() const;
 
         //! Whether this layer contains offsets instead of absolute elevation heights
-        void setOffset(const bool& value);
-        const bool& getOffset() const;
+        void setOffset(bool value);
+        bool getOffset() const;
+        bool isOffset() const { return getOffset(); }
 
         //! Poly for handling "no-data" elevation values
         void setNoDataPolicy(const ElevationNoDataPolicy& value);
@@ -98,11 +99,6 @@ namespace osgEarth
          * supported and the layer was opened with openForWriting.
          */
         Status writeHeightField(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
-
-        /**
-         * Whether this layer contains offsets instead of absolute heights
-         */
-        bool isOffset() const;
 
         //! Install a user callback
         void addCallback(Callback* callback);

@@ -916,12 +916,24 @@ double ThreeDTileNode::getDistanceToTile(osgUtil::CullVisitor* cv)
 double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
 {
     double distance = osg::maximum(getDistanceToTile(cv), 0.0000001);
-    double fovy, ar, zn, zf;
-    cv->getCurrentCamera()->getProjectionMatrix().getPerspective(fovy, ar, zn, zf);
-    double height = cv->getCurrentCamera()->getViewport()->height();
-    double sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
-    double error = (*_tile->geometricError() * height) / (distance * sseDenominator);
-    return error;
+    const osg::Matrix& proj = cv->getCurrentCamera()->getProjectionMatrix();
+    if (proj(3,3)==0.0) // perspective
+    {
+        double fovy, ar, zn, zf;
+        proj.getPerspective(fovy, ar, zn, zf);
+        double height = cv->getCurrentCamera()->getViewport()->height();
+        double sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
+        double error = (*_tile->geometricError() * height) / (distance * sseDenominator);
+        return error;
+    }
+    else // orthographic
+    {
+        const osg::Viewport* vp = cv->getCurrentCamera()->getViewport();
+        double L, R, B, T, N, F;
+        proj.getOrtho(L, R, B, T, N, F);
+        double pixelSize = osg::maximum(T-B, R-L) / osg::maximum(vp->width(), vp->height());
+        return (*_tile->geometricError()) / pixelSize;
+    }
 }
 
 bool ThreeDTileNode::unloadContent()

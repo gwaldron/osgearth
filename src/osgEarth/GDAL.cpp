@@ -1656,7 +1656,7 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
         {
             heights[i] = NO_DATA_VALUE;
         }
-        GDALRasterBand* band = GDALRasterBand::FromHandle(GDALGetRasterBand(tileDS, 1));
+        GDALRasterBand* band = static_cast<GDALRasterBand*>(GDALGetRasterBand(tileDS, 1));
         band->RasterIO(GF_Read, 0, 0, tileSize, tileSize, heights, tileSize, tileSize, GDT_Float32, 0, 0);
 
         hf = new osg::HeightField();

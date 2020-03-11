@@ -131,15 +131,15 @@ namespace osgEarth
 
         //! Whether this layer is marked for render sharing.
         //! Only set this before opening the layer or adding it to a map.
-        void setShared(const bool& value);
-        const bool& getShared() const;
+        void setShared(bool value);
+        bool getShared() const;
         bool isShared() const { return getShared(); }
 
         //! Whether this layer represents coverage data that should not be subject
         //! to color-space filtering, interpolation, or compression.
         //! Only set this before opening the layer or adding it to a map.
-        void setCoverage(const bool& value);
-        const bool& getCoverage() const;
+        void setCoverage(bool value);
+        bool getCoverage() const;
         bool isCoverage() const { return getCoverage(); }
 
         //! When isShared() == true, this will return the name of the uniform holding the

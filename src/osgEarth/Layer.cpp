@@ -159,8 +159,8 @@ Layer::getReadOptions() const
 void
 Layer::setCacheID(const std::string& value)
 {
-    options().cacheId() = value;
-    _runtimeCacheId = value;
+    _runtimeCacheId = "";
+    setOptionThatRequiresReopen(options().cacheId(), value);
 }
 
 std::string

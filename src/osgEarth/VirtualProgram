@@ -198,7 +198,6 @@ namespace osgEarth
 
             static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);
 
-            /** VRV_PATCH Clear the shader cache ref_ptrs which hold onto the PolyShaders */
             static void clearShaderCache();
 
         protected:
@@ -221,7 +220,6 @@ namespace osgEarth
             static Threading::Mutex _cacheMutex;
             typedef std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > PolyShaderCache;
             static PolyShaderCache _polyShaderCache;
-            static void clearShaderCache();
 
         };
 

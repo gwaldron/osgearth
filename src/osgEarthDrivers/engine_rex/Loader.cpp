@@ -261,7 +261,7 @@ PagerLoader::setMergesPerFrame(int value)
     _mergesPerFrame = osg::maximum(value, 0);
     //ADJUST_EVENT_TRAV_COUNT(this, +1);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
-    OE_INFO << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
+    OE_DEBUG << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
     
 }
 
@@ -457,7 +457,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     // Prevent a request from getting stuck in the merge queue:
                     else if ( req->isMerging() && frameDiff > 1800 )
                     {
-                        OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
+                        OE_DEBUG << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
                         //req->setState( Request::ABANDONED );
                         req->setState(Request::IDLE);
                         if ( REPORT_ACTIVITY )
@@ -511,7 +511,7 @@ PagerLoader::addChild(osg::Node* node)
 
             else
             {
-                OE_INFO << LC << "Request " << req->getName() << " canceled" << std::endl;
+                OE_DEBUG << LC << "Request " << req->getName() << " canceled" << std::endl;
                 req->setState( Request::FINISHED );
                 if ( REPORT_ACTIVITY )
                     Registry::instance()->endActivity( req->getName() );

@@ -36,7 +36,8 @@
 using namespace osgEarth::REX;
 
 
-Loader::Request::Request()
+Loader::Request::Request() :
+    _delay_s(0.0)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     setState(IDLE);
@@ -75,6 +76,12 @@ namespace osgEarth { namespace REX
             // if this is a pager thread, get a handle on it:
             _thread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
                 OpenThreads::Thread::CurrentThread());
+        }
+
+        virtual void cancel()
+        {
+            ProgressCallback::cancel();
+            _request->setState(_request->IDLE);
         }
 
         virtual bool isCanceled()
@@ -286,30 +293,16 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
 {
     osg::Timer_t now = osg::Timer::instance()->tick();
 
-    // Check for an abandoned request. A request becomes abandoned when
-    // the underlying function is cancelled, or when the tile goes out
-    // of culling scope. An abandoned request can be resusitated but 
-    // there's a waiting period (so as not to pummel the data source).
-    if (request && request->_state == Request::ABANDONED)
-    {
-        // This is OK. Just means that the tile was abandoned, but it was a sibling
-        // of a live child, and now we are back; possibly with a delay.
-        double delta_s = osg::Timer::instance()->delta_s(request->_stateTick, now);
-
-        if (delta_s >= 2.0) // seconds // _context->options().retryDelay().get())
-        {
-            OE_DEBUG << LC << request->_key.str() << " re-using an abandoned request!" << std::endl;
-            request->setState(Request::IDLE);
-        }
-        else
-        {
-            return false;
-        }
-    }
-
     // check that the request is not already completed but unmerged:
     if ( request && !request->isMerging() && !request->isFinished() && nv.getDatabaseRequestHandler() )
     {
+        // consider retry delay
+        if (request->_delay_s > 0.0
+            && osg::Timer::instance()->delta_s(request->_stateTick, now) < request->_delay_s)
+        {
+            return false;
+        }
+
         //OE_INFO << LC << "load (" << request->getTileKey().str() << ")" << std::endl;
 
         unsigned fn = 0;
@@ -454,7 +447,8 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     else if ( !req->isMerging() && frameDiff > 2 )
                     {
                         OE_DEBUG << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be serviced" << std::endl; 
-                        req->setState( Request::ABANDONED );
+                        //req->setState( Request::ABANDONED );
+                        req->setState(Request::IDLE);
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
@@ -464,7 +458,8 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     else if ( req->isMerging() && frameDiff > 1800 )
                     {
                         OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
-                        req->setState( Request::ABANDONED );
+                        //req->setState( Request::ABANDONED );
+                        req->setState(Request::IDLE);
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
@@ -516,7 +511,7 @@ PagerLoader::addChild(osg::Node* node)
 
             else
             {
-                OE_DEBUG << LC << "Request " << req->getName() << " canceled" << std::endl;
+                OE_INFO << LC << "Request " << req->getName() << " canceled" << std::endl;
                 req->setState( Request::FINISHED );
                 if ( REPORT_ACTIVITY )
                     Registry::instance()->endActivity( req->getName() );

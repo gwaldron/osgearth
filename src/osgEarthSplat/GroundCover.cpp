@@ -168,15 +168,8 @@ GroundCover::getOrCreateStateSet()
 
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", options().wind().get()));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 1.0f)); //0.5f));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
-
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_density", options().density().get()));
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_fill", options().fill().get()));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", options().maxDistance().get()));
-
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_brightness", options().brightness().get()));
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_contrast", options().contrast().get()));
     }
 
     return _stateSet.get();
@@ -187,14 +180,13 @@ GroundCover::getOrCreateStateSet()
     float GroundCover::get##NAME () const { return options(). PROP() .get(); }
 
 SET_GET_UNIFORM(Wind, wind, "oe_GroundCover_windFactor")
-SET_GET_UNIFORM(Density, density, "oe_GroundCover_density")
-SET_GET_UNIFORM(Fill, fill, "oe_GroundCover_fill")
 SET_GET_UNIFORM(MaxDistance, maxDistance, "oe_GroundCover_maxDistance")
-SET_GET_UNIFORM(Brightness, brightness, "oe_GroundCover_brightness")
-SET_GET_UNIFORM(Contrast, contrast, "oe_GroundCover_contrast")
 
 void GroundCover::setSpacing(float value) { options().spacing() = value; }
 float GroundCover::getSpacing() const { return options().spacing().get(); }
+
+void GroundCover::setFill(float value) { options().fill() = value; }
+float GroundCover::getFill() const { return options().fill().get(); }
 
 osg::Shader*
 GroundCover::createShader() const
@@ -241,7 +233,6 @@ GroundCover::createShader() const
     typedef std::map<osg::Image*, int> ImageSet;
     ImageSet uniqueImages;
 
-    int objectIndex = 0;
     int nextAtlasIndex = 0;
     unsigned totalNumObjectsInserted = 0;
 
@@ -251,7 +242,7 @@ GroundCover::createShader() const
 
         float maxWidth = 0.0f, maxHeight = 0.0f;
         
-        int firstObjectIndexOfBiome = objectIndex;
+        int firstObjectIndexOfBiome = totalNumObjectsInserted;
 
         // This will be larger than biome->getObjects().size() IF any of the
         // objects have a weight greater than 1.
@@ -333,7 +324,6 @@ GroundCover::createShader() const
                 }
 
                 ++numBillboards;
-                ++objectIndex;
             }
         }
 

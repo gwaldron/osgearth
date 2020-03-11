@@ -317,12 +317,6 @@ struct App
 
                         sampleNoise(noise, tilec.x(), tilec.y());
 
-                        // check the fill
-                        if (noise[NOISE_SMOOTH] > groundcover->getFill())
-                            continue;
-                        else
-                            noise[NOISE_SMOOTH] /= groundcover->getFill();
-
                         shift.set(
                             fract(noise[NOISE_RANDOM]*1.5)*2.0f - 1.0f,
                             fract(noise[NOISE_RANDOM_2]*1.5)*2.0f - 1.0f);
@@ -351,6 +345,16 @@ struct App
                             if (mask.r() > 0.0)
                                 continue;
                         }
+
+                        // check the fill
+                        float fill =
+                            biome->fill().isSet() ? biome->fill().get() :
+                            groundcover->options().fill().get();
+
+                        if (noise[NOISE_SMOOTH] > fill)
+                            continue;
+                        else
+                            noise[NOISE_SMOOTH] /= fill;
 
                         // clamp
                         float z = 0.0;

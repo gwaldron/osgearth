@@ -477,21 +477,21 @@ ImageUtils::generateMipmaps(osg::Image* input)
 
 #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
     // NVTT doest not like 1- or 2-channel images; can crash
-    if (osg::Image::computeNumComponents(image->getPixelFormat()) >= 3)
+    if (osg::Image::computeNumComponents(input->getPixelFormat()) >= 3)
     {
         // Fint the NVTT plugin
-        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor("nvtt");
+        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
         if (nvtt)
         {
-            nvtt->generateMipMap(*image, true, ip->USE_CPU);
+            nvtt->generateMipMap(*input, true, nvtt->USE_CPU);
 
-            if (image->getInternalTextureFormat() == GL_RGB)
+            if (input->getInternalTextureFormat() == GL_RGB)
             {
-                image->setInternalTextureFormat(GL_RGB8);
+                input->setInternalTextureFormat(GL_RGB8);
             }
-            else if (image->getInternalTextureFormat() == GL_RGBA)
+            else if (input->getInternalTextureFormat() == GL_RGBA)
             {
-                image->setInternalTextureFormat(GL_RGBA8);
+                input->setInternalTextureFormat(GL_RGBA8);
             }
 
             return true;

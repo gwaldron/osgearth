@@ -241,29 +241,17 @@ namespace osgEarth { namespace Splat
         void setWind(float wind);
         float getWind() const;
 
-        //! Density
-        void setDensity(float value);
-        float getDensity() const;
-
         //! Spacing
         void setSpacing(float value);
         float getSpacing() const;
 
-        //! Fill
-        void setFill(float fill);
+        //! Fill percentage
+        void setFill(float value);
         float getFill() const;
 
         //! Max draw distance
         void setMaxDistance(float distance);
         float getMaxDistance() const;
-
-        //! Brightness
-        void setBrightness(float value);
-        float getBrightness() const;
-
-        //! Constrast
-        void setContrast(float value);
-        float getContrast() const;
 
     public:
 

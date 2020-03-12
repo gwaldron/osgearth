@@ -456,7 +456,7 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
 
 bool
 ImageUtils::generateMipmaps(osg::Image* input)
-{
+{ 
     if (!input)
     {
         OE_WARN << LC << "generateMipmaps() called with NULL input" << std::endl;
@@ -1205,7 +1205,8 @@ ImageUtils::generateMipmaps(osg::Texture* tex)
     {
         for (unsigned i = 0; i < tex->getNumImages(); ++i)
         {
-            mipsAdded = mipsAdded || generateMipmaps(tex->getImage(i));
+           //Can't use || since it short circuits when optimizations are on.
+            mipsAdded |= generateMipmaps(tex->getImage(i));
         }
     }
 

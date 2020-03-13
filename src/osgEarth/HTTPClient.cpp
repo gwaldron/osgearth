@@ -404,6 +404,7 @@ namespace
 
     static long                        s_timeout = 0;
     static long                        s_connectTimeout = 0;
+    static float                       s_retryDelay_s = 0.0f;
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
@@ -1337,6 +1338,17 @@ void HTTPClient::setConnectTimeout( long timeout )
 {
     s_connectTimeout = timeout;
 }
+
+void HTTPClient::setRetryDelay(float value_s)
+{
+    s_retryDelay_s = value_s;
+}
+
+float HTTPClient::getRetryDelay() 
+{
+    return s_retryDelay_s;
+}
+
 URLRewriter* HTTPClient::getURLRewriter()
 {
     return s_rewriter.get();
@@ -1605,6 +1617,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )
@@ -1693,6 +1706,7 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )
@@ -1777,6 +1791,7 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )
@@ -1835,6 +1850,7 @@ HTTPClient::doReadString(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )

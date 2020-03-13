@@ -103,16 +103,16 @@ RoadSurfaceLayer::addedToMap(const Map* map)
     _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    _featureSource.connect(map, options().featureSourceLayer());
-    _styleSheet.connect(map, options().styleSheetLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
+    _styleSheet.findInMap(map, options().styleSheetLayer());
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _featureSource.disconnect(map);
-    _styleSheet.disconnect(map);
+    _featureSource.releaseFromMap(map);
+    _styleSheet.releaseFromMap(map);
     _session = 0L;
 }
 
@@ -292,9 +292,6 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     GeoExtent featureExtent = key.getExtent().transform(featureSRS);
     GeoExtent queryExtent = featureExtent;
 
-    if (!featureExtent.isValid())
-        return GeoImage::INVALID;
-
     // Buffer the incoming extent, if requested.
     if (options().featureBufferWidth().isSet())
     {
@@ -399,4 +396,15 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     }
 
     return GeoImage::INVALID;
+}
+
+Config
+RoadSurfaceLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    if (_featureSource.isSetByUser())
+        c.set(_featureSource.getLayer()->getConfig());
+    if (_styleSheet.isSetByUser())
+        c.set(_styleSheet.getLayer()->getConfig());
+    return c;
 }

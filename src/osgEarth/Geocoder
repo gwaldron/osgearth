@@ -37,7 +37,7 @@ namespace osgEarth
         public:
             virtual Status search(const std::string& input, osg::ref_ptr<FeatureCursor>& output) = 0;
 
-            virtual void setOption(const std::string& name, const std::string& value) =0;
+            virtual void setServiceOption(const std::string& name, const std::string& value) =0;
         };
 
         //! Internal - do not use
@@ -69,7 +69,7 @@ namespace osgEarth
 
         //! Sets an implementation-specific option
         //! (See https://tinyurl.com/vacattl for OGR options)
-        void setOption(const std::string& key, const std::string& value);
+        void setServiceOption(const std::string& key, const std::string& value);
 
         //! Geocode a search string
         //! If the options contains a ThreadPool, will run asynchronously

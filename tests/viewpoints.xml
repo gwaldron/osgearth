@@ -71,4 +71,13 @@
         <height>186.9731654571369</height>
         <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
     </viewpoint>
+    <viewpoint name="Oakland">
+        <heading>25.8191</heading>
+        <pitch>-38.5519</pitch>
+        <range>2698.97m</range>
+        <long>-122.271293757692</long>
+        <lat>37.80406700591573</lat>
+        <height>-9.007657782174647</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
 </viewpoints>

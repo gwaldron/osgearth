@@ -402,6 +402,16 @@ namespace osgEarth
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map; 
         friend class MapNode;
+
+        // subclass can call this to change an option that requires
+        // a re-opening of the layer.
+        template<typename T, typename V>
+        void setOptionThatRequiresReopen(T& target, const V& value);
+
+        // subclass can call this to change an option that requires
+        // a re-opening of the layer.
+        template<typename T>
+        void resetOptionThatRequiresReopen(T& target);
                 
     public:
         Layer::Options& options() { return *_options; }
@@ -419,6 +429,27 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;
+
+
+    template<typename T, typename V>
+    void Layer::setOptionThatRequiresReopen(T& target, const V& value) {
+        if (target != value) {
+            bool wasEnabled = isOpen() && getEnabled();
+            if (wasEnabled) setEnabled(false);
+            target = value;
+            if (wasEnabled) setEnabled(true);
+        }
+    }
+    template<typename T>
+    void Layer::resetOptionThatRequiresReopen(T& target) {
+        if (target.isSet()) {
+            bool wasEnabled = isOpen() && getEnabled();
+            if (wasEnabled) setEnabled(false);
+            target.unset();
+            if (wasEnabled) setEnabled(true);
+        }
+    }
+
 
 
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \

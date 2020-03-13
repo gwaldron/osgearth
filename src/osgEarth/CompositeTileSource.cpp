@@ -109,17 +109,17 @@ namespace
         {
             image = 0;
             opacity = 1;
+            mayHaveDataForKey = false;
         }
 
-        ImageInfo(osg::Image* image, float opacity, const TileKey& bestAvailableKey)
+        ImageInfo(osg::Image* image, float opacity, bool mayHaveDataForKey)
         {
             this->image = image;
             this->opacity = opacity;
-            this->bestAvailableKey = bestAvailableKey;           
+            this->mayHaveDataForKey = mayHaveDataForKey;
         }
 
-        TileKey bestAvailableKey;
-        //bool mayHaveDataForKey;
+        bool mayHaveDataForKey;
         float opacity;
         osg::ref_ptr< osg::Image> image;
     };
@@ -151,10 +151,10 @@ CompositeTileSource::createImage(const TileKey&    key,
     {
         ImageLayer* layer = itr->get();
         ImageInfo imageInfo;
+        imageInfo.mayHaveDataForKey = layer->mayHaveData(key);
         imageInfo.opacity = layer->getOpacity();
-        imageInfo.bestAvailableKey = layer->getBestAvailableTileKey(key);
-        
-        if (imageInfo.bestAvailableKey == key)
+
+        if (imageInfo.mayHaveDataForKey)
         {
             GeoImage image = layer->createImage(key, progress);
             if (image.valid())
@@ -201,28 +201,27 @@ CompositeTileSource::createImage(const TileKey&    key,
 
             // If we didn't get any data for the tilekey, but the extents do overlap,
             // we will try to fall back on lower LODs and get data there instead:
-            if (info.image.valid() == false && info.bestAvailableKey.valid())
-            {
-                TileKey currentKey = info.bestAvailableKey;
+            if (!info.image.valid() && layer->getDataExtentsUnion().intersects(key.getExtent()))
+            {                      
+                TileKey parentKey = key.createParentKey();
 
                 GeoImage image;
-                while (!image.valid() && currentKey.valid())
+                while (!image.valid() && parentKey.valid())
                 {
-                    image = layer->createImage(currentKey, progress);
+                    image = layer->createImage(parentKey, progress);
                     if (image.valid())
                     {
                         break;
                     }
 
-                    // If the progress got cancelled or it needs a retry then return INVALID
-                    // to prevent this tile from being built and cached with incomplete or partial data.
+                    // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
                     if (progress && progress->isCanceled())
                     {
                         OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
                         return 0L;
                     }
 
-                    currentKey = currentKey.createParentKey();
+                    parentKey = parentKey.createParentKey();
                 }
 
                 if (image.valid())
@@ -242,8 +241,7 @@ CompositeTileSource::createImage(const TileKey&    key,
     for (unsigned int i = 0; i < images.size(); i++)
     {
         ImageInfo& info = images[i];
-        if (info.image.valid())
-            numValidImages++;        
+        if (info.image.valid()) numValidImages++;        
     }    
 
     if ( progress && progress->isCanceled() )
@@ -261,9 +259,7 @@ CompositeTileSource::createImage(const TileKey&    key,
         {
             ImageInfo& info = images[i];
             if (info.image.valid())
-            {
                 return info.image.release();
-            }
         }
         return 0L;
     }
@@ -290,6 +286,9 @@ CompositeTileSource::createImage(const TileKey&    key,
         }        
         return result;
     }
+
+
+
 }
 
 osg::HeightField* CompositeTileSource::createHeightField(

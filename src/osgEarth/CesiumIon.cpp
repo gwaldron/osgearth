@@ -21,10 +21,12 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
+#include <osgEarth/TDTiles>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::CesiumIon;
+using namespace osgEarth::Contrib::ThreeDTiles;
 
 #undef LC
 #define LC "[CesiumIon] "
@@ -76,7 +78,8 @@ CesiumIon::Driver::open(const URI& server,
 
     // Configure the accept header
     std::stringstream buf2;
-    buf2 << "*/*;access_token=" << _resourceToken;
+    //buf2 << "*/*;access_token=" << _resourceToken;
+    buf2 << "Bearer " << _resourceToken << std::endl;
     _acceptHeader = buf2.str();
 
     return STATUS_OK;
@@ -103,7 +106,7 @@ CesiumIon::Driver::read(const URI& server,
     buf << key.getLevelOfDetail() << "/" << x << "/" << y << "." << _format;
 
     URIContext context = server.context();
-    context.addHeader("accept", _acceptHeader);
+    context.addHeader("authorization", _acceptHeader);
     URI uri(buf.str(), context);
     return uri.getImage(readOptions, progress);
 }
@@ -179,7 +182,7 @@ CesiumIonImageLayer::openImplementation()
     if (status.isOK() && profile.get() != getProfile())
     {
         setProfile(profile.get());
-    }    
+    }
 
     return status;
 }
@@ -198,3 +201,98 @@ CesiumIonImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
     else
         return GeoImage(Status(r.errorDetail()));
 }
+
+
+
+Config
+CesiumIon3DTilesLayer::Options::getConfig() const
+{
+    Config conf = ThreeDTilesLayer::Options::getConfig();
+    conf.set("server", _server);
+    conf.set("asset_id", _assetId);
+    conf.set("token", _token);
+    return conf;
+}
+
+void
+CesiumIon3DTilesLayer::Options::fromConfig(const Config& conf)
+{
+    _server.init("https://api.cesium.com/");
+    conf.get("server", _server);
+    conf.get("asset_id", _assetId);
+    conf.get("token", _token);
+}
+
+void
+CesiumIon3DTilesLayer::init()
+{
+    ThreeDTilesLayer::init();
+}
+
+Status
+CesiumIon3DTilesLayer::openImplementation()
+{
+    CesiumIon::Driver driver;
+    osg::ref_ptr< const Profile > profile;
+    Status status = driver.open(
+        options().server().get(),
+        "",
+        options().assetId().get(),
+        options().token().get(),
+        profile,
+        getReadOptions());
+
+
+
+    URI serverURI;
+    if (status.isOK())
+    {
+        URIContext uriContext;
+        uriContext.addHeader("authorization", driver._acceptHeader);
+        serverURI = URI(driver._resourceUrl, uriContext);
+    }
+
+    Status parentStatus = VisibleLayer::openImplementation();
+    if (parentStatus.isError())
+        return parentStatus;
+
+    ReadResult rr = serverURI.readString();
+    if (rr.failed())
+    {
+        return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
+    }
+
+    //OE_NOTICE << "Read tileset " << rr.getString() << std::endl;
+
+    Tileset* tileset = Tileset::create(rr.getString(), serverURI.full());
+    if (!tileset)
+    {
+        return Status(Status::GeneralError, "Bad tileset");
+    }
+
+    // Clone the read options and if there isn't a ThreadPool create one.
+    osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+
+    osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
+    if (!threadPool.valid())
+    {
+        unsigned int numThreads = 2;
+        _threadPool = new ThreadPool(numThreads);
+        _threadPool->put(readOptions.get());
+    }
+
+    _tilesetNode = new ThreeDTilesetNode(tileset, driver._acceptHeader, getSceneGraphCallbacks(), readOptions.get());
+    _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
+
+    return STATUS_OK;
+}
+
+REGISTER_OSGEARTH_LAYER(cesiumion3dtiles, CesiumIon3DTilesLayer);
+OE_LAYER_PROPERTY_IMPL(CesiumIon3DTilesLayer, URI, Server, server);
+OE_LAYER_PROPERTY_IMPL(CesiumIon3DTilesLayer, std::string, AssetId, assetId);
+OE_LAYER_PROPERTY_IMPL(CesiumIon3DTilesLayer, std::string, Token, token);
+
+
+
+
+

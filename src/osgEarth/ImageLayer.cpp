@@ -78,6 +78,7 @@ ImageLayer::Options::fromConfig(const Config& conf)
 
     conf.get("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.get("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
+    conf.get("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
     conf.get("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
@@ -126,7 +127,6 @@ ImageLayer::Options::getConfig() const
 
     conf.set("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.set("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.set("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
     conf.set("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
@@ -198,10 +198,55 @@ ImageLayer::TileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 
 //------------------------------------------------------------------------
 
-OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Shared, shared);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureUniformName, shareTexUniformName);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureMatrixUniformName, shareTexMatUniformName);
+void
+ImageLayer::setShared(bool value)
+{
+    setOptionThatRequiresReopen(options().shared(), value);
+}
+
+bool
+ImageLayer::getShared() const
+{
+    return options().shared().get();
+}
+
+void
+ImageLayer::setCoverage(bool value)
+{
+    setOptionThatRequiresReopen(options().coverage(), value);
+}
+
+bool
+ImageLayer::getCoverage() const
+{
+    return options().coverage().get();
+}
+
+void
+ImageLayer::setSharedTextureUniformName(const std::string& value)
+{
+    if (options().shareTexUniformName() != value)
+        options().shareTexUniformName() = value;
+}
+
+const std::string&
+ImageLayer::getSharedTextureUniformName() const
+{
+    return options().shareTexUniformName().get();
+}
+
+void
+ImageLayer::setSharedTextureMatrixUniformName(const std::string& value)
+{
+    if (options().shareTexMatUniformName() != value)
+        options().shareTexMatUniformName() = value;
+}
+
+const std::string&
+ImageLayer::getSharedTextureMatrixUniformName() const
+{
+    return options().shareTexMatUniformName().get();
+}
 
 ImageLayer*
 ImageLayer::create(const ConfigOptions& options)
@@ -273,7 +318,6 @@ ImageLayer::setAltitude(const Distance& value)
         getOrCreateStateSet()->removeUniform("oe_terrain_altitude");
         stateSet->removeMode(GL_CULL_FACE);
     }
-    fireCallback( &ImageLayerCallback::onAltitudeChanged );
 }
 
 const Distance&
@@ -283,12 +327,23 @@ ImageLayer::getAltitude() const
 }
 
 void
-ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
+ImageLayer::invoke_onCreate(const TileKey& key, GeoImage& data)
 {
-    for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
+    if (_callbacks.empty() == false) // not thread-safe but that's ok
     {
-        ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
-        if (cb) (cb->*method)( this );
+        // Copy the vector to prevent thread lockup
+        Callbacks temp;
+
+        _callbacks.lock();
+        temp = _callbacks;
+        _callbacks.unlock();
+
+        for(Callbacks::const_iterator i = temp.begin();
+            i != temp.end();
+            ++i)
+        {
+            i->get()->onCreate(key, data);
+        }
     }
 }
 
@@ -302,7 +357,6 @@ void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
     options().colorFilters()->push_back( filter );
-    fireCallback( &ImageLayerCallback::onColorFiltersChanged );
 }
 
 void
@@ -313,7 +367,6 @@ ImageLayer::removeColorFilter( ColorFilter* filter )
     if ( i != filters.end() )
     {
         filters.erase( i );
-        fireCallback( &ImageLayerCallback::onColorFiltersChanged );
     }
 }
 
@@ -332,6 +385,11 @@ ImageLayer::createImage(const TileKey&    key,
     OE_PROFILING_ZONE_TEXT(key.str());
 
     if (getStatus().isError())
+    {
+        return GeoImage::INVALID;
+    }
+
+    if (getEnabled() == false || isOpen() == false)
     {
         return GeoImage::INVALID;
     }
@@ -515,6 +573,12 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     if (progress && progress->isCanceled())
     {
         return GeoImage::INVALID;
+    }
+
+    // invoke user callbacks
+    if (result.valid())
+    {
+        invoke_onCreate(key, result);
     }
 
     // memory cache first:
@@ -843,4 +907,22 @@ ImageLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) con
         }
     }
     TileLayer::modifyTileBoundingBox(key, box);
+}
+
+void
+ImageLayer::addCallback(ImageLayer::Callback* c)
+{
+    _callbacks.lock();
+    _callbacks.push_back(c);
+    _callbacks.unlock();
+}
+
+void
+ImageLayer::removeCallback(ImageLayer::Callback* c)
+{
+    _callbacks.lock();
+    Callbacks::iterator i = std::find(_callbacks.begin(), _callbacks.end(), c);
+    if (i != _callbacks.end())
+        _callbacks.erase(i);
+    _callbacks.unlock();
 }

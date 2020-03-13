@@ -66,6 +66,17 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (!_map.lock(map))
         return;
 
+    // if the operation was canceled, set the request to abandoned
+    // so it can potentially retry later.
+    // TODO: Consider the canceler setting some kind of retry delay
+    // for failed network attempts
+    if (progress && progress->isCanceled())
+    {
+        _dataModel = 0L;
+        setDelay(progress->getRetryDelay());
+        return;
+    }
+
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
@@ -73,11 +84,15 @@ LoadTileData::invoke(ProgressCallback* progress)
         _manifest,
         _enableCancel? progress : 0L);
 
-    // if the operation was canceled, set the request to idle and delete the tile model.
+    // if the operation was canceled, set the request to abandoned
+    // so it can potentially retry later. 
+    // TODO: Consider the canceler setting some kind of retry delay
+    // for failed network attempts
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
-        setState(Request::IDLE);
+        setDelay(progress->getRetryDelay());
+        return;
     }
 
     // In the terrain engine, we have to keep our elevation rasters in 

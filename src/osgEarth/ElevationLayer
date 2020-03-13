@@ -25,12 +25,6 @@
 
 namespace osgEarth
 {
-    struct ElevationLayerCallback : public TileLayerCallback
-    {
-        //EMPTY
-        typedef void (ElevationLayerCallback::*MethodPtr)(class ElevationLayer*);
-    };
-
     /**
      * A map terrain layer containing elevation grid heightfields.
      */
@@ -50,14 +44,26 @@ namespace osgEarth
 
     public:
         META_Layer_Abstract(osgEarth, ElevationLayer, Options, TileLayer);
+
+        //! Layer callbacks
+        class OSGEARTH_EXPORT Callback : public osg::Referenced
+        {
+        public:
+            //! Called when new data is created. This callback fires
+            //! before the data is cached, and does NOT fire if the data
+            //! was read from a cache.
+            //! NOTE: This may be invoked from a worker thread. Use caution.
+            virtual void onCreate(const TileKey&, GeoHeightField&) { }
+        };
         
         //! Vertical data identifier (options)
         void setVerticalDatum(const std::string& value);
         const std::string& getVerticalDatum() const;
 
         //! Whether this layer contains offsets instead of absolute elevation heights
-        void setOffset(const bool& value);
-        const bool& getOffset() const;
+        void setOffset(bool value);
+        bool getOffset() const;
+        bool isOffset() const { return getOffset(); }
 
         //! Poly for handling "no-data" elevation values
         void setNoDataPolicy(const ElevationNoDataPolicy& value);
@@ -94,10 +100,11 @@ namespace osgEarth
          */
         Status writeHeightField(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
 
-        /**
-         * Whether this layer contains offsets instead of absolute heights
-         */
-        bool isOffset() const;
+        //! Install a user callback
+        void addCallback(Callback* callback);
+
+        //! Remove a user callback
+        void removeCallback(Callback* callback);
 
     protected: // Layer
 
@@ -106,7 +113,7 @@ namespace osgEarth
     protected: // ElevationLayer
 
         //! Override aspects of the layer Profile as needed
-        virtual void applyProfileOverrides();
+        virtual void applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const;
 
         //! Entry point for createHeightField
         GeoHeightField createHeightFieldInKeyProfile(const TileKey& key, ProgressCallback* progress);
@@ -134,6 +141,11 @@ namespace osgEarth
             ProgressCallback* progress) const;
 
         void normalizeNoDataValues(osg::HeightField* hf) const;
+
+        void invoke_onCreate(const TileKey&, GeoHeightField&);
+
+        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
+        Threading::Lockable<Callbacks> _callbacks;
     };
 
 

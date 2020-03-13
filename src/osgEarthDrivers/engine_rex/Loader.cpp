@@ -36,7 +36,8 @@
 using namespace osgEarth::REX;
 
 
-Loader::Request::Request()
+Loader::Request::Request() :
+    _delay_s(0.0)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     setState(IDLE);
@@ -46,6 +47,7 @@ void
 Loader::Request::setState(Loader::Request::State value)
 {
     _state = value;
+    _stateTick = osg::Timer::instance()->tick();
 
     if ( _state == IDLE )
     {
@@ -74,6 +76,12 @@ namespace osgEarth { namespace REX
             // if this is a pager thread, get a handle on it:
             _thread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
                 OpenThreads::Thread::CurrentThread());
+        }
+
+        virtual void cancel()
+        {
+            ProgressCallback::cancel();
+            _request->setState(_request->IDLE);
         }
 
         virtual bool isCanceled()
@@ -283,9 +291,18 @@ PagerLoader::setOverallPriorityScale(float value)
 bool
 PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
     // check that the request is not already completed but unmerged:
     if ( request && !request->isMerging() && !request->isFinished() && nv.getDatabaseRequestHandler() )
     {
+        // consider retry delay
+        if (request->_delay_s > 0.0
+            && osg::Timer::instance()->delta_s(request->_stateTick, now) < request->_delay_s)
+        {
+            return false;
+        }
+
         //OE_INFO << LC << "load (" << request->getTileKey().str() << ")" << std::endl;
 
         unsigned fn = 0;
@@ -303,7 +320,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             request->setState(Request::RUNNING);
             
             // remember the last tick at which this request was submitted
-            request->_lastTick = osg::Timer::instance()->tick();
+            request->_lastTick = now;
 
             // update the priority, scale and bias it, and then normalize it to [0..1] range.
             unsigned lod = request->getTileKey().getLOD();
@@ -356,9 +373,6 @@ PagerLoader::clear()
 void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
-    // only called when _mergesPerFrame > 0
-    //TODO: move to update visitor so this doesn't get called as often
-    //if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         bool runUpdate = false;
@@ -423,7 +437,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     if ( req->isFinished() )
                     {
                         //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
-                        req->setState( Request::IDLE );
+                        //req->setState( Request::IDLE );
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
@@ -432,8 +446,9 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     // Discard requests that are no longer required:
                     else if ( !req->isMerging() && frameDiff > 2 )
                     {
-                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << frameDiff << " frames" << std::endl; 
-                        req->setState( Request::IDLE );
+                        OE_DEBUG << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be serviced" << std::endl; 
+                        //req->setState( Request::ABANDONED );
+                        req->setState(Request::IDLE);
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
@@ -442,8 +457,9 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     // Prevent a request from getting stuck in the merge queue:
                     else if ( req->isMerging() && frameDiff > 1800 )
                     {
-                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting " << frameDiff << " frames to merge" << std::endl; 
-                        req->setState( Request::IDLE );
+                        OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
+                        //req->setState( Request::ABANDONED );
+                        req->setState(Request::IDLE);
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
@@ -495,7 +511,7 @@ PagerLoader::addChild(osg::Node* node)
 
             else
             {
-                OE_DEBUG << LC << "Request " << req->getName() << " canceled" << std::endl;
+                OE_INFO << LC << "Request " << req->getName() << " canceled" << std::endl;
                 req->setState( Request::FINISHED );
                 if ( REPORT_ACTIVITY )
                     Registry::instance()->endActivity( req->getName() );

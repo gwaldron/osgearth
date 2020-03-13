@@ -90,6 +90,7 @@ struct oe_GroundCover_Billboard {
 };
 void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
 
+
 // Output colors/normals:
 out vec4 vp_Color;
 out vec3 vp_Normal;
@@ -102,7 +103,9 @@ uniform sampler2D OE_GROUNDCOVER_MASK_SAMPLER;
 uniform mat4 OE_GROUNDCOVER_MASK_MATRIX;
 #endif
 
-void oe_GroundCover_clamp(inout vec4 vert_view, in vec3 up, vec2 UV)
+// Sample the elevation texture and move the vertex accordingly.
+void
+oe_GroundCover_clamp(inout vec4 vert_view, in vec3 up, vec2 UV)
 {
     float elev = oe_terrain_getElevation( UV );
     vert_view.xyz += up*elev;
@@ -135,6 +138,8 @@ vec3 oe_GroundCover_getRandomBarycentricPoint(vec2 seed)
     b[2] = 1.0 - b[0] - b[1];
     return b;
 }
+
+uniform float shmoo;
 
 float oe_GroundCover_fastpow(in float x, in float y)
 {
@@ -171,12 +176,8 @@ void oe_GroundCover_geom()
     // Load tri data and compute new position and tile coords using the barycentric coords
     for(int i=0; i < 3; ++i)
     {
-        VP_LoadVertex(i);
-
-        // check for the marker (set in GroundCover.TES.glsl)
-        if (oe_terrain_vertexMarker == VERTEX_MARKER_DISCARD)
-            return;
-
+        VP_LoadVertex(i);      
+        
         center.x += b[i] * gl_in[i].gl_Position.x;
         center.y += b[i] * gl_in[i].gl_Position.y;
         center.z += b[i] * gl_in[i].gl_Position.z;

@@ -875,7 +875,7 @@ TMS::Driver::open(const URI& uri,
             return Status::Error( Status::ResourceUnavailable, Stringify() << "Failed to read configuration from " << uri.full() );
         }
 
-        OE_INFO << LC
+        OE_DEBUG << LC
             << "TMS tile map datestamp = "
             << DateTime(_tileMap->getTimeStamp()).asRFC1123()
             << std::endl;

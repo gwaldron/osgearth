@@ -82,14 +82,10 @@ namespace
         //    return false;
         
         return true;
-    }    
+    }
 }
 
 //------------------------------------------------------------------------
-
-OE_LAYER_PROPERTY_IMPL(ElevationLayer, std::string, VerticalDatum, verticalDatum);
-OE_LAYER_PROPERTY_IMPL(ElevationLayer, bool, Offset, offset);
-OE_LAYER_PROPERTY_IMPL(ElevationLayer, ElevationNoDataPolicy, NoDataPolicy, noDataPolicy);
 
 void
 ElevationLayer::init()
@@ -122,14 +118,47 @@ ElevationLayer::setVisible(bool value)
 void
 ElevationLayer::setEnabled(bool value)
 {
+    if (getEnabled() != value)
+        bumpRevision();
+
     VisibleLayer::setVisible(value);
     VisibleLayer::setEnabled(value);
 }
 
+void
+ElevationLayer::setVerticalDatum(const std::string& value)
+{
+    setOptionThatRequiresReopen(options().verticalDatum(), value);
+}
+
+const std::string&
+ElevationLayer::getVerticalDatum() const
+{
+    return options().verticalDatum().get();
+}
+
+void
+ElevationLayer::setOffset(bool value)
+{
+    setOptionThatRequiresReopen(options().offset(), value);
+}
+
 bool
-ElevationLayer::isOffset() const
+ElevationLayer::getOffset() const
 {
     return options().offset().get();
+}
+
+void
+ElevationLayer::setNoDataPolicy(const ElevationNoDataPolicy& value)
+{
+    setOptionThatRequiresReopen(options().noDataPolicy(), value);
+}
+
+const ElevationNoDataPolicy&
+ElevationLayer::getNoDataPolicy() const
+{
+    return options().noDataPolicy().get();
 }
 
 void
@@ -151,26 +180,25 @@ ElevationLayer::normalizeNoDataValues(osg::HeightField* hf) const
 }
 
 void
-ElevationLayer::applyProfileOverrides()
+ElevationLayer::applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const
 {
     // Check for a vertical datum override.
     bool changed = false;
-    if ( getProfile() && options().verticalDatum().isSet() )
+    if ( inOutProfile.valid() && options().verticalDatum().isSet() )
     {
         std::string vdatum = options().verticalDatum().get();
-        OE_INFO << LC << "Override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
+        
+        std::string profileVDatumStr = _profile->getSRS()->getVertInitString();
+        if (profileVDatumStr.empty()) profileVDatumStr = "geodetic";
+        OE_INFO << LC << "Override vdatum = " << vdatum << " (was " << profileVDatumStr << ")" << std::endl;
+
         if ( !ciEquals(getProfile()->getSRS()->getVertInitString(), vdatum) )
         {
             ProfileOptions po = getProfile()->toProfileOptions();
             po.vsrsString() = vdatum;
-            setProfile( Profile::create(po) );
+            inOutProfile = Profile::create(po);
             changed = true;
         }
-    }
-
-    if (changed && _profile.valid())
-    {
-        OE_INFO << LC << "Override profile: " << _profile->toString() << std::endl;
     }
 }
 
@@ -340,7 +368,7 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     }
 
     // If the layer is disabled, bail out
-    if (getEnabled() == false)
+    if (getEnabled() == false || isOpen() == false)
     {
         return GeoHeightField::INVALID;
     }
@@ -490,12 +518,16 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                     hf.get() );
             }
 
-            // Pre-caching operation. If there's a TileSource, it runs the precache
-            // operator so we don't need to run it here. This is a temporary construct
-            // until we get rid of TileSource
+            // Pre-caching operations:
             {
                 OE_PROFILING_ZONE_NAMED("nodata normalize");
                 normalizeNoDataValues(hf.get());
+            }
+
+            // Invoke user callbacks
+            if (result.valid())
+            {
+                invoke_onCreate(key, result);
             }
 
             // If we have a cacheable heightfield, and it didn't come from the cache
@@ -560,6 +592,45 @@ Status
 ElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const
 {
     return Status::ServiceUnavailable;
+}
+
+void
+ElevationLayer::invoke_onCreate(const TileKey& key, GeoHeightField& data)
+{
+    if (_callbacks.empty() == false) // not thread-safe but that's ok
+    {
+        // Copy the vector to prevent thread lockup
+        Callbacks temp;
+
+        _callbacks.lock();
+        temp = _callbacks;
+        _callbacks.unlock();
+
+        for(Callbacks::const_iterator i = temp.begin();
+            i != temp.end();
+            ++i)
+        {
+            i->get()->onCreate(key, data);
+        }
+    }
+}
+
+void
+ElevationLayer::addCallback(ElevationLayer::Callback* c)
+{
+    _callbacks.lock();
+    _callbacks.push_back(c);
+    _callbacks.unlock();
+}
+
+void
+ElevationLayer::removeCallback(ElevationLayer::Callback* c)
+{
+    _callbacks.lock();
+    Callbacks::iterator i = std::find(_callbacks.begin(), _callbacks.end(), c);
+    if (i != _callbacks.end())
+        _callbacks.erase(i);
+    _callbacks.unlock();
 }
 
 

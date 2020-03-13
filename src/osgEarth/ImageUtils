@@ -122,13 +122,6 @@ namespace osgEarth { namespace Util
         static osg::Image* createMipmapBlendedImage(
             const osg::Image* primary,
             const osg::Image* secondary );
-        
-        /**
-         * Creates a new image containing mipmaps built with nearest-neighbor
-         * sampling.
-         */
-        static osg::Image* buildNearestNeighborMipmaps(
-            const osg::Image* image);
 
         /**
          * Blends the "src" image into the "dest" image, based on the "a" value.
@@ -302,20 +295,21 @@ namespace osgEarth { namespace Util
             unsigned stride);
 
         /**
-         * 
-         */
-        static osg::Image* upSampleNN(const osg::Image* src, int quadrant);
-
-        /**
          * Activates mipmapping for a texture image if the correct filters exist.
          *
          * If OSG has an ImageProcessor service installed, this method will use that
-         * to generate mipmaps. If not, the method will be a NOP and the GPU wil
-         * generate mipmaps (if necessary) upon GPU transfer.
-         */
-        static void activateMipMaps(osg::Texture* texture);
+         * to generate mipmaps. If not osgEarth will generate them if possible.
 
-        static void activateMipMaps(osg::Image* image);
+         * Returns true if mipmaps were added
+         */
+        static bool generateMipmaps(osg::Texture* texture);
+
+        /**
+        * Adds mipmaps to an image.
+        * Returns false if the image already has mipmaps, or if we cannot
+        * generate mipmaps for some reason.
+        */
+        static bool generateMipmaps(osg::Image* image);
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.
@@ -403,17 +397,17 @@ namespace osgEarth { namespace Util
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
                 return m == 0 ?
-                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
-                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m) ;
+                    _image->data() + s*_colBytes + t*_rowBytes + r*_imageBytes :
+                    _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
             }
 
             typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
 
             ReaderFunc _reader;
             const osg::Image* _image;
-            unsigned _colMult;
-            unsigned _rowMult;
-            unsigned _imageSize;
+            unsigned _colBytes;
+            unsigned _rowBytes;
+            unsigned _imageBytes;
             bool     _normalized;
             bool     _bilinear;
             bool     _sampleAsTexture;
@@ -443,6 +437,9 @@ namespace osgEarth { namespace Util
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
 
+            //! Initialize to all one value
+            void assign(const osg::Vec4& c);
+
             /** Writes a color to a pixel. */
             void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
                 (*_writer)(this, c, s, t, r, m );
@@ -457,16 +454,17 @@ namespace osgEarth { namespace Util
 
             // internals:
             osg::Image* _image;
-            unsigned _colMult;
-            unsigned _rowMult;
-            unsigned _imageSize;
+            unsigned _colBytes;
+            unsigned _rowBytes;
+            unsigned _imageBytes;
             bool     _normalized;
 
-            unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
-                return m == 0 ?
-                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
-                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m);
-            }
+            unsigned char* data(int s=0, int t=0, int r=0, int m=0) const;
+            //{
+            //    return m == 0 ?
+            //        _image->data() + s*_colBytes + t*_rowBytes + r*_imageBytes :
+            //        _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
+            //}
 
             typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
             WriterFunc _writer;

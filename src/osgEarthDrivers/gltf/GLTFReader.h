@@ -247,7 +247,7 @@ public:
                 OE_DEBUG << "additionalValues=" << material.additionalValues.size() << std::endl;
                 for (tinygltf::ParameterMap::const_iterator paramItr = material.additionalValues.begin(); paramItr != material.additionalValues.end(); ++paramItr)
                 {
-                    OSG_NOTICE << "    " << paramItr->first << "=" << paramItr->second.string_value << std::endl;
+                    OE_DEBUG << "    " << paramItr->first << "=" << paramItr->second.string_value << std::endl;
                 }
 
                 //OSG_NOTICE << "values=" << material.values.size() << std::endl;

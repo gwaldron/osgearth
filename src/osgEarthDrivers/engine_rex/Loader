@@ -92,6 +92,11 @@ namespace osgEarth { namespace REX
 
             void setState(State value);
 
+            //! Sets a minimum delay between the last call to setState() and 
+            //! the request being processed. This exists to prevent requests
+            //! from spamming a resource (like the network)
+            void setDelay(double seconds) { _delay_s = seconds; }
+
             bool isIdle() const { return _state == IDLE; }
             bool isRunning() const { return _state == RUNNING; }
             bool isMerging() const { return _state == MERGING; }
@@ -101,17 +106,17 @@ namespace osgEarth { namespace REX
             std::string                   _name;
             TileKey                       _key;
             State                         _state;
+            osg::Timer_t                  _stateTick;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
             osg::Timer_t                  _lastTick;
             mutable Threading::Mutex      _lock;
             int                           _loadCount;
+            double                        _delay_s;
 
             void lock() { _lock.lock(); }
             void unlock() { _lock.unlock(); }
-
-            ChangeSet                     _nodesChanged;
         };
 
         class Handler : public osg::Referenced

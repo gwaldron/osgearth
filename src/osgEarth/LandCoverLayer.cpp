@@ -91,6 +91,15 @@ LandCoverLayer::init()
     _beachCode = -1;
 }
 
+Config
+LandCoverLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    if (_source.isSetByUser())
+        c.set(_source.getLayer()->getConfig());
+    return c;
+}
+
 void
 LandCoverLayer::setSource(ImageLayer* value)
 {
@@ -158,6 +167,8 @@ LandCoverLayer::openImplementation()
 
     // TODO: review this since we are setting a cache on this layer itself
     // via the layerHints()
+    
+    // GW: do we really need this? Probably not
     getSource()->setUpL2Cache(9u);
 
     // Force the image source into coverage mode.
@@ -173,7 +184,6 @@ LandCoverLayer::addedToMap(const Map* map)
 
     // Find a land cover dictionary if there is one.
     // There had better be one, or we are not going to get very far!
-    // This is called after createTileSource, so the TileSource should exist at this point.
     // Note. If the land cover dictionary isn't already in the Map...this will fail! (TODO)
     // Consider a LayerReference. (TODO)
     _lcDictionary = map->getLayer<LandCoverDictionary>();
@@ -195,7 +205,7 @@ LandCoverLayer::addedToMap(const Map* map)
     }
     else
     {
-        OE_WARN << LC << "Did not find a LandCoverDictionary and/or Coverage in the Map!\n";
+        OE_WARN << LC << "Did not find a LandCoverDictionary in the Map!" << std::endl;
     }
 }
 
@@ -203,7 +213,7 @@ void
 LandCoverLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _source.disconnect(map);
+    _source.releaseFromMap(map);
 }
 
 bool
@@ -274,14 +284,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         if (!img.valid())
             return img;
 
-        osg::ref_ptr<osg::Image> output = new osg::Image();
-        output->allocateImage(
-            getTileSize(),
-            getTileSize(),
-            1,
-            GL_RED,
-            GL_FLOAT);
-        output->setInternalTextureFormat(GL_R16F);
+        osg::ref_ptr<osg::Image> output = LandCover::createImage(getTileSize());
 
         ImageUtils::PixelReader read(img.getImage());
         ImageUtils::PixelWriter write(output.get());
@@ -380,26 +383,15 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
 {
     MetaImage metaImage;
 
-    // Allocate the working image:
-    osg::ref_ptr<osg::Image> workspace = new osg::Image();
-    workspace->allocateImage(
-        getTileSize() + 3,
-        getTileSize() + 3,
-        1,
-        GL_RED,
-        GL_FLOAT);
+    // Allocate the working image, which includes a border for 
+    // holding values from adjacent tiles.
+    osg::ref_ptr<osg::Image> workspace = LandCover::createImage(getTileSize() + 3);
+
     ImageUtils::PixelWriter writeToWorkspace(workspace.get());
     ImageUtils::PixelReader readFromWorkspace(workspace.get());
 
     // Allocate the output image:
-    osg::ref_ptr<osg::Image> output = new osg::Image();
-    output->allocateImage(
-        getTileSize(),
-        getTileSize(),
-        1,
-        GL_RED,
-        GL_FLOAT);
-    output->setInternalTextureFormat(GL_R16F);
+    osg::ref_ptr<osg::Image> output = LandCover::createImage(getTileSize());
 
     Random prng(key.getTileX()*key.getTileY()*key.getLOD());
 

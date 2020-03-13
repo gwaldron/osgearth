@@ -329,7 +329,6 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
-    LabelSource
     MVT
     OgrUtils
     OGRFeatureSource
@@ -674,7 +673,6 @@ set(TARGET_SRC
     GeometryCompiler.cpp
     GeometryUtils.cpp
     ImageToFeatureLayer.cpp
-    LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
     OGRFeatureSource.cpp

@@ -83,6 +83,9 @@ namespace osgEarth { namespace Splat
         // A node to add to the scene graph for this layer.
         virtual osg::Node* getNode() const;
 
+        //! Serialize
+        virtual Config getConfig() const;
+
     protected: // Layer
 
         // post-ctor initialization

@@ -26,6 +26,7 @@
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
+#include <osgEarth/LandCover>
 
 using namespace osgEarth;
 
@@ -215,8 +216,8 @@ FeatureImageLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
-    _featureSource.connect(map, options().featureSourceLayer());
-    _styleSheet.connect(map, options().styleSheetLayer());
+    _featureSource.findInMap(map, options().featureSourceLayer());
+    _styleSheet.findInMap(map, options().styleSheetLayer());
 
     if (getFeatureSource())
     {
@@ -229,8 +230,8 @@ void
 FeatureImageLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _featureSource.disconnect(map);
-    _styleSheet.disconnect(map);
+    _featureSource.releaseFromMap(map);
+    _styleSheet.releaseFromMap(map);
 }
 
 void
@@ -343,15 +344,15 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     }
     
     // allocate the image.
-    osg::ref_ptr<osg::Image> image = new osg::Image();
+    osg::ref_ptr<osg::Image> image;
 
     if ( options().coverage() == true )
     {
-        image->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_FLOAT);
-        image->setInternalTextureFormat(GL_R16F);
+        image = LandCover::createImage(getTileSize());
     }
     else
     {
+        image = new osg::Image();
         image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
     }
 

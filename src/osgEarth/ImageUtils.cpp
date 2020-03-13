@@ -21,6 +21,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Random>
+
+#include <osg/GLU>
 #include <osgDB/Registry>
 
 #include <osg/ValueObject>
@@ -214,7 +216,9 @@ ImageUtils::resizeImage(const osg::Image* input,
     else
     {
         PixelReader read( input );
-        PixelWriter write( output.get() );
+        PixelWriter write( output.get() );          
+
+        osg::Vec4 color;
 
         for( unsigned int output_row=0; output_row < out_t; output_row++ )
         {
@@ -229,15 +233,13 @@ ImageUtils::resizeImage(const osg::Image* input,
                 float output_col_ratio = (float)output_col/(float)out_s;
                 float input_col =  output_col_ratio * (float)in_s;
                 if ( input_col >= (int)in_s ) input_col = in_s-1;
-                else if ( input_col < 0 ) input_col = 0.0f;                
-
-                osg::Vec4 color;
+                else if ( input_col < 0 ) input_col = 0.0f;      
 
                 for(int layer=0; layer<input->r(); ++layer)
                 {
                     if (bilinear)
                     {
-                        // Do a billinear interpolation for the image
+                        // Do a bilinear interpolation for the image
                         int rowMin = osg::maximum((int)floor(input_row), 0);
                         int rowMax = osg::maximum(osg::minimum((int)ceil(input_row), (int)(input->t()-1)), 0);
                         int colMin = osg::maximum((int)floor(input_col), 0);
@@ -285,7 +287,7 @@ ImageUtils::resizeImage(const osg::Image* input,
                             (int)input_row :
                             osg::minimum( 1+(int)input_row, (int)in_t-1 );
 
-                        color = read(col, row, layer); // read pixel from mip level 0.
+                        read(color, col, row, layer); // read pixel from mip level 0.
 
                         // old code
                         //color = read( (int)input_col, (int)input_row, layer ); // read pixel from mip level 0
@@ -452,57 +454,112 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
     return true;
 }
 
-osg::Image*
-ImageUtils::buildNearestNeighborMipmaps(const osg::Image* input)
-{
-    // first, build the image that will hold all the mipmap levels.
-    int numMipmapLevels = osg::Image::computeNumberOfMipmapLevels( input->s(), input->t() );
-    int pixelSizeBytes  = osg::Image::computeRowWidthInBytes( input->s(), input->getPixelFormat(), input->getDataType(), input->getPacking() ) / input->s();
-    int totalSizeBytes  = 0;
-    std::vector< unsigned int > mipmapDataOffsets;
-
-    mipmapDataOffsets.reserve( numMipmapLevels-1 );
-
-    for( int i=0; i<numMipmapLevels; ++i )
+bool
+ImageUtils::generateMipmaps(osg::Image* input)
+{ 
+    if (!input)
     {
-        if ( i > 0 )
-            mipmapDataOffsets.push_back( totalSizeBytes );
-
-        int level_s = input->s() >> i;
-        int level_t = input->t() >> i;
-        int levelSizeBytes = level_s * level_t * pixelSizeBytes;
-
-        totalSizeBytes += levelSizeBytes;
+        OE_WARN << LC << "generateMipmaps() called with NULL input" << std::endl;
+        return false;
     }
 
+    if (input->r() > 1)
+    {
+        OE_WARN << LC << "generateMipmaps() not implemented for 3D image" << std::endl;
+        return false;
+    }
+
+    // already has mipmaps?
+    if (input->getNumMipmapLevels() > 1)
+    {
+        return false;
+    }
+
+#ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
+    // NVTT doest not like 1- or 2-channel images; can crash
+    if (osg::Image::computeNumComponents(input->getPixelFormat()) >= 3)
+    {
+        // Fint the NVTT plugin
+        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
+        if (nvtt)
+        {
+            nvtt->generateMipMap(*input, true, nvtt->USE_CPU);
+
+            if (input->getInternalTextureFormat() == GL_RGB)
+            {
+                input->setInternalTextureFormat(GL_RGB8);
+            }
+            else if (input->getInternalTextureFormat() == GL_RGBA)
+            {
+                input->setInternalTextureFormat(GL_RGBA8);
+            }
+
+            return true;
+        }
+    }
+#endif
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+
+    // first, build the image that will hold all the mipmap levels.
+    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
+    int imageSizeBytes = input->getTotalSizeInBytes();
+
+    // offset vector does not include level 0 (the full-resolution level)
+    osg::Image::MipmapDataType mipOffsets;
+    mipOffsets.reserve(numLevels-1);
+
+    // calculate memory requirements:
+    int totalSizeBytes = imageSizeBytes;
+    for( int i=1; i<numLevels; ++i )
+    {
+        mipOffsets.push_back(totalSizeBytes);
+        totalSizeBytes += (imageSizeBytes >> i);
+    }
+
+    // allocate space for the new data and copy over level 0 of the old data
     unsigned char* data = new unsigned char[totalSizeBytes];
+    ::memcpy(data, input->data(), input->getTotalSizeInBytes());
 
-    osg::ref_ptr<osg::Image> result = new osg::Image();
-    result->setImage(
-        input->s(), input->t(), 1,
-        input->getInternalTextureFormat(), 
-        input->getPixelFormat(), 
-        input->getDataType(), 
-        data, osg::Image::USE_NEW_DELETE );
+    input->setImage(
+        input->s(), input->t(), input->r(),
+        input->getInternalTextureFormat(),
+        input->getPixelFormat(),
+        input->getDataType(),
+        data,
+        osg::Image::USE_NEW_DELETE,
+        input->getPacking(),
+        input->getRowLength());
 
-    result->setMipmapLevels( mipmapDataOffsets );
+    input->setMipmapLevels(mipOffsets);
 
     // now, populate the image levels.
-    int level_s = input->s();
-    int level_t = input->t();
+    osg::PixelStorageModes psm;
+    psm.pack_alignment = input->getPacking();
+    psm.pack_row_length = input->getRowLength();
+    psm.unpack_alignment = input->getPacking();
 
-    osg::ref_ptr<const osg::Image> input2 = input;
-    for( int level=0; level<numMipmapLevels; ++level )
+    for(int level=1; level<numLevels; ++level)
     {
-        osg::ref_ptr<osg::Image> temp;
-        ImageUtils::resizeImage(input2.get(), level_s, level_t, result, level, false);
-        ImageUtils::resizeImage(input2.get(), level_s, level_t, temp, 0, false);
-        level_s >>= 1;
-        level_t >>= 1;
-        input2 = temp.get();
+        // OSG-custom gluScaleImage that does not require a graphics context
+        GLint status = gluScaleImage(
+            &psm,
+            input->getPixelFormat(),
+            input->s(),
+            input->t(),
+            input->getDataType(),
+            input->data(),
+            input->s() >> level,
+            input->t() >> level,
+            input->getDataType(),
+            input->getMipmapData(level));
     }
 
-    return result.release();
+    input->dirty();
+    return true;
+#else
+    return false;
+#endif
 }
 
 osg::Image*
@@ -831,7 +888,6 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
     return true;
 }
 
-
 osg::Image*
 ImageUtils::createOnePixelImage(const osg::Vec4& color)
 {
@@ -841,118 +897,6 @@ ImageUtils::createOnePixelImage(const osg::Vec4& color)
     PixelWriter write(image);
     write(color, 0, 0);
     return image;
-}
-
-osg::Image*
-ImageUtils::upSampleNN(const osg::Image* src, int quadrant)
-{
-    int soff = quadrant == 0 || quadrant == 2 ? 0 : src->s()/2;
-    int toff = quadrant == 2 || quadrant == 3 ? 0 : src->t()/2;
-    osg::Image* dst = new osg::Image();
-    dst->allocateImage(src->s(), src->t(), 1, src->getPixelFormat(), src->getDataType(), src->getPacking());
-
-    PixelReader readSrc(src);
-    PixelWriter writeDst(dst);
-
-    // first, copy the quadrant into the new image at every other pixel (s and t).
-    for(int s=0; s<src->s()/2; ++s)
-    {
-        for(int t=0; t<src->t()/2; ++t)
-        {           
-            writeDst(readSrc(soff+s,toff+t), 2*s, 2*t);
-        }
-    }
-
-    // next fill in the rows - simply copy the pixel from the left.
-    PixelReader readDst(dst);
-    int seed = *(int*)dst->data(0,0);
-
-    Random rng(seed+quadrant);
-
-    for(int t=0; t<dst->t(); t+=2)
-    {
-        for(int s=1; s<dst->s(); s+=2)
-        {
-            int ss = rng.next(2)%2 && s<dst->s()-1 ? s+1 : s-1;
-            writeDst( readDst(ss,t), s, t );
-        }
-    }
-
-    // fill in the columns - copy the pixel above.
-    for(int t=1; t<dst->t(); t+=2)
-    {
-        for(int s=0; s<dst->s(); s+=2)
-        {
-            int tt = rng.next(2)%2 && t<dst->t()-1 ? t+1 : t-1;
-            writeDst( readDst(s,tt), s, t );
-        }
-    }
-
-    // fill in the LRs.
-    for(int t=1; t<dst->t(); t+=2)
-    {
-        bool last_t = t+2 >= dst->t();
-        for(int s=1; s<dst->s(); s+=2)
-        {
-            bool last_s = s+2 >= dst->s();
-
-            if (!last_s && !last_t)
-            {
-                bool d1 = readDst(s-1,t-1)==readDst(s+1,t+1);
-                bool d2 = readDst(s-1,t+1)==readDst(s+1,t-1);
-
-                if (d1 && !d2)
-                {
-                    writeDst( readDst(s-1,t-1), s, t);
-                }
-                else if (!d1 && d2)
-                {
-                    writeDst( readDst(s+1,t-1), s, t);
-                }
-                else if (d1 && d2)
-                {
-                    writeDst( readDst(s-1,t-1), s, t);
-                }
-                else
-                {
-                    int ss = rng.next(2)%2 ? s+1 : s-1, tt = rng.next(2)%2 ? t+1 : t-1;
-                    //int ss = (c++)%2? s+1, s-1, tt = (c++)%2? t+1 : t-1;
-                    writeDst( readDst(ss, tt), s, t );
-                }
-
-            }
-            else if ( last_s && !last_t )
-            {
-                writeDst( readDst(s,t-1), s, t );
-                //if ( readDst(s, t-1) == readDst(s, t+1) )
-                //{
-                //    writeDst( readDst(s, t-1), s, t );
-                //}
-                //else
-                //{
-                //    writeDst( readDst(s-1, t-1), s, t );
-                //}
-            }
-            else if ( !last_s && last_t )
-            {
-                writeDst( readDst(s-1,t), s, t );
-                //if ( readDst(s-1, t) == readDst(s+1, t) )
-                //{
-                //    writeDst( readDst(s-1,t), s, t );
-                //}
-                //else
-                //{
-                //    writeDst( readDst(s-1,t-1), s, t );
-                //}
-            }
-            else
-            {
-                writeDst( readDst(s-1,t-1), s, t);
-            }
-        }
-    }
-
-    return dst;
 }
 
 bool
@@ -1248,61 +1192,35 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
     return false;
 }
 
-
-void
-ImageUtils::activateMipMaps(osg::Image* image)
-{
-    return;
-
-#ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
-    if (image == 0L)
-        return;
-
-    if (image->getNumMipmapLevels() > 1)
-        return;
-
-    // NVTT doest not like 1-channel images; can crash
-    if (osg::Image::computeNumComponents(image->getPixelFormat()) < 3)
-        return;
-
-    // Fint the NVTT plugin
-    osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
-    if (!ip)
-        return;
-
-    ip->generateMipMap(*image, true, ip->USE_CPU);
-
-    if (image->getInternalTextureFormat() == GL_RGB)
-    {
-        image->setInternalTextureFormat(GL_RGB8);
-    }
-    else if (image->getInternalTextureFormat() == GL_RGBA)
-    {
-        image->setInternalTextureFormat(GL_RGBA8);
-    }
-#endif
-}
-
-
-void
-ImageUtils::activateMipMaps(osg::Texture* tex)
+bool
+ImageUtils::generateMipmaps(osg::Texture* tex)
 {
     // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
 
-    bool needsMipmaps =
+    bool mipsRequested =
         minFilter == tex->LINEAR_MIPMAP_LINEAR ||
         minFilter == tex->LINEAR_MIPMAP_NEAREST ||
         minFilter == tex->NEAREST_MIPMAP_LINEAR ||
         minFilter == tex->NEAREST_MIPMAP_NEAREST;
 
-    if (needsMipmaps && tex->getNumImages() > 0)
+    bool mipsAdded = false;
+
+    if (mipsRequested && tex->getNumImages() > 0)
     {
         for (unsigned i = 0; i < tex->getNumImages(); ++i)
         {
-            activateMipMaps(tex->getImage(i));
+           //Can't use || since it short circuits when optimizations are on.
+            mipsAdded |= generateMipmaps(tex->getImage(i));
         }
     }
+
+    if (mipsAdded)
+    {
+        tex->setUseHardwareMipMapGeneration(false);
+    }
+
+    return mipsAdded;
 }
 
 
@@ -1951,9 +1869,9 @@ ImageUtils::PixelReader::setImage(const osg::Image* image)
     if (image)
     {
         _normalized = image->getDataType() == GL_UNSIGNED_BYTE;
-        _colMult = _image->getPixelSizeInBits() / 8;
-        _rowMult = _image->getRowSizeInBytes();
-        _imageSize = _image->getImageSizeInBytes();
+        _colBytes = _image->getPixelSizeInBits() / 8;
+        _rowBytes = _image->getRowStepInBytes(); //getRowSizeInBytes();
+        _imageBytes = _image->getImageSizeInBytes();
         GLenum dataType = _image->getDataType();
         _reader = getReader( _image->getPixelFormat(), dataType );
         if ( !_reader )
@@ -2359,9 +2277,9 @@ _image(image)
     if (image)
     {
         _normalized = image->getDataType() == GL_UNSIGNED_BYTE;
-        _colMult = _image->getPixelSizeInBits() / 8;
-        _rowMult = _image->getRowSizeInBytes();
-        _imageSize = _image->getImageSizeInBytes();
+        _colBytes = _image->getPixelSizeInBits() / 8;
+        _rowBytes = _image->getRowStepInBytes();
+        _imageBytes = _image->getImageSizeInBytes();
         GLenum dataType = _image->getDataType();
         _writer = getWriter( _image->getPixelFormat(), dataType );
         if ( !_writer )
@@ -2376,6 +2294,27 @@ bool
 ImageUtils::PixelWriter::supports( GLenum pixelFormat, GLenum dataType )
 {
     return getWriter(pixelFormat, dataType) != 0L;
+}
+
+void
+ImageUtils::PixelWriter::assign(const osg::Vec4& c)
+{
+    if (_image->valid())
+    {
+        for(int r=0; r<_image->r(); ++r)
+            for(int t=0; t<_image->t(); ++t)
+                for(int s=0; s<_image->s(); ++s)
+                    (*this)(c, s, t, r);
+    }
+}
+
+unsigned char*
+ImageUtils::PixelWriter::data(int s, int t, int r, int m) const 
+{
+    return m == 0 ?
+        _image->data() + s*_colBytes + t*_rowBytes + r*_imageBytes :
+        _image->getMipmapData(m) + (s)*_colBytes + (t)*(_rowBytes>>m) + r*(_imageBytes>>m);
+//        _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
 }
 
 TextureAndImageVisitor::TextureAndImageVisitor() :

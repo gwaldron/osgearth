@@ -416,7 +416,8 @@ _is_north_polar  ( false ),
 _is_south_polar  ( false ),
 _is_cube         ( false ),
 _is_contiguous   ( false ),
-_is_user_defined ( false )
+_is_user_defined ( false ),
+_ellipsoidId     ( 0u )
 {
     //nop
 }

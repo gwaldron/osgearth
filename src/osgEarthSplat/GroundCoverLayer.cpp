@@ -142,7 +142,7 @@ namespace
     {
         META_StateAttribute(osgEarth, GroundCoverSA, (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210));
         GroundCover* _groundcover;
-        GroundCoverSA() { }
+        GroundCoverSA() : _groundcover(NULL) { }
         GroundCoverSA(const GroundCoverSA& sa, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY) : osg::StateAttribute(sa, copyop), _groundcover(sa._groundcover) { }
         GroundCoverSA(GroundCover* gc) : _groundcover(gc) { }
         virtual int compare(const StateAttribute& sa) const { return 0; }
@@ -792,6 +792,7 @@ GroundCoverLayer::Renderer::DrawState::DrawState()
     _instancedModelUL = -1;
     _tilesDrawnThisFrame = 0;
     _numInstances1D = 0;
+    _instancedModelValue = -1;
 }
 
 void

@@ -313,9 +313,9 @@ ProgramRepo::linkProgram(
 #endif
 
 #ifdef OSGEARTH_CXX11
-        unsigned int defineHash = std::hash<std::string>()(defineStr);
+        unsigned defineHash = std::hash<std::string>()(defineStr);
 #else
-        unsigned int defineHash = osgEarth::hashString(defineStr);
+        unsigned defineHash = osgEarth::hashString(defineStr);
 #endif
         programCacheNameStream << "_" << defineHash;
         programCacheNameStream << ".bin";

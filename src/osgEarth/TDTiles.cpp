@@ -786,8 +786,10 @@ namespace
 
                         if (tilesetNode.valid())
                         {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
                             CompressAndMipmapTextures visitor;
                             tilesetNode->accept(visitor);
+#endif
 
                             if (ico.valid())
                             {

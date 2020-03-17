@@ -517,13 +517,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     return geom.release();
 }
 
-
 void
 GeometryPool::setReleaser(ResourceReleaser* releaser)
 {
     _releaser = releaser;
 }
-
 
 void
 GeometryPool::traverse(osg::NodeVisitor& nv)
@@ -552,37 +550,60 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
     osg::Group::traverse(nv);
 }
 
-
 void
 GeometryPool::clear()
 {
-    if (!_releaser.valid() || !_enabled)
+    releaseGLObjects(NULL);
+    _geometryMapMutex.lock();
+    _geometryMap.clear();
+    _geometryMapMutex.unlock();
+}
+
+void
+GeometryPool::resizeGLObjectBuffers(unsigned maxsize)
+{
+    if (!_enabled)
+        return;
+
+    // collect all objects in a thread safe manner
+    _geometryMapMutex.lock();
+    {
+        for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
+        {
+            i->second->resizeGLObjectBuffers(maxsize);
+        }
+    }
+    _geometryMapMutex.unlock();
+}
+
+void
+GeometryPool::releaseGLObjects(osg::State* state) const
+{
+    if (!_enabled)
         return;
 
     ResourceReleaser::ObjectList objects;
 
     // collect all objects in a thread safe manner
+    _geometryMapMutex.lock();
     {
-        Threading::ScopedMutexLock exclusive( _geometryMapMutex );
-
-        for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
+        for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
         {
-            //if (i->second.get()->referenceCount() == 1)
-            {
+            if (_releaser.valid())
                 objects.push_back(i->second.get());
-            }
+            else
+                i->second->releaseGLObjects(state);
         }
 
-        _geometryMap.clear();
-
-        if (!objects.empty())
+        if (_releaser.valid() && !objects.empty())
         {
-            OE_INFO << LC << "Cleared " << objects.size() << " objects from the geometry pool\n";
+            OE_INFO << LC << "Released " << objects.size() << " objects in the geometry pool\n";
         }
     }
+    _geometryMapMutex.unlock();
 
     // submit to the releaser.
-    if (!objects.empty())
+    if (_releaser.valid() && !objects.empty())
     {
         _releaser->push(objects);
     }

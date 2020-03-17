@@ -204,10 +204,10 @@ RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
         _imageLayerStateSet.get()->releaseGLObjects(state);
     }
 
-    if (_geometryPool.valid())
-    {
-        _geometryPool->clear();
-    }
+    //if (_geometryPool.valid())
+    //{
+    //    _geometryPool->clear();
+    //}
 
     TerrainEngineNode::releaseGLObjects(state);
 }

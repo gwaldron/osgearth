@@ -921,12 +921,8 @@ double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
     const osg::Matrix& proj = cv->getCurrentCamera()->getProjectionMatrix();
     if (proj(3,3)==0.0) // perspective
     {
-        double fovy, ar, zn, zf;
-        proj.getPerspective(fovy, ar, zn, zf);
         double height = cv->getCurrentCamera()->getViewport()->height();
-        double sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
-        double error = (*_tile->geometricError() * height) / (distance * sseDenominator);
-        return error;
+        return (*_tile->geometricError() * height) / (distance * _tileset->getSSEDenominator());
     }
     else // orthographic
     {
@@ -1021,7 +1017,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
         if (_boundingBox.valid())
         {
@@ -1178,7 +1174,8 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& author
     _maxAge(5.0f),
     _lastExpiredFrame(0),
     _authorizationHeader(authorizationHeader),
-    _sgCallbacks(sceneGraphCallbacks)
+    _sgCallbacks(sceneGraphCallbacks),
+	_sseDenominator(1.0)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
@@ -1266,6 +1263,11 @@ void ThreeDTilesetNode::setColorPerTile(bool colorPerTile)
             getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::OFF);
         }
     }
+}
+
+double ThreeDTilesetNode::getSSEDenominator() const
+{
+	return _sseDenominator;
 }
 
 SceneGraphCallbacks* ThreeDTilesetNode::getSceneGraphCallbacks(SceneGraphCallbacks* callbacks)
@@ -1381,6 +1383,15 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
             _lastExpiredFrame = nv.getFrameStamp()->getFrameNumber();
         }
     }
+	else if (nv.getVisitorType() == nv.CULL_VISITOR)
+	{
+		osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+		const osg::Matrix& proj = cv->getCurrentCamera()->getProjectionMatrix();
+		double height = cv->getCurrentCamera()->getViewport()->height();
+		double fovy, ar, zn, zf;
+		proj.getPerspective(fovy, ar, zn, zf);
+		_sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
+	}
 
     osg::Group::traverse(nv);
 }

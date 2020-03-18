@@ -167,7 +167,58 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // and scale/biasing the matrices.
     if (parent)
     {
-        refreshInheritedData(parent, context->getRenderBindings());
+        //refreshInheritedData(parent, context->getRenderBindings());unsigned quadrant = getKey().getQuadrant();
+
+        unsigned quadrant = getKey().getQuadrant();
+
+        const RenderBindings& bindings = context->getRenderBindings();
+
+        for (unsigned p = 0; p < parent->_renderModel._passes.size(); ++p)
+        {
+            const RenderingPass& parentPass = parent->_renderModel._passes[p];
+
+            // If the key is now out of the layer's valid min/max range, skip this pass.
+            if (!passInLegalRange(parentPass))
+                continue;
+
+            // Copy the parent pass:
+            _renderModel._passes.push_back(parentPass);
+            RenderingPass& myPass = _renderModel._passes.back();
+
+            // Scale/bias each matrix for this key quadrant.
+            Samplers& samplers = myPass.samplers();
+            for (unsigned s = 0; s < samplers.size(); ++s)
+            {
+                samplers[s]._matrix.preMult(scaleBias[quadrant]);
+            }
+
+            // Are we using image blending? If so, initialize the color_parent 
+            // to the color texture.
+            if (bindings[SamplerBinding::COLOR_PARENT].isActive())
+            {
+                samplers[SamplerBinding::COLOR_PARENT] = samplers[SamplerBinding::COLOR];
+            }
+        }
+
+        // Copy the parent's shared samplers and scale+bias each matrix to the new quadrant:
+        _renderModel._sharedSamplers = parent->_renderModel._sharedSamplers;
+
+        for (unsigned s = 0; s<_renderModel._sharedSamplers.size(); ++s)
+        {
+            Sampler& sampler = _renderModel._sharedSamplers[s];
+            sampler._matrix.preMult(scaleBias[quadrant]);
+        }
+
+        // Use the elevation sampler to initialize the elevation raster
+        // (used for primitive functors, intersection, etc.)
+        if (bindings[SamplerBinding::ELEVATION].isActive())
+        {
+            const Sampler& elevation = _renderModel._sharedSamplers[SamplerBinding::ELEVATION];
+            if (elevation._texture.valid())
+            {
+                setElevationRaster(elevation._texture->getImage(0), elevation._matrix);
+            }
+        }
     }
 
     // register me.

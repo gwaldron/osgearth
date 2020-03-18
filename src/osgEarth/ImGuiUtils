@@ -32,6 +32,7 @@
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Geocoder>
+#include <osgEarth/ViewFitter>
 
 using namespace osgEarth;
 
@@ -65,7 +66,7 @@ public:
     {
     }
 
-    void draw(osgEarth::MapNode* mapNode)
+    void draw(osgEarth::MapNode* mapNode, osg::Camera* camera, EarthManipulator* manip)
     {
         osgEarth::VisibleLayerVector layers;
         mapNode->getMap()->getLayers(layers);
@@ -101,6 +102,51 @@ public:
                 if (ImGui::ArrowButton("up", ImGuiDir_Up))
                 {
                     mapNode->getMap()->moveLayer(layer, i + 1);
+                }
+            }
+
+            ImGui::SameLine();
+            if (ImGui::ArrowButton("right", ImGuiDir_Right))
+            {
+                const GeoExtent& extent = layer->getExtent();
+                if (extent.isValid())
+                {
+                    std::vector<GeoPoint> points;
+                    points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
+                    points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+
+                    ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                    Viewpoint vp;
+                    if (fitter.createViewpoint(points, vp))
+                    {
+                        manip->setViewpoint(vp, 2.0);
+                    }
+                }
+                else if (layer->getNode())
+                {
+                    const osg::BoundingSphere& bs = layer->getNode()->getBound();
+                    if (bs.valid())
+                    {
+                        osg::Vec3d c = bs.center();
+                        double r = bs.radius();
+                        const SpatialReference* mapSRS = mapNode->getMap()->getSRS();
+
+                        std::vector<GeoPoint> points;
+                        GeoPoint p;
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
+
+                        ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                        Viewpoint vp;
+                        if (fitter.createViewpoint(points, vp))
+                        {
+                            manip->setViewpoint(vp, 2.0);
+                        }
+                    }
                 }
             }
 

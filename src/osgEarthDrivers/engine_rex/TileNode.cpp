@@ -35,6 +35,7 @@
 
 using namespace osgEarth::REX;
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
 
@@ -132,11 +133,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
     // Create the node to house the tile drawable:
     _surface = new SurfaceNode(key, surfaceDrawable);
-    
-    // create a data load request for this new tile:
-    //_loadRequest = new LoadTileData( this, context );
-    //_loadRequest->setName( _key.str() );
-    //_loadRequest->setTileKey( _key );
 
     // Encode the tile key in a uniform. Note! The X and Y components are presented
     // modulo 2^16 form so they don't overrun single-precision space.
@@ -171,69 +167,14 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // and scale/biasing the matrices.
     if (parent)
     {
-        unsigned quadrant = getKey().getQuadrant();
-
-        const RenderBindings& bindings = context->getRenderBindings();
-
-        bool setElevation = false;
-
-        for (unsigned p = 0; p < parent->_renderModel._passes.size(); ++p)
-        {
-            const RenderingPass& parentPass = parent->_renderModel._passes[p];
-
-            // If the key is now out of the layer's valid min/max range, skip this pass.
-            if (!passInLegalRange(parentPass))
-                continue;
-
-            // Copy the parent pass:
-            _renderModel._passes.push_back(parentPass);
-            RenderingPass& myPass = _renderModel._passes.back();
-
-            // Scale/bias each matrix for this key quadrant.
-            Samplers& samplers = myPass.samplers();
-            for (unsigned s = 0; s < samplers.size(); ++s)
-            {
-                samplers[s]._matrix.preMult(scaleBias[quadrant]);
-            }
-
-            // Are we using image blending? If so, initialize the color_parent 
-            // to the color texture.
-            if (bindings[SamplerBinding::COLOR_PARENT].isActive())
-            {
-                samplers[SamplerBinding::COLOR_PARENT] = samplers[SamplerBinding::COLOR];
-            }
-        }
-
-        // Copy the parent's shared samplers and scale+bias each matrix to the new quadrant:
-        _renderModel._sharedSamplers = parent->_renderModel._sharedSamplers;
-
-        for (unsigned s = 0; s<_renderModel._sharedSamplers.size(); ++s)
-        {
-            Sampler& sampler = _renderModel._sharedSamplers[s];
-            sampler._matrix.preMult(scaleBias[quadrant]);
-        }
-
-        // Use the elevation sampler to initialize the elevation raster
-        // (used for primitive functors, intersection, etc.)
-        if (!setElevation && bindings[SamplerBinding::ELEVATION].isActive())
-        {
-            const Sampler& elevation = _renderModel._sharedSamplers[SamplerBinding::ELEVATION];
-            if (elevation._texture.valid())
-            {
-                setElevationRaster(elevation._texture->getImage(0), elevation._matrix);
-                setElevation = true;
-            }
-        }
+        refreshInheritedData(parent, context->getRenderBindings());
     }
-
-    // need to recompute the bounds after adding payload:
-    dirtyBound();
-
-    // signal the tile to start loading data:
-    refreshAllLayers();
 
     // register me.
     context->liveTiles()->add( this );
+
+    // signal the tile to start loading data:
+    refreshAllLayers();
 
     // tell the world.
     OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
@@ -276,11 +217,10 @@ TileNode::areSiblingsDormant(const osg::FrameStamp* fs) const
 void
 TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix)
 {
-    if (image == 0L)
-    {
-        OE_WARN << LC << "TileNode::setElevationRaster: image is NULL!\n";
-    }
-
+    //if (image == 0L)
+    //{
+    //    OE_WARN << LC << "TileNode::setElevationRaster: image is NULL!\n";
+    //}
     if (image != getElevationRaster() || matrix != getElevationMatrix())
     {
         if ( _surface.valid() )
@@ -322,42 +262,7 @@ TileNode::refreshLayers(const CreateTileManifest& manifest)
     _loadQueue.push(r);
     _loadsInQueue = _loadQueue.size();
     _loadQueue.unlock();
-
-    // Scan our render passes for layers represented by the manifest.
-    // If we find a match, AND if the layer's color sampler if owned
-    // (and not inherited), mark it as dirty. Dirty layers that are not
-    // updated during a merge will be deleted.
-    for(int i = 0; i<_renderModel._passes.size(); ++i)
-    {
-        RenderingPass& pass = _renderModel._passes[i];
-        if (pass.ownsTexture() && !manifest.excludes(pass.layer()))
-        {
-            pass.incrementDirtyCount();
-        }
-    }
 }
-
-//void
-//TileNode::refreshStaleLayers()
-//{
-//    // scan the render model and look for any samplers whose revision
-//    // is out of sync with its corresponding source layer. Queue these
-//    // layers for a data refresh.
-//    std::set<UID> uids;
-//    for(int i = 0; i<_renderModel._passes.size(); ++i)
-//    {
-//        RenderingPass& pass = _renderModel._passes[i];
-//        if (pass.layer && pass.isStale())
-//        {
-//            uids.insert(pass.sourceUID());
-//        }
-//    }
-//    for(int i=0; i<_renderModel._sharedSamplers.size(); ++i)
-//    {
-//        const Sampler& sampler = _renderModel._sharedSamplers[i];
-//        
-//    }
-//}
 
 void
 TileNode::releaseGLObjects(osg::State* state) const
@@ -717,15 +622,20 @@ TileNode::createChildren(EngineContext* context)
 }
 
 void
-TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
+TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
 {
     bool newElevationData = false;
     const RenderBindings& bindings = _context->getRenderBindings();
+    RenderingPasses& myPasses = _renderModel._passes;
+    const CreateTileManifest& manifest = request->getManifest();
+    vector_set<UID> uidsLoaded;
 
     // First deal with the rendering passes (for color data):
     const SamplerBinding& color = bindings[SamplerBinding::COLOR];
     if (color.isActive())
     {
+        // loop over all the layers included in the new data model and
+        // add them to our render model (or update them if they already exist)
         for(TerrainTileColorLayerModelVector::const_iterator i = model->colorLayers().begin();
             i != model->colorLayers().end();
             ++i)
@@ -738,6 +648,7 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
                     RenderingPass* pass = _renderModel.getPass(model->getImageLayer()->getUID());
                     if (!pass)
                     {
+                        // Pass didn't exist here, so add it now.
                         pass = &_renderModel.addPass();
                         pass->setLayer(model->getLayer());
 
@@ -749,10 +660,7 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
                         }
                     }
                     pass->setSampler(SamplerBinding::COLOR, model->getTexture(), *model->getMatrix(), model->getRevision());
-
-                    // we updated a layer that was requested in the task, so it make a note of that:
-                    pass->decrementDirtyCount();
-
+                    
                     // check to see if this data requires an image update traversal.
                     if (_imageUpdatesActive == false)
                     {
@@ -768,6 +676,8 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
                             }
                         }
                     }
+
+                    uidsLoaded.insert(model->getLayer()->getUID());
                 }
             }
 
@@ -783,56 +693,127 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
                         pass->setLayer(model->getLayer());
                     }
 
-                    // we updated a layer that was requested in the task, so it make a note of that:
-                    pass->decrementDirtyCount();
+                    uidsLoaded.insert(model->getLayer()->getUID());
+                }
+            }
+        }
+
+        // Next loop over all the passes that we OWN, we asked for, but we didn't get.
+        // That means they no longer exist and we need to remove them or make them inherit.
+        for(int p=0; p<myPasses.size(); ++p)
+        {
+            RenderingPass& myPass = myPasses[p];
+
+            if (myPass.ownsTexture() && 
+                manifest.includes(myPass.layer()) &&
+                !uidsLoaded.contains(myPass.layer()->getUID()))
+            {
+                OE_DEBUG << LC << "Releasing orphaned layer " << myPass.layer()->getName() << std::endl;
+
+                myPass.releaseGLObjects(NULL);
+                
+                bool deletePass = true;
+                TileNode* parent = getParentTile();
+                if (parent)
+                {
+                    const RenderingPass* parentPass = parent->_renderModel.getPass(myPass.sourceUID());
+                    if (parentPass)
+                    {
+                        myPass.inheritFrom(*parentPass, scaleBias[_key.getQuadrant()]);
+                        deletePass = false;
+                    }
+                }
+
+                if (deletePass)
+                {
+                    myPasses.erase(myPasses.begin() + p);
+                    --p;
                 }
             }
         }
     }
 
-    // Elevation:
+    // Elevation data:
     const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];
-    if (elevation.isActive() && model->elevationModel().valid() && model->elevationModel()->getTexture())
+    if (elevation.isActive())
     {
-        osg::Texture* tex = model->elevationModel()->getTexture();
-        int revision = model->elevationModel()->getRevision();
+        if (model->elevationModel().valid() && model->elevationModel()->getTexture())
+        {
+            osg::Texture* tex = model->elevationModel()->getTexture();
+            int revision = model->elevationModel()->getRevision();
 
-        _renderModel.setSharedSampler(SamplerBinding::ELEVATION, tex, revision);
+            _renderModel.setSharedSampler(SamplerBinding::ELEVATION, tex, revision);
 
-        setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
+            setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
 
-        newElevationData = true;
+            newElevationData = true;
+        }
+
+        else if (
+            manifest.includesElevation() && 
+            _renderModel._sharedSamplers[SamplerBinding::ELEVATION].ownsTexture())
+        {
+            // We OWN elevation data, requested new data, and didn't get any.
+            // That means it disappeared and we need to delete what we have.
+            inheritSharedSampler(SamplerBinding::ELEVATION);
+            newElevationData = true;
+        }
     } 
 
     // Normals:
     const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];
-    if (normals.isActive() && model->normalModel().valid() && model->normalModel()->getTexture())
+    if (normals.isActive())
     {
-        osg::Texture* tex = model->normalModel()->getTexture();
-        int revision = model->normalModel()->getRevision();
-
-        if (_context->options().normalizeEdges() == true)
+        if (model->normalModel().valid() && model->normalModel()->getTexture())
         {
-            // keep the normal map around because we might update it later
-            tex->setUnRefImageDataAfterApply(false);
+            osg::Texture* tex = model->normalModel()->getTexture();
+            int revision = model->normalModel()->getRevision();
+
+            if (_context->options().normalizeEdges() == true)
+            {
+                // keep the normal map around because we might update it later
+                tex->setUnRefImageDataAfterApply(false);
+            }
+
+            _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
+            updateNormalMap();
         }
 
-        _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
-
-        updateNormalMap();
+        // If we OWN normal data, requested new data, and didn't get any,
+        // that means it disappeared and we need to delete what we have:
+        else if (
+            manifest.includesElevation() && // not a typo, check for elevation
+            _renderModel._sharedSamplers[SamplerBinding::NORMAL].ownsTexture())
+        {
+            inheritSharedSampler(SamplerBinding::NORMAL);
+            updateNormalMap();
+        }
     }
 
     // Land Cover:
     const SamplerBinding& landCover = bindings[SamplerBinding::LANDCOVER];
-    if (landCover.isActive() && model->landCoverModel().valid() && model->landCoverModel()->getTexture())
+    if (landCover.isActive())
     {
-        osg::Texture* tex = model->landCoverModel()->getTexture();
-        int revision = model->landCoverModel()->getRevision();
+        if (model->landCoverModel().valid() && model->landCoverModel()->getTexture())
+        {
+            osg::Texture* tex = model->landCoverModel()->getTexture();
+            int revision = model->landCoverModel()->getRevision();
         
-        _renderModel.setSharedSampler(SamplerBinding::LANDCOVER, tex, revision);
+            _renderModel.setSharedSampler(SamplerBinding::LANDCOVER, tex, revision);
+        }
+
+        else if (
+            manifest.includesLandCover() &&
+            _renderModel._sharedSamplers[SamplerBinding::LANDCOVER].ownsTexture())
+        {
+            // We OWN landcover data, requested new data, and didn't get any.
+            // That means it disappeared and we need to delete what we have.
+            inheritSharedSampler(SamplerBinding::LANDCOVER);
+        }
     }
 
     // Other Shared Layers:
+    uidsLoaded.clear();
     for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
     {
         TerrainTileImageLayerModel* layerModel = model->sharedLayers()[i].get();
@@ -854,7 +835,20 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
                 osg::Texture* tex = layerModel->getTexture();
                 int revision = layerModel->getRevision();
                 _renderModel.setSharedSampler(bindingIndex, tex, revision);
+                uidsLoaded.insert(uid);
             }
+        }
+    }
+
+    // Look for shared layers we need to remove because we own them,
+    // requested them, and didn't get updates for them:
+    for(unsigned i=SamplerBinding::SHARED; i<bindings.size(); ++i)
+    {
+        if (bindings[i].isActive() && 
+            manifest.includes(bindings[i].sourceUID().get()) &&
+            !uidsLoaded.contains(bindings[i].sourceUID().get()))
+        {
+            inheritSharedSampler(i);
         }
     }
 
@@ -865,20 +859,6 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
         TerrainTilePatchLayerModel* layerModel = model->patchLayers()[i].get();
     }
 #endif
-
-    // Now scan for dirty color passes and remove them.
-    // This will happen when refreshLayers is called for a layer, but the layer
-    // does not receive any new data in the merge.
-    for (int p = 0; p < _renderModel._passes.size(); ++p)
-    {
-        const RenderingPass& pass = _renderModel._passes[p];
-        if (pass.isDirty())
-        {
-            //OE_INFO << "Tile " << _key.str() << " deleting dirty pass " << pass.layer()->getName() << std::endl;
-            _renderModel._passes.erase(_renderModel._passes.begin() + p);
-            --p;
-        }
-    }    
 
     // Propagate changes we made down to this tile's children.
     if (_childrenReady)
@@ -906,6 +886,23 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* originator)
         _loadQueue.pop();
     _loadsInQueue = _loadQueue.size();
     _loadQueue.unlock();
+}
+
+void TileNode::inheritSharedSampler(int binding)
+{
+    TileNode* parent = getParentTile();
+    if (parent)
+    {
+        TileRenderModel& parentModel = parent->_renderModel;
+        Sampler& mySampler = _renderModel._sharedSamplers[binding];
+        mySampler = parentModel._sharedSamplers[binding];
+        if (mySampler._texture.valid())
+            mySampler._matrix.preMult(scaleBias[_key.getQuadrant()]);
+    }
+    else
+    {
+        _renderModel.clearSharedSampler(binding);
+    }
 }
 
 void TileNode::loadChildren()
@@ -941,7 +938,7 @@ TileNode::refreshSharedSamplers(const RenderBindings& bindings)
     {
         if (bindings[i].isActive() == false)
         {
-            _renderModel._sharedSamplers[i]._texture = 0L;
+            _renderModel.clearSharedSampler(i);
         }
     }
 }
@@ -958,64 +955,81 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     // which quadrant is this tile in?
     unsigned quadrant = getKey().getQuadrant();
 
-    // Count the number of inherited samplers so we know when to stop. If none of the
-    // samplers in this tile inherit from the parent, there is no need to continue
-    // down the Tile tree.
+    // Count the number of changes we make so we can stop early if it's OK.
     unsigned changes = 0;
 
     RenderingPasses& parentPasses = parent->_renderModel._passes;
+    RenderingPasses& myPasses = _renderModel._passes;
 
-    for (unsigned p = 0; p<parentPasses.size(); ++p)
+    // Delete any inherited pass whose parent pass no longer exists:
+    for(int p=0; p<myPasses.size(); ++p)
+    {
+        RenderingPass& myPass = myPasses[p];
+        if (myPass.inheritsTexture())
+        {
+            RenderingPass* myParentPass = parent->_renderModel.getPass(myPass.sourceUID());
+            if (myParentPass == NULL)
+            {
+                //OE_WARN << _key.str() << " removing orphaned pass " << myPass.sourceUID() << std::endl;
+                myPasses.erase(myPasses.begin()+p);
+                --p;
+                ++changes;
+            }
+        }
+    }
+
+    // Look for passes in the parent that need to be inherited by this node.
+    for (unsigned p=0; p<parentPasses.size(); ++p)
     {
         const RenderingPass& parentPass = parentPasses[p];
 
+        // the corresponsing pass in this node:
         RenderingPass* myPass = _renderModel.getPass(parentPass.sourceUID());
 
         // Inherit the samplers for this pass.
         if (myPass)
         {
-            Samplers& samplers = myPass->samplers();
-            for (unsigned s = 0; s < samplers.size(); ++s)
+
+            // Handle the main color:
+            if (bindings[SamplerBinding::COLOR].isActive())
             {
-                Sampler& mySampler = samplers[s];
-                
-                // the color-parent gets special treatment, since it is not included
-                // in the TileModel (rather it is always derived here).
-                if (s == SamplerBinding::COLOR_PARENT && bindings[SamplerBinding::COLOR_PARENT].isActive())
+                Sampler& mySampler = myPass->samplers()[SamplerBinding::COLOR];
+                if (mySampler.inheritsTexture())
                 {
-                    const Samplers& parentSamplers = parentPass.samplers();
-                    const Sampler& parentSampler = parentSamplers[SamplerBinding::COLOR];
-                    osg::Matrixf newMatrix = parentSampler._matrix;
-                    newMatrix.preMult(scaleBias[quadrant]);
-
-                    // Did something change?
-                    if (mySampler._texture.get() != parentSampler._texture.get() ||
-                        mySampler._matrix != newMatrix)
-                    {
-                        if (parentSampler._texture.valid() && passInLegalRange(parentPass))
-                        {
-                            // set the parent-color texture to the parent's color texture
-                            // and scale/bias the matrix.
-                            mySampler._texture = parentSampler._texture.get();
-                            mySampler._matrix = newMatrix;
-                            mySampler._revision = parentSampler._revision;
-                        }
-                        else
-                        {
-                            // parent has no color texture? Then set our parent-color
-                            // equal to our normal color texture.
-                            mySampler = samplers[SamplerBinding::COLOR];
-                        }
-                        ++changes;
-                    }
+                    mySampler.inheritFrom(parentPass.samplers()[SamplerBinding::COLOR], scaleBias[quadrant]);
+                    ++changes;
                 }
+            }
 
-                // all other samplers just need to inherit from their parent 
-                // and scale/bias their texture matrix.
-                else if (mySampler.inheritsTexture())
+            // Handle the parent color. This is special case -- the parent
+            // sampler is always set to the parent's color sampler with a
+            // one-time scale/bias.
+            if (bindings[SamplerBinding::COLOR_PARENT].isActive())
+            {
+                Sampler& mySampler = myPass->samplers()[SamplerBinding::COLOR_PARENT];
+                const Sampler& parentColorSampler = parentPass.samplers()[SamplerBinding::COLOR];
+                osg::Matrixf newMatrix = parentColorSampler._matrix;
+                newMatrix.preMult(scaleBias[quadrant]);
+
+                // Did something change?
+                if (mySampler._texture.get() != parentColorSampler._texture.get() ||
+                    mySampler._matrix != newMatrix ||
+                    mySampler._revision != parentColorSampler._revision)
                 {
-                    mySampler = parentPass.samplers()[s];
-                    mySampler._matrix.preMult(scaleBias[quadrant]);
+                    if (parentColorSampler._texture.valid() && passInLegalRange(parentPass))
+                    {
+                        // set the parent-color texture to the parent's color texture
+                        // and scale/bias the matrix.
+                        mySampler._texture = parentColorSampler._texture.get();
+                        mySampler._matrix = newMatrix;
+                        mySampler._revision = parentColorSampler._revision;
+                    }
+                    else
+                    {
+                        // parent has no color texture? Then set our parent-color
+                        // equal to our normal color texture.
+                        mySampler = myPass->samplers()[SamplerBinding::COLOR];
+                    }
                     ++changes;
                 }
             }
@@ -1025,46 +1039,33 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             // Pass exists in the parent node, but not in this node, so add it now.
             if (passInLegalRange(parentPass))
             {
-                myPass = &_renderModel.copyPass(parentPass);
-                //*myPass = parentPass;
-
-                for (unsigned s = 0; s < myPass->samplers().size(); ++s)
-                {
-                    Sampler& sampler = myPass->samplers()[s];
-                    sampler._matrix.preMult(scaleBias[quadrant]);
-                }
+                myPass = &_renderModel.addPass();
+                myPass->inheritFrom(parentPass, scaleBias[quadrant]);
                 ++changes;
             }
         }
     }
 
-    // Handle all the shared samplers (elevation, normal, etc.)
+    // Update all the shared samplers (elevation, normal, etc.)
     const Samplers& parentSharedSamplers = parent->_renderModel._sharedSamplers;
     Samplers& mySharedSamplers = _renderModel._sharedSamplers;
-    for (unsigned s = 0; s<mySharedSamplers.size(); ++s)
+
+    for (unsigned binding=0; binding<parentSharedSamplers.size(); ++binding)
     {        
-        Sampler& mySampler = mySharedSamplers[s];
+        Sampler& mySampler = mySharedSamplers[binding];
 
         if (mySampler.inheritsTexture())
         {
-            mySampler = parentSharedSamplers[s];
-            mySampler._matrix.preMult(scaleBias[quadrant]);
+            mySampler.inheritFrom(parentSharedSamplers[binding], scaleBias[quadrant]);
             ++changes;
 
             // Update the local elevation raster cache (for culling and intersection testing).
-            if (s == SamplerBinding::ELEVATION && mySampler._texture.valid())
+            if (binding == SamplerBinding::ELEVATION)
             {
-                this->setElevationRaster(mySampler._texture->getImage(0), mySampler._matrix);
+                osg::Image* raster = mySampler._texture.valid() ? mySampler._texture->getImage(0) : NULL;
+                this->setElevationRaster(raster, mySampler._matrix);
             }
         }
-    }
-
-    // Handle any shared samplers that exist in the parent but not here:
-    for (unsigned s = mySharedSamplers.size(); s < parentSharedSamplers.size(); ++s)
-    {
-        mySharedSamplers[s] = parentSharedSamplers[s];
-        mySharedSamplers[s]._matrix.preMult(scaleBias[quadrant]);
-        ++changes;
     }
 
     if (changes > 0)
@@ -1080,10 +1081,6 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                     child->refreshInheritedData(this, bindings);
             }
         }
-    }
-    else
-    {
-        //OE_INFO << LC << _key.str() << ": refreshInheritedData, stopped short.\n";
     }
 }
 

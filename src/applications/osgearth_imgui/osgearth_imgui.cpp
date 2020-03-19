@@ -46,9 +46,10 @@ using namespace osgEarth::Contrib;
 class ImGuiDemo : public OsgImGuiHandler
 {
 public:
-    ImGuiDemo(MapNode* mapNode, EarthManipulator* earthManip) :
+    ImGuiDemo(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
         _mapNode(mapNode),
-        _earthManip(earthManip)        
+        _earthManip(earthManip),
+        _view(view)
     {        
     }
 
@@ -57,12 +58,13 @@ protected:
     {
         // ImGui code goes here...
         //ImGui::ShowDemoWindow();        
-        _layers.draw(_mapNode.get());
+        _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
         _search.draw(_earthManip.get());
     }
 
     osg::ref_ptr< MapNode > _mapNode;
     osg::ref_ptr<EarthManipulator> _earthManip;
+    osg::ref_ptr<osgViewer::View> _view;
     LayersGUI _layers;
     SearchGUI _search;        
 };
@@ -121,7 +123,7 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::findMapNode(node);
         if (mapNode)
         {
-            viewer.getEventHandlers().push_front(new ImGuiDemo(mapNode, manip));
+            viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
         }
 
         viewer.setSceneData(node);

@@ -346,10 +346,13 @@ ProgramRepo::linkProgram(
 
                 osg::Program::ProgramBinary* binary = new osg::Program::ProgramBinary();
                 binary->setFormat(format);
+                // Assign copies buffer
                 binary->assign(length - sizeof(GLenum), buffer);
                 program->setProgramBinary(binary);
                 readFromCache = true;
                 OE_DEBUG << LC << "Read a program binary from the cache (" << programCacheName << ")" << std::endl;
+
+                delete[] buffer;
             }
             else
             {
@@ -978,7 +981,7 @@ VirtualProgram::VirtualProgram(unsigned mask) :
         s_disableVPRelease = true;
     }
 
-    // a template object to hold program data (so we don't have to dupliate all the 
+    // a template object to hold program data (so we don't have to duplicate all the 
     // osg::Program methods..)
     _template = new osg::Program();
 

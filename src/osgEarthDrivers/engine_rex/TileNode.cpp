@@ -171,8 +171,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // and scale/biasing the matrices.
     if (parent)
     {
-        //refreshInheritedData(parent, context->getRenderBindings());unsigned quadrant = getKey().getQuadrant();
-
         unsigned quadrant = getKey().getQuadrant();
 
         const RenderBindings& bindings = context->getRenderBindings();
@@ -726,44 +724,43 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
             ++i)
         {
             TerrainTileImageLayerModel* model = dynamic_cast<TerrainTileImageLayerModel*>(i->get());
-            if (model)
+            if (model && model->getLayer() && model->getTexture())
             {
-                if (model->getTexture())
+                RenderingPass* pass = _renderModel.getPass(model->getLayer()->getUID());
+                bool isNewPass = (pass == NULL);
+
+                if (isNewPass)
                 {
-                    RenderingPass* pass = _renderModel.getPass(model->getImageLayer()->getUID());
-                    if (!pass)
-                    {
-                        // Pass didn't exist here, so add it now.
-                        pass = &_renderModel.addPass();
-                        pass->setLayer(model->getLayer());
-
-                        // This is a new pass that just showed up at this LOD
-                        // Since it just arrived at this LOD, make the parent the same as the color.
-                        if (bindings[SamplerBinding::COLOR_PARENT].isActive())
-                        {
-                            pass->setSampler(SamplerBinding::COLOR_PARENT, model->getTexture(), *model->getMatrix(), model->getRevision());
-                        }
-                    }
-                    pass->setSampler(SamplerBinding::COLOR, model->getTexture(), *model->getMatrix(), model->getRevision());
-                    
-                    // check to see if this data requires an image update traversal.
-                    if (_imageUpdatesActive == false)
-                    {
-                        osg::Texture* texture = model->getTexture();
-                        for(unsigned i=0; i<texture->getNumImages(); ++i)
-                        {
-                            const osg::Image* image = texture->getImage(i);
-                            if (image && image->requiresUpdateCall())
-                            {
-                                ADJUST_UPDATE_TRAV_COUNT(this, +1);
-                                _imageUpdatesActive = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    uidsLoaded.insert(model->getLayer()->getUID());
+                    // Pass didn't exist here, so add it now.
+                    pass = &_renderModel.addPass();
+                    pass->setLayer(model->getLayer());
                 }
+
+                pass->setSampler(SamplerBinding::COLOR, model->getTexture(), *model->getMatrix(), model->getRevision());
+
+                // If this is a new rendering pass, just copy the color into the color-parent.
+                if (isNewPass && bindings[SamplerBinding::COLOR_PARENT].isActive())
+                {
+                    pass->samplers()[SamplerBinding::COLOR_PARENT] = pass->samplers()[SamplerBinding::COLOR];
+                }
+                    
+                // check to see if this data requires an image update traversal.
+                if (_imageUpdatesActive == false)
+                {
+                    osg::Texture* texture = model->getTexture();
+                    for(unsigned i=0; i<texture->getNumImages(); ++i)
+                    {
+                        const osg::Image* image = texture->getImage(i);
+                        if (image && image->requiresUpdateCall())
+                        {
+                            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+                            _imageUpdatesActive = true;
+                            break;
+                        }
+                    }
+                }
+
+                uidsLoaded.insert(pass->sourceUID());
             }
 
             else // non-image color layer (like splatting, e.g.)
@@ -778,26 +775,30 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
                         pass->setLayer(model->getLayer());
                     }
 
-                    uidsLoaded.insert(model->getLayer()->getUID());
+                    uidsLoaded.insert(pass->sourceUID());
                 }
             }
         }
 
         // Next loop over all the passes that we OWN, we asked for, but we didn't get.
-        // That means they no longer exist and we need to remove them or make them inherit.
+        // That means they no longer exist at this LOD, and we need to convert them
+        // into inherited samplers (or delete them entirely)
         for(int p=0; p<myPasses.size(); ++p)
         {
             RenderingPass& myPass = myPasses[p];
 
             if (myPass.ownsTexture() && 
                 manifest.includes(myPass.layer()) &&
-                !uidsLoaded.contains(myPass.layer()->getUID()))
+                !uidsLoaded.contains(myPass.sourceUID()))
             {
                 OE_DEBUG << LC << "Releasing orphaned layer " << myPass.layer()->getName() << std::endl;
 
-                myPass.releaseGLObjects(NULL);
+                // release the GL objects associated with this pass.
+                // taking this out...can cause "flashing" issues
+                //myPass.releaseGLObjects(NULL);
                 
                 bool deletePass = true;
+
                 TileNode* parent = getParentTile();
                 if (parent)
                 {

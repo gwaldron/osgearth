@@ -48,6 +48,15 @@ namespace osgEarth { namespace REX
         Sampler(const Sampler& rhs)
             : _texture(rhs._texture), _matrix(rhs._matrix), _revision(rhs._revision) { }
 
+        ~Sampler()
+        {
+            // Probably unnecessary since I think OSG does this...?
+            if (_texture.valid() && _texture->referenceCount() == 1)
+            {
+                _texture->releaseGLObjects(NULL);
+            }
+        }
+
         // pointer to the sampler texture data
         osg::ref_ptr<osg::Texture> _texture;
 

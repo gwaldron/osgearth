@@ -1205,8 +1205,15 @@ GeoExtent::expandToInclude(double x, double y)
 bool
 GeoExtent::expandToInclude(const GeoExtent& rhs)
 {
-    if (rhs.isInvalid() || !_srs.valid())
+    if (rhs.isInvalid())
         return false;
+
+    // no SRS? Just assign.
+    if (!_srs.valid())
+    {
+        *this = rhs;
+        return true;
+    }
 
     if ( !rhs.getSRS()->isHorizEquivalentTo( _srs.get() ) )
     {

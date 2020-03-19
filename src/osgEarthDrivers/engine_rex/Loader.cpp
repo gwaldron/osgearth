@@ -443,7 +443,9 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                         _requests.erase( i++ );
                     }
 
-                    // Discard requests that are no longer required:
+                    // Discard requests from tiles that have not pinged the loader in the last couple frames.
+                    // This typically means a request was initiated, but then abandoned when the tile
+                    // went out of view.
                     else if ( !req->isMerging() && frameDiff > 2 )
                     {
                         OE_DEBUG << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be serviced" << std::endl; 
@@ -454,16 +456,18 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                         _requests.erase( i++ );
                     }
 
+#if 0
                     // Prevent a request from getting stuck in the merge queue:
                     else if ( req->isMerging() && frameDiff > 1800 )
                     {
-                        OE_DEBUG << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
+                        OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
                         //req->setState( Request::ABANDONED );
                         req->setState(Request::IDLE);
                         if ( REPORT_ACTIVITY )
                             Registry::instance()->endActivity( req->getName() );
                         _requests.erase( i++ );
                     }
+#endif
 
                     else // still valid.
                     {

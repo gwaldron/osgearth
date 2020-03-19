@@ -233,6 +233,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         float getMaximumScreenSpaceError() const;
         void setMaximumScreenSpaceError(float maximumScreenSpaceError);
 
+        double getSSEDenominator() const;
 
         void touchTile(ThreeDTileNode* node);
 
@@ -298,6 +299,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::ref_ptr< VirtualProgram> _debugVP;
 
         unsigned int _lastExpiredFrame;
+
+        double _sseDenominator;
 
         std::string _authorizationHeader;
 

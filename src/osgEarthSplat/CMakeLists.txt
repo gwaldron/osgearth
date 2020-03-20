@@ -37,6 +37,7 @@ set(TARGET_IN
 set(TARGET_SRC
     Coverage.cpp
     GroundCover.cpp
+    GroundCoverFeatureGenerator.cpp
     GroundCoverLayer.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
@@ -51,6 +52,7 @@ set(LIB_PUBLIC_HEADERS
     Coverage
 	Export
     GroundCover
+    GroundCoverFeatureGenerator
     GroundCoverLayer
     NoiseTextureFactory
     RoadSurfaceLayer

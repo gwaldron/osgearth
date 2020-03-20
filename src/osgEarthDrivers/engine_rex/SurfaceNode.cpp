@@ -261,10 +261,7 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
         return;
 
     // communicate the raster to the drawable:
-    if ( raster )
-    {
-        _drawable->setElevationRaster( raster, scaleBias );
-    }
+    _drawable->setElevationRaster( raster, scaleBias );
 
     // next compute the bounding box in local space:
     const osg::BoundingBox& box = _drawable->getBoundingBox();

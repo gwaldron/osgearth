@@ -1131,8 +1131,6 @@ RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
     if (layer && layer->getEnabled())
     {
-        //refresh();
-
         std::vector<const Layer*> layers;
         layers.push_back(layer);
         invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
@@ -1145,9 +1143,9 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layer)
     // only need to refresh is the elevation layer is visible.
     if (layer)
     {
-        //refresh();
-        PurgeOrphanedLayers updater(getMap(), _renderBindings);
-        _terrain->accept(updater);
+        std::vector<const Layer*> layers;
+        layers.push_back(layer);
+        invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
     }
 }
 
@@ -1156,8 +1154,6 @@ RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layer)
 {
     if (layer && layer->getEnabled() && layer->getVisible())
     {
-        //refresh();
-
         std::vector<const Layer*> layers;
         layers.push_back(layer);
         invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);

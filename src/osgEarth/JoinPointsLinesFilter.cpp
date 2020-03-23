@@ -31,6 +31,7 @@
 #include <osgEarth/ECEF>
 #include <map>
 #include <algorithm>
+#include <cmath>
 
 #define LC "[JointPointsLines FeatureFilter] "
 
@@ -46,38 +47,9 @@ using namespace osgEarth;
    linestring at the point.
  */
 
-osg::Vec2d quantize(const osg::Vec2d& v)
-{
-    osg::Vec2d out;
-    out.x() = (int)v.x();
-    out.y() = (int)v.y();
-    return out;
-}
-
-double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
+double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
                                 FilterContext& context)
 {
-#if 1
-    osg::Vec2d in, out;
-    if (previous.x() != DBL_MAX)
-    {
-        in = point - osg::Vec2d(previous.x(), previous.y());
-        in.normalize();
-    }
-    if (next.x() != DBL_MAX)
-    {
-        out = osg::Vec2d(next.x(), next.y()) - point;
-        out.normalize();
-    }
-    osg::Vec2d direction = in + out;
-    direction.normalize();
-    double heading = std::atan2(-direction.x(), direction.y());
-    while (heading < -osg::PI_2) heading += osg::PI;
-    while (heading >= osg::PI_2) heading -= osg::PI;
-    return osg::RadiansToDegrees(heading);
-
-#else
-
     const SpatialReference* targetSRS = 0L;
     if (context.getSession()->isMapGeocentric())
     {
@@ -87,7 +59,7 @@ double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previ
     {
         targetSRS = context.profile()->getSRS()->getGeocentricSRS();
     }
-    osg::Vec3d point3d(point, 0.0);
+    osg::Vec3d point3d(point);
 
     osg::Matrixd orientation;
     osg::Vec3d world3d;
@@ -129,7 +101,48 @@ double calculateGeometryHeading(const osg::Vec2d& point, const osg::Vec3d& previ
     if (heading < -osg::PI_2) heading += osg::PI;
     if (heading >= osg::PI_2) heading -= osg::PI;
     return osg::RadiansToDegrees(heading);
-#endif
+}
+
+double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
+                                const SpatialReference* sourceSRS,
+                                const SpatialReference* targetSRS)
+{
+    osg::Vec3d point3d(point);
+
+    osg::Matrixd orientation;
+    osg::Vec3d world3d;
+
+    ECEF::transformAndGetRotationMatrix(point3d, sourceSRS, world3d, targetSRS, orientation);
+    // XXX OSG bug weirdness, fixed in OSG next
+    osg::Matrixd toLocal(orientation);
+    toLocal.transpose3x3(toLocal);
+    osg::Vec2d in;
+    osg::Vec2d out;
+    if (previous.x() != DBL_MAX)
+    {
+        osg::Vec3d prevWorld;
+        ECEF::transformAndLocalize(previous, sourceSRS, prevWorld, targetSRS);
+        osg::Vec3d inWorld = world3d - prevWorld;
+        osg::Vec3d inLocal = inWorld * toLocal;
+        in.x() = inLocal.x();
+        in.y() = inLocal.y();
+        in.normalize();
+    }
+    if (next.x() != DBL_MAX)
+    {
+        osg::Vec3d nextWorld;
+        ECEF::transformAndLocalize(next, sourceSRS, nextWorld, targetSRS);
+        osg::Vec3d outWorld = nextWorld - world3d;
+        osg::Vec3d outLocal = outWorld * toLocal;
+        out.x() = outLocal.x();
+        out.y() = outLocal.y();
+        out.normalize();
+    }
+    osg::Vec2d direction = in + out;
+    double heading = std::atan2(-direction.x(), direction.y());
+    if (heading < -osg::PI_2) heading += osg::PI;
+    if (heading >= osg::PI_2) heading -= osg::PI;
+    return osg::RadiansToDegrees(heading);
 }
 
 Status JoinPointsLinesFilter::initialize(const osgDB::Options* readOptions)
@@ -178,8 +191,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
             for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
             {
                 const osg::Vec3d& pt = *i;
-                osg::Vec2d key = quantize(osg::Vec2d(pt.x(), pt.y()));
-                pointMap[key] = PointEntry(feature);
+                pointMap[pt] = PointEntry(feature);
             }
         }
     }
@@ -192,28 +204,50 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
         const int size = geom->size();
         for (int i = 0; i < size; ++i)
         {
-            osg::Vec2d key = quantize(osg::Vec2d((*geom)[i].x(), (*geom)[i].y()));
+            osg::Vec3d key = (*geom)[i];
             PointMap::iterator ptItr = pointMap.find(key);
+            if (ptItr == pointMap.end() && createPointFeatures().get())
+            {
+                std::pair<PointMap::iterator, bool> ret
+                    = pointMap.insert(PointMap::value_type(key, PointEntry(0L)));
+                ptItr = ret.first;
+            }
             if (ptItr != pointMap.end())
             {
                 PointEntry &point = ptItr->second;
                 point.lineFeatures.push_back(feature);
                 if (i > 0)
                 {
-                    point.previous = osg::Vec3d((*geom)[i - 1].x(), (*geom)[i - 1].y(), 0.0);
+                    point.previous = (*geom)[i - i];
             
                 }
                 if (i < size - 1)
                 {
-                    point.next = osg::Vec3d((*geom)[i + 1].x(), (*geom)[i + 1].y(), 0.0);
+                    point.next = (*geom)[i + 1];
                 }
             }
         }
+    }
+    const SpatialReference* targetSRS = 0L;
+    if (context.getSession()->isMapGeocentric())
+    {
+        targetSRS = context.getSession()->getMapSRS();
+    }
+    else
+    {
+        targetSRS = context.profile()->getSRS()->getGeocentricSRS();
     }
     for(PointMap::iterator i = pointMap.begin(); i != pointMap.end(); ++i)
     {        
         PointEntry& entry = i->second;
         Feature* pointFeature = entry.pointFeature.get();
+        if (!pointFeature)
+        {
+            Point* geom = new Point;
+            geom->set(i->first);
+            pointFeature = new Feature(geom, entry.lineFeatures.front()->getSRS(), Style(), 0L);
+            input.push_back(pointFeature);
+        }
         for(FeatureList::iterator i = entry.lineFeatures.begin(); i != entry.lineFeatures.end(); ++i)
         {
             Feature* lineFeature = i->get();
@@ -228,7 +262,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
             }
         }
         pointFeature->set("heading", calculateGeometryHeading(i->first, entry.previous, entry.next,
-                                                              context));
+                                                              context.profile()->getSRS(), targetSRS));
     }
 
     return context;

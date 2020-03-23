@@ -219,11 +219,9 @@ GroundCoverFeatureGenerator::initialize()
             i != elevLayers.end();
             ++i)
         {
-            if (i->get()->getEnabled() && i->get()->open().isError())
-            {
-                _status = i->get()->getStatus();
+            _status = i->get()->open();
+            if (_status.isError())
                 return;
-            }
         }
     }
 

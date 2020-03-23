@@ -155,7 +155,8 @@ namespace osgEarth { namespace REX
         bool _morphTerrainSupported;
 
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
-        LayerExtentVector _cachedLayerExtents;
+        //typedef UnorderedMap<UID, LayerExtent> LayerExtentMap; // fast_map?
+        LayerExtentMap _cachedLayerExtents;
         bool _cachedLayerExtentsComputeRequired;
 
         // node registry is shared across all threads.

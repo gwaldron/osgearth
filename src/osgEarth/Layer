@@ -114,8 +114,8 @@ namespace osgEarth
     //! Base class for layer property callbacks
     struct LayerCallback : public osg::Referenced
     {
-        //! Called after Layer::setEnabled changes the enabled state
-        virtual void onEnabledChanged(class Layer* layer) { }
+        virtual void onOpen(class Layer*) { }
+        virtual void onClose(class Layer*) { }
         typedef void (LayerCallback::*MethodPtr)(class Layer* layer);
     };
 
@@ -235,6 +235,10 @@ namespace osgEarth
 
         //! Unique caching ID for this layer.
         //! Only set this before opening the layer or adding to a map.
+        //! WARNING: You should be Very Careful when using this. The Layer will
+        //! automatically generate a cache ID that is sufficient most of the time.
+        //! Setting your own cache ID will require manual cache invalidation when
+        //! you change certain properties. Use are your own risk!
         void setCacheID(const std::string& value);
         virtual std::string getCacheID() const;
 
@@ -384,7 +388,6 @@ namespace osgEarth
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
         Hints _hints;
-        bool _isOpen;
         OpenThreads::Atomic _revision;
         std::string _runtimeCacheId;
         osg::ref_ptr<osgDB::Options> _readOptions;
@@ -434,19 +437,19 @@ namespace osgEarth
     template<typename T, typename V>
     void Layer::setOptionThatRequiresReopen(T& target, const V& value) {
         if (target != value) {
-            bool wasEnabled = isOpen() && getEnabled();
-            if (wasEnabled) setEnabled(false);
+            bool wasOpen = isOpen();
+            if (wasOpen) close();
             target = value;
-            if (wasEnabled) setEnabled(true);
+            if (wasOpen) open();
         }
     }
     template<typename T>
     void Layer::resetOptionThatRequiresReopen(T& target) {
         if (target.isSet()) {
-            bool wasEnabled = isOpen() && getEnabled();
-            if (wasEnabled) setEnabled(false);
+            bool wasOpen = isOpen();
+            if (wasOpen) close();
             target.unset();
-            if (wasEnabled) setEnabled(true);
+            if (wasOpen) open();
         }
     }
 

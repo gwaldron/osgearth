@@ -65,7 +65,7 @@ TerrainRenderData::setup(const Map* map,
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
         Layer* layer = i->get();
-        if (layer->getEnabled())
+        if (layer->isOpen())
         {
             bool render =
                 (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE) ||

@@ -311,10 +311,10 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
     {
         Layer* layer = i->get();
 
-        if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)
+        if (!layer->isOpen())
             continue;
 
-        if (!layer->getEnabled())
+        if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)
             continue;
 
         if (manifest.excludes(layer))
@@ -365,10 +365,10 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
     {
         PatchLayer* layer = i->get();
 
-        if (manifest.excludes(layer))
+        if (!layer->isOpen())
             continue;
 
-        if (!layer->getEnabled())
+        if (manifest.excludes(layer))
             continue;
 
         if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->acceptKey(key))
@@ -412,15 +412,13 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         for(ElevationLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         {
             const ElevationLayer* layer = i->get();
-            if (layer->getEnabled())
-            {
-                if (needElevation == false && !manifest.excludes(layer))
-                {
-                    needElevation = true;
-                }
 
-                combinedRevision += layer->getRevision();
+            if (needElevation == false && !manifest.excludes(layer))
+            {
+                needElevation = true;
             }
+
+            combinedRevision += layer->getRevision();
         }
     }
     if (!needElevation)
@@ -650,7 +648,7 @@ TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
         for(LandCoverLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         {
             const LandCoverLayer* layer = i->get();
-            if (layer->getEnabled())
+            if (layer->isOpen())
             {
                 if (needLandCover == false && !manifest.excludes(layer))
                 {

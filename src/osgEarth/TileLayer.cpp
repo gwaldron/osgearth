@@ -301,7 +301,6 @@ TileLayer::init()
 {
     Layer::init();
 
-    _openCalled = false;
     _writingRequested = false;
     _profileMatchesMapProfile = true;
 
@@ -373,16 +372,15 @@ TileLayer::setUpL2Cache(unsigned minSize)
 Status
 TileLayer::openImplementation()
 {
-    if ( !_openCalled )
-    {
-        _openCalled = true;
+    Status parent = VisibleLayer::openImplementation();
+    if (parent.isError())
+        return parent;
 
-        Status parent = VisibleLayer::openImplementation();
-        if (parent.isError())
-            return parent;
-
+    if (isOpen())
         _cacheBinMetadata.clear();
-    }
+
+    if (_memCache.valid())
+        _memCache->clear();
 
     return getStatus();
 }
@@ -401,10 +399,7 @@ TileLayer::openForWriting()
 
 Status
 TileLayer::closeImplementation()
-{
-    setProfile(0L);
-    _openCalled = false;
-    setStatus(Status());
+{    
     return Layer::closeImplementation();
 }
 
@@ -458,7 +453,7 @@ TileLayer::getMetadataKey(const Profile* profile) const
 CacheBin*
 TileLayer::getCacheBin(const Profile* profile)
 {
-    if ( !_openCalled )
+    if ( !isOpen() )
     {
         OE_WARN << LC << "Illegal- called getCacheBin() before layer is open.. did you call open()?\n";
         return 0L;

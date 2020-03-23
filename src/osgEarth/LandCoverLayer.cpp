@@ -624,7 +624,7 @@ LandCoverLayerVector::populateLandCoverImage(
     // Special case of one image - no compositing necessary.
     if (size() == 1)
     {
-        if (begin()->get()->getEnabled())
+        if (begin()->get()->isOpen())
         {
             GeoImage r = begin()->get()->createImage(key, progress);
             output = r.getImage();
@@ -645,7 +645,7 @@ LandCoverLayerVector::populateLandCoverImage(
     {
         LandCoverLayer* layer = i->get();
 
-        if (!layer->getEnabled())
+        if (!layer->isOpen())
             continue;
 
         GeoImage comp;

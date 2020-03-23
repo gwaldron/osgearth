@@ -37,7 +37,7 @@ namespace osgEarth { namespace REX
     /**
      * A single texture and its matrix.
      * This corresponds to a single SamplerBinding. If the texture matrix 
-     * is non-identity, that means the sampler inherits the texturs from
+     * is non-identity, that means the sampler inherits the texture from
      * another sampler higher up in the scene graph.
      */
     struct Sampler
@@ -47,6 +47,15 @@ namespace osgEarth { namespace REX
 
         Sampler(const Sampler& rhs)
             : _texture(rhs._texture), _matrix(rhs._matrix), _revision(rhs._revision) { }
+
+        ~Sampler()
+        {
+            // Probably unnecessary since I think OSG does this...?
+            if (_texture.valid() && _texture->referenceCount() == 1)
+            {
+                _texture->releaseGLObjects(NULL);
+            }
+        }
 
         // pointer to the sampler texture data
         osg::ref_ptr<osg::Texture> _texture;
@@ -61,13 +70,18 @@ namespace osgEarth { namespace REX
         inline bool ownsTexture() const { return _texture.valid() && _matrix.isIdentity(); }
         inline bool inheritsTexture() const { return !_texture.valid() || !_matrix.isIdentity(); }
         inline unsigned revision() const { return _revision; }
+
+        inline void inheritFrom(const Sampler& rhs, const osg::Matrixf& scaleBias) {
+            *this = rhs;
+            _matrix.preMult(scaleBias);
+        }
     };
     typedef AutoArray<Sampler> Samplers;
 
     /**
      * A single rendering pass for color data.
      * Samplers (one per RenderBinding) specific to one rendering pass of a tile.
-     * These are just the color and color parent samplers.
+     * These are just the COLOR and COLOR_PARENT samplers.
      */
     struct RenderingPass
     {
@@ -76,8 +90,7 @@ namespace osgEarth { namespace REX
             _sourceUID(-1),
             _samplers(SamplerBinding::COLOR_PARENT+1),
             _visibleLayer(0L),
-            _tileLayer(0L),
-            _dirtyCount(0u)
+            _tileLayer(0L)
             { }
 
         RenderingPass(const RenderingPass& rhs) :
@@ -85,8 +98,7 @@ namespace osgEarth { namespace REX
             _samplers(rhs._samplers),
             _layer(rhs._layer),
             _visibleLayer(rhs._visibleLayer),
-            _tileLayer(rhs._tileLayer),
-            _dirtyCount(rhs._dirtyCount)
+            _tileLayer(rhs._tileLayer)
         {
             //nop
         }
@@ -108,23 +120,23 @@ namespace osgEarth { namespace REX
         bool ownsTexture() const { return _samplers[SamplerBinding::COLOR].ownsTexture(); }
         bool inheritsTexture() const { return !ownsTexture(); }
 
-        // dirty count is used to figure out when a rendering pass gets orphaned
-        // and needs to be removed
-        void incrementDirtyCount() { ++_dirtyCount; }
-        void decrementDirtyCount() { if (_dirtyCount > 0) --_dirtyCount; }
-        bool isDirty() const { return _dirtyCount > 0; }
+        void inheritFrom(const RenderingPass& rhs, const osg::Matrix& scaleBias) {
+            *this = rhs;
+            for (unsigned s = 0; s < samplers().size(); ++s)
+                samplers()[s]._matrix.preMult(scaleBias);
+        }
 
         void releaseGLObjects(osg::State* state) const
         {
             for (unsigned s = 0; s<_samplers.size(); ++s)
-                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                if (_samplers[s].ownsTexture())
                     _samplers[s]._texture->releaseGLObjects(state);
         }
 
         void resizeGLObjectBuffers(unsigned size)
         {
             for (unsigned s = 0; s<_samplers.size(); ++s)
-                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                if (_samplers[s].ownsTexture())
                     _samplers[s]._texture->resizeGLObjectBuffers(size);
         }
 
@@ -167,9 +179,6 @@ namespace osgEarth { namespace REX
         
         /** VisibleLayer responsible for this rendering pass (is _layer is a TileLayer) */
         const TileLayer* _tileLayer;
-
-        /** Dirty count - used by TileNode */
-        unsigned _dirtyCount;
     };
 
     /**
@@ -245,11 +254,19 @@ namespace osgEarth { namespace REX
             sampler._revision = sourceRevision;
         }
 
+        void clearSharedSampler(unsigned binding)
+        {
+            Sampler& sampler = _sharedSamplers[binding];
+            sampler._texture = NULL;
+            sampler._matrix.makeIdentity();
+            sampler._revision = 0;
+        }
+
         /** Deallocate GPU objects associated with this model */
         void releaseGLObjects(osg::State* state) const
         {
             for (unsigned s = 0; s<_sharedSamplers.size(); ++s)
-                if (_sharedSamplers[s]._texture.valid() && _sharedSamplers[s]._matrix.isIdentity())
+                if (_sharedSamplers[s].ownsTexture())
                     _sharedSamplers[s]._texture->releaseGLObjects(state);
 
             for (unsigned p = 0; p<_passes.size(); ++p)
@@ -260,7 +277,7 @@ namespace osgEarth { namespace REX
         void resizeGLObjectBuffers(unsigned size)
         {
             for (unsigned s = 0; s<_sharedSamplers.size(); ++s)
-                if (_sharedSamplers[s]._texture.valid() && _sharedSamplers[s]._matrix.isIdentity())
+                if (_sharedSamplers[s].ownsTexture())
                     _sharedSamplers[s]._texture->resizeGLObjectBuffers(size);
 
             for (unsigned p = 0; p<_passes.size(); ++p)

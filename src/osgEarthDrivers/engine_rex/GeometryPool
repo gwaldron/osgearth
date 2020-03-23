@@ -205,6 +205,9 @@ namespace osgEarth { namespace REX
          */
         void clear();
 
+        void resizeGLObjectBuffers(unsigned maxsize);
+        void releaseGLObjects(osg::State* state) const;
+
 
     public: // osg::Node
 

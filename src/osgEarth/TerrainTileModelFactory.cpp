@@ -31,11 +31,24 @@ using namespace osgEarth;
 
 //.........................................................................
 
+CreateTileManifest::CreateTileManifest()
+{
+    _includesElevation = false;
+    _includesLandCover = false;
+}
 
 void CreateTileManifest::insert(const Layer* layer)
 {
     if (layer)
+    {
         _layers[layer->getUID()] = layer->getRevision();
+
+        if (dynamic_cast<const ElevationLayer*>(layer))
+            _includesElevation = true;
+
+        if (dynamic_cast<const LandCoverLayer*>(layer))
+            _includesLandCover = true;
+    }
 }
 
 bool CreateTileManifest::excludes(const Layer* layer) const
@@ -76,6 +89,26 @@ void CreateTileManifest::updateRevisions(const Map* map)
             i->second = layer->getRevision();
         }
     }
+}
+
+bool CreateTileManifest::includes(const Layer* layer) const
+{
+    return includes(layer->getUID());
+}
+
+bool CreateTileManifest::includes(UID uid) const
+{
+    return empty() || _layers.find(uid) != _layers.end();
+}
+
+bool CreateTileManifest::includesElevation() const
+{
+    return empty() || _includesElevation;
+}
+
+bool CreateTileManifest::includesLandCover() const
+{
+    return empty() || _includesLandCover;
 }
 
 //.........................................................................
@@ -720,7 +753,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     layer->applyTextureCompressionMode(tex);
 
-    ImageUtils::activateMipMaps(tex);
+    ImageUtils::generateMipmaps(tex);
     
     return tex;
 }
@@ -794,5 +827,8 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setResizeNonPowerOfTwoHint(false);
     tex->setMaxAnisotropy(1.0f);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
+    ImageUtils::generateMipmaps(tex);
+
     return tex;
 }

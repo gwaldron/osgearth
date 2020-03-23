@@ -198,10 +198,55 @@ ImageLayer::TileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 
 //------------------------------------------------------------------------
 
-OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Shared, shared);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureUniformName, shareTexUniformName);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureMatrixUniformName, shareTexMatUniformName);
+void
+ImageLayer::setShared(bool value)
+{
+    setOptionThatRequiresReopen(options().shared(), value);
+}
+
+bool
+ImageLayer::getShared() const
+{
+    return options().shared().get();
+}
+
+void
+ImageLayer::setCoverage(bool value)
+{
+    setOptionThatRequiresReopen(options().coverage(), value);
+}
+
+bool
+ImageLayer::getCoverage() const
+{
+    return options().coverage().get();
+}
+
+void
+ImageLayer::setSharedTextureUniformName(const std::string& value)
+{
+    if (options().shareTexUniformName() != value)
+        options().shareTexUniformName() = value;
+}
+
+const std::string&
+ImageLayer::getSharedTextureUniformName() const
+{
+    return options().shareTexUniformName().get();
+}
+
+void
+ImageLayer::setSharedTextureMatrixUniformName(const std::string& value)
+{
+    if (options().shareTexMatUniformName() != value)
+        options().shareTexMatUniformName() = value;
+}
+
+const std::string&
+ImageLayer::getSharedTextureMatrixUniformName() const
+{
+    return options().shareTexMatUniformName().get();
+}
 
 ImageLayer*
 ImageLayer::create(const ConfigOptions& options)
@@ -340,6 +385,11 @@ ImageLayer::createImage(const TileKey&    key,
     OE_PROFILING_ZONE_TEXT(key.str());
 
     if (getStatus().isError())
+    {
+        return GeoImage::INVALID;
+    }
+
+    if (getEnabled() == false || isOpen() == false)
     {
         return GeoImage::INVALID;
     }

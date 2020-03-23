@@ -144,6 +144,8 @@ struct App
         std::string id = Stringify() << _idGenerator++;
         _undoStack.push(id);
 
+        OE_NOTICE << "Dropping bomb #" << id << std::endl;
+
         _imageLayer->addDecal(id, extent, _image.get());
         _elevLayer->addDecal(id, extent, _image.get(), -_size / 20.0f);
 
@@ -161,6 +163,8 @@ struct App
             std::string id = _undoStack.top();
             _undoStack.pop();
 
+            OE_NOTICE << "Undo-ing bomb #" << id << std::endl;
+
             GeoExtent extent = _imageLayer->getDecalExtent(id);
             if (extent.isValid())
             {
@@ -177,6 +181,8 @@ struct App
 
     void reset()
     {
+        OE_NOTICE << "Starting over" << std::endl;
+
         _imageLayer->clearDecals();
         _elevLayer->clearDecals();
         if (_landCoverLayer.valid())

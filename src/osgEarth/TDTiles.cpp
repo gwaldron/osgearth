@@ -83,12 +83,21 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
                 threadPool->put(readOptions.get());
             }
 
-            osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", readOptions.get());
+            osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", NULL, readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);
             return node.release();
         }
     };
-    REGISTER_OSGPLUGIN(3dtiles, ThreeDTilesJSONReaderWriter)
+    REGISTER_OSGPLUGIN(3dtiles, ThreeDTilesJSONReaderWriter);
+
+
+    struct CompressAndMipmapTextures : public TextureAndImageVisitor
+    {
+        void apply(osg::Texture& texture)
+        {
+            ImageUtils::generateMipmaps(&texture);
+        }
+    };
 }}}
 
 //........................................................................
@@ -517,6 +526,11 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         }
         URI uri(_tile->content()->uri()->base(), context);
         _content = uri.getNode(_options.get());
+        if (_content.valid())
+        {
+            _tileset->runPreMergeOperations(_content.get());
+            _tileset->runPostMergeOperations(_content.get());
+        }
         OE_PROFILING_ZONE_TEXT("Immediate load");
     }
 
@@ -723,6 +737,11 @@ void ThreeDTileNode::resolveContent()
     {
         _content = _contentFuture.release();
 
+        if (_content.valid())
+        {
+            _tileset->runPreMergeOperations(_content.get());
+            _tileset->runPostMergeOperations(_content.get());
+        }
     }
 }
 
@@ -765,30 +784,38 @@ namespace
                     {
                         tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
 
-                        if (tilesetNode.valid() && ico.valid())
+                        if (tilesetNode.valid())
                         {
-                            OE_PROFILING_ZONE_NAMED("ICO compile");
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+                            CompressAndMipmapTextures visitor;
+                            tilesetNode->accept(visitor);
+#endif
 
-                            osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
-                            if (contentNode)
+                            if (ico.valid())
                             {
-                                _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(contentNode);
-                                _compileSet->_compileCompletedCallback = this;
-                                ico->add(_compileSet.get());
+                                OE_PROFILING_ZONE_NAMED("ICO compile");
 
-                                unsigned int numTries = 0;
-                                // block until the compile completes, checking once and a while for
-                                // an abandoned operation (to avoid deadlock)
-                                while (!_block.wait(10)) // 10ms
+                                osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
+                                if (contentNode)
                                 {
-                                    // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
-                                    ++numTries;
-                                    if (_promise.isAbandoned() || numTries == 1000)
+                                    _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(contentNode);
+                                    _compileSet->_compileCompletedCallback = this;
+                                    ico->add(_compileSet.get());
+
+                                    unsigned int numTries = 0;
+                                    // block until the compile completes, checking once and a while for
+                                    // an abandoned operation (to avoid deadlock)
+                                    while (!_block.wait(10)) // 10ms
                                     {
-                                        _compileSet->_compileCompletedCallback = NULL;
-                                        ico->remove(_compileSet.get());
-                                        _compileSet = 0;
-                                        break;
+                                        // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
+                                        ++numTries;
+                                        if (_promise.isAbandoned() || numTries == 1000)
+                                        {
+                                            _compileSet->_compileCompletedCallback = NULL;
+                                            ico->remove(_compileSet.get());
+                                            _compileSet = 0;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -891,12 +918,20 @@ double ThreeDTileNode::getDistanceToTile(osgUtil::CullVisitor* cv)
 double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
 {
     double distance = osg::maximum(getDistanceToTile(cv), 0.0000001);
-    double fovy, ar, zn, zf;
-    cv->getCurrentCamera()->getProjectionMatrix().getPerspective(fovy, ar, zn, zf);
-    double height = cv->getCurrentCamera()->getViewport()->height();
-    double sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
-    double error = (*_tile->geometricError() * height) / (distance * sseDenominator);
-    return error;
+    const osg::Matrix& proj = cv->getCurrentCamera()->getProjectionMatrix();
+    if (proj(3,3)==0.0) // perspective
+    {
+        double height = cv->getCurrentCamera()->getViewport()->height();
+        return (*_tile->geometricError() * height) / (distance * _tileset->getSSEDenominator());
+    }
+    else // orthographic
+    {
+        const osg::Viewport* vp = cv->getCurrentCamera()->getViewport();
+        double L, R, B, T, N, F;
+        proj.getOrtho(L, R, B, T, N, F);
+        double pixelSize = osg::maximum(T-B, R-L) / osg::maximum(vp->width(), vp->height());
+        return (*_tile->geometricError()) / pixelSize;
+    }
 }
 
 bool ThreeDTileNode::unloadContent()
@@ -982,7 +1017,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
         if (_boundingBox.valid())
         {
@@ -1129,7 +1164,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
 }
 
-ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, osgDB::Options* options) :
+ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, SceneGraphCallbacks* sceneGraphCallbacks, osgDB::Options* options) :
     _tileset(tileset),
     _options(options),
     _maximumScreenSpaceError(15.0f),
@@ -1138,7 +1173,9 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& author
     _showColorPerTile(false),
     _maxAge(5.0f),
     _lastExpiredFrame(0),
-    _authorizationHeader(authorizationHeader)
+    _authorizationHeader(authorizationHeader),
+    _sgCallbacks(sceneGraphCallbacks),
+	_sseDenominator(1.0)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     const char* c = ::getenv("OSGEARTH_3DTILES_CACHE_SIZE");
@@ -1228,6 +1265,39 @@ void ThreeDTilesetNode::setColorPerTile(bool colorPerTile)
     }
 }
 
+double ThreeDTilesetNode::getSSEDenominator() const
+{
+	return _sseDenominator;
+}
+
+SceneGraphCallbacks* ThreeDTilesetNode::getSceneGraphCallbacks(SceneGraphCallbacks* callbacks)
+{
+    return _sgCallbacks.get();
+}
+
+void ThreeDTilesetNode::setSceneGraphCallbacks(SceneGraphCallbacks* callbacks)
+{
+    _sgCallbacks = callbacks;
+}
+
+void
+ThreeDTilesetNode::runPreMergeOperations(osg::Node* node)
+{
+    if (_sgCallbacks.valid())
+    {
+        _sgCallbacks->firePreMergeNode(node);
+    }
+}
+
+void
+ThreeDTilesetNode::runPostMergeOperations(osg::Node* node)
+{
+    if (_sgCallbacks.valid())
+    {
+        _sgCallbacks->firePostMergeNode(node);
+    }
+}
+
 void ThreeDTilesetNode::touchTile(ThreeDTileNode* node)
 {
     ScopedMutexLock lock(_mutex);
@@ -1313,6 +1383,15 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
             _lastExpiredFrame = nv.getFrameStamp()->getFrameNumber();
         }
     }
+	else if (nv.getVisitorType() == nv.CULL_VISITOR)
+	{
+		osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+		const osg::Matrix& proj = cv->getCurrentCamera()->getProjectionMatrix();
+		double height = cv->getCurrentCamera()->getViewport()->height();
+		double fovy, ar, zn, zf;
+		proj.getPerspective(fovy, ar, zn, zf);
+		_sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
+	}
 
     osg::Group::traverse(nv);
 }

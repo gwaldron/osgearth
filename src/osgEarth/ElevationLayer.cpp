@@ -82,14 +82,10 @@ namespace
         //    return false;
         
         return true;
-    }    
+    }
 }
 
 //------------------------------------------------------------------------
-
-OE_LAYER_PROPERTY_IMPL(ElevationLayer, std::string, VerticalDatum, verticalDatum);
-OE_LAYER_PROPERTY_IMPL(ElevationLayer, bool, Offset, offset);
-OE_LAYER_PROPERTY_IMPL(ElevationLayer, ElevationNoDataPolicy, NoDataPolicy, noDataPolicy);
 
 void
 ElevationLayer::init()
@@ -129,10 +125,40 @@ ElevationLayer::setEnabled(bool value)
     VisibleLayer::setEnabled(value);
 }
 
+void
+ElevationLayer::setVerticalDatum(const std::string& value)
+{
+    setOptionThatRequiresReopen(options().verticalDatum(), value);
+}
+
+const std::string&
+ElevationLayer::getVerticalDatum() const
+{
+    return options().verticalDatum().get();
+}
+
+void
+ElevationLayer::setOffset(bool value)
+{
+    setOptionThatRequiresReopen(options().offset(), value);
+}
+
 bool
-ElevationLayer::isOffset() const
+ElevationLayer::getOffset() const
 {
     return options().offset().get();
+}
+
+void
+ElevationLayer::setNoDataPolicy(const ElevationNoDataPolicy& value)
+{
+    setOptionThatRequiresReopen(options().noDataPolicy(), value);
+}
+
+const ElevationNoDataPolicy&
+ElevationLayer::getNoDataPolicy() const
+{
+    return options().noDataPolicy().get();
 }
 
 void
@@ -340,7 +366,7 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     }
 
     // If the layer is disabled, bail out
-    if (getEnabled() == false)
+    if (getEnabled() == false || isOpen() == false)
     {
         return GeoHeightField::INVALID;
     }
@@ -490,9 +516,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                     hf.get() );
             }
 
-            // Pre-caching operation. If there's a TileSource, it runs the precache
-            // operator so we don't need to run it here. This is a temporary construct
-            // until we get rid of TileSource
+            // Pre-caching operations:
             {
                 OE_PROFILING_ZONE_NAMED("nodata normalize");
                 normalizeNoDataValues(hf.get());

@@ -37,12 +37,8 @@ uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
 // 0=draw a textured billboard; 1=draw an instanced model
 uniform int oe_GroundCover_instancedModel;
 
-uniform float oe_GroundCover_ao;              // fake ambient occlusion of ground verts (0=full)
-uniform float oe_GroundCover_fill;            // percentage of points that make it through, based on noise function
 uniform float oe_GroundCover_windFactor;      // wind blowing the foliage
 uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
-uniform float oe_GroundCover_contrast;
-uniform float oe_GroundCover_brightness;
 
 uniform vec3 oe_Camera;  // (vp width, vp height, lodscale)
 
@@ -165,10 +161,10 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
-    if (noise[NOISE_SMOOTH] > oe_GroundCover_fill)
-        return;
-    else
-        noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
+    //if (noise[NOISE_SMOOTH] > oe_GroundCover_fill)
+    //    return;
+    //else
+    //    noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
 
     // randomly shift each point off center
     vec2 shift = vec2(fract(noise[NOISE_RANDOM]*1.5), fract(noise[NOISE_RANDOM_2]*1.5))*2.0-1.0;
@@ -207,6 +203,17 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     }
 #endif
 
+    // look up biome:
+    oe_GroundCover_Biome biome;
+    oe_GroundCover_getBiome(biomeIndex, biome);
+
+    // discard instances based on noise value threshold (coverage). If it passes,
+    // scale the noise value back up to [0..1]
+    if (noise[NOISE_SMOOTH] > biome.fill)
+        return;
+    else
+        noise[NOISE_SMOOTH] /= biome.fill;
+
     // Clamp the center point to the elevation.
     oe_GroundCover_clamp(vertex_view, oe_UpVectorView, tilec.st);
 
@@ -224,11 +231,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         oe_GroundCover_atlasIndex = 1.0;
         return;
     }
-
-
-    // look up biome:
-    oe_GroundCover_Biome biome;
-    oe_GroundCover_getBiome(biomeIndex, biome);
 
     // select a billboard at random
     int objectIndex = biome.firstObjectIndex + int(floor(noise[NOISE_RANDOM] * float(biome.numObjects)));
@@ -292,7 +294,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     vec3 heightVector = oe_UpVectorView*height;
 
     // Color variation, brightness, and contrast:
-    vec3 color = vec3(0.75+0.25*noise[NOISE_RANDOM_2]);
+    //vec3 color = vec3(0.75+0.25*noise[NOISE_RANDOM_2]);
     //color = ( ((color - 0.5) * oe_GroundCover_contrast + 0.5) * oe_GroundCover_brightness);
 
     float d = clamp(dot(vec3(0,0,1), oe_UpVectorView), 0, 1);
@@ -321,7 +323,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
         if (billboardAmount > 0.1)
         {
-            vp_Color = vec4(color*oe_GroundCover_ao, falloff * billboardAmount);
+            vp_Color.a = falloff * billboardAmount;
 
             float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
 
@@ -360,7 +362,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
         vp_Normal = vertex_view.xyz - C;
 
-        vp_Color = vec4(color, topDownAmount);
+        vp_Color.a = topDownAmount;
     }
 
 #endif // !OE_IS_SHADOW_CAMERA

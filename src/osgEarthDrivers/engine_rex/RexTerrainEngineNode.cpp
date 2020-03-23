@@ -204,10 +204,10 @@ RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
         _imageLayerStateSet.get()->releaseGLObjects(state);
     }
 
-    if (_geometryPool.valid())
-    {
-        _geometryPool->clear();
-    }
+    //if (_geometryPool.valid())
+    //{
+    //    _geometryPool->clear();
+    //}
 
     TerrainEngineNode::releaseGLObjects(state);
 }
@@ -1129,9 +1129,11 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 void
 RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    if (layer && layer->getEnabled() && layer->getVisible())
+    if (layer && layer->getEnabled())
     {
-        refresh();
+        std::vector<const Layer*> layers;
+        layers.push_back(layer);
+        invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
     }
 }
 
@@ -1141,7 +1143,9 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layer)
     // only need to refresh is the elevation layer is visible.
     if (layer)
     {
-        refresh();
+        std::vector<const Layer*> layers;
+        layers.push_back(layer);
+        invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
     }
 }
 
@@ -1150,7 +1154,9 @@ RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layer)
 {
     if (layer && layer->getEnabled() && layer->getVisible())
     {
-        refresh();
+        std::vector<const Layer*> layers;
+        layers.push_back(layer);
+        invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
     }
 }
 

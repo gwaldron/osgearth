@@ -166,7 +166,9 @@ SkinResource::createTexture(osg::Image* image) const
     // don't resize them, let it be
     tex->setResizeNonPowerOfTwoHint(false);
 
-    ImageUtils::activateMipMaps(tex);
+	// JB:  The image could be shared and it's possible that mipmaps could be generated at the same time in different threads.
+	// Need to figure out a safe place to call generateMipMaps, or just rely on baking them into the image beforehand as an art step.
+    //ImageUtils::generateMipmaps(tex);
 
     return tex;
 }

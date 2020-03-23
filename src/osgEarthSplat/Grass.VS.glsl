@@ -38,7 +38,6 @@ vec4 oe_layer_tilec;
 
 uniform float osg_FrameTime;                  // Frame time (seconds) used for wind animation
 
-uniform float oe_GroundCover_fill;            // percentage of points that make it through, based on noise function
 uniform float oe_GroundCover_windFactor;      // wind blowing the foliage
 uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
 
@@ -132,24 +131,11 @@ void oe_Grass_VS_MODEL(inout vec4 vertex_model)
 
     // Sample our noise texture
     oe_noise = texture(oe_GroundCover_noiseTex, oe_layer_tilec.st);
-
-    // discard instances based on noise value threshold (coverage). If it passes,
-    // scale the noise value back up to [0..1]
-    float fillEdgeFactor = 1.0;
-    if ( oe_noise[NOISE_SMOOTH] > oe_GroundCover_fill )
-    {
-        return;
-    }
-    else
-    {
-        float d = (oe_noise[NOISE_SMOOTH] / oe_GroundCover_fill);
-        if (d > 0.75)
-            fillEdgeFactor = 1.0-((d-0.75)/0.25);
-        oe_noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
-    }
+    oe_noise = fract(oe_noise*5.5);
 
     // randomly shift each point off center
-    vec2 shift = vec2(fract(oe_noise[NOISE_RANDOM]*5.5), fract(oe_noise[NOISE_RANDOM_2]*5.5))*2-1;
+    //vec2 shift = vec2(fract(oe_noise[NOISE_RANDOM]*5.5), fract(oe_noise[NOISE_RANDOM_2]*5.5))*2-1;
+    vec2 shift = vec2(oe_noise[NOISE_RANDOM], oe_noise[NOISE_RANDOM_2])*2-1;
     oe_layer_tilec.xy += shift*halfSpacing;
 
     // and place it correctly within the tile
@@ -195,6 +181,21 @@ void oe_Grass_VS_MODEL(inout vec4 vertex_model)
     // look up biome:
     oe_GroundCover_Biome biome;
     oe_GroundCover_getBiome(biomeIndex, biome);
+
+    // discard instances based on noise value threshold (coverage). If it passes,
+    // scale the noise value back up to [0..1]
+    float fillEdgeFactor = 1.0;
+    if ( oe_noise[NOISE_SMOOTH] > biome.fill )
+    {
+        return;
+    }
+    else
+    {
+        float d = (oe_noise[NOISE_SMOOTH] / biome.fill);
+        if (d > 0.75)
+            fillEdgeFactor = 1.0-((d-0.75)/0.25);
+        oe_noise[NOISE_SMOOTH] /= biome.fill;
+    }
 
     // select a billboard at random
     int objectIndex = biome.firstObjectIndex + int(floor(oe_noise[NOISE_RANDOM] * float(biome.numObjects)));

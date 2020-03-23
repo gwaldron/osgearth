@@ -68,10 +68,12 @@ LoadTileData::invoke(ProgressCallback* progress)
 
     // if the operation was canceled, set the request to abandoned
     // so it can potentially retry later.
+    // TODO: Consider the canceler setting some kind of retry delay
+    // for failed network attempts
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
-        setState(Request::ABANDONED);
+        setDelay(progress->getRetryDelay());
         return;
     }
 
@@ -83,11 +85,13 @@ LoadTileData::invoke(ProgressCallback* progress)
         _enableCancel? progress : 0L);
 
     // if the operation was canceled, set the request to abandoned
-    // so it can potentially retry later.
+    // so it can potentially retry later. 
+    // TODO: Consider the canceler setting some kind of retry delay
+    // for failed network attempts
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
-        setState(Request::ABANDONED);
+        setDelay(progress->getRetryDelay());
         return;
     }
 

@@ -67,42 +67,45 @@ namespace osgEarth
         META_Layer_Abstract(osgEarth, TileLayer, Options, VisibleLayer);
 
         //! Minimum of detail for which this layer should generate data.
-        void setMinLevel(const unsigned& value);
-        const unsigned& getMinLevel() const;
+        void setMinLevel(unsigned value);
+        unsigned getMinLevel() const;
 
         //! Minimum resolution for which this layer should generate data.
-        void setMinResolution(const double& value);
-        const double& getMinResolution() const;
+        void setMinResolution(double value);
+        double getMinResolution() const;
 
         //! Maximum level of detail for which this layer should generate data.
         //! Data from this layer will not appear in map tiles above the maxLevel.
-        void setMaxLevel(const unsigned& value);
-        const unsigned& getMaxLevel() const;
+        void setMaxLevel(unsigned value);
+        unsigned getMaxLevel() const;
 
         //! Maximum level resolution for which this layer should generate data.
         //! The value is in units per pixel, using the base units of the layer's source data.
-        void setMaxResolution(const double& value);
-        const double& getMaxResolution() const;
+        void setMaxResolution(double value);
+        double getMaxResolution() const;
 
         //! Maximum level of detail for which this layer should generate new data.
         //! Data from this layer will be upsampled in map tiles above the maxDataLevel.
-        void setMaxDataLevel(const unsigned& value);
-        const unsigned& getMaxDataLevel() const;
+        void setMaxDataLevel(unsigned value);
+        unsigned getMaxDataLevel() const;
 
         //! Number of samples in each dimension.
-        void setTileSize(const unsigned& value);
-        virtual unsigned getTileSize() const;
+        void setTileSize(unsigned value);
+        unsigned getTileSize() const;
 
         //! Value to treat as a "no data" marker.
-        void setNoDataValue(const float& value);
+        void setNoDataValue(float value);
+        void resetNoDataValue();
         virtual float getNoDataValue() const;
 
         //! Treat any value less than this as a "no data" marker.
-        void setMinValidValue(const float& value);
+        void setMinValidValue(float value);
+        void resetMinValidValue();
         virtual float getMinValidValue() const;
 
         //! Treat any value greater than this as a "no data" marker.
-        void setMaxValidValue(const float& value);
+        void setMaxValidValue(float value);
+        void resetMaxValidValue();
         virtual float getMaxValidValue() const;
 
     protected:

@@ -2,7 +2,7 @@
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       REX Engine - Morphing
-#pragma vp_entryPoint oe_rexEngine_morph
+#pragma vp_entryPoint oe_rex_morph
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
@@ -63,7 +63,7 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 }
 
 
-void oe_rexEngine_morph(inout vec4 vertexModel)
+void oe_rex_morph(inout vec4 vertexModel)
 {    
     // compute the morphing factor to send down the pipe.
     // we need this even if vertex-morphing is off since we use it for 

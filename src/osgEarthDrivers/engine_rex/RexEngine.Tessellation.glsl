@@ -1,6 +1,6 @@
 #version 400
 #pragma vp_name REX Engine TCS
-#pragma vp_entryPoint oe_terrain_tessellate
+#pragma vp_entryPoint oe_rex_tessellate
 #pragma vp_location tess_control
 #pragma vp_order first
 
@@ -30,7 +30,7 @@ float tessLevel(in vec2 v0, in vec2 v1)
     return clamp(distance(v0,v1)/oe_terrain_sse, 1.0, 64.0);
 }
 
-void oe_terrain_tessellate()
+void oe_rex_tessellate()
 {
     if (gl_InvocationID == 0)
     {
@@ -51,7 +51,7 @@ void oe_terrain_tessellate()
 
 #version 400
 #pragma vp_name       REX Engine TCS
-#pragma vp_entryPoint oe_terrain_tcs
+#pragma vp_entryPoint oe_rex_TCS
 #pragma vp_location   tess_control
 #pragma vp_order      last
 
@@ -60,7 +60,7 @@ layout(vertices=3) out;
 in vec4 oe_terrain_tessLevel;
 
 // MAIN ENTRY POINT
-void oe_terrain_tcs()
+void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
@@ -76,7 +76,7 @@ void oe_terrain_tcs()
 #version 400
 
 #pragma vp_name       REX Engine TES
-#pragma vp_entryPoint oe_terrain_tes
+#pragma vp_entryPoint oe_rex_TES
 #pragma vp_location   tess_eval
 
 // osgEarth terrain is always CCW winding
@@ -114,9 +114,7 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
 }
 
 
-
-// simplest possible pass-though:
-void oe_terrain_tes()
+void oe_rex_TES()
 {
     VP_Interpolate3();
     // Must re-normalize the normal vector since interpolation was linear?

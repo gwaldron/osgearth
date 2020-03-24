@@ -1,7 +1,7 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint oe_normalMapVertex
+#pragma vp_entryPoint oe_rex_normalMapVS
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 
@@ -16,7 +16,7 @@ vec4 oe_layer_tilec;
 out vec2 oe_normalMapCoords;
 out vec3 oe_normalMapBinormal;
 
-void oe_normalMapVertex(inout vec4 unused)
+void oe_rex_normalMapVS(inout vec4 unused)
 {
 #ifndef OE_TERRAIN_RENDER_NORMAL_MAP
     return;
@@ -39,7 +39,7 @@ void oe_normalMapVertex(inout vec4 unused)
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint oe_normalMapFragment
+#pragma vp_entryPoint oe_rex_normalMapFS
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.1
 
@@ -60,7 +60,7 @@ in vec3 oe_normalMapBinormal;
 // global
 mat3 oe_normalMapTBN;
 
-void oe_normalMapFragment(inout vec4 color)
+void oe_rex_normalMapFS(inout vec4 color)
 {
 #ifndef OE_TERRAIN_RENDER_NORMAL_MAP
     return;

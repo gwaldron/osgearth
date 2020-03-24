@@ -92,7 +92,7 @@ PowerlineLayer::Options::Options(const ConfigOptions& options)
 // them.
 void PowerlineLayer::Options::fromConfig(const Config& conf)
 {
-    _point_features.init(true);
+    _point_features.init(false);
 
     conf.get("point_features", point_features());
     LayerReference<FeatureSource>::get(conf, "line_features", _lineSourceLayer, _lineSource);

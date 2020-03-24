@@ -20,6 +20,7 @@
 #include <osgEarth/Session>
 #include <osgEarth/FeatureSourceIndexNode>
 #include <osgEarth/PolygonizeLines>
+#include <osgEarth/WireLines>
 #include <osgEarth/TextSymbol>
 #include <osgEarth/PointSymbol>
 #include <osgEarth/LineSymbol>
@@ -276,7 +277,8 @@ namespace
 osg::Group*
 BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                                              bool           twosided,
-                                             FilterContext& context)
+                                             FilterContext& context,
+                                             bool wireLines)
 {
     osg::Group* group = new osg::Group;
 
@@ -348,7 +350,15 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         }
 
         // The operator we'll use to make lines into polygons.
-        PolygonizeLinesOperator polygonizer( *line->stroke() );
+        osg::ref_ptr<OsgGeometryOperator> polygonizer;
+        if (wireLines)
+        {
+            polygonizer = new WireLinesOperator(*line->stroke());
+        }
+        else
+        {
+            polygonizer = new PolygonizeLinesOperator(*line->stroke());
+        }
         //GPULinesOperator gpuLines(*line->stroke() );
 
         // iterate over all the feature's geometry parts. We will treat
@@ -391,7 +401,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
             // turn the lines into polygons.
             CopyHeightsCallback copyHeights(hats.get());
-            osg::Geometry* geom = polygonizer( verts.get(), normals.get(), gpuClamping? &copyHeights : 0L, twosided );
+            osg::Geometry* geom = (*polygonizer)( verts.get(), normals.get(), gpuClamping? &copyHeights : 0L, twosided );
             //osg::Geometry* geom = gpuLines(verts.get());
             if ( geom )
             {
@@ -410,7 +420,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                 //OE_WARN << "heights = " << hats->size() << ", new hats = " << copyHeights._newHeights->size() << ", verts=" << geom->getVertexArray()->getNumElements() << std::endl;
             }
         }
-        polygonizer.installShaders( geode.get() );
+        polygonizer->installShaders( geode.get() );
     }
 
     for (TextureToGeodeMap::iterator itr = geodes.begin(); itr != geodes.end(); ++itr)
@@ -1296,6 +1306,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     FeatureList lines;
     FeatureList polygonizedLines;
     FeatureList points;
+    FeatureList wireLines;
 
     FeatureList splitFeatures;
 
@@ -1325,6 +1336,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         bool has_linesymbol     = line != 0L && line->stroke()->widthUnits() == Units::PIXELS;
         bool has_polylinesymbol = line != 0L && line->stroke()->widthUnits() != Units::PIXELS;
         bool has_pointsymbol    = point != 0L;
+        bool has_wirelinessymbol = line && line->useWireLines().value();
 
         // if the featue has a style set, that overrides:
         if ( f->style().isSet() )
@@ -1333,6 +1345,8 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             has_linesymbol     = has_linesymbol     || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() == Units::PIXELS);
             has_polylinesymbol = has_polylinesymbol || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() != Units::PIXELS);
             has_pointsymbol    = has_pointsymbol    || (f->style()->has<PointSymbol>());
+            has_wirelinessymbol = has_wirelinessymbol
+                || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->useWireLines().value());
         }
 
         // if there's a polygon with outlining disabled, nix the line symbol.
@@ -1390,7 +1404,11 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         if ( has_linesymbol )
             lines.push_back( f );
 
-        if ( has_polylinesymbol )
+        if ( has_wirelinessymbol)
+        {
+            wireLines.push_back( f);
+        }
+        else if ( has_polylinesymbol )
             polygonizedLines.push_back( f );
 
         if ( has_pointsymbol )
@@ -1433,7 +1451,20 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         OE_TEST << LC << "Building " << polygonizedLines.size() << " polygonized lines." << std::endl;
         bool twosided = polygons.size() > 0 ? false : true;
-        osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context);
+        osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context,
+                                                                   false);
+
+        if (lines->getNumChildren() > 0)
+        {
+            result->addChild( lines.get() );
+        }
+
+    }
+
+    if ( wireLines.size() > 0 )
+    {
+        OE_TEST << LC << "Building " << wireLines.size() << " wire lines." << std::endl;
+        osg::ref_ptr< osg::Group > lines = processPolygonizedLines(wireLines, true, context, true);
 
         if (lines->getNumChildren() > 0)
         {

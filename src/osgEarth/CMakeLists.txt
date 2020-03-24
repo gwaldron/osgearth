@@ -57,6 +57,7 @@ set(TARGET_GLSL
     GPUClamping.lib.glsl
     Instancing.glsl
     LineDrawable.glsl
+    WireLines.glsl
     PhongLighting.glsl
     PointDrawable.glsl
     Text.glsl
@@ -346,6 +347,7 @@ SET(LIB_PUBLIC_HEADERS
     TextSymbolizer
     TFS
     TransformFilter
+    WireLines
     XYZFeatureSource
     WFS
 
@@ -689,6 +691,7 @@ set(TARGET_SRC
     TextSymbolizer.cpp
     TFS.cpp
     TransformFilter.cpp
+    WireLines.cpp
     XYZFeatureSource.cpp
     WFS.cpp
 

@@ -38,6 +38,7 @@ namespace osgEarth { namespace Util
         std::string GPUClamping, GPUClampingLib;
         std::string Instancing;
         std::string LineDrawable;
+        std::string WireLines;
         std::string PointDrawable;
         std::string PhongLighting;
         std::string Text, TextLegacy;

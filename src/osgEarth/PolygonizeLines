@@ -22,8 +22,10 @@
 #include <osgEarth/Common>
 #include <osgEarth/Filter>
 #include <osgEarth/Stroke>
+#include <osgEarth/OsgGeometryOperator>
 #include <osg/Array>
 #include <osg/Geometry>
+
 
 namespace osgEarth { namespace Util
 {
@@ -35,13 +37,8 @@ namespace osgEarth { namespace Util
      * side of the spine that form the buffered polygons. Depending
      * on the Stroke, the geometry may also have triangulated end caps.
      */
-    class OSGEARTH_EXPORT PolygonizeLinesOperator
+    class OSGEARTH_EXPORT PolygonizeLinesOperator : public OsgGeometryOperator
     {
-    public:
-        struct Callback {
-            virtual void operator()(unsigned i) = 0;
-        };
-
     public:
         /**
          * Construct the operator

@@ -41,6 +41,10 @@ namespace osgEarth { namespace Util
         PointDrawable = "PointDrawable.glsl";
         _sources[PointDrawable] = "@PointDrawable.glsl@";          
 
+        // WireLines
+        WireLines = "WireLines.glsl";
+        _sources[WireLines] = "@WireLines.glsl@";
+
         // PhongLightingEffect
         PhongLighting = "PhongLighting.glsl";
         _sources[PhongLighting] = "@PhongLighting.glsl@";

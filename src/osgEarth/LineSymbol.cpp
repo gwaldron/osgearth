@@ -44,7 +44,8 @@ Symbol       ( conf ),
 _stroke      ( Stroke() ),
 _tessellation( 0 ),
 _creaseAngle ( 0.0f ),
-_useGLLines  ( false )
+_useGLLines  ( false ),
+_useWireLines( false )
 {
     mergeConfig(conf);
 }
@@ -56,7 +57,8 @@ _tessellation    (rhs._tessellation),
 _creaseAngle     (rhs._creaseAngle),
 _tessellationSize(rhs._tessellationSize),
 _imageURI        (rhs._imageURI),
-_useGLLines      (rhs._useGLLines)
+_useGLLines      (rhs._useGLLines),
+_useWireLines    (rhs._useWireLines)
 {
     //nop
 }
@@ -72,6 +74,7 @@ LineSymbol::getConfig() const
     conf.set("tessellation_size", _tessellationSize );
     conf.set("image", _imageURI);
     conf.set("use_gl_lines", _useGLLines);
+    conf.set("use_wire_lines", _useWireLines);
     return conf;
 }
 
@@ -84,6 +87,7 @@ LineSymbol::mergeConfig( const Config& conf )
     conf.get("tessellation_size", _tessellationSize);
     conf.get("image", _imageURI);
     conf.get("use_gl_lines", _useGLLines);
+    conf.get("use_wire_lines", _useWireLines);
 }
 
 void
@@ -153,5 +157,8 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "stroke-gl-lines")) {
         style.getOrCreate<LineSymbol>()->useGLLines() = as<bool>(c.value(), false);
+    }
+    else if (match(c.key(), "stroke-wire-lines")) {
+        style.getOrCreate<LineSymbol>()->useWireLines() = as<bool>(c.value(), false);
     }
 }

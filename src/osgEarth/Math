@@ -214,6 +214,24 @@ namespace osgEarth
             return v;
         }
     }
-}
 
+    // Newton-Raphson solver
+    template<typename Func, typename FuncDeriv>
+    double solve(Func func, FuncDeriv deriv, double guess, double tolerance, bool& valid, int maxIterations = 16)
+    {
+        double xn = guess;
+        for (int i = 0; i <= maxIterations; ++i)
+        {
+            double f = func(xn);
+            if (fabs(f) <= tolerance)
+            {
+                valid = true;
+                return xn;
+            }
+            xn = xn - f / deriv(xn);
+        }
+        valid = false;
+        return xn;
+    }
+}
 #endif

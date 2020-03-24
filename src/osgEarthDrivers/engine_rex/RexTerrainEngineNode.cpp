@@ -67,10 +67,10 @@ namespace
 
 
     /**
-     * Run this visitor whenever you remove a layer, so that each
-     * TileNode can update its render model and get rid of passes
-     * that no longer exist.
-     */
+    * Run this visitor whenever you remove a layer, so that each
+    * TileNode can update its render model and get rid of passes
+    * that no longer exist.
+    */
     struct PurgeOrphanedLayers : public osg::NodeVisitor
     {
         const Map* _map;
@@ -122,15 +122,15 @@ namespace
 //------------------------------------------------------------------------
 
 RexTerrainEngineNode::RexTerrainEngineNode() :
-TerrainEngineNode     ( ),
-_terrain              ( 0L ),
-_batchUpdateInProgress( false ),
-_refreshRequired      ( false ),
-_stateUpdateRequired  ( false ),
-_renderModelUpdateRequired( false ),
-_rasterizer(0L),
-_morphTerrainSupported(true),
-_frameLastUpdated(0u)
+    TerrainEngineNode     ( ),
+    _terrain              ( 0L ),
+    _batchUpdateInProgress( false ),
+    _refreshRequired      ( false ),
+    _stateUpdateRequired  ( false ),
+    _renderModelUpdateRequired( false ),
+    _rasterizer(0L),
+    _morphTerrainSupported(true),
+    _frameLastUpdated(0u)
 {
     // Necessary for pager object data
     this->setName("osgEarth.RexTerrainEngineNode");
@@ -153,7 +153,7 @@ _frameLastUpdated(0u)
         vp->setName("RexTerrainEngineNode");
         vp->setIsAbstract(true);    // cannot run by itself, requires additional children
         Shaders package;
-        package.load(vp, package.SDK);
+        package.load(vp, package.ENGINE_SDK);
     }
 
     // TODO: replace with a "renderer" object that can return statesets
@@ -352,7 +352,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         options().minTileRangeFactor().get(),
         true); // restrict polar subdivision for geographic maps
 
-    // set up the initial graph
+               // set up the initial graph
     refresh();
 
     // now that we have a map, set up to recompute the bounds
@@ -368,8 +368,8 @@ RexTerrainEngineNode::computeBound() const
 
 void
 RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
-                                       unsigned         minLevel,
-                                       unsigned         maxLevel)
+    unsigned         minLevel,
+    unsigned         maxLevel)
 {
     if ( _liveTiles.valid() )
     {
@@ -395,9 +395,9 @@ RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
 
 void
 RexTerrainEngineNode::invalidateRegion(const std::vector<const Layer*> layers,
-                                       const GeoExtent& extent,
-                                       unsigned minLevel,
-                                       unsigned maxLevel)
+    const GeoExtent& extent,
+    unsigned minLevel,
+    unsigned maxLevel)
 {
     if ( _liveTiles.valid() )
     {
@@ -1175,7 +1175,7 @@ RexTerrainEngineNode::updateState()
 
         osg::StateSet* surfaceStateSet = getSurfaceStateSet();    // just the surface
 
-        // required for multipass tile rendering to work
+                                                                  // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
 
@@ -1187,40 +1187,36 @@ RexTerrainEngineNode::updateState()
             new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON);
 
-        // install patch param if we are tessellation on the GPU.
-        if (options().gpuTessellation() == true)
-        {
-#ifdef HAVE_PATCH_PARAMETER
-            terrainStateSet->setAttributeAndModes(new osg::PatchParameter(3));
-#endif
-        }
-
         Shaders package;
 
+        // Shaders that affect any terrain layer:
         VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
         terrainVP->setName("Rex Terrain");
-        package.load(terrainVP, package.ENGINE_VERT_MODEL);
+        package.load(terrainVP, package.ENGINE_VERT);
 
-        surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", options().color().get()));
-
-        surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_altitude", (float)0.0f));
-
-        surfaceStateSet->setDefine("OE_TERRAIN_RENDER_IMAGERY");
-
-        // Functions that affect only the terrain surface:
+        // Shaders that affect only terrain surface layers (RENDERTYPE_TERRAIN_SURFACE)
         VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
         surfaceVP->setName("Rex Surface");
 
         // Functions that affect the terrain surface only:
-        package.load(surfaceVP, package.ENGINE_VERT_VIEW);
-        package.load(surfaceVP, package.ENGINE_ELEVATION_MODEL);
-        //package.load(surfaceVP, package.ENGINE_FRAG);
+        package.load(surfaceVP, package.ENGINE_ELEVATION);
+
+        surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", options().color().get()));
+        surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_altitude", (float)0.0f));
+        surfaceStateSet->setDefine("OE_TERRAIN_RENDER_IMAGERY");
 
         if (options().gpuTessellation() == true)
         {
-            package.load(surfaceVP, package.ENGINE_TESS_EVALUATION);
-            package.load(surfaceVP, package.ENGINE_TESS_CONTROL);
-            package.load(surfaceVP, package.ENGINE_GEOM);
+            package.load(surfaceVP, package.ENGINE_TESSELLATION);
+            //package.load(surfaceVP, package.ENGINE_GEOM);
+
+            // Default screen space error = 50 pixels
+            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_sse", 50.0f));
+
+#ifdef HAVE_PATCH_PARAMETER
+            // backwards compatibility
+            terrainStateSet->setAttributeAndModes(new osg::PatchParameter(3));
+#endif
         }
 
         // Elevation?
@@ -1232,8 +1228,7 @@ RexTerrainEngineNode::updateState()
         // Normal mapping shaders:
         //if (this->normalTexturesRequired())
         {
-            package.load(surfaceVP, package.NORMAL_MAP_VERT);
-            package.load(surfaceVP, package.NORMAL_MAP_FRAG);
+            package.load(surfaceVP, package.ENGINE_NORMAL_MAP);
 
             if (this->normalTexturesRequired())
                 surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
@@ -1255,7 +1250,7 @@ RexTerrainEngineNode::updateState()
             if ((options().morphTerrain() == true && _morphTerrainSupported == true) ||
                 options().morphImagery() == true)
             {
-                package.load(surfaceVP, package.MORPHING_VERT);
+                package.load(surfaceVP, package.ENGINE_MORPHING);
 
                 if ((options().morphTerrain() == true && _morphTerrainSupported == true))
                 {
@@ -1285,7 +1280,7 @@ RexTerrainEngineNode::updateState()
                 "$COLOR_FILTER_HEAD"
                 "void oe_rexEngine_applyFilters(inout vec4 color) \n"
                 "{ \n"
-                    "$COLOR_FILTER_BODY"
+                "$COLOR_FILTER_BODY"
                 "} \n";
 
             std::stringstream cf_head;
@@ -1371,12 +1366,12 @@ RexTerrainEngineNode::updateState()
         // special object ID that denotes the terrain surface.
         surfaceStateSet->addUniform( new osg::Uniform(
             Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
-        
+
         // For an image layer, attach the default fragment shader:
         //_imageLayerStateSet = osg::clone(surfaceStateSet, osg::CopyOp::DEEP_COPY_ALL);
         _imageLayerStateSet = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerStateSet.get());
-        package.load(vp, package.ENGINE_FRAG);
+        package.load(vp, package.ENGINE_IMAGELAYER);
 
         _stateUpdateRequired = false;
     }

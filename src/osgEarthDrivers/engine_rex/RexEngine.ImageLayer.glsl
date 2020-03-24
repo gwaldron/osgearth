@@ -1,8 +1,34 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
+#pragma vp_name       REX Engine - ImageLayer/VS
+#pragma vp_entryPoint oe_rex_imageLayer_VS
+#pragma vp_location   vertex_view
+#pragma vp_order      0.4
+
+// Stage globals
+vec4 oe_layer_tilec;
+vec2 oe_layer_texc;
+vec2 oe_layer_texcParent;
+
+uniform mat4 oe_layer_texMatrix;
+uniform mat4 oe_layer_texParentMatrix;
+
+void oe_rex_imageLayer_VS(inout vec4 vertexView)
+{
+    // calculate the texture coordinates:
+    oe_layer_texc       = (oe_layer_texMatrix * oe_layer_tilec).st;
+	oe_layer_texcParent = (oe_layer_texParentMatrix * oe_layer_tilec).st;
+}
+
+
+[break]
+
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+
 #pragma vp_name       REX Engine - Fragment
-#pragma vp_entryPoint oe_rexEngine_frag
+#pragma vp_entryPoint oe_rex_imageLayer_FS
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.5
 
@@ -39,7 +65,7 @@ in float oe_layer_opacity;
 #define VERTEX_MARKER_SKIRT    16
 flat in int oe_terrain_vertexMarker;
 
-void oe_rexEngine_frag(inout vec4 color)
+void oe_rex_imageLayer_FS(inout vec4 color)
 {
     // if the provoking vertex is marked for discard, skip it:
     if ((oe_terrain_vertexMarker & VERTEX_MARKER_DISCARD) != 0)
@@ -83,27 +109,27 @@ void oe_rexEngine_frag(inout vec4 color)
 
     if (isTexelLayer)
     {
-	    texel = texture(oe_layer_tex, oe_layer_texc);
+        texel = texture(oe_layer_tex, oe_layer_texc);
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
         // sample the main texture:
 
         // sample the parent texture:
-	    vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent);
+        vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent);
 
         // if the parent texture does not exist, use the current texture with alpha=0 as the parent
         // so we can "fade in" an image layer that starts at LOD > 0:
         texelParent = mix( vec4(texel.rgb, 0.0), texelParent, oe_layer_texParentExists );
 
         // Resolve the final texel color:
-	    texel = mix(texel, texelParent, oe_rex_morphFactor);
+        texel = mix(texel, texelParent, oe_rex_morphFactor);
 #endif
 
         // intergrate thelayer opacity:
         texel.a = texel.a * oe_layer_opacity;
         color.a = 1.0;
     }
-    
+
 #ifdef OE_TERRAIN_BLEND_IMAGERY
     // If this is a first image layer, blend with the incoming terrain color.
     // Otherwise, apply directly and let GL blending do the rest.

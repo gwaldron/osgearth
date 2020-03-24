@@ -16,37 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_POLYGONIZE_LINES_H
-#define OSGEARTHFEATURES_POLYGONIZE_LINES_H 1
+
+#ifndef OSG_GEOMETRY_OPERATOR_H
+#define OSG_GEOMETRY_OPERATOR_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Filter>
 #include <osgEarth/Stroke>
-#include <osgEarth/OsgGeometryOperator>
 #include <osg/Array>
 #include <osg/Geometry>
 
+// Interface for operators that lists of vectors and normals and turn
+// them into polygonized geometry.
 
-namespace osgEarth { namespace Util
-{
-    /**
-     * Triangulates a line string into a buffered geometry.
-     *
-     * The resulting geometry will retain the original line string
-     * vertices as a "spine", and will include triangles on either
-     * side of the spine that form the buffered polygons. Depending
-     * on the Stroke, the geometry may also have triangulated end caps.
-     */
-    class OSGEARTH_EXPORT PolygonizeLinesOperator : public OsgGeometryOperator
+namespace osgEarth { namespace Util {
+    class OSGEARTH_EXPORT OsgGeometryOperator : public osg::Referenced
     {
     public:
-        /**
-         * Construct the operator
-         * @param[in ] stroke Line rendering properties
-         */
-        PolygonizeLinesOperator(const Stroke& stoke);
-
-        /**
+        struct Callback {
+            virtual void operator()(unsigned i) = 0;
+        };
+                /**
          * Run the polygonizer.
          *
          * @param[in ] verts    Line string geometry to polygonize. The polygonizer
@@ -60,40 +49,12 @@ namespace osgEarth { namespace Util
          *
          * @return Triangulated geometry, including primitive set
          */
-        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const;
-
+        virtual osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const = 0;
         /**
-         * Installs an auto-scaling shader on a stateset.
+         * Installs a shader on a stateset.
          */
-        void installShaders(osg::Node* node) const;
-
-    protected:
-        Stroke _stroke;
-        friend class PolygonizeLinesFilter;
+        virtual void installShaders(osg::Node* node) const = 0;
     };
+}}
 
-
-
-    /**
-     * Feature Filter that generates polygonized line geometry.
-     */
-    class OSGEARTH_EXPORT PolygonizeLinesFilter : public FeaturesToNodeFilter
-    {
-    public:
-
-        /** Constructs the filter with Style information */
-        PolygonizeLinesFilter(const Style& style);
-
-
-    public: // FeaturesToNodeFilter
-
-        /** Pushes a list of features through the filter. */
-        osg::Node* push( FeatureList& input, FilterContext& context );
-
-    protected:
-
-        Style _style;
-    };
-} }
-
-#endif // OSGEARTHFEATURES_POLYGONIZE_LINES_H
+#endif // OSG_GEOMETRY_OPERATOR_H

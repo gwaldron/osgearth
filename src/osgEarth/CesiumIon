@@ -102,6 +102,8 @@ namespace osgEarth
 
     private:
         osg::ref_ptr< ImageLayer > _imageLayer;
+
+        std::string _key;
     };
 
     /**
@@ -146,6 +148,8 @@ namespace osgEarth
 
         //! post-ctor initialization
         virtual void init();
+
+        std::string _key;
     };
 
 } // namespace osgEarth

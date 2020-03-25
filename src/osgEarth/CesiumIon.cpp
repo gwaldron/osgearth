@@ -142,13 +142,22 @@ CesiumIonImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    osg::ref_ptr<const Profile> profile = getProfile();
+    const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
+    if (key)
+        _key = key;
+    else
+        _key = options().token().get();
+
+    if (_key.empty())
+    {
+        return Status(Status::ConfigurationError, "CesiumIon API key is required");
+    }
 
     CesiumIonResource ionResource;
     Status status = ionResource.open(
         options().server().get(),
         options().assetId().get(),
-        options().token().get(),
+        _key,
         getReadOptions());
 
     if (status.isOK())
@@ -241,11 +250,22 @@ CesiumIon3DTilesLayer::init()
 Status
 CesiumIon3DTilesLayer::openImplementation()
 {
+    const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
+    if (key)
+        _key = key;
+    else
+        _key = options().token().get();
+
+    if (_key.empty())
+    {
+        return Status(Status::ConfigurationError, "CesiumIon API key is required");
+    }
+
     CesiumIonResource ionResource;
     Status status = ionResource.open(
         options().server().get(),
         options().assetId().get(),
-        options().token().get(),
+        key,
         getReadOptions());
 
     URI serverURI;

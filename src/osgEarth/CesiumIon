@@ -41,6 +41,8 @@ namespace osgEarth
         std::string _acceptHeader;
         std::string _resourceToken;
         std::string _resourceUrl;
+        std::string _externalType;
+        Json::Value _externalOptions;
     };
 
     /**

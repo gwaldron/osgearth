@@ -75,13 +75,7 @@ BingImageLayer::init()
         _debugDirect = true;
 
     // disable caching by default due to TOS
-    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
-
-    const char* key = ::getenv("OSGEARTH_BING_KEY");
-    if (key)
-        _key = key;
-    else
-        _key = options().apiKey().get();
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;    
 }
 
 BingImageLayer::~BingImageLayer()
@@ -95,6 +89,12 @@ BingImageLayer::openImplementation()
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
         return parent;
+
+    const char* key = ::getenv("OSGEARTH_BING_KEY");
+    if (key)
+        _key = key;
+    else
+        _key = options().apiKey().get();
 
     if (_key.empty())
     {

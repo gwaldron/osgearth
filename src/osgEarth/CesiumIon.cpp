@@ -23,6 +23,7 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/TDTiles>
 #include <osgEarth/TMS>
+#include <osgEarth/Bing>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
@@ -75,6 +76,15 @@ CesiumIonResource::open(const URI& server,
     //buf2 << "*/*;access_token=" << _resourceToken;
     buf2 << "Bearer " << _resourceToken << std::endl;
     _acceptHeader = buf2.str();
+
+    if (doc.isMember("externalType"))
+    {
+        _externalType = doc["externalType"].asString();
+        if (doc.isMember("options"))
+        {
+            _externalOptions = doc["options"];
+        }
+    }
 
     return STATUS_OK;
 }
@@ -147,15 +157,36 @@ CesiumIonImageLayer::openImplementation()
         uriContext.addHeader("authorization", ionResource._acceptHeader);
         URI tmsURI = URI("tilemapresource.xml", uriContext);
 
-        TMSImageLayer* tmsImageLayer = new TMSImageLayer();
-        tmsImageLayer->setURL(tmsURI);
-        _imageLayer = tmsImageLayer;
-        status = _imageLayer->open();
-        if (status.isError())
-            return status;
 
-        setProfile(_imageLayer->getProfile());
-        dataExtents() = _imageLayer->getDataExtents();
+        if (ionResource._externalType.empty())
+        {
+            TMSImageLayer* tmsImageLayer = new TMSImageLayer();
+            tmsImageLayer->setURL(tmsURI);
+            _imageLayer = tmsImageLayer;
+        }
+        else
+        {
+            if (ionResource._externalType == "BING")
+            {
+                BingImageLayer *bingImageLayer = new BingImageLayer();
+                bingImageLayer->setAPIKey(ionResource._externalOptions["key"].asString());
+                bingImageLayer->setImagerySet(ionResource._externalOptions["mapStyle"].asString());
+                _imageLayer = bingImageLayer;
+            }
+        }
+
+        if (_imageLayer)
+        {
+            status = _imageLayer->open();
+            if (status.isError())
+                return status;
+            setProfile(_imageLayer->getProfile());
+            dataExtents() = _imageLayer->getDataExtents();
+        }
+        else
+        {
+            return Status::Error("Unsupported Cesium Ion image layer");
+        }
     }
 
     return status;

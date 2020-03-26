@@ -94,31 +94,39 @@ float VP_Interpolate3(float a, float b, float c)
 
 vec2 VP_Interpolate3(vec2 a, vec2 b, vec2 c) 
 {
-    return vec2(dot(gl_TessCoord.xyz, vec3(a.x,b.x,c.x)),
+    return vec2(
+        dot(gl_TessCoord.xyz, vec3(a.x,b.x,c.x)),
         dot(gl_TessCoord.xyz, vec3(a.y,b.y,c.y)));
 }
 
 vec3 VP_Interpolate3(vec3 a, vec3 b, vec3 c) 
 {
-    return vec3(dot(gl_TessCoord.xyz, vec3(a.x,b.x,c.x)),
+    return vec3(
+        dot(gl_TessCoord.xyz, vec3(a.x,b.x,c.x)),
         dot(gl_TessCoord.xyz, vec3(a.y,b.y,c.y)),
         dot(gl_TessCoord.xyz, vec3(a.z,b.z,c.z)));
 }
 
 vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c) 
 {
-    return vec4(dot(gl_TessCoord.xyz, vec3(a.x,b.x,c.x)),
+    return vec4(
+        dot(gl_TessCoord.xyz, vec3(a.x,b.x,c.x)),
         dot(gl_TessCoord.xyz, vec3(a.y,b.y,c.y)),
         dot(gl_TessCoord.xyz, vec3(a.z,b.z,c.z)),
         dot(gl_TessCoord.xyz, vec3(a.w,b.w,c.w)));
 }
 
+vec3 oe_UpVectorView;
+vec3 vp_Normal;
 
 void oe_rex_TES()
 {
     VP_Interpolate3();
+    
     // Must re-normalize the normal vector since interpolation was linear?
     //vp_Normal = normalize(vp_Normal);
+    //oe_UpVectorView = normalize(oe_UpVectorView);
+
     VP_EmitVertex();
 }
 

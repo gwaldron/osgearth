@@ -28,7 +28,7 @@ void oe_rex_init_model(inout vec4 vertexModel)
     // initialize:
     oe_rex_morphFactor = 0.0;
 
-    // Extract the ertex type marker
+    // Extract the vertex type marker
     oe_terrain_vertexMarker = int(oe_layer_tilec.z);
 
     // Default tessellation level (where applicable)

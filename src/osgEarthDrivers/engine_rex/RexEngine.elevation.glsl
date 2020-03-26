@@ -16,7 +16,6 @@
 // stage
 out vec4 oe_layer_tilec;
 out vec3 oe_UpVectorView;
-
 flat out int oe_terrain_vertexMarker;
 
 uniform float oe_terrain_altitude;

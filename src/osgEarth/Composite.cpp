@@ -283,7 +283,10 @@ CompositeImageLayer::closeImplementation()
         layer->close();
     }
 
-    _layerNodes->removeChildren(0, _layerNodes->getNumChildren());
+    if (_layerNodes.valid())
+    {
+        _layerNodes->removeChildren(0, _layerNodes->getNumChildren());
+    }
 
     dataExtents().clear();
     return Status::OK();

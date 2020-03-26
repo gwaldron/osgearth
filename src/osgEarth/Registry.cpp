@@ -130,9 +130,7 @@ _maxVertsPerDrawable(USHRT_MAX)
     if ( !zipLib.empty() )
         osgDB::Registry::instance()->loadLibrary( zipLib );
 
-    // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
-    _defaultOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     const char* teStr = ::getenv(OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER);
     if ( teStr )
@@ -605,13 +603,6 @@ Registry::cloneOrCreateOptions(const osgDB::Options* input)
     osgDB::Options* newOptions =
         input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::DEEP_COPY_USERDATA)) :
         new osgDB::Options();
-
-    // clear the CACHE_ARCHIVES flag because it is evil
-    if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )
-    {
-        newOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
-            ((int)newOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
-    }
 
     return newOptions;
 }

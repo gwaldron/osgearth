@@ -33,6 +33,8 @@
 #include <osgEarth/Notify>
 #include <osgEarth/URI>
 #include <osgEarth/Containers>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderUtils>
 
 
 #undef LC
@@ -377,6 +379,22 @@ public:
                                 geom->getOrCreateStateSet()->setTextureAttribute(0, tex.get());
                             }
 
+                            if (material.alphaMode != "OPAQUE")
+                            {
+                                if (material.alphaMode == "BLEND")
+                                {                                    
+                                    geom->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+                                    geom->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+                                    osgEarth::Util::DiscardAlphaFragments().install(geom->getOrCreateStateSet(), 0.15);
+                                }
+                                else if (material.alphaMode == "MASK")
+                                {
+                                    geom->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+                                    geom->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+                                    osgEarth::Util::DiscardAlphaFragments().install(geom->getOrCreateStateSet(), material.alphaCutoff);
+                                }
+                            }
+
                             if (cachedTex)
                             {
                                 _texCache->unlock();
@@ -424,7 +442,7 @@ public:
 
             // If there is no color array just add one that has the base color factor in it.
             if (!geom->getColorArray())
-            {
+            {            
                 osg::Vec4Array* colors = new osg::Vec4Array();
                 osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
                 for (unsigned int i = 0; i < verts->size(); i++)
@@ -508,6 +526,8 @@ public:
                         geom->accept(sv);
                 }
             }
+
+            osgEarth::Registry::shaderGenerator().run(geom);
         }
 
         return group;

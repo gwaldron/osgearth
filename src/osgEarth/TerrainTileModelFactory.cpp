@@ -68,8 +68,10 @@ bool CreateTileManifest::inSyncWith(const Map* map) const
         ++i)
     {
         const Layer* layer = map->getLayerByUID(i->first);
-        if (layer == NULL ||
-            layer->getRevision() != i->second)
+
+        // note: if the layer is NULL, it was removed, so let it pass.
+
+        if (layer != NULL && layer->getRevision() != i->second)
         {
             return false;
         }
@@ -400,15 +402,13 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
 
-    bool needElevation = true;
+    bool needElevation = manifest.includesElevation();
     ElevationLayerVector layers;
     map->getLayers(layers);
     int combinedRevision = 0;
 
     if (!manifest.empty())
     {
-        needElevation = false;
-
         for(ElevationLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         {
             const ElevationLayer* layer = i->get();
@@ -506,19 +506,19 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
     OE_PROFILING_ZONE;
 
     // gather the combined revision (additive is fine)
-    int combinedLayerRevision = 0;
-    for(ElevationLayerVector::const_iterator i = layers.begin();
-        i != layers.end();
-        ++i)
-    {
-        // need layer UID too? gw
-        combinedLayerRevision += i->get()->getRevision();
-    }
+    //int combinedLayerRevision = 0;
+    //for(ElevationLayerVector::const_iterator i = layers.begin();
+    //    i != layers.end();
+    //    ++i)
+    //{
+    //    // need layer UID too? gw
+    //    combinedLayerRevision += i->get()->getRevision();
+    //}
     
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
-    cachekey._revision     = (int)map->getDataModelRevision() + combinedLayerRevision;
+    cachekey._revision     = (int)map->getDataModelRevision(); // + combinedLayerRevision;
     cachekey._samplePolicy = samplePolicy;
 
     if (progress)
@@ -640,11 +640,10 @@ TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
     int combinedRevision = 0;
 
     // any land cover layer means using them all:
-    bool needLandCover = true;
+    bool needLandCover = manifest.includesLandCover();
 
     if (!manifest.empty())
     {
-        needLandCover = false;
         for(LandCoverLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         {
             const LandCoverLayer* layer = i->get();

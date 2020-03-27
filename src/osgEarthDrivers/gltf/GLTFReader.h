@@ -527,7 +527,7 @@ public:
                 }
             }
 
-            osgEarth::Registry::shaderGenerator().run(geom);
+            osgEarth::Registry::shaderGenerator().run(geom.get());
         }
 
         return group;

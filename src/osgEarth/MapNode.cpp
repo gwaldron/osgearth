@@ -240,7 +240,7 @@ _terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 }
 
 MapNode::MapNode( Map* map ) :
-_map( map ),
+_map( map ? map : new Map() ),
 _terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 {
     init();

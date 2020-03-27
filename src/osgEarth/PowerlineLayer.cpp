@@ -281,7 +281,7 @@ namespace
         {
             for (int j = -1; j <=1; ++j)
             {
-                if (!(i == 0 & j == 0))
+                if (!(i == 0 && j == 0))
                 {
                     TileKey neighborKey = query.tileKey().get().createNeighborKey(i, j);
                     Query newQuery(query);

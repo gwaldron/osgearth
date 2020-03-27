@@ -46,103 +46,112 @@ using namespace osgEarth;
    point, which is the rotation around Z of the "tangent" of the
    linestring at the point.
  */
-
-double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
-                                FilterContext& context)
+namespace
 {
-    const SpatialReference* targetSRS = 0L;
-    if (context.getSession()->isMapGeocentric())
+    void transpose3x3(osg::Matrix& m)
     {
-        targetSRS = context.getSession()->getMapSRS();
+        std::swap(m(0,1), m(1,0));
+        std::swap(m(0,2), m(2,0));
+        std::swap(m(1,2), m(2,1));
     }
-    else
-    {
-        targetSRS = context.profile()->getSRS()->getGeocentricSRS();
-    }
-    osg::Vec3d point3d(point);
 
-    osg::Matrixd orientation;
-    osg::Vec3d world3d;
-    
-    ECEF::transformAndGetRotationMatrix(point3d, context.profile()->getSRS(), world3d,
-                                        targetSRS, orientation);
-    // XXX OSG bug weirdness, fixed in OSG next
-    osg::Matrixd toLocal(orientation);
-    toLocal.transpose3x3(toLocal);
-    
-    osg::Vec2d in;
-    osg::Vec2d out;
-    if (previous.x() != DBL_MAX)
+    double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
+                                    FilterContext& context)
     {
-        osg::Vec3d prevWorld;
-        ECEF::transformAndLocalize(previous, context.profile()->getSRS(), prevWorld,
-                                   targetSRS);
-        osg::Vec3d inWorld = world3d - prevWorld;
-        osg::Vec3d inLocal = inWorld * toLocal;
-        in.x() = inLocal.x();
-        in.y() = inLocal.y();
-        in.normalize();
+        const SpatialReference* targetSRS = 0L;
+        if (context.getSession()->isMapGeocentric())
+        {
+            targetSRS = context.getSession()->getMapSRS();
+        }
+        else
+        {
+            targetSRS = context.profile()->getSRS()->getGeocentricSRS();
+        }
+        osg::Vec3d point3d(point);
+
+        osg::Matrixd orientation;
+        osg::Vec3d world3d;
+    
+        ECEF::transformAndGetRotationMatrix(point3d, context.profile()->getSRS(), world3d,
+                                            targetSRS, orientation);
+        // XXX OSG bug weirdness, fixed in OSG next
+        osg::Matrixd toLocal(orientation);
+        transpose3x3(toLocal);
         
+        osg::Vec2d in;
+        osg::Vec2d out;
+        if (previous.x() != DBL_MAX)
+        {
+            osg::Vec3d prevWorld;
+            ECEF::transformAndLocalize(previous, context.profile()->getSRS(), prevWorld,
+                                       targetSRS);
+            osg::Vec3d inWorld = world3d - prevWorld;
+            osg::Vec3d inLocal = inWorld * toLocal;
+            in.x() = inLocal.x();
+            in.y() = inLocal.y();
+            in.normalize();
+        
+        }
+        if (next.x() != DBL_MAX)
+        {
+            osg::Vec3d nextWorld;
+            ECEF::transformAndLocalize(next, context.profile()->getSRS(), nextWorld,
+                                       targetSRS);
+            osg::Vec3d outWorld = nextWorld - world3d;
+            osg::Vec3d outLocal = outWorld * toLocal;
+            out.x() = outLocal.x();
+            out.y() = outLocal.y();
+            out.normalize();
+        }
+
+        osg::Vec2d direction = in + out;
+        double heading = std::atan2(-direction.x(), direction.y());
+        if (heading < -osg::PI_2) heading += osg::PI;
+        if (heading >= osg::PI_2) heading -= osg::PI;
+        return osg::RadiansToDegrees(heading);
     }
-    if (next.x() != DBL_MAX)
+
+    double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
+                                    const SpatialReference* sourceSRS,
+                                    const SpatialReference* targetSRS)
     {
-        osg::Vec3d nextWorld;
-        ECEF::transformAndLocalize(next, context.profile()->getSRS(), nextWorld,
-                                   targetSRS);
-        osg::Vec3d outWorld = nextWorld - world3d;
-        osg::Vec3d outLocal = outWorld * toLocal;
-        out.x() = outLocal.x();
-        out.y() = outLocal.y();
-        out.normalize();
+        osg::Vec3d point3d(point);
+
+        osg::Matrixd orientation;
+        osg::Vec3d world3d;
+
+        ECEF::transformAndGetRotationMatrix(point3d, sourceSRS, world3d, targetSRS, orientation);
+        // XXX OSG bug weirdness, fixed in OSG next
+        osg::Matrixd toLocal(orientation);
+        transpose3x3(toLocal);
+        osg::Vec2d in;
+        osg::Vec2d out;
+        if (previous.x() != DBL_MAX)
+        {
+            osg::Vec3d prevWorld;
+            ECEF::transformAndLocalize(previous, sourceSRS, prevWorld, targetSRS);
+            osg::Vec3d inWorld = world3d - prevWorld;
+            osg::Vec3d inLocal = inWorld * toLocal;
+            in.x() = inLocal.x();
+            in.y() = inLocal.y();
+            in.normalize();
+        }
+        if (next.x() != DBL_MAX)
+        {
+            osg::Vec3d nextWorld;
+            ECEF::transformAndLocalize(next, sourceSRS, nextWorld, targetSRS);
+            osg::Vec3d outWorld = nextWorld - world3d;
+            osg::Vec3d outLocal = outWorld * toLocal;
+            out.x() = outLocal.x();
+            out.y() = outLocal.y();
+            out.normalize();
+        }
+        osg::Vec2d direction = in + out;
+        double heading = std::atan2(-direction.x(), direction.y());
+        if (heading < -osg::PI_2) heading += osg::PI;
+        if (heading >= osg::PI_2) heading -= osg::PI;
+        return osg::RadiansToDegrees(heading);
     }
-
-    osg::Vec2d direction = in + out;
-    double heading = std::atan2(-direction.x(), direction.y());
-    if (heading < -osg::PI_2) heading += osg::PI;
-    if (heading >= osg::PI_2) heading -= osg::PI;
-    return osg::RadiansToDegrees(heading);
-}
-
-double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
-                                const SpatialReference* sourceSRS,
-                                const SpatialReference* targetSRS)
-{
-    osg::Vec3d point3d(point);
-
-    osg::Matrixd orientation;
-    osg::Vec3d world3d;
-
-    ECEF::transformAndGetRotationMatrix(point3d, sourceSRS, world3d, targetSRS, orientation);
-    // XXX OSG bug weirdness, fixed in OSG next
-    osg::Matrixd toLocal(orientation);
-    toLocal.transpose3x3(toLocal);
-    osg::Vec2d in;
-    osg::Vec2d out;
-    if (previous.x() != DBL_MAX)
-    {
-        osg::Vec3d prevWorld;
-        ECEF::transformAndLocalize(previous, sourceSRS, prevWorld, targetSRS);
-        osg::Vec3d inWorld = world3d - prevWorld;
-        osg::Vec3d inLocal = inWorld * toLocal;
-        in.x() = inLocal.x();
-        in.y() = inLocal.y();
-        in.normalize();
-    }
-    if (next.x() != DBL_MAX)
-    {
-        osg::Vec3d nextWorld;
-        ECEF::transformAndLocalize(next, sourceSRS, nextWorld, targetSRS);
-        osg::Vec3d outWorld = nextWorld - world3d;
-        osg::Vec3d outLocal = outWorld * toLocal;
-        out.x() = outLocal.x();
-        out.y() = outLocal.y();
-        out.normalize();
-    }
-    osg::Vec2d direction = in + out;
-    double heading = std::atan2(-direction.x(), direction.y());
-    if (heading < -osg::PI_2) heading += osg::PI;
-    if (heading >= osg::PI_2) heading -= osg::PI;
-    return osg::RadiansToDegrees(heading);
 }
 
 Status JoinPointsLinesFilter::initialize(const osgDB::Options* readOptions)

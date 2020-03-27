@@ -121,7 +121,8 @@ namespace osgEarth
             FeatureCursor*            cursor,
             const Style&              style,
             const FilterContext&      context,
-            osg::ref_ptr<osg::Node>&  node ) =0;
+            osg::ref_ptr<osg::Node>&  node,
+            const Query&              query) = 0;
 
         /**
          * Creates a group that will contain all the geometry corresponding to a
@@ -148,7 +149,8 @@ namespace osgEarth
             FeatureCursor*            features,
             const Style&              style,
             const FilterContext&      context,
-            osg::ref_ptr<osg::Node>&  node );
+            osg::ref_ptr<osg::Node>&  node,
+            const Query&                    query);
 
     public:
         GeometryCompilerOptions _options;

@@ -163,9 +163,6 @@ Map::init()
     // remember the referrer for relative-path resolution:
     URIContext( options().referrer() ).store( _readOptions.get() );
 
-    // we do our own caching
-    _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-
     // create a callback that the Map will use to detect setEnabled calls
     _layerCB = new LayerCB(this);
 

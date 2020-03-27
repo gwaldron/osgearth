@@ -44,7 +44,6 @@ int usage(char** argv)
         << argv[0]
         << "\n    --in [prop_name] [prop_value]       : set an input property"
         << "\n    --out [prop_name] [prop_value]      : set an output property"
-        << "\n    --elevation                         : convert as elevation data (default is image)"
         << "\n    --profile [profile def]             : set an output profile (optional; default = same as input)"
         << "\n    --min-level [int]                   : minimum level of detail"
         << "\n    --max-level [int]                   : maximum level of detail"

@@ -68,9 +68,6 @@ ThreeDTilesLayer::init()
     // Make sure the b3dm plugin is loaded
     std::string libname = osgDB::Registry::instance()->createLibraryNameForExtension("gltf");
     osgDB::Registry::instance()->loadLibrary(libname);
-
-    // Default zero-or-one-texture shader
-    ShaderUtils::installDefaultShader(getOrCreateStateSet());
 }
 
 Status

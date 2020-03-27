@@ -557,10 +557,9 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
             true);              // initialize to HAE (0.0) heights
     }
 
-    if (!out_normalMap.valid())
+    if (!out_normalMap.valid() && _options.normalMaps() == true)
     {
-        //OE_INFO << "TODO: check terrain reqs\n";
-        out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);
+        out_normalMap = new NormalMap(257, 257);
     }
 
     bool populated = layers.populateHeightFieldAndNormalMap(

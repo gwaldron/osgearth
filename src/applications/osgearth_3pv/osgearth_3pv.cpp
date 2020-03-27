@@ -192,7 +192,8 @@ updateFrustumGeometry(osg::Node* node, const osg::Matrix& modelview, const osg::
 int
 main( int argc, char** argv )
 {
-    putenv("OSGEARTH_REX_DEBUG=1");
+    static char debugEnv[] = "OSGEARTH_REX_DEBUG=1";
+    putenv(debugEnv);
 
     osg::ArgumentParser arguments( &argc, argv );
 

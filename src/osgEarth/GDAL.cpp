@@ -1787,9 +1787,16 @@ GDALImageLayer::openImplementation()
     if (options().maxDataLevel().isSet())
         _driver->setMaxDataLevel( options().maxDataLevel().get() );
 
+    // If the user set an override profile, save it
+    // TODO: may want to elevate this to Layer
     if (getProfile())
     {
-        _driver->setOverrideProfile(getProfile());
+        _overrideProfile = getProfile();
+    }
+
+    if (_overrideProfile.valid())
+    {
+        _driver->setOverrideProfile(_overrideProfile.get());
     }
 
     Status status = _driver->open(
@@ -1814,6 +1821,8 @@ Status
 GDALImageLayer::closeImplementation()
 {
     _driver = 0L;
+    dataExtents().clear();
+    setProfile(NULL); // must do this to support override profiles
     return ImageLayer::closeImplementation();
 }
 
@@ -1889,9 +1898,15 @@ GDALElevationLayer::openImplementation()
     if (options().maxDataLevel().isSet())
         _driver->setMaxDataLevel( options().maxDataLevel().get() );
 
+    // If the user set an override profile, save it.
     if (getProfile())
     {
-        _driver->setOverrideProfile(getProfile());
+        _overrideProfile = getProfile();
+    }
+
+    if (_overrideProfile.valid())
+    {
+        _driver->setOverrideProfile(_overrideProfile.get());
     }
 
     Status status = _driver->open(
@@ -1916,6 +1931,8 @@ Status
 GDALElevationLayer::closeImplementation()
 {
     _driver = 0L;
+    dataExtents().clear();
+    setProfile(NULL); // must do this to support override profiles
     return ElevationLayer::closeImplementation();
 }
 

@@ -207,16 +207,15 @@ namespace osgEarth
         struct LayerCB : public LayerCallback {
             LayerCB(Map*);
             osg::observer_ptr<Map> _map;
-            void onEnabledChanged(Layer* layer);
+            void onOpen(Layer* layer);
+            void onClose(Layer* layer);
         };
         osg::ref_ptr<LayerCallback> _layerCB;
         friend struct LayerCB;
-        void notifyOnLayerEnabledChanged(Layer*);
+        void notifyOnLayerOpenOrClose(Layer*);
 
         void installLayerCallbacks(Layer*);
         void uninstallLayerCallbacks(Layer*);
-        void openLayer(Layer*, bool callAddedToMap);
-        void closeLayer(Layer*);
 
         void init();
         friend class MapInfo;

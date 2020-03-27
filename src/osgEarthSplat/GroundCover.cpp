@@ -429,7 +429,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     std::stringstream buf;
     buf << "#version " GLSL_VERSION_STR "\n";
 
-        if ( !landCoverDict )
+    if ( !landCoverDict )
     {
         buf << defaultCode;
         OE_WARN << LC << "No land cover dictionary; generating default coverage predicate\n";

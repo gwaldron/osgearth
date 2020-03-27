@@ -344,12 +344,6 @@ GARSGraticule::init()
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
     _root = new osg::Group();
-    //_root->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::OFF);
-
-    if (getEnabled() == true)
-    {
-        rebuild();
-    }
 }
 
 void

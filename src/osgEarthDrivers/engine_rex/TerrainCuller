@@ -22,6 +22,7 @@
 #include "EngineContext"
 #include "TerrainRenderData"
 #include "SelectionInfo"
+#include <osgEarth/Containers>
 
 #include <osg/NodeVisitor>
 #include <osgUtil/CullVisitor>
@@ -37,7 +38,7 @@ namespace osgEarth { namespace REX
         bool _computed;
         GeoExtent _extent;
     };
-    typedef std::vector<LayerExtent> LayerExtentVector;
+    typedef UnorderedMap<UID, LayerExtent> LayerExtentMap;
 
     /**
      * Node visitor responsible for assembling a TerrainRenderData that 
@@ -53,7 +54,7 @@ namespace osgEarth { namespace REX
         DrawTileCommand* _firstDrawCommandForTile;
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
-        LayerExtentVector* _layerExtents;
+        LayerExtentMap* _layerExtents;
         bool _isSpy;
         std::vector<PatchLayer*> _patchLayers;
         bool _acceptSurfaceNodes;
@@ -64,7 +65,7 @@ namespace osgEarth { namespace REX
         TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
 
         /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings);
+        void setup(const Map* map, LayerExtentMap& layerExtents, const RenderBindings& bindings);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }

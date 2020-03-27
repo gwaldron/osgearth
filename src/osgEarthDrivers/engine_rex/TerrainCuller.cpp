@@ -59,7 +59,7 @@ _layerExtents(NULL)
 }
 
 void
-TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings)
+TerrainCuller::setup(const Map* map, LayerExtentMap& layerExtents, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;

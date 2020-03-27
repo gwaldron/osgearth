@@ -76,6 +76,12 @@ namespace osgEarth
             return Status::OK();
         }
 
+        void close()
+        {
+            _layer = NULL;
+            _setByUser = false;
+        }
+
         //! Find a layer in the map and set this reference to point at it 
         bool findInMap(const Map* map, const optional<std::string>& externalLayerName)
         {

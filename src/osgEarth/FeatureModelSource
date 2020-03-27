@@ -124,7 +124,8 @@ namespace osgEarth
             osg::ref_ptr<osg::Node>&  node,
             const Query&              query)
         {
-            return false;
+            // for backwards compatibility with old API
+            return createOrUpdateNode(cursor, style, context, node);
         }
 
         virtual bool createOrUpdateNode(
@@ -133,7 +134,7 @@ namespace osgEarth
             const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node)
         {
-            return createOrUpdateNode(cursor, style, context, node, Query());
+            return false;
         }
 
         /**

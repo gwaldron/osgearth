@@ -64,11 +64,11 @@ namespace osgEarth { namespace REX
             const TileKey& getTileKey() const { return _key; }
 
             /** Invoke the operation - not safe to alter the graph */
-            virtual void invoke(ProgressCallback*) { }
+            virtual bool run(ProgressCallback*) =0;
 
             /** Apply the results of the invoke operation - runs safely in update stage.
                 If this returns false, the request needs to be rerun. */
-            virtual bool apply(const osg::FrameStamp*) { return true; }
+            virtual bool merge(const osg::FrameStamp*) =0;
 
             //! Comparison for sorting
             bool operator()(const Request& lhs, const Request& rhs) const {
@@ -92,10 +92,10 @@ namespace osgEarth { namespace REX
 
             void setState(State value);
 
-            //! Sets a minimum delay between the last call to setState() and 
-            //! the request being processed. This exists to prevent requests
-            //! from spamming a resource (like the network)
-            void setDelay(double seconds) { _delay_s = seconds; }
+            //! Sets a minimum delay before the request will be processed.
+            //! This exists to prevent retry requests from spamming a resource
+            //! (like the network)
+            void setDelay(double seconds);
 
             bool isIdle() const { return _state == IDLE; }
             bool isRunning() const { return _state == RUNNING; }
@@ -107,6 +107,7 @@ namespace osgEarth { namespace REX
             TileKey                       _key;
             State                         _state;
             osg::Timer_t                  _stateTick;
+            osg::Timer_t                  _readyTick;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
@@ -114,6 +115,8 @@ namespace osgEarth { namespace REX
             mutable Threading::Mutex      _lock;
             int                           _loadCount;
             double                        _delay_s;
+            int                           _delayCount;
+            char                          _filename[64];
 
             void lock() { _lock.lock(); }
             void unlock() { _lock.unlock(); }
@@ -202,7 +205,7 @@ namespace osgEarth { namespace REX
     public:
 
         /** Internal method to invoke a request that was previously queued with load(). */
-        Request* invokeAndRelease(UID requestUID);
+        Request* runAndRelease(UID requestUID);
 
         /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
         TileKey getTileKeyForRequest(UID requestUID) const;

@@ -43,7 +43,6 @@ _frameLastUpdated(0u)
 void
 UnloaderGroup::traverse(osg::NodeVisitor& nv)
 {
-    //if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         bool runUpdate = false;

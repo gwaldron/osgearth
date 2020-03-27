@@ -1185,8 +1185,8 @@ TileNode::loadSync()
 {
     osg::ref_ptr<LoadTileData> loadTileData = new LoadTileData(this, _context.get());
     loadTileData->setEnableCancelation(false);
-    loadTileData->invoke(0L);
-    loadTileData->apply(0L);
+    loadTileData->run(0L);
+    loadTileData->merge(0L);
 }
 
 bool

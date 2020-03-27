@@ -262,6 +262,7 @@ public:
         if (da)
         {
             accessor.byteOffset = da->getFirst() * getBytesPerElement(data);
+            accessor.count = da->getCount();
         }
 
         //TODO: indexed elements
@@ -360,15 +361,15 @@ public:
                     osg::Texture::WrapMode wrapR = osgTexture->getWrap(osg::Texture::WRAP_R);
 
                     // Validate the clamp mode to be compatible with webgl
-                    if (wrapS == osg::Texture::CLAMP)
+                    if ((wrapS == osg::Texture::CLAMP) || (wrapS == osg::Texture::CLAMP_TO_BORDER))
                     {                     
                         wrapS = osg::Texture::CLAMP_TO_EDGE;
                     }
-                    if (wrapT == osg::Texture::CLAMP)
+                    if ((wrapT == osg::Texture::CLAMP) || (wrapT == osg::Texture::CLAMP_TO_BORDER))
                     {                     
                         wrapT = osg::Texture::CLAMP_TO_EDGE;
                     }
-                    if (wrapR == osg::Texture::CLAMP)
+                    if ((wrapR == osg::Texture::CLAMP) || (wrapR == osg::Texture::CLAMP_TO_BORDER))
                     {                     
                         wrapR = osg::Texture::CLAMP_TO_EDGE;
                     }                    
@@ -409,6 +410,10 @@ public:
                     roughnessFactor.has_number_value = true;
                     mat.values["roughnessFactor"] = roughnessFactor;
 
+					if (stateSet->getMode(GL_BLEND) & osg::StateAttribute::ON) {
+						mat.alphaMode = "BLEND";
+					}
+                    
                     _model.materials.push_back(mat);
                     return index;
                 }

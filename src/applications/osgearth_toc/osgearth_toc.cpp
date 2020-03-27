@@ -84,7 +84,6 @@ struct UpdateOperation : public osg::Operation
 
             if (s_change.getElevationLayer())
             {
-                OE_NOTICE << "Dirtying model layers.\n";
                 dirtyModelLayers();
             }
         }
@@ -121,6 +120,25 @@ struct DumpElevation : public osgGA::GUIEventHandler
             osg::ref_ptr<ElevationEnvelope> env = s_activeMap->getElevationPool()->createEnvelope(s_activeMap->getSRS(), 23u);
             float ep_elev = env->getElevation(coords.x(), coords.y());
             OE_NOTICE << "Elevations under mouse. EP=" << ep_elev << "\n";
+        }
+        return false;
+    }
+    char _c;
+    MapNode* _mapNode;
+};
+
+struct ToggleMinValidValue : public osgGA::GUIEventHandler
+{
+    ToggleMinValidValue(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c) { }
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
+        {
+            ElevationLayer* e = _mapNode->getMap()->getLayer<ElevationLayer>();
+            if (e->getMinValidValue() >= 0)
+                e->resetMinValidValue();
+            else
+                e->setMinValidValue(0);
         }
         return false;
     }
@@ -215,6 +233,8 @@ main( int argc, char** argv )
 
     viewer.addEventHandler(new DumpLabel(s_mapNode.get(), 'L'));
 
+    viewer.addEventHandler(new ToggleMinValidValue(s_mapNode.get(), 'M'));
+
     return Metrics::run(viewer);
 }
 
@@ -225,7 +245,16 @@ struct EnableDisableHandler : public ControlEventHandler
     EnableDisableHandler( Layer* layer ) : _layer(layer) { }
     void onClick( Control* control )
     {
-        _layer->setEnabled( !_layer->getEnabled() );
+        if (_layer->isOpen())
+            _layer->close();
+        else
+        {
+            if (_layer->getEnabled() == false)
+                _layer->setEnabled(true);
+
+            _layer->open();
+        }
+
         updateControlPanel();
     }
     Layer* _layer;
@@ -487,7 +516,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // enable/disable button
-    LabelControl* enableDisable = new LabelControl(layer->getEnabled() ? "DISABLE" : "ENABLE", 14);
+    LabelControl* enableDisable = new LabelControl(layer->isOpen()? "CLOSE" : "OPEN", 14);
     enableDisable->setHorizAlign( Control::ALIGN_CENTER );
     enableDisable->setBackColor( .4,.4,.4,1 );
     enableDisable->setActiveColor( .8,0,0,1 );
@@ -496,7 +525,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // refresh button (for image layers)
-    if (imageLayer)
+    if (visibleLayer)
     {
         LabelControl* refresh = new LabelControl("REFRESH", 14);
         refresh->setBackColor( .4,.4,.4,1 );

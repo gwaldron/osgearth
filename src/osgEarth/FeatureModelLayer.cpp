@@ -202,6 +202,15 @@ FeatureModelLayer::openImplementation()
     return Status::NoError;
 }
 
+Status
+FeatureModelLayer::closeImplementation()
+{
+    _featureSource.close();
+    _styleSheet.close();
+    _graphDirty = true;
+    return getStatus();
+}
+
 const GeoExtent&
 FeatureModelLayer::getExtent() const
 {

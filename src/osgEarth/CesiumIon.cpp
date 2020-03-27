@@ -22,10 +22,11 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/TDTiles>
+#include <osgEarth/TMS>
+#include <osgEarth/Bing>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::CesiumIon;
 using namespace osgEarth::Contrib::ThreeDTiles;
 
 #undef LC
@@ -34,11 +35,9 @@ using namespace osgEarth::Contrib::ThreeDTiles;
 //............................................................................
 
 Status
-CesiumIon::Driver::open(const URI& server,
-                        const std::string& format,
+CesiumIonResource::open(const URI& server,
                         const std::string& assetId,
                         const std::string& token,
-                        osg::ref_ptr<const Profile>& profile,
                         const osgDB::Options* readOptions)
 {
     if (assetId.empty())
@@ -50,10 +49,6 @@ CesiumIon::Driver::open(const URI& server,
     {
         return Status::Error(Status::ConfigurationError, "Fail: driver requires a valid \"token\" property");
     }
-
-    _format = format;
-
-    profile = Profile::create("spherical-mercator");
 
     std::stringstream buf;
     buf << server.full();
@@ -82,33 +77,16 @@ CesiumIon::Driver::open(const URI& server,
     buf2 << "Bearer " << _resourceToken << std::endl;
     _acceptHeader = buf2.str();
 
+    if (doc.isMember("externalType"))
+    {
+        _externalType = doc["externalType"].asString();
+        if (doc.isMember("options"))
+        {
+            _externalOptions = doc["options"];
+        }
+    }
+
     return STATUS_OK;
-}
-
-osgEarth::ReadResult
-CesiumIon::Driver::read(const URI& server,
-                        const TileKey& key,
-                        ProgressCallback* progress,
-                        const osgDB::Options* readOptions) const
-{
-    unsigned x, y;
-    key.getTileXY(x, y);
-
-    // Invert the y value
-    unsigned cols = 0, rows = 0;
-    key.getProfile()->getNumTiles(key.getLevelOfDetail(), cols, rows);
-    y = rows - y - 1;
-
-    std::string location = _resourceUrl;
-    std::stringstream buf;
-    buf << location;
-    if (!endsWith(location, "/")) buf << "/";
-    buf << key.getLevelOfDetail() << "/" << x << "/" << y << "." << _format;
-
-    URIContext context = server.context();
-    context.addHeader("authorization", _acceptHeader);
-    URI uri(buf.str(), context);
-    return uri.getImage(readOptions, progress);
 }
 
 //........................................................................
@@ -119,7 +97,6 @@ CesiumIonImageLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
             conf.set("server", _server);
             conf.set("asset_id", _assetId);
-            conf.set("format", _format);
             conf.set("token", _token);
     return conf;
 }
@@ -128,10 +105,7 @@ void
 CesiumIonImageLayer::Options::fromConfig(const Config& conf)
 {
     _server.init("https://api.cesium.com/");
-    _format.init("png");
-
     conf.get("server", _server);
-    conf.get("format", _format);
     conf.get("asset_id", _assetId);
     conf.get("token", _token);
 }
@@ -152,7 +126,6 @@ CesiumIonImageLayer::Options::getMetadata()
 REGISTER_OSGEARTH_LAYER(cesiumionimage, CesiumIonImageLayer);
 
 OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, URI, Server, server);
-OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, std::string, AssetId, assetId);
 OE_LAYER_PROPERTY_IMPL(CesiumIonImageLayer, std::string, Token, token);
 
@@ -169,40 +142,85 @@ CesiumIonImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    osg::ref_ptr<const Profile> profile = getProfile();
+    const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
+    if (key)
+        _key = key;
+    else
+        _key = options().token().get();
 
-    Status status = _driver.open(
+    if (_key.empty())
+    {
+        return Status(Status::ConfigurationError, "CesiumIon API key is required");
+    }
+
+    CesiumIonResource ionResource;
+    Status status = ionResource.open(
         options().server().get(),
-        options().format().get(),
         options().assetId().get(),
-        options().token().get(),
-        profile,
+        _key,
         getReadOptions());
 
-    if (status.isOK() && profile.get() != getProfile())
+    if (status.isOK())
     {
-        setProfile(profile.get());
+        URIContext uriContext(ionResource._resourceUrl);
+        uriContext.addHeader("authorization", ionResource._acceptHeader);
+        URI tmsURI = URI("tilemapresource.xml", uriContext);
+
+
+        if (ionResource._externalType.empty())
+        {
+            TMSImageLayer* tmsImageLayer = new TMSImageLayer();
+            tmsImageLayer->setURL(tmsURI);
+            _imageLayer = tmsImageLayer;
+        }
+        else
+        {
+            if (ionResource._externalType == "BING")
+            {
+                BingImageLayer *bingImageLayer = new BingImageLayer();
+                bingImageLayer->setAPIKey(ionResource._externalOptions["key"].asString());
+                bingImageLayer->setImagerySet(ionResource._externalOptions["mapStyle"].asString());
+                _imageLayer = bingImageLayer;
+            }
+        }
+
+        if (_imageLayer)
+        {
+            status = _imageLayer->open();
+            if (status.isError())
+                return status;
+            setProfile(_imageLayer->getProfile());
+            dataExtents() = _imageLayer->getDataExtents();
+        }
+        else
+        {
+            return Status::Error("Unsupported Cesium Ion image layer");
+        }
     }
 
     return status;
 }
 
+Status
+CesiumIonImageLayer::closeImplementation()
+{
+    if (_imageLayer.valid())
+    {
+        _imageLayer->close();
+        _imageLayer = NULL;
+    }
+    return ImageLayer::closeImplementation();
+}
+
 GeoImage
 CesiumIonImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    ReadResult r = _driver.read(
-        options().server().get(),
-        key,
-        progress,
-        getReadOptions());
-
-    if (r.succeeded())
-        return GeoImage(r.releaseImage(), key.getExtent());
-    else
-        return GeoImage(Status(r.errorDetail()));
+    if (_imageLayer)
+    {
+        return _imageLayer->createImage(key, progress);
+    }
+    return GeoImage(Status("Invalid image layer"));    
 }
-
-
 
 Config
 CesiumIon3DTilesLayer::Options::getConfig() const
@@ -232,24 +250,30 @@ CesiumIon3DTilesLayer::init()
 Status
 CesiumIon3DTilesLayer::openImplementation()
 {
-    CesiumIon::Driver driver;
-    osg::ref_ptr< const Profile > profile;
-    Status status = driver.open(
+    const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
+    if (key)
+        _key = key;
+    else
+        _key = options().token().get();
+
+    if (_key.empty())
+    {
+        return Status(Status::ConfigurationError, "CesiumIon API key is required");
+    }
+
+    CesiumIonResource ionResource;
+    Status status = ionResource.open(
         options().server().get(),
-        "",
         options().assetId().get(),
-        options().token().get(),
-        profile,
+        key,
         getReadOptions());
-
-
 
     URI serverURI;
     if (status.isOK())
     {
         URIContext uriContext;
-        uriContext.addHeader("authorization", driver._acceptHeader);
-        serverURI = URI(driver._resourceUrl, uriContext);
+        uriContext.addHeader("authorization", ionResource._acceptHeader);
+        serverURI = URI(ionResource._resourceUrl, uriContext);
     }
 
     Status parentStatus = VisibleLayer::openImplementation();
@@ -281,7 +305,7 @@ CesiumIon3DTilesLayer::openImplementation()
         _threadPool->put(readOptions.get());
     }
 
-    _tilesetNode = new ThreeDTilesetNode(tileset, driver._acceptHeader, getSceneGraphCallbacks(), readOptions.get());
+    _tilesetNode = new ThreeDTilesetNode(tileset, ionResource._acceptHeader, getSceneGraphCallbacks(), readOptions.get());
     _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
 
     return STATUS_OK;

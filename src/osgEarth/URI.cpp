@@ -40,25 +40,7 @@ using namespace osgEarth::Threading;
 
 
 namespace
-{
-    /**
-     * "Fixes" the osgDB options by disabling the automatic archive caching. Archive caching
-     * screws up our URI resolution because with it on, osgDB remembers every archive file
-     * you open and effectively puts it in all future search paths :(
-     */
-    const osgDB::Options*
-    fixOptions( const osgDB::Options* input )
-    {
-        if ( input && input->getObjectCacheHint() == osgDB::Options::CACHE_NONE )
-        {
-            return input;
-        }
-        else
-        {
-            return Registry::instance()->cloneOrCreateOptions( input );
-        }
-    }
-    
+{   
     class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:

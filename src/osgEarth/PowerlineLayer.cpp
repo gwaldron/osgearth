@@ -24,6 +24,7 @@
 #include <osgEarth/PolygonizeLines>
 #include <osgEarth/ECEF>
 #include <osgEarth/GeometryUtils>
+#include <osgEarth/Network>
 
 #include <algorithm>
 #include <iterator>
@@ -35,6 +36,17 @@ using namespace osgEarth;
 #define OE_TEST OE_NULL
 
 REGISTER_OSGEARTH_LAYER(PowerlineModel, PowerlineLayer);
+
+// Render power lines with their towers as models.
+// 
+// This code was originally written to use OSM data served in a tiled
+// data source. In that model, features are provided for the power
+// towers and power lines, then the attributes of both (tower height,
+// line voltage, numbers of lines) are useful, but there's not
+// explicit link between the two kinds of features. On the other hand,
+// power line data could come from an shp file or other GDAL layer in
+// which only the line features are available. To handle this, we
+// generate features for the towers if they aren't available.
 
 void PowerlineLayer::ModelOptions::fromConfig(const Config& conf)
 {
@@ -80,6 +92,9 @@ PowerlineLayer::Options::Options(const ConfigOptions& options)
 // them.
 void PowerlineLayer::Options::fromConfig(const Config& conf)
 {
+    _point_features.init(true);
+
+    conf.get("point_features", point_features());
     LayerReference<FeatureSource>::get(conf, "line_features", _lineSourceLayer, _lineSource);
     FeatureDisplayLayout layout = _layout.get();
     layout.cropFeatures() = true;
@@ -118,22 +133,25 @@ public:
 
     bool createOrUpdateNode(FeatureCursor* cursor, const Style& style,
                             const FilterContext& context,
-                            osg::ref_ptr<osg::Node>& node);
+                            osg::ref_ptr<osg::Node>& node,
+                            const Query& query);
 private:
     FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
-                                  const FilterContext& cx);
+                                  const FilterContext& cx, const Query& query);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
     Vec3dVector _attachments;
     std::string _modelName;
     osg::ref_ptr<StyleSheet> _styles;
+    bool _point_features;
 };
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
     : GeomFeatureNodeFactory(options),
       _lineSourceLayer(options.lineSourceLayer().get()),
       _lineSource(options.lineSource().get()),
-      _styles(styles)
+      _styles(styles),
+      _point_features(true)
 {
     if (options.towerModels().empty())
         return;
@@ -142,6 +160,7 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
     std::copy(modelOption.attachment_points().begin(), modelOption.attachment_points().end(),
               std::back_inserter(_attachments));
     _modelName = modelOption.uri().get();
+    _point_features = options.point_features().get();
 }
 
 FeatureNodeFactory*
@@ -152,6 +171,54 @@ PowerlineLayer::createFeatureNodeFactoryImplementation() const
 
 namespace
 {
+    // Network fun
+
+    // Identify an edge by its feature and position in the geometry
+    // list
+
+    struct EdgeNode
+    {
+        EdgeNode()
+            : id(0), position(0)
+        {
+        }
+        EdgeNode(FeatureID id_, int position_)
+            : id(id_), position(position_)
+        {
+        }
+        FeatureID id;
+        int position;
+        bool operator<(const EdgeNode& rhs) const
+        {
+            return (id < rhs.id) || (id == rhs.id && position < rhs.position);
+        }
+    };
+    
+    typedef osg::Vec3d NetworkNode;
+
+    typedef Network<EdgeNode, NetworkNode> PowerNetwork;
+
+    void addFeature(PowerNetwork& network, const Feature* feature)
+    {
+            const Geometry* geom = feature->getGeometry();
+            if (geom->getType() == Geometry::TYPE_LINESTRING)
+            {
+                FeatureID fid = feature->getFID();
+                for (int seg = 0; seg < geom->size() - 1; ++seg)
+                {
+                    network.addEdge(EdgeNode(fid, seg), (*geom)[seg], (*geom)[seg - 1]);
+                }
+            }
+    }
+
+    void addFeatures(PowerNetwork& network, const FeatureList& list)
+    {
+        for (FeatureList::const_iterator i = list.begin(); i != list.end(); ++i)
+        {
+            addFeature(network, i->get());
+        }        
+    }
+    
     Feature* getPointFeature(PointMap& pointMap, const osg::Vec3d& key)
     {
         PointMap::iterator itr = findPoint(pointMap, key);
@@ -165,18 +232,17 @@ namespace
         }
     }
 
-    double calculateHeading(Geometry* geom, int index)
+    double calculateHeading(osg::Vec3d& point, osg::Vec3d* previous, osg::Vec3d* next)
     {
-        osg::Vec3d& point = (*geom)[index];
         osg::Vec3d in, out;
-        if (index > 0)
+        if (previous)
         {
-            in = point - (*geom)[index - 1];
+            in = point - *previous;
             in.normalize();
         }
-        if (index < geom->size()-1)
+        if (next)
         {
-            out = (*geom)[index + 1] - point;
+            out = *next - point;
             out.normalize();
         }
         osg::Vec3d direction = in + out;
@@ -185,11 +251,62 @@ namespace
         if (heading < -osg::PI_2) heading += osg::PI;
         if (heading >= osg::PI_2) heading -= osg::PI;
         return osg::RadiansToDegrees(heading);
+
+    }
+
+    double calculateHeading(Geometry* geom, int index)
+    {
+        osg::Vec3d& point = (*geom)[index];
+        osg::Vec3d* previous = 0L;
+        osg::Vec3d* next = 0L;
+        if (index > 0)
+        {
+            previous = &(*geom)[index - 1];
+        }
+        if (index < geom->size() - 1)
+        {
+            next = &(*geom)[index + 1];
+        }
+        return calculateHeading(point, previous, next);
+    }
+
+    FeatureList findNeighborLineFeatures(const FilterContext& context, const Query& query)
+    {
+        const Session* session = context.getSession();
+        FeatureList result;
+
+        if (!query.tileKey().isSet())
+            return result;
+        for (int i =-1; i <= 1; ++i)
+        {
+            for (int j = -1; j <=1; ++j)
+            {
+                if (!(i == 0 && j == 0))
+                {
+                    TileKey neighborKey = query.tileKey().get().createNeighborKey(i, j);
+                    Query newQuery(query);
+                    newQuery.bounds().unset();
+                    newQuery.tileKey() = neighborKey;
+                    FeatureCursor* cursor = session->getFeatureSource()->createFeatureCursor(newQuery, 0L);
+                    while (cursor->hasMore())
+                    {
+                        Feature* feature = cursor->nextFeature();
+                        Geometry* geom = feature->getGeometry();
+                        if (geom->getType() == Geometry::TYPE_LINESTRING)
+                        {
+                            result.push_back(feature);
+                        }
+                    }
+                }
+            }
+        }
+        return result;
     }
 }
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
-    FeatureList& towerFeatures, const FilterContext& cx)
+                                                           FeatureList& towerFeatures, const FilterContext& cx,
+                                                           const Query& query)
 
 {
     FeatureList result;
@@ -206,6 +323,12 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq(map.get());
 
+    PowerNetwork linesNetwork;
+    addFeatures(linesNetwork, powerFeatures);
+    FeatureList neighbors = findNeighborLineFeatures(cx, query);
+    addFeatures(linesNetwork, neighbors);
+    linesNetwork.buildNetwork();
+    // Old code
     PointMap pointMap;
     for (FeatureList::iterator i = towerFeatures.begin(); i != towerFeatures.end(); ++i)
     {
@@ -283,32 +406,16 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
 
 bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, const Style& style,
                                                      const FilterContext& context,
-                                                     osg::ref_ptr<osg::Node>& node)
+                                                     osg::ref_ptr<osg::Node>& node,
+                                                     const Query& query)
 {
     FilterContext sharedCX = context;
     FeatureList workingSet; 
     cursor->fill(workingSet);
-    osgEarth::Util::JoinPointsLinesFilter pointsLinesFilter;
-    pointsLinesFilter.lineSourceLayer() = "lines";
-    pointsLinesFilter.lineSource() = _lineSource;
-    FilterContext localCX = pointsLinesFilter.push(workingSet, sharedCX);
-    // Render towers and lines (cables) seperately
-    // Could write another filter for this?
-    FeatureList pointSet;
-    for(FeatureList::iterator i = workingSet.begin(); i != workingSet.end(); ++i)
-    {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
-        if (geom->getType() == Geometry::TYPE_POINTSET)
-        {
-            pointSet.push_back(feature);
-        }
-    }
 
     Style towerStyle = style;
     if (_styles->getStyle("towers"))
         towerStyle = *_styles->getStyle("towers");
-
     Style cableStyle;
     if (_styles->getStyle("cables", false))
         cableStyle = *_styles->getStyle("cables", false);
@@ -321,20 +428,38 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         lineSymbol->tessellationSize() = Distance(0.25, Units::KILOMETERS);
         lineSymbol->useGLLines() = true;
     }
+    // Render towers and lines (cables) seperately
+    // Features for the tower models. This normally comes from feature
+    // data in a layer, but it can be synthesized using only the line
+    // features.
+    FeatureList pointSet;
+    FilterContext localCX = sharedCX;
     
+    osgEarth::Util::JoinPointsLinesFilter pointsLinesFilter;
+    pointsLinesFilter.lineSourceLayer() = "lines";
+    pointsLinesFilter.lineSource() = _lineSource;
+    if (!_point_features)
+    {
+        pointsLinesFilter.createPointFeatures() = true;
+    }
+    localCX = pointsLinesFilter.push(workingSet, sharedCX);
+    for(FeatureList::iterator i = workingSet.begin(); i != workingSet.end(); ++i)
+    {
+        Feature* feature = i->get();
+        Geometry* geom = feature->getGeometry();
+        if (geom->getType() == Geometry::TYPE_POINTSET
+            || geom->getType() == Geometry::TYPE_POINT)
+        {
+            pointSet.push_back(feature);
+        }
+    }
 
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     osg::ref_ptr<osg::Node> pointsNode;
-    GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode);
+    GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode, query);
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());
-    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX);
-
-#if 0
-    PolygonizeLinesFilter polyLineFilter(lineStyle);
-    osg::Node* cables = polyLineFilter.push(cableFeatures, localCX);
-    results->addChild(cables);
-#endif
+    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query);
     GeometryCompiler compiler;
     osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
     results->addChild(cables);

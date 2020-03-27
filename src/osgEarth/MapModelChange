@@ -41,8 +41,8 @@ namespace osgEarth
             ADD_LAYER,
             REMOVE_LAYER,
             MOVE_LAYER,
-            ENABLE_LAYER,
-            DISABLE_LAYER,
+            OPEN_LAYER,
+            CLOSE_LAYER,
             UNSPECIFIED
         };
 

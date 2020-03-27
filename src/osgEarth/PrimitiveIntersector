@@ -39,7 +39,7 @@ public:
     /** Constructor for initializing with full start and end vectors. */
     PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness, bool overlayIgnore=false);
 
-    struct Intersection
+    struct OSGEARTH_EXPORT Intersection
     {
         Intersection():
             ratio(-1.0),

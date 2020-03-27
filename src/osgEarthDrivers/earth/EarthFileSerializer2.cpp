@@ -90,8 +90,8 @@ namespace
         return
             k == "options" ||
             //k == "image" ||
-            k == "elevation" ||
-            k == "heightfield" ||
+            //k == "elevation" ||
+            //k == "heightfield" ||
             //k == "model" ||
             //k == "mask" ||
             k == "external" ||
@@ -538,8 +538,7 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
     // Start a batch update of the map:
     map->beginUpdate();
 
-    LayerVector layers;
-
+#if 0
     // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
     // TODO: revisit this since we should really be listening for elevation data changes and
     // re-clamping based on that..
@@ -558,11 +557,12 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
             addLayer(*i, layers);
         }
     }
+#endif
 
+    LayerVector layers;
     Config externalConfig;
     std::vector<osg::ref_ptr<Extension> > extensions;
-
-    // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
+    
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
         if (i->key() == "options" || i->key() == "name" || i->key() == "type" || i->key() == "version")
@@ -570,24 +570,24 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
             // nop - handled earlier
         }
 
-        else if ( i->key() == "external" || i->key() == "extensions" )
+        else if ( i->key() == "external" )
         {
             externalConfig = *i;
             
-            for(ConfigSet::const_iterator e = i->children().begin(); e != i->children().end(); ++e)
-            {
-                Extension* extension = loadExtension(*e);
-                if (extension)
-                    extensions.push_back(extension);
-            }
+            //for(ConfigSet::const_iterator e = i->children().begin(); e != i->children().end(); ++e)
+            //{
+            //    Extension* extension = loadExtension(*e);
+            //    if (extension)
+            //        extensions.push_back(extension);
+            //}
         }
 
-        else if ( !isReservedWord(i->key()) ) // plugins/extensions.
+        else if ( !isReservedWord(i->key()) )
         {
-            // try to add as a plugin Layer first:
+            // try to add as a Layer first:
             bool addedLayer = addLayer(*i, layers); 
 
-            // failing that, try to load as an extension:
+            // failing that, try to load as an Extension:
             if ( !addedLayer )
             {
                 Extension* extension = loadExtension(*i);

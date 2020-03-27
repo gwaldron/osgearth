@@ -62,10 +62,10 @@ namespace
         void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex) {
             _node->onLayerMoved(layer, oldIndex, newIndex);
         }
-        void onLayerEnabled(Layer* layer) {
+        void onLayerOpened(Layer* layer) {
             _node->onLayerAdded(layer, _node->getMap()->getIndexOfLayer(layer));
         }
-        void onLayerDisabled(Layer* layer) {
+        void onLayerClosed(Layer* layer) {
             _node->onLayerRemoved(layer, _node->getMap()->getIndexOfLayer(layer));
         }
 
@@ -240,7 +240,7 @@ _terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 }
 
 MapNode::MapNode( Map* map ) :
-_map( map ),
+_map( map ? map : new Map() ),
 _terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 {
     init();
@@ -706,7 +706,8 @@ namespace
         for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
         {
             Layer* layer = i->get();
-            if (layer->getEnabled())
+
+            if (layer->isOpen())
             {
                 osg::Node* node = layer->getNode();
                 if (node)
@@ -726,7 +727,7 @@ namespace
 void
 MapNode::onLayerAdded(Layer* layer, unsigned index)
 {
-    if (!layer || !layer->getEnabled())
+    if (!layer || !layer->isOpen())
         return;
     
     // Communicate terrain resources to the layer:

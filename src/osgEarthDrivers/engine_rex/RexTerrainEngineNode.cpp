@@ -937,12 +937,12 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             switch( change.getAction() )
             {
             case MapModelChange::ADD_LAYER:
-            case MapModelChange::ENABLE_LAYER:
+            case MapModelChange::OPEN_LAYER:
                 addLayer(change.getLayer());
                 break;
 
             case MapModelChange::REMOVE_LAYER:
-            case MapModelChange::DISABLE_LAYER:
+            case MapModelChange::CLOSE_LAYER:
                 if (change.getImageLayer())
                     removeImageLayer( change.getImageLayer() );
                 else if (change.getElevationLayer())
@@ -964,11 +964,6 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
 {
-    if (layer->getUID() + 1 > _cachedLayerExtents.size())
-    {
-        _cachedLayerExtents.resize(layer->getUID()+1);
-    }
-
     // Store the layer's extent in the map's SRS:
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];
 

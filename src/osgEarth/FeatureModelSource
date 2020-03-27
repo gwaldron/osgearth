@@ -122,7 +122,19 @@ namespace osgEarth
             const Style&              style,
             const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node,
-            const Query&              query) = 0;
+            const Query&              query)
+        {
+            return false;
+        }
+
+        virtual bool createOrUpdateNode(
+            FeatureCursor*            cursor,
+            const Style&              style,
+            const FilterContext&      context,
+            osg::ref_ptr<osg::Node>&  node)
+        {
+            return createOrUpdateNode(cursor, style, context, node, Query());
+        }
 
         /**
          * Creates a group that will contain all the geometry corresponding to a

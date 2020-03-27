@@ -384,12 +384,7 @@ ImageLayer::createImage(const TileKey&    key,
     OE_PROFILING_ZONE_TEXT(getName());
     OE_PROFILING_ZONE_TEXT(key.str());
 
-    if (getStatus().isError())
-    {
-        return GeoImage::INVALID;
-    }
-
-    if (getEnabled() == false || isOpen() == false)
+    if (!isOpen())
     {
         return GeoImage::INVALID;
     }
@@ -473,7 +468,7 @@ GeoImage
 ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progress)
 {
     // If the layer is disabled, bail out.
-    if ( !getEnabled() )
+    if ( !isOpen() )
     {
         return GeoImage::INVALID;
     }

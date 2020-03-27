@@ -186,7 +186,7 @@ SimpleOceanLayer::setMaskLayer(ImageLayer* maskLayer)
     {
         if (!maskLayer->getEnabled())
         {
-            OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" disabled\n";
+            OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" is disabled" << std::endl;
             return;
         }
 

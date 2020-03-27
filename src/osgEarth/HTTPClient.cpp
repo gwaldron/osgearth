@@ -101,6 +101,8 @@ namespace osgEarth
         if (callback)
         {
             cancelled = callback->isCanceled() || callback->reportProgress(dlnow, dltotal);
+            if (cancelled)
+                OE_DEBUG << "An HTTP request was canceled mid-stream" << std::endl;
         }
         return cancelled;
     }
@@ -399,7 +401,7 @@ namespace
 
     static long                        s_timeout = 0;
     static long                        s_connectTimeout = 0;
-    static float                       s_retryDelay_s = 0.0f;
+    static float                       s_retryDelay_s = 0.5f;
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
@@ -1276,6 +1278,13 @@ HTTPClient::initializeImpl()
         connectTimeout = osgEarth::as<long>(std::string(connectTimeoutEnv), 0);
     }
     OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
+
+    const char* retryDelayEnv = getenv("OSGEARTH_HTTP_RETRY_DELAY");
+    if (retryDelayEnv)
+    {
+        s_retryDelay_s = osgEarth::as<double>(std::string(retryDelayEnv), 0.0);
+    }
+    OE_DEBUG << LC << "Setting retry delay to " << s_retryDelay_s << std::endl;
 
     _impl->initialize();
 

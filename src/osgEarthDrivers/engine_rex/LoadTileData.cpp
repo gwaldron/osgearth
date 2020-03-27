@@ -51,20 +51,20 @@ LoadTileData::LoadTileData(const CreateTileManifest& manifest, TileNode* tilenod
 }
 
 // invoke runs in the background pager thread.
-void
-LoadTileData::invoke(ProgressCallback* progress)
+bool
+LoadTileData::run(ProgressCallback* progress)
 {
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
-        return;
+        return false;
 
     osg::ref_ptr<TerrainEngineNode> engine;
     if (!_engine.lock(engine))
-        return;
+        return false;
 
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
-        return;
+        return false;
 
     // if the operation was canceled, set the request to abandoned
     // so it can potentially retry later.
@@ -73,8 +73,9 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
+        //OE_WARN << _key.str() << " .. canceled before createTileModel" << std::endl;
         setDelay(progress->getRetryDelay());
-        return;
+        return false;
     }
 
     // Assemble all the components necessary to display this tile
@@ -91,8 +92,9 @@ LoadTileData::invoke(ProgressCallback* progress)
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
+        //OE_WARN << _key.str() << " .. canceled after createTileModel" << std::endl;
         setDelay(progress->getRetryDelay());
-        return;
+        return false;
     }
 
     // In the terrain engine, we have to keep our elevation rasters in 
@@ -101,12 +103,14 @@ LoadTileData::invoke(ProgressCallback* progress)
     {
         _dataModel->getElevationTexture()->setUnRefImageDataAfterApply(false);
     }
+
+    return _dataModel.valid();
 }
 
 
 // apply() runs in the update traversal and can safely alter the scene graph
 bool
-LoadTileData::apply(const osg::FrameStamp* stamp)
+LoadTileData::merge(const osg::FrameStamp* stamp)
 {
     // context went out of scope - bail
     osg::ref_ptr<EngineContext> context;
@@ -124,8 +128,12 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
         return true;
 
     // no data model at all - done
+    // GW: how does this happen? shouldn't happen.
     if (!_dataModel.valid())
-        return true;
+    {
+        OE_WARN << _key.str() << " bailing out of merge b/c data model is NULL" << std::endl;
+        return false;
+    }
 
     OE_PROFILING_ZONE;
 

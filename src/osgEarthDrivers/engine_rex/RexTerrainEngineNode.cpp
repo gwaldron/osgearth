@@ -104,7 +104,7 @@ namespace
                 // if the map doesn't contain a layer with a matching UID,
                 // or if the layer is now disabled, remove it from the render model.
                 Layer* layer = _map->getLayerByUID(pass.sourceUID());
-                if (layer == NULL || layer->getEnabled() == false)
+                if (layer == NULL || layer->isOpen() == false)
                 {
                     model._passes.erase(model._passes.begin()+p);
                     --p;
@@ -938,12 +938,12 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             switch( change.getAction() )
             {
             case MapModelChange::ADD_LAYER:
-            case MapModelChange::ENABLE_LAYER:
+            case MapModelChange::OPEN_LAYER:
                 addLayer(change.getLayer());
                 break;
 
             case MapModelChange::REMOVE_LAYER:
-            case MapModelChange::DISABLE_LAYER:
+            case MapModelChange::CLOSE_LAYER:
                 if (change.getImageLayer())
                     removeImageLayer( change.getImageLayer() );
                 else if (change.getElevationLayer())
@@ -965,10 +965,10 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
 {
-    if (layer->getUID() + 1 > _cachedLayerExtents.size())
-    {
-        _cachedLayerExtents.resize(layer->getUID()+1);
-    }
+    //if (layer->getUID() + 1 > _cachedLayerExtents.size())
+    //{
+    //    _cachedLayerExtents.resize(layer->getUID()+1);
+    //}
 
     // Store the layer's extent in the map's SRS:
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];
@@ -985,7 +985,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
 {
     if (layer)
     {
-        if (layer->getEnabled())
+        if (layer->isOpen())
         {
             if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                 addTileLayer(layer);
@@ -993,14 +993,14 @@ RexTerrainEngineNode::addLayer(Layer* layer)
                 addElevationLayer(dynamic_cast<ElevationLayer*>(layer));
         }
 
-        cacheLayerExtentInMapSRS(layer);        
+        cacheLayerExtentInMapSRS(layer);
     }
 }
 
 void
 RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
 {
-    if ( tileLayer && tileLayer->getEnabled() )
+    if ( tileLayer && tileLayer->isOpen() )
     {
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(tileLayer);
         if (imageLayer)
@@ -1085,8 +1085,10 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 {
     if ( layerRemoved )
     {
+        _cachedLayerExtents.erase(layerRemoved->getUID());
+
         // for a shared layer, release the shared image unit.
-        if ( layerRemoved->getEnabled() && layerRemoved->isShared() )
+        if ( layerRemoved->isOpen() && layerRemoved->isShared() )
         {
             if ( layerRemoved->sharedImageUnit().isSet() )
             {
@@ -1130,7 +1132,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 void
 RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    if (layer && layer->getEnabled())
+    if (layer && layer->isOpen())
     {
         std::vector<const Layer*> layers;
         layers.push_back(layer);
@@ -1141,7 +1143,6 @@ RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 void
 RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layer)
 {
-    // only need to refresh is the elevation layer is visible.
     if (layer)
     {
         std::vector<const Layer*> layers;
@@ -1153,7 +1154,7 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layer)
 void
 RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layer)
 {
-    if (layer && layer->getEnabled() && layer->getVisible())
+    if (layer && layer->isOpen())
     {
         std::vector<const Layer*> layers;
         layers.push_back(layer);
@@ -1293,7 +1294,7 @@ RexTerrainEngineNode::updateState()
             for( int i=0; i<imageLayers.size(); ++i )
             {
                 ImageLayer* layer = imageLayers[i].get();
-                if ( layer->getEnabled() )
+                if ( layer->isOpen() )
                 {
                     // install Color Filter function calls:
                     const ColorFilterChain& chain = layer->getColorFilters();

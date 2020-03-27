@@ -262,6 +262,7 @@ public:
         if (da)
         {
             accessor.byteOffset = da->getFirst() * getBytesPerElement(data);
+            accessor.count = da->getCount();
         }
 
         //TODO: indexed elements

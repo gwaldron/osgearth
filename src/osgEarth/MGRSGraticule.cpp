@@ -338,12 +338,6 @@ MGRSGraticule::init()
 
     // install the range callback for clip plane activation
     _root->addCullCallback( new RangeUniformCullCallback() );
-
-    if (getEnabled() == true)
-    {
-        rebuild();
-    }
-
 }
 
 Config

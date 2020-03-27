@@ -126,10 +126,10 @@ namespace osgEarth
         //! Did the user open this layer for writing?
         bool isWritingRequested() const { return _writingRequested; }
 
-        //! Geospatial profile for this layer
+        //! Tiling profile for this layer
         const Profile* getProfile() const;
 
-        //! Geospatial profile of this layer. Many layer types will set this
+        //! Tiling profile of this layer. Many layer types will set this
         //! automatically based on source metadata. For those that don't you can
         //! call it directly to set up a profile.
         void setProfile(const Profile* profile);
@@ -268,11 +268,7 @@ namespace osgEarth
 
         optional<bool> _profileMatchesMapProfile;
         osg::ref_ptr<MemCache> _memCache;
-        bool _openCalled;
         bool _writingRequested;
-
-        // profile from tile source or cache, before any overrides applied
-        mutable osg::ref_ptr<const Profile> _profileOriginal;
 
         // profile to use
         mutable osg::ref_ptr<const Profile> _profile;
@@ -297,8 +293,6 @@ namespace osgEarth
 
         mutable Threading::Mutex _mutex;
 
-        //mutable osg::ref_ptr<CacheSettings> _cacheSettings;
-
         // methods accesible by Map:
         friend class Map;
 
@@ -308,8 +302,6 @@ namespace osgEarth
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */
         virtual Status closeImplementation();
-
-        //Threading::KeyedMutex<TileKey> _sentry;
     };
 
     typedef std::vector<osg::ref_ptr<TileLayer> > TileLayerVector;

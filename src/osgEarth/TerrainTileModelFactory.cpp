@@ -71,8 +71,10 @@ bool CreateTileManifest::inSyncWith(const Map* map) const
         ++i)
     {
         const Layer* layer = map->getLayerByUID(i->first);
-        if (layer == NULL ||
-            layer->getRevision() != i->second)
+
+        // note: if the layer is NULL, it was removed, so let it pass.
+
+        if (layer != NULL && layer->getRevision() != i->second)
         {
             return false;
         }
@@ -317,10 +319,10 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
     {
         Layer* layer = i->get();
 
-        if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)
+        if (!layer->isOpen())
             continue;
 
-        if (!layer->getEnabled())
+        if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)
             continue;
 
         if (manifest.excludes(layer))
@@ -371,10 +373,10 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
     {
         PatchLayer* layer = i->get();
 
-        if (manifest.excludes(layer))
+        if (!layer->isOpen())
             continue;
 
-        if (!layer->getEnabled())
+        if (manifest.excludes(layer))
             continue;
 
         if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->acceptKey(key))
@@ -406,27 +408,23 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
 
-    bool needElevation = true;
+    bool needElevation = manifest.includesElevation();
     ElevationLayerVector layers;
     map->getLayers(layers);
     int combinedRevision = 0;
 
     if (!manifest.empty())
     {
-        needElevation = false;
-
         for(ElevationLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         {
             const ElevationLayer* layer = i->get();
-            if (layer->getEnabled())
-            {
-                if (needElevation == false && !manifest.excludes(layer))
-                {
-                    needElevation = true;
-                }
 
-                combinedRevision += layer->getRevision();
+            if (needElevation == false && !manifest.excludes(layer))
+            {
+                needElevation = true;
             }
+
+            combinedRevision += layer->getRevision();
         }
     }
     if (!needElevation)
@@ -516,19 +514,19 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
     OE_PROFILING_ZONE;
 
     // gather the combined revision (additive is fine)
-    int combinedLayerRevision = 0;
-    for(ElevationLayerVector::const_iterator i = layers.begin();
-        i != layers.end();
-        ++i)
-    {
-        // need layer UID too? gw
-        combinedLayerRevision += i->get()->getRevision();
-    }
+    //int combinedLayerRevision = 0;
+    //for(ElevationLayerVector::const_iterator i = layers.begin();
+    //    i != layers.end();
+    //    ++i)
+    //{
+    //    // need layer UID too? gw
+    //    combinedLayerRevision += i->get()->getRevision();
+    //}
   
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
-    cachekey._revision     = (int)map->getDataModelRevision() + combinedLayerRevision;
+    cachekey._revision     = (int)map->getDataModelRevision(); // + combinedLayerRevision;
     cachekey._samplePolicy = samplePolicy;
 
     if (progress)
@@ -559,10 +557,9 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
             true);              // initialize to HAE (0.0) heights
     }
 
-    if (!out_normalMap.valid())
+    if (!out_normalMap.valid() && _options.normalMaps() == true)
     {
-        //OE_INFO << "TODO: check terrain reqs\n";
-        out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);
+        out_normalMap = new NormalMap(257, 257);
     }
 
     bool populated = layers.populateHeightFieldAndNormalMap(
@@ -650,15 +647,14 @@ TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
     int combinedRevision = 0;
 
     // any land cover layer means using them all:
-    bool needLandCover = true;
+    bool needLandCover = manifest.includesLandCover();
 
     if (!manifest.empty())
     {
-        needLandCover = false;
         for(LandCoverLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         {
             const LandCoverLayer* layer = i->get();
-            if (layer->getEnabled())
+            if (layer->isOpen())
             {
                 if (needLandCover == false && !manifest.excludes(layer))
                 {

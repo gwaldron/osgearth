@@ -56,7 +56,7 @@ VideoLayer::init()
 Status
 VideoLayer::openImplementation()
 {
-    if ( !_openCalled )
+    if (!isOpen())
     {
         Status parent = ImageLayer::openImplementation();
         if (parent.isError())

@@ -71,7 +71,6 @@ namespace osgEarth
 
         //! Override from VisibleLayer
         virtual void setVisible(bool value);
-        virtual void setEnabled(bool value);
 
     public: // methods
         

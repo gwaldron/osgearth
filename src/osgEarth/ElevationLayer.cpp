@@ -102,27 +102,16 @@ ElevationLayer::init()
     // elevation layers do not render directly; rather, a composite of elevation data
     // feeds the terrain engine to permute the mesh.
     setRenderType(RENDERTYPE_NONE);
-
-    // sync up enabled & visible
-    if (getVisible() != getEnabled())
-        setVisible(getEnabled());
 }
 
 void
 ElevationLayer::setVisible(bool value)
 {
     VisibleLayer::setVisible(value);
-    setEnabled(value);
-}
-
-void
-ElevationLayer::setEnabled(bool value)
-{
-    if (getEnabled() != value)
-        bumpRevision();
-
-    VisibleLayer::setVisible(value);
-    VisibleLayer::setEnabled(value);
+    if (value)
+        open();
+    else
+        close();
 }
 
 void
@@ -362,13 +351,8 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     OE_PROFILING_ZONE_TEXT(getName());
     OE_PROFILING_ZONE_TEXT(key.str());
 
-    if (getStatus().isError())
-    {
-        return GeoHeightField::INVALID;
-    }
-
     // If the layer is disabled, bail out
-    if (getEnabled() == false || isOpen() == false)
+    if (!isOpen())
     {
         return GeoHeightField::INVALID;
     }
@@ -837,7 +821,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     {
         ElevationLayer* layer = (*this)[i].get();
 
-        if ( layer->getEnabled() && layer->getVisible() ) // redundant for elevation layers..
+        if (layer->isOpen()) // redundant for elevation layers..
         {
             // calculate the resolution-mapped key (adjusted for tile resolution differential).            
             TileKey mappedKey = keyToUse.mapResolution(

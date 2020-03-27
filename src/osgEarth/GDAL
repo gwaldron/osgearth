@@ -232,6 +232,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<GDAL::Driver> _driver;
+        osg::ref_ptr<const Profile> _overrideProfile;
     };
 
 
@@ -299,6 +300,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<GDAL::Driver> _driver;
+        osg::ref_ptr<const Profile> _overrideProfile;
     };
 
 } // namespace osgEarth

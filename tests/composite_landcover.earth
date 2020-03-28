@@ -1,33 +1,30 @@
 <map>    
-    <xi:include href="../data/land_cover_dictionary.xml"/>
+    <xi:include href="land_cover_dictionary.xml"/>
     <xi:include href="readymap_elevation.xml"/>    
     <xi:include href="viewpoints.xml"/>
 
-    <LandCover name="Land Cover Raster" max_data_level="15" cacheid="land_cover_mixed">
-
-        <coverages>
-            <coverage name="ESA GLOBCOVER">
-                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-                <warp>0.05</warp>
-                <GDALImage coverage="true">
-                    <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+    <CompositeLandCover name="Land Cover Data">
+        <layers>
+            <LandCover name="ESA GLOBCOVER">
+                <xi:include href="D:/data/esa/land_cover_ESA_GLOBCOVER.xml"/>
+                <GDALImage>
+                    <url>D:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                     <profile>global-geodetic</profile>
                 </GDALImage>
-            </coverage>  
+            </LandCover>  
 
-            <coverage name="NCLD 2011">
-                <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
-                <GDALImage coverage="true">
-                    <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+            <LandCover name="NCLD 2011" max_data_level="18">
+                <xi:include href="D:/data/nlcd/land_cover_NLCD.xml"/>
+                <GDALImage>
+                    <url>D:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31_256tiled.tif</url>
                 </GDALImage>
-            </coverage>
+            </LandCover>
             
-            <coverage name="US Highways">
+            <LandCover name="US Highways">
                 <cache_policy usage="no_cache"/>
-                <FeatureImage coverage="true" min_level="11" max_data_level="15">
-                    <OGRFeatures name="roads-data">
-                        <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
-                        <build_spatial_index>true</build_spatial_index>
+                <FeatureImage min_level="11">
+                    <OGRFeatures>
+                        <url>../data/boston-scl-utm19n-meters.shp</url>
                     </OGRFeatures>
                     <styles>
                         <style type="text/css">
@@ -41,11 +38,9 @@
                 <land_cover_mappings>
                     <mapping value="1" class="asphalt"/>
                 </land_cover_mappings>
-            </coverage>
-        </coverages>
-        
-        <noise_lod>12</noise_lod>
-    </LandCover>
+            </LandCover>
+        </layers>        
+    </CompositeLandCover>
 
     <terrainshader>
         <code>

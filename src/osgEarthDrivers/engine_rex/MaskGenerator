@@ -21,6 +21,7 @@
 
 #include "Common"
 #include <osgEarth/TileKey>
+#include <osgEarth/Geometry>
 #include <osg/Geometry>
 
 #define VERTEX_MARKER_DISCARD   1    // do not draw
@@ -46,6 +47,7 @@ namespace osgEarth { namespace REX
         osg::Vec3d                    _ndcMin, _ndcMax;
         osg::Geometry*                _geom;
         osg::ref_ptr<osg::Vec3Array>  _internal;
+        osg::ref_ptr<Polygon>         _boundaryPoly;
 
         MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, osg::Geometry* geom) 
             : _boundary(boundary), _ndcMin(ndcMin), _ndcMax(ndcMax), _geom(geom), _internal(new osg::Vec3Array()) { }
@@ -106,14 +108,15 @@ namespace osgEarth { namespace REX
             osg::ref_ptr<osg::DrawElementsUInt>& out_elements);
 
     protected:
-        void setupMaskRecord(
-            osg::Vec3dArray* boundary);
-
+        void setupMaskRecord(osg::Vec3dArray* boundary);
+        void patchIndicesFromBounds(const osg::Vec3d& ndcMin, const osg::Vec3d& ndcMax,
+                                    int& minX, int& minY, int& maxX, int& maxY);
     protected:
         const TileKey _key;
         unsigned _tileSize;
         MaskRecordVector _maskRecords;
         osg::Vec3d _ndcMin, _ndcMax;
+        double _tileLength;     // _tileSize - 1 "length" in verts
     };
 
 } } // namespace osgEarth::REX

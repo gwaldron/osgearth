@@ -136,26 +136,6 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT Layer : public osg::Object
     {
-    public: // serialization
-        class OSGEARTH_EXPORT Options : public ConfigOptions
-        {
-        public:
-            META_LayerOptions(osgEarth, Options, ConfigOptions);
-            OE_OPTION(std::string, name);
-            OE_OPTION(bool, enabled);
-            OE_OPTION(std::string, cacheId);
-            OE_OPTION(CachePolicy, cachePolicy);
-            OE_OPTION(std::string, shaderDefine);
-            OE_OPTION(bool, terrainPatch);
-            OE_OPTION(std::string, attribution);
-            OE_OPTION(ShaderOptions, shader);
-            OE_OPTION_VECTOR(ShaderOptions, shaders);
-            OE_OPTION(ProxySettings, proxySettings);
-            virtual Config getConfig() const;
-        private:
-            void fromConfig(const Config& conf);
-        };
-
     public:
         META_Object(osgEarth, Layer);
 
@@ -344,6 +324,8 @@ namespace osgEarth
         //! Revision number of this layer
         unsigned getRevision() const { return (unsigned)_revision; }
 
+        class Options;
+
     protected:
 
         //! Constructs a map layer by deserializing options.
@@ -415,20 +397,41 @@ namespace osgEarth
         // a re-opening of the layer.
         template<typename T>
         void resetOptionThatRequiresReopen(T& target);
-                
-    public:
-        Layer::Options& options() { return *_options; }
-        const Layer::Options& options() const { return *_options; }
-        virtual const char* getConfigKey() const { return "layer" ; }
 
         //! internal cache information
         CacheSettings* getCacheSettings() { return _cacheSettings.get(); }
         const CacheSettings* getCacheSettings() const { return _cacheSettings.get(); }
+                
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ConfigOptions
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ConfigOptions);
+            OE_OPTION(std::string, name);
+            OE_OPTION(bool, enabled);
+            OE_OPTION(std::string, cacheId);
+            OE_OPTION(CachePolicy, cachePolicy);
+            OE_OPTION(std::string, shaderDefine);
+            OE_OPTION(bool, terrainPatch);
+            OE_OPTION(std::string, attribution);
+            OE_OPTION(ShaderOptions, shader);
+            OE_OPTION_VECTOR(ShaderOptions, shaders);
+            OE_OPTION(ProxySettings, proxySettings);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+        Layer::Options& options() { return *_options; }
+        const Layer::Options& options() const { return *_options; }
+        virtual const char* getConfigKey() const { return "layer" ; }
 
     private:
         Layer::Options * _options;
         Layer::Options   _optionsConcrete;
         Layer ( const Layer& rhs, const osg::CopyOp& op ) { }
+
+        friend class Map;
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;

@@ -58,7 +58,7 @@ namespace osgEarth { namespace GDAL
         bool         _ownsDataset;
     };
 
-    // GDAL-specific options to be incorpoated by the LayerOptions below
+    // GDAL-specific serialization data to be incorpoated by the LayerOptions below
     class OSGEARTH_EXPORT Options
     {
     public:
@@ -171,7 +171,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer
     {
-    public:
+    public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options, public GDAL::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
@@ -179,7 +179,6 @@ namespace osgEarth
         private:
             void fromConfig(const Config&);
         };
-        //typedef GDAL::GDALLayerOptions<ImageLayer::Options> Options;
 
     public:
         META_Layer(osgEarth, GDALImageLayer, Options, ImageLayer, GDALImage);

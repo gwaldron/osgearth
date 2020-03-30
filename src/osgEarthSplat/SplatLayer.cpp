@@ -71,6 +71,16 @@ SplatLayer::Options::fromConfig(const Config& conf)
             _zones.push_back(ZoneOptions(*i));
         }
     }
+    else { // no zones?
+        optional<SurfaceOptions> surface;
+        conf.get("surface", surface);
+        if (surface.isSet())
+        {
+            ZoneOptions zo;
+            zo.surface() = surface;
+            _zones.push_back(zo);
+        }
+    }
 }
 
 //........................................................................

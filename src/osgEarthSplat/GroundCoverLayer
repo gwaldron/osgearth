@@ -208,6 +208,8 @@ namespace osgEarth { namespace Splat
 
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
+
+        virtual void loadShaders(VirtualProgram* vp, const osgDB::Options* options) const;
     };
 
 } } // namespace osgEarth::Splat

@@ -36,6 +36,7 @@ set(TARGET_IN
 
 set(TARGET_SRC
     Coverage.cpp
+    GrassLayer.cpp
     GroundCover.cpp
     GroundCoverFeatureGenerator.cpp
     GroundCoverLayer.cpp
@@ -51,6 +52,7 @@ set(TARGET_SRC
 set(LIB_PUBLIC_HEADERS
     Coverage
 	Export
+    GrassLayer
     GroundCover
     GroundCoverFeatureGenerator
     GroundCoverLayer

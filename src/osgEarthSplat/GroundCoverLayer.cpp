@@ -100,10 +100,23 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     conf.get("grass", grass());
 
     const Config* zones = conf.child_ptr("zones");
-    if (zones) {
+    if (zones)
+    {
         const ConfigSet& children = zones->children();
-        for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i) {
+        for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
+        {
             _zones.push_back(ZoneOptions(*i));
+        }
+    }
+    else // no zones, load GC directly
+    {
+        optional<GroundCoverOptions> gc;
+        conf.get("groundcover", gc);
+        if (gc.isSet())
+        {
+            ZoneOptions zo;
+            zo.groundCover() = gc;
+            _zones.push_back(zo);
         }
     }
 }
@@ -502,10 +515,8 @@ GroundCoverLayer::buildStateSets()
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader.get());
 #else
-                if (options().grass() == true)
-                    shaders.load(vp, shaders.Grass_VS, getReadOptions());
-                else
-                    shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
+
+                loadShaders(vp, getReadOptions());
 
                 osg::Shader* covTest = groundCover->createPredicateShader(getLandCoverDictionary(), getLandCoverLayer());
                 covTest->setName(covTest->getName() + "_VERTEX");
@@ -992,3 +1003,9 @@ GroundCoverLayer::getConfig() const
     return c;
 }
 
+void
+GroundCoverLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
+{
+    GroundCoverShaders shaders;
+    shaders.load(vp, shaders.GroundCover_VS, options);
+}

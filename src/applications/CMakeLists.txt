@@ -96,7 +96,6 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_windows)
     ADD_SUBDIRECTORY(osgearth_callouts)
     ADD_SUBDIRECTORY(osgearth_decal)
-    ADD_SUBDIRECTORY(osgearth_imgui)
 
     IF(SILVERLINING_FOUND)
         ADD_SUBDIRECTORY(osgearth_silverlining)
@@ -108,6 +107,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     
     IF (OSGEARTH_ENABLE_GEOCODER)    
         ADD_SUBDIRECTORY(osgearth_geocode)
+        ADD_SUBDIRECTORY(osgearth_imgui)
     ENDIF()
 
 ENDIF(BUILD_OSGEARTH_EXAMPLES)

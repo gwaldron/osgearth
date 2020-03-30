@@ -306,7 +306,7 @@ void FeatureNode::dirty()
 
 // This will be called by AnnotationNode when a new terrain tile comes in.
 void
-FeatureNode::onTileAdded(const TileKey&          key,
+FeatureNode::onTileUpdate(const TileKey&          key,
                          osg::Node*              graph,
                          TerrainCallbackContext& context)
 {

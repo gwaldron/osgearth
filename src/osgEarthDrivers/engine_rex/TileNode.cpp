@@ -227,7 +227,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
     // tell the world.
     OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
-    context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
+    context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
 }
 
 osg::BoundingSphere
@@ -925,9 +925,9 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
         }
     }
 
-    if (newElevationData && _context->options().normalizeEdges() == true)
+    if (newElevationData)
     {
-        _context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
+        _context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
     }
 
     // Remove the load request that spawned this merge.

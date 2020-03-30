@@ -212,9 +212,9 @@ LocalGeometryNode::togglePerVertexClamping()
 }
 
 void
-LocalGeometryNode::onTileAdded(const TileKey&          key, 
-                               osg::Node*              graph, 
-                               TerrainCallbackContext& context)
+LocalGeometryNode::onTileUpdate(const TileKey&          key, 
+                                osg::Node*              graph, 
+                                TerrainCallbackContext& context)
 {
     // If we are already set to clamp, ignore this
     if (_clampInUpdateTraversal)

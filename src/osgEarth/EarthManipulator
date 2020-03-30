@@ -769,7 +769,7 @@ namespace osgEarth { namespace Util
         virtual void computeHomePosition(const osg::Camera *camera = NULL, bool useBoundingBox = false);
 
         // react to a tile-added event from the Terrain
-        virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
+        virtual void handleTileUpdate(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
         // returns the absolute Euler angles composited from the composite rotation matrix.
         void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;

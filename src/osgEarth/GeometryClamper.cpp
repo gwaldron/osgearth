@@ -186,7 +186,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
 
 void
-GeometryClamperCallback::onTileAdded(const TileKey&          key, 
+GeometryClamperCallback::onTileUpdate(const TileKey&          key, 
                                      osg::Node*              tile, 
                                      TerrainCallbackContext& context)
 {

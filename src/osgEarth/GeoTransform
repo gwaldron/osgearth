@@ -109,7 +109,7 @@ namespace osgEarth
     public: // TerrainCallback interface
 
         // called when new data pages in and autoRecompute is true
-        void onTileAdded(const TileKey&          key,
+        void onTileUpdate(const TileKey&          key,
                          osg::Node*              node,
                          TerrainCallbackContext& context);
 

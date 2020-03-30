@@ -94,7 +94,7 @@ namespace
     {
         osg::observer_ptr<TritonHeightMap> _hm;
         TerrainDirtyCallback(TritonHeightMap* hm) : _hm(hm) { }
-        void onTileAdded(const osgEarth::TileKey&, osg::Node*, osgEarth::TerrainCallbackContext&)
+        void onTileUpdate(const osgEarth::TileKey&, osg::Node*, osgEarth::TerrainCallbackContext&)
         {
             osg::ref_ptr<TritonHeightMap> hm;
             if (_hm.lock(hm))

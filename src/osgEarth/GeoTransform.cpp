@@ -141,7 +141,7 @@ GeoTransform::setPosition(const GeoPoint& position)
 }
 
 void
-GeoTransform::onTileAdded(const TileKey&          key,
+GeoTransform::onTileUpdate(const TileKey&          key,
                           osg::Node*              node,
                           TerrainCallbackContext& context)
 {
@@ -149,13 +149,13 @@ GeoTransform::onTileAdded(const TileKey&          key,
     {
        if (!_position.isValid() || _position.altitudeMode() != ALTMODE_RELATIVE || !_autoRecomputeHeights)
        {
-           OE_TEST << LC << "onTileAdded fail condition 1\n";
+           OE_TEST << LC << "onTileUpdate fail condition 1\n";
            return;
        }
 
        if (key.valid() && !key.getExtent().contains(_position))
        {
-           OE_TEST << LC << "onTileAdded fail condition 2\n";
+           OE_TEST << LC << "onTileUpdate fail condition 2\n";
            return;
        }
 

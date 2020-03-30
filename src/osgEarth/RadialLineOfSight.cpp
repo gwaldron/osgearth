@@ -64,7 +64,7 @@ namespace
         {
         }
 
-        virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* graph, TerrainCallbackContext& )
+        virtual void onTileUpdate(const osgEarth::TileKey& tileKey, osg::Node* graph, TerrainCallbackContext& )
         {
             _los->terrainChanged( tileKey, graph );
         }

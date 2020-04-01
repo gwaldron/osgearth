@@ -142,13 +142,11 @@ namespace osgEarth { namespace Splat
         // Custom GL renderer for ground cover
         struct Renderer : public PatchLayer::DrawCallback
         {
-            Renderer();
+            Renderer(GroundCoverLayer* layer);
 
             struct Settings
             {
                 double _tileWidth;
-                //unsigned _vboTileSize;
-                bool _grass;
             };
 
             // Tracks a GL state to minimize state changes
@@ -182,6 +180,8 @@ namespace osgEarth { namespace Splat
 
                 GLint _LLNormalUL;
                 GLint _URNormalUL;
+
+                Renderer* _renderer;
             };
 
             // one per graphics context
@@ -202,12 +202,22 @@ namespace osgEarth { namespace Splat
             void releaseGLObjects(osg::State* state) const;
 
             Settings _settings;
+            GroundCoverLayer* _layer;
         };
 
         osg::ref_ptr<Renderer> _renderer;
 
+        bool _useCoverageToAlpha;
+
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
+
+        virtual void loadShaders(
+            VirtualProgram* vp,
+            const osgDB::Options* options) const;
+
+        virtual osg::Geometry* createGeometry(
+            unsigned vboTileDim) const;
     };
 
 } } // namespace osgEarth::Splat

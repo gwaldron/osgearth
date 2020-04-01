@@ -116,13 +116,16 @@ osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallba
         }
         else if (_styleSheet->getDefaultStyle())
         {
-            osg::Group* styleGroup = factory.getOrCreateStyleGroup(*_styleSheet->getDefaultStyle(), _session.get());
+            osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(features);
+            osg::ref_ptr< osg::Group > group = new osg::Group;
+            osg::ref_ptr< osg::Group > styleGroup = factory.getOrCreateStyleGroup(*_styleSheet->getDefaultStyle(), _session.get());
             osg::ref_ptr< osg::Node>  styleNode;
             factory.createOrUpdateNode(cursor, *_styleSheet->getDefaultStyle(), fc, styleNode, query);
             if (styleNode.valid())
             {
+                group->addChild(styleGroup);
                 styleGroup->addChild(styleNode);
-                node = styleGroup;
+                node = group;
             }
         }
     }

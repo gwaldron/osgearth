@@ -3,7 +3,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_splat_vertex_view
 #pragma vp_location   vertex_view
-#pragma vp_order      0.5
 
 #pragma include Splat.types.glsl
 

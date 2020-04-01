@@ -458,6 +458,10 @@ Registry::getDefaultCache() const
                     CacheOptions cacheOptions;
                     cacheOptions.setDriver(driverName);
                     _defaultCache = CacheFactory::create(cacheOptions);
+                    if (_defaultCache.valid() && _defaultCache->getStatus().isError())
+                    {
+                        OE_WARN << LC << "Cache error: " << _defaultCache->getStatus().toString() << std::endl;
+                    }
                 }
             }
         }

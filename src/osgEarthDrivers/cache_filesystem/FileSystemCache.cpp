@@ -177,24 +177,37 @@ namespace
         }
 
         _rootPath = URI( *fsco.rootPath(), options.referrer() ).full();
+
         init();
     }
 
     void
     FileSystemCache::init()
     {
+        if (osgDB::makeDirectory(_rootPath) == false)
+        {
+            _status.set(Status::ResourceUnavailable, Stringify()
+                << "Failed to create or access folder \"" << _rootPath << "\"");
+            return;
+        }
         OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
     }
 
     CacheBin*
     FileSystemCache::addBin( const std::string& name )
     {
+        if (getStatus().isError())
+            return NULL;
+
         return _bins.getOrCreate( name, new FileSystemCacheBin( name, _rootPath ) );
     }
 
     CacheBin*
     FileSystemCache::getOrCreateDefaultBin()
     {
+        if (getStatus().isError())
+            return NULL;
+
         static Threading::Mutex s_defaultBinMutex;
         if ( !_defaultBin.valid() )
         {

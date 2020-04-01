@@ -123,7 +123,6 @@ CacheSettings::toString() const
 //------------------------------------------------------------------------
 
 Cache::Cache( const CacheOptions& options ) :
-_ok     ( true ),
 _options( options )
 {
     //nop
@@ -136,7 +135,7 @@ Cache::~Cache()
 Cache::Cache( const Cache& rhs, const osg::CopyOp& op ) :
 osg::Object( rhs, op )
 {
-    _ok = rhs._ok;
+    _status = rhs._status;
 }
 
 CacheBin*

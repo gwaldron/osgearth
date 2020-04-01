@@ -22,8 +22,15 @@
         </surface>
     </SplatImage>
     
+    <!-- Satellite imagery -->
+    <TMSImage name="ReadyMap imagery" opacity="0.5" enabled="false">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+    
     <!-- Procedural trees -->
     <GroundCover name="Trees">
+        <lod>13</lod>
+        <cast_shadows>true</cast_shadows>
         <xi:include href="../data/splat/trees/groundcover.xml"/>
     </GroundCover>
 

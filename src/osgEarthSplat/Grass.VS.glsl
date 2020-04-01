@@ -201,7 +201,7 @@ void oe_Grass_VS(inout vec4 vertex)
     oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
 
     // push the falloff closer to the max distance.
-    float falloff = 1.0-(nRange*nRange*nRange);
+    float falloff = 1.0-(nRange*nRange); //*nRange);
 
     // a pseudo-random scale factor to the width and height of a billboard
     //float sizeScale = billboard.sizeVariation * (oe_noise[NOISE_RANDOM_2]*2.0-1.0);
@@ -263,7 +263,7 @@ void oe_Grass_VS(inout vec4 vertex)
     float bendPower = pow(oe_GroundCover_texCoord.t, 2.0);
 
     // effect of gravity:
-    float gravity = 0.18; // 0=no bend, 1=insane megabend
+    const float gravity = 0.16; // 0=no bend, 1=insane megabend
     vertex.xyz += faceVec * heightRatio * gravity * bendPower;
 
     // wind:
@@ -272,7 +272,7 @@ void oe_Grass_VS(inout vec4 vertex)
         const vec2 windFreq = vec2(0.01);
         vec2 windUV = oe_layer_tilec.xy + windFreq*osg_FrameTime;
         vec2 wind = textureLod(oe_GroundCover_noiseTex, windUV, 0).xw * 2 - 1;
-        float windEffect = oe_GroundCover_wind * heightRatio * bendPower;
+        float windEffect = oe_GroundCover_wind * heightRatio * bendPower * falloff;
 
 #if 0
         // directional wind:
@@ -294,7 +294,7 @@ void oe_Grass_VS(inout vec4 vertex)
     if (row == 0)
         vp_Color.rgb *= 0.2;
     else if (row == 1)
-        vp_Color.rgb *= 0.5;
+        vp_Color.rgb *= 0.6;
 }
 
 

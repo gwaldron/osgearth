@@ -192,21 +192,21 @@ GroundCoverFeatureGenerator::initialize()
     // open the landcover layer
     if (_lclayer.valid() && _lclayer->open().isError())
     {
-        _status = _lclayer->getStatus();
+        _status.set(_lclayer->getStatus().code(), Stringify() << "Opening landcover layer: " << _lclayer->getStatus().message());
         return;
     }
 
     // open the mask layer
     if (_masklayer.valid() && _masklayer->open().isError())
     {
-        _status = _masklayer->getStatus();
+        _status.set(_masklayer->getStatus().code(), Stringify() << "Opening mask layer: " << _masklayer->getStatus().message());
         return;
     }
 
     // open the groundcover layer
     if (_gclayer->open().isError())
     {
-        _status = _gclayer->getStatus();
+        _status.set(_gclayer->getStatus().code(), Stringify() << "Opening groundcover layer: " << _gclayer->getStatus().message());
         return;
     }
 
@@ -219,9 +219,12 @@ GroundCoverFeatureGenerator::initialize()
             i != elevLayers.end();
             ++i)
         {
-            _status = i->get()->open();
-            if (_status.isError())
+            Status s = i->get()->open();
+            if (s.isError())
+            {
+                _status.set(s.code(), Stringify() << "Opening elevation layer: " << s.message());
                 return;
+            }
         }
     }
 

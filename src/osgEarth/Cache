@@ -176,7 +176,7 @@ namespace osgEarth
         /**
          * Whether this cache is valid and available for use
          */
-        bool isOK() const { return _ok; }
+        const Status& getStatus() const { return _status; }
 
         /**
          * Gets a caching bin within this cache.
@@ -231,7 +231,7 @@ namespace osgEarth
         static std::string makeCacheKey(const std::string& input, const std::string& prefix="");
 
     protected:
-        bool                   _ok;
+        Status _status;
         CacheOptions           _options;
         ThreadSafeCacheBinMap  _bins;
         osg::ref_ptr<CacheBin> _defaultBin;

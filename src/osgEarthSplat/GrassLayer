@@ -46,7 +46,12 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~GrassLayer() { }
 
-        virtual void loadShaders(VirtualProgram* vp, const osgDB::Options* options) const;
+        virtual void loadShaders(
+            VirtualProgram* vp, 
+            const osgDB::Options* options) const;
+
+        virtual osg::Geometry* createGeometry(
+            unsigned vboTileDim) const;
     };
 
 } } // namespace osgEarth::Splat

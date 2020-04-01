@@ -166,9 +166,7 @@ GroundCover::getOrCreateStateSet()
     {
         _stateSet = new osg::StateSet();
 
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", options().wind().get()));
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
-        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_wind", options().wind().get()));
         _stateSet->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", options().maxDistance().get()));
     }
 
@@ -179,7 +177,7 @@ GroundCover::getOrCreateStateSet()
     void GroundCover::set##NAME (float value) { getOrCreateStateSet()->getUniform(UNIFORM)->set(value); options(). PROP () = value; } \
     float GroundCover::get##NAME () const { return options(). PROP() .get(); }
 
-SET_GET_UNIFORM(Wind, wind, "oe_GroundCover_windFactor")
+SET_GET_UNIFORM(Wind, wind, "oe_GroundCover_wind")
 SET_GET_UNIFORM(MaxDistance, maxDistance, "oe_GroundCover_maxDistance")
 
 void GroundCover::setSpacing(float value) { options().spacing() = value; }

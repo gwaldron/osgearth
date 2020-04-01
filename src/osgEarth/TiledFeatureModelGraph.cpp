@@ -32,6 +32,8 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(FeatureSource* features,
 {
     setMinLevel(features->getFeatureProfile()->getFirstLevel());
     setMaxLevel(features->getFeatureProfile()->getMaxLevel());
+
+    _session->setResourceCache(new ResourceCache());
 }
 
 osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
@@ -101,7 +103,7 @@ osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallba
                     osg::ref_ptr< osg::Node>  styleNode;
                     osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(itr->second);
                     Query query;
-                    factory.createOrUpdateNode(cursor, *style, fc, styleNode, query);
+                    factory.createOrUpdateNode(cursor.get(), *style, fc, styleNode, query);
                     if (styleNode.valid())
                     {
                         styleGroup->addChild(styleNode);
@@ -118,7 +120,7 @@ osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallba
         {
             osg::Group* styleGroup = factory.getOrCreateStyleGroup(*_styleSheet->getDefaultStyle(), _session.get());
             osg::ref_ptr< osg::Node>  styleNode;
-            factory.createOrUpdateNode(cursor, *_styleSheet->getDefaultStyle(), fc, styleNode, query);
+            factory.createOrUpdateNode(cursor.get(), *_styleSheet->getDefaultStyle(), fc, styleNode, query);
             if (styleNode.valid())
             {
                 styleGroup->addChild(styleNode);

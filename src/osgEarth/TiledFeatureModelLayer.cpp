@@ -263,6 +263,7 @@ TiledFeatureModelLayer::create()
         {
             // connect the session to the features:
             _session->setFeatureSource(getFeatureSource());
+            _session->setResourceCache(new ResourceCache());
 
             // group that will build all the feature geometry:
             osg::ref_ptr<TiledFeatureModelGraph> fmg = new TiledFeatureModelGraph(getFeatureSource(), getStyleSheet(), _session);

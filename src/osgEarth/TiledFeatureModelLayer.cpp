@@ -47,6 +47,9 @@ GeometryCompilerOptions(options)
 
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
+    _additive.init(false);
+    conf.get("additive", _additive);
+
     LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
 }
 
@@ -76,6 +79,7 @@ void TiledFeatureModelLayer::Options::mergeConfig(const Config& conf)
 
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, AlphaBlending, alphaBlending);
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, EnableLighting, enableLighting);
+OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, Additive, additive);
 
 TiledFeatureModelLayer::~TiledFeatureModelLayer()
 {
@@ -259,9 +263,11 @@ TiledFeatureModelLayer::create()
         {
             // connect the session to the features:
             _session->setFeatureSource(getFeatureSource());
+            _session->setResourceCache(new ResourceCache());
 
             // group that will build all the feature geometry:
             osg::ref_ptr<TiledFeatureModelGraph> fmg = new TiledFeatureModelGraph(getFeatureSource(), getStyleSheet(), _session);
+            fmg->setAdditive(*_options->additive());
             fmg->build();
 
             _root->removeChildren(0, _root->getNumChildren());

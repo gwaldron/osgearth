@@ -52,6 +52,7 @@ namespace osgEarth
             Options(const ConfigOptions& options);
             OE_OPTION(std::string, featureSourceLayer);
             OE_OPTION(FeatureSource::Options, featureSource);
+            OE_OPTION(bool, additive);
             virtual Config getConfig() const;
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
@@ -75,6 +76,9 @@ namespace osgEarth
 
         void setEnableLighting(const bool& value);
         const bool& getEnableLighting() const;
+
+        void setAdditive(const bool& value);
+        const bool& getAdditive() const;
 
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();    

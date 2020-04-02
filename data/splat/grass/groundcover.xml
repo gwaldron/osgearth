@@ -1,0 +1,12 @@
+<groundcover>
+    <max_distance>80</max_distance>
+    <spacing>0.25</spacing>
+    <wind>0.1</wind>
+    <biomes>
+        <biome name="Grass" classes="grassland forest" fill="1" source="clipartmax.com">
+            <billboard url="clipart974730.png" width="0.7" height="0.4" size_variation=".2" selection_weight="10"/>
+            <billboard url="clipart28163.png" width="0.5" height="0.5" size_variation="0.2" selection_weight="1"/>
+            <billboard url="clipart2383752.png" width="0.5" height="0.5" size_variation="0.2" selection_weight="1"/>
+        </biome>
+    </biomes>
+</groundcover>

@@ -73,6 +73,7 @@ GroundCoverLayer::Options::getConfig() const
     Config conf = PatchLayer::Options::getConfig();
     LayerReference<LandCoverLayer>::set(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
     LayerReference<ImageLayer>::set(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<ImageLayer>::set(conf, "color_layer", colorLayerName(), colorLayer());
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
     conf.set("grass", grass());
@@ -96,6 +97,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
 
     LayerReference<LandCoverLayer>::get(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
     LayerReference<ImageLayer>::get(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<ImageLayer>::get(conf, "color_layer", colorLayerName(), colorLayer());
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
     conf.get("grass", grass());
@@ -314,6 +316,22 @@ GroundCoverLayer::getMaskLayer() const
 }
 
 void
+GroundCoverLayer::setColorLayer(ImageLayer* value)
+{
+    _colorLayer.setLayer(value);
+    if (value)
+    {
+        buildStateSets();
+    }
+}
+
+ImageLayer*
+GroundCoverLayer::getColorLayer() const
+{
+    return _colorLayer.getLayer();
+}
+
+void
 GroundCoverLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);
@@ -321,10 +339,16 @@ GroundCoverLayer::addedToMap(const Map* map)
     _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
     _landCoverLayer.findInMap(map, options().landCoverLayerName());
     _maskLayer.findInMap(map, options().maskLayerName());
+    _colorLayer.findInMap(map, options().colorLayerName());
 
     if (getMaskLayer())
     {
         OE_INFO << LC << "Mask layer is \"" << getMaskLayer()->getName() << "\"" << std::endl;
+    }
+
+    if (getColorLayer())
+    {
+        OE_INFO << LC << "Color modulation layer is \"" << getColorLayer()->getName() << "\"" << std::endl;
     }
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
@@ -355,6 +379,10 @@ void
 GroundCoverLayer::removedFromMap(const Map* map)
 {
     PatchLayer::removedFromMap(map);
+
+    _landCoverLayer.releaseFromMap(map);
+    _maskLayer.releaseFromMap(map);
+    _colorLayer.releaseFromMap(map);
 }
 
 void
@@ -454,6 +482,12 @@ GroundCoverLayer::buildStateSets()
     {
         stateset->setDefine("OE_GROUNDCOVER_MASK_SAMPLER", getMaskLayer()->getSharedTextureUniformName());
         stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", getMaskLayer()->getSharedTextureMatrixUniformName());
+    }
+
+    if (getColorLayer())
+    {
+        stateset->setDefine("OE_GROUNDCOVER_COLOR_SAMPLER", getColorLayer()->getSharedTextureUniformName());
+        stateset->setDefine("OE_GROUNDCOVER_COLOR_MATRIX", getColorLayer()->getSharedTextureMatrixUniformName());
     }
 
     // disable backface culling to support shadow/depth cameras,
@@ -993,6 +1027,8 @@ GroundCoverLayer::getConfig() const
         c.set(_landCoverLayer.getLayer()->getConfig());
     if (_maskLayer.isSetByUser())
         c.set(_maskLayer.getLayer()->getConfig());
+    if (_colorLayer.isSetByUser())
+        c.set(_colorLayer.getLayer()->getConfig());
     return c;
 }
 

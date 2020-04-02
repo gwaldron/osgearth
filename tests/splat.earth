@@ -23,7 +23,7 @@
     </SplatImage>
     
     <!-- Satellite imagery -->
-    <TMSImage name="ReadyMap imagery" opacity="0.5" enabled="false">
+    <TMSImage name="ReadyMap Imagery" opacity="0.4" shared="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     
@@ -37,6 +37,7 @@
     <!-- Procedural grass -->
     <Grass name="Grass">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
+        <color_layer>ReadyMap Imagery</color_layer>
     </Grass>
 
     <xi:include href="viewpoints.xml"/>

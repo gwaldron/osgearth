@@ -443,7 +443,8 @@ ElevationEnvelope::sample(
     {
         _memory.clear();
         _tiles.clear();
-        context->_tiles.clear();
+        if (context)
+            context->_tiles.clear();
         collectDataExtents();
     }
 

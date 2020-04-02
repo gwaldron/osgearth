@@ -49,10 +49,11 @@ uniform float oe_GroundCover_wind;  // wind strength
 uniform float oe_GroundCover_maxDistance; // distance at which flora disappears
 
 #ifdef OE_GROUNDCOVER_USE_ACTOR
-///*uniform*/ vec3 actorPos = vec3(0.5, 0.5, 0.5); // tile pos of actor
 uniform float actorRadius;
 uniform float actorHeight;
-uniform float actorPlace;
+//uniform float actorPlace;
+uniform vec3 actorPos;
+uniform mat4 osg_ViewMatrix;
 #endif
 
 uniform vec3 oe_Camera;  // (vp width, vp height, lodscale)
@@ -250,12 +251,6 @@ void oe_Grass_VS(inout vec4 vertex)
     vp_Color = vec4(1,1,1,falloff);
 
 
-#ifdef OE_GROUNDCOVER_USE_ACTOR
-    vec4 actorPos = vec4(actorPlace, actorPlace,0,1);
-    actorPos += oe_UpVectorView * oe_terrain_getElevation(vec2(0.5,0.5));
-    actorPos.xyz += oe_UpVectorView*actorHeight;
-#endif
-
     // texture coordinate:
     float row = float(which/4);
     oe_GroundCover_texCoord.t = (1.0/3.0)*row;
@@ -263,8 +258,9 @@ void oe_Grass_VS(inout vec4 vertex)
     // random rotation; do this is model space and then transform
     // the vector to view space.
     float a = 6.283185 * fract(oe_noise[NOISE_RANDOM_2]*5.5);
-    vec2 sincos = vec2(sin(a), cos(a));
-    vec3 faceVec = gl_NormalMatrix * vec3(dot(vec2(0,1), vec2(sincos.y, -sincos.x)), dot(vec2(0,1), sincos.xy), 0);
+    //vec2 sincos = vec2(sin(a), cos(a));
+    //vec3 faceVec = gl_NormalMatrix * vec3(dot(vec2(0,1), vec2(sincos.y, -sincos.x)), dot(vec2(0,1), sincos.xy), 0);
+    vec3 faceVec = gl_NormalMatrix * vec3(-sin(a), cos(a), 0);
 
     // local frame side vector
     vec3 sideVec = cross(faceVec, oe_UpVectorView);
@@ -289,41 +285,57 @@ void oe_Grass_VS(inout vec4 vertex)
 
     // extrude to height:
     vertex.xyz += oe_UpVectorView * height * oe_GroundCover_texCoord.t;
+
+    // normal:
+    vp_Normal = mix(-faceVec, oe_UpVectorView, oe_GroundCover_texCoord.t/3.0);
     
     // For bending, exaggerate effect as we climb the stalk
+    vec3 bendVec = vec3(0.0);
     float bendPower = pow(oe_GroundCover_texCoord.t, 2.0);
 
     // effect of gravity:
     const float gravity = 0.16; // 0=no bend, 1=insane megabend
-    vertex.xyz += faceVec * heightRatio * gravity * bendPower;
+    bendVec += faceVec * heightRatio * gravity * bendPower;
 
     // wind:
     if (oe_GroundCover_wind > 0.0)
     {
-        const vec2 windFreq = vec2(0.01);
-        vec2 windUV = oe_layer_tilec.xy + windFreq*osg_FrameTime;
-        vec2 wind = textureLod(oe_GroundCover_noiseTex, windUV, 0).xw * 2 - 1;
         float windEffect = oe_GroundCover_wind * heightRatio * bendPower * falloff;
 
-#if 0
-        // directional wind:
-        vec2 windsc = vec2(sin(shmoo), cos(shmoo));
-        vec3 windVec = gl_NormalMatrix * vec3(dot(vec2(0,1), vec2(windsc.y, -windsc.x)), dot(vec2(0,1), windsc.xy), 0);
-        windVec += gl_NormalMatrix * vec3(wind.x, wind.y, 0);
-        vertex.xyz += windVec * windEffect;
-#endif
+#ifdef OE_GROUNDCOVER_USE_ACTOR
+        vec3 windPos = (osg_ViewMatrix * vec4(actorPos, 1)).xyz;
+        windPos += oe_UpVectorView * actorHeight;
 
-        vertex.xyz += 
-            gl_NormalMatrix * vec3(1,0,0) * windEffect * wind.x +
-            gl_NormalMatrix * vec3(0,1,0) * windEffect * wind.y;
+        // macro:
+        vec3 windvec = vertex.xyz - windPos;
+        float attenuation = clamp(actorRadius/length(windvec), 0, 1);
+        attenuation *= attenuation;
+        bendVec += normalize(windvec) * windEffect * attenuation;
+
+        // micro turbulence
+        vec2 turbUV = oe_layer_tilec.xy + (1.0-oe_GroundCover_wind)*osg_FrameTime;
+        vec2 turb = textureLod(oe_GroundCover_noiseTex, turbUV, 0).xw * 2 - 1;
+        bendVec += gl_NormalMatrix * vec3(turb.xy, 0) * windEffect * attenuation;
+
+        //vp_Normal = oe_UpVectorView; //normalize(vp_Normal+oe_UpVectorView*windEffect*2);
+#else
+        const vec2 turbFreq = vec2(0.01);
+        vec2 turbUV = oe_layer_tilec.xy + turbFreq*osg_FrameTime;
+        vec2 turb = textureLod(oe_GroundCover_noiseTex, turbUV, 0).xw * 2 - 1;
+        bendVec += gl_NormalMatrix * vec3(turb.xy, 0) * windEffect;
+#endif
     }
 
-    // normal:
-    vp_Normal = mix(-faceVec, oe_UpVectorView, oe_GroundCover_texCoord.t/3.0);
+    vertex.xyz += bendVec;
+
+    // alter the normal based on bend. Idea: don't bother flipping the
+    // normal here, and maybe it looks more realistic...?
+    float dir = (dot(vertex.xyz, vp_Normal) > 0.0)? -1 : +1;
+    vp_Normal += oe_UpVectorView * length(bendVec) * dir;
 
     // AO:
     if (row == 0)
-        vp_Color.rgb *= 0.2;
+        vp_Color.rgb *= 0.3;
     else if (row == 1)
         vp_Color.rgb *= 0.6;
 }
@@ -363,7 +375,7 @@ void oe_Grass_FS(inout vec4 color)
         vp_Normal = -vp_Normal;
 
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
-    const float modulation = 0.65;
+    const float modulation = 0.75;
     float mono = (color.r*0.2126 + color.g*0.7152 + color.b*0.0722);
     vec4 mod_color = texture(OE_GROUNDCOVER_COLOR_SAMPLER, (OE_GROUNDCOVER_COLOR_MATRIX*oe_layer_tilec).st);
     color.rgb = mix(color.rgb, mod_color.rgb*vec3(mono)*2, modulation);

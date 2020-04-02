@@ -484,7 +484,8 @@ namespace
             return r;
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImage(uri, opt);
+            // Call readImageImplementation instead of readImage to bypass any readfile callbacks installed in the registry.
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImageImplementation(uri, opt);
             if (osgRR.validImage()) {
                 osgRR.getImage()->setFileName(uri);
                 return ReadResult(osgRR.takeImage());

@@ -23,9 +23,12 @@
 #define OSGEARTH_SPLAT_GRASS_LAYER_H
 
 #include "GroundCoverLayer"
+#include <osgEarth/LayerReference>
 
 namespace osgEarth { namespace Splat
 {
+    using namespace osgEarth;
+
     //! Layer that renders grass.
     class OSGEARTHSPLAT_EXPORT GrassLayer : public GroundCoverLayer
     {
@@ -41,6 +44,7 @@ namespace osgEarth { namespace Splat
     public:
         META_Layer(osgEarth, GrassLayer, Options, GroundCoverLayer, Grass);
 
+    public: // Layer
         virtual void init();
 
     protected:
@@ -52,6 +56,9 @@ namespace osgEarth { namespace Splat
 
         virtual osg::Geometry* createGeometry(
             unsigned vboTileDim) const;
+
+    private:
+        LayerReference<ImageLayer> _colorLayer;
     };
 
 } } // namespace osgEarth::Splat

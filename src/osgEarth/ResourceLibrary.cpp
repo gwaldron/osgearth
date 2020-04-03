@@ -229,7 +229,7 @@ ResourceLibrary::getSkins( const SkinSymbol* symbol, SkinResourceVector& output,
 }
 
 SkinResource*
-ResourceLibrary::getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions ) const
+ResourceLibrary::getSkin( const SkinSymbol* symbol, unsigned int rand, const osgDB::Options* dbOptions ) const
 {
     const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
 
@@ -251,7 +251,7 @@ ResourceLibrary::getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::O
     }
     else
     {
-        return candidates[ prng.next(size) ].get();
+        return candidates[ rand % size ].get();
     }
 }
 

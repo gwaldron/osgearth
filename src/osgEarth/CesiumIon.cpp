@@ -265,7 +265,7 @@ CesiumIon3DTilesLayer::openImplementation()
     Status status = ionResource.open(
         options().server().get(),
         options().assetId().get(),
-        key,
+        _key,
         getReadOptions());
 
     URI serverURI;

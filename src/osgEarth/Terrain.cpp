@@ -26,11 +26,11 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
-Terrain::OnTileAddedOperation::OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
-    : osg::Operation("OnTileAdded", true),
+Terrain::onTileUpdateOperation::onTileUpdateOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
+    : osg::Operation("onTileUpdate", true),
         _terrain(terrain), _key(key), _node(node), _count(0), _delay(0) { }
 
-void Terrain::OnTileAddedOperation::operator()(osg::Object*)
+void Terrain::onTileUpdateOperation::operator()(osg::Object*)
 {
     if ( getKeep() == false )
         return;
@@ -45,9 +45,9 @@ void Terrain::OnTileAddedOperation::operator()(osg::Object*)
     if ( _terrain.lock(terrain) && (!_key.valid() || _node.lock(node)) )
     {
         if (_key.valid())
-            terrain->fireTileAdded( _key, node.get() );
+            terrain->fireTileUpdate( _key, node.get() );
         else
-            terrain->fireTileAdded( _key, 0L );
+            terrain->fireTileUpdate( _key, 0L );
 
     }
     else
@@ -247,7 +247,7 @@ Terrain::removeTerrainCallback( TerrainCallback* cb )
 }
 
 void
-Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
+Terrain::notifyTileUpdate( const TileKey& key, osg::Node* node )
 {
     if ( !node )
     {
@@ -257,21 +257,21 @@ Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
     if (_callbacksSize > 0)
     {
         if (!key.valid())
-            OE_WARN << LC << "notifyTileAdded with key = NULL\n";
+            OE_WARN << LC << "notifyTileUpdate with key = NULL\n";
 
-        _updateQueue->add(new OnTileAddedOperation(key, node, this));
+        _updateQueue->add(new onTileUpdateOperation(key, node, this));
     }
 }
 
 void
-Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
+Terrain::fireTileUpdate( const TileKey& key, osg::Node* node )
 {
     Threading::ScopedReadLock sharedLock( _callbacksMutex );
 
     for( CallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); )
     {       
         TerrainCallbackContext context( this );
-        i->get()->onTileAdded( key, node, context );
+        i->get()->onTileUpdate( key, node, context );
 
         // if the callback set the "remove" flag, discard the callback.
         if ( context.markedForRemoval() )
@@ -286,7 +286,7 @@ Terrain::notifyMapElevationChanged()
 {
     if (_callbacksSize > 0)
     {
-        OnTileAddedOperation* op = new OnTileAddedOperation(TileKey::INVALID, 0L, this);
+        onTileUpdateOperation* op = new onTileUpdateOperation(TileKey::INVALID, 0L, this);
         op->_delay = 1; // let the terrain update before applying this
         _updateQueue->add(op);
     }

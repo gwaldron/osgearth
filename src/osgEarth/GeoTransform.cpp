@@ -46,13 +46,35 @@ osg::MatrixTransform(rhs, op)
     _clampInUpdateTraversal = false;
 }
 
+GeoTransform::~GeoTransform()
+{
+    if (_terrain.valid())
+        _terrain->removeObserver(this);
+}
+
 void
 GeoTransform::setTerrain(Terrain* terrain)
 {
     if (terrain)
     {
         _terrain = terrain;
+        _terrain->addObserver(this);
         setPosition(_position);
+    }
+}
+
+void
+GeoTransform::objectDeleted(void* ptr)
+{
+    // called then the observed Terrain is deleted
+    if ((void*)_terrain.get() == ptr)
+    {
+        _terrain = NULL;
+        if (!_findTerrainInUpdateTraversal)
+        {
+            _findTerrainInUpdateTraversal = true;
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        }
     }
 }
 
@@ -141,7 +163,7 @@ GeoTransform::setPosition(const GeoPoint& position)
 }
 
 void
-GeoTransform::onTileAdded(const TileKey&          key,
+GeoTransform::onTileUpdate(const TileKey&          key,
                           osg::Node*              node,
                           TerrainCallbackContext& context)
 {
@@ -149,13 +171,13 @@ GeoTransform::onTileAdded(const TileKey&          key,
     {
        if (!_position.isValid() || _position.altitudeMode() != ALTMODE_RELATIVE || !_autoRecomputeHeights)
        {
-           OE_TEST << LC << "onTileAdded fail condition 1\n";
+           OE_TEST << LC << "onTileUpdate fail condition 1\n";
            return;
        }
 
        if (key.valid() && !key.getExtent().contains(_position))
        {
-           OE_TEST << LC << "onTileAdded fail condition 2\n";
+           OE_TEST << LC << "onTileUpdate fail condition 2\n";
            return;
        }
 

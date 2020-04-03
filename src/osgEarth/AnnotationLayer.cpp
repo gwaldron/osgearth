@@ -46,7 +46,10 @@ AnnotationLayer::init()
     VisibleLayer::init();
 
     _root = new osg::Group();
+
     deserialize();
+
+    installDefaultOpacityShader();
 }
 
 osg::Node*

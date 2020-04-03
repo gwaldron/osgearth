@@ -73,7 +73,12 @@ using namespace osgEarth::ShaderComp;
 #define USE_TYPEID
 
 // Whether to bail when a shader set has no fragment shader components.
-#define USE_NO_FRAG_EARLY_OUT
+// If the accumulation contains no fragment stage shaders, the shader program
+// is incomplete and there will be nothing do to; so don't bother trying to
+// apply a program. A side-effect of this "early-out" is that you MUST have
+// a FS in the mix when using VirtualPrograms, or glUseProgram won't be called!
+// Consider ShaderUtils::installDefaultShader when in doubt.
+//#define USE_NO_FRAG_EARLY_OUT
 
 #define MAKE_SHADER_ID(X) osgEarth::hashString( X )
 
@@ -1577,12 +1582,6 @@ VirtualProgram::apply(osg::State& state) const
         }
 
 #ifdef USE_NO_FRAG_EARLY_OUT
-        // If the accumulation contains no fragment stage shaders, the shader program
-        // is incomplete and there will be nothing do to; so don't bother trying to
-        // apply a program. A side-effect of this "early-out" is that you MUST have
-        // a FS in the mix when using VirtualPrograms, or glUseProgram won't be called!
-        // Consider ShaderUtils::installDefaultShader when in doubt.
-
         // TODO: deprecate setIsAbstract in favor of this?? 
         if (numFragShaders == 0u)
         {

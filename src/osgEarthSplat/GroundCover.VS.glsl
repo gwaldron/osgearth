@@ -37,7 +37,7 @@ uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
 // 0=draw a textured billboard; 1=draw an instanced model
 uniform int oe_GroundCover_instancedModel;
 
-uniform float oe_GroundCover_windFactor;      // wind blowing the foliage
+uniform float oe_GroundCover_wind; // wind blowing the foliage
 uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
 
 uniform vec3 oe_Camera; // (vp width, vp height, lodscale)
@@ -317,10 +317,10 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
             vec4(vertex_view.xyz + halfWidthTangentVector + heightVector, 1.0);
 #
         // animate based on wind parameters.
-        if (which >= 2 && oe_GroundCover_windFactor > 0)
+        if (which >= 2 && oe_GroundCover_wind > 0)
         {
             float nw = noise[NOISE_SMOOTH];
-            float wind = width*oe_GroundCover_windFactor*nw;
+            float wind = width*oe_GroundCover_wind*nw;
             vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1+nw), wind, tilec.s);
             vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1-nw), wind, tilec.t);
         }

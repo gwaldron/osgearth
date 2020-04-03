@@ -230,6 +230,8 @@ SET(LIB_PUBLIC_HEADERS
     TileLayer
     TileHandler
     TileRasterizer
+    TiledFeatureModelGraph
+    TiledFeatureModelLayer
     TileSource
     TileSourceElevationLayer
     TileSourceImageLayer
@@ -525,6 +527,7 @@ set(TARGET_SRC
     LineDrawable.cpp
     Locators.cpp
     LocalTangentPlane.cpp
+    Math.cpp
     Map.cpp
     MapCallback.cpp
     MapInfo.cpp
@@ -583,6 +586,8 @@ set(TARGET_SRC
     TileLayer.cpp
     TileHandler.cpp
     TileRasterizer.cpp
+    TiledFeatureModelGraph.cpp
+    TiledFeatureModelLayer.cpp
     TileVisitor.cpp
     TileSource.cpp
     TileSourceElevationLayer.cpp

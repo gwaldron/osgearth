@@ -33,6 +33,7 @@
 #include <osg/Depth>
 #include <osg/Version>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 #include <cstdlib> // getenv
 
@@ -72,6 +73,7 @@ GroundCoverLayer::Options::getConfig() const
     Config conf = PatchLayer::Options::getConfig();
     LayerReference<LandCoverLayer>::set(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
     LayerReference<ImageLayer>::set(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<ImageLayer>::set(conf, "color_layer", colorLayerName(), colorLayer());
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
     conf.set("grass", grass());
@@ -95,15 +97,29 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
 
     LayerReference<LandCoverLayer>::get(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
     LayerReference<ImageLayer>::get(conf, "mask_layer", maskLayerName(), maskLayer());
+    LayerReference<ImageLayer>::get(conf, "color_layer", colorLayerName(), colorLayer());
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
     conf.get("grass", grass());
 
     const Config* zones = conf.child_ptr("zones");
-    if (zones) {
+    if (zones)
+    {
         const ConfigSet& children = zones->children();
-        for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i) {
+        for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
+        {
             _zones.push_back(ZoneOptions(*i));
+        }
+    }
+    else // no zones, load GC directly
+    {
+        optional<GroundCoverOptions> gc;
+        conf.get("groundcover", gc);
+        if (gc.isSet())
+        {
+            ZoneOptions zo;
+            zo.groundCover() = gc;
+            _zones.push_back(zo);
         }
     }
 }
@@ -214,6 +230,8 @@ GroundCoverLayer::init()
 
     _zonesConfigured = false;
 
+    _useCoverageToAlpha = true;
+
     // deserialize zone data
     for (std::vector<ZoneOptions>::const_iterator i = options().zones().begin();
         i != options().zones().end();
@@ -229,7 +247,7 @@ GroundCoverLayer::init()
     
 #ifndef USE_GEOMETRY_SHADER
     // this layer will do its own custom rendering
-    _renderer = new Renderer();
+    _renderer = new Renderer(this);
     setDrawCallback(_renderer.get());
 #endif
 
@@ -245,8 +263,8 @@ GroundCoverLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    if (_renderer.valid())
-        _renderer->_settings._grass = options().grass().get();
+    //if (_renderer.valid())
+    //    _renderer->_settings._grass = options().grass().get();
 
     return Status::OK();
 }
@@ -298,6 +316,22 @@ GroundCoverLayer::getMaskLayer() const
 }
 
 void
+GroundCoverLayer::setColorLayer(ImageLayer* value)
+{
+    _colorLayer.setLayer(value);
+    if (value)
+    {
+        buildStateSets();
+    }
+}
+
+ImageLayer*
+GroundCoverLayer::getColorLayer() const
+{
+    return _colorLayer.getLayer();
+}
+
+void
 GroundCoverLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);
@@ -305,10 +339,16 @@ GroundCoverLayer::addedToMap(const Map* map)
     _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
     _landCoverLayer.findInMap(map, options().landCoverLayerName());
     _maskLayer.findInMap(map, options().maskLayerName());
+    _colorLayer.findInMap(map, options().colorLayerName());
 
     if (getMaskLayer())
     {
         OE_INFO << LC << "Mask layer is \"" << getMaskLayer()->getName() << "\"" << std::endl;
+    }
+
+    if (getColorLayer())
+    {
+        OE_INFO << LC << "Color modulation layer is \"" << getColorLayer()->getName() << "\"" << std::endl;
     }
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
@@ -339,6 +379,10 @@ void
 GroundCoverLayer::removedFromMap(const Map* map)
 {
     PatchLayer::removedFromMap(map);
+
+    _landCoverLayer.releaseFromMap(map);
+    _maskLayer.releaseFromMap(map);
+    _colorLayer.releaseFromMap(map);
 }
 
 void
@@ -440,22 +484,31 @@ GroundCoverLayer::buildStateSets()
         stateset->setDefine("OE_GROUNDCOVER_MASK_MATRIX", getMaskLayer()->getSharedTextureMatrixUniformName());
     }
 
+    if (getColorLayer())
+    {
+        stateset->setDefine("OE_GROUNDCOVER_COLOR_SAMPLER", getColorLayer()->getSharedTextureUniformName());
+        stateset->setDefine("OE_GROUNDCOVER_COLOR_MATRIX", getColorLayer()->getSharedTextureMatrixUniformName());
+    }
+
     // disable backface culling to support shadow/depth cameras,
     // for which the geometry shader renders cross hatches instead of billboards.
     stateset->setMode(GL_CULL_FACE, osg::StateAttribute::PROTECTED);
 
-    // enable alpha-to-coverage multisampling for vegetation.
-    stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    if (_useCoverageToAlpha)
+    {
+        // enable alpha-to-coverage multisampling for vegetation.
+        stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+
+        stateset->setAttributeAndModes(
+            new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
+            osg::StateAttribute::OVERRIDE);
+    }
 
     // uniform that communicates the availability of multisampling.
     if (osg::DisplaySettings::instance()->getMultiSamples())
     {
         stateset->setDefine("OE_GROUNDCOVER_HAS_MULTISAMPLES");
     }
-
-    stateset->setAttributeAndModes(
-        new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
-        osg::StateAttribute::OVERRIDE);
 
     float maxRange = 0.0f;
 
@@ -472,7 +525,6 @@ GroundCoverLayer::buildStateSets()
                 // Install the land cover shaders on the state set
                 VirtualProgram* vp = VirtualProgram::getOrCreate(zoneStateSet);
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
-                shaders.load(vp, shaders.GroundCover_FS, getReadOptions());
 
                 // Generate the coverage acceptor shader
 #ifdef USE_GEOMETRY_SHADER
@@ -502,10 +554,8 @@ GroundCoverLayer::buildStateSets()
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader.get());
 #else
-                if (options().grass() == true)
-                    shaders.load(vp, shaders.Grass_VS, getReadOptions());
-                else
-                    shaders.load(vp, shaders.GroundCover_VS, getReadOptions());
+
+                loadShaders(vp, getReadOptions());
 
                 osg::Shader* covTest = groundCover->createPredicateShader(getLandCoverDictionary(), getLandCoverLayer());
                 covTest->setName(covTest->getName() + "_VERTEX");
@@ -659,104 +709,6 @@ namespace
 
         return geom;
     }
-
-    void createGeometryForGroundCover(
-        const GroundCover* groundcover,
-        double tileWidth,
-        osg::ref_ptr<osg::Geometry>& geom,
-        unsigned& vboTileSize)
-    {
-        if (groundcover->options().spacing().isSet())
-        {
-            float spacing_m = groundcover->options().spacing().get();
-            vboTileSize = tileWidth / spacing_m;
-        }
-        else if (groundcover->options().density().isSet())
-        {
-            float density_sqkm = groundcover->options().density().get();
-            vboTileSize = 0.001 * tileWidth * sqrt(density_sqkm);
-        }
-        else
-        {
-            vboTileSize = 128;
-        }
-
-        unsigned numInstances = vboTileSize * vboTileSize;
-        const unsigned vertsPerInstance = 8;
-        const unsigned indiciesPerInstance = 12;
-
-#ifdef TEST_MODEL_INSTANCING
-        geom = makeShape();
-        geom->getPrimitiveSet(0)->setNumInstances(numInstances);
-        return;
-#endif
-
-        geom = new osg::Geometry();
-        geom->setUseVertexBufferObjects(true);
-
-#ifdef USE_INSTANCING_IN_VERTEX_SHADER
-
-        static const GLubyte indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
-        geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 12, &indices[0], numInstances));
-
-        // We don't actually need any verts. Is it OK not to set an array?
-        //geom->setVertexArray(new osg::Vec3Array(8));
-
-        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
-        normals->push_back(osg::Vec3f(0,0,1));
-        geom->setNormalArray(normals);
-
-#else // big giant drawelements:
-
-        // Do we need this at all?
-        unsigned int numverts = numInstances * vertsPerInstance;
-        osg::Vec3Array* coords = new osg::Vec3Array(numverts);
-        geom->setVertexArray(coords);
-
-        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
-        normals->push_back(osg::Vec3f(0, 0, 1));
-        geom->setNormalArray(normals);
-
-        osg::DrawElements* de =
-            numverts > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt(GL_TRIANGLES)
-            : (osg::DrawElements*)new osg::DrawElementsUShort(GL_TRIANGLES);
-
-        const unsigned totalIndicies = numInstances * indiciesPerInstance;
-        de->reserveElements(totalIndicies);
-
-        for (unsigned i = 0; i < numInstances; ++i)
-        {
-            unsigned offset = i * vertsPerInstance;
-
-            de->addElement(0 + offset);
-            de->addElement(1 + offset);
-            de->addElement(2 + offset);
-            de->addElement(2 + offset);
-            de->addElement(1 + offset);
-            de->addElement(3 + offset);
-
-            de->addElement(4 + offset);
-            de->addElement(5 + offset);
-            de->addElement(6 + offset);
-            de->addElement(6 + offset);
-            de->addElement(5 + offset);
-            de->addElement(7 + offset);
-
-            if (false) //settings->_grass) // third crosshatch
-            {
-                de->addElement(8 + offset);
-                de->addElement(9 + offset);
-                de->addElement(10 + offset);
-                de->addElement(10 + offset);
-                de->addElement(9 + offset);
-                de->addElement(11 + offset);
-            }
-        }
-
-        geom->addPrimitiveSet(de);
-
-#endif // USE_INSTANCING_IN_VERTEX_SHADER
-    }
 }
 
 osg::Node*
@@ -769,15 +721,85 @@ GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
 }
 
 osg::Geometry*
-GroundCoverLayer::createPatchGeometry(const GroundCover* gc) const
+GroundCoverLayer::createGeometry(unsigned vboTileDim) const    
 {
-    osg::ref_ptr<osg::Geometry> geom;
-    if (_renderer.valid())
+    unsigned numInstances = vboTileDim * vboTileDim;
+    const unsigned vertsPerInstance = 8;
+    const unsigned indiciesPerInstance = 12;
+
+#ifdef TEST_MODEL_INSTANCING
+    geom = makeShape();
+    geom->getPrimitiveSet(0)->setNumInstances(numInstances);
+    return;
+#endif
+
+    osg::Geometry* out_geom = new osg::Geometry();
+    out_geom->setUseVertexBufferObjects(true);
+
+#ifdef USE_INSTANCING_IN_VERTEX_SHADER
+
+    static const GLubyte indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
+    out_geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 12, &indices[0], numInstances));
+
+    // We don't actually need any verts. Is it OK not to set an array?
+    //geom->setVertexArray(new osg::Vec3Array(8));
+
+    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+    normals->push_back(osg::Vec3f(0,0,1));
+    out_geom->setNormalArray(normals);
+
+#else // big giant drawelements:
+
+    // Do we need this at all?
+    unsigned int numverts = numInstances * vertsPerInstance;
+    osg::Vec3Array* coords = new osg::Vec3Array(numverts);
+    out_geom->setVertexArray(coords);
+
+    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+    normals->push_back(osg::Vec3f(0, 0, 1));
+    out_geom->setNormalArray(normals);
+
+    osg::DrawElements* de =
+        numverts > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt(GL_TRIANGLES)
+        : (osg::DrawElements*)new osg::DrawElementsUShort(GL_TRIANGLES);
+
+    const unsigned totalIndicies = numInstances * indiciesPerInstance;
+    de->reserveElements(totalIndicies);
+
+    for (unsigned i = 0; i < numInstances; ++i)
     {
-        unsigned unused;
-        createGeometryForGroundCover(gc, _renderer->_settings._tileWidth, geom, unused);
+        unsigned offset = i * vertsPerInstance;
+
+        de->addElement(0 + offset);
+        de->addElement(1 + offset);
+        de->addElement(2 + offset);
+        de->addElement(2 + offset);
+        de->addElement(1 + offset);
+        de->addElement(3 + offset);
+
+        de->addElement(4 + offset);
+        de->addElement(5 + offset);
+        de->addElement(6 + offset);
+        de->addElement(6 + offset);
+        de->addElement(5 + offset);
+        de->addElement(7 + offset);
+
+        if (false) //settings->_grass) // third crosshatch
+        {
+            de->addElement(8 + offset);
+            de->addElement(9 + offset);
+            de->addElement(10 + offset);
+            de->addElement(10 + offset);
+            de->addElement(9 + offset);
+            de->addElement(11 + offset);
+        }
     }
-    return geom.release();
+
+    out_geom->addPrimitiveSet(de);
+
+#endif // USE_INSTANCING_IN_VERTEX_SHADER
+
+    return out_geom;
 }
 
 //........................................................................
@@ -812,14 +834,29 @@ GroundCoverLayer::Renderer::DrawState::reset(const osg::State* state, Settings* 
 
     if (!geom.valid())
     {
-        unsigned vboTileSize;
-        createGeometryForGroundCover(groundcover, settings->_tileWidth, geom, vboTileSize);
-        _numInstances1D = vboTileSize;
+        if (groundcover->options().spacing().isSet())
+        {
+            float spacing_m = groundcover->options().spacing().get();
+            _numInstances1D = settings->_tileWidth / spacing_m;
+        }
+        else if (groundcover->options().density().isSet())
+        {
+            float density_sqkm = groundcover->options().density().get();
+            _numInstances1D = 0.001 * settings->_tileWidth * sqrt(density_sqkm);
+        }
+        else
+        {
+            _numInstances1D = 128;
+        }
+
+        geom = _renderer->_layer->createGeometry(_numInstances1D);
     }
 }
 
-GroundCoverLayer::Renderer::Renderer()
+GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
 {
+    _layer = layer;
+
     // create uniform IDs for each of our uniforms
     _numInstancesUName = osg::Uniform::getNameID("oe_GroundCover_numInstances");
     _LLUName = osg::Uniform::getNameID("oe_GroundCover_LL");
@@ -829,13 +866,14 @@ GroundCoverLayer::Renderer::Renderer()
     _drawStateBuffer.resize(64u);
 
     _settings._tileWidth = 0.0;
-    _settings._grass = false;
+    //_settings._grass = false;
 }
 
 void
 GroundCoverLayer::Renderer::preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& data)
 {
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
+    ds._renderer = this;
 
     ds.reset(ri.getState(), &_settings);
 
@@ -990,6 +1028,15 @@ GroundCoverLayer::getConfig() const
         c.set(_landCoverLayer.getLayer()->getConfig());
     if (_maskLayer.isSetByUser())
         c.set(_maskLayer.getLayer()->getConfig());
+    if (_colorLayer.isSetByUser())
+        c.set(_colorLayer.getLayer()->getConfig());
     return c;
 }
 
+void
+GroundCoverLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
+{
+    GroundCoverShaders shaders;
+    shaders.load(vp, shaders.GroundCover_VS, options);
+    shaders.load(vp, shaders.GroundCover_FS, options);
+}

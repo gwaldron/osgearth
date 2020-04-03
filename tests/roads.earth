@@ -28,7 +28,7 @@ http://readymap.org
                 default {
                    stroke: #ffffff;
                    stroke-width: 20m;
-                   stroke-image: "../data/road.png";
+                   stroke-image: "'../data/road.png'";
                 }                    
             </style>
         </styles>
@@ -59,7 +59,7 @@ http://readymap.org
                     stroke-width: 20m;
                     render-depth-test: false;
                     render-order: 2;
-                    stroke-image: "../data/grid2.png";
+                    stroke-image: "'../data/grid2.png'";
                 }
             </style>
         </styles>

@@ -154,12 +154,12 @@ namespace
     struct ManipTerrainCallback : public TerrainCallback
     {
         ManipTerrainCallback(EarthManipulator* manip) : _manip(manip) { }
-        void onTileAdded(const TileKey& key, osg::Node* graph, TerrainCallbackContext& context)
+        void onTileUpdate(const TileKey& key, osg::Node* graph, TerrainCallbackContext& context)
         {
             osg::ref_ptr<EarthManipulator> safe;
             if ( _manip.lock(safe) )
             {
-                safe->handleTileAdded(key, graph, context);
+                safe->handleTileUpdate(key, graph, context);
             }
         }
         osg::observer_ptr<EarthManipulator> _manip;
@@ -622,17 +622,26 @@ EarthManipulator::configureDefaultSettings()
 
     _settings->bindKey( ACTION_HOME, osgGA::GUIEventAdapter::KEY_Space );
 
-    _settings->bindMouse( ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
-    //_settings->bindMouse( ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
-
-    // zoom as you hold the right button:
     options.clear();
     options.add( OPTION_CONTINUOUS, true );
+
+    // zoom as you hold the right button:
     _settings->bindMouse( ACTION_ZOOM, osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, 0L, options );
+    _settings->bindMouse( ACTION_ZOOM, osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, osgGA::GUIEventAdapter::MODKEY_CTRL, options);
+
+    options.add( OPTION_SCALE_X, 9.0 );
+    options.add( OPTION_SCALE_Y, 9.0 );
+
+    _settings->bindMouse( ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
+    _settings->bindMouse( ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, osgGA::GUIEventAdapter::MODKEY_CTRL, options);
 
     // rotate with either the middle button or the left+right buttons:
     _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON );
     _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON | osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON );
+    _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON, osgGA::GUIEventAdapter::MODKEY_CTRL, options);
+
+    options.add( OPTION_SCALE_X, 4.0 );
+    options.add( OPTION_SCALE_Y, 4.0 );
 
     // zoom with the scroll wheel:
     _settings->bindScroll( ACTION_ZOOM_IN,  osgGA::GUIEventAdapter::SCROLL_DOWN );
@@ -808,7 +817,7 @@ EarthManipulator::established()
 
 
 void
-EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* graph, TerrainCallbackContext& context)
+EarthManipulator::handleTileUpdate(const TileKey& key, osg::Node* graph, TerrainCallbackContext& context)
 {
     // Only do collision avoidance if it's enabled, we're not tethering and
     // we're not in the middle of setting a viewpoint.

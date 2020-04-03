@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<viewpoints time="0">
+<viewpoints>
     <viewpoint>
         <heading>8.806974516644791</heading>
         <height>4465.397310772911</height>
@@ -71,13 +71,13 @@
         <height>186.9731654571369</height>
         <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Oakland">
-        <heading>25.8191</heading>
-        <pitch>-38.5519</pitch>
-        <range>2698.97m</range>
-        <long>-122.271293757692</long>
-        <lat>37.80406700591573</lat>
-        <height>-9.007657782174647</height>
+    <viewpoint name="Grassy Spot">
+        <heading>-104.587</heading>
+        <pitch>-13.9097</pitch>
+        <range>17.1305m</range>
+        <long>-121.8291537728856</long>
+        <lat>46.72797332896315</lat>
+        <height>763.7603161036968</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
 </viewpoints>

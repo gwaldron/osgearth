@@ -7,11 +7,15 @@ osgEarth Sample - Simple Ocean with surface texture
     <xi:include href="readymap_elevation.xml"/>
 
     <Ocean>
-        <max_altitude>1e10</max_altitude>
         <texture>../data/textures/water_modulate.png</texture>
         <texture_lod>13</texture_lod>
-        <use_bathymetry>true</use_bathymetry>
+        <use_bathymetry>false</use_bathymetry>
+        <mask_layer>ocean_mask</mask_layer>        
     </Ocean>
+    
+    <TMSImage name="ocean_mask" shared="true" visible="false">
+        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+    </TMSImage>
 
     <Viewpoints>
         <viewpoint name="San Clemente">

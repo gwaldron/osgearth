@@ -339,11 +339,9 @@ namespace osgEarth { namespace MVT
             {
                 const mapnik::vector::tile_layer &layer = tile.layers().Get(i);
 
-
                 for (int j = 0; j < layer.features().size(); j++)
                 {
                     const mapnik::vector::tile_feature &feature = layer.features().Get(j);
-
 
                     osg::ref_ptr< Feature > oeFeature = new Feature(0, key.getProfile()->getSRS());
 
@@ -425,6 +423,17 @@ namespace osgEarth { namespace MVT
                     else if (geomType == MVT::Point)
                     {
                         geometry = decodePoint(feature, key, layer.extent());
+
+                        // This is a bit of a hack, but if a point is outside of the extents we remove it.
+                        // Lines and Polygons that extend outside of the tileset we keep though b/c we assume that they are just slightly going outside of the
+                        // extent.  Should probably make this an option somewhere.
+                        if (geometry)
+                        {
+                            if (!key.getExtent().contains(geometry->getBounds().center()))
+                            {
+                                geometry = NULL;
+                            }
+                        }
                     }
                     else
                     {
@@ -434,8 +443,9 @@ namespace osgEarth { namespace MVT
                     if (geometry)
                     {
                         oeFeature->setGeometry( geometry.get() );
-                        features.push_back(oeFeature.get());
+                        features.push_back(oeFeature.get());                     
                     }
+                    
                 }
             }
         }
@@ -700,7 +710,7 @@ MVTFeatureSource::createFeatureProfile()
 
 
     // Use the max level for now as the min level.
-    result->setFirstLevel(_maxLevel);
+    result->setFirstLevel(_minLevel);
     result->setMaxLevel(_maxLevel);
     result->setTilingProfile(profile);
     result->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;

@@ -47,6 +47,8 @@ namespace osgEarth { namespace Splat
             OE_OPTION(std::string, landCoverLayerName);
             OE_OPTION(ImageLayer::Options, maskLayer);
             OE_OPTION(std::string, maskLayerName);
+            OE_OPTION(ImageLayer::Options, colorLayer);
+            OE_OPTION(std::string, colorLayerName);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
             OE_OPTION(bool, grass);
@@ -71,6 +73,10 @@ namespace osgEarth { namespace Splat
         //! Masking layer (optional)
         void setMaskLayer(ImageLayer* layer);
         ImageLayer* getMaskLayer() const;
+
+        //! Color modulation layer
+        void setColorLayer(ImageLayer* layer);
+        ImageLayer* getColorLayer() const;
 
         //! LOD at which to draw ground cover
         void setLOD(const unsigned& value);
@@ -108,16 +114,13 @@ namespace osgEarth { namespace Splat
         virtual void resizeGLObjectBuffers(unsigned maxSize);
         virtual void releaseGLObjects(osg::State* state) const;
 
-        //! Gets the patch geom associated with a groundcover definition.
-        //! This is not the actual rendered geometry, just the shader patch
-        osg::Geometry* createPatchGeometry(const GroundCover*) const;
-
     protected:
         virtual ~GroundCoverLayer() { }
 
         LayerReference<LandCoverDictionary> _landCoverDict;
         LayerReference<LandCoverLayer> _landCoverLayer;
         LayerReference<ImageLayer> _maskLayer;
+        LayerReference<ImageLayer> _colorLayer;
 
         TextureImageUnitReservation _groundCoverTexBinding;
         TextureImageUnitReservation _noiseBinding;
@@ -147,13 +150,11 @@ namespace osgEarth { namespace Splat
         // Custom GL renderer for ground cover
         struct Renderer : public PatchLayer::DrawCallback
         {
-            Renderer();
+            Renderer(GroundCoverLayer* layer);
 
             struct Settings
             {
                 double _tileWidth;
-                //unsigned _vboTileSize;
-                bool _grass;
             };
 
             // Tracks a GL state to minimize state changes
@@ -187,7 +188,9 @@ namespace osgEarth { namespace Splat
 
                 GLint _LLNormalUL;
                 GLint _URNormalUL;
-    };
+
+                Renderer* _renderer;
+            };
 
             // one per graphics context
             osg::buffered_object<DrawState> _drawStateBuffer;
@@ -207,12 +210,22 @@ namespace osgEarth { namespace Splat
             void releaseGLObjects(osg::State* state) const;
 
             Settings _settings;
+            GroundCoverLayer* _layer;
         };
 
         osg::ref_ptr<Renderer> _renderer;
 
+        bool _useCoverageToAlpha;
+
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
+
+        virtual void loadShaders(
+            VirtualProgram* vp,
+            const osgDB::Options* options) const;
+
+        virtual osg::Geometry* createGeometry(
+            unsigned vboTileDim) const;
     };
 
 } } // namespace osgEarth::Splat

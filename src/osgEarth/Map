@@ -32,37 +32,23 @@
 namespace osgEarth
 {
     /**
-     * Map is the main data model that the MapNode will render. It is a
-     * container for all Layer objects (that contain the actual data) and
-     * the rendering options.
+     * Map is the main data model. A Map hold a collection of
+     * Layers, each of which provides data of some kind to the 
+     * overall Map. Use a MapNode to render the contents of a
+     * Map.
      */
     class OSGEARTH_EXPORT Map : public osg::Object
     {
-    public: // serialization data
-        class OSGEARTH_EXPORT Options : public ConfigOptions {
-        public:
-            META_ConfigOptions(osgEarth, Options, ConfigOptions);
-            OE_OPTION(std::string, name);
-            OE_OPTION(ProfileOptions, profile);
-            OE_OPTION(CacheOptions, cache);
-            OE_OPTION(CachePolicy, cachePolicy);
-            OE_OPTION(RasterInterpolation, elevationInterpolation);
-            OE_OPTION(std::string, profileLayer);
-            virtual Config getConfig() const;
-        private:
-            void fromConfig(const Config&);
-        };
-
+    public:
         META_Object(osgEarth, Map);
 
-    public:
         //! Construct a new, empty map.
         Map();
 
         //! This Map's unique ID
         UID getUID() const { return _uid; }
 
-        //! The map's master profile, which defines its SRS and tiling structure
+        //! The map's master tiling profile, which defines its SRS and tiling structure
         void setProfile(const Profile* value);
         const Profile* getProfile() const;
 
@@ -173,7 +159,7 @@ namespace osgEarth
         //! Gets a version of the map profile without any vertical datum
         const Profile* getProfileNoVDatum() const { return _profileNoVDatum.get(); }
 
-        //! Access to an elevation sampling pool tied to this map
+        //! Access to an elevation sampling service tied to this map
         ElevationPool* getElevationPool() const;
 
         //! Returns true if data for the given tile key and layers is likely
@@ -190,6 +176,27 @@ namespace osgEarth
 
         // disables copy construction
         Map(const Map& rhs, const osg::CopyOp& copy) { }
+
+    public: // serialization data
+        class OSGEARTH_EXPORT Options : public ConfigOptions {
+        public:
+            META_ConfigOptions(osgEarth, Options, ConfigOptions);
+            OE_OPTION(std::string, name);
+            OE_OPTION(ProfileOptions, profile);
+            OE_OPTION(CacheOptions, cache);
+            OE_OPTION(CachePolicy, cachePolicy);
+            OE_OPTION(RasterInterpolation, elevationInterpolation);
+            OE_OPTION(std::string, profileLayer);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
+
+        //! Internal - create from serialized options
+        Map(const Map::Options& options);
+
+        //! Ready-only access to the serialization options for this map
+        const Options& options() const { return _optionsConcrete; }
 
     private:
 
@@ -221,13 +228,6 @@ namespace osgEarth
         friend class MapInfo;
         Options _optionsConcrete;
         Options& options() { return _optionsConcrete; }
-
-    public:
-        //! Internal - create from serialized options
-        Map(const Map::Options& options);
-
-        //! Ready-only access to the serialization options for this map
-        const Options& options() const { return _optionsConcrete; }
     };
 
 

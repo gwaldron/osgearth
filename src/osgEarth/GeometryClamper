@@ -107,7 +107,7 @@ namespace osgEarth { namespace Util
 
     public: // TerrainCallback
         
-        virtual void onTileAdded(
+        virtual void onTileUpdate(
             const TileKey&          key, 
             osg::Node*              tile, 
             TerrainCallbackContext& context);

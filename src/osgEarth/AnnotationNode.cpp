@@ -84,7 +84,7 @@ AnnotationNode::construct()
 
 AnnotationNode::~AnnotationNode()
 {
-    setMapNode( 0L );
+    setMapNode(NULL);
 }
 
 void
@@ -128,10 +128,15 @@ AnnotationNode::setMapNode( MapNode* mapNode )
 {
     if ( getMapNode() != mapNode )
     {
+        if (_mapNode.valid())
+            _mapNode->removeObserver(this);
+
         _mapNode = mapNode;
         
         if ( mapNode )
         {
+            mapNode->addObserver(this);
+
             if ( mapNode->isGeocentric() )
                 _horizonCuller->setHorizon( new Horizon(mapNode->getMapSRS()) );
             else
@@ -141,6 +146,19 @@ AnnotationNode::setMapNode( MapNode* mapNode )
         }
 
 		applyStyle( this->getStyle() );
+    }
+}
+
+void
+AnnotationNode::objectDeleted(void* ptr)
+{
+    if ((void*)_mapNode.get() == ptr)
+    {
+        if (_mapNode.valid())
+        {
+            _mapNode->removeObserver(this);
+            _mapNode = NULL;
+        }
     }
 }
 

@@ -26,7 +26,7 @@ Help us add useful sources of Free data to this list.
 
     * `CGIAR`_ - World 90m elevation data derived from SRTM and ETOPO (`CGIAR European mirror`_)
     
-    * `SRTM30+`_ - Worldwide elevation coverage (including batymetry)
+    * `SRTM30+`_ - Worldwide elevation coverage (including bathymetry)
     
     * `GLCF`_ - UMD's Global Land Cover Facility (they also have mosaiced LANDSAT data)
     

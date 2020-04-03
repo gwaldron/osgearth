@@ -3,6 +3,7 @@
 #pragma vp_name       REX Engine - Elevation
 #pragma vp_entryPoint oe_rex_applyElevation
 #pragma vp_location   vertex_view
+#pragma vp_order      0
 
 #pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
 

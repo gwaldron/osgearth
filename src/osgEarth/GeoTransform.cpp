@@ -46,13 +46,35 @@ osg::MatrixTransform(rhs, op)
     _clampInUpdateTraversal = false;
 }
 
+GeoTransform::~GeoTransform()
+{
+    if (_terrain.valid())
+        _terrain->removeObserver(this);
+}
+
 void
 GeoTransform::setTerrain(Terrain* terrain)
 {
     if (terrain)
     {
         _terrain = terrain;
+        _terrain->addObserver(this);
         setPosition(_position);
+    }
+}
+
+void
+GeoTransform::objectDeleted(void* ptr)
+{
+    // called then the observed Terrain is deleted
+    if ((void*)_terrain.get() == ptr)
+    {
+        _terrain = NULL;
+        if (!_findTerrainInUpdateTraversal)
+        {
+            _findTerrainInUpdateTraversal = true;
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        }
     }
 }
 

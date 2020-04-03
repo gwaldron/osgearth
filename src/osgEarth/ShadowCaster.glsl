@@ -4,6 +4,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_name       Shadowing Vertex Shader
 #pragma vp_entryPoint oe_shadow_vertex
 #pragma vp_location   vertex_view
+#pragma vp_order      last
 
 
 uniform mat4 oe_shadow_matrix[$OE_SHADOW_NUM_SLICES];

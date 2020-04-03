@@ -229,6 +229,8 @@ SET(LIB_PUBLIC_HEADERS
     TileLayer
     TileHandler
     TileRasterizer
+    TiledFeatureModelGraph
+    TiledFeatureModelLayer
     TileSource
     TileSourceElevationLayer
     TileSourceImageLayer
@@ -581,6 +583,8 @@ set(TARGET_SRC
     TileLayer.cpp
     TileHandler.cpp
     TileRasterizer.cpp
+    TiledFeatureModelGraph.cpp
+    TiledFeatureModelLayer.cpp
     TileVisitor.cpp
     TileSource.cpp
     TileSourceElevationLayer.cpp

@@ -59,6 +59,7 @@ TerrainOptions::getConfig() const
     conf.set( "normal_maps", normalMaps() );
     conf.set( "normalize_edges", normalizeEdges() );
     conf.set( "morph_terrain", morphTerrain() );
+    conf.set( "morph_elevation", morphTerrain() );
     conf.set( "morph_imagery", morphImagery() );
     conf.set( "merges_per_frame", mergesPerFrame() );
     conf.set( "priority_scale", priorityScale() );

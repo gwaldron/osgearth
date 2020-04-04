@@ -777,8 +777,8 @@ void CascadeDrapingDecorator::Cascade::computeClipCoverage(const osg::Matrix& rt
     _maxClipY = osg::maximum(winUL.y(), winUR.y());
 
     // width and height [0..1]
-    _widthNDC = std::max(winUR.x() - winUL.x(), winLR.x() - winLL.x())*0.5 + 0.5;
-    _heightNDC = (std::max(winUL.y(), winUR.y()) - std::min(winLL.y(), winLR.y()))*0.5 + 0.5;
+    _widthNDC = (std::max)(winUR.x() - winUL.x(), winLR.x() - winLL.x())*0.5 + 0.5;
+    _heightNDC = ((std::max)(winUL.y(), winUR.y()) - (std::min)(winLL.y(), winLR.y()))*0.5 + 0.5;
 }
 
 #define MAXABS4(A,B,C,D) \

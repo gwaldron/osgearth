@@ -27,6 +27,7 @@
 #include <osgEarth/Shaders>
 #include <osgUtil/CullVisitor>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/NodeUtils>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
@@ -263,9 +264,6 @@ GroundCoverLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    //if (_renderer.valid())
-    //    _renderer->_settings._grass = options().grass().get();
-
     return Status::OK();
 }
 
@@ -349,6 +347,11 @@ GroundCoverLayer::addedToMap(const Map* map)
     if (getColorLayer())
     {
         OE_INFO << LC << "Color modulation layer is \"" << getColorLayer()->getName() << "\"" << std::endl;
+        if (getColorLayer()->isShared() == false)
+        {
+            OE_WARN << LC << "Color modulation is not shared and is therefore being disabled." << std::endl;
+            _colorLayer.releaseFromMap(map);
+        }
     }
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
@@ -679,28 +682,31 @@ namespace
     
     osg::Geometry* makeShape()
     {
-        //osg::Geometry* x = dynamic_cast<osg::Geometry*>(osgDB::readNodeFile("../data/tree2.osg"));
-        //osgUtil::Optimizer o;
-        //o.optimize(x, o.VERTEX_PRETRANSFORM | o.VERTEX_POSTTRANSFORM);
-        //return x;
-
         osg::Geometry* geom = new osg::Geometry();
         geom->setUseVertexBufferObjects(true);
 
+        const float s=10;
+
         osg::Vec3Array* v = new osg::Vec3Array();
         v->reserve(3);
-        v->push_back(osg::Vec3(-4, 0, 8));
-        v->push_back(osg::Vec3(+4, 0, 8)); // bottom
-        v->push_back(osg::Vec3( 0, 0, 0)); // left
+        v->push_back(osg::Vec3(-s/2, 0, s)); // left
+        v->push_back(osg::Vec3(+s/2, 0, s)); // right
+        v->push_back(osg::Vec3( 0, 0, 0)); // bottom
         geom->setVertexArray(v);
 
         osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL);
-        c->push_back(osg::Vec4(1, .5, .2, 1));
+        c->push_back(osg::Vec4(1,1,1,1));
         geom->setColorArray(c);
 
         osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
         normals->push_back(osg::Vec3f(0, 0, 1));
         geom->setNormalArray(normals);
+
+        osg::Vec2Array* t = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
+        t->push_back(osg::Vec2(0, 1)); // left
+        t->push_back(osg::Vec2(1, 1)); // right
+        t->push_back(osg::Vec2(.5, 0)); // bottom
+        geom->setTexCoordArray(3, t);
 
         osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
         b->reserve(3);
@@ -708,6 +714,15 @@ namespace
         geom->addPrimitiveSet(b);
 
         return geom;
+    }
+
+    osg::Geometry* loadShape()
+    {
+        osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile("D:/data/models/rockinsoil/RockSoil.3DS.osg");
+        osg::ref_ptr<osg::Geometry> geom = osgEarth::findTopMostNodeOfType<osg::Geometry>(node.get());
+        node = NULL;
+        if (!geom.valid()) OE_WARN << "ASDLAKSDJALSKDJALSKJASLKDJ" << std::endl;
+        return geom.release();
     }
 }
 
@@ -727,14 +742,15 @@ GroundCoverLayer::createGeometry(unsigned vboTileDim) const
     const unsigned vertsPerInstance = 8;
     const unsigned indiciesPerInstance = 12;
 
-#ifdef TEST_MODEL_INSTANCING
-    geom = makeShape();
-    geom->getPrimitiveSet(0)->setNumInstances(numInstances);
-    return;
-#endif
-
     osg::Geometry* out_geom = new osg::Geometry();
     out_geom->setUseVertexBufferObjects(true);
+
+#ifdef TEST_MODEL_INSTANCING
+    out_geom = makeShape();
+    //out_geom = loadShape();
+    out_geom->getPrimitiveSet(0)->setNumInstances(numInstances);
+    return out_geom;
+#endif
 
 #ifdef USE_INSTANCING_IN_VERTEX_SHADER
 

@@ -49,13 +49,14 @@ uniform mat4 osg_ViewMatrix;
 vec3 oe_UpVectorView;
 vec4 vp_Color;
 vec3 vp_Normal;
-
+vec4 oe_layer_tilec;
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_GroundCover_texCoord;
 
 // Output that selects the land cover texture from the texture array (non interpolated)
 flat out float oe_GroundCover_atlasIndex;
 
+out vec2 modelCoords;
 
 struct oe_GroundCover_Biome {
     int firstObjectIndex;
@@ -134,6 +135,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     if (oe_GroundCover_instancedModel == 1)
     {
         instanceID = gl_InstanceID;
+        modelCoords = gl_MultiTexCoord3.st;
     }
     else
     {
@@ -153,26 +155,17 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     vec2 halfSpacing = 0.5 / oe_GroundCover_numInstances;
 
     // tile coords [0..1]
-    vec4 tilec = vec4(halfSpacing + offset / oe_GroundCover_numInstances, 0, 1);
+    oe_layer_tilec = vec4(halfSpacing + offset / oe_GroundCover_numInstances, 0, 1);
 
-    vec4 noise = textureLod(oe_GroundCover_noiseTex, tilec.st, 0);
-    //vec4 noise = vec4(0);
-    //vec4 noise = texture2D_bilinear_mesa(oe_GroundCover_noiseTex, tilec.st); // validate
-
-    // discard instances based on noise value threshold (coverage). If it passes,
-    // scale the noise value back up to [0..1]
-    //if (noise[NOISE_SMOOTH] > oe_GroundCover_fill)
-    //    return;
-    //else
-    //    noise[NOISE_SMOOTH] /= oe_GroundCover_fill;
+    vec4 noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);
 
     // randomly shift each point off center
     vec2 shift = vec2(fract(noise[NOISE_RANDOM]*1.5), fract(noise[NOISE_RANDOM_2]*1.5))*2.0-1.0;
 
-    tilec.xy += shift * halfSpacing;
+    oe_layer_tilec.xy += shift * halfSpacing;
 
     // and place it correctly within the tile
-    vec3 pos = gl_NormalMatrix * vec3(mix(oe_GroundCover_LL.xy, oe_GroundCover_UR.xy, tilec.xy), 0);
+    vec3 pos = gl_NormalMatrix * vec3(mix(oe_GroundCover_LL.xy, oe_GroundCover_UR.xy, oe_layer_tilec.xy), 0);
 
     vertex_view.xyz += pos;
 
@@ -183,10 +176,10 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     }
 
     // sample the landcover data
-    oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*tilec).st, 0).r;
+    oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*oe_layer_tilec).st, 0).r;
 
     // Look up the biome at this point:
-    int biomeIndex = oe_GroundCover_getBiomeIndex(tilec);
+    int biomeIndex = oe_GroundCover_getBiomeIndex(oe_layer_tilec);
     if ( biomeIndex < 0 )
     {
         // No biome defined; bail out without emitting any geometry.
@@ -195,7 +188,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     // If we're using a mask texture, sample it now:
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
-    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*tilec).st).a;
+    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*oe_layer_tilec).st).a;
     if ( mask > 0.0 )
     {
         // Failed to pass the mask; no geometry emitted.
@@ -215,7 +208,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         noise[NOISE_SMOOTH] /= biome.fill;
 
     // Clamp the center point to the elevation.
-    oe_GroundCover_clamp(vertex_view, oe_UpVectorView, tilec.st);
+    oe_GroundCover_clamp(vertex_view, oe_UpVectorView, oe_layer_tilec.st);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
@@ -314,8 +307,8 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         {
             float nw = noise[NOISE_SMOOTH];
             float wind = width*oe_GroundCover_wind*nw;
-            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1+nw), wind, tilec.s);
-            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1-nw), wind, tilec.t);
+            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1+nw), wind, oe_layer_tilec.s);
+            vertex_view.x += oe_GroundCover_applyWind(osg_FrameTime*(1-nw), wind, oe_layer_tilec.t);
         }
 
         // calculates normals:

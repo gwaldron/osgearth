@@ -146,6 +146,38 @@ struct ToggleMinValidValue : public osgGA::GUIEventHandler
     MapNode* _mapNode;
 };
 
+struct SetWindPoint : public osgGA::GUIEventHandler
+{
+    SetWindPoint(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c)
+    {
+        osg::Node* heli = osgDB::readNodeFile("D:/mak/helicopter.osgb.(10,10,10).scale");
+        xform = new GeoTransform();
+        xform->addChild(heli);
+        mapNode->addChild(xform);
+    }
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
+        {
+            osg::Vec3d world;
+            if (s_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+            {
+                osg::Uniform* u = s_mapNode->getOrCreateStateSet()->getOrCreateUniform("actorPos", osg::Uniform::FLOAT_VEC3);
+                u->set(osg::Vec3(world));
+                GeoPoint p;
+                p.fromWorld(s_mapNode->getMapSRS(), world);
+                p.alt() = 3.0;
+                p.altitudeMode() = ALTMODE_RELATIVE;
+                xform->setPosition(p);
+            }
+        }
+        return false;
+    }
+    char _c;
+    MapNode* _mapNode;
+    GeoTransform* xform;
+};
+
 struct DumpLabel : public osgGA::GUIEventHandler
 {
     DumpLabel(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c), _layer(0L) { }
@@ -234,6 +266,8 @@ main( int argc, char** argv )
     viewer.addEventHandler(new DumpLabel(s_mapNode.get(), 'L'));
 
     viewer.addEventHandler(new ToggleMinValidValue(s_mapNode.get(), 'M'));
+
+    viewer.addEventHandler(new SetWindPoint(s_mapNode.get(), 'p'));
 
     return Metrics::run(viewer);
 }

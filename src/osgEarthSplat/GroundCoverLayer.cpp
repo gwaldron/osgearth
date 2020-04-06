@@ -497,20 +497,20 @@ GroundCoverLayer::buildStateSets()
     // for which the geometry shader renders cross hatches instead of billboards.
     stateset->setMode(GL_CULL_FACE, osg::StateAttribute::PROTECTED);
 
-    if (_useCoverageToAlpha)
-    {
-        // enable alpha-to-coverage multisampling for vegetation.
-        stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-
-        stateset->setAttributeAndModes(
-            new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
-            osg::StateAttribute::OVERRIDE);
-    }
+    stateset->setAttributeAndModes(
+        new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
+        osg::StateAttribute::OVERRIDE);
 
     // uniform that communicates the availability of multisampling.
     if (osg::DisplaySettings::instance()->getMultiSamples())
     {
         stateset->setDefine("OE_GROUNDCOVER_HAS_MULTISAMPLES");
+
+        // enable alpha-to-coverage multisampling for vegetation.
+        if (_useCoverageToAlpha)
+        {
+            stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+        }
     }
 
     float maxRange = 0.0f;

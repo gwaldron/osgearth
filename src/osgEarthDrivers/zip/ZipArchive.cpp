@@ -22,6 +22,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
+#include <osgEarth/ThreadingUtils>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -518,7 +519,7 @@ const ZipArchive::PerThreadData&
 ZipArchive::getDataNoLock() const
 {
     // get/create data for the currently running thread:
-    size_t current = OpenThreads::Thread::CurrentThreadId();
+    size_t current = osgEarth::Threading::getCurrentThreadId();
 
     PerThreadDataMap::const_iterator i = _perThreadData.find( current );
 

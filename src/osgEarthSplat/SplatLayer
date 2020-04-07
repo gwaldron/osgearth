@@ -99,8 +99,6 @@ namespace osgEarth { namespace Splat
 
         void buildStateSets();
 
-        void aaa();
-
         struct ZoneSelector : public Layer::TraversalCallback
         {
             SplatLayer* _layer;

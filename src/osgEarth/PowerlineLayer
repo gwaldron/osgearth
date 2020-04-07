@@ -43,8 +43,7 @@ namespace osgEarth
         public:
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION(std::string, lineSourceLayer);
-            OE_OPTION(FeatureSource::Options, lineSource);
+            OE_OPTION_LAYER(FeatureSource, lineSource);
             OE_OPTION(bool, point_features);
             OE_OPTION_VECTOR(ModelOptions, towerModels);
             virtual Config getConfig() const;

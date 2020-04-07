@@ -43,8 +43,7 @@ namespace osgEarth { namespace Contrib
         class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
-            OE_OPTION(std::string, featureSourceLayer);
-            OE_OPTION(FeatureSource::Options, featureSource);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION(NumericExpression, lineWidth);
             OE_OPTION(NumericExpression, bufferWidth);
             OE_OPTION(bool, fill);
@@ -61,7 +60,7 @@ namespace osgEarth { namespace Contrib
 
         //! Feature source layer to get features from
         void setFeatureSource(FeatureSource* layer);
-        FeatureSource* getFeatureSource() const { return _featureSource.getLayer(); }
+        FeatureSource* getFeatureSource() const { return options().featureSource().getLayer(); }
 
         //! For line features, the width around the line to flatten
         void setLineWidth(const NumericExpression& value);
@@ -107,7 +106,6 @@ namespace osgEarth { namespace Contrib
         osg::ref_ptr<ElevationPool> _pool;
         osg::ref_ptr<ScriptEngine> _scriptEngine;
         osg::observer_ptr< const Map > _map;
-        LayerReference<FeatureSource> _featureSource;
     };
 
 } }

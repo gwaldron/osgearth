@@ -40,7 +40,7 @@ namespace osgEarth { namespace Splat
         {
         public:
             META_LayerOptions(osgEarth, Options, FeatureSource::Options);
-            OE_OPTION(GroundCoverLayer::Options, groundCoverLayer);
+            OE_OPTION_LAYER(GroundCoverLayer, groundCoverLayer);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -71,7 +71,6 @@ namespace osgEarth { namespace Splat
         
     private:
         GroundCoverFeatureGenerator _gen;
-        LayerReference<GroundCoverLayer> _gclayer;
     };
 
 } } // namespace osgEarth::Splat

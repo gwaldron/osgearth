@@ -49,7 +49,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
+    featureSource().get(conf, "features");
 }
 
 Config
@@ -63,7 +63,7 @@ FeatureModelLayer::Options::getConfig() const
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
 
-    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
+    featureSource().set(conf, "features");
 
     return conf;
 }
@@ -117,13 +117,6 @@ Config
 FeatureModelLayer::getConfig() const
 {
     Config conf = VisibleLayer::getConfig();
-
-    if (_featureSource.isSetByUser())
-        conf.set(_featureSource.getLayer()->getConfig());
-
-    if (_styleSheet.isSetByUser())
-        conf.set(_styleSheet.getLayer()->getConfig());
-
     return conf;
 }
 
@@ -132,7 +125,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
     if (getFeatureSource() != source)
     {
-        _featureSource.setLayer(source);
+        options().featureSource().setLayer(source);
 
         if (source && source->getStatus().isError())
         {
@@ -147,7 +140,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 FeatureSource*
 FeatureModelLayer::getFeatureSource() const
 {
-    return _featureSource.getLayer();
+    return options().featureSource().getLayer();
 }
 
 void
@@ -155,7 +148,7 @@ FeatureModelLayer::setStyleSheet(StyleSheet* value)
 {
     if (getStyleSheet() != value)
     {
-        _styleSheet.setLayer(value);
+        options().styleSheet().setLayer(value);
         dirty();
     }
 }
@@ -163,7 +156,7 @@ FeatureModelLayer::setStyleSheet(StyleSheet* value)
 StyleSheet*
 FeatureModelLayer::getStyleSheet() const
 {
-    return _styleSheet.getLayer();
+    return options().styleSheet().getLayer();
 }
 
 void
@@ -191,11 +184,11 @@ FeatureModelLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    Status ssStatus =  options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
 
@@ -205,8 +198,8 @@ FeatureModelLayer::openImplementation()
 Status
 FeatureModelLayer::closeImplementation()
 {
-    _featureSource.close();
-    _styleSheet.close();
+    options().featureSource().close();
+    options().styleSheet().close();
     _graphDirty = true;
     return getStatus();
 }
@@ -228,18 +221,11 @@ FeatureModelLayer::addedToMap(const Map* map)
     OE_TEST << LC << "addedToMap" << std::endl;
     VisibleLayer::addedToMap(map);
 
-    _featureSource.findInMap(map, options().featureSourceLayer());
-    _styleSheet.findInMap(map, options().styleSheetLayer());
+    options().featureSource().addedToMap(map);
+    options().styleSheet().addedToMap(map);
 
     if (getFeatureSource() && getStyleSheet())
     {
-        // Tell embedded layers about the map
-        if (options().featureSource().isSet())
-            getFeatureSource()->addedToMap(map);
-
-        if (options().styleSheet().isSet())
-            getStyleSheet()->addedToMap(map);
-
         // Save a reference to the map since we'll need it to
         // create a new session object later.
         _session = new Session(
@@ -258,8 +244,8 @@ FeatureModelLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
 
-    _featureSource.releaseFromMap(map);
-    _styleSheet.releaseFromMap(map);
+    options().featureSource().removedFromMap(map);
+    options().styleSheet().removedFromMap(map);
     
     if (_root.valid())
     {

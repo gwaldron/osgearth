@@ -54,7 +54,7 @@ _nodeCaching(false)
 void
 FeatureModelOptions::fromConfig(const Config& conf)
 {
-    LayerReference<StyleSheet>::get(conf, "styles", _styleSheetLayer, _styleSheet);
+    styleSheet().get(conf, "styles");
 
     conf.get( "layout",           _layout );
     conf.get( "fading",           _fading );
@@ -76,7 +76,7 @@ FeatureModelOptions::getConfig() const
 {
     Config conf;
 
-    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
+    styleSheet().set(conf, "styles");
 
     conf.set( "layout",           _layout );
     conf.set( "fading",           _fading );

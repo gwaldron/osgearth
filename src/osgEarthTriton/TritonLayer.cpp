@@ -266,10 +266,8 @@ TritonLayer::Options::fromConfig(const osgEarth::Config& conf)
     conf.get("use_height_map", _useHeightMap);
     conf.get("height_map_size", _heightMapSize);
     conf.get("render_bin_number", _renderBinNumber);
-    conf.get("mask_layer", _maskLayerName);
     conf.get("max_altitude", _maxAltitude);
-
-    LayerReference<osgEarth::ImageLayer>::get(conf, "mask_layer", maskLayerName(), maskLayer());
+    maskLayer().get(conf, "mask_layer");
 }
 
 osgEarth::Config
@@ -281,9 +279,8 @@ TritonLayer::Options::getConfig() const
     conf.set("use_height_map", _useHeightMap);
     conf.set("height_map_size", _heightMapSize);
     conf.set("render_bin_number", _renderBinNumber);
-    conf.set("mask_layer", _maskLayerName);
     conf.set("max_altitude", _maxAltitude);
-    LayerReference<osgEarth::ImageLayer>::set(conf, "mask_layer", maskLayerName(), maskLayer());
+    maskLayer().set(conf, "mask_layer");
 
     return conf;
 }
@@ -332,7 +329,7 @@ TritonLayer::init()
         lod->setMaxElevation(options().maxAltitude().get());
     }
 
-    _tritonNode = new TritonLayerNode(this, _maskLayer);
+    _tritonNode = new TritonLayerNode(this, options().maskLayer());
     _root->addChild(_tritonNode.get());
 }
 
@@ -351,28 +348,28 @@ TritonLayer::getNode() const
 void
 TritonLayer::setMaskLayer(osgEarth::ImageLayer* maskLayer)
 {
-    _maskLayer.setLayer(maskLayer);
+    options().maskLayer().setLayer(maskLayer);
     static_cast<TritonLayerNode*>(_tritonNode.get())->dirty();
 }
 
 osgEarth::ImageLayer*
 TritonLayer::getMaskLayer() const
 {
-    return _maskLayer.getLayer();
+    return options().maskLayer().getLayer();
 }
 
 void
 TritonLayer::addedToMap(const osgEarth::Map* map)
 {   
     VisibleLayer::addedToMap(map);
-    _maskLayer.findInMap(map, options().maskLayerName());
+    options().maskLayer().addedToMap(map);
 }
 
 void
 TritonLayer::removedFromMap(const osgEarth::Map* map)
 {
     VisibleLayer::removedFromMap(map);
-    _maskLayer.releaseFromMap(map);
+    options().maskLayer().removedFromMap(map);
     setMaskLayer(0L);
 }
 
@@ -387,7 +384,5 @@ osgEarth::Config
 TritonLayer::getConfig() const
 {
     osgEarth::Config c = osgEarth::VisibleLayer::getConfig();
-    if (_maskLayer.isSetByUser())
-        c.set(_maskLayer.getLayer()->getConfig());
     return c;
 }

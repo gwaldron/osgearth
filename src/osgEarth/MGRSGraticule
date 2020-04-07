@@ -43,8 +43,7 @@ namespace osgEarth { namespace Util
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION(URI, sqidData);
             OE_OPTION(bool, useDefaultStyles);
-            OE_OPTION(StyleSheet::Options, styleSheet);
-            OE_OPTION(std::string, styleSheetLayer);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -114,8 +113,6 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<const Map> _map;
 
         void loadGZDFeatures(const SpatialReference* srs, FeatureList& output) const;
-
-        LayerReference<StyleSheet> _styleSheet;
 
         typedef std::map<std::string, osg::ref_ptr<osgText::Text> > TextObjects;
         TextObjects _textObjects;

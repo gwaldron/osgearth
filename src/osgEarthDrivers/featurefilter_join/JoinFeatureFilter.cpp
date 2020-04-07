@@ -55,7 +55,7 @@ public: // FeatureFilter
 
     Status initialize(const osgDB::Options* readOptions)
     {
-        Status fsStatus = _featureSource.open(featureSource(), readOptions);
+        Status fsStatus = featureSource().open(readOptions);
         if (fsStatus.isError())
             return fsStatus;
 
@@ -67,7 +67,7 @@ public: // FeatureFilter
      */
     void getFeatures(const GeoExtent& extent, FeatureList& features, ProgressCallback* progress)
     {
-        FeatureSource* fs = _featureSource.getLayer();
+        FeatureSource* fs = featureSource().getLayer();
         if (!fs)
             return;
 
@@ -160,5 +160,4 @@ public:
 
 REGISTER_OSGPLUGIN(osgearth_featurefilter_join, JoinFeatureFilterPlugin);
 
-//OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(intersect, IntersectFeatureFilter);
 

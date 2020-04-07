@@ -74,11 +74,9 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION(std::string, featureSourceLayer);
-            OE_OPTION(FeatureSource::Options, featureSource);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
             OE_OPTION(double, gamma);
-            OE_OPTION(std::string, styleSheetLayer);
-            OE_OPTION(StyleSheet::Options, styleSheet);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -129,8 +127,6 @@ namespace osgEarth
         virtual ~FeatureImageLayer() { }
 
     private:
-        LayerReference<FeatureSource> _featureSource;
-        LayerReference<StyleSheet> _styleSheet;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         optional<double> _gamma;
@@ -154,8 +150,8 @@ namespace osgEarth
 
     // template/inline impls .................................................
 
-    FeatureSource* FeatureImageLayer::getFeatureSource() const { return _featureSource.getLayer(); }
-    StyleSheet* FeatureImageLayer::getStyleSheet() const { return _styleSheet.getLayer(); }
+    FeatureSource* FeatureImageLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
+    StyleSheet* FeatureImageLayer::getStyleSheet() const { return options().styleSheet().getLayer(); }
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureImageLayer::Options);

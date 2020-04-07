@@ -158,8 +158,8 @@ Config
 FeatureImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
+    featureSource().set(conf, "features");
+    styleSheet().set(conf, "styles");
     conf.set("gamma", gamma());
     return conf;
 }
@@ -168,8 +168,8 @@ void
 FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
     gamma().init(1.3);
-    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::get(conf, "styles", styleSheetLayer(), styleSheet());
+    featureSource().get(conf, "features");
+    styleSheet().get(conf, "styles");
     conf.get("gamma", gamma());
 }
 
@@ -197,15 +197,15 @@ FeatureImageLayer::openImplementation()
         return parent;
 
     // assert a feature source:
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    Status ssStatus = options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
 
-    if (!getFeatureSource() && !options().featureSourceLayer().isSet())
+    if (!getFeatureSource())
         return Status(Status::ConfigurationError, "Required feature source is missing");
 
     return Status::NoError;
@@ -216,8 +216,8 @@ FeatureImageLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
-    _featureSource.findInMap(map, options().featureSourceLayer());
-    _styleSheet.findInMap(map, options().styleSheetLayer());
+    options().featureSource().addedToMap(map);
+    options().styleSheet().addedToMap(map);
 
     if (getFeatureSource())
     {
@@ -229,9 +229,10 @@ FeatureImageLayer::addedToMap(const Map* map)
 void
 FeatureImageLayer::removedFromMap(const Map* map)
 {
+    options().featureSource().removedFromMap(map);
+    options().styleSheet().removedFromMap(map);
+
     ImageLayer::removedFromMap(map);
-    _featureSource.releaseFromMap(map);
-    _styleSheet.releaseFromMap(map);
 }
 
 void
@@ -239,7 +240,7 @@ FeatureImageLayer::setFeatureSource(FeatureSource* fs)
 {
     if (getFeatureSource() != fs)
     {
-        _featureSource.setLayer(fs);
+        options().featureSource().setLayer(fs);
         _featureProfile = 0L;
 
         if (fs)
@@ -263,7 +264,7 @@ FeatureImageLayer::setStyleSheet(StyleSheet* value)
 {
     if (getStyleSheet() != value)
     {
-        _styleSheet.setLayer(value);
+        options().styleSheet().setLayer(value);
         if (_session.valid())
         {
             _session->setStyles(getStyleSheet());

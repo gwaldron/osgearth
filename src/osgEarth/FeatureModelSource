@@ -37,8 +37,7 @@ namespace osgEarth
     {
     public: //properties
         
-        OE_OPTION(StyleSheet::Options, styleSheet);
-        OE_OPTION(std::string, styleSheetLayer);
+        OE_OPTION_LAYER(StyleSheet, styleSheet);
 
         /** Maximum span of a generated edge, in degrees. For geocentric maps only */
         optional<double>& maxGranularity() { return _maxGranularity_deg; }

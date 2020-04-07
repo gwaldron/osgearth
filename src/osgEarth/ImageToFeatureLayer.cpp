@@ -38,7 +38,7 @@ namespace osgEarth {
 Config
 ImageToFeatureSource::Options::getConfig() const {
     Config conf = FeatureSource::Options::getConfig();
-    LayerReference<ImageLayer>::set(conf, "image", imageLayerName(), imageLayer());
+    image().set(conf, "image");
     conf.set("level", level());
     conf.set("attribute", attribute());
     return conf;
@@ -49,8 +49,7 @@ ImageToFeatureSource::Options::fromConfig(const Config& conf)
 {
     level().init(0u);
     attribute().init("value");
-
-    LayerReference<ImageLayer>::get(conf, "image", imageLayerName(), imageLayer());
+    image().get(conf, "image");
     conf.get("level", level());
     conf.get("attribute", attribute());
 }
@@ -69,13 +68,13 @@ ImageToFeatureSource::init()
 void
 ImageToFeatureSource::setImageLayer(ImageLayer* layer)
 {
-    _imageLayer.setLayer(layer);
+    options().image().setLayer(layer);
 }
 
 ImageLayer*
 ImageToFeatureSource::getImageLayer() const
 {
-    return _imageLayer.getLayer();
+    return options().image().getLayer();
 }
 
 Status
@@ -103,15 +102,15 @@ void
 ImageToFeatureSource::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap" << std::endl;
-    _imageLayer.findInMap(map, options().imageLayerName());
+    options().image().addedToMap(map);
     FeatureSource::addedToMap(map);
 }
 
 void
 ImageToFeatureSource::removedFromMap(const Map* map)
 {
-    _imageLayer.releaseFromMap(map);
     FeatureSource::removedFromMap(map);
+    options().image().removedFromMap(map);
 }
 
 FeatureCursor*
@@ -211,7 +210,5 @@ Config
 ImageToFeatureSource::getConfig() const
 {
     Config c = FeatureSource::getConfig();
-    if (_imageLayer.isSetByUser())
-        c.set(_imageLayer.getLayer()->getConfig());
     return c;
 }

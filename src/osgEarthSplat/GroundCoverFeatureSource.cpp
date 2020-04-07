@@ -35,14 +35,14 @@ Config
 GroundCoverFeatureSource::Options::getConfig() const
 {
     Config conf = FeatureSource::Options::getConfig();
-    LayerReference<GroundCoverLayer>::set(conf, groundCoverLayer());
+    groundCoverLayer().set(conf, "groundcover_layer");
     return conf;
 }
 
 void
 GroundCoverFeatureSource::Options::fromConfig(const Config& conf)
 {
-    LayerReference<GroundCoverLayer>::get(conf, groundCoverLayer());
+    groundCoverLayer().get(conf, "groundcover_layer");
 }
 
 //...................................................................
@@ -62,7 +62,7 @@ GroundCoverFeatureSource::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status s = _gclayer.open(options().groundCoverLayer(), getReadOptions());
+    Status s = options().groundCoverLayer().open(getReadOptions());
     if (s.isError())
         return s;
 
@@ -106,19 +106,19 @@ GroundCoverFeatureSource::addedToMap(const Map* map)
 void
 GroundCoverFeatureSource::removedFromMap(const Map* map)
 {
-    _gclayer.releaseFromMap(map);
+    options().groundCoverLayer().removedFromMap(map);
 }
 
 void
 GroundCoverFeatureSource::setGroundCoverLayer(GroundCoverLayer* layer)
 {
-    _gclayer.setLayer(layer);
+    options().groundCoverLayer().setLayer(layer);
 }
 
 GroundCoverLayer*
 GroundCoverFeatureSource::getGroundCoverLayer() const
 {
-    return _gclayer.getLayer();
+    return options().groundCoverLayer().getLayer();
 }
 
 FeatureCursor*

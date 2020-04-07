@@ -38,7 +38,7 @@ REGISTER_OSGEARTH_LAYER(landcover, LandCoverLayer);
 void
 LandCoverLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<ImageLayer>::get(conf, source());
+    source().get(conf, "source");
 
     ConfigSet mappingsConf = conf.child("land_cover_mappings").children("mapping");
     for (ConfigSet::const_iterator i = mappingsConf.begin(); i != mappingsConf.end(); ++i)
@@ -53,7 +53,7 @@ LandCoverLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
 
-    LayerReference<ImageLayer>::set(conf, source());
+    source().set(conf, "source");
 
     if (conf.hasChild("land_cover_mappings") == false)
     {   
@@ -95,21 +95,19 @@ Config
 LandCoverLayer::getConfig() const
 {
     Config c = ImageLayer::getConfig();
-    if (_source.isSetByUser())
-        c.set(_source.getLayer()->getConfig());
     return c;
 }
 
 void
 LandCoverLayer::setSource(ImageLayer* value)
 {
-    _source.setLayer(value);
+    options().source().setLayer(value);
 }
 
 ImageLayer*
 LandCoverLayer::getSource() const
 {
-    return _source.getLayer();
+    return options().source().getLayer();
 }
 
 LandCoverValueMappingVector&
@@ -146,16 +144,16 @@ LandCoverLayer::openImplementation()
 
     // We never want to cache data from a coverage, because the "parent" layer
     // will be caching the entire result of a multi-coverage composite.
-    options().source()->cachePolicy() = CachePolicy::NO_CACHE;
+    options().sourceEmbeddedOptions()->cachePolicy() = CachePolicy::NO_CACHE;
 
     // Try to open it.
-    Status cs =_source.open(options().source(), getReadOptions());
+    Status cs = options().source().open(getReadOptions());
     if (cs.isError())
         return cs;
 
     // Pull this layer's extents from the coverage layer.
     // TODO: imageLayer can probably not to NULL here
-    ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(_source.getLayer());
+    ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(options().source().getLayer());
     if (!imageLayer)
         return Status(Status::ResourceUnavailable, "Cannot access source image layer");
 
@@ -213,7 +211,7 @@ void
 LandCoverLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _source.releaseFromMap(map);
+    options().source().removedFromMap(map);
 }
 
 bool

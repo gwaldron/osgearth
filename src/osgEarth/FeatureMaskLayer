@@ -38,8 +38,7 @@ namespace osgEarth
         {
         public:
             META_LayerOptions(osgEarth, Options, MaskLayer::Options);
-            OE_OPTION(std::string, featureSourceLayer);
-            OE_OPTION(FeatureSource::Options, featureSource);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -81,8 +80,6 @@ namespace osgEarth
         virtual ~FeatureMaskLayer() { }
 
     private:
-
-        LayerReference<FeatureSource> _featureSource;
 
         void create();
 

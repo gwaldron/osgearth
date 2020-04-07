@@ -36,7 +36,7 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION(ImageLayer::Options, source);
+            OE_OPTION_LAYER(ImageLayer, source);
             LandCoverValueMappingVector& mappings() { return _mappings; }
             const LandCoverValueMappingVector& mappings() const { return _mappings; }
             virtual Config getConfig() const;
@@ -80,7 +80,6 @@ namespace osgEarth
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
         typedef std::vector<int> CodeMap;
         CodeMap _codemap;
-        LayerReference<ImageLayer> _source;
         LandCoverValueMappingVector _mappings;
 
         GeoImage createFractalEnhancedImage(const TileKey& key, ProgressCallback* progress) const;

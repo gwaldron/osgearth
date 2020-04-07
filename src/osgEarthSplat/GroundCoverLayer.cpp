@@ -72,9 +72,8 @@ Config
 GroundCoverLayer::Options::getConfig() const
 {
     Config conf = PatchLayer::Options::getConfig();
-    LayerReference<LandCoverLayer>::set(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
-    LayerReference<ImageLayer>::set(conf, "mask_layer", maskLayerName(), maskLayer());
-    LayerReference<ImageLayer>::set(conf, "color_layer", colorLayerName(), colorLayer());
+    maskLayer().set(conf, "mask_layer");
+    colorLayer().set(conf, "color_layer");
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
     conf.set("grass", grass());
@@ -95,10 +94,8 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
 {
     _lod.init(13u);
     _castShadows.init(false);
-
-    LayerReference<LandCoverLayer>::get(conf, "land_cover_layer", landCoverLayerName(), landCoverLayer());
-    LayerReference<ImageLayer>::get(conf, "mask_layer", maskLayerName(), maskLayer());
-    LayerReference<ImageLayer>::get(conf, "color_layer", colorLayerName(), colorLayer());
+    maskLayer().get(conf, "mask_layer");
+    colorLayer().get(conf, "color_layer");
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
     conf.get("grass", grass());
@@ -264,7 +261,7 @@ GroundCoverLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    return Status::OK();
+    return Status::NoError;
 }
 
 void
@@ -300,7 +297,7 @@ GroundCoverLayer::getLandCoverLayer() const
 void
 GroundCoverLayer::setMaskLayer(ImageLayer* layer)
 {
-    _maskLayer.setLayer(layer);
+    options().maskLayer().setLayer(layer);
     if (layer)
     {
         buildStateSets();
@@ -310,13 +307,13 @@ GroundCoverLayer::setMaskLayer(ImageLayer* layer)
 ImageLayer*
 GroundCoverLayer::getMaskLayer() const
 {
-    return _maskLayer.getLayer();
+    return options().maskLayer().getLayer();
 }
 
 void
 GroundCoverLayer::setColorLayer(ImageLayer* value)
 {
-    _colorLayer.setLayer(value);
+    options().colorLayer().setLayer(value);
     if (value)
     {
         buildStateSets();
@@ -326,7 +323,7 @@ GroundCoverLayer::setColorLayer(ImageLayer* value)
 ImageLayer*
 GroundCoverLayer::getColorLayer() const
 {
-    return _colorLayer.getLayer();
+    return options().colorLayer().getLayer();
 }
 
 void
@@ -334,10 +331,14 @@ GroundCoverLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);
 
-    _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
-    _landCoverLayer.findInMap(map, options().landCoverLayerName());
-    _maskLayer.findInMap(map, options().maskLayerName());
-    _colorLayer.findInMap(map, options().colorLayerName());
+    if (!getLandCoverLayer())
+        setLandCoverLayer(map->getLayer<LandCoverLayer>());
+
+    if (!getLandCoverDictionary())
+        setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
+
+    options().maskLayer().addedToMap(map);
+    options().colorLayer().addedToMap(map);
 
     if (getMaskLayer())
     {
@@ -350,7 +351,7 @@ GroundCoverLayer::addedToMap(const Map* map)
         if (getColorLayer()->isShared() == false)
         {
             OE_WARN << LC << "Color modulation is not shared and is therefore being disabled." << std::endl;
-            _colorLayer.releaseFromMap(map);
+            options().colorLayer().removedFromMap(map);
         }
     }
 
@@ -383,9 +384,8 @@ GroundCoverLayer::removedFromMap(const Map* map)
 {
     PatchLayer::removedFromMap(map);
 
-    _landCoverLayer.releaseFromMap(map);
-    _maskLayer.releaseFromMap(map);
-    _colorLayer.releaseFromMap(map);
+    options().maskLayer().removedFromMap(map);
+    options().colorLayer().removedFromMap(map);
 }
 
 void
@@ -1030,22 +1030,6 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
             }
         }
     }
-}
-
-
-Config
-GroundCoverLayer::getConfig() const
-{
-    Config c = PatchLayer::getConfig();
-    if (_landCoverDict.isSetByUser())
-        c.set(_landCoverDict.getLayer()->getConfig());
-    if (_landCoverLayer.isSetByUser())
-        c.set(_landCoverLayer.getLayer()->getConfig());
-    if (_maskLayer.isSetByUser())
-        c.set(_maskLayer.getLayer()->getConfig());
-    if (_colorLayer.isSetByUser())
-        c.set(_colorLayer.getLayer()->getConfig());
-    return c;
 }
 
 void

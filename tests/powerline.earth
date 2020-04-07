@@ -4,7 +4,7 @@
         <tower_model>
             <model>../data/Transmission_Tower.osgb</model>
             <attachment_points>
-                LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162)
+                LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162, 6.875 0.0 18.52, -6.875 0.0 18.52)
             </attachment_points>
         </tower_model>
         <styles>

@@ -518,7 +518,9 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
             // New feature for the cable
             const int size = geom->size();
             // XXX assumption that there are only two cables
-            for (int cable = 0; cable < 2; ++cable)
+            for (Vec3dVector::iterator attachment = _attachments.begin();
+                 attachment != _attachments.end();
+                 ++attachment)
             {
                 Feature* newFeature = new Feature(*feature);
                 LineString* newGeom = new LineString(size);
@@ -538,7 +540,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     }
                     osg::Matrixd headingMat;
                     headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
-                    osg::Vec3d worldAttach = _attachments[cable] * headingMat * orientations[i] + worldPts[i];
+                    osg::Vec3d worldAttach = *attachment * headingMat * orientations[i] + worldPts[i];
                     cablePoints.push_back(worldAttach);
                 }
                 const bool catenary = true;

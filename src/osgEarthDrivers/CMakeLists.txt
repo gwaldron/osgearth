@@ -49,6 +49,7 @@ add_subdirectory(vdatum_egm2008)
 add_subdirectory(vdatum_egm84)
 add_subdirectory(vdatum_egm96)
 add_subdirectory(viewpoints)
+add_subdirectory(zip)
 
 if(OSGEARTH_BUILD_LEGACY_MP_TERRAIN_ENGINE)
     add_subdirectory(engine_mp)

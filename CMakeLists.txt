@@ -109,6 +109,7 @@ FIND_PACKAGE(Draco)
 FIND_PACKAGE(BASISU)
 FIND_PACKAGE(Tracy)
 FIND_PACKAGE(Glew)
+FIND_PACKAGE(LIBZIP)
 
 IF(SQLITE3_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_MBTILES)
@@ -227,6 +228,11 @@ ENDIF(INSTALL_TO_OSG_DIR)
 
 # osgEarth Examples
 OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
+
+# Whether to build our custom zip plugin
+IF(LIBZIP_FOUND)
+    OPTION(BUILD_OSGEARTH_ZIP_PLUGIN "Enable to build osgEarth's zip plugin based on libzip" ON)
+ENDIF(LIBZIP_FOUND)
 
 # Applications and tests
 OPTION(BUILD_APPLICATIONS "Enable build of Applications" ON)

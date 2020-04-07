@@ -97,11 +97,9 @@ namespace osgEarth { namespace Util
 
         /**
          * Returns a skin that matches the criteria specified in the symbol. The method
-         * will randomly select a suitable skin if there are more than one match. If the
-         * symbol contains a random seed, it will use that to seed the selection in order
-         * to provide consistency.
+         * will randomly select a suitable skin if there are more than one match.
          */
-        SkinResource* getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions =0L ) const;
+        SkinResource* getSkin( const SkinSymbol* symbol, unsigned int rand, const osgDB::Options* dbOptions =0L ) const;
 
 
     public: // Instance functions

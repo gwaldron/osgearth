@@ -990,10 +990,6 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
 bool
 ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 {
-    // seed our random number generators
-    Random wallSkinPRNG( _wallSkinSymbol.valid()? *_wallSkinSymbol->randomSeed() : 0, Random::METHOD_FAST );
-    Random roofSkinPRNG( _roofSkinSymbol.valid()? *_roofSkinSymbol->randomSeed() : 0, Random::METHOD_FAST );
-
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -1066,15 +1062,19 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             osg::ref_ptr<osg::StateSet> wallStateSet;
             osg::ref_ptr<osg::StateSet> roofStateSet;
 
+            
+
             // calculate the wall texturing:
             SkinResource* wallSkin = 0L;
             if ( _wallSkinSymbol.valid() )
             {
+                unsigned int wallRand = f->get()->getFID() + (_wallSkinSymbol.valid() ? *_wallSkinSymbol->randomSeed() : 0);
+
                 if ( _wallResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
                     querySymbol.objectHeight() = fabs(height);
-                    wallSkin = _wallResLib->getSkin( &querySymbol, wallSkinPRNG, context.getDBOptions() );
+                    wallSkin = _wallResLib->getSkin( &querySymbol, wallRand, context.getDBOptions() );
                 }
 
                 else
@@ -1087,10 +1087,12 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             SkinResource* roofSkin = 0L;
             if ( _roofSkinSymbol.valid() )
             {
+                unsigned int roofRand = f->get()->getFID() + (_roofSkinSymbol.valid() ? *_roofSkinSymbol->randomSeed() : 0);
+
                 if ( _roofResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_roofSkinSymbol.get() );
-                    roofSkin = _roofResLib->getSkin( &querySymbol, roofSkinPRNG, context.getDBOptions() );
+                    roofSkin = _roofResLib->getSkin( &querySymbol, roofRand, context.getDBOptions() );
                 }
 
                 else

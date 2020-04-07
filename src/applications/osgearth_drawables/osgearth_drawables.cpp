@@ -38,6 +38,12 @@
 
 using namespace osgEarth;
 
+// rotates a 16-bit value to the right by the specified # of bits, where bits is [0,15]
+void ror(unsigned short& v, unsigned short bits)
+{
+    v = (v << (16-bits)) | (v >> bits);
+}
+
 void addVerts(LineDrawable* line, double x, double y)
 {
     line->pushVertex(osg::Vec3(x, 0, y));
@@ -131,6 +137,17 @@ struct TestFirstCount : public osg::NodeCallback
     }
 };
 
+struct RollStipple : public osg::NodeCallback
+{
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        LineDrawable* line = (LineDrawable*)node;
+        GLushort p = line->getStipplePattern();
+        ror(p, 1);
+        line->setStipplePattern(p);
+    }
+};
+
 osg::Node* createDrawables()
 {
     // You need a viewport uniform for the lines to work.
@@ -162,6 +179,15 @@ osg::Node* createDrawables()
     stippled->setColor(osg::Vec4(0,1,0,1));
     addVerts(stippled, x, y);
     group->addChild(stippled);
+
+    x += 20;
+    LineDrawable* rollingStipple = new LineDrawable(GL_LINE_STRIP);
+    rollingStipple->setLineWidth(4);
+    rollingStipple->setStipplePattern(0xfff0);
+    rollingStipple->setColor(osg::Vec4(1,1,0,1));
+    addVerts(rollingStipple, x, y);
+    rollingStipple->addUpdateCallback(new RollStipple());
+    group->addChild(rollingStipple);
     
     x += 20;
     LineDrawable* segments = new LineDrawable(GL_LINES);

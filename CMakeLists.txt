@@ -232,7 +232,7 @@ OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
 # Whether to build our custom zip plugin
 IF(LIBZIP_FOUND)
     OPTION(BUILD_OSGEARTH_ZIP_PLUGIN "Enable to build osgEarth's zip plugin based on libzip" ON)
-ENDIF(LIBIP_FOUND)
+ENDIF(LIBZIP_FOUND)
 
 # Applications and tests
 OPTION(BUILD_APPLICATIONS "Enable build of Applications" ON)

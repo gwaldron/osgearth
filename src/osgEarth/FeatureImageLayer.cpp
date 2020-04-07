@@ -205,9 +205,6 @@ FeatureImageLayer::openImplementation()
     if (ssStatus.isError())
         return ssStatus;
 
-    if (!getFeatureSource())
-        return Status(Status::ConfigurationError, "Required feature source is missing");
-
     return Status::NoError;
 }
 

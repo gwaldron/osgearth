@@ -39,6 +39,7 @@ set(TARGET_SRC
     GrassLayer.cpp
     GroundCover.cpp
     GroundCoverFeatureGenerator.cpp
+    GroundCoverFeatureSource.cpp
     GroundCoverLayer.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
@@ -55,6 +56,7 @@ set(LIB_PUBLIC_HEADERS
     GrassLayer
     GroundCover
     GroundCoverFeatureGenerator
+    GroundCoverFeatureSource
     GroundCoverLayer
     NoiseTextureFactory
     RoadSurfaceLayer

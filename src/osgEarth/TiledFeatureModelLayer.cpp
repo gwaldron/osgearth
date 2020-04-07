@@ -223,6 +223,13 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
 
     if (getFeatureSource() && getStyleSheet())
     {
+        // for embedded layers, tell them about the map
+        if (options().featureSource().isSet())
+            getFeatureSource()->addedToMap(map);
+
+        if (options().styleSheet().isSet())
+            getStyleSheet()->addedToMap(map);
+
         // Save a reference to the map since we'll need it to
         // create a new session object later.
         _session = new Session(

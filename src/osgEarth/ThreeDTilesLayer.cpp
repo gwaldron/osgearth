@@ -77,7 +77,17 @@ ThreeDTilesLayer::openImplementation()
     if (parentStatus.isError())
         return parentStatus;
 
-    ReadResult rr = _options->url()->readString();
+    // Clone the read options and if there isn't a ThreadPool create one.
+    osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
+    if (!threadPool.valid())
+    {
+        unsigned int numThreads = 2;
+        _threadPool = new ThreadPool(numThreads);
+        _threadPool->put(readOptions.get());
+    }
+
+    ReadResult rr = _options->url()->readString(readOptions.get());
     if (rr.failed())
     {
         return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
@@ -87,16 +97,6 @@ ThreeDTilesLayer::openImplementation()
     if (!tileset)
     {
         return Status(Status::GeneralError, "Bad tileset");
-    }
-
-    // Clone the read options and if there isn't a ThreadPool create one.
-    osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
-    osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
-    if (!threadPool.valid())
-    {
-        unsigned int numThreads = 2;
-        _threadPool = new ThreadPool(numThreads);
-        _threadPool->put(readOptions.get());
     }
 
     _tilesetNode = new ThreeDTilesetNode(tileset, "", getSceneGraphCallbacks(), readOptions.get());

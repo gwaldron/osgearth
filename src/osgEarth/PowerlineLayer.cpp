@@ -138,7 +138,7 @@ public:
                             const Query& query);
 private:
     FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
-                                  const FilterContext& cx, const Query& query);
+                                  const FilterContext& cx, const Query& query, const Style& style);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
     Vec3dVector _attachments;
@@ -363,7 +363,7 @@ namespace
 }
 
 void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation, double slack,
-                  std::vector<osg::Vec3d>& result)
+                  std::vector<osg::Vec3d>& result, float tessellationSize)
 {
     // Create a frame centered at p1 with orientation normal to
     // earth's surface
@@ -418,7 +418,7 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
     const double C = -a * cosh(x1 / a);
     const osg::Vec3d P1(0.0, 0.0, 0.0), P2(d, 0.0, h);
     double begin, inc;
-    int numSteps = 50;           // make parameter
+    int numSteps = ceil(L / tessellationSize);
     std::vector<osg::Vec3d> cablePts;
     if (swapped)
     {
@@ -428,7 +428,7 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
     }
     else
     {
-        inc = d / 50.0;
+        inc = d / numSteps;
         begin = inc;
         cablePts.push_back(P1);
     }
@@ -451,7 +451,8 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
                                                            FeatureList& towerFeatures, const FilterContext& cx,
-                                                           const Query& query)
+                                                           const Query& query,
+                                                           const Style& cableStyle)
 
 {
     FeatureList result;
@@ -547,7 +548,9 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                 {
                     for (int i = 0; i < cablePoints.size() -1; ++i)
                     {
-                        makeCatenary(cablePoints[i], cablePoints[i + 1], orientations[i], 1.002, catenaryPoints);
+                        makeCatenary(cablePoints[i], cablePoints[i + 1], orientations[i], 1.002,
+                                     catenaryPoints,
+                                     cableStyle.get<LineSymbol>()->tessellationSize()->as(Units::METERS));
                     }
                     cableSource = &catenaryPoints;
                 }
@@ -593,9 +596,23 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
         lineSymbol->stroke()->color() = Color("#6f6f6f");
         lineSymbol->stroke()->width() = 1.5f;
-        lineSymbol->tessellationSize() = Distance(0.25, Units::KILOMETERS);
         lineSymbol->useGLLines() = true;
     }
+    osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
+    if (!lineSymbol->stroke()->width().isSet())
+    {
+        lineSymbol->stroke()->width() = .05;
+        lineSymbol->stroke()->widthUnits() = Units::METERS;
+    }
+    if (!lineSymbol->tessellationSize().isSet())
+    {
+        lineSymbol->tessellationSize() = Distance(20, Units::METERS);
+    }
+    if (!lineSymbol->useWireLines().isSet())
+    {
+        lineSymbol->useWireLines() = true;
+    }
+
     // Render towers and lines (cables) seperately
     // Features for the tower models. This normally comes from feature
     // data in a layer, but it can be synthesized using only the line
@@ -627,7 +644,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode, query);
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());
-    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query);
+    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query,
+                                                   cableStyle);
     GeometryCompiler compiler;
     osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
     results->addChild(cables);

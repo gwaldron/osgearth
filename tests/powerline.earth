@@ -13,13 +13,10 @@
                     model: "../data/Transmission_Tower.osgb";
                     altitude-clamping: terrain;
                     model-heading: from_feature;
-                    render-lighting: true;
                 }
                 cables {
                     stroke: #080808;
                     stroke-width: 0.05m;
-                    stroke-wire-lines: true;
-                    render-lighting: true;
                 }
             </style>
         </styles>

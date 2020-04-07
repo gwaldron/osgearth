@@ -621,7 +621,7 @@ FlatteningLayer::Options::getConfig() const
 {
     Config conf = ElevationLayer::Options::getConfig();
 
-    LayerReference<FeatureSource>::set(conf, "features", _featureSourceLayer, _featureSource);
+    featureSource().set(conf, "features");
 
     conf.set("line_width", _lineWidth);
     conf.set("buffer_width", _bufferWidth);
@@ -656,7 +656,7 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     bufferWidth().init(40);
     URIContext uriContext = URIContext(conf.referrer());
 
-    LayerReference<FeatureSource>::get(conf, "features", _featureSourceLayer, _featureSource);
+    featureSource().get(conf, "features");
 
     conf.get("line_width", _lineWidth);
     conf.get("buffer_width", _bufferWidth);
@@ -711,8 +711,6 @@ Config
 FlatteningLayer::getConfig() const
 {
     Config c = ElevationLayer::getConfig();
-    if (_featureSource.isSetByUser())
-        c.set(_featureSource.getLayer()->getConfig());
     return c;
 }
 
@@ -724,7 +722,7 @@ FlatteningLayer::openImplementation()
         return parent;
 
     // ensure the caller named a feature source:
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
     
@@ -746,7 +744,7 @@ FlatteningLayer::~FlatteningLayer()
 void
 FlatteningLayer::setFeatureSource(FeatureSource* layer)
 {
-    _featureSource.setLayer(layer);
+    options().featureSource().setLayer(layer);
 }
 
 void
@@ -758,7 +756,7 @@ FlatteningLayer::addedToMap(const Map* map)
     OE_INFO << LC << "Attaching elevation pool to map\n";
     _pool->setMap( map );
 
-    _featureSource.findInMap(map, options().featureSourceLayer());
+    options().featureSource().addedToMap(map);
         
     // Collect all elevation layers preceding this one and use them for flattening.
     ElevationLayerVector layers;
@@ -781,9 +779,9 @@ FlatteningLayer::addedToMap(const Map* map)
 void
 FlatteningLayer::removedFromMap(const Map* map)
 {
-    ElevationLayer::removedFromMap(map);
+    options().featureSource().removedFromMap(map);
 
-    _featureSource.releaseFromMap(map);
+    ElevationLayer::removedFromMap(map);
 }
 
 GeoHeightField

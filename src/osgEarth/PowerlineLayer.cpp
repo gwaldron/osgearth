@@ -95,7 +95,7 @@ void PowerlineLayer::Options::fromConfig(const Config& conf)
     _point_features.init(true);
 
     conf.get("point_features", point_features());
-    LayerReference<FeatureSource>::get(conf, "line_features", _lineSourceLayer, _lineSource);
+    lineSource().get(conf, "line_features");
     FeatureDisplayLayout layout = _layout.get();
     layout.cropFeatures() = true;
     _layout = layout;
@@ -110,7 +110,7 @@ Config
 PowerlineLayer::Options::getConfig() const
 {
     Config conf = FeatureModelLayer::Options::getConfig();
-    LayerReference<FeatureSource>::set(conf, "line_features", _lineSourceLayer, _lineSource);
+    lineSource().set(conf, "line_features");
     for (std::vector<ModelOptions>::const_iterator i = towerModels().begin();
         i != towerModels().end();
         ++i)
@@ -147,9 +147,9 @@ private:
 };
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
-    : GeomFeatureNodeFactory(options),
-      _lineSourceLayer(options.lineSourceLayer().get()),
-      _lineSource(options.lineSource().get()),
+    : GeomFeatureNodeFactory(options),    
+      _lineSourceLayer(options.lineSourceLayerName().get()),
+      _lineSource(options.lineSourceEmbeddedOptions().get()),
       _styles(styles),
       _point_features(true)
 {
@@ -436,8 +436,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     FilterContext localCX = sharedCX;
     
     osgEarth::Util::JoinPointsLinesFilter pointsLinesFilter;
-    pointsLinesFilter.lineSourceLayer() = "lines";
-    pointsLinesFilter.lineSource() = _lineSource;
+    pointsLinesFilter.lineSourceLayerName() = "lines";
+    pointsLinesFilter.lineSourceEmbeddedOptions() = _lineSource;
     if (!_point_features)
     {
         pointsLinesFilter.createPointFeatures() = true;

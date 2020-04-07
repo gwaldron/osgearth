@@ -21,6 +21,18 @@
 
 #include <osgEarth/Map>
 
+ //! optional property macro for referencing another layer
+#define OE_OPTION_LAYER(TYPE, NAME) \
+    private: \
+        LayerReference< TYPE > _layerRef_ ## NAME ; \
+    public: \
+        optional< TYPE ::Options >& NAME ## EmbeddedOptions () { return NAME ().embeddedOptions(); } \
+        const optional< TYPE ::Options >& NAME ## EmbeddedOptions () const { return NAME ().embeddedOptions(); } \
+        optional< std::string >& NAME ## LayerName () { return NAME ().externalLayerName() ; } \
+        const optional< std::string >& NAME ## LayerName () const { return NAME ().externalLayerName() ; } \
+        LayerReference< TYPE >& NAME () { return _layerRef_ ## NAME ; } \
+        const LayerReference< TYPE >& NAME () const { return _layerRef_ ## NAME ; }
+
 namespace osgEarth
 {
     /**
@@ -32,14 +44,14 @@ namespace osgEarth
     public:
         typedef typename T::Options TypedOptions;
 
-        LayerReference() : _setByUser(false) { }
+        LayerReference() : 
+            _layer(NULL) { }
 
         //! User can call this to set the layer by hand (instead of finding it
         //! in the map or in an embedded options structure)
         void setLayer(T* layer) 
         {
             _layer = layer;
-            _setByUser = true;
         }
 
         //! Contained layer object
@@ -52,15 +64,15 @@ namespace osgEarth
         //! (as opposed to finding it in an embedded options or in the map)
         bool isSetByUser() const 
         {
-            return _layer.valid () && _setByUser==true;
+            return _layer.valid() && !_embeddedOptions.isSet() && !_externalLayerName.isSet();
         }
 
         //! open the layer pointed to in the reference and return a status code
-        Status open(const optional<TypedOptions>& embeddedOptions, const osgDB::Options* readOptions)
+        Status open(const osgDB::Options* readOptions) //const optional<TypedOptions>& embeddedOptions, const osgDB::Options* readOptions)
         {
-            if (embeddedOptions.isSet())
+            if (_embeddedOptions.isSet())
             {
-                osg::ref_ptr<Layer> layer = Layer::create(embeddedOptions.get());
+                osg::ref_ptr<Layer> layer = Layer::create(_embeddedOptions.get());
                 osg::ref_ptr<T> typedLayer = dynamic_cast<T*>(layer.get());
                 if (typedLayer)
                 {
@@ -79,40 +91,46 @@ namespace osgEarth
         void close()
         {
             _layer = NULL;
-            _setByUser = false;
         }
 
         //! Find a layer in the map and set this reference to point at it 
-        bool findInMap(const Map* map, const optional<std::string>& externalLayerName)
+        void addedToMap(const Map* map)
         {
-            if (!getLayer())
+            if (!getLayer() && _externalLayerName.isSet())
             {
-                T* layer = map->getLayerByName<T>(externalLayerName.get());
+                T* layer = map->getLayerByName<T>(_externalLayerName.get());
                 if (layer)
                 {
                     _layer = layer;
                 }
             }
-            return getLayer();
+            else if (getLayer() && _embeddedOptions.isSet())
+            {
+                _layer->addedToMap(map);
+            }
         }
 
         //! If this reference was set by findInMap, release it.
-        void releaseFromMap(const Map* map)
+        void removedFromMap(const Map* map)
         {
             if (map && _layer.valid())
             {
+                if (_embeddedOptions.isSet())
+                {
+                    _layer->removedFromMap(map);
+                }
+
                 if (map->getLayerByUID(_layer->getUID()) != NULL)
                 {
                     _layer = NULL;
-                    _setByUser = false;
                 }
             }
         }
 
         //! Get the layer ref from either a name or embedded option
-        static void get(const Config& conf, const std::string& tag, optional<std::string>& layerName, optional<TypedOptions>& embeddedOptions)
+        void get(const Config& conf, const std::string& tag)
         {
-            conf.get(tag, layerName);
+            conf.get(tag, _externalLayerName);
 
             for (ConfigSet::const_iterator i = conf.children().begin();
                 i != conf.children().end();
@@ -121,61 +139,40 @@ namespace osgEarth
                 osg::ref_ptr<Layer> layer = Layer::create(*i);
                 if (layer.valid() && dynamic_cast<T*>(layer.get()))
                 {
-                    embeddedOptions = TypedOptions(*i);
+                    _embeddedOptions = TypedOptions(*i);
                     break;
                 }
             }
         }
 
         //! Set the layer ref options in the config
-        static void set(Config& conf, const std::string& tag, const optional<std::string>& layerName, const optional<TypedOptions>& embeddedOptions)
+        void set(Config& conf, const std::string& tag) const
         {
-            conf.set(tag, layerName);
-            if (embeddedOptions.isSet())
-                conf.set(embeddedOptions->getConfig());
-        }
-
-        //! Get the first embedded options of the template type
-        static void get(const Config& conf, optional<TypedOptions>& embeddedOptions)
-        {
-            for (ConfigSet::const_iterator i = conf.children().begin();
-                i != conf.children().end();
-                ++i)
+            if (_externalLayerName.isSet())
             {
-                osg::ref_ptr<Layer> layer = Layer::create(*i);
-                if (layer.valid() && dynamic_cast<T*>(layer.get()))
-                {
-                    embeddedOptions = TypedOptions(*i);
-                    break;
-                }
+                conf.set(tag, _externalLayerName);
+            }
+            else if (_embeddedOptions.isSet())
+            {
+                conf.set(_embeddedOptions->getConfig());
+            }
+            else if (isSetByUser()) // should be true
+            {
+                conf.add(_layer->getConfig());
             }
         }
 
-        //! Get all the embedded options of the template type
-        static void get(const Config& conf, std::vector<TypedOptions>& embeddedOptions)
-        {
-            for (ConfigSet::const_iterator i = conf.children().begin();
-                i != conf.children().end();
-                ++i)
-            {
-                osg::ref_ptr<Layer> layer = Layer::create(*i);
-                if (layer.valid() && dynamic_cast<T*>(layer.get()))
-                {
-                    embeddedOptions.push_back(TypedOptions(*i));
-                }
-            }
-        }
+        optional<TypedOptions>& embeddedOptions() { return _embeddedOptions; }
+        const optional<TypedOptions>& embeddedOptions() const { return _embeddedOptions; }
 
-        //! Store the embedded options in the config
-        static void set(Config& conf, const optional<TypedOptions>& embeddedOptions)
-        {
-            if (embeddedOptions.isSet())
-                conf.set(embeddedOptions->getConfig());
-        }
+        optional<std::string>& externalLayerName() { return _externalLayerName; }
+        const optional<std::string>& externalLayerName() const { return _externalLayerName; }
+
 
     private:
         osg::ref_ptr< T > _layer;
-        bool _setByUser;
+        optional<TypedOptions> _embeddedOptions;
+        optional<std::string> _externalLayerName;
     };
 }
 

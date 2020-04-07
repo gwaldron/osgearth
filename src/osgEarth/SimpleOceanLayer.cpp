@@ -42,7 +42,7 @@ SimpleOceanLayer::Options::getConfig() const
     conf.set("use_bathymetry", _useBathymetry);
     conf.set("texture", _textureURI);
     conf.set("texture_lod", _textureLOD);
-    LayerReference<ImageLayer>::set(conf, "mask_layer", maskLayerName(), maskLayer());
+    maskLayer().set(conf, "mask_layer");
     return conf;
 }
 
@@ -59,7 +59,7 @@ SimpleOceanLayer::Options::fromConfig(const Config& conf)
     conf.get("use_bathymetry", _useBathymetry);
     conf.get("texture", _textureURI);
     conf.get("texture_lod", _textureLOD);
-    LayerReference<ImageLayer>::get(conf, "mask_layer", maskLayerName(), maskLayer());
+    maskLayer().get(conf, "mask_layer");
 }
 
 //...................................................................
@@ -126,8 +126,6 @@ Config
 SimpleOceanLayer::getConfig() const
 {
     Config c = VisibleLayer::getConfig();
-    if (_maskLayer.isSetByUser())
-        c.set(_maskLayer.getLayer()->getConfig());
     return c;
 }
 
@@ -138,7 +136,7 @@ SimpleOceanLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = _maskLayer.open(options().maskLayer(), getReadOptions());
+    Status fsStatus = options().maskLayer().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
@@ -200,9 +198,9 @@ SimpleOceanLayer::setSurfaceImage(osg::Image* image)
 void
 SimpleOceanLayer::setMaskLayer(ImageLayer* maskLayer)
 {
-    if (maskLayer != _maskLayer.getLayer())
+    if (maskLayer != options().maskLayer().getLayer())
     {
-        _maskLayer.setLayer(maskLayer);
+        options().maskLayer().setLayer(maskLayer);
         updateMaskLayer();
     }
 }
@@ -210,13 +208,13 @@ SimpleOceanLayer::setMaskLayer(ImageLayer* maskLayer)
 ImageLayer*
 SimpleOceanLayer::getMaskLayer() const
 {
-    return _maskLayer.getLayer();
+    return options().maskLayer().getLayer();
 }
 
 void
 SimpleOceanLayer::updateMaskLayer()
 {
-    ImageLayer* layer = _maskLayer.getLayer();
+    ImageLayer* layer = options().maskLayer().getLayer();
 
     if (layer && layer->isOpen())
     {
@@ -249,17 +247,17 @@ SimpleOceanLayer::addedToMap(const Map* map)
 {    
     VisibleLayer::addedToMap(map);
     
-    _maskLayer.findInMap(map, options().maskLayerName());
+    options().maskLayer().addedToMap(map);
     updateMaskLayer();
 }
 
 void
 SimpleOceanLayer::removedFromMap(const Map* map)
 {
-    VisibleLayer::removedFromMap(map);
-
-    _maskLayer.releaseFromMap(map);
+    options().maskLayer().removedFromMap(map);
     updateMaskLayer();
+
+    VisibleLayer::removedFromMap(map);
 }
 
 void

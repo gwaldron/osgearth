@@ -56,9 +56,6 @@ namespace osgEarth { namespace Splat
 
         virtual osg::Geometry* createGeometry(
             unsigned vboTileDim) const;
-
-    private:
-        LayerReference<ImageLayer> _colorLayer;
     };
 
 } } // namespace osgEarth::Splat

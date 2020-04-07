@@ -41,8 +41,8 @@ Config
 RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
+    featureSource().set(conf, "features");
+    styleSheet().set(conf, "styles");
     conf.set("buffer_width", featureBufferWidth() );
     return conf;
 }
@@ -50,8 +50,8 @@ RoadSurfaceLayer::Options::getConfig() const
 void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::get(conf, "styles", styleSheetLayer(), styleSheet());
+    featureSource().get(conf, "features");
+    styleSheet().get(conf, "styles");
     conf.get("buffer_width", featureBufferWidth() );
 }
 
@@ -82,11 +82,11 @@ RoadSurfaceLayer::openImplementation()
         return parent;
 
     // assert a feature source:
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    Status ssStatus = options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
 
@@ -103,16 +103,16 @@ RoadSurfaceLayer::addedToMap(const Map* map)
     _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    _featureSource.findInMap(map, options().featureSourceLayer());
-    _styleSheet.findInMap(map, options().styleSheetLayer());
+    options().featureSource().addedToMap(map);
+    options().styleSheet().addedToMap(map);
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _featureSource.releaseFromMap(map);
-    _styleSheet.releaseFromMap(map);
+    options().featureSource().removedFromMap(map);
+    options().styleSheet().removedFromMap(map);
     _session = 0L;
 }
 
@@ -128,7 +128,7 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 {
     if (getFeatureSource() != layer)
     {
-        _featureSource.setLayer(layer);
+        options().featureSource().setLayer(layer);
         if (layer && layer->getStatus().isError())
         {
             setStatus(layer->getStatus());
@@ -139,19 +139,19 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 FeatureSource*
 RoadSurfaceLayer::getFeatureSource() const
 {
-    return _featureSource.getLayer();
+    return options().featureSource().getLayer();
 }
 
 void
 RoadSurfaceLayer::setStyleSheet(StyleSheet* value)
 {
-    _styleSheet.setLayer(value);
+    options().styleSheet().setLayer(value);
 }
 
 StyleSheet*
 RoadSurfaceLayer::getStyleSheet() const
 {
-    return _styleSheet.getLayer();
+    return options().styleSheet().getLayer();
 }
 
 namespace
@@ -402,9 +402,5 @@ Config
 RoadSurfaceLayer::getConfig() const
 {
     Config c = ImageLayer::getConfig();
-    if (_featureSource.isSetByUser())
-        c.set(_featureSource.getLayer()->getConfig());
-    if (_styleSheet.isSetByUser())
-        c.set(_styleSheet.getLayer()->getConfig());
     return c;
 }

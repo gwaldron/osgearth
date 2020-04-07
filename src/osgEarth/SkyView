@@ -37,8 +37,7 @@ namespace osgEarth { namespace Contrib
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION(ImageLayer::Options, imageLayer);
-            OE_OPTION(std::string, imageLayerName);
+            OE_OPTION_LAYER(ImageLayer, imageLayer);
             virtual Config getConfig() const;
             static Config getMetadata();
         private:
@@ -49,8 +48,8 @@ namespace osgEarth { namespace Contrib
         META_Layer(osgEarth, SkyViewImageLayer, Options, ImageLayer, SkyView);
 
         //! Image layer to render in skyview mode
-        void setImageLayer(ImageLayer* layer) { _imageLayer.setLayer(layer); }
-        ImageLayer* getImageLayer() const { return _imageLayer.getLayer(); }
+        void setImageLayer(ImageLayer* layer) { options().imageLayer().setLayer(layer); }
+        ImageLayer* getImageLayer() const { return options().imageLayer().getLayer(); }
 
     public: // Layer
 
@@ -69,8 +68,6 @@ namespace osgEarth { namespace Contrib
 
         //! Destructor
         virtual ~SkyViewImageLayer() { }
-
-        LayerReference<ImageLayer> _imageLayer;
     };
 
 } } // namespace osgEarth:Contrib

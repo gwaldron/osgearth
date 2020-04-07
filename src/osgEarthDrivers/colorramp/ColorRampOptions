@@ -33,11 +33,8 @@ namespace osgEarth { namespace Drivers
     class ColorRampOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<ElevationLayer::Options>& elevationLayer() { return _elevationLayerOptions; }
-        const optional<ElevationLayer::Options>& elevationLayer() const { return _elevationLayerOptions; }
-
-        optional<URI>& ramp() { return _ramp; }
-        const optional<URI>& ramp() const { return _ramp; }
+        OE_OPTION_LAYER(ElevationLayer, elevationLayer);
+        OE_OPTION(URI, ramp);
 
     public:
         ColorRampOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
@@ -53,7 +50,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            LayerReference<ElevationLayer>::set(conf, _elevationLayerOptions);
+            elevationLayer().set(conf, "elevation");
             conf.set("ramp", _ramp);
             return conf;
         }
@@ -66,13 +63,10 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            LayerReference<ElevationLayer>::get(conf, _elevationLayerOptions);
+            elevationLayer().get(conf, "elevation");
             conf.get("ramp", _ramp);
         }
 
-      
-        optional<URI> _ramp;
-        optional<ElevationLayer::Options> _elevationLayerOptions;
     };
 
 } } // namespace osgEarth::Drivers

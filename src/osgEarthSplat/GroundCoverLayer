@@ -39,12 +39,8 @@ namespace osgEarth { namespace Splat
         class OSGEARTHSPLAT_EXPORT Options : public PatchLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
-            OE_OPTION(LandCoverLayer::Options, landCoverLayer);
-            OE_OPTION(std::string, landCoverLayerName);
-            OE_OPTION(ImageLayer::Options, maskLayer);
-            OE_OPTION(std::string, maskLayerName);
-            OE_OPTION(ImageLayer::Options, colorLayer);
-            OE_OPTION(std::string, colorLayerName);
+            OE_OPTION_LAYER(ImageLayer, maskLayer);
+            OE_OPTION_LAYER(ImageLayer, colorLayer);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
             OE_OPTION(bool, grass);
@@ -96,9 +92,6 @@ namespace osgEarth { namespace Splat
         //! Get geometry for a tilekey
         virtual osg::Node* createNodeImplementation(const DrawContext& dc);
 
-        //! Serialize
-        virtual Config getConfig() const;
-
     public:
 
         //! Called when this layer is added to the map
@@ -114,8 +107,6 @@ namespace osgEarth { namespace Splat
 
         LayerReference<LandCoverDictionary> _landCoverDict;
         LayerReference<LandCoverLayer> _landCoverLayer;
-        LayerReference<ImageLayer> _maskLayer;
-        LayerReference<ImageLayer> _colorLayer;
 
         TextureImageUnitReservation _groundCoverTexBinding;
         TextureImageUnitReservation _noiseBinding;

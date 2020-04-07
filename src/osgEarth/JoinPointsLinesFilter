@@ -36,11 +36,7 @@ namespace osgEarth { namespace Util
         }
 
         /** Features to load and use as boundary geometries */
-        optional<std::string>& lineSourceLayer() { return _lineLayerName; }
-        const optional<std::string>& lineSourceLayer() const { return _lineLayerName; }
-
-        optional<FeatureSource::Options>& lineSource() { return _lineFeatures; }
-        const optional<FeatureSource::Options>& lineSource() const { return _lineFeatures; }
+        OE_OPTION_LAYER(FeatureSource, lineSource);
 
         optional<bool>& createPointFeatures() { return _createPointFeatures; }
         optional<bool> createPointFeatures() const { return _createPointFeatures; }
@@ -49,7 +45,7 @@ namespace osgEarth { namespace Util
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "join_points_lines";
-            LayerReference<FeatureSource>::set(conf, "line_features", lineSourceLayer(), lineSource());
+            lineSource().set(conf, "line_features");
             return conf;
         }
 
@@ -62,20 +58,17 @@ namespace osgEarth { namespace Util
     private:
         void fromConfig( const Config& conf ) {
             _createPointFeatures.init(false);
-
-            LayerReference<FeatureSource>::get(conf, "line_features", lineSourceLayer(), lineSource());
+            lineSource().get(conf, "line_features");
             conf.get("create_point_features", createPointFeatures());
         }
 
-        optional<std::string>            _lineLayerName;
-        optional<FeatureSource::Options> _lineFeatures;
+        //optional<std::string>            _lineLayerName;
+        //optional<FeatureSource::Options> _lineFeatures;
         optional<bool>                   _createPointFeatures;
     };
 
     class JoinPointsLinesFilter : public FeatureFilter, public JoinPointsLinesFilterOptions
     {
-    private:
-        LayerReference<FeatureSource> _lineSource;
     public:
         JoinPointsLinesFilter(const ConfigOptions& options = ConfigOptions())
             : FeatureFilter(), JoinPointsLinesFilterOptions(options)

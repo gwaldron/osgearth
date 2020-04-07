@@ -21,7 +21,7 @@ uniform float oe_terrain_sse; // screen space error (pixels)
 vec2 toPixels(in vec4 model)
 {    
     vec4 clip = gl_ModelViewProjectionMatrix * model;
-    return (clip.xy/clip.w) * (oe_Camera[1]*0.5);
+    return (clip.xy/clip.w) * (oe_Camera.xy*0.5);
 }
 
 // calculate a tesselation level based on the maximum edge length uniform.

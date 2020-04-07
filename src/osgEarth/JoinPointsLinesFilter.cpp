@@ -156,7 +156,7 @@ namespace
 
 Status JoinPointsLinesFilter::initialize(const osgDB::Options* readOptions)
 {
-    Status fsStatus = _lineSource.open(lineSource(), readOptions);
+    Status fsStatus = lineSource().open(readOptions);
     if (fsStatus.isError())
         return fsStatus;
 
@@ -165,7 +165,7 @@ Status JoinPointsLinesFilter::initialize(const osgDB::Options* readOptions)
 
 void JoinPointsLinesFilter::getLineFeatures(const GeoExtent& extent, FeatureList& features)
 {
-    FeatureSource* fs = _lineSource.getLayer();
+    FeatureSource* fs = lineSource().getLayer();
     if (!fs)
         return;
 

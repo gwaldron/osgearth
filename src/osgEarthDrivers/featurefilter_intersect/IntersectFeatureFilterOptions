@@ -40,11 +40,7 @@ namespace osgEarth { namespace Drivers
         }
 
         /** Features to load and use as boundary geometries */
-        optional<std::string>& featureSourceLayer() { return _layerName; }
-        const optional<std::string>& featureSourceLayer() const { return _layerName; }
-
-        optional<FeatureSource::Options>& featureSource() { return _features; }
-        const optional<FeatureSource::Options>& featureSource() const { return _features; }
+        OE_OPTION_LAYER(FeatureSource, featureSource);
 
         /** If true (the default), accept features whose centroids are contained in the boundaries */
         optional<bool>& contains() { return _contains; }
@@ -54,7 +50,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "intersect";
-            LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
+            featureSource().set(conf, "features");
             conf.set( "contains", _contains );
             return conf;
         }
@@ -67,12 +63,10 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
+            featureSource().get(conf, "features");
             conf.get( "contains", _contains );
         }
 
-        optional<std::string>            _layerName;
-        optional<FeatureSource::Options> _features;
         optional<bool>                   _contains;
     };
 

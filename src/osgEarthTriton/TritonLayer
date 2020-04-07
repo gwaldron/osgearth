@@ -45,8 +45,7 @@ namespace osgEarth { namespace Triton
             OE_OPTION(unsigned, heightMapSize);
             OE_OPTION(int, renderBinNumber);
             OE_OPTION(float, maxAltitude);
-            OE_OPTION(std::string, maskLayerName);
-            OE_OPTION(osgEarth::ImageLayer::Options, maskLayer);
+            OE_OPTION_LAYER(osgEarth::ImageLayer, maskLayer);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -116,7 +115,6 @@ namespace osgEarth { namespace Triton
         osg::ref_ptr<osg::Node> _tritonNode;
         float _seaLevel;
         float _opacity;
-        LayerReference<osgEarth::ImageLayer> _maskLayer;
     };
 
 } } // namespace osgEarth::Triton

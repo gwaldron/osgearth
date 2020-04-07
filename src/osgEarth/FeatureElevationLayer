@@ -37,8 +37,7 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
             OE_OPTION(std::string, attr);
             OE_OPTION(double, offset);
-            OE_OPTION(FeatureSource::Options, featureSource);
-            OE_OPTION(std::string, featureSourceLayer);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -71,7 +70,6 @@ namespace osgEarth
 
         virtual ~FeatureElevationLayer();
 
-        LayerReference<FeatureSource> _featureSource;
         GeoExtent _extent;
 
         bool intersects(const TileKey&) const;

@@ -50,8 +50,7 @@ namespace osgEarth
             // constructors
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION(std::string, featureSourceLayer);
-            OE_OPTION(FeatureSource::Options, featureSource);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
             virtual Config getConfig() const;
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
@@ -127,8 +126,6 @@ namespace osgEarth
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
     private:
-        LayerReference<FeatureSource> _featureSource;
-        LayerReference<StyleSheet> _styleSheet;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
         bool _graphDirty;

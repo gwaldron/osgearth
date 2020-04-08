@@ -40,7 +40,7 @@ namespace osgEarth { namespace Buildings
 
         //! Sets the source of buildings data - call before opening layer
         void setFeatureSource(FeatureSource*);
-        FeatureSource* getFeatureSource() const { return _featureSource.getLayer(); }
+        FeatureSource* getFeatureSource() const { return options().featureSource().getLayer(); }
 
         BuildingPager* pager();
 
@@ -72,8 +72,6 @@ namespace osgEarth { namespace Buildings
         osg::ref_ptr<BuildingCatalog> _catalog;
         osg::ref_ptr<Session> _session;
         osg::observer_ptr<const Map> _map;
-        LayerReference<StyleSheet> _styleSheet;
-        LayerReference<FeatureSource> _featureSource;
 
         void createSceneGraph();
         

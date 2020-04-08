@@ -207,7 +207,7 @@ FeatureModelSourceOptions::FeatureModelSourceOptions(const ConfigOptions& option
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
+    featureSource().get(conf, "features");
 }
 
 Config
@@ -215,7 +215,7 @@ FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
     conf.merge(FeatureModelOptions::getConfig());
-    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
+    featureSource().set(conf, "features");
     return conf;
 }
 
@@ -231,9 +231,9 @@ FeatureModelSource::FeatureModelSource( const FeatureModelSourceOptions& options
 void
 FeatureModelSource::setFeatureSource( FeatureSource* source )
 {
-    if ( !_features.getLayer())
+    if ( !_options.featureSource().getLayer())
     {
-        _features.setLayer(source);
+        _options.featureSource().setLayer(source);
     }
     else
     {
@@ -247,16 +247,13 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     if (readOptions)
         setReadOptions(readOptions);
 
-    Status fs = _features.open(_options.featureSource(), readOptions);
+    Status fs = _options.featureSource().open(readOptions);
     if (fs.isError())
         return fs;
 
-    if ( _options.styleSheet().isSet() )
-    {
-        Status s =_styleSheet.open(_options.styleSheet(), readOptions);
-        if (s.isError())
-            return s;
-    }
+    Status s =_options.styleSheet().open(readOptions);
+    if (s.isError())
+        return s;
 
     // Try to fill the DataExtent list using the FeatureProfile
     const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
@@ -285,9 +282,9 @@ FeatureModelSource::setReadOptions(const osgDB::Options* readOptions)
     // for texture atlas support
     _readOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
 
-    if (_features.getLayer())
+    if (_options.featureSource().getLayer())
     {
-        _features.getLayer()->setReadOptions(_readOptions.get());
+        _options.featureSource().getLayer()->setReadOptions(_readOptions.get());
     }
 }
 
@@ -306,7 +303,7 @@ FeatureModelSource::createNodeImplementation(const Map* map,  ProgressCallback* 
     }
 
     // make sure the feature source initialized properly:
-    if ( !_features.getLayer() || !_features.getLayer()->getFeatureProfile() )
+    if ( !_options.featureSource().getLayer() || !_options.featureSource().getLayer()->getFeatureProfile() )
     {
         return 0L;
     }
@@ -323,8 +320,8 @@ FeatureModelSource::createNodeImplementation(const Map* map,  ProgressCallback* 
     // Session holds data that's shared across the life of the FMG
     Session* session = new Session( 
         map, 
-        _styleSheet.getLayer(),
-        _features.getLayer(),
+        _options.styleSheet().getLayer(),
+        _options.featureSource().getLayer(),
         _readOptions.get() );
 
     // Name the session (for debugging purposes)
@@ -335,7 +332,7 @@ FeatureModelSource::createNodeImplementation(const Map* map,  ProgressCallback* 
     graph->setSession(session);
     graph->setNodeFactory(factory);
     graph->setSceneGraphCallbacks(getSceneGraphCallbacks());
-    graph->setStyleSheet(_styleSheet.getLayer());
+    graph->setStyleSheet(_options.styleSheet().getLayer());
     graph->open();
 
     return graph;

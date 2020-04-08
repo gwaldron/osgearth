@@ -52,9 +52,9 @@ BuildingLayer::init()
 void
 BuildingLayer::setFeatureSource(FeatureSource* source)
 {
-    if (_featureSource.getLayer() != source)
+    if (options().featureSource().getLayer() != source)
     {
-        _featureSource.setLayer(source);
+        options().featureSource().setLayer(source);
 
         if (source && source->getStatus().isError())
         {
@@ -75,11 +75,11 @@ BuildingLayer::getNode() const
 Status
 BuildingLayer::openImplementation()
 {
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    Status ssStatus = options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
 
@@ -106,14 +106,14 @@ BuildingLayer::addedToMap(const Map* map)
     // Hang on to the Map reference
     _map = map;
 
-    _featureSource.findInMap(map, options().featureSourceLayer());
-    _styleSheet.findInMap(map, options().styleSheetLayer());
+    options().featureSource().addedToMap(map);
+    options().styleSheet().addedToMap(map);
 
     // Set up a feature session with a cache:
     _session = new Session(
         map, 
-        _styleSheet.getLayer(),
-        _featureSource.getLayer(),
+        options().styleSheet().getLayer(),
+        options().featureSource().getLayer(),
         getReadOptions() );
     
     // Install a resource cache that we will use for instanced models,
@@ -138,7 +138,7 @@ BuildingLayer::createSceneGraph()
     _map.lock(map);
 
     // assertion:
-    FeatureSource* fs = _featureSource.getLayer();
+    FeatureSource* fs = options().featureSource().getLayer();
     if (!fs || !_session.valid() || !map.valid())
     {
         //if (getStatus().isOK())
@@ -218,14 +218,14 @@ BuildingPager* BuildingLayer::pager()
 void
 BuildingLayer::removedFromMap(const Map* map)
 {
-    _featureSource.releaseFromMap(map);
-    _styleSheet.releaseFromMap(map);
+    options().featureSource().removedFromMap(map);
+    options().styleSheet().removedFromMap(map);
 }
 
 const GeoExtent&
 BuildingLayer::getExtent() const
 {
-    const FeatureSource* fs = _featureSource.getLayer();
+    const FeatureSource* fs = options().featureSource().getLayer();
 
     if (fs && fs->getFeatureProfile())
     {

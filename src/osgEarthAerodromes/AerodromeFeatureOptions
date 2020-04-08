@@ -191,11 +191,10 @@ namespace osgEarth { namespace Aerodrome
         optional<std::string>& icaoAttr() { return _icaoAttr; }
         const optional<std::string>& icaoAttr() const { return _icaoAttr; }    
 
-        optional<FeatureSource::Options>& featureSource() { return _featureSource; }
-        const optional<FeatureSource::Options>& featureSource() const { return _featureSource; }
-
         optional<TextureOptions>& textureOptions() { return _textureOptions; }
         const optional<TextureOptions>& textureOptions() const { return _textureOptions; }
+
+        OE_OPTION_LAYER(FeatureSource, featureSource);
 
         //ModelOptionsSet& modelOptions() { return _modelOptions; }
         const ModelOptionsSet& modelOptions() const { return _modelOptions; }
@@ -219,7 +218,7 @@ namespace osgEarth { namespace Aerodrome
             for(ModelOptionsSet::const_iterator i = _modelOptions.begin(); i != _modelOptions.end(); ++i)
                 conf.add("model", i->getConfig());
 
-            LayerReference<FeatureSource>::set(conf, _featureSource);
+            featureSource().set(conf, "features");
 
             return conf;
         }
@@ -238,7 +237,7 @@ namespace osgEarth { namespace Aerodrome
             for (ConfigSet::const_iterator i = models.begin(); i != models.end(); i++)
                 _modelOptions.push_back(ModelOptions(*i));
 
-            LayerReference<FeatureSource>::get(conf, _featureSource);
+            featureSource().get(conf, "features");
         }
 
     private:
@@ -246,7 +245,6 @@ namespace osgEarth { namespace Aerodrome
         optional<std::string> _icaoAttr;
         optional<TextureOptions> _textureOptions;
         ModelOptionsSet _modelOptions;
-        optional<FeatureSource::Options> _featureSource;
     };
 
     typedef std::list<class AerodromeFeatureOptions> AerodromeOptionsSet;

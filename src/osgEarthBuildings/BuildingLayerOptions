@@ -66,11 +66,8 @@ namespace osgEarth { namespace Buildings
         optional<FilterUsage>& filterUsage() { return _filterUsage; }
         const optional<FilterUsage>& filterUsage() const { return _filterUsage; }
 
-        OE_OPTION(StyleSheet::Options, styleSheet);
-        OE_OPTION(std::string, styleSheetLayer);
-
-        OE_OPTION(FeatureSource::Options, featureSource);
-        OE_OPTION(std::string, featureSourceLayer);
+        OE_OPTION_LAYER(StyleSheet, styleSheet);
+        OE_OPTION_LAYER(FeatureSource, featureSource);
 
     public:
         BuildingLayerOptions( const ConfigOptions& opt =ConfigOptions() ) : VisibleLayer::Options( opt )
@@ -95,8 +92,8 @@ namespace osgEarth { namespace Buildings
             conf.set("priority_offset",  _priorityOffset);
             conf.set("priority_scale",   _priorityScale);
             conf.set("enable_cancelation", _enableCancelation);
-            LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
-            LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
+            styleSheet().set(conf, "styles");
+            featureSource().set(conf, "features");
             return conf;
         }
 
@@ -117,8 +114,8 @@ namespace osgEarth { namespace Buildings
             conf.get("priority_offset",  _priorityOffset);
             conf.get("priority_scale",   _priorityScale);
             conf.get("enable_cancelation", _enableCancelation);
-            LayerReference<StyleSheet>::get(conf, "styles", _styleSheetLayer, _styleSheet);
-            LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
+            styleSheet().get(conf, "styles");
+            featureSource().get(conf, "features");
         }
 
         optional<URI> _buildingCatalogURI;

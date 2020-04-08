@@ -29,6 +29,7 @@
 #include <osgEarth/FadeEffect>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
+#include <osgEarth/LayerReference>
 #include <osg/Node>
 
 namespace osgEarth
@@ -177,8 +178,7 @@ namespace osgEarth
     {
     public: //properties
 
-        OE_OPTION(FeatureSource::Options, featureSource);
-        OE_OPTION(std::string, featureSourceLayer);
+        OE_OPTION_LAYER(FeatureSource, featureSource);
 
     public:
         FeatureModelSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
@@ -241,7 +241,7 @@ namespace osgEarth
         void setFeatureSource( FeatureSource* source );
 
         /** The underlying feature source. */
-        FeatureSource* getFeatureSource() { return _features.getLayer(); }
+        FeatureSource* getFeatureSource() { return _options.featureSource().getLayer(); }
 
         /** The options with which this source was created */
         virtual const FeatureModelSourceOptions& getFeatureModelOptions() const { return _options; }
@@ -260,10 +260,8 @@ namespace osgEarth
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-        LayerReference<FeatureSource>         _features;
-        LayerReference<StyleSheet>            _styleSheet;
         osg::observer_ptr<const Map>       _map;
-        const FeatureModelSourceOptions    _options;
+        FeatureModelSourceOptions          _options;
         osg::ref_ptr<FeatureNodeFactory>   _factory;
         osg::ref_ptr<osgDB::Options>       _readOptions;
 

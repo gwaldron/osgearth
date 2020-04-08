@@ -50,17 +50,12 @@ public:
     Status initialize( const osgDB::Options* dbOptions )
     {
         osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);        
-
-        if (!_options.elevationLayer().isSet())
-        {
-            return Status::Error(Status::ConfigurationError, "Please specify a heightfield layer for the color ramp");
-        }
-
-        Status s = _elevation.open(_options.elevationLayer(), dbOptions);
+        
+        Status s = _options.elevationLayer().open(dbOptions);
         if (s.isError())
             return s;
 
-        setProfile(_elevation.getLayer()->getProfile());
+        setProfile(_options.elevationLayer().getLayer()->getProfile());
 
         initTransferFunction();
                
@@ -104,11 +99,11 @@ public:
     osg::Image*
     createImage( const TileKey& key, ProgressCallback* progress )
     {
-        if (!_elevation.getLayer())
+        if (!_options.elevationLayer().getLayer())
             return 0L;
 
         // Use the underlying ElevationLayer to create a heightfield and then color it.
-        GeoHeightField geoHF = _elevation.getLayer()->createHeightField(key, progress);
+        GeoHeightField geoHF = _options.elevationLayer().getLayer()->createHeightField(key, progress);
         if (geoHF.valid())
         {
             const osg::HeightField* hf = geoHF.getHeightField(); 
@@ -136,8 +131,7 @@ public:
     
 
 private:
-    const ColorRampOptions _options;
-    LayerReference<ElevationLayer> _elevation;
+    ColorRampOptions _options;
     osg::ref_ptr< osg::TransferFunction1D> _transferFunction;
 };
 

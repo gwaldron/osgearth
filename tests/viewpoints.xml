@@ -71,13 +71,13 @@
         <height>186.9731654571369</height>
         <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Grassy Spot">
-        <heading>-104.587</heading>
-        <pitch>-13.9097</pitch>
-        <range>17.1305m</range>
-        <long>-121.8291537728856</long>
-        <lat>46.72797332896315</lat>
-        <height>763.7603161036968</height>
+    <viewpoint name="Grasslands">
+        <heading>27.9433</heading>
+        <pitch>-10.5859</pitch>
+        <range>48.8864m</range>
+        <long>-87.50129555902878</long>
+        <lat>40.96097465221744</lat>
+        <height>175.6394258914515</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
 </viewpoints>

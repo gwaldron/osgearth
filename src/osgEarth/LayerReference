@@ -21,7 +21,7 @@
 
 #include <osgEarth/Map>
 
-//! optional property macro for referencing another layer
+ //! optional property macro for referencing another layer
 #define OE_OPTION_LAYER(TYPE, NAME) \
     private: \
         LayerReference< TYPE > _layerRef_ ## NAME ; \

@@ -35,8 +35,16 @@ using namespace osgEarth::Util;
 FeatureProfile::FeatureProfile(const GeoExtent& extent) :
 _extent    ( extent ),
 _firstLevel( 0 ),
-_maxLevel  ( -1 ),
-_tiled     ( false )
+_maxLevel  ( -1 )
+{
+    //nop
+}
+
+FeatureProfile::FeatureProfile(const Profile* tilingProfile) :
+    _tilingProfile(tilingProfile),
+    _extent    (tilingProfile? tilingProfile->getExtent() : GeoExtent::INVALID),
+    _firstLevel( 0 ),
+    _maxLevel  ( -1 )
 {
     //nop
 }

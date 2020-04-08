@@ -44,10 +44,12 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT FeatureProfile : public osg::Referenced
     {
-    public:        
+    public:
+        //! Construct a non-tiled feature profile with an extent
         FeatureProfile(const GeoExtent& featuresExtent);
 
-        virtual ~FeatureProfile() { }
+        //! Construct a TILED feature profile with a tiling schema
+        FeatureProfile(const Profile* tilingProfile);
 
         //! Spatial extents of the features data
         const GeoExtent& getExtent() const { return _extent; }
@@ -55,7 +57,6 @@ namespace osgEarth
         //! Spatial reference system of feature data
         const SpatialReference* getSRS() const { return _extent.getSRS(); }
         
-
         //! Whether the feature data is pre-tiled
         bool isTiled() const;
 
@@ -76,9 +77,10 @@ namespace osgEarth
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
     protected:
+        virtual ~FeatureProfile() { }
+
         osg::ref_ptr< const osgEarth::Profile > _tilingProfile;
         GeoExtent _extent;
-        bool _tiled;
         int _firstLevel;
         int _maxLevel;
         optional<GeoInterpolation> _geoInterp;

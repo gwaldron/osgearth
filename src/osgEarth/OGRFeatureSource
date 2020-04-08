@@ -87,15 +87,13 @@ namespace osgEarth
         void setProfile(const Profile* profile) { _profile = profile; }
         const Profile* getProfile() const { return _profile.get(); }
 
-    public: // Layer
+    protected: // Layer
+
+        virtual void init();
 
         virtual Status openImplementation();
 
         virtual Status closeImplementation();
-
-    protected:
-
-        virtual void init();
 
     public: // FeatureSource
 

@@ -1,0 +1,28 @@
+<!--
+osgEarth Sample - GDALDEM
+
+Provides access to GDALDEM processing capabilities such as hillshading.
+-->
+<map name="GDALDEM">
+
+    <XYZImage name="OSM Imagery">
+        <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
+        <attribution>&#169;OpenStreetMap contributors</attribution>    
+    </XYZImage>
+
+	 <TMSElevation name="elevation">
+		 <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+		 <vdatum>egm96</vdatum>
+	 </TMSElevation>
+	     
+    <GDALDEM name="hillshade">
+        <cache_policy usage="no_cache"/>
+        <processing>hillshade</processing>    
+        <layer>elevation</layer>    
+        <opacity>0.75</opacity>
+	</GDALDEM>    
+        
+    <xi:include href="viewpoints.xml"/>
+</map>

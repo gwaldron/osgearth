@@ -24,6 +24,10 @@
 #include <osg/Program>
 #include <osg/GLExtensions>
 
+#ifndef GL_DYNAMIC_STORAGE_BIT
+#define GL_DYNAMIC_STORAGE_BIT 0x0100
+#endif
+
 using namespace osgEarth;
 
 //...................................................................
@@ -34,70 +38,6 @@ using namespace osgEarth;
 
 namespace
 {
-
-    //const char* cull_CS = OE_MULTILINE(
-    //    #version 430
-
-    //    layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
-
-    //    struct DrawElementsIndirectCommand {
-    //        uint count;
-    //        uint instanceCount;
-    //        uint firstIndex;
-    //        uint baseVertex;
-    //        uint baseInstance;
-    //    };
-
-    //    layout(std430, binding=0) buffer DrawCommandsBuffer {
-    //        DrawElementsIndirectCommand cmd[];
-    //    };
-
-    //    layout(std430, binding=1) buffer PointsBuffer {
-    //        vec4 points[];
-    //    };
-
-    //    layout(std430, binding=2) buffer RenderBuffer {
-    //        vec4 render[];
-    //    };
-
-    //    bool visible(in vec4 model)
-    //    {
-    //        vec4 clip = gl_ModelViewProjectionMatrix * model;
-    //        clip.xyz = abs(clip.xyz/clip.w);
-    //        const float f = 1.0;
-    //        return clip.x <= f && clip.y <= f && clip.z <= f;
-    //    }
-
-    //    uniform vec2 oe_GroundCover_numInstances;
-    //    uniform vec2 oe_GroundCover_LL, oe_GroundCover_UR;
-
-    //    void main()
-    //    {
-    //        const uint x = gl_GlobalInvocationID.x;
-    //        const uint y = gl_GlobalInvocationID.y;
-
-    //        vec2 dim = oe_GroundCover_numInstances;
-
-    //        vec2 offset = vec2(float(x)/dim, float(y)/dim);
-    //        vec2 halfSpacing = 0.5/dim;
-    //        vec4 tilec = vec4(halfSpacing+offset/dim, 0, 1);
-
-    //        //TODO: noise shift            
-
-    //        vec4 vertex = vec4(mix(oe_GroundCover_LL.xy, oe_GroundCover_UR.xy, tilec.st),0,1);
-
-    //        //TODO: biome cull
-    //        //TODO: mask cull
-    //        //TODO: elevation
-
-    //        // frustum cull:
-    //        if (visible(vertex) {
-    //            uint slot = atomicAdd(cmd[0].instanceCount, 1);
-    //            render[slot] = vertex;
-    //        }
-    //    }
-    //);
-
     const char* cull_CS =
         "#version 430\n"
 

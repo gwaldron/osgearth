@@ -117,8 +117,8 @@ osg::Geometry* WireLinesOperator::operator()(osg::Vec3Array* verts, osg::Vec3Arr
     }
     makeCircleGeometry(endPlane, up, matWireVerts, matWireNorms, numVerts - 1);
     // Add indices for the quads that make up the wire
-    geom->setVertexArray(wireVerts);
-    geom->setNormalArray(wireNorms);
+    geom->setVertexArray(wireVerts.get());
+    geom->setNormalArray(wireNorms.get());
     std::vector<unsigned> ebo;
     for (unsigned lineVert0 = 0, lineVert1 = 1; lineVert1 < numVerts; ++lineVert0, ++lineVert1)
     {

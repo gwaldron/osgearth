@@ -64,6 +64,10 @@ namespace osgEarth
         optional<bool>& useGLLines() { return _useGLLines; }
         const optional<bool>& useGLLines() const { return _useGLLines; }
 
+        /** 3D line as a wire. */
+        optional<bool>& useWireLines() { return _useWireLines; }
+        const optional<bool>& useWireLines() const { return _useWireLines; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -76,6 +80,7 @@ namespace osgEarth
         optional<Distance>         _tessellationSize;
         optional<StringExpression> _imageURI;
         optional<bool>             _useGLLines;
+        optional<bool>             _useWireLines;
     };
 
 } // namespace osgEarth

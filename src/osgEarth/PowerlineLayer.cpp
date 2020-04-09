@@ -25,6 +25,7 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/Network>
+#include <osgEarth/Math>
 
 #include <algorithm>
 #include <iterator>
@@ -92,7 +93,7 @@ PowerlineLayer::Options::Options(const ConfigOptions& options)
 // them.
 void PowerlineLayer::Options::fromConfig(const Config& conf)
 {
-    _point_features.init(true);
+    _point_features.init(false);
 
     conf.get("point_features", point_features());
     lineSource().get(conf, "line_features");
@@ -137,7 +138,7 @@ public:
                             const Query& query);
 private:
     FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
-                                  const FilterContext& cx, const Query& query);
+                                  const FilterContext& cx, const Query& query, const Style& style);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
     Vec3dVector _attachments;
@@ -304,9 +305,154 @@ namespace
     }
 }
 
+// Make a catenary curve between two points
+//
+// A catenary is of the form y = a * cosh((x + k) / a) + c. We want to
+// find the curve that passes between two points of different
+// heights. This curve is determined by several parameters which may
+// be hard to know, such as the maximum tension in the cable and its
+// weight. Instead, we assume that the cable is a certain factor
+// longer (slack )than the straight-line distance between the two
+// attachment points.
+//
+// Arguments are in ECEF, orientation is at p1. We use that frame for
+// the whole catenary.
+
+namespace
+{
+    void toRow(osg::Matrixd& mat, osg::Vec3d& vec, int row)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            mat(row, i) = vec[i];
+        }
+    }
+
+    // Function for a in terms of arc length L, height difference h,
+    // and horizontal distance d. This will be solved by a
+    // Newton-Raphson solver, so we need both the function and its
+    // derivative.
+
+    struct GFunc
+    {
+        GFunc(double d_, double L, double h)
+            : d(d_), rootLh(sqrt(L * L - h * h))
+        {}
+
+        double operator()(double a) const
+        {
+            return 2.0 * a * sinh(d / (2.0 * a)) - rootLh;
+        }
+        double d;
+        double rootLh;
+    };
+
+    struct GFuncDeriv
+    {
+        GFuncDeriv(double d_)
+            : d(d_)
+        {
+        }
+        double operator()(double a) const
+        {
+            double da = d / a;
+            return 2.0 * sinh(da/2.0) - da * cosh(da/2.0);
+        }
+        double d;
+    };
+}
+
+void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation, double slack,
+                  std::vector<osg::Vec3d>& result, float tessellationSize)
+{
+    // Create a frame centered at p1 with orientation normal to
+    // earth's surface
+    osg::Matrixd FrameP1(orientation);
+    toRow(FrameP1, p1, 3);
+    // p1 in this frame is at origin. Get p2 into the local frame
+    osg::Matrixd FrameP1Inv;
+    FrameP1Inv.invert(FrameP1);
+    osg::Vec3d p2local = p2 * FrameP1Inv;
+    // The math for solving the catenary assumes that the higher point
+    // is to the right on the X axis. Build a frame that reflects
+    // that.
+    //
+    // If it turns out that p1 is higher, then at the end we will need
+    // to generate points in reverse so that the resulting feature
+    // makes sense.
+    bool swapped = false;
+    osg::Vec3d Xaxis;
+    if (p2local.z() < 0.0)
+    {
+        swapped = true;
+        Xaxis = osg::Vec3d(-p2local.x(), -p2local.y(), 0.0);
+    }
+    else
+    {
+        Xaxis = osg::Vec3d(p2local.x(), p2local.y(), 0.0);
+    }
+    const double d = Xaxis.normalize();
+    osg::Vec3d Yaxis = osg::Vec3d(0.0, 0.0, 1.0) ^ Xaxis;
+    osg::Matrixd FrameCat;
+    toRow(FrameCat, Xaxis, 0);
+    toRow(FrameCat, Yaxis, 1);
+    // Height difference between points; should be positive
+    double h = 0.0;
+    if (swapped)
+    {
+        h = -p2local.z();
+        toRow(FrameCat, p2local, 3);
+    }
+    else
+    {
+        h = p2local.z();
+    }
+    // Arc length of the cable
+    const double L = p2local.length() * slack;
+    GFunc gfunc(d, L, h);
+    GFuncDeriv gfuncDeriv(d);
+    bool validSoln = false;
+    const double a = solve(gfunc, gfuncDeriv, d / 2, 1.0e-6, validSoln);
+    // Parameters of the curve
+    const double x1 = (a * log((L + h) / (L - h)) - d) / 2.0;
+    const double C = -a * cosh(x1 / a);
+    const osg::Vec3d P1(0.0, 0.0, 0.0), P2(d, 0.0, h);
+    double begin, inc;
+    int numSteps = ceil(L / tessellationSize);
+    std::vector<osg::Vec3d> cablePts;
+    if (swapped)
+    {
+        inc = -d / numSteps;
+        begin = d + inc;
+        cablePts.push_back(P2);
+    }
+    else
+    {
+        inc = d / numSteps;
+        begin = inc;
+        cablePts.push_back(P1);
+    }
+    double x = begin;
+    for (int i = 1; i < numSteps; ++i, x += inc)
+    {
+        double z = a * cosh((x + x1) / a) + C;
+        cablePts.push_back(osg::Vec3d(x, 0.0, z));
+    }
+    osg::Matrixd cat2world = FrameCat * FrameP1;
+    for (std::vector<osg::Vec3d>::iterator itr = cablePts.begin(), end = cablePts.end();
+         itr != end;
+         ++itr)
+    {
+        *itr = *itr * cat2world;
+    }
+    result.insert(result.end(), cablePts.begin(), cablePts.end());
+}
+
+
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
                                                            FeatureList& towerFeatures, const FilterContext& cx,
-                                                           const Query& query)
+                                                           const Query& query,
+                                                           const Style& cableStyle)
 
 {
     FeatureList result;
@@ -320,7 +466,9 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     const SpatialReference* mapSRS = map->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
 
-    // establish an elevation query interface based on the features' SRS.
+    // establish an elevation query interface based on the features'
+    // SRS. XXX This should be based on the style sheet option
+
     ElevationQuery eq(map.get());
 
     PowerNetwork linesNetwork;
@@ -369,11 +517,14 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
             }
             // New feature for the cable
             const int size = geom->size();
- 
-            for (int cable = 0; cable < 2; ++cable)
+            // XXX assumption that there are only two cables
+            for (Vec3dVector::iterator attachment = _attachments.begin();
+                 attachment != _attachments.end();
+                 ++attachment)
             {
                 Feature* newFeature = new Feature(*feature);
                 LineString* newGeom = new LineString(size);
+                std::vector<osg::Vec3d> cablePoints;
 
                 for (int i = 0; i < size; ++i)
                 {
@@ -389,10 +540,32 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     }
                     osg::Matrixd headingMat;
                     headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
-                    osg::Vec3d worldAttach = _attachments[cable] * headingMat * orientations[i] + worldPts[i];
-                    osg::Vec3d wgs84; // intermediate point
-                    osg::Vec3d mapAttach;
-                    featureSRS->getGeographicSRS()->transformFromWorld(worldAttach, wgs84);
+                    osg::Vec3d worldAttach = *attachment * headingMat * orientations[i] + worldPts[i];
+                    cablePoints.push_back(worldAttach);
+                }
+                const bool catenary = true;
+                std::vector<osg::Vec3d> *cableSource = 0L;
+                std::vector<osg::Vec3d> catenaryPoints;
+                if (catenary)
+                {
+                    for (int i = 0; i < cablePoints.size() -1; ++i)
+                    {
+                        makeCatenary(cablePoints[i], cablePoints[i + 1], orientations[i], 1.002,
+                                     catenaryPoints,
+                                     cableStyle.get<LineSymbol>()->tessellationSize()->as(Units::METERS));
+                    }
+                    cableSource = &catenaryPoints;
+                }
+                else
+                {
+                    cableSource = &cablePoints;
+                }
+                for (std::vector<osg::Vec3d>::iterator itr = cableSource->begin();
+                     itr != cableSource->end();
+                     ++itr)
+                {
+                    osg::Vec3d wgs84, mapAttach;
+                    featureSRS->getGeographicSRS()->transformFromWorld(*itr, wgs84);
                     featureSRS->getGeographicSRS()->transform(wgs84, featureSRS.get(), mapAttach);
                     newGeom->push_back(mapAttach);
                 }
@@ -425,9 +598,23 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
         lineSymbol->stroke()->color() = Color("#6f6f6f");
         lineSymbol->stroke()->width() = 1.5f;
-        lineSymbol->tessellationSize() = Distance(0.25, Units::KILOMETERS);
         lineSymbol->useGLLines() = true;
     }
+    osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
+    if (!lineSymbol->stroke()->width().isSet())
+    {
+        lineSymbol->stroke()->width() = .05;
+        lineSymbol->stroke()->widthUnits() = Units::METERS;
+    }
+    if (!lineSymbol->tessellationSize().isSet())
+    {
+        lineSymbol->tessellationSize() = Distance(20, Units::METERS);
+    }
+    if (!lineSymbol->useWireLines().isSet())
+    {
+        lineSymbol->useWireLines() = true;
+    }
+
     // Render towers and lines (cables) seperately
     // Features for the tower models. This normally comes from feature
     // data in a layer, but it can be synthesized using only the line
@@ -459,7 +646,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode, query);
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());
-    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query);
+    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query,
+                                                   cableStyle);
     GeometryCompiler compiler;
     osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
     results->addChild(cables);

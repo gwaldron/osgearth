@@ -135,11 +135,13 @@ namespace osgEarth
         bool contains(const osg::Vec3d& p) const;
     };
 
-#if 0
+    // Work in progress. We want to use Ray without doing the work to
+    // fully support the other types.
+
     struct Line;
-    struct Segment;
     struct Ray;
 
+#if 0
     /** Infinite 3D line. */
     struct Line
     {
@@ -155,6 +157,7 @@ namespace osgEarth
     inline Line operator* (const osg::Quat& q, const Line& rhs) {
         return Line( q * rhs._a, q * rhs._b );
     }
+#endif
 
     /** Endpoint and a direction vector */
     struct Ray
@@ -163,10 +166,12 @@ namespace osgEarth
         osg::Vec3d _dv; // directional vector
         Ray(const osg::Vec3d& a, const osg::Vec3d& dv) : _a(a), _dv(dv) { }
         Ray(const Ray& rhs) : _a(rhs._a), _dv(rhs._dv) { }
+#if 0
         bool intersectXY( const Line&    rhs, osg::Vec3d& out ) const;
         bool intersectXY( const Ray&     rhs, osg::Vec3d& out ) const;
         bool intersectXY( const Segment& rhs, osg::Vec3d& out ) const;
         bool isPointOnLeftXY( const osg::Vec3d& p ) const;
+#endif
     };
     
     // rotate a Ray
@@ -174,7 +179,10 @@ namespace osgEarth
         return Ray( q * rhs._a, q * rhs._dv );
     }
 
+#if 0
     /** Finite line between two endpoints */
+    // This will need a new name before it's enabled; conflicts with a
+    // type in osgEarth/Geometry.
     struct Segment
     {
         osg::Vec3d _a, _b; // endpoints
@@ -214,6 +222,38 @@ namespace osgEarth
             return v;
         }
     }
-}
 
+    // Newton-Raphson solver
+    template<typename Func, typename FuncDeriv>
+    double solve(Func func, FuncDeriv deriv, double guess, double tolerance, bool& valid, int maxIterations = 16)
+    {
+        double xn = guess;
+        for (int i = 0; i <= maxIterations; ++i)
+        {
+            double f = func(xn);
+            if (fabs(f) <= tolerance)
+            {
+                valid = true;
+                return xn;
+            }
+            xn = xn - f / deriv(xn);
+        }
+        valid = false;
+        return xn;
+    }
+
+    // Project osg::Vec3 a onto b.
+    template<typename VecType>
+    VecType vecProjection(const VecType& a, const VecType& b)
+    {
+        return b * ((a * b) / (b * b));
+    }
+
+    // Project osg::Vec3 a onto the plane perpendicular to b.
+    template<typename VecType>
+    VecType vecRejection(const VecType& a, const VecType& b)
+    {
+        return a - vecProjection(a, b);
+    }
+}
 #endif

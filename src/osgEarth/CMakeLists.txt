@@ -146,6 +146,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    InstanceCloud
     IntersectionPicker
     IOTypes
     JoinPointsLinesFilter
@@ -329,6 +330,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
+    InstanceCloud.cpp
     MVT
     OgrUtils
     OGRFeatureSource

@@ -1,0 +1,111 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_INSTANCE_CLOUD
+#define OSGEARTH_INSTANCE_CLOUD 1
+
+#include <osgEarth/Common>
+#include <osg/Geometry>
+#include <osg/GL>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT InstanceCloud : public osg::Referenced
+    {
+    public:
+        InstanceCloud();
+
+        void setGeometry(osg::Geometry* geom);
+
+        void setNumInstances(unsigned x, unsigned y);
+
+        void setPositions(osg::Vec4Array* positions);
+
+        void cull(osg::RenderInfo&);
+
+        void draw(osg::RenderInfo&);
+
+        osg::BoundingBox computeBoundingBox() const;
+
+    private:
+        struct DrawElementsIndirectCommand
+        {
+            GLuint  count;
+            GLuint  instanceCount;
+            GLuint  firstIndex;
+            GLuint  baseVertex;
+            GLuint  baseInstance;
+            DrawElementsIndirectCommand();
+        };
+
+        struct InstancingData
+        {
+            DrawElementsIndirectCommand command;
+            GLuint commandBuffer;
+            GLuint pointsBuffer;
+            GLuint renderBuffer;
+            osg::Vec4Array* points;
+            unsigned numX, numY;
+            osg::ref_ptr<osg::Node> node;
+
+            InstancingData();
+            bool needsAllocate() const;
+            void allocate(osg::State* state);
+        };
+
+        InstancingData _data;
+        osg::ref_ptr<osg::StateSet> _computeStateSet;
+        osg::ref_ptr<osg::Geometry> _geom;
+
+        struct Renderer : public osg::Geometry::DrawCallback
+        {
+            Renderer(InstancingData* data);
+            void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const;
+            InstancingData* _data;
+        };
+
+        struct Installer : public osg::NodeVisitor
+        {
+            Installer(InstancingData* data);
+            void apply(osg::Drawable& drawable);
+            InstancingData* _data;
+            osg::ref_ptr<Renderer> _callback;
+        };
+    };
+
+
+    class OSGEARTH_EXPORT InstanceCloudDrawable : public osg::Drawable
+    {
+    public:
+        InstanceCloudDrawable();
+
+        void drawImplementation(osg::RenderInfo& ri) const;
+
+        osg::BoundingBox computeBoundingBox() const;
+
+        InstanceCloud* cloud() { return _cloud.get(); }
+
+    private:
+        osg::ref_ptr<InstanceCloud> _cloud;
+    };
+}
+
+#endif // OSGEARTH_INSTANCE_CLOUD

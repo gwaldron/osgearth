@@ -775,6 +775,12 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
+    if (tex->getImage() && tex->getImage()->getPixelFormat() == GL_RED)
+    {
+        // Swizzle the RGBA all to RED in order to match previous GL_LUMINANCE behavior
+        tex->setSwizzle(osg::Vec4i(GL_RED, GL_RED, GL_RED, GL_RED));
+    }
+
     layer->applyTextureCompressionMode(tex);
 
     ImageUtils::generateMipmaps(tex);

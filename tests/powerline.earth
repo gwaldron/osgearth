@@ -4,7 +4,7 @@
         <tower_model>
             <model>../data/Transmission_Tower.osgb</model>
             <attachment_points>
-                LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162)
+                LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162, 6.875 0.0 18.52, -6.875 0.0 18.52)
             </attachment_points>
         </tower_model>
         <styles>
@@ -15,10 +15,8 @@
                     model-heading: from_feature;
                 }
                 cables {
-                    point-fill: #ff0000;
-                    point-size: 10;
-                    stroke: #ffffff;
-                    stroke-width: 1.5;
+                    stroke: #080808;
+                    stroke-width: 0.05m;
                 }
             </style>
         </styles>

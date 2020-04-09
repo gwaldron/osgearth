@@ -1,0 +1,59 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_WIRE_LINES_H
+#define OSGEARTH_WIRE_LINES_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/OsgGeometryOperator>
+#include <osgEarth/Stroke>
+#include <osg/Array>
+#include <osg/Geometry>
+
+// Make a antialiased 3d wire.
+
+
+namespace osgEarth
+{
+
+    class OSGEARTH_EXPORT WireLinesOperator : public Util::OsgGeometryOperator
+    {
+    public:
+        WireLinesOperator(const Stroke& stroke);
+        /**
+         * Run the polygonizer.
+         *
+         * @param[in ] verts    Line string geometry to polygonize. The polygonizer
+         *                      will add this array to the resulting geometry.
+         * @param[in ] normals  Localized normals associated with the input verts.
+         *                      Used to determine the plane in which to polygonize each
+         *                      line segment. Optional; can be NULL
+         * @return Triangulated wire
+         */
+        osg::Geometry* operator() (osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const;
+        void installShaders(osg::Node* node) const;
+
+        const static int numWireVerts = 8;
+    protected:
+        Stroke _stroke;
+    };
+}
+
+
+#endif // OSGEARTH_WIRE_LINES_H

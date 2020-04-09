@@ -23,6 +23,9 @@
 #define OSGEARTH_INSTANCE_CLOUD 1
 
 #include <osgEarth/Common>
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+
 #include <osg/Geometry>
 #include <osg/GL>
 
@@ -107,5 +110,7 @@ namespace osgEarth
         osg::ref_ptr<InstanceCloud> _cloud;
     };
 }
+
+#endif // OSG 3.6+
 
 #endif // OSGEARTH_INSTANCE_CLOUD

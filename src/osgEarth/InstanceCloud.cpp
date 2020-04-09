@@ -20,6 +20,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/InstanceCloud>
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+
 #include <osgEarth/VirtualProgram>
 #include <osg/Program>
 #include <osg/GLExtensions>
@@ -379,3 +382,5 @@ int main(int argc, char** argv)
 }
 
 #endif
+
+#endif // OSG 3.6.0+

@@ -4,6 +4,7 @@
 -->
 
 <map>
+    
     <xi:include href="readymap_elevation.xml"/>
 
     <!-- Pre-load the splatting nodekit -->
@@ -35,9 +36,8 @@
     </GroundCover>
 
     <!-- Procedural grass -->
-    <Grass name="Grass">
+    <Grass name="Grass" max_range="250">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
-        <color_layer>ReadyMap Imagery</color_layer>
     </Grass>
 
     <xi:include href="viewpoints.xml"/>

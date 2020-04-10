@@ -58,15 +58,8 @@ uniform mat4 osg_ViewMatrix;
 
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
-                        // VRV: use a custom LOD scale uniform
-#pragma import_defines(VRV_OSG_LOD_SCALE)
-#ifdef VRV_OSG_LOD_SCALE
-uniform float VRV_OSG_LOD_SCALE;
-#else
-#define VRV_OSG_LOD_SCALE oe_Camera.z
-#endif
 
-                        // Output grass texture coordinates to the fragment shader
+                        // Output grass texture coords to the FS
 out vec2 oe_GroundCover_texCoord;
 
 // Output that selects the land cover texture from the texture array (flat)
@@ -266,7 +259,7 @@ void oe_Grass_VS(inout vec4 vertex)
     vp_Color = vec4(1,1,1,falloff);
 
     // darken as the fill level decreases
-    vp_Color.rgb *= decel(fillEdgeFactor);
+    vp_Color.rgb *= 0.75+( decel(fillEdgeFactor)*(1.0-0.75) );
 
     // texture coordinate:
     float row = float(which/4);
@@ -341,13 +334,6 @@ void oe_Grass_VS(inout vec4 vertex)
 
     vertex.xyz += bendVec;
 
-    // makeshift AO:
-    if (row == 0)
-        vp_Color.rgb *= 0.75;
-    else if (row == 1)
-        vp_Color.rgb *= 0.9;
-
-    //oe_GroundCover_texCoord.t *= 0.4;
 }
 
 
@@ -360,6 +346,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma import_defines(OE_GROUNDCOVER_COLOR_SAMPLER)
 #pragma import_defines(OE_GROUNDCOVER_COLOR_MATRIX)
+
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
 uniform sampler2D OE_GROUNDCOVER_COLOR_SAMPLER ;
 uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
@@ -372,6 +359,7 @@ flat in float oe_GroundCover_atlasIndex;
 vec3 vp_Normal;
 
 uniform float oe_GroundCover_maxAlpha;
+uniform int oe_GroundCover_A2C;
 
 void oe_Grass_FS(inout vec4 color)
 {
@@ -381,12 +369,16 @@ void oe_Grass_FS(inout vec4 color)
     // paint the texture
     color = texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex)) * color;
 
-    if(color.a < oe_GroundCover_maxAlpha) //0.15)
+    if (oe_GroundCover_A2C == 1)
+    {
+        // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
+        color.a = (color.a - oe_GroundCover_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+    }
+    else if (color.a < oe_GroundCover_maxAlpha)
+    {
         discard;
+    }
 
-    // support double-sided geometry
-    //if (gl_FrontFacing == false)
-      //  vp_Normal = -vp_Normal;
 
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
     const float modulation = 0.75;

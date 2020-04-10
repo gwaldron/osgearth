@@ -43,6 +43,10 @@
 #define GCTEX_SAMPLER "oe_GroundCover_billboardTex"
 #define NOISE_SAMPLER "oe_GroundCover_noiseTex"
 
+#ifndef GL_MULTISAMPLE
+#define GL_MULTISAMPLE 0x809D
+#endif
+
 using namespace osgEarth::Splat;
 
 REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
@@ -77,6 +81,7 @@ GroundCoverLayer::Options::getConfig() const
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
     conf.set("max_alpha", maxAlpha());
+    conf.set("alpha_to_coverage", alphaToCoverage());
 
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
@@ -96,12 +101,14 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     lod().init(13u);
     castShadows().init(false);
     maxAlpha().init(0.15f);
+    alphaToCoverage().init(true);
 
     maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
     conf.get("max_alpha", maxAlpha());
+    conf.get("alpha_to_coverage", alphaToCoverage());
 
     const Config* zones = conf.child_ptr("zones");
     if (zones)
@@ -231,8 +238,6 @@ GroundCoverLayer::init()
 
     _zonesConfigured = false;
 
-    _useCoverageToAlpha = true;
-
     // deserialize zone data
     for (std::vector<ZoneOptions>::const_iterator i = options().zones().begin();
         i != options().zones().end();
@@ -339,6 +344,18 @@ float
 GroundCoverLayer::getMaxAlpha() const
 {
     return options().maxAlpha().get();
+}
+
+void
+GroundCoverLayer::setUseAlphaToCoverage(bool value)
+{
+    options().alphaToCoverage() = value;
+}
+
+bool
+GroundCoverLayer::getUseAlphaToCoverage() const
+{
+    return options().alphaToCoverage().get();
 }
 
 void
@@ -512,30 +529,6 @@ GroundCoverLayer::buildStateSets()
     // for which the geometry shader renders cross hatches instead of billboards.
     stateset->setMode(GL_CULL_FACE, osg::StateAttribute::PROTECTED);
 
-#if 0
-    stateset->setAttributeAndModes(
-        new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
-        osg::StateAttribute::OVERRIDE);
-
-    // uniform that communicates the availability of multisampling.
-    if (osg::DisplaySettings::instance()->getMultiSamples())
-    {
-        stateset->setDefine("OE_GROUNDCOVER_HAS_MULTISAMPLES");
-
-        // enable alpha-to-coverage multisampling for vegetation.
-        if (_useCoverageToAlpha)
-        {
-            stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-        }
-    }
-    else
-    {
-        stateset->setAttributeAndModes(
-            new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA),
-            osg::StateAttribute::OVERRIDE);
-    }
-#endif
-
     float maxRangeAcrossZones = getMaxVisibleRange();
 
     for (Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
@@ -557,6 +550,11 @@ GroundCoverLayer::buildStateSets()
                 maxRangeAcrossZones = osg::maximum(maxRangeAcrossZones, maxDistance);
 
                 zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_maxAlpha", getMaxAlpha()));
+
+                if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+                {
+                    zoneStateSet->setMode(GL_MULTISAMPLE, 1);
+                }
 
                 // Install the land cover shaders on the state set
                 VirtualProgram* vp = VirtualProgram::getOrCreate(zoneStateSet);
@@ -856,6 +854,7 @@ GroundCoverLayer::Renderer::DrawState::DrawState()
     _URUL = -1;
     _LLNormalUL = -1;
     _URNormalUL = -1;
+    _A2CUL = -1;
     _instancedModelUL = -1;
     _tilesDrawnThisFrame = 0;
     _numInstances1D = 0;
@@ -902,12 +901,12 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     _numInstancesUName = osg::Uniform::getNameID("oe_GroundCover_numInstances");
     _LLUName = osg::Uniform::getNameID("oe_GroundCover_LL");
     _URUName = osg::Uniform::getNameID("oe_GroundCover_UR");
+    _A2CName = osg::Uniform::getNameID("oe_GroundCover_A2C");
     _instancedModelUName = osg::Uniform::getNameID("oe_GroundCover_instancedModel");
 
     _drawStateBuffer.resize(64u);
 
     _settings._tileWidth = 0.0;
-    //_settings._grass = false;
 }
 
 void
@@ -959,6 +958,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
         ds._numInstancesUL = pcp->getUniformLocation(_numInstancesUName);
         ds._LLUL = pcp->getUniformLocation(_LLUName);
         ds._URUL = pcp->getUniformLocation(_URUName);
+        ds._A2CUL = pcp->getUniformLocation(_A2CName);
         ds._instancedModelUL = pcp->getUniformLocation(_instancedModelUName);
 
         ds._pcp = pcp;
@@ -970,6 +970,10 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
     {
         osg::Vec2f numInstances(ds._numInstances1D, ds._numInstances1D);
         ext->glUniform2fv(ds._numInstancesUL, 1, numInstances.ptr());
+
+        GLint multiSamplesOn = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE)?1:0;
+        ri.getState()->applyMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, multiSamplesOn==1);
+        ext->glUniform1i(ds._A2CUL, multiSamplesOn);
 
 #ifdef TEST_MODEL_INSTANCING
         const int useInstancedModel = 1;

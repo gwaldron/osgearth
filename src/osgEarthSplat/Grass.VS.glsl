@@ -384,9 +384,11 @@ void oe_Grass_FS(inout vec4 color)
     if(color.a < oe_GroundCover_maxAlpha) //0.15)
         discard;
 
+    // VRV_PATCH
     // support double-sided geometry
-    //if (gl_FrontFacing == false)
-      //  vp_Normal = -vp_Normal;
+    // counteract the normal-flipping in VRV's lighting shader
+    if (gl_FrontFacing == false)
+        vp_Normal = -vp_Normal;
 
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
     const float modulation = 0.75;

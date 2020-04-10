@@ -1,4 +1,5 @@
 <groundcover>
+    <max_alpha>0.75</max_alpha>
     <max_distance>125</max_distance>
     <spacing>0.25</spacing>
     <wind>0.1</wind>

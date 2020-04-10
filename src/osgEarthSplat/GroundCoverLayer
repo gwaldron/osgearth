@@ -47,7 +47,7 @@ namespace osgEarth { namespace Splat
             OE_OPTION_LAYER(ImageLayer, colorLayer);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
-            OE_OPTION(bool, grass);
+            OE_OPTION(float, maxAlpha);
             OE_OPTION_VECTOR(ZoneOptions, zones);
         virtual Config getConfig() const;
         private:
@@ -85,6 +85,10 @@ namespace osgEarth { namespace Splat
         //! Whether the ground cover casts shadows on the terrain
         void setCastShadows(const bool& value);
         const bool& getCastShadows() const;
+
+        //! Transparency threshold below which to discard fragments
+        void setMaxAlpha(float value);
+        float getMaxAlpha() const;
 
     protected:
 

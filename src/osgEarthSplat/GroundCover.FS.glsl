@@ -3,7 +3,7 @@
 #pragma vp_entryPoint oe_GroundCover_FS
 #pragma vp_location   fragment_coloring
 
-#pragma import_defines(OE_GROUNDCOVER_HAS_MULTISAMPLES)
+//#pragma import_defines(OE_GROUNDCOVER_HAS_MULTISAMPLES)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
@@ -18,6 +18,8 @@ in vec4 oe_layer_tilec;
 uniform sampler2DArray oe_GroundCover_billboardTex;
 
 uniform int oe_GroundCover_instancedModel;
+
+uniform float oe_GroundCover_maxAlpha;
 
 in vec2 oe_GroundCover_texCoord;
 
@@ -34,10 +36,10 @@ void oe_GroundCover_FS(inout vec4 color)
         color *= texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex));
     
         // if multisampling is off, use alpha-discard.
-#if !defined(OE_GROUNDCOVER_HAS_MULTISAMPLES) || defined(OE_IS_SHADOW_CAMERA)
-        if (color.a < 0.15)
+//#if !defined(OE_GROUNDCOVER_HAS_MULTISAMPLES) || defined(OE_IS_SHADOW_CAMERA)
+        if (color.a < oe_GroundCover_maxAlpha)
             discard;
-#endif
+//#endif
     }
     else
     {

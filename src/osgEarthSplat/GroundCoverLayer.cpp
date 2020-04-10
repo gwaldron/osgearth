@@ -76,7 +76,7 @@ GroundCoverLayer::Options::getConfig() const
     colorLayer().set(conf, "color_layer");
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
-    conf.set("grass", grass());
+    conf.set("max_alpha", maxAlpha());
 
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
@@ -92,13 +92,16 @@ GroundCoverLayer::Options::getConfig() const
 void
 GroundCoverLayer::Options::fromConfig(const Config& conf)
 {
-    _lod.init(13u);
-    _castShadows.init(false);
+    // defaults:
+    lod().init(13u);
+    castShadows().init(false);
+    maxAlpha().init(0.15f);
+
     maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
-    conf.get("grass", grass());
+    conf.get("max_alpha", maxAlpha());
 
     const Config* zones = conf.child_ptr("zones");
     if (zones)
@@ -242,7 +245,7 @@ GroundCoverLayer::init()
     setAcceptCallback(new LayerAcceptor(this));
 
     setCullCallback(new ZoneSelector(this));
-    
+
 #ifndef USE_GEOMETRY_SHADER
     // this layer will do its own custom rendering
     _renderer = new Renderer(this);
@@ -324,6 +327,18 @@ ImageLayer*
 GroundCoverLayer::getColorLayer() const
 {
     return options().colorLayer().getLayer();
+}
+
+void
+GroundCoverLayer::setMaxAlpha(float value)
+{
+    options().maxAlpha() = value;
+}
+
+float
+GroundCoverLayer::getMaxAlpha() const
+{
+    return options().maxAlpha().get();
 }
 
 void
@@ -429,7 +444,7 @@ namespace
 
             for(int j=0; j<biome->getObjects().size(); ++j)
             {
-				const GroundCoverObject* object = biome->getObjects()[j].get();
+                const GroundCoverObject* object = biome->getObjects()[j].get();
 
                 if (object->getType() == GroundCoverObject::TYPE_BILLBOARD)
                 {
@@ -463,7 +478,7 @@ GroundCoverLayer::buildStateSets()
         OE_DEBUG << LC << "buildStateSets deferred.. land cover dictionary not available\n";
         return;
     }
-    
+
     //if (!getLandCoverLayer()) {
     //    OE_DEBUG << LC << "buildStateSets deferred.. land cover layer not available\n";
     //    return;
@@ -497,6 +512,7 @@ GroundCoverLayer::buildStateSets()
     // for which the geometry shader renders cross hatches instead of billboards.
     stateset->setMode(GL_CULL_FACE, osg::StateAttribute::PROTECTED);
 
+#if 0
     stateset->setAttributeAndModes(
         new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
         osg::StateAttribute::OVERRIDE);
@@ -512,8 +528,15 @@ GroundCoverLayer::buildStateSets()
             stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
         }
     }
+    else
+    {
+        stateset->setAttributeAndModes(
+            new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA),
+            osg::StateAttribute::OVERRIDE);
+    }
+#endif
 
-    float maxRange = 0.0f;
+    float maxRangeAcrossZones = getMaxVisibleRange();
 
     for (Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
     {
@@ -524,7 +547,18 @@ GroundCoverLayer::buildStateSets()
             if (!groundCover->getBiomes().empty() || groundCover->getTotalNumObjects() > 0)
             {
                 osg::StateSet* zoneStateSet = groundCover->getOrCreateStateSet();
-                            
+
+                float maxDistance = osg::minimum(
+                    getMaxVisibleRange(),
+                    groundCover->getMaxDistance());
+
+                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", maxDistance));
+
+                maxRangeAcrossZones = osg::maximum(maxRangeAcrossZones, maxDistance);
+
+                //TODO: make configurable someday...?
+                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_maxAlpha", getMaxAlpha()));
+
                 // Install the land cover shaders on the state set
                 VirtualProgram* vp = VirtualProgram::getOrCreate(zoneStateSet);
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
@@ -597,11 +631,6 @@ GroundCoverLayer::buildStateSets()
                 zoneStateSet->setTextureAttribute(_groundCoverTexBinding.unit(), tex);
                 zoneStateSet->addUniform(new osg::Uniform(GCTEX_SAMPLER, _groundCoverTexBinding.unit()));
 
-                if (groundCover->getMaxDistance() > maxRange)
-                {
-                    maxRange = groundCover->getMaxDistance();
-                }
-
                 zoneStateSet->setAttribute(new GroundCoverSA(groundCover));
             }
             else
@@ -616,11 +645,8 @@ GroundCoverLayer::buildStateSets()
         }
     }
 
-    if (maxRange > 0.0f)
-    {
-        setMaxVisibleRange(maxRange);
-        OE_INFO << LC << "Max visible range set to " << maxRange << std::endl;
-    }
+    setMaxVisibleRange(maxRangeAcrossZones);
+    OE_INFO << LC << "Max visible range set to " << maxRangeAcrossZones << std::endl;
 }
 
 void
@@ -679,7 +705,7 @@ namespace
 
         return geode;
     }
-    
+
     osg::Geometry* makeShape()
     {
         osg::Geometry* geom = new osg::Geometry();

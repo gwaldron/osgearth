@@ -36,7 +36,7 @@
     </GroundCover>
 
     <!-- Procedural grass -->
-    <Grass name="Grass" max_range="250">
+    <Grass name="Grass" max_range="175">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
     </Grass>
 

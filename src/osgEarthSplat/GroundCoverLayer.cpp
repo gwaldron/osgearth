@@ -556,7 +556,6 @@ GroundCoverLayer::buildStateSets()
 
                 maxRangeAcrossZones = osg::maximum(maxRangeAcrossZones, maxDistance);
 
-                //TODO: make configurable someday...?
                 zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_maxAlpha", getMaxAlpha()));
 
                 // Install the land cover shaders on the state set

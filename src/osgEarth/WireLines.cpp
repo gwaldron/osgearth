@@ -66,7 +66,7 @@ namespace
         start.normalize();
         for (int i = 0; i < norms.colDim; ++i)
         {
-            float angle = (2.0f * osg::PIf / WireLinesOperator::numWireVerts) * i;
+            float angle = (2.0f * (float)osg::PI / WireLinesOperator::numWireVerts) * i;
             osg::Quat qrot(angle, planeNormal);
             norms(geomRow, i) = qrot * start;
             verts(geomRow, i) = planeOrigin;

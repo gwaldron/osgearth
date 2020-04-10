@@ -747,10 +747,14 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
-    if (tex->getImage() && tex->getImage()->getPixelFormat() == GL_RED)
+    // For GL_RED, swizzle the RGBA all to RED in order to match old GL_LUMINANCE behavior
+    for(unsigned i=0; i<tex->getNumImages(); ++i)
     {
-        // Swizzle the RGBA all to RED in order to match previous GL_LUMINANCE behavior
-        tex->setSwizzle(osg::Vec4i(GL_RED, GL_RED, GL_RED, GL_RED));
+        if (tex->getImage(i) && tex->getImage(i)->getPixelFormat() == GL_RED)
+        {
+            tex->setSwizzle(osg::Vec4i(GL_RED, GL_RED, GL_RED, GL_RED));
+            break;
+        }
     }
 
     layer->applyTextureCompressionMode(tex);

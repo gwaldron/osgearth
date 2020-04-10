@@ -82,14 +82,12 @@ namespace osgEarth { namespace REX
         // Renders the tile.
         void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
 
-        // Less than operator will ensure that tiles are sorted high-to-low LOD
-        // (to minimize Z overdraw) and then grouped by shared geometry
-        // (to minimize buffer binds). Both of these make a significant performance
-        // difference based on benchmarking.
+        // Less than operator will ensure that tiles are sorted near to far
+        // to minimze overdraw.
         bool operator < (const DrawTileCommand& rhs) const
         {
-            if (_key->getLOD() > rhs._key->getLOD()) return true;
-            if (_key->getLOD() < rhs._key->getLOD()) return false;
+            if (_range > rhs._range) return false;
+            if (_range < rhs._range) return true;
             return _geom < rhs._geom;
         }
 

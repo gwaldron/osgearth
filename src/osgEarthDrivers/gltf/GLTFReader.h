@@ -22,6 +22,7 @@
 #ifndef OSGEARTH_GLTF_READER_H
 #define OSGEARTH_GLTF_READER_H
 
+#include <OpenThreads/ScopedLock>
 #include <osg/Node>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -206,6 +207,83 @@ public:
         return mt;
     }
 
+    osg::Texture2D* makeTextureFromModel(const tinygltf::Model &model, const tinygltf::Texture& texture,
+                                         const Env& env) const
+
+    {
+        const tinygltf::Image& image = model.images[texture.source];
+        bool imageEmbedded =
+            tinygltf::IsDataURI(image.uri) ||
+            image.image.size() > 0;
+
+        osgEarth::URI imageURI(image.uri, env.referrer);
+
+        osg::ref_ptr<osg::Texture2D> tex;
+
+        OE_DEBUG << "New Texture: " << imageURI.full() << ", embedded=" << imageEmbedded << std::endl;
+
+        // First load the image
+        osg::ref_ptr<osg::Image> img;
+
+        if (image.image.size() > 0)
+        {
+            GLenum format = GL_RGB, texFormat = GL_RGB8;
+            if (image.component == 4) format = GL_RGBA, texFormat = GL_RGBA8;
+
+            img = new osg::Image();
+            //OE_NOTICE << "Loading image of size " << image.width << "x" << image.height << " components = " << image.component << " totalSize=" << image.image.size() << std::endl;
+            unsigned char *imgData = new unsigned char[image.image.size()];
+            memcpy(imgData, &image.image[0], image.image.size());
+            img->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
+        }
+
+        else if (!imageEmbedded) // load from URI
+        {
+            osgEarth::ReadResult rr = imageURI.readImage(env.readOptions);
+            if(rr.succeeded())
+            {
+                img = rr.releaseImage();
+                if (img.valid())
+                {
+                    img->flipVertical();
+                }
+            }
+        }
+
+        // If the image loaded OK, create the texture
+        if (img.valid())
+        {
+            if(img->getPixelFormat() == GL_RGB)
+                img->setInternalTextureFormat(GL_RGB8);
+            else if (img->getPixelFormat() == GL_RGBA)
+                img->setInternalTextureFormat(GL_RGBA8);
+
+            tex = new osg::Texture2D(img.get());
+            tex->setUnRefImageDataAfterApply(imageEmbedded);
+            tex->setResizeNonPowerOfTwoHint(false);
+            tex->setDataVariance(osg::Object::STATIC);
+
+            if (texture.sampler >= 0 && texture.sampler < model.samplers.size())
+            {
+                const tinygltf::Sampler& sampler = model.samplers[texture.sampler];
+                //tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)sampler.minFilter);
+                //tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)sampler.magFilter);
+                tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR); //sampler.minFilter);
+                tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR); //sampler.magFilter);
+                tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)sampler.wrapS);
+                tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)sampler.wrapT);
+                tex->setWrap(osg::Texture::WRAP_R, (osg::Texture::WrapMode)sampler.wrapR);
+            }
+            else
+            {
+                tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR);
+                tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR);
+                tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
+                tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
+            }
+        }
+        return tex.release();
+    }
 
     osg::Node* makeMesh(const tinygltf::Model &model, const tinygltf::Mesh& mesh, const Env& env) const
     {
@@ -282,99 +360,43 @@ public:
                         if (i != paramItr->second.json_double_value.end())
                         {
                             int index = i->second;
-
                             const tinygltf::Texture& texture = model.textures[index];
                             const tinygltf::Image& image = model.images[texture.source];
-
                             // don't cache embedded textures!
                             bool imageEmbedded = 
                                 tinygltf::IsDataURI(image.uri) ||
                                 image.image.size() > 0;
-
                             osgEarth::URI imageURI(image.uri, env.referrer);
-
-                            osg::ref_ptr<osg::Texture2D> tex = NULL;
-                            osg::ref_ptr<osg::Texture2D>* cachedTex = NULL;
+                            osg::ref_ptr<osg::Texture2D> tex;
+                            bool cachedTex = false;
 
                             if (!imageEmbedded && _texCache)
                             {
-                                _texCache->lock();
-                                cachedTex = &(*_texCache)[imageURI.full()];
-                                tex = cachedTex->get();
+                                OpenThreads::ScopedLock<TextureCache> lock(*_texCache);
+                                auto texItr = _texCache->find(imageURI.full());
+                                if (texItr != _texCache->end())
+                                {
+                                    tex = texItr->second;
+                                    cachedTex = true;
+                                }
                             }
 
                             if (!tex.valid())
                             {
-                                OE_DEBUG << "New Texture: " << imageURI.full() << ", embedded=" << imageEmbedded << std::endl;
-
-                                // First load the image
-                                const tinygltf::Image& image = model.images[texture.source];
-                                osg::ref_ptr<osg::Image> img;
-
-                                if (image.image.size() > 0)
-                                {
-                                    GLenum format = GL_RGB, texFormat = GL_RGB8;
-                                    if (image.component == 4) format = GL_RGBA, texFormat = GL_RGBA8;
-
-                                    img = new osg::Image();
-                                    //OE_NOTICE << "Loading image of size " << image.width << "x" << image.height << " components = " << image.component << " totalSize=" << image.image.size() << std::endl;
-                                    unsigned char *imgData = new unsigned char[image.image.size()];
-                                    memcpy(imgData, &image.image[0], image.image.size());
-                                    img->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
-                                }      
-
-                                else if (!imageEmbedded) // load from URI
-                                {
-                                    osgEarth::ReadResult rr = imageURI.readImage(env.readOptions);
-                                    if(rr.succeeded())
-                                    {
-                                        img = rr.releaseImage();          
-                                        if (img.valid())
-                                        {
-                                            img->flipVertical();
-                                        }
-                                    }
-                                }
-
-                                // If the image loaded OK, create the texture
-                                if (img.valid())
-                                {
-                                    if(img->getPixelFormat() == GL_RGB)
-                                        img->setInternalTextureFormat(GL_RGB8);
-                                    else if (img->getPixelFormat() == GL_RGBA)
-                                        img->setInternalTextureFormat(GL_RGBA8);
-                                    
-                                    tex = new osg::Texture2D(img.get());
-                                    tex->setUnRefImageDataAfterApply(imageEmbedded);
-                                    tex->setResizeNonPowerOfTwoHint(false);
-                                    tex->setDataVariance(osg::Object::STATIC);
-
-                                    if (texture.sampler >= 0 && texture.sampler < model.samplers.size())
-                                    {
-                                        const tinygltf::Sampler& sampler = model.samplers[texture.sampler];
-                                        //tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)sampler.minFilter);
-                                        //tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)sampler.magFilter);
-                                        tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR); //sampler.minFilter);
-                                        tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR); //sampler.magFilter);
-                                        tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)sampler.wrapS);
-                                        tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)sampler.wrapT);
-                                        tex->setWrap(osg::Texture::WRAP_R, (osg::Texture::WrapMode)sampler.wrapR);
-                                    }
-                                    else
-                                    {
-                                        tex->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR);
-                                        tex->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR);
-                                        tex->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
-                                        tex->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
-                                    }
-                                }
+                                tex = makeTextureFromModel(model, texture, env);
                             }
 
                             if (tex.valid())
                             {
-                                if (cachedTex && !cachedTex->valid())
+                                if (!imageEmbedded && _texCache && !cachedTex)
                                 {
-                                    (*cachedTex) = tex.get();
+                                    OpenThreads::ScopedLock<TextureCache> lock(*_texCache);
+                                    auto insResult = _texCache->insert(TextureCache::value_type(imageURI.full(), tex));
+                                    if (insResult.second)
+                                    {
+                                        // Some other loader thread beat us in the cache
+                                        tex = insResult.first->second;
+                                    }
                                 }
                                 geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get());
                             }
@@ -393,11 +415,6 @@ public:
                                     geom->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
                                     osgEarth::Util::DiscardAlphaFragments().install(geom->getOrCreateStateSet(), material.alphaCutoff);
                                 }
-                            }
-
-                            if (cachedTex)
-                            {
-                                _texCache->unlock();
                             }
                         }
                     }

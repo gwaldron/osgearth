@@ -211,6 +211,7 @@ namespace osgEarth { namespace Splat
 
             Settings _settings;
             GroundCoverLayer* _layer;
+            osg::ref_ptr<osg::StateAttribute> _a2cBlending;
         };
 
         osg::ref_ptr<Renderer> _renderer;

@@ -907,6 +907,8 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     _drawStateBuffer.resize(64u);
 
     _settings._tileWidth = 0.0;
+
+    _a2cBlending = new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
 }
 
 void
@@ -972,7 +974,9 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const DrawContext& tile, o
         ext->glUniform2fv(ds._numInstancesUL, 1, numInstances.ptr());
 
         GLint multiSamplesOn = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE)?1:0;
-        ri.getState()->applyMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, multiSamplesOn==1);
+        ri.getState()->applyMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, multiSamplesOn==1);           
+        ri.getState()->applyAttribute(_a2cBlending.get());
+
         ext->glUniform1i(ds._A2CUL, multiSamplesOn);
 
 #ifdef TEST_MODEL_INSTANCING

@@ -675,6 +675,7 @@ public:
                 if (osgArray.valid())
                 {
                     osgArray->setBinding(osg::Array::BIND_PER_VERTEX);
+                    osgArray->setNormalize(accessor.normalized);
                 }
                 else
                 {

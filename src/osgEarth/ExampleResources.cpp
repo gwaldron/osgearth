@@ -319,6 +319,12 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     }
 
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
+
+    if (args.read("--tessellation") || args.read("--tess"))
+    {
+        mapNode->getTerrainOptions().setGPUTessellation(true);
+    }
+
     if ( !mapNode.valid() )
     {
         OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;

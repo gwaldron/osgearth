@@ -481,9 +481,6 @@ public:
                     geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
                 }
 
-                const tinygltf::Accessor &indexAccessor =
-                    model.accessors[primitive.indices];
-
                 int mode = -1;
                 if (primitive.mode == TINYGLTF_MODE_TRIANGLES) {
                     mode = GL_TRIANGLES;
@@ -504,45 +501,46 @@ public:
                     mode = GL_LINE_LOOP;
                 }
 
+                if (primitive.indices < 0)
                 {
-                    const tinygltf::BufferView& bufferView = model.bufferViews[indexAccessor.bufferView];
-                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+                    osg::Array* vertices = geom->getVertexArray();
+                    if (vertices)
+                    {
+                        osg::DrawArrays *drawArrays
+                            = new osg::DrawArrays(mode, 0, vertices->getNumElements());
+                        geom->addPrimitiveSet(drawArrays);
+                    }
+                    // Otherwise we can't draw anything!
+                }
+                else
+                {
+                    const tinygltf::Accessor &indexAccessor = model.accessors[primitive.indices];
 
-                    if (indexAccessor.componentType == GL_UNSIGNED_SHORT)
+                    if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
                     {
-                        osg::DrawElementsUShort* drawElements = new osg::DrawElementsUShort(mode);
-                        unsigned short* indices = (unsigned short*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
-                        drawElements->reserve(indexAccessor.count);
-                        for (unsigned int j = 0; j < indexAccessor.count; j++)
-                        {
-                            unsigned short index = indices[j];
-                            drawElements->push_back(index);
-                        }
+                        osg::UShortArray* indices = static_cast<osg::UShortArray*>(arrays[primitive.indices].get());
+                        osg::DrawElementsUShort* drawElements
+                            = new osg::DrawElementsUShort(mode, indices->begin(), indices->end());
                         geom->addPrimitiveSet(drawElements);
                     }
-                    else if (indexAccessor.componentType == GL_UNSIGNED_INT)
+                    else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
                     {
-                        osg::DrawElementsUInt* drawElements = new osg::DrawElementsUInt(mode);
-                        drawElements->reserve(indexAccessor.count);
-                        unsigned int* indices = (unsigned int*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
-                        for (unsigned int j = 0; j < indexAccessor.count; j++)
-                        {
-                            unsigned int index = indices[j];
-                            drawElements->push_back(index);
-                        }
+                        osg::UIntArray* indices = static_cast<osg::UIntArray*>(arrays[primitive.indices].get());
+                        osg::DrawElementsUInt* drawElements
+                            = new osg::DrawElementsUInt(mode, indices->begin(), indices->end());
                         geom->addPrimitiveSet(drawElements);
                     }
-                    else if (indexAccessor.componentType == GL_UNSIGNED_BYTE)
+                    else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
                     {
-                        osg::DrawElementsUByte* drawElements = new osg::DrawElementsUByte(mode);
-                        drawElements->reserve(indexAccessor.count);
-                        unsigned char* indices = (unsigned char*)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
-                        for (unsigned int j = 0; j < indexAccessor.count; j++)
-                        {
-                            unsigned char index = indices[j];
-                            drawElements->push_back(index);
-                        }
+                        osg::UByteArray* indices = static_cast<osg::UByteArray*>(arrays[primitive.indices].get());
+                        // Sigh, DrawElementsUByte doesn't have the constructor with iterator arguments.
+                        osg::DrawElementsUByte* drawElements = new osg::DrawElementsUByte(mode, indexAccessor.count);
+                        std::copy(indices->begin(), indices->end(), drawElements->begin());
                         geom->addPrimitiveSet(drawElements);
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "primitive indices are not unsigned.\n";
                     }
                 }
 

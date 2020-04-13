@@ -166,9 +166,12 @@ public:
         const GLTFReader* reader;
         const tinygltf::Model &model;
         const Env& env;
+        std::vector< osg::ref_ptr< osg::Array > > arrays;
+
         NodeBuilder(const GLTFReader* reader_, const tinygltf::Model &model_, const Env& env_)
             : reader(reader_), model(model_), env(env_)
         {
+            extractArrays(arrays);
         }
 
         osg::Node* createNode(const tinygltf::Node& node) const
@@ -300,9 +303,6 @@ public:
         osg::Node* makeMesh(const tinygltf::Mesh& mesh) const
         {
             osg::Group *group = new osg::Group;
-
-            std::vector< osg::ref_ptr< osg::Array > > arrays;
-            extractArrays(arrays);
 
             OE_DEBUG << "Drawing " << mesh.primitives.size() << " primitives in mesh" << std::endl;
 
@@ -560,7 +560,56 @@ public:
             }
 
             return group;
-        } // Turn all of the accessors and turn them into arrays
+        }
+
+        // Parameterize the creation of OSG arrays from glTF
+        // accessors. It's a bit gratuitous to make ComponentType and
+        // AccessorType template parameters. The thought was that the
+        // memcpy could be optimized if these were constants in the
+        // copyData() function, but that's debatable.
+
+        template<typename OSGArray, int ComponentType, int AccessorType>
+        class ArrayBuilder
+        {
+        public:
+            static OSGArray* makeArray(unsigned int size)
+            {
+                return new OSGArray(size);
+            }
+            static void copyData(OSGArray* dest, const unsigned char* src, size_t viewOffset,
+                                 size_t byteStride,  size_t accessorOffset, size_t count)
+            {
+                int32_t componentSize = tinygltf::GetComponentSizeInBytes(ComponentType);
+                int32_t numComponents = tinygltf::GetNumComponentsInType(AccessorType);
+                if (byteStride == 0)
+                {
+                    memcpy(&(*dest)[0], src + accessorOffset + viewOffset, componentSize * numComponents * count);
+                }
+                else
+                {
+                    const unsigned char* ptr = src + accessorOffset + viewOffset;
+                    for (int i = 0; i < count; ++i, ptr += byteStride)
+                    {
+                        memcpy(&(*dest)[i], ptr, componentSize * numComponents);
+                    }
+                }
+            }
+            static void copyData(OSGArray* dest, const tinygltf::Buffer& buffer, const tinygltf::BufferView& bufferView,
+                                 const tinygltf::Accessor& accessor)
+            {
+                copyData(dest, &buffer.data.at(0), bufferView.byteOffset,
+                         bufferView.byteStride, accessor.byteOffset, accessor.count);
+            }
+            static OSGArray* makeArray(const tinygltf::Buffer& buffer, const tinygltf::BufferView& bufferView,
+                                       const tinygltf::Accessor& accessor)
+            {
+                OSGArray* result = new OSGArray(accessor.count);
+                copyData(result, buffer, bufferView, accessor);
+                return result;
+            }
+        };
+
+        // Take all of the accessors and turn them into arrays
         void extractArrays(std::vector<osg::ref_ptr<osg::Array>> &arrays) const
         {
             for (unsigned int i = 0; i < model.accessors.size(); i++)
@@ -568,110 +617,201 @@ public:
                 const tinygltf::Accessor& accessor = model.accessors[i];
                 const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
                 const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
-
-
                 osg::ref_ptr< osg::Array > osgArray;
 
-                if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+                switch (accessor.componentType)
                 {
-                    if (accessor.type == TINYGLTF_TYPE_SCALAR)
+                case TINYGLTF_COMPONENT_TYPE_BYTE:
+                    switch (accessor.type)
                     {
-                        osg::FloatArray* floatArray = new osg::FloatArray;
-                        const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                        const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
-
-                        float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
-                        unsigned int pos = 0;
-                        floatArray->reserve(accessor.count);
-                        for (unsigned int j = 0; j < accessor.count; j++)
-                        {
-                            float s = array[pos];
-                            if (bufferView.byteStride > 0)
-                            {
-                                pos += (bufferView.byteStride / 4);
-                            }
-                            else
-                            {
-                                pos += 1;
-                            }
-                            floatArray->push_back(s);
-                        }
-                        osgArray = floatArray;
+                    case TINYGLTF_TYPE_SCALAR:
+                        osgArray = ArrayBuilder<osg::ByteArray,
+                                                TINYGLTF_COMPONENT_TYPE_BYTE,
+                                                TINYGLTF_TYPE_SCALAR>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC2:
+                        osgArray = ArrayBuilder<osg::Vec2bArray,
+                                                TINYGLTF_COMPONENT_TYPE_BYTE,
+                                                TINYGLTF_TYPE_VEC2>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC3:
+                        osgArray = ArrayBuilder<osg::Vec3bArray,
+                                                TINYGLTF_COMPONENT_TYPE_BYTE,
+                                                TINYGLTF_TYPE_VEC3>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC4:
+                        osgArray = ArrayBuilder<osg::Vec4bArray,
+                                                TINYGLTF_COMPONENT_TYPE_BYTE,
+                                                TINYGLTF_TYPE_VEC4>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    default:
+                        break;
                     }
-                    else if (accessor.type == TINYGLTF_TYPE_VEC2)
+                    break;
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                    switch (accessor.type)
                     {
-                        osg::Vec2Array* vec2Array = new osg::Vec2Array;
-                        const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                        const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
-
-                        float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
-                        unsigned int pos = 0;
-                        vec2Array->reserve(accessor.count);
-                        for (unsigned int j = 0; j < accessor.count; j++)
-                        {
-                            float s = array[pos];
-                            float t = array[pos + 1];
-                            if (bufferView.byteStride > 0)
-                            {
-                                pos += (bufferView.byteStride / 4);
-                            }
-                            else
-                            {
-                                pos += 2;
-                            }
-                            vec2Array->push_back(osg::Vec2(s, t));
-                        }
-                        osgArray = vec2Array;
+                    case TINYGLTF_TYPE_SCALAR:
+                        osgArray = ArrayBuilder<osg::UByteArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE,
+                                                TINYGLTF_TYPE_SCALAR>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC2:
+                        osgArray = ArrayBuilder<osg::Vec2ubArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE,
+                                                TINYGLTF_TYPE_VEC2>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC3:
+                        osgArray = ArrayBuilder<osg::Vec3ubArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE,
+                                                TINYGLTF_TYPE_VEC3>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC4:
+                        osgArray = ArrayBuilder<osg::Vec4ubArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE,
+                                                TINYGLTF_TYPE_VEC4>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    default:
+                        break;
                     }
-                    else if (accessor.type == TINYGLTF_TYPE_VEC3)
+                    break;
+                case TINYGLTF_COMPONENT_TYPE_SHORT:
+                    switch (accessor.type)
                     {
-                        osg::Vec3Array* vec3Array = new osg::Vec3Array;
-                        float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
-                        unsigned int pos = 0;
-                        vec3Array->reserve(accessor.count);
-                        for (unsigned int j = 0; j < accessor.count; j++)
-                        {
-                            float x = array[pos];
-                            float y = array[pos + 1];
-                            float z = array[pos + 2];
-                            if (bufferView.byteStride > 0)
-                            {
-                                pos += (bufferView.byteStride / 4);
-                            }
-                            else
-                            {
-                                pos += 3;
-                            }
-                            vec3Array->push_back(osg::Vec3(x, y, z));
-                            osgArray = vec3Array;
-                        }
+                    case TINYGLTF_TYPE_SCALAR:
+                        osgArray = ArrayBuilder<osg::ShortArray,
+                                                TINYGLTF_COMPONENT_TYPE_SHORT,
+                                                TINYGLTF_TYPE_SCALAR>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC2:
+                        osgArray = ArrayBuilder<osg::Vec2sArray,
+                                                TINYGLTF_COMPONENT_TYPE_SHORT,
+                                                TINYGLTF_TYPE_VEC2>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC3:
+                        osgArray = ArrayBuilder<osg::Vec3sArray,
+                                                TINYGLTF_COMPONENT_TYPE_SHORT,
+                                                TINYGLTF_TYPE_VEC3>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC4:
+                        osgArray = ArrayBuilder<osg::Vec4sArray,
+                                                TINYGLTF_COMPONENT_TYPE_SHORT,
+                                                TINYGLTF_TYPE_VEC4>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    default:
+                        break;
                     }
-                    else if (accessor.type == TINYGLTF_TYPE_VEC4)
+                    break;
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+                    switch (accessor.type)
                     {
-                        osg::Vec4Array* vec4Array = new osg::Vec4Array;
-                        float* array = (float*)(&buffer.data.at(0) + accessor.byteOffset + bufferView.byteOffset);
-                        unsigned int pos = 0;
-                        vec4Array->reserve(accessor.count);
-                        for (unsigned int j = 0; j < accessor.count; j++)
-                        {
-                            float r = array[pos];
-                            float g = array[pos + 1];
-                            float b = array[pos + 2];
-                            float a = array[pos + 3];
-                            if (bufferView.byteStride > 0)
-                            {
-                                pos += (bufferView.byteStride / 4);
-                            }
-                            else
-                            {
-                                pos += 4;
-                            }
-                            vec4Array->push_back(osg::Vec4(r, g, b, a));
-                            osgArray = vec4Array;
-                        }
+                    case TINYGLTF_TYPE_SCALAR:
+                        osgArray = ArrayBuilder<osg::UShortArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT,
+                                                TINYGLTF_TYPE_SCALAR>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC2:
+                        osgArray = ArrayBuilder<osg::Vec2usArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT,
+                                                TINYGLTF_TYPE_VEC2>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC3:
+                        osgArray = ArrayBuilder<osg::Vec3usArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT,
+                                                TINYGLTF_TYPE_VEC3>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC4:
+                        osgArray = ArrayBuilder<osg::Vec4usArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT,
+                                                TINYGLTF_TYPE_VEC4>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    default:
+                        break;
                     }
+                    break;
+                case TINYGLTF_COMPONENT_TYPE_INT:
+                    switch (accessor.type)
+                    {
+                    case TINYGLTF_TYPE_SCALAR:
+                        osgArray = ArrayBuilder<osg::IntArray,
+                                                TINYGLTF_COMPONENT_TYPE_INT,
+                                                TINYGLTF_TYPE_SCALAR>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC2:
+                        osgArray = ArrayBuilder<osg::Vec2uiArray,
+                                                TINYGLTF_COMPONENT_TYPE_INT,
+                                                TINYGLTF_TYPE_VEC2>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC3:
+                        osgArray = ArrayBuilder<osg::Vec3uiArray,
+                                                TINYGLTF_COMPONENT_TYPE_INT,
+                                                TINYGLTF_TYPE_VEC3>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC4:
+                        osgArray = ArrayBuilder<osg::Vec4uiArray,
+                                                TINYGLTF_COMPONENT_TYPE_INT,
+                                                TINYGLTF_TYPE_VEC4>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+                    switch (accessor.type)
+                    {
+                    case TINYGLTF_TYPE_SCALAR:
+                        osgArray = ArrayBuilder<osg::UIntArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT,
+                                                TINYGLTF_TYPE_SCALAR>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC2:
+                        osgArray = ArrayBuilder<osg::Vec2iArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT,
+                                                TINYGLTF_TYPE_VEC2>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC3:
+                        osgArray = ArrayBuilder<osg::Vec3iArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT,
+                                                TINYGLTF_TYPE_VEC3>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC4:
+                        osgArray = ArrayBuilder<osg::Vec4iArray,
+                                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT,
+                                                TINYGLTF_TYPE_VEC4>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
+                case TINYGLTF_COMPONENT_TYPE_FLOAT:
+                    switch (accessor.type)
+                    {
+                    case TINYGLTF_TYPE_SCALAR:
+                        osgArray = ArrayBuilder<osg::FloatArray,
+                                                TINYGLTF_COMPONENT_TYPE_FLOAT,
+                                                TINYGLTF_TYPE_SCALAR>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC2:
+                        osgArray = ArrayBuilder<osg::Vec2Array,
+                                                TINYGLTF_COMPONENT_TYPE_FLOAT,
+                                                TINYGLTF_TYPE_VEC2>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC3:
+                        osgArray = ArrayBuilder<osg::Vec3Array,
+                                                TINYGLTF_COMPONENT_TYPE_FLOAT,
+                                                TINYGLTF_TYPE_VEC3>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    case TINYGLTF_TYPE_VEC4:
+                        osgArray = ArrayBuilder<osg::Vec4Array,
+                                                TINYGLTF_COMPONENT_TYPE_FLOAT,
+                                                TINYGLTF_TYPE_VEC4>::makeArray(buffer, bufferView, accessor);
+                        break;
+                    default:
+                        break;
+                    }
+                default:
+                    break;
                 }
-
                 if (osgArray.valid())
                 {
                     osgArray->setBinding(osg::Array::BIND_PER_VERTEX);

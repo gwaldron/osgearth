@@ -1,4 +1,5 @@
 #include "OsgImGuiHandler.hpp"
+#include "ImGuiUtils"
 #include <iostream>
 #include <osg/Camera>
 #include <osgUtil/GLObjectsVisitor>
@@ -8,6 +9,12 @@
 
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
+
+void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
+{
+    GlewInitOperation::operator()(object);
+    OsgImGuiHandler::init();
+}
 
 struct OsgImGuiHandler::ImGuiNewFrameCallback : public osg::Camera::DrawCallback
 {
@@ -44,10 +51,6 @@ private:
 OsgImGuiHandler::OsgImGuiHandler()
     : time_(0.0f), mousePressed_{false}, mouseWheel_(0.0f), initialized_(false)
 {
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-    init();
 }
 
 /**
@@ -95,6 +98,7 @@ static int ConvertFromOSGKey(int key)
 
 void OsgImGuiHandler::init()
 {
+    ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.

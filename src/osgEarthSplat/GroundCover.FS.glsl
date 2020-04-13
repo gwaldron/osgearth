@@ -35,7 +35,8 @@ void oe_GroundCover_FS(inout vec4 color)
         if (oe_GroundCover_A2C == 1)
         {
             // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
-            color.a = (color.a - oe_GroundCover_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+            // good for distant trees, but bad for top/side url blending - comment out for now
+            //color.a = (color.a - oe_GroundCover_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
         }
         else if (color.a < oe_GroundCover_maxAlpha)
         {

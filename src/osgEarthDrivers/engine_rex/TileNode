@@ -104,6 +104,7 @@ namespace osgEarth { namespace REX
 
         /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
+        void updateElevationRaster();
         const osg::Image* getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;
 

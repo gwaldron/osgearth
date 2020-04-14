@@ -340,6 +340,8 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     ImageUtils::PixelReader read(image);
 
+    // scale up the values so that [0...1/2] is below ground
+    // and [1/2...1] is above ground.
     osg::Vec4 value;
     for(unsigned t=0; t<read.t(); ++t)
     {
@@ -347,6 +349,45 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
         {
             read(value, s, t);
             float h = value.a() * scale;
+            hf->setHeight(s, t, h);
+        }
+    }
+
+    _decalList.push_back(Decal());
+    Decal& decal = _decalList.back();
+    decal._heightfield = GeoHeightField(hf, extent);
+
+    _decalIndex[id] = --_decalList.end();
+
+    // data changed so up the revsion.
+    bumpRevision();
+    return true;
+}
+
+bool
+DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float zeroValue, float oneValue)
+{
+    if (!extent.isValid() || !image)
+        return false;
+
+    Threading::ScopedMutexLock lock(_mutex);
+
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+        return false;
+
+    osg::HeightField* hf = new osg::HeightField();
+    hf->allocate(image->s(), image->t());
+
+    ImageUtils::PixelReader read(image);
+
+    osg::Vec4 value;
+    for(unsigned t=0; t<read.t(); ++t)
+    {
+        for(unsigned s=0; s<read.s(); ++s)
+        {
+            read(value, s, t);
+            float h = zeroValue + (oneValue-zeroValue)*value.a();
             hf->setHeight(s, t, h);
         }
     }

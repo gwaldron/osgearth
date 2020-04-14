@@ -506,19 +506,18 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
     OE_PROFILING_ZONE;
 
     // gather the combined revision (additive is fine)
-    //int combinedLayerRevision = 0;
-    //for(ElevationLayerVector::const_iterator i = layers.begin();
-    //    i != layers.end();
-    //    ++i)
-    //{
-    //    // need layer UID too? gw
-    //    combinedLayerRevision += i->get()->getRevision();
-    //}
+    int combinedLayerRevision = 0;
+    for(ElevationLayerVector::const_iterator i = layers.begin();
+        i != layers.end();
+        ++i)
+    {
+        combinedLayerRevision += i->get()->getRevision();
+    }
     
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
-    cachekey._revision     = (int)map->getDataModelRevision(); // + combinedLayerRevision;
+    cachekey._revision     = (int)map->getDataModelRevision() + combinedLayerRevision;
     cachekey._samplePolicy = samplePolicy;
 
     if (progress)

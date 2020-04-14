@@ -102,6 +102,10 @@ namespace osgEarth { namespace Contrib
     public:
         META_Layer(osgEarth, DecalElevationLayer, Options, osgEarth::ElevationLayer, DecalElevation);
 
+        //! Adds a heightfield "decal" to the terrain. Each pixel in image contains a height value.
+        //! Overlapping decals will result in the sum of overlapping height values.
+        bool addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float zeroValue, float oneValue);
+
         //! Adds a heightfield "decal" to the terrain. Each pixel in image contains a height value
         //! that is multiplied by "scale" before being applied to the terrain.
         //! Overlapping decals will result in the sum of overlapping height values.

@@ -57,8 +57,8 @@ int usage(char** argv)
 
 struct ImageLayerTileCopy : public TileHandler
 {
-    ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest)
-        : _source(source), _dest(dest)
+    ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest, bool overwrite)
+        : _source(source), _dest(dest), _overwrite(overwrite)
     {
         //nop
     }
@@ -66,13 +66,26 @@ struct ImageLayerTileCopy : public TileHandler
     bool handleTile(const TileKey& key, const TileVisitor& tv)
     {
         bool ok = false;
+
+        // if overwriting is disabled, check to see whether the destination
+        // already has data for the key
+        if (_overwrite == false)
+        {
+            if (_dest->createImage(key).valid())
+            {
+                return true;
+            }
+        }
+
         GeoImage image = _source->createImage(key);
         if (image.valid())
         {
             Status status = _dest->writeImage(key, image.getImage(), 0L);
             ok = status.isOK();
             if (!ok)
+            {
                 OE_WARN << key.str() << ": " << status.message() << std::endl;
+            }
         }
 
         return ok;
@@ -85,13 +98,14 @@ struct ImageLayerTileCopy : public TileHandler
 
     osg::ref_ptr<ImageLayer> _source;
     osg::ref_ptr<ImageLayer> _dest;
+    bool _overwrite;
 };
 
 
 struct ElevationLayerTileCopy : public TileHandler
 {
-    ElevationLayerTileCopy(ElevationLayer* source, ElevationLayer* dest)
-        : _source(source), _dest(dest)
+    ElevationLayerTileCopy(ElevationLayer* source, ElevationLayer* dest, bool overwrite)
+        : _source(source), _dest(dest), _overwrite(overwrite)
     {
         //nop
     }
@@ -99,6 +113,17 @@ struct ElevationLayerTileCopy : public TileHandler
     bool handleTile(const TileKey& key, const TileVisitor& tv)
     {
         bool ok = false;
+
+        // if overwriting is disabled, check to see whether the destination
+        // already has data for the key
+        if (_overwrite == false)
+        {
+            if (_dest->createHeightField(key).valid())
+            {
+                return true;
+            }
+        }
+
         GeoHeightField hf = _source->createHeightField(key, 0L);
         if ( hf.valid() )
         {
@@ -121,6 +146,7 @@ struct ElevationLayerTileCopy : public TileHandler
 
     osg::ref_ptr<ElevationLayer> _source;
     osg::ref_ptr<ElevationLayer> _dest;
+    bool _overwrite;
 };
 
 
@@ -203,6 +229,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *      --min-level [int]     : min level of detail to copy
  *      --max-level [int]     : max level of detail to copy
  *      --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy (*)
+ *      --no-overwrite        : don't overwrite data that already exists
  *
  * OSG arguments:
  *
@@ -239,7 +266,7 @@ main(int argc, char** argv)
     osg::ref_ptr<TileLayer> input = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(inConf)));
     if ( !input.valid() )
     {
-        OE_WARN << LC << "Failed to open input" << std::endl;
+        OE_WARN << LC << "Failed to open input for " << inConf.toJSON(false) << std::endl;
         return -1;
     }
 
@@ -341,17 +368,23 @@ main(int argc, char** argv)
         visitor = new TileVisitor();
     }
 
+    bool overwrite = true;
+    if (args.read("--no-overwrite"))
+        overwrite = false;
+
     if (dynamic_cast<ImageLayer*>(input.get()) && dynamic_cast<ImageLayer*>(output.get()))
     {
         visitor->setTileHandler(new ImageLayerTileCopy(
             dynamic_cast<ImageLayer*>(input.get()),
-            dynamic_cast<ImageLayer*>(output.get())));
+            dynamic_cast<ImageLayer*>(output.get()),
+            overwrite));
     }
     else if (dynamic_cast<ElevationLayer*>(input.get()) && dynamic_cast<ElevationLayer*>(output.get()))
     {
         visitor->setTileHandler(new ElevationLayerTileCopy(
             dynamic_cast<ElevationLayer*>(input.get()),
-            dynamic_cast<ElevationLayer*>(output.get())));
+            dynamic_cast<ElevationLayer*>(output.get()),
+            overwrite));
     }
 
     // set the manula extents, if specified:

@@ -27,7 +27,14 @@
 #include <cpl_vsi.h>
 #include <gdal.h>
 #include <gdal_priv.h>
+
+#if GDAL_VERSION_NUM > 2004000
+#define HAS_GDALDEM
+#endif
+
+#ifdef HAS_GDALDEM
 #include <gdal_utils.h>
+#endif
 
 
 using namespace osgEarth;
@@ -122,6 +129,8 @@ GDALDEMLayer::openImplementation()
     if (childStatus.isError())
         return childStatus;
 
+#ifdef HAS_GDALDEM
+
     //ElevationLayer* layer = options().elevationLayer().getLayer();
     /*
     if (!layer)
@@ -140,6 +149,12 @@ GDALDEMLayer::openImplementation()
     */
 
     return Status::NoError;
+
+#else
+
+    return Status(Status::AssertionFailure, "GDAL 2.4+ required");
+
+#endif
 }
 
 Status
@@ -149,217 +164,222 @@ GDALDEMLayer::closeImplementation()
     return Status::OK();
 }
 
-GDALDataset*
-createMemDS(int width, int height, int numBands, GDALDataType dataType, double minX, double minY, double maxX, double maxY, const std::string &projection)
+namespace
 {
-    //Get the MEM driver
-    GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
-    if (!memDriver)
+    GDALDataset*
+        createMemDS(int width, int height, int numBands, GDALDataType dataType, double minX, double minY, double maxX, double maxY, const std::string &projection)
     {
-        OE_NOTICE << "[osgEarth::GeoData] Could not get MEM driver" << std::endl;
-    }
-
-    //Create the in memory dataset.
-    GDALDataset* ds = memDriver->Create("", width, height, numBands, dataType, 0);
-
-    //Initialize the color interpretation
-    if (numBands == 1)
-    {
-        ds->GetRasterBand(1)->SetColorInterpretation(GCI_GrayIndex);
-    }
-    else
-    {
-        ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
-        ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
-        ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
-
-        if (numBands == 4)
+        //Get the MEM driver
+        GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
+        if (!memDriver)
         {
-            ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
+            OE_NOTICE << "[osgEarth::GeoData] Could not get MEM driver" << std::endl;
         }
-    }
 
-    //Initialize the geotransform
-    double geotransform[6];
-    double x_units_per_pixel = (maxX - minX) / (double)width;
-    double y_units_per_pixel = (maxY - minY) / (double)height;
-    geotransform[0] = minX;
-    geotransform[1] = x_units_per_pixel;
-    geotransform[2] = 0;
-    geotransform[3] = maxY;
-    geotransform[4] = 0;
-    geotransform[5] = -y_units_per_pixel;
-    ds->SetGeoTransform(geotransform);
-    ds->SetProjection(projection.c_str());
+        //Create the in memory dataset.
+        GDALDataset* ds = memDriver->Create("", width, height, numBands, dataType, 0);
 
-    return ds;
-}
-
-osg::Image*
-createImageFromDataset(GDALDataset* ds)
-{
-    // called internally -- GDAL lock not required
-
-    int numBands = ds->GetRasterCount();
-    if (numBands < 1)
-        return 0L;
-
-    GLenum dataType;
-    int    sampleSize;
-    GLint  internalFormat;
-
-    switch (ds->GetRasterBand(1)->GetRasterDataType())
-    {
-    case GDT_Byte:
-        dataType = GL_UNSIGNED_BYTE;
-        sampleSize = 1;
-        //internalFormat = GL_LUMINANCE8;
-        internalFormat = GL_R8;
-        break;
-    case GDT_UInt16:
-    case GDT_Int16:
-        dataType = GL_UNSIGNED_SHORT;
-        sampleSize = 2;
-        //internalFormat = GL_LUMINANCE16;
-        internalFormat = GL_R16;
-        break;
-    default:
-        dataType = GL_FLOAT;
-        sampleSize = 4;
-        //internalFormat = GL_LUMINANCE32F_ARB;
-        internalFormat = GL_R32F;
-    }
-
-    GLenum pixelFormat =
-        numBands == 1 ? GL_RED :
-        numBands == 2 ? GL_RG :
-        numBands == 3 ? GL_RGB :
-        GL_RGBA;
-
-    int pixelBytes = sampleSize * numBands;
-
-    //Allocate the image
-    osg::Image *image = new osg::Image;
-    image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
-
-    CPLErr err = ds->RasterIO(
-        GF_Read,
-        0, 0,
-        image->s(), image->t(),
-        (void*)image->data(),
-        image->s(), image->t(),
-        ds->GetRasterBand(1)->GetRasterDataType(),
-        numBands,
-        NULL,
-        pixelBytes,
-        pixelBytes * image->s(),
-        1);
-    if (err != CE_None)
-    {
-        OE_WARN << LC << "RasterIO failed.\n";
-    }
-
-    //ds->FlushCache();
-
-    //image->flipVertical();
-
-    return image;
-}
-
-#if 0
-osg::Image*
-createRGBImageFromGrayscale(GDALDataset* ds)
-{    
-    int numBands = ds->GetRasterCount();
-    if (numBands < 1)
-        return 0L;
-
-    unsigned char *data = new unsigned char[ds->GetRasterXSize() * ds->GetRasterYSize()];
-    CPLErr err = ds->RasterIO(
-        GF_Read,
-        0, 0,
-        ds->GetRasterXSize(), ds->GetRasterYSize(),
-        data,
-        ds->GetRasterXSize(), ds->GetRasterYSize(),
-        GDT_Byte,
-        numBands,
-        NULL,
-        1,
-        ds->GetRasterXSize(),
-        1);
-    if (err != CE_None)
-    {
-        OE_WARN << LC << "RasterIO failed.\n";
-    }
-
-    //Allocate the image
-    osg::Image *image = new osg::Image;
-    image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, GL_RGB, GL_UNSIGNED_BYTE);    
-    ImageUtils::PixelWriter write(image);
-    for (unsigned int r = 0; r < ds->GetRasterYSize(); r++)
-    {
-        for (unsigned int c = 0; c < ds->GetRasterXSize(); c++)
+        //Initialize the color interpretation
+        if (numBands == 1)
         {
-            int v = (int)data[r * ds->GetRasterXSize() + c];
-            //int v = (int)data[c * ds->GetRasterYSize() + r];
-            osg::Vec4 color(v / 255.0, v / 255.0, v / 255.0, 1.0);
-            //write(color, r, c);
-            write(color, c, r);
+            ds->GetRasterBand(1)->SetColorInterpretation(GCI_GrayIndex);
         }
+        else
+        {
+            ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
+            ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
+            ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
+
+            if (numBands == 4)
+            {
+                ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
+            }
+        }
+
+        //Initialize the geotransform
+        double geotransform[6];
+        double x_units_per_pixel = (maxX - minX) / (double)width;
+        double y_units_per_pixel = (maxY - minY) / (double)height;
+        geotransform[0] = minX;
+        geotransform[1] = x_units_per_pixel;
+        geotransform[2] = 0;
+        geotransform[3] = maxY;
+        geotransform[4] = 0;
+        geotransform[5] = -y_units_per_pixel;
+        ds->SetGeoTransform(geotransform);
+        ds->SetProjection(projection.c_str());
+
+        return ds;
     }
 
-    delete[]data;
-
-    //image->flipVertical();
-
-    OE_NOTICE << "Output image is " << image->s() << "x" << image->t() << std::endl;
-
-    return image;
-}
-#endif
-
-
-GDALDataset*
-createDataSetFromHeightField(const osg::HeightField* hf, double minX, double minY, double maxX, double maxY, const std::string &projection)
-{
-    GDALDataType gdalDataType = GDT_Float32;
-
-    int numBands = 1;
-
-    int pixelBytes = sizeof(float) * numBands;
-
-    GDALDataset* srcDS = createMemDS(hf->getNumColumns(), hf->getNumRows(), numBands, gdalDataType, minX, minY, maxX, maxY, projection);
-
-    if (srcDS)
+    osg::Image*
+        createImageFromDataset(GDALDataset* ds)
     {
-        CPLErr err = srcDS->RasterIO(
-            GF_Write,
+        // called internally -- GDAL lock not required
+
+        int numBands = ds->GetRasterCount();
+        if (numBands < 1)
+            return 0L;
+
+        GLenum dataType;
+        int    sampleSize;
+        GLint  internalFormat;
+
+        switch (ds->GetRasterBand(1)->GetRasterDataType())
+        {
+        case GDT_Byte:
+            dataType = GL_UNSIGNED_BYTE;
+            sampleSize = 1;
+            //internalFormat = GL_LUMINANCE8;
+            internalFormat = GL_R8;
+            break;
+        case GDT_UInt16:
+        case GDT_Int16:
+            dataType = GL_UNSIGNED_SHORT;
+            sampleSize = 2;
+            //internalFormat = GL_LUMINANCE16;
+            internalFormat = GL_R16;
+            break;
+        default:
+            dataType = GL_FLOAT;
+            sampleSize = 4;
+            //internalFormat = GL_LUMINANCE32F_ARB;
+            internalFormat = GL_R32F;
+        }
+
+        GLenum pixelFormat =
+            numBands == 1 ? GL_RED :
+            numBands == 2 ? GL_RG :
+            numBands == 3 ? GL_RGB :
+            GL_RGBA;
+
+        int pixelBytes = sampleSize * numBands;
+
+        //Allocate the image
+        osg::Image *image = new osg::Image;
+        image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
+
+        CPLErr err = ds->RasterIO(
+            GF_Read,
             0, 0,
-            hf->getNumColumns(), hf->getNumRows(),
-            (void*)hf->getFloatArray()->getDataPointer(),
-            hf->getNumColumns(),
-            hf->getNumRows(),
-            gdalDataType,
+            image->s(), image->t(),
+            (void*)image->data(),
+            image->s(), image->t(),
+            ds->GetRasterBand(1)->GetRasterDataType(),
             numBands,
             NULL,
             pixelBytes,
-            pixelBytes * hf->getNumColumns(),
+            pixelBytes * image->s(),
             1);
-        
         if (err != CE_None)
         {
             OE_WARN << LC << "RasterIO failed.\n";
         }
 
-        srcDS->FlushCache();
+        //ds->FlushCache();
+
+        //image->flipVertical();
+
+        return image;
     }
 
-    return srcDS;
+#if 0
+    osg::Image*
+    createRGBImageFromGrayscale(GDALDataset* ds)
+    {    
+        int numBands = ds->GetRasterCount();
+        if (numBands < 1)
+            return 0L;
+
+        unsigned char *data = new unsigned char[ds->GetRasterXSize() * ds->GetRasterYSize()];
+        CPLErr err = ds->RasterIO(
+            GF_Read,
+            0, 0,
+            ds->GetRasterXSize(), ds->GetRasterYSize(),
+            data,
+            ds->GetRasterXSize(), ds->GetRasterYSize(),
+            GDT_Byte,
+            numBands,
+            NULL,
+            1,
+            ds->GetRasterXSize(),
+            1);
+        if (err != CE_None)
+        {
+            OE_WARN << LC << "RasterIO failed.\n";
+        }
+
+        //Allocate the image
+        osg::Image *image = new osg::Image;
+        image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, GL_RGB, GL_UNSIGNED_BYTE);    
+        ImageUtils::PixelWriter write(image);
+        for (unsigned int r = 0; r < ds->GetRasterYSize(); r++)
+        {
+            for (unsigned int c = 0; c < ds->GetRasterXSize(); c++)
+            {
+                int v = (int)data[r * ds->GetRasterXSize() + c];
+                //int v = (int)data[c * ds->GetRasterYSize() + r];
+                osg::Vec4 color(v / 255.0, v / 255.0, v / 255.0, 1.0);
+                //write(color, r, c);
+                write(color, c, r);
+            }
+        }
+
+        delete[]data;
+
+        //image->flipVertical();
+
+        OE_NOTICE << "Output image is " << image->s() << "x" << image->t() << std::endl;
+
+        return image;
+    }
+#endif
+
+
+    GDALDataset*
+    createDataSetFromHeightField(const osg::HeightField* hf, double minX, double minY, double maxX, double maxY, const std::string &projection)
+    {
+        GDALDataType gdalDataType = GDT_Float32;
+
+        int numBands = 1;
+
+        int pixelBytes = sizeof(float) * numBands;
+
+        GDALDataset* srcDS = createMemDS(hf->getNumColumns(), hf->getNumRows(), numBands, gdalDataType, minX, minY, maxX, maxY, projection);
+
+        if (srcDS)
+        {
+            CPLErr err = srcDS->RasterIO(
+                GF_Write,
+                0, 0,
+                hf->getNumColumns(), hf->getNumRows(),
+                (void*)hf->getFloatArray()->getDataPointer(),
+                hf->getNumColumns(),
+                hf->getNumRows(),
+                gdalDataType,
+                numBands,
+                NULL,
+                pixelBytes,
+                pixelBytes * hf->getNumColumns(),
+                1);
+
+            if (err != CE_None)
+            {
+                OE_WARN << LC << "RasterIO failed.\n";
+            }
+
+            srcDS->FlushCache();
+        }
+
+        return srcDS;
+    }
 }
 
 GeoImage
 GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
+#ifdef HAS_GDALDEM
+
     ElevationLayer* layer = getElevationLayer();
     GeoHeightField heightField = layer->createHeightField(key, progress);    
     if (heightField.valid())
@@ -417,5 +437,8 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
             return GeoImage(image.get() , key.getExtent());
         }
     }
+
+#endif // HAS_GDALDEM
+
     return GeoImage::INVALID;
 }

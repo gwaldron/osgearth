@@ -44,9 +44,10 @@ usage(const char* name, const std::string& error)
         << "Error: " << error
         << "\nUsage:"
         << "\n" << name << " file.earth"
-        << "\n  --layer layername                     ; name of GroundCover layer"
-        << "\n  --extents swlong swlat nelong nelat   ; extents in degrees"
-        << "\n  --out out.shp                         ; output features"
+        << "\n  --layer layername                    ; name of GroundCover layer"
+        << "\n  --extents swlong swlat nelong nelat  ; extents in degrees"
+        << "\n  --out out.shp                        ; output features"
+        << "\n  --include-billboard-property <name>  ; include billboard property name as attribute (optional)"
         << std::endl;
 
     return -1;
@@ -105,6 +106,14 @@ struct App
         outSchema["elevation"] = ATTRTYPE_DOUBLE;
         outSchema["width"] = ATTRTYPE_DOUBLE;
         outSchema["height"] = ATTRTYPE_DOUBLE;
+
+        std::string prop;
+        while(arguments.read("--include-billboard-property", prop))
+        {
+            featureGen.addBillboardPropertyName(prop);
+            outSchema[prop] = ATTRTYPE_STRING;
+        }
+
         outfs = new OGRFeatureSource();
         outfs->setOGRDriver("ESRI Shapefile");
         outfs->setURL(outfile);

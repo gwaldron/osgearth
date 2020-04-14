@@ -65,6 +65,7 @@ namespace
         float width;
         float height;
         float sizeVariation;
+        Config billboardConfig;
     };
 
     typedef std::vector<BillboardLUTEntry> BillboardLUT;
@@ -90,6 +91,8 @@ namespace
                     BillboardLUTEntry entry;
                     if (bb->_symbol.valid())
                     {
+                        entry.billboardConfig = bb->_symbol->getConfig();
+                        OE_INFO << entry.billboardConfig.toJSON(false) << std::endl;
                         entry.width = bb->_symbol->width().get();
                         entry.height = bb->_symbol->height().get();
                         entry.sizeVariation = bb->_symbol->sizeVariation().get();
@@ -140,6 +143,12 @@ GroundCoverFeatureGenerator::setLayer(GroundCoverLayer* layer)
 {
     _gclayer = layer;
     initialize();
+}
+
+void
+GroundCoverFeatureGenerator::addBillboardPropertyName(const std::string& name)
+{
+    _propNames.push_back(name);
 }
 
 const Status&
@@ -439,13 +448,25 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         if (biome)
         {
             BillboardLUT& bblut = biomeLUT[biome];
-            unsigned index = (unsigned)clamp(noise[NOISE_RANDOM], 0.0, 0.9999999) * (float)(bblut.size());
+            unsigned index = (unsigned)(clamp(noise[NOISE_RANDOM], 0.0, 0.9999999) * (float)(bblut.size()));
             BillboardLUTEntry& bb = bblut[index];
             float sizeScale = bb.sizeVariation * (noise[NOISE_RANDOM_2] * 2.0 - 1.0);
             float width = bb.width + bb.width*sizeScale;
             float height = bb.height + bb.height*sizeScale;
             feature->set("width", width);
             feature->set("height", height);
+
+            // Store any pass-thru properties
+            for(std::vector<std::string>::const_iterator i = _propNames.begin();
+                i != _propNames.end(); 
+                ++i)
+            {
+                std::string value = bb.billboardConfig.value(*i);
+                if (!value.empty())
+                {
+                    feature->set(*i, value);
+                }
+            }
         }
 
         output.push_back(feature.get());

@@ -248,6 +248,9 @@ GroundCoverFeatureGenerator::initialize()
 void
 GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output) const
 {
+    if (key.getLOD() != _gclayer->getLOD())
+        return;
+
     osg::Vec4f landCover, mask, elev;
 
     // Populate the model, falling back on lower-LOD keys as necessary

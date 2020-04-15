@@ -343,9 +343,9 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
     // scale up the values so that [0...1/2] is below ground
     // and [1/2...1] is above ground.
     osg::Vec4 value;
-    for(unsigned t=0; t<read.t(); ++t)
+    for(int t=0; t<read.t(); ++t)
     {
-        for(unsigned s=0; s<read.s(); ++s)
+        for(int s=0; s<read.s(); ++s)
         {
             read(value, s, t);
             float h = value.a() * scale;
@@ -382,9 +382,9 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
     ImageUtils::PixelReader read(image);
 
     osg::Vec4 value;
-    for(unsigned t=0; t<read.t(); ++t)
+    for(int t=0; t<read.t(); ++t)
     {
-        for(unsigned s=0; s<read.s(); ++s)
+        for(int s=0; s<read.s(); ++s)
         {
             read(value, s, t);
             float h = zeroValue + (oneValue-zeroValue)*value.a();

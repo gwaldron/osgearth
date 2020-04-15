@@ -2385,15 +2385,15 @@ NormalMap::generateCurvatures()
     osg::Vec4f a, b;
     osg::Vec3f j, k;
 
-    for(unsigned t=0; t<_read->t(); ++t)
+    for(int t=0; t<_read->t(); ++t)
     {
-        unsigned t_prev = t > 0 ? t - 1 : t;
-        unsigned t_next = t < _read->t() - 1 ? t + 1 : t;
+        int t_prev = t > 0 ? t - 1 : t;
+        int t_next = t < _read->t() - 1 ? t + 1 : t;
 
-        for(unsigned s=0; s<_read->s(); ++s)
+        for(int s=0; s<_read->s(); ++s)
         {
-            unsigned s_prev = s > 0 ? s - 1 : s;
-            unsigned s_next = s < _read->s() - 1 ? s + 1 : s;
+            int s_prev = s > 0 ? s - 1 : s;
+            int s_next = s < _read->s() - 1 ? s + 1 : s;
 
             (*_read)(a, s_prev, t); j.set(a[0]*2-1, a[1]*2-1, a[2]*2-1);
             (*_read)(b, s_next, t); k.set(b[0]*2-1, b[1]*2-1, b[2]*2-1);

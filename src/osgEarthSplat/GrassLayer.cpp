@@ -57,6 +57,9 @@ GrassLayer::init()
 
     // custom LOD for grass
     options().lod().setDefault(19u);
+
+    // no shadow casting
+    options().castShadows().setDefault(false);
 }
 
 void

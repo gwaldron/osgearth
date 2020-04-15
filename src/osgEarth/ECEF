@@ -32,7 +32,7 @@ namespace osgEarth { namespace Util
          * Transforms a point into ECEF coordinates, localizes it with
          * the provided world2local matrix, and puts the result in "output".
          */
-        static void transformAndLocalize(
+        static bool transformAndLocalize(
             const osg::Vec3d&       input,
             const SpatialReference* inputSRS,
             osg::Vec3d&             output,
@@ -43,7 +43,7 @@ namespace osgEarth { namespace Util
          * Transforms the points in "input" to ECEF coordinates, localizes them with
          * the provided world2local matrix, and puts the result in "output".
          */
-        static void transformAndLocalize(
+        static bool transformAndLocalize(
             const std::vector<osg::Vec3d>& input,
             const SpatialReference*        inputSRS,
             osg::Vec3Array*                output,
@@ -56,7 +56,7 @@ namespace osgEarth { namespace Util
          * and the resulting localized normals in "out_normals" (if "out_normals" is
          * non-NULL).
          */
-        static void transformAndLocalize(
+        static bool transformAndLocalize(
             const std::vector<osg::Vec3d>& input,
             const SpatialReference*        inputSRS,
             osg::Vec3Array*                out_verts,
@@ -68,7 +68,7 @@ namespace osgEarth { namespace Util
          * Transforms a point to ECEF, and at the same time returns a quaternion that
          * rotates the point into the local tangent place at that point.
          */
-        static void transformAndGetRotationMatrix(
+        static bool transformAndGetRotationMatrix(
             const osg::Vec3d&       input,
             const SpatialReference* inputSRS,
             osg::Vec3d&             out_ecef_point,

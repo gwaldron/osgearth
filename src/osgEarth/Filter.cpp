@@ -268,7 +268,7 @@ FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
                                            const osg::Matrixd&            world2local,
                                            bool                           toECEF )
 {
-    if ( toECEF )
+    if ( toECEF && inputSRS && outputSRS )
     {
         ECEF::transformAndLocalize( input, inputSRS, output, outputSRS, world2local );
     }

@@ -42,9 +42,6 @@ using namespace osgEarth::Drivers;
  */
 class JoinFeatureFilter : public FeatureFilter, public JoinFeatureFilterOptions
 {
-private:
-    LayerReference<FeatureSource> _featureSource;
-
 public:
     JoinFeatureFilter(const ConfigOptions& options)
         : FeatureFilter(), JoinFeatureFilterOptions(options)
@@ -87,7 +84,7 @@ public: // FeatureFilter
 
     FilterContext push(FeatureList& input, FilterContext& context)
     {
-        if (_featureSource.getLayer())
+        if (featureSource().getLayer())
         {
             // Get any features that intersect this query.
             FeatureList boundaries;
@@ -108,7 +105,7 @@ public: // FeatureFilter
                     {
                         osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
                        
-                        if (_featureSource.getLayer()->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
+                        if (featureSource().getLayer()->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                         {
                             for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                             {

@@ -49,6 +49,7 @@ int usage(char** argv)
         << "\n    --max-level [int]                   : maximum level of detail"
         << "\n    --osg-options [OSG options string]  : options to pass to OSG readers/writers"
         << "\n    --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy"
+        << "\n    --no-overwrite                      : skip tiles that already exist in the destination"
         << std::endl;
 
     return 0;

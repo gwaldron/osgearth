@@ -193,7 +193,6 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 
             // build the geometry:
             tileAndBuildPolygon(part, featureSRS, outputSRS, makeECEF, true, osgGeom.get(), w2l);
-            //buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
             if (allPoints && allPoints->size() > 0)
@@ -942,6 +941,9 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                                          osg::Geometry*          osgGeom,
                                          const osg::Matrixd      &world2local)
 {
+    if (ring==NULL || featureSRS==NULL || outputSRS==NULL)
+        return;
+
 #define MAX_POINTS_PER_CROP_TILE 1024
 //#define TARGET_TILE_SIZE_EXTENT_DEGREES 5
 

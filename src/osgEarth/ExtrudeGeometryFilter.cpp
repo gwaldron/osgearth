@@ -210,9 +210,9 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                                       Structure&              structure,
                                       FilterContext&          cx )
 {
-    bool  makeECEF                 = false;
-    const SpatialReference* srs    = 0L;
-    const SpatialReference* mapSRS = 0L;
+    bool makeECEF = false;
+    osg::ref_ptr<const SpatialReference> srs;
+    osg::ref_ptr<const SpatialReference> mapSRS;
 
     if ( cx.isGeoreferenced() )
     {
@@ -260,7 +260,11 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
 
     osg::Vec2d c = input->getBounds().center2d();
     osg::Vec3d centroid(c.x(), c.y(), minLoc.z());
-    transformAndLocalize(centroid, srs, structure.baseCentroid, mapSRS, _world2local, makeECEF );
+
+    if (srs.valid() && mapSRS.valid())
+    {
+        transformAndLocalize(centroid, srs.get(), structure.baseCentroid, mapSRS.get(), _world2local, makeECEF );
+    }
 
     // apply the height offsets
     //height    -= heightOffset;
@@ -287,7 +291,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             roofProjSRS = SpatialReference::create("spherical-mercator");
             if ( roofProjSRS.valid() )
             {
-                roofBounds.transform( srs, roofProjSRS.get() );
+                roofBounds.transform( srs.get(), roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transform( projectedInput->asVector(), roofProjSRS.get() );
                 roofRotation = getApparentRotation( projectedInput.get() );
@@ -386,10 +390,10 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             }
 
             // transform into target SRS.
-            if (srs)
+            if (srs.valid() && mapSRS.valid())
             {
-                transformAndLocalize( corner->base, srs, corner->base, mapSRS, _world2local, makeECEF );
-                transformAndLocalize( corner->roof, srs, corner->roof, mapSRS, _world2local, makeECEF );
+                transformAndLocalize( corner->base, srs.get(), corner->base, mapSRS.get(), _world2local, makeECEF );
+                transformAndLocalize( corner->roof, srs.get(), corner->roof, mapSRS.get(), _world2local, makeECEF );
             }
 
             // cache the length for later use.

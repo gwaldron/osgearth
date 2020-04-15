@@ -132,15 +132,18 @@ namespace osgEarth
         {
             conf.get(tag, _externalLayerName);
 
-            for (ConfigSet::const_iterator i = conf.children().begin();
-                i != conf.children().end();
-                ++i)
+            if (!_externalLayerName.isSet())
             {
-                osg::ref_ptr<Layer> layer = Layer::create(*i);
-                if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                for (ConfigSet::const_iterator i = conf.children().begin();
+                    i != conf.children().end();
+                    ++i)
                 {
-                    _embeddedOptions = TypedOptions(*i);
-                    break;
+                    osg::ref_ptr<Layer> layer = Layer::create(*i);
+                    if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                    {
+                        _embeddedOptions = TypedOptions(*i);
+                        break;
+                    }
                 }
             }
         }

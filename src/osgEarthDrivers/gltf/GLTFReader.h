@@ -36,6 +36,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/InstanceBuilder>
 
 
 #undef LC
@@ -208,7 +209,12 @@ public:
             // todo transformation
             if (node.mesh >= 0)
             {
-                mt->addChild(makeMesh(model.meshes[node.mesh]));
+                osg::Group* meshNode = makeMesh(model.meshes[node.mesh]);
+                mt->addChild(meshNode);
+                if (node.extensions.find("EXT_mesh_gpu_instancing") != node.extensions.end())
+                {
+                    makeInstancedMeshNode(node, meshNode);
+                }
             }
 
             // Load any children.
@@ -300,7 +306,7 @@ public:
             return tex.release();
         }
 
-        osg::Node* makeMesh(const tinygltf::Mesh& mesh) const
+        osg::Group* makeMesh(const tinygltf::Mesh& mesh) const
         {
             osg::Group *group = new osg::Group;
 
@@ -822,8 +828,60 @@ public:
                 arrays.push_back(osgArray);
             }
         }
-    };
 
+        static bool null(const tinygltf::Value& val)
+        {
+            return val.Type() == tinygltf::NULL_TYPE;
+        }
+
+        void makeInstancedMeshNode(const tinygltf::Node& node, osg::Group* meshGroup) const
+        {
+            auto itr = node.extensions.find("EXT_mesh_gpu_instancing");
+            if (itr == node.extensions.end() || !itr->second.IsObject())
+                return;
+            auto& extObj = itr->second;
+            auto& attributes = extObj.Get("attributes");
+            if (null(attributes))
+                return;
+            osgEarth::InstanceBuilder builder;
+            auto& translations = attributes.Get("TRANSLATION");
+            auto& rotations = attributes.Get("ROTATION");
+            auto& scales = attributes.Get("SCALE");
+            if (!null(translations) && translations.IsInt())
+            {
+                osg::Vec3Array* array = dynamic_cast<osg::Vec3Array*>(arrays[translations.Get<int>()].get());
+                if (array)
+                {
+                    builder.setPositions(array);
+                }
+            }
+            if (!null(rotations) && rotations.IsInt())
+            {
+                osg::Vec4Array* array = dynamic_cast<osg::Vec4Array*>(arrays[rotations.Get<int>()].get());
+                if (array)
+                {
+                    builder.setRotations(array);
+                }
+            }
+            if (!null(scales) && scales.IsInt())
+            {
+                osg::Vec3Array* array = dynamic_cast<osg::Vec3Array*>(arrays[scales.Get<int>()].get());
+                if (array)
+                {
+                    builder.setScales(array);
+                }
+            }
+            for (unsigned int i = 0; i < meshGroup->getNumChildren(); ++i)
+            {
+                osg::Geometry* geom = dynamic_cast<osg::Geometry*>(meshGroup->getChild(i));
+                if (geom)
+                {
+                    builder.installInstancing(geom);
+                }
+            }
+
+        }
+    };
 };
 
 #endif // OSGEARTH_GLTF_READER_H

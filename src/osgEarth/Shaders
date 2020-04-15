@@ -35,6 +35,7 @@ namespace osgEarth { namespace Util
         std::string ClipPlane;
         std::string DepthOffset;
         std::string Draping;
+        std::string DrawInstancedAttribute;
         std::string GPUClamping, GPUClampingLib;
         std::string Instancing;
         std::string LineDrawable;

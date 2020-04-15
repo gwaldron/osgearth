@@ -22,6 +22,10 @@ namespace osgEarth { namespace Util
         Draping = "Draping.glsl";
         _sources[Draping] = "@Draping.glsl@";
 
+        // DrawInstanced with attributes
+        DrawInstancedAttribute = "DrawInstancedAttribute.glsl";
+        _sources[DrawInstancedAttribute] = "@DrawInstancedAttribute.glsl@";
+
         // GPU Clamping
         GPUClamping = "GPUClamping.glsl";
         _sources[GPUClamping] = "@GPUClamping.glsl@";

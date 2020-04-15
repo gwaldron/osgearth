@@ -178,6 +178,7 @@ namespace osgEarth
         bool getOrCreateHeightField(
             const Map*                      map,
             const ElevationLayerVector&     layers,
+            int                             revision,
             const TileKey&                  key,
             ElevationSamplePolicy           samplePolicy,
             RasterInterpolation             interpolation,

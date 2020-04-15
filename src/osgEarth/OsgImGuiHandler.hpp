@@ -1,8 +1,6 @@
 #pragma once
 
-#include "GL/glew.h"
-#include "imgui.h"
-
+#include <osgEarth/ImGuiUtils>
 #include <osgViewer/ViewerEventHandlers>
 
 namespace osg {
@@ -15,13 +13,16 @@ public:
     OsgImGuiHandler();
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
-
+    class RealizeOperation : public GlewInitOperation
+    {
+        void operator()(osg::Object* object) override;
+    };
 protected:
     // Put your ImGui code inside this function
     virtual void drawUi() = 0;
-
+    friend class RealizeOperation;
 private:
-    void init();
+    static void init();
 
     void setCameraCallbacks(osg::Camera* camera);
 

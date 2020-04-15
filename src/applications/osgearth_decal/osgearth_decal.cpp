@@ -84,6 +84,10 @@ struct App
     {
         _mapNode = mapNode;
 
+        // read from the visible image:
+        ImageUtils::PixelReader read(_image.get());
+        osg::Vec4 value;
+
         // Only activate the land cover decal if there's a dictionary in the map:
         LandCoverDictionary* dic = mapNode->getMap()->getLayer<LandCoverDictionary>();
         if (dic)
@@ -92,16 +96,12 @@ struct App
             const LandCoverClass* lc_class = dic->getClassByName("rock");
             if (lc_class)
             {
-                // read from the visible image:
-                ImageUtils::PixelReader read(_image.get());
-
                 // write to the landcover raster:
                 _landCover = LandCover::createImage(_image->s(), _image->t());
                 ImageUtils::PixelWriter write(_landCover.get());
 
                 const float lc_code = (float)lc_class->getValue();
 
-                osg::Vec4 value;
                 for (unsigned t = 0; t < read.t(); ++t)
                 {
                     for (unsigned s = 0; s < read.s(); ++s)
@@ -118,6 +118,7 @@ struct App
         _imageLayer = new DecalImageLayer();
         _imageLayer->setName("Image Decals");
         _imageLayer->setMinLevel(_minLevel);
+        _imageLayer->setOpacity(0.25f);
         mapNode->getMap()->addLayer(_imageLayer.get());
         _layersToRefresh.push_back(_imageLayer.get());
 
@@ -146,11 +147,21 @@ struct App
 
         OE_NOTICE << "Dropping bomb #" << id << std::endl;
 
-        _imageLayer->addDecal(id, extent, _image.get());
-        _elevLayer->addDecal(id, extent, _image.get(), -_size / 20.0f);
+        if (_imageLayer.valid())
+        {
+            _imageLayer->addDecal(id, extent, _image.get());
+        }
+
+        if (_elevLayer.valid())
+        {
+            //_elevLayer->addDecal(id, extent, _image.get(), -_size / 20.0f);
+            _elevLayer->addDecal(id, extent, _image.get(), 0.0f, -_size/20.0f);
+        }
 
         if (_landCoverLayer.valid())
+        {
             _landCoverLayer->addDecal(id, extent, _landCover.get());
+        }
 
         // Tell the terrain engine to regenerate the effected area.
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
@@ -165,17 +176,27 @@ struct App
 
             OE_NOTICE << "Undo-ing bomb #" << id << std::endl;
 
-            GeoExtent extent = _imageLayer->getDecalExtent(id);
-            if (extent.isValid())
+            GeoExtent extent;
+
+            if (_imageLayer.valid())
             {
+                extent.expandToInclude(_imageLayer->getDecalExtent(id));
                 _imageLayer->removeDecal(id);
-                _elevLayer->removeDecal(id);
-
-                if (_landCoverLayer.valid())
-                    _landCoverLayer->removeDecal(id);
-
-                _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
             }
+
+            if (_elevLayer.valid())
+            {
+                extent.expandToInclude(_elevLayer->getDecalExtent(id));
+                _elevLayer->removeDecal(id);
+            }
+
+            if (_landCoverLayer.valid())
+            {
+                extent.expandToInclude(_landCoverLayer->getDecalExtent(id));
+                _landCoverLayer->removeDecal(id);
+            }
+
+            _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
         }
     }
 
@@ -183,10 +204,21 @@ struct App
     {
         OE_NOTICE << "Starting over" << std::endl;
 
-        _imageLayer->clearDecals();
-        _elevLayer->clearDecals();
+        if (_imageLayer.valid())
+        {
+            _imageLayer->clearDecals();
+        }
+
+        if (_elevLayer.valid())
+        {
+            _elevLayer->clearDecals();
+        }
+
         if (_landCoverLayer.valid())
+        {
             _landCoverLayer->clearDecals();
+        }
+
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
     }
 };
@@ -203,7 +235,11 @@ struct ClickToDecal : public osgGA::GUIEventHandler
         if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'd')
         {
             osg::Vec3d world;
-            _app._mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world);
+            if (!_app._mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+            {
+                OE_WARN << LC << "No intersection under mouse." << std::endl;
+                return false;
+            }
 
             GeoPoint mapPoint;
             mapPoint.fromWorld(_app._mapNode->getMapSRS(), world);

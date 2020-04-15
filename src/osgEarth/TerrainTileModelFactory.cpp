@@ -411,7 +411,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     bool needElevation = manifest.includesElevation();
     ElevationLayerVector layers;
     map->getLayers(layers);
-    int combinedRevision = 0;
+    int combinedRevision = map->getDataModelRevision();
 
     if (!manifest.empty())
     {
@@ -436,7 +436,9 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     osg::ref_ptr<osg::HeightField> mainHF;
     osg::ref_ptr<NormalMap> normalMap;
 
-    bool hfOK = getOrCreateHeightField(map, layers, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
+    bool hfOK = 
+        getOrCreateHeightField(map, layers, combinedRevision, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) 
+        && mainHF.valid();
 
     if (hfOK == false && key.getLOD() == _options.firstLOD().get())
     {
@@ -503,6 +505,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 bool
 TerrainTileModelFactory::getOrCreateHeightField(const Map*                      map,
                                                 const ElevationLayerVector&     layers,
+                                                int                             revision,
                                                 const TileKey&                  key,
                                                 ElevationSamplePolicy           samplePolicy,
                                                 RasterInterpolation             interpolation,
@@ -512,21 +515,11 @@ TerrainTileModelFactory::getOrCreateHeightField(const Map*                      
                                                 ProgressCallback*               progress)
 {
     OE_PROFILING_ZONE;
-
-    // gather the combined revision (additive is fine)
-    //int combinedLayerRevision = 0;
-    //for(ElevationLayerVector::const_iterator i = layers.begin();
-    //    i != layers.end();
-    //    ++i)
-    //{
-    //    // need layer UID too? gw
-    //    combinedLayerRevision += i->get()->getRevision();
-    //}
   
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
-    cachekey._revision     = (int)map->getDataModelRevision(); // + combinedLayerRevision;
+    cachekey._revision     = revision;
     cachekey._samplePolicy = samplePolicy;
 
     if (progress)
@@ -644,7 +637,7 @@ TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
     // Note. We only support one land cover layer...
     LandCoverLayerVector layers;
     map->getLayers(layers);
-    int combinedRevision = 0;
+    int combinedRevision = map->getDataModelRevision();
 
     // any land cover layer means using them all:
     bool needLandCover = manifest.includesLandCover();
@@ -685,7 +678,7 @@ TerrainTileModelFactory::addLandCover(TerrainTileModel*            model,
         tex->setName(model->getKey().str());
 
         landCoverModel = new TerrainTileLandCoverModel();
-        landCoverModel->setRevision(layers.front()->getRevision());
+        landCoverModel->setRevision(combinedRevision);
 
         landCoverModel->setTexture(tex.get());
 

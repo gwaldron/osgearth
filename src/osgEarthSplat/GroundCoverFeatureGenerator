@@ -56,10 +56,10 @@ namespace osgEarth { namespace Splat
         //! see if there are any setup errors before calling getFeatures.
         const Status& getStatus() const;
 
-        //! Populate the output with groundcover positions
-        //! corresponding to the tile key.
+        //! Populate the output with groundcover positions corresponding to the tile key.
+        //! The key's LOD should match the GroundCoverLayer's LOD; otherwise no features
+        //! will result.
         void getFeatures(const TileKey& key, FeatureList& output) const;
-        //osg::ref_ptr<FeatureCursor> getFeatures(const TileKey& key) const;
         
     private:
         Status _status;

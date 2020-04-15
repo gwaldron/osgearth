@@ -64,7 +64,7 @@ protected:
 
     osg::ref_ptr< MapNode > _mapNode;
     osg::ref_ptr<EarthManipulator> _earthManip;
-    osg::ref_ptr<osgViewer::View> _view;
+    osgViewer::View* _view;
     LayersGUI _layers;
     SearchGUI _search;        
 };
@@ -111,7 +111,7 @@ main(int argc, char** argv)
     viewer.getCamera()->setNearFarRatio(0.0001);
 
     // Setup the viewer for imgui
-    viewer.setRealizeOperation(new GlewInitOperation);
+    viewer.setRealizeOperation(new ImGuiDemo::RealizeOperation);
 
     viewer.realize();
 

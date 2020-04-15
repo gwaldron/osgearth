@@ -58,13 +58,6 @@ uniform mat4 osg_ViewMatrix;
 
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
-                        // VRV: use a custom LOD scale uniform
-#pragma import_defines(VRV_OSG_LOD_SCALE)
-#ifdef VRV_OSG_LOD_SCALE
-uniform float VRV_OSG_LOD_SCALE;
-#else
-#define VRV_OSG_LOD_SCALE oe_Camera.z
-#endif
 
                         // Output grass texture coords to the FS
 out vec2 oe_GroundCover_texCoord;
@@ -184,7 +177,7 @@ void oe_Grass_VS(inout vec4 vertex)
     vertex.xyz += oe_UpVectorView * oe_terrain_getElevation(oe_layer_tilec.st);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
-    float maxRange = oe_GroundCover_maxDistance / VRV_OSG_LOD_SCALE;
+    float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
     float zv = vertex.z;
     float nRange = clamp(-zv/maxRange, 0.0, 1.0);
 
@@ -266,7 +259,7 @@ void oe_Grass_VS(inout vec4 vertex)
     vp_Color = vec4(1,1,1,falloff);
 
     // darken as the fill level decreases
-    vp_Color.rgb *= 0.75+( decel(fillEdgeFactor)*(1.0-0.75) );
+    vp_Color.rgb *= 0.5+( decel(fillEdgeFactor)*(1.0-0.5) );
 
     // texture coordinate:
     float row = float(which/4);

@@ -59,7 +59,10 @@ namespace osgEarth { namespace Splat
         //! Populate the output with groundcover positions corresponding to the tile key.
         //! The key's LOD should match the GroundCoverLayer's LOD; otherwise no features
         //! will result.
-        void getFeatures(const TileKey& key, FeatureList& output) const;
+        Status getFeatures(const TileKey& key, FeatureList& output) const;
+
+        //! Populate the output with groundcover positions within the extent.
+        Status getFeatures(const GeoExtent& extent, FeatureList& output) const;
         
     private:
         Status _status;

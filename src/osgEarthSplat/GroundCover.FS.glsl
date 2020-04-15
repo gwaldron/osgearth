@@ -5,6 +5,7 @@
 
 #pragma import_defines(OE_GROUNDCOVER_COLOR_SAMPLER)
 #pragma import_defines(OE_GROUNDCOVER_COLOR_MATRIX)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
 uniform sampler2D OE_GROUNDCOVER_COLOR_SAMPLER ;
 uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
@@ -32,6 +33,12 @@ void oe_GroundCover_FS(inout vec4 color)
         // modulate the texture
         color *= texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex));
     
+#ifdef OE_IS_SHADOW_CAMERA
+        if (color.a < oe_GroundCover_maxAlpha)
+        {
+            discard;
+        }
+#else
         if (oe_GroundCover_A2C == 1)
         {
             // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
@@ -42,6 +49,7 @@ void oe_GroundCover_FS(inout vec4 color)
         {
             discard;
         }
+#endif
     }
     else
     {

@@ -95,7 +95,27 @@ namespace osgEarth { namespace Util
         osg::Vec3d next;
     };
 
-    typedef std::map<osg::Vec3d, PointEntry> PointMap;
+    // Map that ignores elevation component of points
+    struct CompPoints
+    {
+        bool operator()(const osg::Vec3d& lhs, const osg::Vec3d& rhs) const
+        {
+            if (lhs.x() < rhs.x())
+            {
+                return true;
+            }
+            else if (lhs.x() > rhs.x())
+            {
+                return false;
+            }
+            else
+            {
+                return lhs.y() < rhs.y();
+            }
+        }
+    };
+
+    typedef std::map<osg::Vec3d, PointEntry, CompPoints> PointMap;
     inline PointEntry& getPoint(PointMap& map, const osg::Vec3d& coord)
     {
         return map[coord];

@@ -30,7 +30,7 @@
         <format>pbf</format>
         <filters>
             <script language="javascript">
-                <![CDATA[ (feature.properties.power === "tower" || feature.properties.power === "line"); ]]>
+                <![CDATA[ (feature.properties.power === "line"); ]]>
             </script>
         </filters>
     </TFSFeatures>

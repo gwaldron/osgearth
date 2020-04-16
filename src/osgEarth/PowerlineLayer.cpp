@@ -543,7 +543,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     osg::Vec3d worldAttach = *attachment * headingMat * orientations[i] + worldPts[i];
                     cablePoints.push_back(worldAttach);
                 }
-                const bool catenary = true;
+                const bool catenary = false;
                 std::vector<osg::Vec3d> *cableSource = 0L;
                 std::vector<osg::Vec3d> catenaryPoints;
                 if (catenary)

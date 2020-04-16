@@ -30,7 +30,7 @@
         <format>pbf</format>
         <filters>
             <script language="javascript">
-                <![CDATA[ (feature.properties.power === "tower" || feature.properties.power === "line"); ]]>
+                <![CDATA[ (feature.properties.power === "line"); ]]>
             </script>
         </filters>
     </TFSFeatures>
@@ -60,6 +60,15 @@
             <height>155</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
             <range>500</range>
+        </viewpoint>
+        <viewpoint name="problematic">
+          <heading>-52.6766</heading>
+          <pitch>-16.6442</pitch>
+          <range>123.522m</range>
+          <long>-0.6434920611453753</long>
+          <lat>44.89152565710955</lat>
+          <height>53.01278693787754</height>
+          <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
 
     </viewpoints>

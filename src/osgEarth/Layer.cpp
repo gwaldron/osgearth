@@ -187,9 +187,10 @@ Layer::getCacheID() const
 
         unsigned hash = osgEarth::hashString(hashConf.toJSON());
         std::stringstream buf;
-        buf << std::hex << std::setw(8) << std::setfill('0') << hash;
         const char hyphen = '-';
-        if (getName().empty() == false) buf << hyphen << toLegalFileName(getName(), false, &hyphen);
+        if (getName().empty() == false)
+            buf << toLegalFileName(getName(), false, &hyphen) << hyphen;
+        buf << std::hex << std::setw(8) << std::setfill('0') << hash;
         return buf.str();
     }
 }

@@ -391,6 +391,7 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
     {
         Xaxis = osg::Vec3d(p2local.x(), p2local.y(), 0.0);
     }
+    // Horizontal distance between points
     const double d = Xaxis.normalize();
     osg::Vec3d Yaxis = osg::Vec3d(0.0, 0.0, 1.0) ^ Xaxis;
     osg::Matrixd FrameCat;
@@ -433,7 +434,7 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
         cablePts.push_back(P1);
     }
     double x = begin;
-    for (int i = 1; i < numSteps; ++i, x += inc)
+    for (int i = 1; i <= numSteps; ++i, x += inc)
     {
         double z = a * cosh((x + x1) / a) + C;
         cablePts.push_back(osg::Vec3d(x, 0.0, z));

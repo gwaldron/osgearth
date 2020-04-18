@@ -331,13 +331,6 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         return 0L;
     }
 
-    // open the map node:
-    if (!mapNode->open())
-    {
-        OE_WARN << LC << "Failed to open MapNode" << std::endl;
-        return 0L;
-    }
-
     // collect the views
     osgViewer::Viewer::Views views;
     if (viewer)
@@ -359,6 +352,13 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     osg::Group* root = new osg::Group();
 
     root->addChild( node );
+    
+    // open the map node:
+    if (!mapNode->open())
+    {
+        OE_WARN << LC << "Failed to open MapNode" << std::endl;
+        return 0L;
+    }
 
     // parses common cmdline arguments and apply to the first view:
     if ( !views.empty() )

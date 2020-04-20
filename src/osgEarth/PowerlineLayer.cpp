@@ -62,6 +62,7 @@ void PowerlineLayer::ModelOptions::fromConfig(const Config& conf)
     {
         uri() = conf.child("uri").value();
     }
+    conf.get("max_sag", maxSag());
 }
 
 Config PowerlineLayer::ModelOptions::getConfig() const
@@ -73,6 +74,7 @@ Config PowerlineLayer::ModelOptions::getConfig() const
         conf.set("attachment_points", GeometryUtils::geometryToWKT(attachGeom.get()));
     }
     conf.set("uri", uri());
+    conf.set("max_sag", maxSag());
     return conf;
 }
 
@@ -146,6 +148,7 @@ private:
     std::string _modelName;
     osg::ref_ptr<StyleSheet> _styles;
     bool _point_features;
+    float _maxSag;
 };
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
@@ -153,7 +156,8 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
       _lineSourceLayer(options.lineSourceLayerName().get()),
       _lineSource(options.lineSourceEmbeddedOptions().get()),
       _styles(styles),
-      _point_features(true)
+      _point_features(true),
+      _maxSag(6.0)
 {
     if (options.towerModels().empty())
         return;
@@ -163,6 +167,10 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
               std::back_inserter(_attachments));
     _modelName = modelOption.uri().get();
     _point_features = options.point_features().get();
+    if (modelOption.maxSag().isSet())
+    {
+        _maxSag = modelOption.maxSag().get();
+    }
 }
 
 FeatureNodeFactory*
@@ -427,6 +435,7 @@ namespace
 
 
 void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation, double slack,
+                  double maxSag,
                   std::vector<osg::Vec3d>& result, float tessellationSize)
 {
     // Create a frame centered at p1 with orientation normal to
@@ -476,13 +485,12 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
     double straightDist = p2local.length();
     CatenaryFunc func = CatenaryFunc::solveIt(straightDist * slack, d, h);
 
-    const double maxDrop = 5.0;
     double xMin = -func.x1;
     double yMin = func(xMin);
-    if (0.0 < xMin && yMin < -maxDrop)
+    if (0.0 < xMin && yMin < -maxSag)
     {
         // Cable droops too much, so try a more expensive strategy
-        MinCatHeight minimum(d, h, -maxDrop);
+        MinCatHeight minimum(d, h, -maxSag);
         // No downside in choosing a very low lower bound
         double newGuess = ((slack - 1.0) * .01 + 1.0) * straightDist;
         // centimeter tolerence is fine
@@ -672,7 +680,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     {
                         for (int i = 0; i < cablePoints.size() -1; ++i)
                         {
-                            makeCatenary(cablePoints[i], cablePoints[i + 1], orientations[i], 1.002,
+                            makeCatenary(cablePoints[i], cablePoints[i + 1], orientations[i], 1.002, _maxSag,
                                          catenaryPoints,
                                          cableStyle.get<LineSymbol>()->tessellationSize()->as(Units::METERS));
                         }

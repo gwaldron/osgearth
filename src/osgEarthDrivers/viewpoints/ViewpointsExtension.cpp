@@ -52,7 +52,7 @@ namespace
     struct ViewpointsHandler : public osgGA::GUIEventHandler
     {
         ViewpointsHandler(const std::vector<Viewpoint>& viewpoints, float t)
-            : _viewpoints( viewpoints ), _transitionTime(t), _autoRunDelay(0.0f), _autoRunIndex(0)
+            : _viewpoints( viewpoints ), _transitionTime(t), _autoRunDelay(0.0f), _autoRunIndex(0), _count(0), _homeIndex(-1)
         {
             _autoRunStartWaitTime = osg::Timer::instance()->tick();
         }
@@ -111,6 +111,19 @@ namespace
                         _autoRunStartWaitTime = now;
                     }
                 }
+
+                else if (_count == 0 && _homeIndex >= 0)
+                {
+                    if (_homeIndex < _viewpoints.size())
+                    {
+                        EarthManipulator* manip = getManip(aa);
+                        if (manip)
+                        {
+                            flyToViewpoint(manip, _viewpoints[_homeIndex], _transitionTime);
+                            ++_count;
+                        }
+                    }
+                }
             }
 
             return false;
@@ -133,6 +146,8 @@ namespace
         float                  _autoRunDelay;
         osg::Timer_t           _autoRunStartWaitTime;
         int                    _autoRunIndex;
+        int                    _homeIndex;
+        int                    _count;
     };
 
 
@@ -198,6 +213,7 @@ ConfigOptions( options )
     // backwards-compatibility: read viewpoints at the top level???
     const Config& viewpointsConf = options.getConfig();
     float t = viewpointsConf.value("time", VP_MAX_DURATION);
+    int home = viewpointsConf.value("home", (int)-1);
 
     std::vector<Viewpoint> viewpoints;
 
@@ -213,13 +229,15 @@ ConfigOptions( options )
     OE_INFO << LC << "Read " << viewpoints.size() << " viewpoints\n";
 
     ViewpointsHandler* handler = new ViewpointsHandler(viewpoints, t);
-    _handler = handler;
+    handler->_homeIndex = home;
 
     if (viewpointsConf.hasValue("autorun"))
     {
         float t = osgEarth::as<float>(viewpointsConf.value("autorun"), VP_DEFAULT_DELAY_TIME);
         handler->setAutoRunDelayTime(t);
     }
+
+    _handler = handler;
 }
 
 ViewpointsExtension::~ViewpointsExtension()

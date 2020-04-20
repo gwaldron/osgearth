@@ -264,7 +264,6 @@ FeatureModelLayer::create()
     {
         if (getFeatureSource() && getStyleSheet() && _session.valid())
         {
-            // connect the session to the features:
             _session->setFeatureSource(getFeatureSource());
 
             // group that will build all the feature geometry:

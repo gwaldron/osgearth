@@ -29,6 +29,7 @@
 #include <osgEarth/FadeEffect>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
+#include <osgEarth/LayerReference>
 #include <osg/Node>
 
 namespace osgEarth
@@ -83,6 +84,9 @@ namespace osgEarth
         /** Debug: whether to enable a session-wide resource cache (default=true) */
         optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
         const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
+
+        /** Options feature filters */
+        OE_OPTION_VECTOR(ConfigOptions, filters);
 
     public:
         FeatureModelOptions(const ConfigOptions& co =ConfigOptions());

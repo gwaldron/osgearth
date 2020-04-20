@@ -212,6 +212,9 @@ namespace osgEarth { namespace Util
         void runPostMergeOperations(osg::Node* node);
         void applyRenderSymbology(const Style& style, osg::Node* node);
         bool createOrUpdateNode(FeatureCursor*, const Style&, FilterContext&, const osgDB::Options*, osg::ref_ptr<osg::Node>& output, const Query& query);
+
+        FeatureCursor* createCursor(FeatureSource*, FilterContext&, const Query&, ProgressCallback*) const;
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
     };
 } }
 

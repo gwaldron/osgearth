@@ -76,6 +76,15 @@ namespace osgEarth { namespace Util
     class FeatureFilterChain : public osg::Referenced,
                                public osg::MixinVector<osg::ref_ptr<FeatureFilter> >
     {
+    public:
+        static FeatureFilterChain* create(
+            const std::vector<ConfigOptions>& filters,
+            const osgDB::Options* readOptions);
+
+        const Status& getStatus() const { return _status; }
+
+    private:
+        Status _status;
     };
 
     /**

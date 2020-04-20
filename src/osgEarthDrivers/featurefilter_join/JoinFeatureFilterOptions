@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth { namespace Drivers
 {

@@ -150,6 +150,16 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         ras.render(ren, value);
         ras.reset();
     }
+
+    FeatureCursor* createCursor(FeatureSource* fs, FeatureFilterChain* chain, FilterContext& cx, const Query& query, ProgressCallback* progress)
+    {
+        FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
+        if (chain)
+        {
+            cursor = new FilteredFeatureCursor(cursor, chain, cx);
+        }
+        return cursor;
+    }
 }};
 
 //........................................................................
@@ -161,6 +171,15 @@ FeatureImageLayer::Options::getConfig() const
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
     conf.set("gamma", gamma());
+
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for(unsigned i=0; i<filters().size(); ++i)
+            temp.add( filters()[i].getConfig() );
+        conf.set( "filters", temp );
+    }
+
     return conf;
 }
 
@@ -168,9 +187,14 @@ void
 FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
     gamma().init(1.3);
+
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
     conf.get("gamma", gamma());
+
+    const Config& filtersConf = conf.child("filters");
+    for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back( ConfigOptions(*i) );
 }
 
 //........................................................................
@@ -204,6 +228,8 @@ FeatureImageLayer::openImplementation()
     Status ssStatus = options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
+
+    _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
     return Status::NoError;
 }
@@ -690,7 +716,7 @@ FeatureImageRenderer::render(const TileKey& key,
     if (features->hasEmbeddedStyles() )
     {
         // Each feature has its own embedded style data, so use that:
-        osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(defaultQuery, progress);
+        osg::ref_ptr<FeatureCursor> cursor = createCursor(features, _filterChain.get(), FilterContext(), defaultQuery, progress); //features->createFeatureCursor(defaultQuery, progress);
         while( cursor.valid() && cursor->hasMore() )
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -847,12 +873,14 @@ FeatureImageRenderer::getFeatures(Session* session,
             query.bounds().isSet() ? query.bounds()->unionWith( queryExtent.bounds() ) :
             queryExtent.bounds();
 
+        FilterContext context(session, session->getFeatureSource()->getFeatureProfile(), queryExtent);
+
         // now copy the resulting feature set into a list, converting the data
         // types along the way if a geometry override is in place:
         while (features.empty())
         {
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(localQuery, progress);
+            osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress); //session->getFeatureSource()->createFeatureCursor(localQuery, progress);
 
             while( cursor.valid() && cursor->hasMore() )
             {

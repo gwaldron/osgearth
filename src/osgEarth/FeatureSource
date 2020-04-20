@@ -24,7 +24,6 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Query>
 #include <osgEarth/Layer>
-#include <osgEarth/LayerReference>
 
 namespace osgEarth
 {
@@ -43,14 +42,10 @@ namespace osgEarth
             OE_OPTION(GeoInterpolation, geoInterp);
             OE_OPTION(std::string, fidAttribute);
             OE_OPTION(bool, rewindPolygons);
-
-            std::vector<ConfigOptions>& filters() { return _filterOptions; }
-            const std::vector<ConfigOptions>& filters() const { return _filterOptions; }
-
+            OE_OPTION_VECTOR(ConfigOptions, filters);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
-            std::vector<ConfigOptions> _filterOptions;
         };
 
     public:
@@ -81,6 +76,15 @@ namespace osgEarth
     public:
 
         /**
+         * Creates and initializes a new feature source for writing
+         */
+        virtual const Status& create(
+            const FeatureProfile* profile,
+            const FeatureSchema& schema,
+            const Geometry::Type& geometryType,
+            const osgDB::Options* readOptions);
+
+        /**
          * Creates a cursor that iterates over all the features corresponding to the
          * specified query.
          *
@@ -88,13 +92,7 @@ namespace osgEarth
          */
         virtual FeatureCursor* createFeatureCursor(
             const Query& query,
-            ProgressCallback*       progress) =0;
-
-        virtual const Status& create(
-            const FeatureProfile* profile,
-            const FeatureSchema& schema,
-            const Geometry::Type& geometryType,
-            const osgDB::Options* readOptions);
+            ProgressCallback* progress) =0;
 
         /**
          * Creates a cursor that iterates over all the features corresponding to the

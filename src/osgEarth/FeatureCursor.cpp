@@ -139,3 +139,54 @@ GeometryFeatureCursor::nextFeature()
 
     return _lastFeature.get();
 }
+
+//---------------------------------------------------------------------------
+
+FilteredFeatureCursor::FilteredFeatureCursor(FeatureCursor* cursor,
+                                             FeatureFilterChain* chain,
+                                             FilterContext& context) :
+    FeatureCursor(cursor->getProgress()),
+    _cursor(cursor),
+    _chain(chain),
+    _context(context)
+{
+    //nop
+}
+
+bool
+FilteredFeatureCursor::hasMore() const
+{
+    if (!_cache.empty())
+        return true;
+
+    const int chunkSize = 500;
+
+    while(_cursor->hasMore() && _cache.size() < chunkSize)
+    {
+        FeatureList local;
+
+        while(_cursor->hasMore() && local.size() < chunkSize)
+        {
+            local.push_back(_cursor->nextFeature());
+        }
+
+        for(FeatureFilterChain::const_iterator filter = _chain->begin();
+            filter != _chain->end();
+            ++filter)
+        {
+            _context = filter->get()->push(local, _context);
+        }
+
+        std::copy(local.begin(), local.end(), std::back_inserter(_cache));
+    }
+
+    return !_cache.empty();
+}
+
+Feature*
+FilteredFeatureCursor::nextFeature()
+{
+    Feature* feature = _cache.front().release();
+    _cache.pop_front();
+    return feature;
+}

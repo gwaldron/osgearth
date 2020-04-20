@@ -38,14 +38,14 @@ FeatureSource::Options::getConfig() const
     conf.set( "fid_attribute", fidAttribute() );
     conf.set( "rewind_polygons", rewindPolygons());
 
-    if ( !_filterOptions.empty() )
+    if (!filters().empty())
     {
-        Config filters;
-        for(unsigned i=0; i<_filterOptions.size(); ++i)
+        Config filtersConf;
+        for(unsigned i=0; i<filters().size(); ++i)
         {
-            filters.add( _filterOptions[i].getConfig() );
+            filtersConf.add( filters()[i].getConfig() );
         }
-        conf.set( "filters", filters );
+        conf.set( "filters", filtersConf );
     }
 
     return conf;
@@ -74,9 +74,9 @@ FeatureSource::Options::fromConfig(const Config& conf)
     }
 #endif
 
-    const Config& filters = conf.child("filters");
-    for(ConfigSet::const_iterator i = filters.children().begin(); i != filters.children().end(); ++i)
-        _filterOptions.push_back( *i );
+    const Config& filtersConf = conf.child("filters");
+    for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back( *i );
 }
 
 //...................................................................
@@ -115,22 +115,10 @@ FeatureSource::openImplementation()
         return parent;
 
     // Create and initialize the filters.
-    for(unsigned i=0; i<options().filters().size(); ++i)
+    _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
+    if (_filters.valid() && _filters->getStatus().isError())
     {
-        const ConfigOptions& conf = options().filters()[i];
-        FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
-        if ( filter )
-        {
-            if (_filters.valid() == false)
-                _filters = new FeatureFilterChain();
-
-            _filters->push_back( filter );
-            Status s = filter->initialize(getReadOptions());
-            if (s.isError())
-            {
-                OE_WARN << LC << "Filter problem: " << filter->getName() << " : " << s.message() << std::endl;
-            }
-        }
+        return _filters->getStatus();
     }
 
     return Status::NoError;

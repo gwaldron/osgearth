@@ -39,6 +39,12 @@ namespace osgEarth {
                                StyleSheet* styleSheet,
                                Session* session);
 
+        //! Sets an optional feature filter collection
+        void setFilterChain(FeatureFilterChain* chain);
+
+
+    public: // SimplePager
+
         virtual osg::Node* createNode(const TileKey& key, ProgressCallback* progress);
 
     private:
@@ -46,6 +52,9 @@ namespace osgEarth {
         osg::ref_ptr < FeatureSource > _features;
         osg::ref_ptr< StyleSheet > _styleSheet;
         osg::ref_ptr< Session > _session;
+        osg::ref_ptr< FeatureFilterChain > _filterChain;
+
+        FeatureCursor* createCursor(FeatureSource*, FilterContext&, const Query&, ProgressCallback*) const;
     };
 }
 

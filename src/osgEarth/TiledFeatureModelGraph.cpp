@@ -36,6 +36,23 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(FeatureSource* features,
     _session->setResourceCache(new ResourceCache());
 }
 
+void
+TiledFeatureModelGraph::setFilterChain(FeatureFilterChain* chain)
+{
+    _filterChain = chain;
+}
+
+FeatureCursor*
+TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
+{
+    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
+    if (_filterChain.valid())
+    {
+        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
+    }
+    return cursor;
+}
+
 osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
 {
     // Get features for this key

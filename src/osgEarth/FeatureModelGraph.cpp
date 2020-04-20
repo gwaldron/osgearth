@@ -488,6 +488,9 @@ FeatureModelGraph::open()
         _usableFeatureExtent.expand(-0.001, -0.001);
     }
 
+    // Create a filter chain if necessary
+    _filterChain = FeatureFilterChain::create(_options.filters(), NULL);
+
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords(_usableMapExtent);
 
@@ -1378,6 +1381,16 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     }
 }
 
+FeatureCursor*
+FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
+{
+    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
+    if (_filterChain.valid())
+    {
+        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
+    }
+    return cursor;
+}
 
 osg::Group*
 FeatureModelGraph::build(const Style&          defaultStyle,
@@ -1398,8 +1411,10 @@ FeatureModelGraph::build(const Style&          defaultStyle,
     {
         const FeatureProfile* featureProfile = source->getFeatureProfile();
 
+        FilterContext context(_session.get(), featureProfile, workingExtent, index);
+
         // each feature has its own style, so use that and ignore the style catalog.
-        osg::ref_ptr<FeatureCursor> cursor = source->createFeatureCursor(baseQuery, progress);
+        osg::ref_ptr<FeatureCursor> cursor = createCursor(source, context, baseQuery, progress);
 
         while (cursor.valid() && cursor->hasMore())
         {
@@ -1409,8 +1424,6 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                 FeatureList list;
                 list.push_back(feature);
                 osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(list);
-
-                FilterContext context(_session.get(), featureProfile, workingExtent, index);
 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
@@ -1597,14 +1610,15 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
     // get the extent of the full set of feature data:
     const GeoExtent& extent = featureProfile->getExtent();
 
-    // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(query, progress);
-    if (!cursor.valid())
-        return;
-
     // establish the working bounds and a context:
     Bounds bounds = query.bounds().isSet() ? *query.bounds() : extent.bounds();
     FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), bounds), index);
+
+    // query the feature source:
+    osg::ref_ptr<FeatureCursor> cursor = createCursor(_session->getFeatureSource(), context, query, progress);
+    if (!cursor.valid())
+        return;
+
     StringExpression styleExprCopy(styleExpr);
 
     // visit each feature and run the expression to sort it into a bin.
@@ -1743,15 +1757,16 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     // get the extent of the full set of feature data:
     const GeoExtent& extent = featureProfile->getExtent();
 
+    Bounds cellBounds =
+        query.bounds().isSet() ? *query.bounds() : extent.bounds();
+
+    FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), cellBounds), index);
+
     // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(query, progress);
+    osg::ref_ptr<FeatureCursor> cursor = createCursor(_session->getFeatureSource(), context, query, progress);
 
     if (cursor.valid() && cursor->hasMore())
     {
-        Bounds cellBounds =
-            query.bounds().isSet() ? *query.bounds() : extent.bounds();
-
-        FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), cellBounds), index);
 
         // start by culling our feature list to the working extent. By default, this is done by
         // checking feature centroids. But the user can override this to crop feature geometry to

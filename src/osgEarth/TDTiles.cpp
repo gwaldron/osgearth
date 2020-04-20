@@ -595,7 +595,11 @@ void ThreeDTileNode::computeBoundingVolume()
         bb.expandBy(world * worldToLocal);
         GeoPoint(srs, extent.west(), extent.north(), _tile->boundingVolume()->region()->zMax()).toWorld(world);
 
-        _boundingBoxLocalToWorld = localToWorld;
+        // Bounding region culling and display are supposed to ignore the matrix transform of the tile, but b/c of the nested
+        // nature of the ThreeDTileNode class the MatrixTransform is going to be applied already by the time
+        // that the bounding box culling code and display occur.  We multiply the localToWorld of the bounding box by the
+        // inverse transform matrix to undo any tranformation done by the tile transform when displaying or using the bounding volume for culling.
+        _boundingBoxLocalToWorld = getInverseMatrix() * localToWorld;
         _boundingBox = bb;
     }
     else if (_tile->boundingVolume()->box().isSet())

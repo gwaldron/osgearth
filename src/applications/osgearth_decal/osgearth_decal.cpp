@@ -102,9 +102,9 @@ struct App
 
                 const float lc_code = (float)lc_class->getValue();
 
-                for (unsigned t = 0; t < read.t(); ++t)
+                for (int t = 0; t < read.t(); ++t)
                 {
-                    for (unsigned s = 0; s < read.s(); ++s)
+                    for (int s = 0; s < read.s(); ++s)
                     {
                         read(value, s, t);
                         float c = value.a() > 0.2 ? lc_code : NO_DATA_VALUE;
@@ -169,7 +169,7 @@ struct App
 
     void undoLastAdd()
     {
-        for(int i=0; !_undoStack.empty() && i<_decalsPerClick; ++i)
+        for(unsigned i=0; !_undoStack.empty() && i<_decalsPerClick; ++i)
         {
             std::string id = _undoStack.top();
             _undoStack.pop();

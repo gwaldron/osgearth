@@ -64,7 +64,7 @@ namespace
             start = osg::Vec3(1.0f, 0.0f ,0.0f);
         }
         start.normalize();
-        for (int i = 0; i < norms.colDim; ++i)
+        for (unsigned i = 0; i < norms.colDim; ++i)
         {
             float angle = (2.0f * (float)osg::PI / WireLinesOperator::numWireVerts) * i;
             osg::Quat qrot(angle, planeNormal);

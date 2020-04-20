@@ -190,7 +190,7 @@ TileDrawable::computeBoundingBox() const
     osg::BoundingBox box;
 
     // core bbox created from the mesh:
-    for(unsigned i=0; i<_tileSize*_tileSize; ++i)
+    for(int i=0; i<_tileSize*_tileSize; ++i)
     {
         box.expandBy(_mesh[i]);
     }

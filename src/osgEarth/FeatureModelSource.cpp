@@ -69,6 +69,10 @@ FeatureModelOptions::fromConfig(const Config& conf)
     conf.get( "node_caching",     _nodeCaching );
     
     conf.get( "session_wide_resource_cache", _sessionWideResourceCache );
+
+    const Config& filtersConf = conf.child("filters");
+    for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back( ConfigOptions(*i) );
 }
 
 Config
@@ -91,6 +95,14 @@ FeatureModelOptions::getConfig() const
     conf.set( "node_caching",     _nodeCaching );
     
     conf.set( "session_wide_resource_cache", _sessionWideResourceCache );
+
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for(unsigned i=0; i<filters().size(); ++i)
+            temp.add( filters()[i].getConfig() );
+        conf.set( "filters", temp );
+    }
 
     return conf;
 }

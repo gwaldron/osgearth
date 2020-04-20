@@ -382,7 +382,7 @@ ImageLayer::createImage(const TileKey&    key,
 {
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName());
-    OE_PROFILING_ZONE_TEXT(key.str());
+    //OE_PROFILING_ZONE_TEXT(key.str());
 
     if (!isOpen())
     {

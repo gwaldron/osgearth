@@ -85,6 +85,9 @@ namespace osgEarth
         optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
         const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
 
+        /** Options feature filters */
+        OE_OPTION_VECTOR(ConfigOptions, filters);
+
     public:
         FeatureModelOptions(const ConfigOptions& co =ConfigOptions());
 

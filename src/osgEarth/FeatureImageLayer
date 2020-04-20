@@ -46,6 +46,8 @@ namespace osgEarth
                 const GeoExtent&   imageExtent,
                 osg::Image*        out_image ) const = 0;
 
+            osg::ref_ptr<FeatureFilterChain> _filterChain;
+
         private:
             bool queryAndRenderFeaturesForStyle(
                 Session*          session,
@@ -75,6 +77,7 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
             OE_OPTION(double, gamma);
             virtual Config getConfig() const;

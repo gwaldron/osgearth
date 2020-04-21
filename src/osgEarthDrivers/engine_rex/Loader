@@ -20,12 +20,12 @@
 #define OSGEARTH_REX_LOADER 1
 
 #include "Common"
+#include "FrameClock"
 
 #include <osgEarth/IOTypes>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
-
 #include <osg/ref_ptr>
 #include <osg/Group>
 
@@ -68,7 +68,7 @@ namespace osgEarth { namespace REX
 
             /** Apply the results of the invoke operation - runs safely in update stage.
                 If this returns false, the request needs to be rerun. */
-            virtual bool merge(const osg::FrameStamp*) =0;
+            virtual bool merge() =0;
 
             //! Comparison for sorting
             bool operator()(const Request& lhs, const Request& rhs) const {
@@ -111,7 +111,7 @@ namespace osgEarth { namespace REX
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
-            osg::Timer_t                  _lastTick;
+            double                        _lastTick;
             mutable Threading::Mutex      _lock;
             int                           _loadCount;
             double                        _delay_s;
@@ -141,12 +141,6 @@ namespace osgEarth { namespace REX
      */
     class LoaderGroup : public osg::Group, public Loader
     {
-    public: // Loader
-        void setFrameStamp(const osg::FrameStamp* fs) { _frameStamp = fs; }
-        const osg::FrameStamp* getFrameStamp() const { return _frameStamp.get(); }
-
-    protected:
-        osg::ref_ptr<const osg::FrameStamp> _frameStamp;
     };
 
 
@@ -186,6 +180,9 @@ namespace osgEarth { namespace REX
 
         //! Set the priority scale for all LODs */
         void setOverallPriorityScale(float scale);
+
+        //! Install the frame clock
+        void setFrameClock(const FrameClock* clock) { _clock = clock; }
 
     public: // Loader
 
@@ -228,13 +225,14 @@ namespace osgEarth { namespace REX
         osg::NodePath    _myNodePath;
         Requests         _requests;
         MergeQueue       _mergeQueue;  
-        osg::Timer_t     _checkpoint;
+        double           _checkpoint;
         int              _mergesPerFrame;
         unsigned         _frameNumber;
         unsigned         _frameLastUpdated;
         unsigned         _numLODs;
         float            _priorityScales[64];
         float            _priorityOffsets[64];
+        const FrameClock* _clock;
 
         osg::ref_ptr<osgDB::Options> _dboptions;
     };

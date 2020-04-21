@@ -121,8 +121,6 @@ namespace osgEarth { namespace REX
      */
     struct DrawState : public osg::Referenced
     {
-        unsigned _frame;
-
         const RenderBindings* _bindings;
 
         osg::BoundingSphere _bs;
@@ -131,7 +129,6 @@ namespace osgEarth { namespace REX
         osg::buffered_object<PerContextDrawState> _pcds;
 
         DrawState() :
-            _frame(0u),
             _bindings(0L)
         {
             //nop

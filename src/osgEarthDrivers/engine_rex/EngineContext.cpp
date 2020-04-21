@@ -40,7 +40,8 @@ EngineContext::EngineContext(const Map*                     map,
                              TileNodeRegistry*              liveTiles,
                              const RenderBindings&          renderBindings,
                              const TerrainOptions&          options,
-                             const SelectionInfo&           selectionInfo) :
+                             const SelectionInfo&           selectionInfo,
+                             const FrameClock*              clock) :
 _map           ( map ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
@@ -51,7 +52,8 @@ _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo ),
 _tick(0),
-_tilesLastCull(0)
+_tilesLastCull(0),
+_clock(clock)
 {
     _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
     _mainThreadId = Threading::getCurrentThreadId();

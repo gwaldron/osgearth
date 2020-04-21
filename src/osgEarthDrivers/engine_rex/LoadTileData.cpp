@@ -110,7 +110,7 @@ LoadTileData::run(ProgressCallback* progress)
 
 // apply() runs in the update traversal and can safely alter the scene graph
 bool
-LoadTileData::merge(const osg::FrameStamp* stamp)
+LoadTileData::merge()
 {
     // context went out of scope - bail
     osg::ref_ptr<EngineContext> context;

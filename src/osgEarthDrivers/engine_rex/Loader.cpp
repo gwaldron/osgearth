@@ -146,7 +146,7 @@ SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& n
         {
             // no re-queue possible. Testing only.
             request->setState(Request::MERGING);
-            request->merge( nv.getFrameStamp() );
+            request->merge();
         }
 
         r->setState(Request::FINISHED);
@@ -249,9 +249,8 @@ namespace
 
 
 PagerLoader::PagerLoader(TerrainEngineNode* engine) :
-_checkpoint    ( (osg::Timer_t)0 ),
+_checkpoint    (0.0),
 _mergesPerFrame( 0 ),
-_frameNumber   ( 0 ),
 _frameLastUpdated( 0u ),
 _numLODs       ( 20u )
 {
@@ -317,21 +316,13 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
     // check that the request is not already completed but unmerged:
     if ( request && !request->isMerging() && !request->isFinished() && nv.getDatabaseRequestHandler() )
     {
-        //OE_INFO << LC << "load (" << request->getTileKey().str() << ")" << std::endl;
-
-        unsigned fn = 0;
-        if ( nv.getFrameStamp() )
-        {
-            fn = nv.getFrameStamp()->getFrameNumber();
-        }
-
         bool addToRequestSet = false;
 
         // lock the request since multiple cull traversals might hit this function.
         request->lock();
         {
             // remember the last tick at which this request was submitted
-            request->_lastTick = now;
+            request->_lastTick = _clock->getTime();
 
             // update the priority, scale and bias it, and then normalize it to [0..1] range.
             unsigned lod = request->getTileKey().getLOD();
@@ -339,7 +330,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             request->_priority = p / (float)(_numLODs+1);
 
             // timestamp it
-            request->setFrameNumber( fn );
+            request->setFrameNumber(_clock->getFrame());
 
             // increment the load count.
             request->_loadCount++;
@@ -378,7 +369,7 @@ void
 PagerLoader::clear()
 {
     // Set a time checkpoint for invalidating old requests.
-    _checkpoint = osg::Timer::instance()->tick();
+    _checkpoint = _clock->getTime();
 }
 
 void
@@ -386,19 +377,13 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        bool runUpdate = false;
-
-        unsigned frameNumber = 0u;
-        if (nv.getFrameStamp())
-        {
-            frameNumber = nv.getFrameStamp()->getFrameNumber();
-            runUpdate = (_frameLastUpdated < frameNumber);
-            setFrameStamp(nv.getFrameStamp());
-        }
+        // prevent UPDATE from running more than once per frame
+        unsigned frame = _clock->getFrame();
+        bool runUpdate = (_frameLastUpdated < frame);
 
         if (runUpdate)
         {
-            _frameLastUpdated = frameNumber;
+            _frameLastUpdated = frame;
 
             // process pending merges.
             {
@@ -409,7 +394,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     Request* req = _mergeQueue.begin()->get();
                     if ( req && req->_lastTick >= _checkpoint )
                     {
-                        bool merged = req->merge( getFrameStamp() );
+                        bool merged = req->merge();
                     
                         if (merged)
                         {
@@ -433,9 +418,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
             {
                 OE_PROFILING_ZONE("loader.purge");
 
-                unsigned fn = 0;
-                if ( nv.getFrameStamp() )
-                    fn = nv.getFrameStamp()->getFrameNumber();
+                unsigned frame = _clock->getFrame();
 
                 _requests.lock();
 
@@ -443,7 +426,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                 for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
                 {
                     Request* req = i->second.get();
-                    const int frameDiff = (int)fn - (int)req->getLastFrameSubmitted();
+                    const int frameDiff = (int)frame - (int)req->getLastFrameSubmitted();
 
                     // Deal with completed requests:
                     if ( req->isFinished() )
@@ -505,9 +488,17 @@ PagerLoader::addChild(osg::Node* node)
         Request* req = result->getRequest();
         if ( req )
         {
+            if (req->_lastTick < _checkpoint)
+            {
+                // allow it to complete and disappear.
+                req->setState(Request::FINISHED);
+                if ( REPORT_ACTIVITY )
+                    Registry::instance()->endActivity( req->getName() );
+            }
+
             // Make sure the request is both current (newer than the last checkpoint)
             // and running (i.e. has not been canceled along the way)
-            if (req->_lastTick >= _checkpoint && req->isRunning())
+            else if (req->isRunning())
             {
                 if ( _mergesPerFrame > 0 )
                 {
@@ -516,7 +507,7 @@ PagerLoader::addChild(osg::Node* node)
                 }
                 else
                 {
-                    if (req->merge( getFrameStamp()))
+                    if (req->merge())
                         req->setState( Request::FINISHED );
                     else
                         req->setState( Request::IDLE ); // retry
@@ -528,8 +519,9 @@ PagerLoader::addChild(osg::Node* node)
 
             else
             {
-                OE_WARN << LC << "Request " << req->getName() << " canceled (in addChild)" << std::endl;
-                req->setState( Request::FINISHED );
+                OE_WARN << LC << "Request " << req->getName() << " abandoned (in addChild)" << std::endl;
+                //GW: allow to requeue (leave idle)
+                //req->setState( Request::FINISHED );
                 if ( REPORT_ACTIVITY )
                     Registry::instance()->endActivity( req->getName() );
             }

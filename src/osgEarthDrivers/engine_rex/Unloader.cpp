@@ -45,29 +45,23 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        bool runUpdate = false;
-
-        unsigned frameNumber = 0u;
-        if (nv.getFrameStamp())
-        {
-            frameNumber = nv.getFrameStamp()->getFrameNumber();
-            runUpdate = (_frameLastUpdated < frameNumber);
-        }
+        unsigned frame = _clock->getFrame();
+        bool runUpdate = (_frameLastUpdated < frame);
 
         if (runUpdate)
         {
-            _frameLastUpdated = frameNumber;
+            _frameLastUpdated = frame;
 
             OE_PROFILING_ZONE_NAMED("Expire Tiles");
 
-            osg::Timer_t now = nv.getFrameStamp()->getReferenceTime();
+            double now = _clock->getTime();
 
             unsigned count = 0u;
 
             // Have to enforce both the time delay AND a frame delay since the frames can
             // stop while the time rolls on (e.g., if you are dragging the window)
             double oldestAllowableTime = now - _maxAge;
-            unsigned oldestAllowableFrame = osg::maximum(nv.getFrameStamp()->getFrameNumber(), 3u) - 3u;
+            unsigned oldestAllowableFrame = osg::maximum(frame, 3u) - 3u;
 
             // Remove them from the registry:
             _tiles->collectDormantTiles(
@@ -92,7 +86,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                     // Check that this tile doesn't have any live quadtree siblings. If it does,
                     // we don't want to remove them too!
                     // GW: moved this check to the collectAbandonedTiles function where it belongs
-                    if (parent) // && parent->areSubTilesDormant(nv.getFrameStamp()))
+                    if (parent)
                     {
                         parent->removeSubTiles();
                         ++count;
@@ -102,7 +96,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             if (_deadpool.empty() == false)
             {
-                OE_DEBUG << "Unloaded " << count << " of " << _deadpool.size() << " dormant tiles; " << _tiles->size() << " remain active." << std::endl;
+                OE_DEBUG << LC << "Unloaded " << count << " of " << _deadpool.size() << " dormant tiles; " << _tiles->size() << " remain active." << std::endl;
             }
 
             _deadpool.clear();

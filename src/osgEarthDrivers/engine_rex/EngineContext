@@ -27,6 +27,7 @@
 #include "TileNodeRegistry"
 #include "RenderBindings"
 #include "TileDrawable"
+#include "FrameClock"
 
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/Progress>
@@ -59,7 +60,8 @@ namespace osgEarth { namespace REX
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
             const TerrainOptions&               options,
-            const SelectionInfo&                selectionInfo);
+            const SelectionInfo&                selectionInfo,
+            const FrameClock*                   clock);
         
         Loader* getLoader() const { return _loader; }
 
@@ -80,11 +82,11 @@ namespace osgEarth { namespace REX
 
         ProgressCallback* progress() const { return _progress.get(); }
 
-        void startCull(osgUtil::CullVisitor* cv);
+        //void startCull(osgUtil::CullVisitor* cv);
 
-        void endCull(osgUtil::CullVisitor* cv);
+        //void endCull(osgUtil::CullVisitor* cv);
 
-        double getElapsedCullTime() const;
+        //double getElapsedCullTime() const;
 
         //bool maxLiveTilesExceeded() const;
 
@@ -95,6 +97,8 @@ namespace osgEarth { namespace REX
         bool getUseTextureBorder() const { return false; }
 
         TileRasterizer* getTileRasterizer() const { return _tileRasterizer; }
+
+        const FrameClock* getClock() const { return _clock; }
 
     protected:
 
@@ -117,6 +121,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<ProgressCallback>        _progress;    
         double                                _expirationRange2;
         osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
+        const FrameClock*                     _clock;
     };
 
 } } // namespace osgEarth::Drivers::RexTerrainEngine

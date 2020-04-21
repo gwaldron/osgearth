@@ -81,13 +81,13 @@ namespace osgEarth { namespace REX
         void create(const TileKey& key, TileNode* parent, EngineContext* context);
 
         /** Whether the tile is expired; i.e. has not been visited in some time. */
-        bool isDormant(const osg::FrameStamp*) const;
+        bool isDormant() const;
 
         /** Whether all the subtiles are this tile are dormant (have not been visited recently) */
-        bool areSubTilesDormant(const osg::FrameStamp*) const;
+        bool areSubTilesDormant() const;
 
         /** Whether all 3 quadtree siblings of this tile are dormant */
-        bool areSiblingsDormant(const osg::FrameStamp*) const;
+        bool areSiblingsDormant() const;
 
         /** Removed any sub tiles from the scene graph. Please call from a safe thread only (update) */
         void removeSubTiles();

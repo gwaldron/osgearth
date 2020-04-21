@@ -21,12 +21,8 @@
 
 #include "Common"
 #include "TileNode"
-
+#include "FrameClock"
 #include <osgEarth/ThreadingUtils>
-//#include <osgEarth/TileKey>
-//#include <osgEarth/ResourceReleaser>
-//#include <osgEarth/Containers>
-
 #include <osg/Group>
 
 
@@ -58,6 +54,9 @@ namespace osgEarth { namespace REX
         void setMinimumRange(float value) { _minRange = osg::clampAbove(value, 0.0f); }
         float getMinimumRange() const { return _minRange; }
 
+        //! Set the frame clock to use
+        void setFrameClock(const FrameClock* value) { _clock = value; }
+
     public: // Unloader
 
         //void unloadChildren(const std::vector<TileKey>& keys);
@@ -74,6 +73,7 @@ namespace osgEarth { namespace REX
         mutable Threading::Mutex _mutex;
         std::vector<osg::observer_ptr<TileNode> > _deadpool;
         unsigned _frameLastUpdated;
+        const FrameClock* _clock;
     };
 
 } } // namespace osgEarth::REX

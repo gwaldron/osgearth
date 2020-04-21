@@ -38,6 +38,7 @@
 #include "SurfaceNode"
 #include "TileDrawable"
 #include "TerrainCuller"
+#include "FrameClock"
 
 #include <list>
 #include <map>
@@ -186,6 +187,8 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
 
         unsigned _frameLastUpdated;
+
+        FrameClock _clock;
     };
 
 } } // namespace osgEarth::REX

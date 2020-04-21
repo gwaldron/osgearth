@@ -49,7 +49,7 @@ namespace osgEarth { namespace REX
 
         /** Applies the fetched data to the tile node (scene-graph safe)
             return false if the request failed and must be re-queued */
-        bool merge(const osg::FrameStamp*);
+        bool merge();
 
         //! Creates a stateset containing GL compilable objects from the model
         osg::StateSet* createStateSet() const;

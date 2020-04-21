@@ -746,14 +746,6 @@ namespace
 
             response.setDuration(OE_STOP_TIMER(get_duration));
 
-            if ( progress )
-            {
-                progress->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
-                progress->stats()["http_get_count"] += 1;
-                if ( response.isCanceled() )
-                    progress->stats()["http_cancel_count"] += 1;
-            }
-
             if ( s_HTTP_DEBUG )
             {
                 TimeStamp filetime = getCurlFileTime(_curl_handle);
@@ -1113,14 +1105,6 @@ namespace
             InternetCloseHandle( hInternet );
 
             response.setDuration(OE_STOP_TIMER(http_get));
-
-            if ( progress )
-            {
-                progress->stats("http_get_time") += OE_GET_TIMER(http_get);
-                progress->stats("http_get_count") += 1;
-                if ( response.isCanceled() )
-                    progress->stats("http_cancel_count") += 1;
-            }            
 
             return response;
         }

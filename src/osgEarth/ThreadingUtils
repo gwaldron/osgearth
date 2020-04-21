@@ -45,7 +45,14 @@ namespace osgEarth { namespace Threading
      */
     extern OSGEARTH_EXPORT unsigned getCurrentThreadId();
 
-
+    /**
+    * Pure interface for an object that can be canceled.
+    */
+    class OSGEARTH_EXPORT Cancelable
+    {
+    public:
+        virtual bool isCanceled() const = 0;
+    };
 
     /**
      * Event with a binary signaled state, for multi-threaded sychronization.
@@ -227,10 +234,28 @@ namespace osgEarth { namespace Threading
             return _objRef->_obj.get();
         }
 
+        T* get(const Cancelable* cancelable) {
+            while(!_ev->wait(1000u)) {
+                if (isAbandoned()) return 0L;
+                if (cancelable && cancelable->isCanceled()) return 0L;
+            }
+            return _objRef->_obj.get();
+        }
+
         //! The result value; blocks until available (or abandoned) and returns it; then resets to initial state.
         T* release() {
             while(!_ev->wait(1000u))
                 if (isAbandoned()) return 0L;
+            T* out = _objRef->_obj.release();
+            _ev->reset();
+            return out;
+        }
+
+        T* release(const Cancelable* cancelable) {
+            while(!_ev->wait(1000u)) {
+                if (isAbandoned()) return 0L;
+                if (cancelable && cancelable->isCanceled()) return 0L;
+            }
             T* out = _objRef->_obj.release();
             _ev->reset();
             return out;

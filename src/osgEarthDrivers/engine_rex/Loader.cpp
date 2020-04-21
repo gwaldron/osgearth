@@ -80,41 +80,22 @@ namespace osgEarth { namespace REX
      * timeout (via request::isIdle) and OSG database pager
      * shutdown (via getDone)
      */
-    struct RequestProgressCallback : public ProgressCallback
+    struct RequestProgressCallback : public DatabasePagerProgressCallback
     {
-        osgDB::DatabasePager::DatabaseThread* _thread;
         Loader::Request* _request;
 
         RequestProgressCallback(Loader::Request* req) :
+            DatabasePagerProgressCallback(),
             _request(req)
         {
-            // if this is a pager thread, get a handle on it:
-            _thread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
-                OpenThreads::Thread::CurrentThread());
+            //NOP
         }
 
-        //virtual void cancel()
-        //{
-        //    ProgressCallback::cancel();
-        //    _request->setState(_request->IDLE);
-        //}
-
-        virtual bool isCanceled()
+        virtual bool shouldCancel() const
         {
-            if (!_canceled)
-            {
-                if (!_request->isRunning())
-                {
-                    OE_DEBUG << "A request was canceled because it was abandoned" << std::endl;
-                    cancel();
-                }
-
-                // was the pager shut down?
-                if (_thread != 0L && _thread->getDone())
-                    cancel();
-            }
-
-            return ProgressCallback::isCanceled();
+            return
+                (!_request->isRunning()) ||
+                (DatabasePagerProgressCallback::shouldCancel());
         }
     };
 } }

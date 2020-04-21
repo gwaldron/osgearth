@@ -47,9 +47,6 @@ const int MAX_NUM_CHILDREN_CREATED_PER_FRAME = 4;
 
 #define LC "[TileNode] "
 
-#define REPORT(name,timer) if(context->progress()) { \
-    context->progress()->stats()[name] += OE_GET_TIMER(timer); }
-
 namespace
 {
     // Scale and bias matrices, one for each TileKey quadrant.
@@ -511,7 +508,6 @@ TileNode::cull(TerrainCuller* culler)
                 else {
                    culler->_numberChildrenCreated += (_children.size() - initialNumChildren);
                 }
-                REPORT("TileNode::createChildren", createChildren);
 
                 if (_children.size() == 4) {
                    // completely loaded
